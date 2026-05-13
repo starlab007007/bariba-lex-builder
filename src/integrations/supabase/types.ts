@@ -1373,6 +1373,33 @@ export type Database = {
         }
         Relationships: []
       }
+      keyboard_learned_words: {
+        Row: {
+          count: number
+          created_at: string
+          id: string
+          last_used: string
+          user_id: string
+          word: string
+        }
+        Insert: {
+          count?: number
+          created_at?: string
+          id?: string
+          last_used?: string
+          user_id: string
+          word: string
+        }
+        Update: {
+          count?: number
+          created_at?: string
+          id?: string
+          last_used?: string
+          user_id?: string
+          word?: string
+        }
+        Relationships: []
+      }
       learning_content_edits: {
         Row: {
           created_at: string

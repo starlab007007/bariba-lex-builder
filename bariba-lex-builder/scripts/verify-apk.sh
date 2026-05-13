@@ -9,7 +9,7 @@ if [ -z "$APK" ] || [ ! -f "$APK" ]; then
   exit 1
 fi
 
-EXPECTED_TAG="fitila-ime-2026-05-12-smart-v6"
+EXPECTED_TAG="fitila-ime-2026-05-12-smart-v7-alphabet"
 
 echo "🔎 Inspection de $APK"
 

@@ -1,70 +1,95 @@
+# Plan — Clavier Bariba intelligent v7 (Flottant React + IME Android)
+
 ## Objectif
 
-Faire évoluer le clavier Bariba (à la fois IME natif Android et clavier flottant `/fitila/keyboard`) pour qu'il soit aussi complet qu'un Gboard, intègre tous les caractères Bariba, propose une prédiction intuitive, une mini-traduction, et un **nouveau ton nasal bas** (accent grave) combinable par-dessus n'importe quelle voyelle (même déjà nasalisée ou aiguë), comme `ɔ̃̀`, `ɛ̃̀`, `ã̀`, `b̀`, etc. Tous les caractères doivent rester intacts au copier-coller dans n'importe quel lecteur de document.
+Enrichir les **deux claviers** (React `/fitila/keyboard` + IME natif Android) avec : alphabet Bariba complet, diacritiques combinants empilables, prédiction intelligente (mots + phrases + tons), traduction temps réel, mode phrases rapides, et apprentissage adaptatif synchronisé Supabase. Aucune régression sur l'existant.
 
-## Faisabilité
+## 1. Schéma Supabase (migration)
 
-- **Ton nasal bas combinable** : faisable nativement via le caractère Unicode **U+0300 (combining grave accent)**. Il s'empile correctement par-dessus `ɔ̃`, `ɛ̃`, `ĩ`, `ã`, `ũ`, `e`, `o`… Aucune création de glyphe nécessaire — c'est du Unicode standard, donc préservé au copier-coller dans WhatsApp, Word, Gmail, navigateurs, PDF readers. Rendu correct sur Android 10+ avec Roboto/Noto. Pour les rares apps avec mauvais rendu (ex. anciens lecteurs), on garde l'option NFC normalisé en sortie.
-- **Layout Gboard complet** : chiffres (rangée 0-9), symboles (page `?123`), majuscules verrouillables, suppression long-press, espace long-press = changer de clavier système. Tout faisable avec les `TextView` programmatiques déjà en place (zéro dépendance AppCompat, pas de risque de crash).
-- **Prédictions intuitives** : on combine l'historique `SharedPreferences` (déjà là) + un **dictionnaire Bariba embarqué** (~3-5k mots fréquents extraits de `useDictionarySearch` / corpus existant) chargé depuis `assets/bariba_lexicon.txt`. Préfixe + score (fréquence + récence).
-- **Mini-traduction FR↔Bariba** : long-press sur la barre de suggestions → appel à l'edge function `bariba-translate` déjà déployée, résultat collé. Hors-ligne : fallback dictionnaire local.
-- **Compatibilité documents** : on émet uniquement de l'Unicode NFC standard (latin + IPA `ɔ ɛ ŋ` + combining `̃` `̀` `́`). Aucun caractère privé. Test prévu : copier `kɔ̃̀` → coller dans WhatsApp / Docs / Gmail.
+Créer table `keyboard_learned_words` avec RLS :
+- `user_id` (FK auth.users), `word` text, `count` int, `last_used` timestamptz
+- Unique `(user_id, word)`, policy `auth.uid() = user_id`
 
-## Étapes
+## 2. Données partagées (nouveau module `src/data/baribaAlphabet.ts`)
 
-### 1. IME natif Android (`BaribaInputMethodService.java`, 4 copies)
-- Ajouter une **rangée de chiffres** (0-9) en haut, comme Gboard.
-- Ajouter une **page symboles** `?123` (`@ # $ % & * ( ) - _ + = / : ;`) avec bouton bascule `ABC` ↔ `?123`.
-- Ajouter un **bouton ton nasal bas** `◌̀` dans la rangée des spéciaux Bariba. Au tap → insère **U+0300** après le dernier caractère (s'empile sur `ɔ̃` → `ɔ̃̀`, sur `e` → `è`, etc.). Si le dernier char est déjà suivi d'un U+0300, on le retire (toggle).
-- Long-press sur les voyelles → popup avec variantes `é è ê ë ɛ ɛ̃ ɛ̀ ɛ̃̀` (style Gboard).
-- Bouton `🌐` long-press → `InputMethodManager.showInputMethodPicker()` pour changer de clavier.
-- Long-press `⌫` → suppression continue (Handler 50ms).
-- Charger le **lexique Bariba** depuis `assets/bariba_lexicon.txt` au `onCreate` (~50 KB, en mémoire).
-- Prédictions : top-5 = matches préfixe (lexique + historique), triés par fréquence + récence. Tap suggestion = remplace le mot courant.
-- BUILD_TAG → `fitila-ime-2026-05-12-smart-v6`.
+Source unique de vérité Unicode pour les deux claviers (le natif l'utilise via JSON copié dans `android/app/src/main/assets/bariba_alphabet.json` au build).
 
-### 2. Lexique Bariba embarqué
-- Créer `android/app/src/main/assets/bariba_lexicon.txt` (un mot par ligne, fréquence séparée par `\t`).
-- Source : extraire de `src/data/foncierBaribaCorpus.ts` + dictionnaire React déjà en place. Script Node `scripts/build-bariba-lexicon.ts` qui génère le fichier.
+```
+NASALS = ['ã','ĩ','ũ','õ','ẽ','ɛ̃','ɔ̃']      // U+00E3, 0129, 0169, 00F5, 1EBD, 025B+0303, 0254+0303
+SPECIALS = ['ɔ','ɛ','ŋ']                       // déjà présents
+COMBINING = ['\u0300','\u0301','\u0303']       // ton bas / ton haut / nasal
+LONG_PRESS_VARIANTS = { a:[à,á,â,ä,ã], e:[è,é,ê,ë,ẽ,ɛ,ɛ̀,ɛ́,ɛ̃,ɛ̃̀], i:[...], o:[...,ɔ,ɔ̀,ɔ́,ɔ̃,ɔ̃̀], u:[...], ɔ:[ɔ̀,ɔ́,ɔ̃,ɔ̃̀], ɛ:[...], n:[ŋ,ǹ,ñ] }
+```
 
-### 3. Clavier flottant React `/fitila/keyboard` (`FloatingBaribaKeyboard.tsx`)
-- Aligner le layout sur l'IME natif : rangée chiffres, page `?123`, touche **ton nasal bas** combinable.
-- Hook `useBaribaPrediction` qui partage la logique préfixe + lexique (côté JS, importé depuis `src/data/baribaLexicon.ts`).
-- Long-press voyelles (Pointer events `onPointerDown` + 400ms timer) → popup variantes accentuées.
-- Bouton "Traduire" sur le mot courant → `supabase.functions.invoke('bariba-translate')`.
-- Sortie texte : `String.normalize('NFC')` avant `navigator.clipboard.writeText` pour garantir compatibilité copier-coller universelle.
+## 3. Hook `src/hooks/useBaribaPredictor.ts` (nouveau)
 
-### 4. Pont JS ↔ Native (`BaribaKeyboardPlugin.java` + `useBaribaKeyboard.ts`)
-- Ajouter méthode `getLexicon()` côté plugin (renvoie le contenu de `assets/bariba_lexicon.txt`) pour que le clavier flottant et l'IME partagent la même source.
-- Méthode `addToneLow(word)` utilitaire (normalise + ajoute U+0300).
+- Build au mount : index trie + bigrammes depuis `foncierBaribaCorpus`, `fra_bba_dictionnary.json`, `corpus_initial_2600.json`, `fullDictionaryData`.
+- API : `getPredictions(partial, context) → Prediction[]`, `learnWord(word)`, `getFrequentPhrases()`.
+- Ordre de priorité : (1) historique perso, (2) corpus par fréquence, (3) bigramme contextuel, (4) variantes tonales si `partial` est une voyelle.
+- Persistance : `localStorage('bariba_learned_words')` + upsert Supabase si user connecté (debounce 5s).
 
-### 5. Documentation & vérification
-- `DEPLOY_KEYBOARD.md` : ajouter section "Tester le ton nasal bas" + "Vérifier compatibilité copier-coller".
-- `scripts/verify-apk.sh` : grep nouveau BUILD_TAG `smart-v6` + vérifier présence de `bariba_lexicon.txt` dans l'APK (`unzip -l ... | grep lexicon`).
+## 4. Clavier React — `FloatingBaribaKeyboard.tsx`
 
-## Détails techniques
+Ajouts (sans casser l'existant) :
+- **Rangée nasales** (fond `bg-[#0F3460]`) : `ã ĩ ũ õ ẽ ɛ̃ ɔ̃`
+- **Rangée bariba+tons** : `ɔ ɛ ŋ ◌̀ ◌́ ◌̃` — boutons combinants insèrent le caractère après le curseur, second tap = toggle
+- **Long-press** sur a/e/i/o/u/ɔ/ɛ/n → popup variantes (composant `VariantPopup`)
+- **Barre suggestions 3 chips** : phrase (teal), mot (blanc), variante tonale (amber)
+- **Bannière traduction** auto au-dessus suggestions, debounce 800 ms, détection auto via présence de `[ɔɛŋãĩũ]`, appel `supabase.functions.invoke('bariba-translate')`, tap = insère
+- **Bouton ⚡** : grille 2 colonnes phrases rapides, tap = bariba+espace, long-press = traduction FR, bouton 🔊 = `useBaribaTTS`
+- **NFC partout** : wrapper `insertChar`, `insertSuggestion`, `copyToClipboard` avec `.normalize('NFC')`
 
-- **Insertion U+0300** : `inputConnection.commitText("\u0300", 1)` — Android compose automatiquement avec le glyphe précédent.
-- **Toggle accent** : lire `getTextBeforeCursor(2, 0)` ; si dernier code unit == 0x0300, `deleteSurroundingText(1, 0)` ; sinon `commitText("\u0300", 1)`.
-- **Long-press popup** : `PopupWindow` ancré sur la touche, ferme au `ACTION_UP`.
-- **Lexique** : `BufferedReader` sur `getAssets().open("bariba_lexicon.txt")`, stocké dans `TreeMap<String,Integer>` pour préfixe O(log n).
-- **Page symboles** : flag `boolean isSymbols` ; `buildKeyboardView()` choisit ROW_NUM/ROW_SYM ou ROW1/ROW2/ROW3 selon le flag.
-- **Compatibilité Android 10→15, Samsung/Xiaomi/Pixel** : conservée — toujours `ContextThemeWrapper(Theme_DeviceDefault)`, aucun `Button` framework, fallback view inchangé.
+## 5. IME Android — `BaribaInputMethodService.java` (4 emplacements)
 
-## Fichiers touchés (estimation)
+```text
+android/app/src/main/java/com/fitila/bariba/
+android-native/java/com/fitila/bariba/
+bariba-lex-builder/android/app/src/main/java/com/fitila/bariba/
+bariba-lex-builder/android-native/java/com/fitila/bariba/
+```
 
-- 4× `BaribaInputMethodService.java` (rewrite avec layout étendu, ton bas, popup long-press, lexique)
-- 4× `BaribaKeyboardPlugin.java` (nouvelle méthode `getLexicon`)
-- 2× `android/app/src/main/assets/bariba_lexicon.txt` (nouveau)
-- 1× `scripts/build-bariba-lexicon.ts` (nouveau)
-- `src/components/keyboard/FloatingBaribaKeyboard.tsx` (refonte layout + ton bas + traduction)
-- `src/hooks/useBaribaPrediction.ts` (nouveau)
-- `src/data/baribaLexicon.ts` (nouveau, partagé)
-- `src/hooks/useBaribaKeyboard.ts` (méthode `getLexicon`)
-- `DEPLOY_KEYBOARD.md`, `scripts/verify-apk.sh`
+Modifications :
+- `BUILD_TAG = "fitila-ime-2026-05-12-smart-v7-alphabet"`
+- `rebuildKeyboard()` ajoute `buildNasalsRow()` + `buildCombinantRow()` avant `buildSpecialsRow()`
+- `buildNasalsRow()` : 7 voyelles nasales (escape `\u00E3`, `\u0129`, `\u0169`, `\u00F5`, `\u1EBD`, `\u025B\u0303`, `\u0254\u0303`)
+- `buildCombinantRow()` : `\u0300 \u0301 \u0303` — toggle via `getTextBeforeCursor(2,0)`
+- `OnLongClickListener` sur voyelles → popup `PopupWindow` avec variantes
+- `typeCharacter()` applique `Normalizer.normalize(c, Form.NFC)` avant `commitText`
+- `renderSuggestionBar()` : 3 catégories chips colorées (phrase verte, mot blanc, ton ambre) lues depuis `BaribaKeyboardPlugin`
+- `onFinishInputView()` → flush `learned_words` vers SharedPrefs
+
+## 6. Plugin Capacitor — `BaribaKeyboardPlugin.java` (2 emplacements)
+
+Ajouter méthodes :
+- `getLexicon()` → renvoie JSON du corpus + nasales (lu depuis `assets/bariba_alphabet.json`)
+- `pushPredictions(predictions, lastWord)` → sauve les 3 chips actuelles pour que l'IME les affiche
+- `getLearnedWords()` / `addLearnedWord(word)` avec compteur
+
+## 7. Sync `useBaribaKeyboard.ts`
+
+Étendre avec `getLearnedWords`, `addLearnedWord`, `pushPredictions` et upsert Supabase périodique (déjà connecté via `useAuth`).
+
+## 8. Mode Phrases Rapides
+
+- Constante `PHRASES_RAPIDES` dans `src/data/baribaPhrasesRapides.ts` (~30 phrases : salutations, nombres 1-10, courtoisie, marché)
+- React : nouveau panneau toggle ⚡ dans `FloatingBaribaKeyboard`
+- IME : bouton ⚡ ouvre un `GridLayout` overlay dans la même `keyboardContainer`
+
+## 9. Vérifications post-build
+
+`scripts/verify-apk.sh` mis à jour :
+- grep `smart-v7-alphabet` dans dex
+- grep `BaribaInputMethodService` dans dex
+- Test manuel : taper `mã` → suggestions, long-press `o` → popup, `ɔ`+`◌̀` → `ɔ̀`, 🌍 → bannière <1s, ⚡ → grille TTS
 
 ## Hors scope
 
-- Reconnaissance vocale Bariba (déjà couverte par `useBaribaSTT`).
-- Apprentissage ML on-device (la prédiction reste statistique simple : fréquence + récence).
-- Glide-typing (swipe) — gros chantier, à proposer en V2 si demandé.
+- Glide-typing (V2)
+- ML on-device (TensorFlow Lite) — V2
+- Voix (déjà géré par `useBaribaSTT`)
+
+## Fichiers touchés
+
+**Créés** : `src/data/baribaAlphabet.ts`, `src/data/baribaPhrasesRapides.ts`, `src/hooks/useBaribaPredictor.ts`, `android/app/src/main/assets/bariba_alphabet.json` (×2 copies), migration Supabase
+
+**Modifiés** : `FloatingBaribaKeyboard.tsx`, `useBaribaKeyboard.ts`, `BaribaInputMethodService.java` (×4), `BaribaKeyboardPlugin.java` (×2), `scripts/verify-apk.sh` (×2), `DEPLOY_KEYBOARD.md` (×2)
