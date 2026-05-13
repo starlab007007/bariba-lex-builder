@@ -425,13 +425,6 @@ public class BaribaInputMethodService extends InputMethodService {
         } catch (Throwable t) { Log.w(TAG, "toggleCombining failed", t); }
     }
 
-    private LinearLayout buildSpecialsRowOldUnused(Context ctx) {
-        LinearLayout row = new LinearLayout(ctx);
-        row.setLayoutParams(rowParams(ctx, 46));
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        }
-    // (legacy block removed)
-
     private LinearLayout buildBottomRow(Context ctx, boolean symbols) {
         LinearLayout row = new LinearLayout(ctx);
         row.setLayoutParams(rowParams(ctx, 48));
