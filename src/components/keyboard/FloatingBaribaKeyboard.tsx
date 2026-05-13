@@ -525,8 +525,7 @@ export default function FloatingBaribaKeyboard() {
                 {NASALS.map(({ lo, up }) => (
                   <Key key={lo} variant="nasal"
                     label={shift || shiftLock ? up : lo}
-                    onPointerDown={() => onAlphaPointerDown(lo === 'ɔ\u0303' ? 'ɔ' : lo === 'ɛ\u0303' ? 'ɛ' : lo[0])}
-                    onPointerUp={() => { cancelLongPress(); type(shift || shiftLock ? up : lo); popupTriggerRef.current = null; }}
+                    onTap={() => type(shift || shiftLock ? up : lo)}
                   />
                 ))}
               </div>
@@ -539,9 +538,9 @@ export default function FloatingBaribaKeyboard() {
                   <Key key={lo} variant="special" label={shift || shiftLock ? up : lo}
                     onPointerDown={() => onAlphaPointerDown(lo)} onPointerUp={() => onAlphaPointerUp(lo)} />
                 ))}
-                <Key variant="tone" label={<span className="text-lg">◌\u0300</span>} onTap={insertToneLow} />
-                <Key variant="tone" label={<span className="text-lg">◌\u0301</span>} onTap={insertToneHigh} />
-                <Key variant="tone" label={<span className="text-lg">◌\u0303</span>} onTap={insertNasal} />
+                <Key variant="tone" label={<span className="text-lg">{'\u25CC\u0300'}</span>} onTap={insertToneLow} />
+                <Key variant="tone" label={<span className="text-lg">{'\u25CC\u0301'}</span>} onTap={insertToneHigh} />
+                <Key variant="tone" label={<span className="text-lg">{'\u25CC\u0303'}</span>} onTap={insertNasal} />
               </div>
             )}
 
