@@ -1,5 +1,18 @@
 # Déploiement et mise à jour du clavier Bariba Fitila
 
+> **Build courant** : `fitila-ime-2026-05-13-smart-v8-bilingue`
+>
+> Nouveautés v8 (clavier IME natif Android) :
+> - Bannière de traduction auto FR ↔ Bariba (lookup local + fallback edge function `bariba-translate`).
+> - Barre de suggestions bilingue : chaque mot Bariba est affiché avec sa traduction FR.
+> - Bouton ⚡ : grille 2 colonnes des phrases rapides (issues uniquement du dictionnaire embarqué).
+> - Prédictions intuitives via bigrammes calculés depuis les exemples du dictionnaire (`assets/bariba_dictionary.json`).
+> - Une seule rangée nasales (`ã ĩ ũ õ ẽ ɛ̃ ɔ̃`) + une seule rangée spéciales (`ɔ ɛ ŋ`).
+> - Tons combinants (`◌̀ ◌́ ◌̃`) accessibles via long-press sur les voyelles.
+>
+> Vérification après build : `bash scripts/verify-apk.sh apk-output/<fichier>.apk`
+> doit confirmer le BUILD_TAG **et** la présence de `assets/bariba_dictionary.json`.
+
 Ce document décrit la **seule procédure officielle** pour pousser un correctif
 natif (clavier IME) jusqu’à un APK installé et fonctionnel.
 
