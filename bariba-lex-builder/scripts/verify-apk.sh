@@ -9,7 +9,7 @@ if [ -z "$APK" ] || [ ! -f "$APK" ]; then
   exit 1
 fi
 
-EXPECTED_TAG="fitila-ime-2026-05-13-smart-v8-bilingue"
+EXPECTED_TAG="fitila-ime-2026-05-13-smart-v9-clean"
 
 echo "🔎 Inspection de $APK"
 
@@ -48,6 +48,7 @@ TMP=$(mktemp -d)
 unzip -q "$APK" "classes*.dex" -d "$TMP" || true
 FOUND=0
 FOUND_DICT=0
+FOUND_TR=0
 for dex in "$TMP"/*.dex; do
   [ -f "$dex" ] || continue
   if strings "$dex" | grep -q "$EXPECTED_TAG"; then
@@ -56,18 +57,23 @@ for dex in "$TMP"/*.dex; do
   if strings "$dex" | grep -q "BaribaDictionary"; then
     FOUND_DICT=1
   fi
-  [ "$FOUND" -eq 1 ] && [ "$FOUND_DICT" -eq 1 ] && break
+  if strings "$dex" | grep -q "Traducteur IA"; then
+    FOUND_TR=1
+  fi
+  [ "$FOUND" -eq 1 ] && [ "$FOUND_DICT" -eq 1 ] && [ "$FOUND_TR" -eq 1 ] && break
 done
 rm -rf "$TMP"
 
-if [ "$FOUND" -eq 1 ] && [ "$FOUND_DICT" -eq 1 ]; then
+if [ "$FOUND" -eq 1 ] && [ "$FOUND_DICT" -eq 1 ] && [ "$FOUND_TR" -eq 1 ]; then
   echo "  ✅ BUILD_TAG=$EXPECTED_TAG trouvé dans le DEX"
   echo "  ✅ Classe BaribaDictionary trouvée dans le DEX"
+  echo "  ✅ Panneau Traducteur IA intégré trouvé"
   echo ""
   echo "✅ APK conforme au dernier correctif."
 else
   [ "$FOUND" -eq 1 ] || echo "  ❌ BUILD_TAG=$EXPECTED_TAG ABSENT"
   [ "$FOUND_DICT" -eq 1 ] || echo "  ❌ Classe BaribaDictionary ABSENTE"
+  [ "$FOUND_TR" -eq 1 ] || echo "  ❌ Panneau Traducteur IA ABSENT"
   echo ""
   echo "❌ APK NON conforme. Rebuild requis."
   exit 4
