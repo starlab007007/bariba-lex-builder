@@ -94,6 +94,11 @@ echo ""
 echo "🎹 Installation du clavier natif Bariba..."
 bash scripts/install-native-keyboard.sh
 
+# ── Step 5b: Build embedded dictionary asset ──
+echo ""
+echo "📚 Génération de l'asset dictionnaire Bariba..."
+node scripts/build-bariba-dictionary-asset.mjs
+
 # ── Step 6: Sync Capacitor ──
 echo ""
 echo "🔄 Synchronisation Capacitor..."
