@@ -1,116 +1,156 @@
-## Objectif
 
-Aligner le clavier IME natif Android sur les fonctionnalités déjà visibles dans le clavier flottant React, et corriger l'agencement visuel (rangée nasales unique). Tout le corpus utilisé (mots, bigrammes, phrases rapides) doit provenir **uniquement** des exemples du dictionnaire Bariba déjà embarqué.
+# Plan — IME natif Bariba v9 « clean-bilingue »
 
-## Problèmes constatés (IME natif uniquement)
+BUILD_TAG cible : `fitila-ime-2026-05-13-smart-v9-clean`
 
-1. Pas de bannière de traduction auto FR ↔ Bariba.
-2. La barre de suggestions n'affiche pas la traduction française à côté de chaque mot prédit.
-3. Les prédictions intuitives basées sur le dictionnaire Bariba embarqué ne sont pas visibles (seule l'historique perso est utilisée).
-4. Pas de bouton ⚡ ouvrant la grille 2 colonnes des phrases rapides.
-5. Trop de rangées spéciales : on voit `buildNasalsRow` + `buildSpecialsRow` + `buildCombiningRow` = 3 lignes alors que la capture en référence n'en montre que 2 (nasales `ã ĩ ũ õ ẽ ɛ̃ ɔ̃` + spéciales `ɔ ɛ ŋ`).
+## 1. Barre de suggestions bilingue + bannière FR↔BA bien visibles
 
-## Plan d'implémentation
+Problème (capture 1) : chips trop serrés, traduction française tronquée, bannière auto invisible parce qu'elle se confond avec la suggestionsBar.
 
-### 1. Asset embarqué unique — corpus dictionnaire
+Corrections dans `BaribaInputMethodService.java` :
 
-Créer `android/app/src/main/assets/bariba_dictionary.json` (copié dans les 4 emplacements miroir : `android/`, `android-native/`, `bariba-lex-builder/android/`, `bariba-lex-builder/android-native/`).
+- `suggestionsBar` : hauteur 48dp → **56dp**, fond `#0F3460` (au lieu de `#16213E`), séparateurs verticaux 1dp `#1A1A2E` entre les chips.
+- Chips bilingues :
+  - Bariba : 17sp, `#FFFFFF`, **bold**, `maxLines=1`, ellipsize=END.
+  - Français : 12sp, `#FFD54F` (jaune plus saturé), `maxLines=1`, ellipsize=END, padding-top 2dp.
+  - Padding chip : 8dp horizontal, 6dp vertical, marges latérales 3dp.
+  - 3 chips max, chacun `weight=1f` pour occuper toute la largeur uniformément.
+- Bannière de traduction `translationBanner` :
+  - Déplacée **au-dessus de la suggestionsBar** (premier enfant du root) pour ne plus être masquée.
+  - Hauteur fixe 36dp, fond `#1A6E5A` (vert distinct du bleu des suggestions), texte blanc 13sp bold + petite icône `↩`.
+  - Toujours `VISIBLE` quand `currentTranslation` non vide ; sinon `GONE`.
+  - Format texte : `« mot » → traduction   ↩` pour clarifier la direction.
 
-Contenu généré au build depuis `src/data/fra_bba_dictionnary.json` + `src/data/foncier_bariba_corpus.json` :
+## 2. Une seule rangée combinée (nasales + spéciales + ◌̀)
 
-```json
-{
-  "version": 1,
-  "entries": [
-    { "ba": "alaafia", "fr": "bonjour", "freq": 42 },
-    { "ba": "yenu", "fr": "oui", "freq": 30 }
-  ],
-  "phrases": [
-    { "ba": "Mã nɔ wɛ baa", "fr": "Comment vas-tu ?" }
-  ],
-  "bigrams": { "alaafia": ["yenu", "baaba"], ... }
-}
+Captures 2 et 3 : aujourd'hui `buildNasalsRow`, `buildSpecialsRow` et la rangée des combinings forment 3 rangées séparées.
+
+Nouvelle rangée unique `buildBaribaRow(ctx)` (hauteur 46dp, fond `#0F3460`) contenant **dans l'ordre** :
+
+```
+ã  ĩ  ũ  õ  ẽ  ɛ̃  ɔ̃  |  ɔ  ɛ  ŋ  |  ◌̀
 ```
 
-Script `scripts/build-bariba-dictionary-asset.mjs` qui :
-- Lit les exemples (champs `example`, `phrase`, `sentence`) du dictionnaire embarqué.
-- Tokenise → table de fréquences.
-- Construit l'index bigrammes (mot précédent → 3 mots suivants les plus fréquents) **uniquement** à partir des phrases du dictionnaire.
-- Écrit le JSON dans les 4 dossiers `assets/`.
-- Hooké dans `scripts/build-release-apk.sh`.
+- Les 7 nasales en jaune `#FFD54F`.
+- Les 3 spéciales en blanc avec long-press → variantes (déjà géré par `attachLongPressVariants`).
+- La touche `◌̀` (`U+0300`) :
+  - **Unique** ton accessible directement (les autres `◌́`, `◌̃` restent disponibles via long-press sur les voyelles).
+  - Comportement : insère `U+0300` après le caractère courant via `toggleCombining`. Comme la composition est NFC, elle s'applique aussi bien comme **premier** accent (`o → ò`) que **deuxième** accent sur une voyelle déjà accentuée (`ɔ́ → ɔ̌` rendu en NFC, `ɔ̃ → ɔ̃̀` etc.).
+  - Si le caractère précédent est déjà `U+0300`, `toggleCombining` le retire (toggle).
+- Les variantes long-press des voyelles `a e i o u` continuent d'inclure `◌́` et `◌̃` : aucune perte fonctionnelle.
 
-### 2. Refactor `BaribaInputMethodService.java` (4 emplacements miroir)
+Suppression de `buildNasalsRow` et `buildSpecialsRow` dans `rebuildKeyboard`.
 
-Nouveau `BUILD_TAG = "fitila-ime-2026-05-13-smart-v8-bilingue"`.
+## 3. Limiter le clavier à 5 rangées max
 
-**Layout** (`rebuildKeyboard`) :
+Nouveau `rebuildKeyboard` (mode lettres) :
+
+```text
+Rangée 1 : digits 1..0
+Rangée 2 : a z e r t y u i o p
+Rangée 3 : q s d f g h j k l m
+Rangée 4 : ã ĩ ũ ũ õ ẽ ɛ̃ ɔ̃ ɔ ɛ ŋ ◌̀     ← nouvelle rangée unique
+Rangée 5 : ?123 · ⚡ · , · espace · . · ⏎  + shift/backspace intégrés
 ```
-[Suggestions bilingues bar]
-[Digits row]
-[a..p]
-[q..m]
-[⇧ w x c v b n ⌫]
-[ã ĩ ũ õ ẽ ɛ̃ ɔ̃]              ← UNIQUE rangée nasales
-[ɔ        ɛ        ŋ]          ← rangée spéciales (3 touches larges)
-[?123  ⚡  🌐  espace  .  ↵]
+
+Pour tenir en 5 rangées, la rangée 3 absorbe `w x c v b n` via long-press sur `q` et `m` ? **Non** — on garde la disposition AZERTY connue : à la place, on supprime l'ancienne `buildRow3` (w x c v b n shift backspace) et on déplace `shift` + `backspace` à l'extrême gauche/droite de la rangée 5 (bottom). `w x c v b n` restent accessibles via la rangée symboles ? — alternative retenue : **garder `buildRow3` (rangée w/x/c/v/b/n + shift + ⌫)** et fusionner digits dans la rangée 1 supérieure : total = digits + ROW1 + ROW2 + ROW3 + bariba + bottom = 6.
+
+➡ Décision finale pour rester ≤ 5 rangées **lettres** :
+
+```text
+1) a z e r t y u i o p
+2) q s d f g h j k l m
+3) ⇧  w x c v b n  ⌫
+4) ã ĩ ũ õ ẽ ɛ̃ ɔ̃ ɔ ɛ ŋ ◌̀
+5) ?123  ⚡  ,  espace  .  ⏎
 ```
-- Suppression de `buildCombiningRow()` de la pile principale.
-- Les tons `◌̀ ◌́ ◌̃` deviennent des **long-press** sur les voyelles concernées (déjà partiellement supporté via `VARIANTS`), et trois touches discrètes `◌̀ ◌́ ◌̃` sont déplacées dans la rangée digits (côté gauche, taille réduite) pour rester accessibles sans dupliquer une ligne entière.
-- Bouton ⚡ ajouté à la rangée bottom (entre `?123` et `🌐`).
 
-**Chargeur dictionnaire** — nouvelle classe `BaribaDictionary` :
-- Singleton chargé en `onCreate()` depuis `assets/bariba_dictionary.json`.
-- Méthodes : `List<Entry> predict(String prefix, String previousWord)`, `String translate(String baribaWord)`, `String translateFr(String frenchWord)`, `List<Phrase> phrases()`.
-- Algorithme `predict` : (a) historique perso préfixé, (b) bigramme depuis `previousWord`, (c) entrées dictionnaire commençant par `prefix`, triées par freq.
+Les chiffres passent en long-press sur `a..p` (déjà natif Gboard) et restent accessibles via `?123`. Mode `?123` reste à 4 rangées (sym1, sym2, sym3, bottom).
 
-**Barre de suggestions bilingue** (`renderSuggestionBar`) :
-- Chaque chip = LinearLayout vertical : ligne 1 mot Bariba blanc 16sp, ligne 2 traduction FR jaune `#FFE082` 11sp.
-- 3 chips max, fond `#0F3460`, padding généreux.
-- Source : `BaribaDictionary.predict(currentWord, lastCommittedWord)`.
+## 4. ⚡ ouvre/ferme le panneau traducteur IA intégré (toggle)
 
-**Bannière de traduction auto** (nouvelle vue insérée entre suggestionsBar et keyboardContainer) :
-- Visible seulement quand `currentWord.length() >= 3` ou après `space`.
-- Détection automatique via présence de caractères Bariba (`ɔ ɛ ŋ ã ĩ ũ õ ẽ`) → traduction Bariba→FR locale (lookup dico). Sinon Français→Bariba locale.
-- Si lookup local échoue : appel HTTP debounce 800 ms vers l'edge function `bariba-translate` (URL `https://pmrhezgnyffiskbaiudb.supabase.co/functions/v1/bariba-translate`, anon key embarquée). `AsyncTask`/`Thread` + `Handler.post` pour mise à jour UI.
-- Tap sur la bannière insère la traduction à la position du curseur.
+Aujourd'hui ⚡ ouvre une grille phrases. À remplacer par un panneau « Traducteur IA » embarqué dans le clavier :
 
-**Bouton ⚡ phrases rapides** :
-- Ouvre un `PopupWindow` plein-largeur, hauteur ≈ 280dp.
-- `GridLayout` 2 colonnes scrollable.
-- Chaque cellule = mot Bariba + traduction FR, tap = `commitText(phrase + " ")`.
-- Source : `BaribaDictionary.phrases()` (uniquement les exemples du dictionnaire embarqué).
+- Nouvel état `boolean translatorOpen` + champ `View translatorPanel`.
+- `onClick` ⚡ → `toggleTranslator()` :
+  - Si fermé : construit `translatorPanel` (voir ci-dessous), masque `keyboardContainer` (`GONE`), ajoute `translatorPanel` à `root` à la place, `translatorOpen = true`, ⚡ devient surligné `#FFD54F`.
+  - Si ouvert : retire `translatorPanel`, ré-affiche `keyboardContainer`, `translatorOpen = false`, ⚡ revient à la couleur normale.
+  - `onFinishInputView` ferme aussi le panneau pour éviter un état orphelin.
 
-### 3. Vérification
+Contenu de `translatorPanel` (LinearLayout vertical, fond `#1A1A2E`, hauteur ≈ keyboard) :
 
-- `scripts/verify-apk.sh` (et copie `bariba-lex-builder/`) : ajouter checks
-  - présence de `assets/bariba_dictionary.json` dans l'APK (`unzip -l … | grep`)
-  - `BUILD_TAG` = `smart-v8-bilingue`
-  - présence de la classe `BaribaDictionary`
-- Mise à jour `DEPLOY_KEYBOARD.md` avec la nouvelle checklist visuelle (capture des 2 rangées exactement).
+1. Header (40dp, fond `#0F3460`) : titre « Traducteur IA · FR ↔ Bariba » + bouton ✕ (ferme = même action que ⚡).
+2. Sélecteur de direction : 2 chips toggle « FR → BA » / « BA → FR » (par défaut auto-détecté depuis le dernier mot).
+3. `EditText` source 2 lignes max (texte saisi dans le champ cible si on clique « Insérer », sinon traduction directe).
+4. Bouton « Traduire » → appelle l'edge function `bariba-translate` déjà utilisée par `runAutoTranslate` (réutilise `fetchRemoteTranslation` refactorisée pour accepter texte + direction + callback).
+5. Zone résultat (TextView 17sp blanc, fond `#16213E`, padding 12dp).
+6. Deux boutons côte à côte : « Insérer dans le texte » (commit via `InputConnection.commitText`) et « Copier » (`ClipboardManager`).
 
-### 4. Hors scope (non demandé)
+Pas de webview / pas de React : tout est natif Java, dimensionné à la même hauteur que le clavier pour rester bien cadré quel que soit l'écran. C'est l'équivalent IME du module traducteur déjà visible dans l'app.
 
-- Pas de modification du clavier flottant React (déjà OK selon l'utilisateur).
-- Pas de glide-typing.
-- Pas de prédiction trigramme (bigrammes suffisants pour cette itération).
+> Remarque faisabilité : un IME ne peut pas charger la route React `/fitila/translator` à l'intérieur de la zone clavier (sandbox process séparé). La solution retenue ré-implémente la même UX en natif et appelle exactement la même edge function `bariba-translate`, garantissant un comportement identique.
 
-## Fichiers touchés
+## 5. Visuel du rendu final (ASCII wireframe)
 
-**Créés** :
-- `scripts/build-bariba-dictionary-asset.mjs`
-- `android/app/src/main/assets/bariba_dictionary.json` (et 3 copies miroir)
-- `android/app/src/main/java/com/fitila/bariba/BaribaDictionary.java` (et 3 copies miroir)
+État clavier normal :
 
-**Modifiés** :
-- `BaribaInputMethodService.java` × 4 (layout, suggestions bilingues, bannière, bouton ⚡)
-- `scripts/verify-apk.sh` × 2
-- `scripts/build-release-apk.sh` × 2 (hook script asset)
-- `DEPLOY_KEYBOARD.md` × 2
-
-## Action après merge
-
-```bash
-node scripts/build-bariba-dictionary-asset.mjs
-bash scripts/build-release-apk.sh
-bash scripts/verify-apk.sh    # doit afficher smart-v8-bilingue
+```text
+┌──────────────────────────────────────────────────────────────┐
+│  « so » → frapper                                          ↩ │  ← bannière auto FR↔BA (vert)
+├──────────────────────────────────────────────────────────────┤
+│   so          │   som          │   soora                     │  ← suggestions bilingues
+│   frapper     │   farine       │   être frappé               │
+├──────────────────────────────────────────────────────────────┤
+│ a z e r t y u i o p                                          │
+│ q s d f g h j k l m                                          │
+│ ⇧  w x c v b n                                            ⌫  │
+│ ã ĩ ũ õ ẽ ɛ̃ ɔ̃   ɔ ɛ ŋ   ◌̀                                  │  ← rangée unique (4)
+│ ?123   ⚡    ,         espace         .   ⏎                  │  ← rangée bottom (5)
+└──────────────────────────────────────────────────────────────┘
 ```
+
+État ⚡ activé (panneau traducteur ouvert, clavier masqué) :
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│  Traducteur IA · FR ↔ Bariba                              ✕  │
+├──────────────────────────────────────────────────────────────┤
+│  [ FR → BA ]  [ BA → FR ]                                    │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │ Tapez le texte à traduire…                             │  │
+│  └────────────────────────────────────────────────────────┘  │
+│  [        Traduire        ]                                  │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │ Tɛ̃ɛ̃ ɔ̃ baa…                                            │  │
+│  └────────────────────────────────────────────────────────┘  │
+│  [ Insérer dans le texte ]   [ Copier ]                      │
+└──────────────────────────────────────────────────────────────┘
+```
+
+Un second clic sur ⚡ (ou ✕) ferme le panneau et restaure le clavier exactement dans l'état précédent.
+
+## 6. Détails techniques / fichiers modifiés
+
+- `android/app/src/main/java/com/fitila/bariba/BaribaInputMethodService.java`
+  - `BUILD_TAG = "fitila-ime-2026-05-13-smart-v9-clean"`.
+  - Nouveau `buildBaribaRow(ctx)` ; suppression de `buildNasalsRow`/`buildSpecialsRow`.
+  - `buildRoot` : ordre = `translationBanner` → `suggestionsBar` → `keyboardContainer` (+ `translatorPanel` ajouté/retiré dynamiquement).
+  - `renderBilingualBar` : nouvelles tailles/couleurs (15→17sp, 11→12sp, jaune `#FFD54F`).
+  - Nouveau `toggleTranslator()`, `buildTranslatorPanel()`, `runManualTranslate(text, direction, cb)` (refactor de `fetchRemoteTranslation`).
+  - `showQuickPhrases` retiré du flux ⚡ (méthode supprimée pour réduire la classe).
+- Mirroring obligatoire dans :
+  - `android-native/java/com/fitila/bariba/BaribaInputMethodService.java`
+  - `bariba-lex-builder/android/app/src/main/java/com/fitila/bariba/BaribaInputMethodService.java`
+  - `bariba-lex-builder/android-native/java/com/fitila/bariba/BaribaInputMethodService.java`
+- `scripts/verify-apk.sh` + `bariba-lex-builder/scripts/verify-apk.sh` :
+  - `EXPECTED_TAG="fitila-ime-2026-05-13-smart-v9-clean"`.
+  - Vérification supplémentaire : `strings classes*.dex | grep "Traducteur IA"`.
+- Aucune modification de l'asset `bariba_dictionary.json` (toujours utilisé par les suggestions).
+- Aucun changement React/web : le clavier flottant n'est pas touché par cette itération.
+
+## 7. Validation post-build
+
+1. `bash scripts/build-release-apk.sh`
+2. `bash scripts/verify-apk.sh apk-output/<APK>` → doit afficher BUILD_TAG v9-clean + `BaribaDictionary` + `Traducteur IA`.
+3. Test manuel sur appareil : taper « so » → 3 chips bilingues lisibles ; taper « bɔ » → bannière FR visible ; appuyer ⚡ → panneau traducteur s'affiche ; appuyer à nouveau → clavier revient.
+
