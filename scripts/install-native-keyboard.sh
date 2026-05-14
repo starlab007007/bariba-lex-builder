@@ -22,6 +22,19 @@ JAVA_DEST="$ANDROID_DIR/java/com/fitila/bariba"
 mkdir -p "$JAVA_DEST"
 cp "$NATIVE_SRC/java/com/fitila/bariba/BaribaInputMethodService.java" "$JAVA_DEST/"
 cp "$NATIVE_SRC/java/com/fitila/bariba/BaribaKeyboardPlugin.java" "$JAVA_DEST/"
+if [ -f "$NATIVE_SRC/java/com/fitila/bariba/BaribaDictionary.java" ]; then
+  cp "$NATIVE_SRC/java/com/fitila/bariba/BaribaDictionary.java" "$JAVA_DEST/"
+fi
+
+# 1b. Copy embedded dictionary asset
+ASSETS_DEST="$ANDROID_DIR/assets"
+mkdir -p "$ASSETS_DEST"
+if [ -f "$NATIVE_SRC/assets/bariba_dictionary.json" ]; then
+  cp "$NATIVE_SRC/assets/bariba_dictionary.json" "$ASSETS_DEST/"
+  echo "  ✅ Asset bariba_dictionary.json copié"
+else
+  echo "  ⚠️  Asset bariba_dictionary.json absent — exécutez 'node scripts/build-bariba-dictionary-asset.mjs'"
+fi
 
 # 2. Copy resources
 mkdir -p "$ANDROID_DIR/res/layout" "$ANDROID_DIR/res/values" "$ANDROID_DIR/res/drawable" "$ANDROID_DIR/res/xml"
