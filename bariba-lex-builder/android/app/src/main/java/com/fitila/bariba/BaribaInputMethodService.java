@@ -871,9 +871,9 @@ public class BaribaInputMethodService extends InputMethodService {
             int w = getResources().getDisplayMetrics().widthPixels;
             currentPopup = new PopupWindow(scroll, w - dp(ctx, 16), dp(ctx, 280), true);
             currentPopup.setOutsideTouchable(true);
-            View root = getWindow() != null ? getWindow().getWindow().getDecorView() : null;
-            if (root != null) {
-                currentPopup.showAtLocation(root, Gravity.BOTTOM, 0, dp(ctx, 60));
+            View anchor = keyboardContainer;
+            if (anchor != null && anchor.getWindowToken() != null) {
+                currentPopup.showAtLocation(anchor, Gravity.BOTTOM, 0, anchor.getHeight());
             }
         } catch (Throwable t) { Log.w(TAG, "showQuickPhrases failed", t); }
     }
