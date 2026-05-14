@@ -1,13 +1,18 @@
 package com.fitila.bariba;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.inputmethodservice.InputMethodService;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
@@ -17,11 +22,12 @@ import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.GridLayout;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 
@@ -39,20 +45,20 @@ import java.util.Map;
 /**
  * Production-grade Bariba Fitila IME — Java implementation.
  *
- * BUILD_TAG: fitila-ime-2026-05-13-smart-v8-bilingue
+ * BUILD_TAG: fitila-ime-2026-05-13-smart-v9-clean
  *
- * v8 highlights:
- *  - Bilingual suggestion bar (Bariba word + FR translation)
- *  - Auto translation banner FR ↔ Bariba (local dict + edge function fallback)
- *  - ⚡ quick-phrases popup (2-column grid) sourced from embedded dictionary
- *  - Single nasal row + single specials row (matches reference screenshot)
- *  - Combining tones (◌̀ ◌́ ◌̃) accessible via long-press on vowels
- *  - All output is plain Unicode NFC, copy-paste safe everywhere
+ * v9 highlights:
+ *  - Bilingual suggestion bar (Bariba + FR translation) — bigger, bolder, clearer.
+ *  - Auto translation banner FR ↔ Bariba placed ABOVE suggestion bar (green band).
+ *  - Single combined Bariba row: nasals (jaune) + specials (ɔ ɛ ŋ) + combining ◌̀.
+ *  - Max 5 rows: ROW1, ROW2, ROW3 (shift + w..n + del), Bariba row, bottom.
+ *  - ⚡ toggles an integrated AI Translator panel (no popup, no scrollable phrase grid).
+ *  - All output is plain Unicode NFC, copy-paste safe everywhere.
  */
 public class BaribaInputMethodService extends InputMethodService {
 
     private static final String TAG = "BaribaKeyboard";
-    private static final String BUILD_TAG = "fitila-ime-2026-05-13-smart-v8-bilingue";
+    private static final String BUILD_TAG = "fitila-ime-2026-05-13-smart-v9-clean";
     private static final String PREFS = "bariba_keyboard_data";
     private static final int MAX_HISTORY = 50;
     private static final int MAX_SUGGESTIONS = 3;
@@ -67,8 +73,6 @@ public class BaribaInputMethodService extends InputMethodService {
     private static final String ANON_KEY =
             "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcmhlemdueWZmaXNrYmFpdWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyODgzNzAsImV4cCI6MjA3ODg2NDM3MH0.BRqdPly5tClRwhuQes1dckaTNQkbjIqZ5I8q6km_lZ4";
 
-    private static final List<String> ROW_DIGITS =
-            Arrays.asList("1","2","3","4","5","6","7","8","9","0");
     private static final List<String> ROW1 =
             Arrays.asList("a","z","e","r","t","y","u","i","o","p");
     private static final List<String> ROW2 =
@@ -91,7 +95,7 @@ public class BaribaInputMethodService extends InputMethodService {
         {"\u0254\u0303", "\u0186\u0303"}  // ɔ̃ Ɔ̃
     };
 
-    // Long-press variants — includes combining tones so they remain accessible.
+    // Long-press variants — combining tones (◌̀ ◌́ ◌̃) remain available here.
     private static final Map<String, String[]> VARIANTS = new HashMap<String, String[]>() {{
         put("a", new String[]{"\u00E0","\u00E1","\u00E2","\u00E4","\u00E3","\u0300","\u0301","\u0303"});
         put("e", new String[]{"\u00E8","\u00E9","\u00EA","\u00EB","\u1EBD","\u025B","\u025B\u0300","\u025B\u0301","\u025B\u0303","\u0300","\u0301","\u0303"});
@@ -105,19 +109,25 @@ public class BaribaInputMethodService extends InputMethodService {
 
     private boolean isShifted = false;
     private boolean isSymbols = false;
+    private boolean translatorOpen = false;
     private final StringBuilder currentWord = new StringBuilder();
     private String lastCommittedWord = "";
 
+    private LinearLayout root;
     private LinearLayout suggestionsBar;
     private TextView translationBanner;
     private LinearLayout keyboardContainer;
+    private LinearLayout translatorPanel;
     private TextView shiftKey;
+    private TextView quickKey; // ⚡
     private PopupWindow currentPopup;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Runnable backspaceRepeater;
     private Runnable translateDebounce;
     private String currentTranslation = "";
+    private String currentTranslationSource = "";
+    private String translatorDirection = "fr-ba";
 
     private static final List<String> SYM_ROW1 =
             Arrays.asList("1","2","3","4","5","6","7","8","9","0");
@@ -134,7 +144,6 @@ public class BaribaInputMethodService extends InputMethodService {
         Log.i(TAG, "onCreate BUILD_TAG=" + BUILD_TAG
                 + " sdk=" + android.os.Build.VERSION.SDK_INT
                 + " oem=" + android.os.Build.MANUFACTURER + "/" + android.os.Build.MODEL);
-        // Pre-load the embedded dictionary off the UI thread.
         new Thread(new Runnable() {
             @Override public void run() {
                 try { BaribaDictionary.get(BaribaInputMethodService.this); }
@@ -154,6 +163,7 @@ public class BaribaInputMethodService extends InputMethodService {
     public void onFinishInput() {
         if (currentWord.length() > 0) saveToHistory(currentWord.toString());
         currentWord.setLength(0);
+        if (translatorOpen) closeTranslator();
         super.onFinishInput();
     }
 
@@ -174,7 +184,7 @@ public class BaribaInputMethodService extends InputMethodService {
 
     private View buildRoot() {
         Context ctx = themedContext();
-        LinearLayout root = new LinearLayout(ctx);
+        root = new LinearLayout(ctx);
         root.setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.setOrientation(LinearLayout.VERTICAL);
@@ -182,33 +192,33 @@ public class BaribaInputMethodService extends InputMethodService {
         int pad = dp(ctx, 2);
         root.setPadding(pad, pad, pad, pad);
 
-        // Suggestions bar (bilingual chips)
-        suggestionsBar = new LinearLayout(ctx);
-        suggestionsBar.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 48)));
-        suggestionsBar.setOrientation(LinearLayout.HORIZONTAL);
-        suggestionsBar.setBackgroundColor(0xFF16213E);
-        suggestionsBar.setGravity(Gravity.CENTER_VERTICAL);
-        int h = dp(ctx, 6);
-        suggestionsBar.setPadding(h, 0, h, 0);
-        root.addView(suggestionsBar);
-
-        // Translation banner (auto FR ↔ Bariba)
+        // Translation banner (auto FR ↔ Bariba) — placed FIRST so it's never hidden.
         translationBanner = new TextView(ctx);
-        translationBanner.setTextColor(0xFFFFE082);
+        translationBanner.setTextColor(Color.WHITE);
+        translationBanner.setTypeface(null, Typeface.BOLD);
         translationBanner.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
-        translationBanner.setPadding(dp(ctx, 12), dp(ctx, 6), dp(ctx, 12), dp(ctx, 6));
-        translationBanner.setBackgroundColor(0xFF0F3460);
+        translationBanner.setPadding(dp(ctx, 14), dp(ctx, 8), dp(ctx, 14), dp(ctx, 8));
+        translationBanner.setBackgroundColor(0xFF1A6E5A); // green band, distinct from blue
         translationBanner.setVisibility(View.GONE);
-        translationBanner.setMaxLines(2);
+        translationBanner.setMaxLines(1);
         translationBanner.setEllipsize(android.text.TextUtils.TruncateAt.END);
         translationBanner.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { commitTranslation(); }
         });
         LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        blp.topMargin = dp(ctx, 2);
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 36));
         root.addView(translationBanner, blp);
+
+        // Suggestions bar (bilingual chips)
+        suggestionsBar = new LinearLayout(ctx);
+        suggestionsBar.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 56)));
+        suggestionsBar.setOrientation(LinearLayout.HORIZONTAL);
+        suggestionsBar.setBackgroundColor(0xFF0F3460);
+        suggestionsBar.setGravity(Gravity.CENTER_VERTICAL);
+        int h = dp(ctx, 4);
+        suggestionsBar.setPadding(h, h, h, h);
+        root.addView(suggestionsBar);
 
         // Keyboard
         keyboardContainer = new LinearLayout(ctx);
@@ -232,16 +242,15 @@ public class BaribaInputMethodService extends InputMethodService {
             keyboardContainer.addView(buildSymRow3(ctx));
             keyboardContainer.addView(buildBottomRow(ctx, true));
         } else {
-            keyboardContainer.addView(buildLetterRow(ctx, ROW_DIGITS, false));
-            keyboardContainer.addView(buildLetterRow(ctx, ROW1, true));
-            LinearLayout row2 = buildLetterRow(ctx, ROW2, true);
+            // 5 rows total
+            keyboardContainer.addView(buildLetterRow(ctx, ROW1, true));   // 1
+            LinearLayout row2 = buildLetterRow(ctx, ROW2, true);          // 2
             LinearLayout.LayoutParams r2 = (LinearLayout.LayoutParams) row2.getLayoutParams();
             if (r2 != null) { r2.leftMargin = dp(ctx, 12); r2.rightMargin = dp(ctx, 12); }
             keyboardContainer.addView(row2);
-            keyboardContainer.addView(buildRow3(ctx));
-            keyboardContainer.addView(buildNasalsRow(ctx));   // UNIQUE rangée nasales
-            keyboardContainer.addView(buildSpecialsRow(ctx)); // ɔ ɛ ŋ
-            keyboardContainer.addView(buildBottomRow(ctx, false));
+            keyboardContainer.addView(buildRow3(ctx));                     // 3
+            keyboardContainer.addView(buildBaribaRow(ctx));                // 4 — UNIQUE Bariba row
+            keyboardContainer.addView(buildBottomRow(ctx, false));         // 5
         }
     }
 
@@ -321,27 +330,21 @@ public class BaribaInputMethodService extends InputMethodService {
         return row;
     }
 
-    private LinearLayout buildNasalsRow(Context ctx) {
+    /** Unique Bariba row: 7 nasals (jaune) + 3 specials (ɔ ɛ ŋ) + ◌̀ combining grave. */
+    private LinearLayout buildBaribaRow(Context ctx) {
         LinearLayout row = new LinearLayout(ctx);
         row.setLayoutParams(rowParams(ctx, 46));
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setBackgroundColor(0xFF0F3460);
+
         for (final String[] pair : NASALS) {
             final String lo = pair[0]; final String up = pair[1];
             TextView k = makeKey(ctx, lo, new Runnable() {
                 @Override public void run() { typeCharacter(isShifted ? up : lo); }
             });
-            k.setTextColor(0xFFFFE082);
+            k.setTextColor(0xFFFFD54F);
             row.addView(k, weightedParams(1f));
         }
-        return row;
-    }
-
-    private LinearLayout buildSpecialsRow(Context ctx) {
-        LinearLayout row = new LinearLayout(ctx);
-        row.setLayoutParams(rowParams(ctx, 46));
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setBackgroundColor(0xFF0F3460);
         for (final String[] pair : SPECIALS) {
             final String lo = pair[0]; final String up = pair[1];
             TextView k = makeKey(ctx, lo, new Runnable() {
@@ -350,6 +353,12 @@ public class BaribaInputMethodService extends InputMethodService {
             attachLongPressVariants(k, lo);
             row.addView(k, weightedParams(1f));
         }
+        // ◌̀ combining low-tone grave — applies to plain or already-accented vowels (NFC).
+        TextView graveKey = makeKey(ctx, "\u25CC\u0300", new Runnable() {
+            @Override public void run() { toggleCombining(COMBINING_GRAVE); }
+        });
+        graveKey.setTextColor(0xFFFFD54F);
+        row.addView(graveKey, weightedParams(1f));
         return row;
     }
 
@@ -415,7 +424,15 @@ public class BaribaInputMethodService extends InputMethodService {
                     currentWord.deleteCharAt(currentWord.length() - 1);
                 }
             } else {
-                ic.commitText(mark, 1);
+                // NFC normalize last char + mark to compose properly
+                CharSequence prev2 = ic.getTextBeforeCursor(2, 0);
+                if (prev2 != null && prev2.length() >= 1) {
+                    String composed = Normalizer.normalize(prev2.toString() + mark, Normalizer.Form.NFC);
+                    ic.deleteSurroundingText(prev2.length(), 0);
+                    ic.commitText(composed, 1);
+                } else {
+                    ic.commitText(mark, 1);
+                }
             }
         } catch (Throwable t) { Log.w(TAG, "toggleCombining failed", t); }
     }
@@ -430,12 +447,12 @@ public class BaribaInputMethodService extends InputMethodService {
         });
         row.addView(modeKey, weightedParams(1.5f));
 
-        // ⚡ phrases rapides
-        TextView quick = makeKey(ctx, "\u26A1", new Runnable() {
-            @Override public void run() { showQuickPhrases(); }
+        // ⚡ toggle integrated AI Translator
+        quickKey = makeKey(ctx, "\u26A1", new Runnable() {
+            @Override public void run() { toggleTranslator(); }
         });
-        quick.setTextColor(0xFFFFE082);
-        row.addView(quick, weightedParams(1f));
+        quickKey.setTextColor(translatorOpen ? 0xFFFFD54F : 0xFFFFFFFF);
+        row.addView(quickKey, weightedParams(1f));
 
         row.addView(makeKey(ctx, ",", new Runnable() {
             @Override public void run() { commitPunctuation(","); }
@@ -643,37 +660,45 @@ public class BaribaInputMethodService extends InputMethodService {
         Context ctx = bar.getContext();
         bar.removeAllViews();
         if (picks == null || picks.isEmpty()) return;
-        for (final BaribaDictionary.Entry e : picks) {
+        for (int i = 0; i < picks.size(); i++) {
+            final BaribaDictionary.Entry e = picks.get(i);
             LinearLayout chip = new LinearLayout(ctx);
             chip.setOrientation(LinearLayout.VERTICAL);
             chip.setGravity(Gravity.CENTER);
             chip.setBackgroundColor(0xFF0F3460);
-            int hp = dp(ctx, 12), vp = dp(ctx, 4);
+            int hp = dp(ctx, 8), vp = dp(ctx, 6);
             chip.setPadding(hp, vp, hp, vp);
             chip.setClickable(true);
 
             TextView ba = new TextView(ctx);
             ba.setText(e.ba);
             ba.setTextColor(Color.WHITE);
-            ba.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
+            ba.setTypeface(null, Typeface.BOLD);
+            ba.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f);
             ba.setGravity(Gravity.CENTER);
+            ba.setMaxLines(1);
+            ba.setEllipsize(android.text.TextUtils.TruncateAt.END);
             chip.addView(ba);
 
             TextView fr = new TextView(ctx);
             fr.setText(e.fr);
-            fr.setTextColor(0xFFFFE082);
-            fr.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
+            fr.setTextColor(0xFFFFD54F);
+            fr.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
             fr.setGravity(Gravity.CENTER);
             fr.setMaxLines(1);
             fr.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            chip.addView(fr);
+            LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            flp.topMargin = dp(ctx, 2);
+            chip.addView(fr, flp);
 
             chip.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) { commitSuggestion(e.ba); }
             });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
-            lp.setMargins(dp(ctx, 4), dp(ctx, 4), dp(ctx, 4), dp(ctx, 4));
+            int m = dp(ctx, 3);
+            lp.setMargins(m, m, m, m);
             bar.addView(chip, lp);
         }
     }
@@ -710,29 +735,39 @@ public class BaribaInputMethodService extends InputMethodService {
             boolean isBariba = word.matches(".*[\u0254\u025B\u014B\u00E3\u0129\u0169\u00F5\u1EBD].*");
             String local = isBariba ? dict.translateBaToFr(word) : dict.translateFrToBa(word);
             if (local != null && !local.isEmpty()) {
-                showTranslation((isBariba ? "FR : " : "BA : ") + local, local);
+                showTranslation(word, local, isBariba);
                 return;
             }
-            // Remote fallback (best-effort, off main thread)
             final String direction = isBariba ? "ba-fr" : "fr-ba";
+            final boolean fromBariba = isBariba;
             new Thread(new Runnable() {
-                @Override public void run() { fetchRemoteTranslation(word, direction); }
+                @Override public void run() {
+                    fetchRemoteTranslation(word, direction, new RemoteTranslateCallback() {
+                        @Override public void onResult(final String translated) {
+                            handler.post(new Runnable() {
+                                @Override public void run() { showTranslation(word, translated, fromBariba); }
+                            });
+                        }
+                    });
+                }
             }).start();
         } catch (Throwable t) { Log.w(TAG, "auto-translate failed", t); }
     }
 
-    private void fetchRemoteTranslation(String word, String direction) {
+    private interface RemoteTranslateCallback { void onResult(String translated); }
+
+    private void fetchRemoteTranslation(String text, String direction, RemoteTranslateCallback cb) {
         try {
             URL url = new URL(TRANSLATE_URL);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
             conn.setConnectTimeout(2500);
-            conn.setReadTimeout(3500);
+            conn.setReadTimeout(4000);
             conn.setDoOutput(true);
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setRequestProperty("apikey", ANON_KEY);
             conn.setRequestProperty("Authorization", "Bearer " + ANON_KEY);
-            String payload = "{\"text\":" + jsonStr(word) + ",\"direction\":\"" + direction + "\"}";
+            String payload = "{\"text\":" + jsonStr(text) + ",\"direction\":\"" + direction + "\"}";
             conn.getOutputStream().write(payload.getBytes(StandardCharsets.UTF_8));
             int code = conn.getResponseCode();
             if (code < 200 || code >= 300) return;
@@ -741,16 +776,11 @@ public class BaribaInputMethodService extends InputMethodService {
             String l; while ((l = br.readLine()) != null) sb.append(l);
             br.close();
             String body = sb.toString();
-            // crude extraction of "translation":"..." or "result":"..."
             String t = extractField(body, "translation");
             if (t == null) t = extractField(body, "result");
             if (t == null) t = extractField(body, "text");
             if (t == null || t.isEmpty()) return;
-            final String prefix = direction.equals("ba-fr") ? "FR : " : "BA : ";
-            final String txt = t;
-            handler.post(new Runnable() {
-                @Override public void run() { showTranslation(prefix + txt, txt); }
-            });
+            cb.onResult(t);
         } catch (Throwable t) { /* silent */ }
     }
 
@@ -783,16 +813,19 @@ public class BaribaInputMethodService extends InputMethodService {
         sb.append('"'); return sb.toString();
     }
 
-    private void showTranslation(String label, String insertable) {
+    private void showTranslation(String source, String translated, boolean fromBariba) {
         if (translationBanner == null) return;
-        currentTranslation = insertable;
-        translationBanner.setText(label + "  \u21A9");
+        currentTranslationSource = source;
+        currentTranslation = translated;
+        String arrow = fromBariba ? "  →  FR : " : "  →  BA : ";
+        translationBanner.setText("\u00AB " + source + " \u00BB" + arrow + translated + "   \u21A9");
         translationBanner.setVisibility(View.VISIBLE);
     }
 
     private void hideTranslationBanner() {
         if (translationBanner != null) translationBanner.setVisibility(View.GONE);
         currentTranslation = "";
+        currentTranslationSource = "";
     }
 
     private void commitTranslation() {
@@ -807,75 +840,259 @@ public class BaribaInputMethodService extends InputMethodService {
         } catch (Throwable t) { Log.w(TAG, "commitTranslation failed", t); }
     }
 
-    // ─── ⚡ quick phrases popup ──────────────────────────────────────────────
+    // ─── ⚡ Integrated AI Translator panel ───────────────────────────────────
 
-    private void showQuickPhrases() {
+    private void toggleTranslator() {
+        if (translatorOpen) closeTranslator();
+        else openTranslator();
+    }
+
+    private void openTranslator() {
         try {
-            dismissPopup();
-            Context ctx = themedContext();
-            BaribaDictionary dict = BaribaDictionary.get(this);
-            List<BaribaDictionary.Phrase> ph = dict.phrases();
+            if (root == null || keyboardContainer == null) return;
+            Context ctx = root.getContext();
+            translatorPanel = buildTranslatorPanel(ctx);
+            keyboardContainer.setVisibility(View.GONE);
+            // Hide suggestion bar + translation banner while panel is open for a clean look
+            if (suggestionsBar != null) suggestionsBar.setVisibility(View.GONE);
+            if (translationBanner != null) translationBanner.setVisibility(View.GONE);
+            root.addView(translatorPanel, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            translatorOpen = true;
+            if (quickKey != null) quickKey.setTextColor(0xFFFFD54F);
+        } catch (Throwable t) { Log.w(TAG, "openTranslator failed", t); }
+    }
 
-            ScrollView scroll = new ScrollView(ctx);
-            scroll.setBackgroundColor(0xFF1A1A2E);
+    private void closeTranslator() {
+        try {
+            if (root != null && translatorPanel != null) {
+                root.removeView(translatorPanel);
+            }
+            translatorPanel = null;
+            if (keyboardContainer != null) keyboardContainer.setVisibility(View.VISIBLE);
+            if (suggestionsBar != null) suggestionsBar.setVisibility(View.VISIBLE);
+            translatorOpen = false;
+            if (quickKey != null) quickKey.setTextColor(0xFFFFFFFF);
+            if (currentTranslation != null && !currentTranslation.isEmpty()
+                    && translationBanner != null) {
+                translationBanner.setVisibility(View.VISIBLE);
+            }
+        } catch (Throwable t) { Log.w(TAG, "closeTranslator failed", t); }
+    }
 
-            GridLayout grid = new GridLayout(ctx);
-            grid.setColumnCount(2);
-            int pad = dp(ctx, 8);
-            grid.setPadding(pad, pad, pad, pad);
+    private LinearLayout buildTranslatorPanel(final Context ctx) {
+        final LinearLayout panel = new LinearLayout(ctx);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setBackgroundColor(0xFF1A1A2E);
+        int p = dp(ctx, 10);
+        panel.setPadding(p, p, p, p);
 
-            for (final BaribaDictionary.Phrase p : ph) {
-                LinearLayout cell = new LinearLayout(ctx);
-                cell.setOrientation(LinearLayout.VERTICAL);
-                cell.setBackground(makeKeyBackground());
-                int cp = dp(ctx, 8);
-                cell.setPadding(cp, cp, cp, cp);
-                cell.setClickable(true);
+        // Header
+        LinearLayout header = new LinearLayout(ctx);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setBackgroundColor(0xFF0F3460);
+        int hp = dp(ctx, 12);
+        header.setPadding(hp, dp(ctx, 8), hp, dp(ctx, 8));
+        TextView title = new TextView(ctx);
+        title.setText("\u26A1  Traducteur IA \u00B7 FR \u2194 Bariba");
+        title.setTextColor(Color.WHITE);
+        title.setTypeface(null, Typeface.BOLD);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+        LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        header.addView(title, tlp);
+        TextView close = new TextView(ctx);
+        close.setText("\u2715");
+        close.setTextColor(Color.WHITE);
+        close.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f);
+        close.setPadding(dp(ctx, 12), dp(ctx, 4), dp(ctx, 12), dp(ctx, 4));
+        close.setClickable(true);
+        close.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { closeTranslator(); }
+        });
+        header.addView(close);
+        panel.addView(header);
 
-                TextView ba = new TextView(ctx);
-                ba.setText(p.ba);
-                ba.setTextColor(Color.WHITE);
-                ba.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
-                ba.setMaxLines(2);
-                ba.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                cell.addView(ba);
+        // Direction selector
+        final TextView dirFrBa = new TextView(ctx);
+        final TextView dirBaFr = new TextView(ctx);
+        LinearLayout dirRow = new LinearLayout(ctx);
+        dirRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams drlp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        drlp.topMargin = dp(ctx, 8);
+        panel.addView(dirRow, drlp);
 
-                TextView fr = new TextView(ctx);
-                fr.setText(p.fr);
-                fr.setTextColor(0xFFFFE082);
-                fr.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f);
-                fr.setMaxLines(2);
-                fr.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                cell.addView(fr);
+        final Runnable applyDir = new Runnable() {
+            @Override public void run() {
+                boolean fr = "fr-ba".equals(translatorDirection);
+                dirFrBa.setBackgroundColor(fr ? 0xFF1A6E5A : 0xFF2D2D5E);
+                dirBaFr.setBackgroundColor(!fr ? 0xFF1A6E5A : 0xFF2D2D5E);
+            }
+        };
 
-                cell.setOnClickListener(new View.OnClickListener() {
-                    @Override public void onClick(View v) {
-                        try {
-                            InputConnection ic = getCurrentInputConnection();
-                            if (ic != null) ic.commitText(
-                                    Normalizer.normalize(p.ba, Normalizer.Form.NFC) + " ", 1);
-                        } catch (Throwable ignored) {}
-                        dismissPopup();
+        dirFrBa.setText("FR \u2192 BA");
+        styleDirChip(ctx, dirFrBa);
+        dirFrBa.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { translatorDirection = "fr-ba"; applyDir.run(); }
+        });
+        dirBaFr.setText("BA \u2192 FR");
+        styleDirChip(ctx, dirBaFr);
+        dirBaFr.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { translatorDirection = "ba-fr"; applyDir.run(); }
+        });
+        LinearLayout.LayoutParams cw = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        cw.setMargins(dp(ctx, 4), 0, dp(ctx, 4), 0);
+        dirRow.addView(dirFrBa, cw);
+        dirRow.addView(dirBaFr, new LinearLayout.LayoutParams(cw));
+        applyDir.run();
+
+        // Source input
+        final EditText input = new EditText(ctx);
+        input.setHint("Tapez le texte \u00E0 traduire\u2026");
+        input.setHintTextColor(0xFF8A8AA8);
+        input.setTextColor(Color.WHITE);
+        input.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
+        input.setBackgroundColor(0xFF16213E);
+        int ip = dp(ctx, 10);
+        input.setPadding(ip, ip, ip, ip);
+        input.setMinLines(2);
+        input.setMaxLines(3);
+        LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        ilp.topMargin = dp(ctx, 8);
+        panel.addView(input, ilp);
+
+        // Translate button + result
+        final TextView result = new TextView(ctx);
+        result.setText("");
+        result.setTextColor(Color.WHITE);
+        result.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
+        result.setBackgroundColor(0xFF16213E);
+        result.setPadding(ip, ip, ip, ip);
+        result.setMinLines(2);
+
+        TextView translateBtn = new TextView(ctx);
+        translateBtn.setText("Traduire");
+        translateBtn.setTextColor(Color.WHITE);
+        translateBtn.setTypeface(null, Typeface.BOLD);
+        translateBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
+        translateBtn.setGravity(Gravity.CENTER);
+        translateBtn.setBackgroundColor(0xFF1A6E5A);
+        translateBtn.setPadding(0, dp(ctx, 12), 0, dp(ctx, 12));
+        translateBtn.setClickable(true);
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        blp.topMargin = dp(ctx, 8);
+        panel.addView(translateBtn, blp);
+
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        rlp.topMargin = dp(ctx, 8);
+        panel.addView(result, rlp);
+
+        translateBtn.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                final String txt = input.getText() != null ? input.getText().toString().trim() : "";
+                if (txt.isEmpty()) return;
+                result.setText("\u2026");
+                // Try local first
+                try {
+                    BaribaDictionary dict = BaribaDictionary.get(BaribaInputMethodService.this);
+                    String local = "ba-fr".equals(translatorDirection)
+                            ? dict.translateBaToFr(txt) : dict.translateFrToBa(txt);
+                    if (local != null && !local.isEmpty()) { result.setText(local); return; }
+                } catch (Throwable ignored) {}
+                // Remote
+                new Thread(new Runnable() {
+                    @Override public void run() {
+                        fetchRemoteTranslation(txt, translatorDirection, new RemoteTranslateCallback() {
+                            @Override public void onResult(final String translated) {
+                                handler.post(new Runnable() {
+                                    @Override public void run() {
+                                        result.setText(translated != null && !translated.isEmpty()
+                                                ? translated : "(pas de traduction)");
+                                    }
+                                });
+                            }
+                        });
+                        handler.postDelayed(new Runnable() {
+                            @Override public void run() {
+                                if ("\u2026".contentEquals(result.getText()))
+                                    result.setText("(pas de traduction)");
+                            }
+                        }, 4500);
                     }
-                });
-
-                GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
-                lp.width = 0;
-                lp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-                lp.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1, 1f);
-                lp.setMargins(dp(ctx, 4), dp(ctx, 4), dp(ctx, 4), dp(ctx, 4));
-                grid.addView(cell, lp);
+                }).start();
             }
-            scroll.addView(grid);
+        });
 
-            int w = getResources().getDisplayMetrics().widthPixels;
-            currentPopup = new PopupWindow(scroll, w - dp(ctx, 16), dp(ctx, 280), true);
-            currentPopup.setOutsideTouchable(true);
-            View anchor = keyboardContainer;
-            if (anchor != null && anchor.getWindowToken() != null) {
-                currentPopup.showAtLocation(anchor, Gravity.BOTTOM, 0, anchor.getHeight());
+        // Action buttons
+        LinearLayout actions = new LinearLayout(ctx);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        alp.topMargin = dp(ctx, 8);
+        panel.addView(actions, alp);
+
+        TextView insertBtn = new TextView(ctx);
+        insertBtn.setText("Ins\u00E9rer");
+        styleActionBtn(ctx, insertBtn, 0xFF2D2D5E);
+        insertBtn.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                CharSequence r = result.getText();
+                if (r == null || r.length() == 0) return;
+                try {
+                    InputConnection ic = getCurrentInputConnection();
+                    if (ic != null) ic.commitText(
+                            Normalizer.normalize(r.toString(), Normalizer.Form.NFC) + " ", 1);
+                } catch (Throwable ignored) {}
+                closeTranslator();
             }
-        } catch (Throwable t) { Log.w(TAG, "showQuickPhrases failed", t); }
+        });
+
+        TextView copyBtn = new TextView(ctx);
+        copyBtn.setText("Copier");
+        styleActionBtn(ctx, copyBtn, 0xFF2D2D5E);
+        copyBtn.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                CharSequence r = result.getText();
+                if (r == null || r.length() == 0) return;
+                try {
+                    ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                    if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("traduction", r.toString()));
+                    Toast.makeText(BaribaInputMethodService.this, "Copi\u00E9", Toast.LENGTH_SHORT).show();
+                } catch (Throwable ignored) {}
+            }
+        });
+
+        LinearLayout.LayoutParams hw = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        hw.setMargins(dp(ctx, 4), 0, dp(ctx, 4), 0);
+        actions.addView(insertBtn, hw);
+        actions.addView(copyBtn, new LinearLayout.LayoutParams(hw));
+
+        return panel;
+    }
+
+    private void styleDirChip(Context ctx, TextView tv) {
+        tv.setTextColor(Color.WHITE);
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+        tv.setGravity(Gravity.CENTER);
+        tv.setPadding(0, dp(ctx, 10), 0, dp(ctx, 10));
+        tv.setClickable(true);
+    }
+
+    private void styleActionBtn(Context ctx, TextView tv, int bg) {
+        tv.setTextColor(Color.WHITE);
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+        tv.setTypeface(null, Typeface.BOLD);
+        tv.setGravity(Gravity.CENTER);
+        tv.setBackgroundColor(bg);
+        tv.setPadding(0, dp(ctx, 12), 0, dp(ctx, 12));
+        tv.setClickable(true);
     }
 
     private int dp(Context ctx, int v) {
