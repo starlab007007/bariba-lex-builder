@@ -9,7 +9,7 @@ if [ -z "$APK" ] || [ ! -f "$APK" ]; then
   exit 1
 fi
 
-EXPECTED_TAG="fitila-ime-2026-05-12-smart-v7-alphabet"
+EXPECTED_TAG="fitila-ime-2026-05-13-smart-v8-bilingue"
 
 echo "🔎 Inspection de $APK"
 
@@ -36,24 +36,38 @@ if [ -n "$MANIFEST" ]; then
   fi
 fi
 
-# 2. BUILD_TAG dans le DEX
+# 2. Asset dictionnaire embarqué
+if unzip -l "$APK" | grep -q "assets/bariba_dictionary.json"; then
+  echo "  ✅ Asset assets/bariba_dictionary.json présent"
+else
+  echo "  ❌ Asset assets/bariba_dictionary.json MANQUANT — rebuild requis"; exit 5
+fi
+
+# 3. BUILD_TAG + classes attendues dans le DEX
 TMP=$(mktemp -d)
 unzip -q "$APK" "classes*.dex" -d "$TMP" || true
 FOUND=0
+FOUND_DICT=0
 for dex in "$TMP"/*.dex; do
   [ -f "$dex" ] || continue
   if strings "$dex" | grep -q "$EXPECTED_TAG"; then
-    FOUND=1; break
+    FOUND=1
   fi
+  if strings "$dex" | grep -q "BaribaDictionary"; then
+    FOUND_DICT=1
+  fi
+  [ "$FOUND" -eq 1 ] && [ "$FOUND_DICT" -eq 1 ] && break
 done
 rm -rf "$TMP"
 
-if [ "$FOUND" -eq 1 ]; then
+if [ "$FOUND" -eq 1 ] && [ "$FOUND_DICT" -eq 1 ]; then
   echo "  ✅ BUILD_TAG=$EXPECTED_TAG trouvé dans le DEX"
+  echo "  ✅ Classe BaribaDictionary trouvée dans le DEX"
   echo ""
   echo "✅ APK conforme au dernier correctif."
 else
-  echo "  ❌ BUILD_TAG=$EXPECTED_TAG ABSENT — l'APK ne contient pas le dernier service"
+  [ "$FOUND" -eq 1 ] || echo "  ❌ BUILD_TAG=$EXPECTED_TAG ABSENT"
+  [ "$FOUND_DICT" -eq 1 ] || echo "  ❌ Classe BaribaDictionary ABSENTE"
   echo ""
   echo "❌ APK NON conforme. Rebuild requis."
   exit 4
