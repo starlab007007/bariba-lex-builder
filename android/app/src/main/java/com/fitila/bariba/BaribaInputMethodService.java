@@ -852,22 +852,20 @@ public class BaribaInputMethodService extends InputMethodService {
     private LinearLayout buildTranslatorPanel(final Context ctx) {
         final LinearLayout panel = new LinearLayout(ctx);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setBackgroundColor(0xFF1A1A2E);
-        int p = dp(ctx, 10);
-        panel.setPadding(p, p, p, p);
+        panel.setBackgroundColor(0xFFF5F3FA);
 
-        // Header
+        // ── Header (purple, like the in-app Traducteur IA) ──
         LinearLayout header = new LinearLayout(ctx);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setBackgroundColor(0xFF0F3460);
-        int hp = dp(ctx, 12);
-        header.setPadding(hp, dp(ctx, 8), hp, dp(ctx, 8));
+        header.setBackgroundColor(0xFF7C5CFF);
+        int hp = dp(ctx, 14);
+        header.setPadding(hp, dp(ctx, 10), hp, dp(ctx, 10));
         TextView title = new TextView(ctx);
-        title.setText("\u26A1  Traducteur IA \u00B7 FR \u2194 Bariba");
+        title.setText("\uD83C\uDF10  Traducteur IA \u00B7 ByT5");
         title.setTextColor(Color.WHITE);
         title.setTypeface(null, Typeface.BOLD);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
         LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         header.addView(title, tlp);
@@ -883,30 +881,30 @@ public class BaribaInputMethodService extends InputMethodService {
         header.addView(close);
         panel.addView(header);
 
-        // Direction selector
+        // ── Direction pills (FR→BA / BA→FR) ──
         final TextView dirFrBa = new TextView(ctx);
         final TextView dirBaFr = new TextView(ctx);
         LinearLayout dirRow = new LinearLayout(ctx);
         dirRow.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout.LayoutParams drlp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        drlp.topMargin = dp(ctx, 8);
-        panel.addView(dirRow, drlp);
+        dirRow.setPadding(dp(ctx, 10), dp(ctx, 10), dp(ctx, 10), dp(ctx, 6));
+        panel.addView(dirRow, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         final Runnable applyDir = new Runnable() {
             @Override public void run() {
                 boolean fr = "fr-ba".equals(translatorDirection);
-                dirFrBa.setBackgroundColor(fr ? 0xFF1A6E5A : 0xFF2D2D5E);
-                dirBaFr.setBackgroundColor(!fr ? 0xFF1A6E5A : 0xFF2D2D5E);
+                dirFrBa.setBackgroundColor(fr ? 0xFF7C5CFF : 0xFFE6E2F5);
+                dirFrBa.setTextColor(fr ? Color.WHITE : 0xFF4A3A8A);
+                dirBaFr.setBackgroundColor(!fr ? 0xFF7C5CFF : 0xFFE6E2F5);
+                dirBaFr.setTextColor(!fr ? Color.WHITE : 0xFF4A3A8A);
             }
         };
-
-        dirFrBa.setText("FR \u2192 BA");
+        dirFrBa.setText("\uD83C\uDDEB\uD83C\uDDF7  FR \u2192 BA");
         styleDirChip(ctx, dirFrBa);
         dirFrBa.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { translatorDirection = "fr-ba"; applyDir.run(); }
         });
-        dirBaFr.setText("BA \u2192 FR");
+        dirBaFr.setText("BA \u2192 FR  \uD83C\uDDE7\uD83C\uDDEF");
         styleDirChip(ctx, dirBaFr);
         dirBaFr.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { translatorDirection = "ba-fr"; applyDir.run(); }
@@ -918,79 +916,101 @@ public class BaribaInputMethodService extends InputMethodService {
         dirRow.addView(dirBaFr, new LinearLayout.LayoutParams(cw));
         applyDir.run();
 
-        // Source input
+        // ── Conversation (chat bubbles) ──
+        ScrollView scroll = new ScrollView(ctx);
+        scroll.setBackgroundColor(0xFFF5F3FA);
+        final LinearLayout messages = new LinearLayout(ctx);
+        messages.setOrientation(LinearLayout.VERTICAL);
+        messages.setPadding(dp(ctx, 12), dp(ctx, 8), dp(ctx, 12), dp(ctx, 8));
+        scroll.addView(messages, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 220));
+        panel.addView(scroll, slp);
+
+        // Greeting bubble
+        addBotBubble(ctx, messages, "Bienvenue ! \uD83D\uDC4B  Tapez votre phrase, je traduis FR \u2194 Bariba.");
+
+        // ── Input row (text + send) ──
+        LinearLayout inputRow = new LinearLayout(ctx);
+        inputRow.setOrientation(LinearLayout.HORIZONTAL);
+        inputRow.setBackgroundColor(0xFFFFFFFF);
+        inputRow.setPadding(dp(ctx, 10), dp(ctx, 8), dp(ctx, 10), dp(ctx, 10));
+        inputRow.setGravity(Gravity.CENTER_VERTICAL);
+
         final EditText input = new EditText(ctx);
-        input.setHint("Tapez le texte \u00E0 traduire\u2026");
-        input.setHintTextColor(0xFF8A8AA8);
-        input.setTextColor(Color.WHITE);
-        input.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
-        input.setBackgroundColor(0xFF16213E);
-        int ip = dp(ctx, 10);
-        input.setPadding(ip, ip, ip, ip);
-        input.setMinLines(2);
+        input.setHint("Tapez votre texte\u2026");
+        input.setHintTextColor(0xFF9A93B5);
+        input.setTextColor(0xFF1F1638);
+        input.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
+        input.setBackgroundColor(0xFFEFECF7);
+        int ip = dp(ctx, 12);
+        input.setPadding(ip, dp(ctx, 10), ip, dp(ctx, 10));
+        input.setMinLines(1);
         input.setMaxLines(3);
         LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        ilp.topMargin = dp(ctx, 8);
-        panel.addView(input, ilp);
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        inputRow.addView(input, ilp);
 
-        // Translate button + result
-        final TextView result = new TextView(ctx);
-        result.setText("");
-        result.setTextColor(Color.WHITE);
-        result.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
-        result.setBackgroundColor(0xFF16213E);
-        result.setPadding(ip, ip, ip, ip);
-        result.setMinLines(2);
+        final TextView send = new TextView(ctx);
+        send.setText("\u27A4");
+        send.setTextColor(Color.WHITE);
+        send.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f);
+        send.setTypeface(null, Typeface.BOLD);
+        send.setGravity(Gravity.CENTER);
+        send.setBackgroundColor(0xFF7C5CFF);
+        int sp = dp(ctx, 12);
+        send.setPadding(dp(ctx, 16), sp, dp(ctx, 16), sp);
+        send.setClickable(true);
+        LinearLayout.LayoutParams selp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        selp.leftMargin = dp(ctx, 8);
+        inputRow.addView(send, selp);
 
-        TextView translateBtn = new TextView(ctx);
-        translateBtn.setText("Traduire");
-        translateBtn.setTextColor(Color.WHITE);
-        translateBtn.setTypeface(null, Typeface.BOLD);
-        translateBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
-        translateBtn.setGravity(Gravity.CENTER);
-        translateBtn.setBackgroundColor(0xFF1A6E5A);
-        translateBtn.setPadding(0, dp(ctx, 12), 0, dp(ctx, 12));
-        translateBtn.setClickable(true);
-        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        blp.topMargin = dp(ctx, 8);
-        panel.addView(translateBtn, blp);
+        panel.addView(inputRow, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        rlp.topMargin = dp(ctx, 8);
-        panel.addView(result, rlp);
-
-        translateBtn.setOnClickListener(new View.OnClickListener() {
+        final ScrollView scrollRef = scroll;
+        send.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 final String txt = input.getText() != null ? input.getText().toString().trim() : "";
                 if (txt.isEmpty()) return;
-                result.setText("\u2026");
-                // Try local first
+                addUserBubble(ctx, messages, txt);
+                input.setText("");
+                final TextView pending = addBotBubble(ctx, messages, "\u2026");
+                scrollToBottom(scrollRef);
+                // Local lookup first
                 try {
                     BaribaDictionary dict = BaribaDictionary.get(BaribaInputMethodService.this);
                     String local = "ba-fr".equals(translatorDirection)
                             ? dict.translateBaToFr(txt) : dict.translateFrToBa(txt);
-                    if (local != null && !local.isEmpty()) { result.setText(local); return; }
+                    if (local != null && !local.isEmpty()) {
+                        pending.setText(local);
+                        attachInsertOnLongPress(pending);
+                        scrollToBottom(scrollRef);
+                        return;
+                    }
                 } catch (Throwable ignored) {}
-                // Remote
                 new Thread(new Runnable() {
                     @Override public void run() {
                         fetchRemoteTranslation(txt, translatorDirection, new RemoteTranslateCallback() {
                             @Override public void onResult(final String translated) {
                                 handler.post(new Runnable() {
                                     @Override public void run() {
-                                        result.setText(translated != null && !translated.isEmpty()
+                                        pending.setText(translated != null && !translated.isEmpty()
                                                 ? translated : "(pas de traduction)");
+                                        attachInsertOnLongPress(pending);
+                                        scrollToBottom(scrollRef);
                                     }
                                 });
                             }
                         });
                         handler.postDelayed(new Runnable() {
                             @Override public void run() {
-                                if ("\u2026".contentEquals(result.getText()))
-                                    result.setText("(pas de traduction)");
+                                if ("\u2026".contentEquals(pending.getText())) {
+                                    pending.setText("(pas de traduction)");
+                                    scrollToBottom(scrollRef);
+                                }
                             }
                         }, 4500);
                     }
@@ -998,69 +1018,81 @@ public class BaribaInputMethodService extends InputMethodService {
             }
         });
 
-        // Action buttons
-        LinearLayout actions = new LinearLayout(ctx);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        alp.topMargin = dp(ctx, 8);
-        panel.addView(actions, alp);
+        return panel;
+    }
 
-        TextView insertBtn = new TextView(ctx);
-        insertBtn.setText("Ins\u00E9rer");
-        styleActionBtn(ctx, insertBtn, 0xFF2D2D5E);
-        insertBtn.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                CharSequence r = result.getText();
-                if (r == null || r.length() == 0) return;
+    private TextView addBotBubble(Context ctx, LinearLayout container, String text) {
+        TextView tv = new TextView(ctx);
+        tv.setText(text);
+        tv.setTextColor(0xFF1F1638);
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+        tv.setBackgroundColor(0xFFFFFFFF);
+        int p = dp(ctx, 10);
+        tv.setPadding(p, p, p, p);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = dp(ctx, 4);
+        lp.bottomMargin = dp(ctx, 4);
+        lp.gravity = Gravity.START;
+        container.addView(tv, lp);
+        return tv;
+    }
+
+    private TextView addUserBubble(Context ctx, LinearLayout container, String text) {
+        TextView tv = new TextView(ctx);
+        tv.setText(text);
+        tv.setTextColor(Color.WHITE);
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+        tv.setTypeface(null, Typeface.BOLD);
+        tv.setBackgroundColor(0xFF7C5CFF);
+        int p = dp(ctx, 10);
+        tv.setPadding(p, p, p, p);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = dp(ctx, 4);
+        lp.bottomMargin = dp(ctx, 4);
+        lp.gravity = Gravity.END;
+        container.addView(tv, lp);
+        return tv;
+    }
+
+    private void attachInsertOnLongPress(final TextView bubble) {
+        bubble.setLongClickable(true);
+        bubble.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override public boolean onLongClick(View v) {
+                CharSequence r = bubble.getText();
+                if (r == null || r.length() == 0) return false;
                 try {
                     InputConnection ic = getCurrentInputConnection();
                     if (ic != null) ic.commitText(
                             Normalizer.normalize(r.toString(), Normalizer.Form.NFC) + " ", 1);
+                    Toast.makeText(BaribaInputMethodService.this, "Ins\u00E9r\u00E9", Toast.LENGTH_SHORT).show();
                 } catch (Throwable ignored) {}
-                closeTranslator();
+                return true;
             }
         });
-
-        TextView copyBtn = new TextView(ctx);
-        copyBtn.setText("Copier");
-        styleActionBtn(ctx, copyBtn, 0xFF2D2D5E);
-        copyBtn.setOnClickListener(new View.OnClickListener() {
+        bubble.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                CharSequence r = result.getText();
-                if (r == null || r.length() == 0) return;
                 try {
                     ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                    if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("traduction", r.toString()));
-                    Toast.makeText(BaribaInputMethodService.this, "Copi\u00E9", Toast.LENGTH_SHORT).show();
+                    if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("traduction", bubble.getText().toString()));
+                    Toast.makeText(BaribaInputMethodService.this, "Copi\u00E9 \u2022 appui long pour ins\u00E9rer", Toast.LENGTH_SHORT).show();
                 } catch (Throwable ignored) {}
             }
         });
+    }
 
-        LinearLayout.LayoutParams hw = new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        hw.setMargins(dp(ctx, 4), 0, dp(ctx, 4), 0);
-        actions.addView(insertBtn, hw);
-        actions.addView(copyBtn, new LinearLayout.LayoutParams(hw));
-
-        return panel;
+    private void scrollToBottom(final ScrollView sv) {
+        sv.post(new Runnable() {
+            @Override public void run() { sv.fullScroll(View.FOCUS_DOWN); }
+        });
     }
 
     private void styleDirChip(Context ctx, TextView tv) {
-        tv.setTextColor(Color.WHITE);
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
-        tv.setGravity(Gravity.CENTER);
-        tv.setPadding(0, dp(ctx, 10), 0, dp(ctx, 10));
-        tv.setClickable(true);
-    }
-
-    private void styleActionBtn(Context ctx, TextView tv, int bg) {
-        tv.setTextColor(Color.WHITE);
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
         tv.setTypeface(null, Typeface.BOLD);
         tv.setGravity(Gravity.CENTER);
-        tv.setBackgroundColor(bg);
-        tv.setPadding(0, dp(ctx, 12), 0, dp(ctx, 12));
+        tv.setPadding(0, dp(ctx, 10), 0, dp(ctx, 10));
         tv.setClickable(true);
     }
 
