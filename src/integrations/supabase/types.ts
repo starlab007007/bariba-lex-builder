@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      acheteurs: {
+        Row: {
+          budget: number | null
+          buyer_name: string | null
+          buyer_phone: string | null
+          category: string | null
+          created_at: string
+          currency: string | null
+          id: string
+          query: string
+          source_signal_id: string | null
+          whatsapp_sent: boolean
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          budget?: number | null
+          buyer_name?: string | null
+          buyer_phone?: string | null
+          category?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          query: string
+          source_signal_id?: string | null
+          whatsapp_sent?: boolean
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          budget?: number | null
+          buyer_name?: string | null
+          buyer_phone?: string | null
+          category?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          query?: string
+          source_signal_id?: string | null
+          whatsapp_sent?: boolean
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acheteurs_source_signal_id_fkey"
+            columns: ["source_signal_id"]
+            isOneToOne: false
+            referencedRelation: "radar_signals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_generated_templates: {
         Row: {
           ai_analysis: Json | null
@@ -252,6 +302,59 @@ export type Database = {
             columns: ["character_reference_id"]
             isOneToOne: false
             referencedRelation: "character_references"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      annonces: {
+        Row: {
+          category: string | null
+          created_at: string
+          currency: string | null
+          description: string | null
+          id: string
+          price: number | null
+          seller_name: string | null
+          seller_phone: string | null
+          source_signal_id: string | null
+          title: string
+          whatsapp_sent: boolean
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          id?: string
+          price?: number | null
+          seller_name?: string | null
+          seller_phone?: string | null
+          source_signal_id?: string | null
+          title: string
+          whatsapp_sent?: boolean
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          id?: string
+          price?: number | null
+          seller_name?: string | null
+          seller_phone?: string | null
+          source_signal_id?: string | null
+          title?: string
+          whatsapp_sent?: boolean
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "annonces_source_signal_id_fkey"
+            columns: ["source_signal_id"]
+            isOneToOne: false
+            referencedRelation: "radar_signals"
             referencedColumns: ["id"]
           },
         ]
@@ -1517,6 +1620,36 @@ export type Database = {
         }
         Relationships: []
       }
+      momo_demo_wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          currency: string
+          id: string
+          is_demo: boolean
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          is_demo?: boolean
+          phone: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          is_demo?: boolean
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       music_library_tracks: {
         Row: {
           artist: string | null
@@ -1598,6 +1731,45 @@ export type Database = {
           relative_pronoun?: string | null
           singular_determiner?: string | null
           singular_subject?: string | null
+        }
+        Relationships: []
+      }
+      radar_signals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          detected_name: string | null
+          detected_phone: string | null
+          id: string
+          process_error: string | null
+          processed: boolean
+          processed_at: string | null
+          raw_text: string
+          source: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          detected_name?: string | null
+          detected_phone?: string | null
+          id?: string
+          process_error?: string | null
+          processed?: boolean
+          processed_at?: string | null
+          raw_text: string
+          source?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          detected_name?: string | null
+          detected_phone?: string | null
+          id?: string
+          process_error?: string | null
+          processed?: boolean
+          processed_at?: string | null
+          raw_text?: string
+          source?: string | null
         }
         Relationships: []
       }
