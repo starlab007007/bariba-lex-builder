@@ -652,7 +652,7 @@ public class BaribaInputMethodService extends InputMethodService {
             chip.setOrientation(LinearLayout.VERTICAL);
             chip.setGravity(Gravity.CENTER);
             chip.setBackgroundColor(0xFF0F3460);
-            int hp = dp(ctx, 8), vp = dp(ctx, 6);
+            int hp = dp(ctx, 6), vp = dp(ctx, 6);
             chip.setPadding(hp, vp, hp, vp);
             chip.setClickable(true);
 
@@ -660,7 +660,7 @@ public class BaribaInputMethodService extends InputMethodService {
             ba.setText(e.ba);
             ba.setTextColor(Color.WHITE);
             ba.setTypeface(null, Typeface.BOLD);
-            ba.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f);
+            ba.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
             ba.setGravity(Gravity.CENTER);
             ba.setMaxLines(1);
             ba.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -669,13 +669,13 @@ public class BaribaInputMethodService extends InputMethodService {
             TextView fr = new TextView(ctx);
             fr.setText(e.fr);
             fr.setTextColor(0xFFFFD54F);
-            fr.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
+            fr.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
             fr.setGravity(Gravity.CENTER);
-            fr.setMaxLines(1);
+            fr.setMaxLines(2);
             fr.setEllipsize(android.text.TextUtils.TruncateAt.END);
             LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            flp.topMargin = dp(ctx, 2);
+            flp.topMargin = dp(ctx, 3);
             chip.addView(fr, flp);
 
             chip.setOnClickListener(new View.OnClickListener() {
