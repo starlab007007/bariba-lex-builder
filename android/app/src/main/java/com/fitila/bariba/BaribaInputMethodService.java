@@ -45,20 +45,19 @@ import java.util.Map;
 /**
  * Production-grade Bariba Fitila IME — Java implementation.
  *
- * BUILD_TAG: fitila-ime-2026-05-13-smart-v9-clean
+ * BUILD_TAG: fitila-ime-2026-05-15-smart-v10-chatbot
  *
- * v9 highlights:
- *  - Bilingual suggestion bar (Bariba + FR translation) — bigger, bolder, clearer.
- *  - Auto translation banner FR ↔ Bariba placed ABOVE suggestion bar (green band).
- *  - Single combined Bariba row: nasals (jaune) + specials (ɔ ɛ ŋ) + combining ◌̀.
- *  - Max 5 rows: ROW1, ROW2, ROW3 (shift + w..n + del), Bariba row, bottom.
- *  - ⚡ toggles an integrated AI Translator panel (no popup, no scrollable phrase grid).
+ * v10 highlights:
+ *  - Auto green translation banner REMOVED (FR↔BA dictionary stays in suggestion bar).
+ *  - Bilingual suggestion chips: Bariba (white) + FR definition (yellow, 2 lines, fully visible).
+ *  - ⚡ opens an inline AI chatbot translator (light theme, ~320dp tall, like the in-app
+ *    Traducteur IA / ByT5 module). Second tap closes it.
  *  - All output is plain Unicode NFC, copy-paste safe everywhere.
  */
 public class BaribaInputMethodService extends InputMethodService {
 
     private static final String TAG = "BaribaKeyboard";
-    private static final String BUILD_TAG = "fitila-ime-2026-05-13-smart-v9-clean";
+    private static final String BUILD_TAG = "fitila-ime-2026-05-15-smart-v10-chatbot";
     private static final String PREFS = "bariba_keyboard_data";
     private static final int MAX_HISTORY = 50;
     private static final int MAX_SUGGESTIONS = 3;
