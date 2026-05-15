@@ -706,13 +706,8 @@ public class BaribaInputMethodService extends InputMethodService {
     // ─── Auto-translation banner ────────────────────────────────────────────
 
     private void scheduleAutoTranslate() {
+        // (v10) Auto green translation banner removed — no-op.
         if (translateDebounce != null) handler.removeCallbacks(translateDebounce);
-        final String word = currentWord.toString();
-        if (word.length() < 2) { hideTranslationBanner(); return; }
-        translateDebounce = new Runnable() {
-            @Override public void run() { runAutoTranslate(word); }
-        };
-        handler.postDelayed(translateDebounce, 600);
     }
 
     private void runAutoTranslate(final String word) {
@@ -800,16 +795,10 @@ public class BaribaInputMethodService extends InputMethodService {
     }
 
     private void showTranslation(String source, String translated, boolean fromBariba) {
-        if (translationBanner == null) return;
-        currentTranslationSource = source;
-        currentTranslation = translated;
-        String arrow = fromBariba ? "  →  FR : " : "  →  BA : ";
-        translationBanner.setText("\u00AB " + source + " \u00BB" + arrow + translated + "   \u21A9");
-        translationBanner.setVisibility(View.VISIBLE);
+        // (v10) Banner removed — no-op kept for binary compat.
     }
 
     private void hideTranslationBanner() {
-        if (translationBanner != null) translationBanner.setVisibility(View.GONE);
         currentTranslation = "";
         currentTranslationSource = "";
     }
