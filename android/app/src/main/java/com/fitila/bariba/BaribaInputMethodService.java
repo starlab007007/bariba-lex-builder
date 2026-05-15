@@ -191,27 +191,14 @@ public class BaribaInputMethodService extends InputMethodService {
         int pad = dp(ctx, 2);
         root.setPadding(pad, pad, pad, pad);
 
-        // Translation banner (auto FR ↔ Bariba) — placed FIRST so it's never hidden.
-        translationBanner = new TextView(ctx);
-        translationBanner.setTextColor(Color.WHITE);
-        translationBanner.setTypeface(null, Typeface.BOLD);
-        translationBanner.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
-        translationBanner.setPadding(dp(ctx, 14), dp(ctx, 8), dp(ctx, 14), dp(ctx, 8));
-        translationBanner.setBackgroundColor(0xFF1A6E5A); // green band, distinct from blue
-        translationBanner.setVisibility(View.GONE);
-        translationBanner.setMaxLines(1);
-        translationBanner.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        translationBanner.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { commitTranslation(); }
-        });
-        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 36));
-        root.addView(translationBanner, blp);
+        // (v10) The green auto-translation banner has been removed — only the
+        // bilingual FR↔BA dictionary suggestion bar remains below.
+        translationBanner = null;
 
-        // Suggestions bar (bilingual chips)
+        // Suggestions bar (bilingual chips: Bariba on top, FR definition below)
         suggestionsBar = new LinearLayout(ctx);
         suggestionsBar.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 56)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 78)));
         suggestionsBar.setOrientation(LinearLayout.HORIZONTAL);
         suggestionsBar.setBackgroundColor(0xFF0F3460);
         suggestionsBar.setGravity(Gravity.CENTER_VERTICAL);
