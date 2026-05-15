@@ -848,10 +848,6 @@ public class BaribaInputMethodService extends InputMethodService {
             if (suggestionsBar != null) suggestionsBar.setVisibility(View.VISIBLE);
             translatorOpen = false;
             if (quickKey != null) quickKey.setTextColor(0xFFFFFFFF);
-            if (currentTranslation != null && !currentTranslation.isEmpty()
-                    && translationBanner != null) {
-                translationBanner.setVisibility(View.VISIBLE);
-            }
         } catch (Throwable t) { Log.w(TAG, "closeTranslator failed", t); }
     }
 
