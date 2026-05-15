@@ -828,9 +828,7 @@ public class BaribaInputMethodService extends InputMethodService {
             Context ctx = root.getContext();
             translatorPanel = buildTranslatorPanel(ctx);
             keyboardContainer.setVisibility(View.GONE);
-            // Hide suggestion bar + translation banner while panel is open for a clean look
             if (suggestionsBar != null) suggestionsBar.setVisibility(View.GONE);
-            if (translationBanner != null) translationBanner.setVisibility(View.GONE);
             root.addView(translatorPanel, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             translatorOpen = true;
