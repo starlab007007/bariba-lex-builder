@@ -158,8 +158,26 @@ export function useUploadClasseAudio() {
       if (!user) throw new Error('Non connecté');
       const { item } = p;
       const ts = Date.now();
-      const fname = `${item.module}_${item.level}_L${item.lesson_id}_${(item.section_key || 'item')}_${item.item_index ?? 0}_${ts}.wav`;
-      const path = `${user.id}/${item.level}/${item.module}/${item.lesson_id}/${fname}`;
+      // Sanitize for Supabase storage keys: only [A-Za-z0-9._-] are safe.
+      const sanitize = (s: string) =>
+        (s || 'item')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[ɛƐ]/g, 'e')
+          .replace(/[ɔƆ]/g, 'o')
+          .replace(/[ŋŊ]/g, 'n')
+          .replace(/[ɲƝ]/g, 'ny')
+          .replace(/[ɓƁ]/g, 'b')
+          .replace(/[ɗƊ]/g, 'd')
+          .replace(/[ƴƳ]/g, 'y')
+          .replace(/[^A-Za-z0-9._-]+/g, '_')
+          .replace(/^_+|_+$/g, '')
+          .slice(0, 60) || 'item';
+      const safeSection = sanitize(item.section_key || 'item');
+      const safeModule = sanitize(item.module);
+      const safeLevel = sanitize(item.level);
+      const fname = `${safeModule}_${safeLevel}_L${item.lesson_id}_${safeSection}_${item.item_index ?? 0}_${ts}.wav`;
+      const path = `${user.id}/${safeLevel}/${safeModule}/${item.lesson_id}/${fname}`;
       const { error: upErr } = await supabase.storage
         .from('classe-audio')
         .upload(path, p.wavBlob, { contentType: 'audio/wav', upsert: false });
