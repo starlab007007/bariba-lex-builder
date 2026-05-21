@@ -1,59 +1,120 @@
-# Plan : MoMo Demo + Radar IA automatique + WhatsApp WAHA
+## Objectif
 
-## Contexte
-Recherche dans le code : il n'y a **aucun module "Radar IA" existant**, ni table `radar_signals`, `annonces`, `acheteurs`, ni système de paiement MoMo. Seule la table `tamtam_products` existe. Avant d'implémenter, je dois confirmer les hypothèses ci-dessous.
+Produire **5 vidéos MP4 ~15s** présentant chacune un module Fitila dans un **mockup iPhone réaliste** (cadre, encoche, ombre, fond dégradé), avec animations Remotion frame-based reproduisant fidèlement l'UI Fitila.
 
-## Partie 1 — Numéro MTN MoMo demo
+Livrables dans `/mnt/documents/` :
+1. `fitila-demo-dictionnaire.mp4` — recherche « Mardi » FR→BA
+2. `fitila-demo-traducteur.mp4` — « Comment vas-tu ? » + boutons texte/audio/photo/coller/document
+3. `fitila-demo-classe.mp4` — Niveau 1 → Leçon → Nim, navigation boutons
+4. `fitila-demo-fitila-tem-ia.mp4` — payload « Saria gbiika gari mba? » + réponse + source
+5. `fitila-demo-apprendre.mp4` — FR → Salutations & politesse → mini quiz
 
-Créer un système de paiement mock côté edge function :
+## Approche technique
 
-- Table `momo_demo_wallets` (numéro `0191299191`, solde initial `10 000 000 XOF`).
-- Edge function `momo-pay` :
-  - Si `phone === '0191299191'` → succès garanti, débite le solde demo (sans descendre sous 0, ou ignore si insuffisant en mode demo permanent).
-  - Sinon → renvoie `{success: false, message: "Numéro non démo"}` (pas d'intégration MoMo réelle pour l'instant).
-- Hook React `useMomoPayment(phone, amount)` à brancher sur le bouton "Payer" du module Market / annonces.
+**Stack** : Remotion + React + Tailwind, rendu via `scripts/render-remotion.mjs` headless dans le sandbox.
 
-> **Question ouverte** : sur quel écran/bouton précis du flux brancher ce paiement ? (par défaut je l'intègre sur le checkout `tamtam_products`).
+**Mockup iPhone** : composant `<PhoneFrame>` réutilisé — cadre 390×844 (iPhone 14), encoche dynamique, status bar (heure/réseau/batterie), bordure noire, ombre portée, posé sur fond dégradé (différent par démo, aux couleurs Fitila).
 
-## Partie 2 — Radar IA → annonces / acheteurs
+**Reproduction UI** : je relis les composants Fitila existants (`src/pages/fitila/*`, dictionnaire, traducteur, classe, Fitila Tem IA, apprendre) pour reproduire fidèlement couleurs, typo, icônes Lucide, layouts.
 
-Comme aucun module "Radar IA" n'existe, je propose la structure suivante :
+**Contenu** : données réelles fournies par l'utilisateur. Pour les traductions ByT5 et réponses IA, je récupère en amont les vraies réponses via un appel script (ou je les pré-capture depuis la preview) puis je les figerai dans la vidéo — Remotion ne peut pas appeler les services live pendant le rendu.
 
-### Schéma DB
-- `radar_signals` (raw) : `id`, `raw_text`, `source`, `phone`, `name`, `created_at`, `processed boolean`.
-- `annonces` (vendeurs) : `id`, `title`, `description`, `seller_name`, `seller_phone`, `category`, `price`, `source_signal_id`, `created_at`.
-- `acheteurs` (demandes) : `id`, `query`, `buyer_name`, `buyer_phone`, `category`, `budget`, `source_signal_id`, `created_at`.
-- RLS : lecture publique, insert via edge function (service role).
+**Animations par démo** (toutes en `interpolate`/`spring` frame-based) :
+- Entrée du mockup phone (spring scale + fade) 0–20 frames
+- Curseur animé (point + cercle) qui se déplace vers les éléments cliqués
+- Tap feedback (ripple + scale-down du bouton)
+- Saisie texte caractère par caractère
+- Apparition des résultats avec stagger
+- Sortie/fade final
 
-### Edge function `radar-ia-process`
-1. Trigger : cron `pg_cron` toutes les 5 min sur signaux `processed = false`.
-2. Pour chaque signal :
-   - Appel **Lovable AI** (`google/gemini-2.5-flash`) avec prompt structuré → JSON `{type: 'offer'|'demand', name, phone, category, title, description, price?}`.
-   - Insert dans `annonces` ou `acheteurs` selon `type`.
-   - Marque `processed = true`.
-3. Si `phone` détecté valide → déclenche `whatsapp-notify`.
+**Rythme 15s @ 30fps = 450 frames** :
+- 0–30 : intro mockup + nom du module
+- 30–60 : ouverture écran cible
+- 60–360 : interaction principale (saisie, tap, résultats)
+- 360–450 : highlight résultat + outro
 
-### Edge function `whatsapp-notify` (WAHA)
-- Lit `WAHA_BASE_URL` + `WAHA_API_KEY` + `WAHA_SESSION` (secrets à ajouter).
-- POST `${WAHA_BASE_URL}/api/sendText` body `{session, chatId: phone+"@c.us", text}`.
-- Message FR : confirmation que l'annonce/demande a été enregistrée + lien.
+## Structure projet
 
-### UI
-- Page `/radar-ia` : liste des signaux bruts + boutons "Reprocess".
-- Sections "Annonces" et "Acheteurs" déjà visibles (pages séparées + onglets dans Tamtam Market).
+```
+remotion/
+  src/
+    index.ts
+    Root.tsx                    # 5 <Composition> (une par démo)
+    components/
+      PhoneFrame.tsx            # mockup iPhone réutilisable
+      AnimatedCursor.tsx        # curseur tactile animé
+      TapRipple.tsx             # feedback tap
+      TypewriterText.tsx        # saisie progressive
+      FitilaStatusBar.tsx
+    demos/
+      DictionnaireDemo.tsx
+      TraducteurDemo.tsx
+      ClasseDemo.tsx
+      FitilaTemIADemo.tsx
+      ApprendreDemo.tsx
+    screens/                    # reproductions fidèles des écrans Fitila
+      DictionnaireScreen.tsx
+      TraducteurScreen.tsx
+      ClasseScreen.tsx
+      FitilaTemIAScreen.tsx
+      ApprendreScreen.tsx
+  scripts/
+    render-remotion.mjs         # rendu programmatique (chrome-for-testing, muted)
+    render-all.mjs              # boucle sur les 5 compositions
+  public/
+    fonts/                      # police Fitila si nécessaire
+    icons/                      # logo Fitila
+```
 
-## Partie 3 — Secrets requis
-- `WAHA_BASE_URL`, `WAHA_API_KEY`, `WAHA_SESSION` → tool `add_secret` après confirmation.
+## Étapes d'exécution
 
-## Étapes de livraison
-1. Migration : tables `momo_demo_wallets`, `radar_signals`, `annonces`, `acheteurs` + RLS.
-2. Edge functions : `momo-pay`, `radar-ia-process`, `whatsapp-notify`.
-3. Cron pg_cron sur `radar-ia-process`.
-4. UI : page `/radar-ia` (liste + reprocess), onglets Annonces/Acheteurs dans Market, intégration `useMomoPayment` au checkout.
-5. Secrets WAHA via `add_secret`.
+1. **Récupérer le vrai contenu** :
+   - Bariba pour « Mardi » : lire `src/data/baribaAlphabet.ts` / corpus dictionnaire
+   - Traduction « Comment vas-tu ? » : appeler ByT5 via un petit script Node
+   - Réponse IA pour « Saria gbiika gari mba? » : appel à `fitila-tem-ia` edge function
+   - Contenu Niveau 1 / Leçon / Nim : lire `learningConfig.ts` et data classe
+   - Quiz Salutations & politesse : lire les données apprendre existantes
 
-## Questions à confirmer avant implémentation
-1. **Source des signaux Radar IA** : comment arrivent-ils dans `radar_signals` ? (saisie manuelle, scraping, webhook externe, audio transcrit ?). Sans cette source, la table restera vide.
-2. **Bouton MoMo** : confirmer que le checkout cible est `tamtam_products` (annonces Market).
-3. **Format message WhatsApp** : valider un template type "Bonjour {name}, votre annonce '{title}' a bien été enregistrée sur Fitila."
-4. **Secrets WAHA prêts** ? (URL instance, API key, nom de session)
+2. **Lire les écrans réels** pour fidélité visuelle (couleurs, layouts, icônes)
+
+3. **Scaffolder Remotion** dans `remotion/` (bun init, install deps, fix compositor binary, tsconfig)
+
+4. **Coder les composants partagés** (PhoneFrame, curseur, status bar)
+
+5. **Coder chaque démo** (1 composition, scènes scriptées frame par frame)
+
+6. **Spot-check** : `bunx remotion still` sur 2-3 frames clés par démo
+
+7. **Rendre les 5 MP4** via `render-all.mjs` → `/mnt/documents/`
+
+8. **Livrer** avec `<presentation-artifact>` pour chaque fichier
+
+## Détails par démo (script visuel)
+
+**1. Dictionnaire (FR→BA, « Mardi »)**
+Écran dictionnaire → curseur tape sur input → frappe « Mardi » lettre par lettre → résultat apparaît : « Mardi → Talaata » (ou terme réel) + définition + bouton audio qui pulse.
+
+**2. Traducteur IA**
+Saisie « Comment vas-tu ? » → traduction Bariba apparaît → curseur survole successivement les 5 boutons (texte, audio, photo, coller, document) chacun ~1.5s avec mini tooltip décrivant l'action.
+
+**3. Classe**
+Liste niveaux → tap Niveau 1 → liste leçons → tap première leçon → écran Nim avec contenu (carte mot + image + bouton audio + bouton suivant) → tap audio (waveform anime) → tap suivant.
+
+**4. Fitila Tem IA**
+Écran chatbot → bulle utilisateur avec « Saria gbiika gari mba? » → indicateur typing → bulle réponse IA apparaît mot par mot → footer « Source : ... » highlight.
+
+**5. Apprendre**
+Sélection langue : FR highlighted → liste catégories scroll → tap « Salutations & politesse » → écran leçon → mini quiz : question + 3 choix → tap bonne réponse → animation succès (confetti + ✓).
+
+## Risques et mitigations
+
+- **Récupération contenu IA réel** : si l'appel ByT5/Fitila Tem échoue, je note le fallback utilisé dans le récap final.
+- **Compositor sandbox** : suivre la procédure musl/gnu standard.
+- **Durée render** : 5 vidéos × ~2-3 min de render chacune = potentiellement long. Je rends en série, une par appel `code--exec`, pour rester sous le timeout 600s.
+- **Fidélité UI** : approximation acceptable — c'est un mockup démo, pas une capture pixel-perfect.
+
+## Hors scope
+
+- Pas d'audio/narration (vidéos muettes — sandbox ffmpeg sans libfdk_aac de toute façon)
+- Pas de modifications du code de l'app Fitila
+- Pas de publication / partage automatique
