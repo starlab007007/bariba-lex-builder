@@ -1,5 +1,8 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, spring, useVideoConfig, interpolate } from 'remotion';
+import { loadFont } from '@remotion/google-fonts/Inter';
+
+loadFont('normal', { weights: ['400', '600', '700', '800'], subsets: ['latin'] });
 
 // Phone viewport: 390 x 844 logical px, scaled up
 const PHONE_W = 780;
@@ -23,7 +26,7 @@ export const PhoneFrame: React.FC<{
       <div style={{ position: 'absolute', width: 600, height: 600, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', filter: 'blur(100px)', bottom: -100, right: -100 }} />
 
       {label && (
-        <div style={{ position: 'absolute', top: 80, left: 0, right: 0, textAlign: 'center', color: 'white', fontFamily: 'Inter, sans-serif', fontSize: 56, fontWeight: 800, letterSpacing: -1, textShadow: '0 4px 24px rgba(0,0,0,0.3)', opacity }}>
+        <div style={{ position: 'absolute', bottom: 80, left: 0, right: 0, textAlign: 'center', color: 'white', fontFamily: 'Inter, sans-serif', fontSize: 56, fontWeight: 800, letterSpacing: -1, textShadow: '0 4px 24px rgba(0,0,0,0.3)', opacity }}>
           {label}
         </div>
       )}
