@@ -406,7 +406,7 @@ export default function TamTamPhoneAuth() {
             <h1 className="text-xl font-bold text-white mb-1">Entrez votre PIN</h1>
             <p className="text-white/70 text-sm mb-6">Bonjour {displayName} 👋</p>
             
-            <PinInput value={pin} onChange={setPin} />
+            <PinInput value={pin} onChange={setPin} showPin={showPin} onToggleShow={toggleShowPin} inputRef={pinInputRef} />
 
             <motion.button
               whileTap={{ scale: 0.95 }}
@@ -472,7 +472,7 @@ export default function TamTamPhoneAuth() {
             <h1 className="text-xl font-bold text-white mb-1">Créez votre PIN</h1>
             <p className="text-white/70 text-sm mb-6">6 chiffres pour sécuriser votre compte</p>
 
-            <PinInput value={pin} onChange={setPin} />
+            <PinInput value={pin} onChange={setPin} showPin={showPin} onToggleShow={toggleShowPin} inputRef={pinInputRef} />
 
             <motion.button
               whileTap={{ scale: 0.95 }}
@@ -496,7 +496,7 @@ export default function TamTamPhoneAuth() {
             <h1 className="text-xl font-bold text-white mb-1">Confirmez votre PIN</h1>
             <p className="text-white/70 text-sm mb-6">Entrez à nouveau vos 6 chiffres</p>
 
-            <PinInput value={pinConfirm} onChange={setPinConfirm} />
+            <PinInput value={pinConfirm} onChange={setPinConfirm} showPin={showPin} onToggleShow={toggleShowPin} />
 
             <motion.button
               whileTap={{ scale: 0.95 }}
@@ -553,9 +553,9 @@ export default function TamTamPhoneAuth() {
             </p>
 
             {newPin.length < 6 ? (
-              <PinInput value={newPin} onChange={setNewPin} />
+              <PinInput value={newPin} onChange={setNewPin} showPin={showPin} onToggleShow={toggleShowPin} />
             ) : (
-              <PinInput value={newPinConfirm} onChange={setNewPinConfirm} autoFocus />
+              <PinInput value={newPinConfirm} onChange={setNewPinConfirm} showPin={showPin} onToggleShow={toggleShowPin} autoFocus />
             )}
 
             <motion.button
