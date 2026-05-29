@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, Navigate } from 'react-router-dom';
 import { useTeacherRole } from '@/hooks/useTeacherRole';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Users, ClipboardCheck, BarChart3, Home, ArrowLeft, BookOpen, Scale, FileBarChart, Mic } from 'lucide-react';
@@ -13,8 +13,7 @@ export default function TeacherLayout() {
   }
 
   if (!user) {
-    navigate('/fitila/auth', { replace: true });
-    return null;
+    return <Navigate to="/fitila/auth" replace />;
   }
 
   if (!isTeacher) {
