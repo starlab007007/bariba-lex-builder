@@ -10,6 +10,76 @@ import VisualSecurityCheck from '@/components/tamtam/VisualSecurityCheck';
 
 type Step = 'phone' | 'pin-login' | 'pin-create' | 'pin-confirm' | 'name' | 'security-setup' | 'complete' | 'pin-forgot' | 'pin-reset';
 
+const vibrateSafe = (pattern: number | number[]) => {
+  try { navigator?.vibrate?.(pattern); } catch {}
+};
+
+interface PinInputProps {
+  value: string;
+  onChange: (v: string) => void;
+  showPin: boolean;
+  onToggleShow: () => void;
+  autoFocus?: boolean;
+  inputRef?: React.RefObject<HTMLInputElement>;
+}
+
+const PinInput = React.memo(({ value, onChange, showPin, onToggleShow, autoFocus = true, inputRef }: PinInputProps) => (
+  <div className="relative">
+    <div className="flex justify-center gap-2 sm:gap-3 mb-4">
+      {[0, 1, 2, 3, 4, 5].map(i => (
+        <div key={i} className={`w-11 h-14 sm:w-12 sm:h-16 rounded-xl border-2 flex items-center justify-center text-2xl font-bold transition-all ${
+          i < value.length ? 'border-white bg-white/20 text-white' : i === value.length ? 'border-white/80 bg-white/10' : 'border-white/30 bg-white/5'
+        }`}>
+          {value[i] ? (showPin ? value[i] : '●') : ''}
+        </div>
+      ))}
+    </div>
+    <input
+      ref={inputRef}
+      type="tel"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      maxLength={6}
+      value={value}
+      onChange={e => {
+        const v = e.target.value.replace(/\D/g, '').slice(0, 6);
+        onChange(v);
+        vibrateSafe(10);
+      }}
+      className="absolute inset-0 opacity-0 w-full h-full"
+      autoFocus={autoFocus}
+    />
+    <button type="button" onClick={onToggleShow} className="mx-auto flex items-center gap-1 text-white/60 text-xs mt-1">
+      {showPin ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+      {showPin ? 'Masquer' : 'Afficher'}
+    </button>
+  </div>
+));
+PinInput.displayName = 'PinInput';
+
+interface NumPadProps {
+  onDigit: (d: string) => void;
+  onBackspace: () => void;
+}
+
+const NumPad = React.memo(({ onDigit, onBackspace }: NumPadProps) => (
+  <div className="grid grid-cols-3 gap-2 w-full max-w-[260px] mx-auto">
+    {[1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, 'del'].map((num, idx) => (
+      num === null ? <div key={idx} /> :
+      <motion.button
+        key={idx}
+        type="button"
+        whileTap={{ scale: 0.9 }}
+        className="w-16 h-14 sm:w-18 sm:h-16 rounded-2xl bg-white/10 backdrop-blur-lg text-white text-xl font-bold border border-white/20 flex items-center justify-center active:bg-white/20"
+        onClick={() => num === 'del' ? onBackspace() : onDigit(num!.toString())}
+      >
+        {num === 'del' ? '←' : num}
+      </motion.button>
+    ))}
+  </div>
+));
+NumPad.displayName = 'NumPad';
+
 export default function TamTamPhoneAuth() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -46,9 +116,7 @@ export default function TamTamPhoneAuth() {
   const fullPhone = `+229${phoneDigits}`;
   const emailFromPhone = `${phoneDigits}@fitila.app`;
 
-  const vibrate = (pattern: number | number[]) => {
-    try { navigator?.vibrate?.(pattern); } catch {}
-  };
+  const vibrate = vibrateSafe;
 
   const handlePhoneDigit = (d: string) => {
     vibrate(10);
@@ -287,54 +355,7 @@ export default function TamTamPhoneAuth() {
     }
   };
 
-  const PinInput = ({ value, onChange, autoFocus = true }: { value: string; onChange: (v: string) => void; autoFocus?: boolean }) => (
-    <div className="relative">
-      <div className="flex justify-center gap-2 sm:gap-3 mb-4">
-        {[0, 1, 2, 3, 4, 5].map(i => (
-          <div key={i} className={`w-11 h-14 sm:w-12 sm:h-16 rounded-xl border-2 flex items-center justify-center text-2xl font-bold transition-all ${
-            i < value.length ? 'border-white bg-white/20 text-white' : i === value.length ? 'border-white/80 bg-white/10' : 'border-white/30 bg-white/5'
-          }`}>
-            {value[i] ? (showPin ? value[i] : '●') : ''}
-          </div>
-        ))}
-      </div>
-      <input
-        ref={autoFocus ? pinInputRef : undefined}
-        type="tel"
-        inputMode="numeric"
-        pattern="[0-9]*"
-        maxLength={6}
-        value={value}
-        onChange={e => {
-          const v = e.target.value.replace(/\D/g, '').slice(0, 6);
-          onChange(v);
-          vibrate(10);
-        }}
-        className="absolute inset-0 opacity-0 w-full h-full"
-        autoFocus={autoFocus}
-      />
-      <button onClick={() => setShowPin(!showPin)} className="mx-auto flex items-center gap-1 text-white/60 text-xs mt-1">
-        {showPin ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-        {showPin ? 'Masquer' : 'Afficher'}
-      </button>
-    </div>
-  );
-
-  const NumPad = () => (
-    <div className="grid grid-cols-3 gap-2 w-full max-w-[260px] mx-auto">
-      {[1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, 'del'].map((num, idx) => (
-        num === null ? <div key={idx} /> :
-        <motion.button
-          key={idx}
-          whileTap={{ scale: 0.9 }}
-          className="w-16 h-14 sm:w-18 sm:h-16 rounded-2xl bg-white/10 backdrop-blur-lg text-white text-xl font-bold border border-white/20 flex items-center justify-center active:bg-white/20"
-          onClick={() => num === 'del' ? handlePhoneBackspace() : handlePhoneDigit(num.toString())}
-        >
-          {num === 'del' ? '←' : num}
-        </motion.button>
-      ))}
-    </div>
-  );
+  const toggleShowPin = () => setShowPin(s => !s);
 
   return (
     <div className="h-[100dvh] bg-gradient-to-br from-orange-500 via-orange-600 to-amber-700 flex flex-col items-center justify-between py-4 sm:py-6 px-4 sm:px-6">
@@ -361,7 +382,7 @@ export default function TamTamPhoneAuth() {
               </p>
             </div>
 
-            <NumPad />
+            <NumPad onDigit={handlePhoneDigit} onBackspace={handlePhoneBackspace} />
 
             <motion.button
               whileTap={{ scale: 0.95 }}
