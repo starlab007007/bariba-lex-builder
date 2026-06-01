@@ -256,7 +256,7 @@
   },
   "social_search_conversation": {
     "fr": "Rechercher une conversation...",
-    "ba": ""
+    "ba": "Deemaa tììbũ"
   },
   "_section_social_conte": "=== CONTE INTERACTIF (FEED) ===",
   "social_conte_interactif": {
@@ -413,7 +413,7 @@
   },
   "conte_choice_emoji_placeholder": {
     "fr": "Emoji",
-    "ba": ""
+    "ba": "Emoji"
   },
   "conte_choice_placeholder": {
     "fr": "Choix (ex: Combattre le dragon)",
@@ -453,7 +453,7 @@
   },
   "conte_badge_obtained": {
     "fr": "J'ai obtenu le badge",
-    "ba": ""
+    "ba": "N kùsìàm kpéèsìrù"
   },
   "conte_music": {
     "fr": "Musique",
@@ -481,15 +481,15 @@
   },
   "conte_select_assets": {
     "fr": "Sélectionner les médias",
-    "ba": ""
+    "ba": "Gɑ̃ɑnu kpɛ́ɛsiabu"
   },
   "conte_slideshow": {
     "fr": "Diaporama",
-    "ba": ""
+    "ba": "Fòtò ye kpéé kpɛ́ɛ kɛ́ɛ"
   },
   "griot_studio_title": {
     "fr": "Griot Studio",
-    "ba": ""
+    "ba": "Yerikisin barɔ"
   },
   "griot_record": {
     "fr": "Enregistrer",
@@ -497,31 +497,31 @@
   },
   "griot_scene": {
     "fr": "Scène",
-    "ba": ""
+    "ba": "Daam"
   },
   "griot_scenes": {
     "fr": "Scènes",
-    "ba": ""
+    "ba": "Daama"
   },
   "griot_add_scene": {
     "fr": "Ajouter une scène",
-    "ba": ""
+    "ba": "Daam tũŋ"
   },
   "griot_edit_scene": {
     "fr": "Modifier la scène",
-    "ba": ""
+    "ba": "Daam tũŋ gbekɛru"
   },
   "griot_delete_scene": {
     "fr": "Supprimer la scène",
-    "ba": ""
+    "ba": "Daam tũŋ kisa mɛ"
   },
   "griot_auto_illustrate": {
     "fr": "Auto-illustrer la scène",
-    "ba": ""
+    "ba": "Daam tũŋ sĩŋu yãm mɛ"
   },
   "griot_auto_illustrate_all": {
     "fr": "Auto-illustrer toutes les scènes",
-    "ba": ""
+    "ba": "Daama kpuron sĩŋu yãm mɛ"
   },
   "griot_transcribing": {
     "fr": "Transcription en cours...",
@@ -529,7 +529,7 @@
   },
   "griot_editing": {
     "fr": "Édition des scènes",
-    "ba": ""
+    "ba": "Daama denibu"
   },
   "griot_preview": {
     "fr": "Prévisualisation",
@@ -541,36 +541,36 @@
   },
   "griot_style": {
     "fr": "Style",
-    "ba": ""
+    "ba": "Dɛɛmbu"
   },
   "griot_narrator": {
     "fr": "Narrateur",
-    "ba": ""
+    "ba": "Gɔɔribuu"
   },
   "griot_duration": {
     "fr": "Durée",
-    "ba": ""
+    "ba": "Yɛɛsirubu"
   },
   "griot_illustration_matching": {
     "fr": "Recherche d'illustration...",
-    "ba": ""
+    "ba": "Sĩŋu yãmə tə̀rìbu"
   },
   "griot_illustration_found": {
     "fr": "Illustration trouvée",
-    "ba": ""
+    "ba": "Sĩŋu yãmə tɔɔ"
   },
   "griot_no_illustration": {
     "fr": "Aucune illustration trouvée",
-    "ba": ""
+    "ba": "Sĩŋu yãmə tə̀rìbu bà"
   },
   "_section_creator": "=== CRÉATION DE CONTENU ===",
   "creator_templates": {
     "fr": "Modèles",
-    "ba": ""
+    "ba": "Dɛɛmaa"
   },
   "creator_fonts": {
     "fr": "Polices",
-    "ba": ""
+    "ba": "Gerebu dɛɛbu"
   },
   "creator_colors": {
     "fr": "Couleurs",
@@ -618,19 +618,19 @@
   },
   "creator_voice_narrator": {
     "fr": "Ton grave, narratif",
-    "ba": ""
+    "ba": "Gɔɔribu gɔrɛ"
   },
   "creator_voice_announcer": {
     "fr": "Ton neutre, clair",
-    "ba": ""
+    "ba": "Gɔɔgɔɔ sĩndĩ"
   },
   "creator_voice_female": {
     "fr": "Ton doux, chaleureux",
-    "ba": ""
+    "ba": "Pibuu gɔrɛ"
   },
   "creator_voice_dynamic": {
     "fr": "Ton dynamique, expressif",
-    "ba": ""
+    "ba": "Gɔ̀ru yã́ã wɛɛ"
   },
   "_section_translator": "=== TRADUCTEUR ===",
   "translator_title": {
@@ -884,7 +884,7 @@
   },
   "dict_data_title": {
     "fr": "Données du Dictionnaire",
-    "ba": ""
+    "ba": "Tire mɛro sɔ̀ɔsiabu"
   },
   "_section_learning": "=== APPRENTISSAGE ===",
   "learn_welcome": {
@@ -1270,27 +1270,27 @@
   },
   "market_contact_seller": {
     "fr": "Contacter le vendeur",
-    "ba": ""
+    "ba": "Yaburu bunsi wɛɛ gbarasi"
   },
   "market_product_details": {
     "fr": "Détails du produit",
-    "ba": ""
+    "ba": "Yaburu yerebu"
   },
   "market_job_details": {
     "fr": "Détails de l'emploi",
-    "ba": ""
+    "ba": "Sɔmbu yerebu"
   },
   "market_salary": {
     "fr": "Salaire",
-    "ba": ""
+    "ba": "Pɛɛbu"
   },
   "market_location": {
     "fr": "Lieu",
-    "ba": ""
+    "ba": "Kpan"
   },
   "market_category": {
     "fr": "Catégorie",
-    "ba": ""
+    "ba": "Nyam"
   },
   "market_urgent": {
     "fr": "Urgent",
@@ -1298,11 +1298,11 @@
   },
   "market_active": {
     "fr": "Actif",
-    "ba": ""
+    "ba": "WÃAMƆ"
   },
   "market_closed": {
     "fr": "Fermé",
-    "ba": ""
+    "ba": "Kpɛn"
   },
   "_section_services_ia": "=== SERVICES IA ===",
   "service_translator": {
@@ -1437,15 +1437,15 @@
   },
   "sos_alert_sent_desc": {
     "fr": "Vos contacts d'urgence ont été prévenus",
-    "ba": ""
+    "ba": "Tɔmbu nɔɔsiabu wɛ̃ãm"
   },
   "sos_gps_searching": {
     "fr": "Recherche de position GPS...",
-    "ba": ""
+    "ba": "GPS kpan deebu..."
   },
   "sos_gps_found": {
     "fr": "Position trouvée",
-    "ba": ""
+    "ba": "Kpan deemu"
   },
   "_section_profile": "=== PROFIL ===",
   "profile_invalid_format": {
@@ -1675,19 +1675,19 @@
   },
   "auth_email": {
     "fr": "Email",
-    "ba": ""
+    "ba": "Email"
   },
   "auth_password": {
     "fr": "Mot de passe",
-    "ba": ""
+    "ba": "Gbãŋ sãmbu"
   },
   "auth_forgot_password": {
     "fr": "Mot de passe oublié ?",
-    "ba": ""
+    "ba": "Gbãŋ sãmbu wurumu?"
   },
   "auth_signup": {
     "fr": "Inscription",
-    "ba": ""
+    "ba": "Bũ̃ bui"
   },
   "auth_login": {
     "fr": "Connexion",
@@ -1695,19 +1695,19 @@
   },
   "auth_otp_sent": {
     "fr": "Code envoyé",
-    "ba": ""
+    "ba": "Kodɛ wɛ̃ãm"
   },
   "auth_enter_otp": {
     "fr": "Entrez le code reçu",
-    "ba": ""
+    "ba": "Kodɛ wɛ̃ãmu bui"
   },
   "auth_verify": {
     "fr": "Vérifier",
-    "ba": ""
+    "ba": "Dɔ̃ɔbu"
   },
   "auth_resend_otp": {
     "fr": "Renvoyer le code",
-    "ba": ""
+    "ba": "Kodɛ wɛ̃ãmu biwɛ̃"
   },
   "_section_radio": "=== RADIO ===",
   "radio_title": {
@@ -1748,11 +1748,11 @@
   },
   "radio_now_playing": {
     "fr": "En cours de diffusion",
-    "ba": ""
+    "ba": "Wãmɔ"
   },
   "radio_listeners": {
     "fr": "Auditeurs",
-    "ba": ""
+    "ba": "Mɛpibu"
   },
   "_section_groups": "=== GROUPES ===",
   "groups_title": {
@@ -1821,31 +1821,31 @@
   },
   "groups_create_group": {
     "fr": "Créer un groupe",
-    "ba": ""
+    "ba": "Kpãã gã̃ãbu"
   },
   "groups_group_name": {
     "fr": "Nom du groupe",
-    "ba": ""
+    "ba": "Kpãã tɔ̃"
   },
   "groups_group_description": {
     "fr": "Description du groupe",
-    "ba": ""
+    "ba": "Kpasun deen yɛɛm"
   },
   "groups_public": {
     "fr": "Public",
-    "ba": ""
+    "ba": "Tɔmbu"
   },
   "groups_private": {
     "fr": "Privé",
-    "ba": ""
+    "ba": "Dɛɛu"
   },
   "groups_join": {
     "fr": "Rejoindre",
-    "ba": ""
+    "ba": "Bũ"
   },
   "groups_leave": {
     "fr": "Quitter",
-    "ba": ""
+    "ba": "Pia"
   },
   "_section_search": "=== RECHERCHE ===",
   "search_all": {
@@ -1866,7 +1866,7 @@
   },
   "search_no_results": {
     "fr": "Aucun résultat",
-    "ba": ""
+    "ba": "Yɛɛŋgbã̃n dɛɛu"
   },
   "_section_transcription": "=== TRANSCRIPTION ===",
   "transcription_in_progress": {
@@ -2073,7 +2073,7 @@
   },
   "confirm_delete_entry": {
     "fr": "Supprimer cette entrée du dictionnaire ?",
-    "ba": ""
+    "ba": "Tire mɛrɔ gbɛ̃nɔɔn dɛ?"
   },
   "_section_lang_selector": "=== SÉLECTEUR DE LANGUE ===",
   "lang_selector_language": {
@@ -2322,47 +2322,47 @@
   },
   "common_previous": {
     "fr": "Précédent",
-    "ba": ""
+    "ba": "Kpanu"
   },
   "common_download": {
     "fr": "Télécharger",
-    "ba": ""
+    "ba": "Sinasiabu"
   },
   "common_upload": {
     "fr": "Téléverser",
-    "ba": ""
+    "ba": "Sinasiabu"
   },
   "common_open": {
     "fr": "Ouvrir",
-    "ba": ""
+    "ba": "Sia"
   },
   "common_copy": {
     "fr": "Copier",
-    "ba": ""
+    "ba": "Yɛ"
   },
   "common_paste": {
     "fr": "Coller",
-    "ba": ""
+    "ba": "Yɛn gbɛ"
   },
   "common_select": {
     "fr": "Sélectionner",
-    "ba": ""
+    "ba": "Gbɛ"
   },
   "common_select_all": {
     "fr": "Tout sélectionner",
-    "ba": ""
+    "ba": "Kpuron gbɛ"
   },
   "common_deselect_all": {
     "fr": "Tout désélectionner",
-    "ba": ""
+    "ba": "Kpuron gbɛn dɛ"
   },
   "common_apply": {
     "fr": "Appliquer",
-    "ba": ""
+    "ba": "Swa"
   },
   "common_reset": {
     "fr": "Réinitialiser",
-    "ba": ""
+    "ba": "Gbɛ̃n dɛɛm"
   },
   "common_continue": {
     "fr": "Continuer",
@@ -2386,35 +2386,35 @@
   },
   "common_add": {
     "fr": "Ajouter",
-    "ba": ""
+    "ba": "Na"
   },
   "common_remove": {
     "fr": "Retirer",
-    "ba": ""
+    "ba": "Dware"
   },
   "common_update": {
     "fr": "Mettre à jour",
-    "ba": ""
+    "ba": "Sia yɛɛm"
   },
   "common_view": {
     "fr": "Voir",
-    "ba": ""
+    "ba": "Yaha"
   },
   "common_details": {
     "fr": "Détails",
-    "ba": ""
+    "ba": "Yɛɛm"
   },
   "common_options": {
     "fr": "Options",
-    "ba": ""
+    "ba": "Gbɛ̀sìrù"
   },
   "common_more": {
     "fr": "Plus",
-    "ba": ""
+    "ba": "Nɔɔ"
   },
   "common_less": {
     "fr": "Moins",
-    "ba": ""
+    "ba": "Kɛɛ"
   },
   "common_all": {
     "fr": "Tout",
@@ -2422,32 +2422,32 @@
   },
   "common_none": {
     "fr": "Aucun",
-    "ba": ""
+    "ba": "Kaanyɛ"
   },
   "common_required": {
     "fr": "Requis",
-    "ba": ""
+    "ba": "Gaarabu"
   },
   "common_optional": {
     "fr": "Optionnel",
-    "ba": ""
+    "ba": "Naŋ̀ŋɛ̃"
   },
   "_section_toast_messages": "=== MESSAGES TOAST (notifications) ===",
   "toast_error_loading": {
     "fr": "Erreur de chargement",
-    "ba": ""
+    "ba": "Sinaŋ gbɛ̃ŋ̀"
   },
   "toast_error_saving": {
     "fr": "Erreur de sauvegarde",
-    "ba": ""
+    "ba": "Mɛɛsibu gbɛ̃ŋ̀"
   },
   "toast_error_deleting": {
     "fr": "Erreur de suppression",
-    "ba": ""
+    "ba": "Tɛ̃ŋ̀ gbɛ̃ŋ̀"
   },
   "toast_error_sending": {
     "fr": "Erreur d'envoi",
-    "ba": ""
+    "ba": "Turubu gbɛ̃ŋ̀"
   },
   "toast_error_connection": {
     "fr": "Erreur de connexion",
@@ -2455,173 +2455,173 @@
   },
   "toast_error_network": {
     "fr": "Erreur réseau",
-    "ba": ""
+    "ba": "Internɛɛti gbɛ̃ŋ̀"
   },
   "toast_error_permission": {
     "fr": "Permission refusée",
-    "ba": ""
+    "ba": "Nɛɛbu gbɛ̃ŋ̀"
   },
   "toast_error_microphone": {
     "fr": "Erreur microphone",
-    "ba": ""
+    "ba": "Gɔ̀ru gbɛ̃ŋ̀"
   },
   "toast_error_camera": {
     "fr": "Erreur caméra",
-    "ba": ""
+    "ba": "Gia gbɛ̃ŋ̀"
   },
   "toast_error_voice_read": {
     "fr": "Erreur de lecture vocale",
-    "ba": ""
+    "ba": "Gɔ̀ru sinaŋ gbɛ̃ŋ̀"
   },
   "toast_error_voice_read_desc": {
     "fr": "Impossible de lire le texte",
-    "ba": ""
+    "ba": "Tirem sinaŋ bu gɔ̀ru gbɛ̃ŋ̀"
   },
   "toast_success_saved": {
     "fr": "Sauvegardé avec succès",
-    "ba": ""
+    "ba": "Mɛɛsibun tũm gbɛdɛ"
   },
   "toast_success_deleted": {
     "fr": "Supprimé avec succès",
-    "ba": ""
+    "ba": "Tɛ̃ŋ tũm gbɛdɛ"
   },
   "toast_success_sent": {
     "fr": "Envoyé avec succès",
-    "ba": ""
+    "ba": "Turubu tũm gbɛdɛ"
   },
   "toast_success_published": {
     "fr": "Publié avec succès",
-    "ba": ""
+    "ba": "Gbaŋbu tũm gbɛdɛ"
   },
   "toast_success_updated": {
     "fr": "Mis à jour avec succès",
-    "ba": ""
+    "ba": "Dɛɛkperu tũm gbɛdɛ"
   },
   "toast_success_copied": {
     "fr": "Copié dans le presse-papiers",
-    "ba": ""
+    "ba": "Kpɛn kpɛ̃ŋ̀ bu sɔ̀ɔmɔ"
   },
   "toast_modified": {
     "fr": "Modifié",
-    "ba": ""
+    "ba": "Dɛɛkperu"
   },
   "toast_modified_desc": {
     "fr": "Entrée mise à jour avec succès",
-    "ba": ""
+    "ba": "Dɛɛkperu tũm gbɛdɛ"
   },
   "toast_deleted": {
     "fr": "Supprimé",
-    "ba": ""
+    "ba": "Tɛ̃ŋ̀"
   },
   "toast_deleted_desc": {
     "fr": "Entrée supprimée avec succès",
-    "ba": ""
+    "ba": "Tɛ̃ŋ tũm gbɛdɛ"
   },
   "toast_validation_started": {
     "fr": "Validation en arrière-plan démarrée",
-    "ba": ""
+    "ba": "Mɛɛkpeŋ̀ tɩ̃m daa"
   },
   "toast_validation_complete": {
     "fr": "Validation massive terminée !",
-    "ba": ""
+    "ba": "Sɛ̃ɛ̃ wãamɔ puyã !"
   },
   "toast_validation_error": {
     "fr": "Erreur lors de la validation",
-    "ba": ""
+    "ba": "Sɛ̃ɛ̃ wãamɔ kpɛyin !"
   },
   "toast_no_phrase_selected": {
     "fr": "Aucune phrase sélectionnée",
-    "ba": ""
+    "ba": "Baatɔnum yɛ̃yɛ̃ sɩ̃nãa !"
   },
   "toast_select_at_least_one": {
     "fr": "Veuillez sélectionner au moins une phrase",
-    "ba": ""
+    "ba": "Baatɔnum yɛ̃yɛ̃ wɛ̀ɛrɛ kã́a sɩ̃nã !"
   },
   "toast_update_success": {
     "fr": "Mise à jour réussie",
-    "ba": ""
+    "ba": "Gbɛ̀sìrù puyã !"
   },
   "toast_deletion_success": {
     "fr": "Suppression réussie",
-    "ba": ""
+    "ba": "Tɛ̃ɛ̃bɔ puyã !"
   },
   "toast_no_phrase_to_validate": {
     "fr": "Aucune phrase à valider",
-    "ba": ""
+    "ba": "Yɛ̃yɛ̃ wãamɔ sɩ̃nãa !"
   },
   "toast_all_phrases_validated": {
     "fr": "Toutes les phrases sont déjà validées",
-    "ba": ""
+    "ba": "Yɛ̃yɛ̃ kpuro wãamɔ puyã !"
   },
   "toast_service_unavailable": {
     "fr": "Service temporairement indisponible",
-    "ba": ""
+    "ba": "Sɔmburu nu kpasiabu !"
   },
   "toast_check_connection": {
     "fr": "Vérifiez votre connexion internet et réessayez",
-    "ba": ""
+    "ba": "Gere mɛ̀ɛ̃ gbɛ̀sìrù !"
   },
   "_section_admin": "=== ADMINISTRATION ===",
   "admin_dictionary_data": {
     "fr": "Données du Dictionnaire",
-    "ba": ""
+    "ba": "Tire mɛro ye buun"
   },
   "admin_search_word_placeholder": {
     "fr": "Rechercher un mot ou une définition...",
-    "ba": ""
+    "ba": "Yɛ̃yɛ̃ yɛ̃ buun bɛ̃nɔɔ..."
   },
   "admin_search_phrase_placeholder": {
     "fr": "Rechercher une phrase...",
-    "ba": ""
+    "ba": "Baatɔnum yɛ̃yɛ̃ buun bɛ̃nɔɔ..."
   },
   "admin_edit_entry": {
     "fr": "Modifier l'entrée",
-    "ba": ""
+    "ba": "Gbɛ̀sìrù"
   },
   "admin_edit_entry_desc": {
     "fr": "Modifiez l'entrée du dictionnaire Baatonum-Français",
-    "ba": ""
+    "ba": "Tire mɛro ye gbɛ̀sìrù"
   },
   "admin_validate": {
     "fr": "Valider",
-    "ba": ""
+    "ba": "Wãamɔ"
   },
   "admin_invalidate": {
     "fr": "Invalider",
-    "ba": ""
+    "ba": "Nu wãamɔ"
   },
   "admin_validate_all": {
     "fr": "Tout valider",
-    "ba": ""
+    "ba": "Yɛ̃yɛ̃ kpuro wãamɔ"
   },
   "admin_delete_selected": {
     "fr": "Supprimer la sélection",
-    "ba": ""
+    "ba": "Yɛ̃yɛ̃ sɩ̃nã tɛ̃ɛ̃bɔ"
   },
   "admin_total_entries": {
     "fr": "Total entrées",
-    "ba": ""
+    "ba": "Tire mɛro kpuro"
   },
   "admin_validated": {
     "fr": "Validées",
-    "ba": ""
+    "ba": "Wãamɔ"
   },
   "admin_unvalidated": {
     "fr": "Non validées",
-    "ba": ""
+    "ba": "Nu wãamɔ"
   },
   "_section_notifications": "=== NOTIFICATIONS ===",
   "notif_new_follower": {
     "fr": "Nouvel abonné",
-    "ba": ""
+    "ba": "Deemaan dweebu"
   },
   "notif_new_like": {
     "fr": "Nouveau j'aime",
-    "ba": ""
+    "ba": "Nyam pɛ̀lɛɛ"
   },
   "notif_new_comment": {
     "fr": "Nouveau commentaire",
-    "ba": ""
+    "ba": "Kpan yɛ̃yɛ̃ yora"
   },
   "notif_new_message": {
     "fr": "Nouveau message",
@@ -2629,19 +2629,19 @@
   },
   "notif_group_invite": {
     "fr": "Invitation à un groupe",
-    "ba": ""
+    "ba": "Nɔɔsiabu gbɛrɛ nɔu nɛ"
   },
   "notif_job_application": {
     "fr": "Nouvelle candidature",
-    "ba": ""
+    "ba": "Yɛ tirem nɔu deemaa"
   },
   "notif_mark_read": {
     "fr": "Marquer comme lu",
-    "ba": ""
+    "ba": "Tiremɔ"
   },
   "notif_mark_all_read": {
     "fr": "Tout marquer comme lu",
-    "ba": ""
+    "ba": "Kpuron tiremɔ"
   },
   "_section_settings": "=== PARAMÈTRES ===",
   "settings_title": {
@@ -2658,15 +2658,15 @@
   },
   "settings_privacy": {
     "fr": "Confidentialité",
-    "ba": ""
+    "ba": "Nyam gbɛ̀sìrù"
   },
   "settings_account": {
     "fr": "Compte",
-    "ba": ""
+    "ba": "Nɛn gbɛ̀sìrù"
   },
   "settings_about": {
     "fr": "À propos",
-    "ba": ""
+    "ba": "À kparibu"
   },
   "settings_help": {
     "fr": "Aide",
@@ -2674,77 +2674,77 @@
   },
   "settings_dark_mode": {
     "fr": "Mode sombre",
-    "ba": ""
+    "ba": "Fian mode"
   },
   "settings_audio_quality": {
     "fr": "Qualité audio",
-    "ba": ""
+    "ba": "Gorun gbɛkɛ̃ɛ"
   },
   "settings_auto_play": {
     "fr": "Lecture automatique",
-    "ba": ""
+    "ba": "Yɛ kpɔnɔɔbù"
   },
   "settings_data_saver": {
     "fr": "Économie de données",
-    "ba": ""
+    "ba": "Detɛ niamɔɔ"
   },
   "_section_accessibility": "=== ACCESSIBILITÉ ===",
   "a11y_increase_font": {
     "fr": "Augmenter la taille du texte",
-    "ba": ""
+    "ba": "Tire gãmun sìnàmɔ"
   },
   "a11y_decrease_font": {
     "fr": "Diminuer la taille du texte",
-    "ba": ""
+    "ba": "Tire gãmun bòòmɔ"
   },
   "a11y_high_contrast": {
     "fr": "Contraste élevé",
-    "ba": ""
+    "ba": "Nyam gbɔɔmɔɔ"
   },
   "a11y_screen_reader": {
     "fr": "Lecteur d'écran",
-    "ba": ""
+    "ba": "Sikɛrɛn tiremɔ"
   },
   "_section_empty_states": "=== ÉTATS VIDES ===",
   "empty_no_posts": {
     "fr": "Aucune publication",
-    "ba": ""
+    "ba": "Ganun seburo"
   },
   "empty_no_messages": {
     "fr": "Aucun message",
-    "ba": ""
+    "ba": "Tirem bɔɔru"
   },
   "empty_no_notifications": {
     "fr": "Aucune notification",
-    "ba": ""
+    "ba": "Nɔɔsibu bɔɔru"
   },
   "empty_no_jobs": {
     "fr": "Aucun emploi",
-    "ba": ""
+    "ba": "Sɔmburu bɔɔru"
   },
   "empty_no_products": {
     "fr": "Aucun produit",
-    "ba": ""
+    "ba": "Gaan sɛmbu bɔɔru"
   },
   "empty_no_groups": {
     "fr": "Aucun groupe",
-    "ba": ""
+    "ba": "Gbɛrɛ bɔɔru"
   },
   "empty_no_contacts": {
     "fr": "Aucun contact",
-    "ba": ""
+    "ba": "Sɔ̀rɔm dɛɛrɛbu bɔɔru"
   },
   "empty_no_results": {
     "fr": "Aucun résultat",
-    "ba": ""
+    "ba": "À deemaa"
   },
   "empty_start_posting": {
     "fr": "Commencez à publier !",
-    "ba": ""
+    "ba": "Wɛn bu sɛ̃mɔ"
   },
   "empty_start_conversation": {
     "fr": "Commencez une conversation",
-    "ba": ""
+    "ba": "Kɛɛ gɔrɔwɔ"
   },
   "market_title": {
     "fr": "Marché",
