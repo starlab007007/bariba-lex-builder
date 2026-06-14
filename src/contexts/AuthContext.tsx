@@ -142,12 +142,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setIsAdmin(false);
-    toast({
-      title: 'Déconnexion',
-      description: 'Vous avez été déconnecté avec succès.',
-    });
+    try {
+      // Reset local state first so the UI cannot flash protected content
+      setIsAdmin(false);
+      setUser(null);
+      setSession(null);
+
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.warn('[AuthContext] signOut error:', error.message);
+      }
+
+      // Best-effort cleanup of app-level caches that should not persist across users
+      try {
+        Object.keys(localStorage).forEach((k) => {
+          if (k.startsWith('tamtam:') || k.startsWith('fitila:cache:')) {
+            localStorage.removeItem(k);
+          }
+        });
+      } catch {}
+
+      toast({
+        title: 'Déconnexion',
+        description: 'Vous avez été déconnecté avec succès.',
+      });
+    } catch (err: any) {
+      console.error('[AuthContext] signOut failed:', err);
+      toast({
+        title: 'Erreur',
+        description: "Impossible de se déconnecter. Réessayez.",
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
