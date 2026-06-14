@@ -677,18 +677,63 @@ export default function TamTamProfile() {
         followers={followersForBroadcast}
       />
 
-      <ProfileEditModal
-        isOpen={showEditProfile}
-        onClose={() => setShowEditProfile(false)}
-        profile={profile}
-        onSave={async (updates) => {
-          const result = await updateProfile(updates);
-          if (!result.error) {
-            toast({ title: "✅ Profil mis à jour" });
-          }
-          return result;
-        }}
-      />
+      {showEditProfile && (
+        <ProfileEditModal
+          isOpen={showEditProfile}
+          onClose={() => setShowEditProfile(false)}
+          profile={profile}
+          onSave={async (updates) => {
+            const result = await updateProfile(updates);
+            if (!result.error) {
+              toast({ title: "✅ Profil mis à jour" });
+            }
+            return result;
+          }}
+        />
+      )}
+
+      {/* Logout confirmation */}
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowLogoutConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl p-6 max-w-sm w-full text-center"
+            >
+              <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-destructive/10 flex items-center justify-center">
+                <LogOut className="w-7 h-7 text-destructive" />
+              </div>
+              <h3 className="text-lg font-bold mb-1">{t('logout')}</h3>
+              <p className="text-sm text-muted-foreground mb-5">
+                {t('profile_logout_confirm') || 'Êtes-vous sûr de vouloir vous déconnecter ?'}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 py-3 rounded-2xl bg-muted text-foreground font-medium"
+                >
+                  {t('cancel') || 'Annuler'}
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex-1 py-3 rounded-2xl bg-destructive text-destructive-foreground font-medium"
+                >
+                  {t('logout')}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <MyPostViewerOverlay
         posts={myPosts.filter(p => {
