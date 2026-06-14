@@ -82,43 +82,66 @@ export default function TamTamProfile() {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
   // Avatar upload state
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { t, currentLang } = useTamTamLanguage();
+  const { t, currentLang, setLang } = useTamTamLanguage() as any;
   const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
   const { toast } = useToast();
 
-  // Filter stories for current user
-  const myStories = stories.filter(s => s.user_id === user?.id);
+  // Memoized derived data — avoid recomputation on every render
+  const myStories = useMemo(
+    () => stories.filter((s) => s.user_id === user?.id),
+    [stories, user?.id]
+  );
 
-  // Calculate vocal stats
-  const vocalStats = {
+  const vocalStats = useMemo(() => ({
     totalRecordings: myPosts.length + myStories.length,
-    totalDuration: myPosts.reduce((acc, p) => acc + (p.duration_seconds || 0), 0) + 
-                   myStories.reduce((acc, s) => acc + (s.duration_seconds || 0), 0),
+    totalDuration:
+      myPosts.reduce((acc, p) => acc + (p.duration_seconds || 0), 0) +
+      myStories.reduce((acc, s) => acc + (s.duration_seconds || 0), 0),
     storyViews: myStories.reduce((acc, s) => acc + (s.views_count || 0), 0),
-    totalLikes: myPosts.reduce((acc, p) => acc + p.likes_count, 0)
-  };
+    totalLikes: myPosts.reduce((acc, p) => acc + p.likes_count, 0),
+  }), [myPosts, myStories]);
 
-  // Prepare followers for broadcast
-  const followersForBroadcast = followers.map(f => ({
-    id: f.id,
-    user_id: f.follower_id,
-    username: f.profile?.username,
-    display_name: f.profile?.display_name,
-    avatar_url: f.profile?.avatar_url,
-  }));
+  const followersForBroadcast = useMemo(
+    () => followers.map((f) => ({
+      id: f.id,
+      user_id: f.follower_id,
+      username: f.profile?.username,
+      display_name: f.profile?.display_name,
+      avatar_url: f.profile?.avatar_url,
+    })),
+    [followers]
+  );
+
+  const totalLikesAll = useMemo(
+    () => myPosts.reduce((acc, p) => acc + p.likes_count, 0),
+    [myPosts]
+  );
+  const publicCount = useMemo(() => myPosts.filter((p) => p.is_public).length, [myPosts]);
+  const privateCount = myPosts.length - publicCount;
 
   useEffect(() => {
     if (!user) {
       navigate('/fitila/auth');
     }
   }, [user, navigate]);
+
+  // Lock body scroll while any full-screen modal is open
+  useEffect(() => {
+    const anyOpen = !!avatarPreview || showEditProfile || viewerOpen || showLogoutConfirm;
+    if (anyOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [avatarPreview, showEditProfile, viewerOpen, showLogoutConfirm]);
 
   useEffect(() => {
     announceAction(t('screenProfile'));
