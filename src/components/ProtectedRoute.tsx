@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeacherRole } from '@/hooks/useTeacherRole';
 import { Loader2 } from 'lucide-react';
@@ -12,6 +12,7 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ children, requireAdmin = false, requireTeacher = false }: ProtectedRouteProps) {
   const { user, isAdmin, loading } = useAuth();
   const { isTeacher, loading: teacherLoading } = useTeacherRole();
+  const location = useLocation();
 
   if (loading || (requireTeacher && teacherLoading)) {
     return (
@@ -21,7 +22,13 @@ export default function ProtectedRoute({ children, requireAdmin = false, require
     );
   }
 
-  if (!user) return <Navigate to="/fitila/auth" replace />;
+  if (!user) {
+    const from = `${location.pathname}${location.search}`;
+    const redirect = from && from !== '/fitila/auth'
+      ? `/fitila/auth?redirect=${encodeURIComponent(from)}`
+      : '/fitila/auth';
+    return <Navigate to={redirect} replace />;
+  }
   if (requireAdmin && !isAdmin) return <Navigate to="/" replace />;
   if (requireTeacher && !isTeacher) return <Navigate to="/fitila" replace />;
 

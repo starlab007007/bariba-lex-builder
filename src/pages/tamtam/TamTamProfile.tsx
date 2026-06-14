@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
@@ -82,43 +82,66 @@ export default function TamTamProfile() {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
   // Avatar upload state
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { t, currentLang } = useTamTamLanguage();
+  const { t, currentLang, setLanguage } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
   const { toast } = useToast();
 
-  // Filter stories for current user
-  const myStories = stories.filter(s => s.user_id === user?.id);
+  // Memoized derived data — avoid recomputation on every render
+  const myStories = useMemo(
+    () => stories.filter((s) => s.user_id === user?.id),
+    [stories, user?.id]
+  );
 
-  // Calculate vocal stats
-  const vocalStats = {
+  const vocalStats = useMemo(() => ({
     totalRecordings: myPosts.length + myStories.length,
-    totalDuration: myPosts.reduce((acc, p) => acc + (p.duration_seconds || 0), 0) + 
-                   myStories.reduce((acc, s) => acc + (s.duration_seconds || 0), 0),
+    totalDuration:
+      myPosts.reduce((acc, p) => acc + (p.duration_seconds || 0), 0) +
+      myStories.reduce((acc, s) => acc + (s.duration_seconds || 0), 0),
     storyViews: myStories.reduce((acc, s) => acc + (s.views_count || 0), 0),
-    totalLikes: myPosts.reduce((acc, p) => acc + p.likes_count, 0)
-  };
+    totalLikes: myPosts.reduce((acc, p) => acc + p.likes_count, 0),
+  }), [myPosts, myStories]);
 
-  // Prepare followers for broadcast
-  const followersForBroadcast = followers.map(f => ({
-    id: f.id,
-    user_id: f.follower_id,
-    username: f.profile?.username,
-    display_name: f.profile?.display_name,
-    avatar_url: f.profile?.avatar_url,
-  }));
+  const followersForBroadcast = useMemo(
+    () => followers.map((f) => ({
+      id: f.id,
+      user_id: f.follower_id,
+      username: f.profile?.username,
+      display_name: f.profile?.display_name,
+      avatar_url: f.profile?.avatar_url,
+    })),
+    [followers]
+  );
+
+  const totalLikesAll = useMemo(
+    () => myPosts.reduce((acc, p) => acc + p.likes_count, 0),
+    [myPosts]
+  );
+  const publicCount = useMemo(() => myPosts.filter((p) => p.is_public).length, [myPosts]);
+  const privateCount = myPosts.length - publicCount;
 
   useEffect(() => {
     if (!user) {
       navigate('/fitila/auth');
     }
   }, [user, navigate]);
+
+  // Lock body scroll while any full-screen modal is open
+  useEffect(() => {
+    const anyOpen = !!avatarPreview || showEditProfile || viewerOpen || showLogoutConfirm;
+    if (anyOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [avatarPreview, showEditProfile, viewerOpen, showLogoutConfirm]);
 
   useEffect(() => {
     announceAction(t('screenProfile'));
@@ -292,15 +315,25 @@ export default function TamTamProfile() {
     }
   };
 
-  const handleSettingPress = (labelKey: string) => {
+  const handleSettingPress = (id: string, labelKey: string) => {
     tamtamFeedback.play('click');
     speakCurrentLang(t(labelKey));
+    if (id === 'notifications') {
+      setShowEditProfile(true);
+    } else if (id === 'language') {
+      const next = currentLang === 'ba' ? 'fr' : 'ba';
+      try { setLanguage(next); } catch {}
+      toast({ title: next === 'ba' ? 'Bààtɔ̀nú' : 'Français' });
+    } else if (id === 'help') {
+      navigate('/fitila/learn');
+    }
   };
 
   const handleLogout = async () => {
     tamtamFeedback.play('click');
+    setShowLogoutConfirm(false);
     await signOut();
-    navigate('/fitila/auth');
+    navigate('/fitila/auth', { replace: true });
   };
 
   if (profileLoading) {
@@ -316,7 +349,7 @@ export default function TamTamProfile() {
       className="h-[100dvh] flex flex-col"
       style={{ background: 'linear-gradient(180deg, hsl(207 60% 97%) 0%, hsl(0 0% 100%) 50%)' }}
     >
-    <div className="flex-1 overflow-y-auto pb-40 scroll-smooth">
+    <div className="flex-1 overflow-y-auto pb-24 scroll-smooth overscroll-contain">
       {/* Hidden file input for avatar */}
       <input
         ref={fileInputRef}
@@ -383,7 +416,7 @@ export default function TamTamProfile() {
         onAvatarClick={handleAvatarClick}
         followersCount={profile?.followers_count ?? followersCount}
         followingCount={profile?.following_count ?? followingCount}
-        likesCount={myPosts.reduce((acc, p) => acc + p.likes_count, 0)}
+        likesCount={totalLikesAll}
         onFollowersClick={() => setShowFollowers(true)}
         onFollowingClick={() => setShowFollowing(true)}
         onLikesClick={() => setActiveTab('stats')}
@@ -434,8 +467,8 @@ export default function TamTamProfile() {
               filter={postFilter}
               onFilterChange={setPostFilter}
               totalCount={myPosts.length}
-              publicCount={myPosts.filter(p => p.is_public).length}
-              privateCount={myPosts.filter(p => !p.is_public).length}
+              publicCount={publicCount}
+              privateCount={privateCount}
             />
             {postsLoading ? (
               <div className="flex justify-center py-12">
@@ -573,7 +606,7 @@ export default function TamTamProfile() {
               {settingsItems.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => handleSettingPress(item.labelKey)}
+                  onClick={() => handleSettingPress(item.id, item.labelKey)}
                   className="w-full bg-white rounded-2xl p-4 border border-[hsl(var(--kuaishou-border))] flex items-center gap-4 active:scale-[0.98] transition-transform"
                 >
                   <span className="text-2xl">{item.icon}</span>
@@ -585,7 +618,7 @@ export default function TamTamProfile() {
 
               {/* Logout button */}
               <button
-                onClick={handleLogout}
+                onClick={() => setShowLogoutConfirm(true)}
                 className="w-full bg-destructive/10 rounded-2xl p-4 flex items-center gap-4 active:scale-[0.98] transition-transform"
               >
                 <LogOut className="w-6 h-6 text-destructive" />
@@ -644,18 +677,63 @@ export default function TamTamProfile() {
         followers={followersForBroadcast}
       />
 
-      <ProfileEditModal
-        isOpen={showEditProfile}
-        onClose={() => setShowEditProfile(false)}
-        profile={profile}
-        onSave={async (updates) => {
-          const result = await updateProfile(updates);
-          if (!result.error) {
-            toast({ title: "✅ Profil mis à jour" });
-          }
-          return result;
-        }}
-      />
+      {showEditProfile && (
+        <ProfileEditModal
+          isOpen={showEditProfile}
+          onClose={() => setShowEditProfile(false)}
+          profile={profile}
+          onSave={async (updates) => {
+            const result = await updateProfile(updates);
+            if (!result.error) {
+              toast({ title: "✅ Profil mis à jour" });
+            }
+            return result;
+          }}
+        />
+      )}
+
+      {/* Logout confirmation */}
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowLogoutConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl p-6 max-w-sm w-full text-center"
+            >
+              <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-destructive/10 flex items-center justify-center">
+                <LogOut className="w-7 h-7 text-destructive" />
+              </div>
+              <h3 className="text-lg font-bold mb-1">{t('logout')}</h3>
+              <p className="text-sm text-muted-foreground mb-5">
+                {t('profile_logout_confirm') || 'Êtes-vous sûr de vouloir vous déconnecter ?'}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 py-3 rounded-2xl bg-muted text-foreground font-medium"
+                >
+                  {t('cancel') || 'Annuler'}
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex-1 py-3 rounded-2xl bg-destructive text-destructive-foreground font-medium"
+                >
+                  {t('logout')}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <MyPostViewerOverlay
         posts={myPosts.filter(p => {
