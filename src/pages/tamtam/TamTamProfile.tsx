@@ -315,15 +315,25 @@ export default function TamTamProfile() {
     }
   };
 
-  const handleSettingPress = (labelKey: string) => {
+  const handleSettingPress = (id: string, labelKey: string) => {
     tamtamFeedback.play('click');
     speakCurrentLang(t(labelKey));
+    if (id === 'notifications') {
+      setShowEditProfile(true);
+    } else if (id === 'language') {
+      const next = currentLang === 'ba' ? 'fr' : 'ba';
+      try { setLang?.(next); } catch {}
+      toast({ title: next === 'ba' ? 'Bààtɔ̀nú' : 'Français' });
+    } else if (id === 'help') {
+      navigate('/fitila/learn');
+    }
   };
 
   const handleLogout = async () => {
     tamtamFeedback.play('click');
+    setShowLogoutConfirm(false);
     await signOut();
-    navigate('/fitila/auth');
+    navigate('/fitila/auth', { replace: true });
   };
 
   if (profileLoading) {
@@ -339,7 +349,7 @@ export default function TamTamProfile() {
       className="h-[100dvh] flex flex-col"
       style={{ background: 'linear-gradient(180deg, hsl(207 60% 97%) 0%, hsl(0 0% 100%) 50%)' }}
     >
-    <div className="flex-1 overflow-y-auto pb-40 scroll-smooth">
+    <div className="flex-1 overflow-y-auto pb-24 scroll-smooth overscroll-contain">
       {/* Hidden file input for avatar */}
       <input
         ref={fileInputRef}
@@ -406,7 +416,7 @@ export default function TamTamProfile() {
         onAvatarClick={handleAvatarClick}
         followersCount={profile?.followers_count ?? followersCount}
         followingCount={profile?.following_count ?? followingCount}
-        likesCount={myPosts.reduce((acc, p) => acc + p.likes_count, 0)}
+        likesCount={totalLikesAll}
         onFollowersClick={() => setShowFollowers(true)}
         onFollowingClick={() => setShowFollowing(true)}
         onLikesClick={() => setActiveTab('stats')}
@@ -457,8 +467,8 @@ export default function TamTamProfile() {
               filter={postFilter}
               onFilterChange={setPostFilter}
               totalCount={myPosts.length}
-              publicCount={myPosts.filter(p => p.is_public).length}
-              privateCount={myPosts.filter(p => !p.is_public).length}
+              publicCount={publicCount}
+              privateCount={privateCount}
             />
             {postsLoading ? (
               <div className="flex justify-center py-12">
@@ -596,7 +606,7 @@ export default function TamTamProfile() {
               {settingsItems.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => handleSettingPress(item.labelKey)}
+                  onClick={() => handleSettingPress(item.id, item.labelKey)}
                   className="w-full bg-white rounded-2xl p-4 border border-[hsl(var(--kuaishou-border))] flex items-center gap-4 active:scale-[0.98] transition-transform"
                 >
                   <span className="text-2xl">{item.icon}</span>
@@ -608,7 +618,7 @@ export default function TamTamProfile() {
 
               {/* Logout button */}
               <button
-                onClick={handleLogout}
+                onClick={() => setShowLogoutConfirm(true)}
                 className="w-full bg-destructive/10 rounded-2xl p-4 flex items-center gap-4 active:scale-[0.98] transition-transform"
               >
                 <LogOut className="w-6 h-6 text-destructive" />
