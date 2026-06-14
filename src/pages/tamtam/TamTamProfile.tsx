@@ -89,7 +89,7 @@ export default function TamTamProfile() {
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { t, currentLang, setLang } = useTamTamLanguage() as any;
+  const { t, currentLang, setLanguage } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
   const { toast } = useToast();
@@ -322,7 +322,7 @@ export default function TamTamProfile() {
       setShowEditProfile(true);
     } else if (id === 'language') {
       const next = currentLang === 'ba' ? 'fr' : 'ba';
-      try { setLang?.(next); } catch {}
+      try { setLanguage(next); } catch {}
       toast({ title: next === 'ba' ? 'Bààtɔ̀nú' : 'Français' });
     } else if (id === 'help') {
       navigate('/fitila/learn');
