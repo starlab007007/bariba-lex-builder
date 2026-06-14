@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -32,19 +32,8 @@ export function useTamTamProfile(userId?: string) {
 
   const targetUserId = userId || user?.id;
 
-  useEffect(() => {
-    if (!targetUserId) {
-      setProfile(null);
-      setLoading(false);
-      return;
-    }
-
-    fetchProfile();
-  }, [targetUserId]);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     if (!targetUserId) return;
-    
     try {
       setLoading(true);
       const { data, error: fetchError } = await supabase
@@ -52,17 +41,40 @@ export function useTamTamProfile(userId?: string) {
         .select('*')
         .eq('user_id', targetUserId)
         .maybeSingle();
-
       if (fetchError) throw fetchError;
-      
       setProfile(data as TamTamProfile);
     } catch (err: any) {
-      console.error('Error fetching profile:', err);
+      console.error('[useTamTamProfile] fetch error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [targetUserId]);
+
+  useEffect(() => {
+    if (!targetUserId) {
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+    fetchProfile();
+
+    // Realtime: keep profile in sync if updated elsewhere (other tab, edit modal, etc.)
+    const channel = supabase
+      .channel(`tamtam_profile_${targetUserId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'tamtam_profiles', filter: `user_id=eq.${targetUserId}` },
+        (payload) => {
+          setProfile((prev) => ({ ...(prev || {} as TamTamProfile), ...(payload.new as TamTamProfile) }));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [targetUserId, fetchProfile]);
 
   const updateProfile = async (updates: Partial<TamTamProfile>) => {
     if (!user || !profile) return { error: 'Not authenticated' };
