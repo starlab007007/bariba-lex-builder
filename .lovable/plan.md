@@ -1,57 +1,83 @@
 ## Objectif
 
-Produire 5 vidéos MP4 démos (~15s, 1080×1920 portrait) en mockup iPhone réaliste, une par module Fitila, avec interactions simulées via curseur animé.
+Diagnostiquer la plateforme, corriger les bugs visibles surtout sur **profil + connexion + déconnexion**, et rendre la page profil fluide.
 
-## Livrables
+## Diagnostic (constats faits dans le code)
 
-| # | Fichier | Module | Scénario |
-|---|---------|--------|----------|
-| 1 | `fitila-demo-dictionnaire.mp4` | Dictionnaire | Recherche "Mardi" FR→BA → "Talaata" + audio |
-| 2 | `fitila-demo-traducteur.mp4` | Traducteur IA | "Comment vas-tu ?" → "A wãa kpa?" + démo 5 boutons (texte/audio/photo/coller/document) |
-| 3 | `fitila-demo-classe.mp4` | Classe | Niveau 1 → Leçon → Nim avec waveform audio |
-| 4 | `fitila-demo-fitila-tem-ia.mp4` | Fitila Tem IA | Question "Saria gbiika gari mba?" → réponse + source |
-| 5 | `fitila-demo-apprendre.mp4` | Apprendre | FR → Salutations & politesse → mini quiz + confettis |
+### 1. Connexion (`TamTamPhoneAuth.tsx`)
+- `useEffect` redirige vers `/fitila/social` dès que `user` existe → si on arrive sur `/fitila/auth` après un logout incomplet, on est ramené tout de suite (boucle).
+- Après login PIN, on fait `supabase.auth.getUser()` une 2ᵉ fois pour `security_answers` → délai inutile, écran figé sur "Connexion...".
+- `pin-login` : si `signInWithPassword` échoue, on vide juste `pin` mais l'input caché ne reprend pas le focus → on doit recliquer.
+- `handlePhoneSubmit` : si la requête `tamtam_profiles` échoue (réseau), on bascule en mode "nouveau" → bug : un utilisateur existant peut recréer un compte.
 
-## Approche technique
+### 2. Déconnexion (`AuthContext.signOut` + `TamTamProfile.handleLogout`)
+- `signOut()` ne propage pas d'erreur, et `handleLogout` redirige toujours vers `/fitila/auth` même si la session locale est restée → l'auto-redirect côté Auth renvoie sur `/fitila/social`.
+- Aucun `await` sur la mise à jour de l'état admin → `isAdmin` peut rester `true` brièvement.
+- `localStorage` Supabase pas nettoyé pour les caches custom (profil, follows) → infos persistent visuellement après logout.
 
-- **Stack** : Remotion + React + Tailwind, rendu headless via `scripts/render-remotion.mjs`
-- **Format** : 1080×1920 @ 30fps, 450 frames (15s) par démo
-- **Mockup** : `<PhoneFrame>` réutilisable (iPhone 14, notch, status bar, ombre, fond dégradé)
-- **Animations** : `useCurrentFrame()` + `interpolate()`/`spring()` uniquement (pas de CSS transitions)
-- **Curseur** : `<AnimatedCursor>` avec waypoints + ripples au tap
-- **Données** : reproduction visuelle fidèle des écrans Fitila (couleurs, icônes Lucide, layouts lus depuis `src/pages/fitila/*`). Pas d'appels live aux edge functions (rendu déterministe, réponses pré-écrites correspondant à la réalité de la plateforme).
-- **Polices** : `@remotion/google-fonts/Inter`
+### 3. Page Profil (`TamTamProfile.tsx`)
+- Trop d'animations `motion.div` parallèles (badges, stats, stories) → jank sur mobile.
+- `vocalStats` recalculé à chaque render (pas de `useMemo`).
+- `followersForBroadcast` recalculé à chaque render.
+- Avatar preview modal fixe en `z-50` mais le scroll de fond n'est pas verrouillé → scroll fantôme.
+- `pb-40` sur le scroll wrapper crée une grosse zone vide en bas → look "page cassée".
+- `useTamTamProfile` ne s'abonne pas aux changements realtime → après edit, on affiche les anciennes valeurs jusqu'à refetch manuel.
+- `ProfileEditModal` n'est pas démonté entre ouvertures → état résiduel.
+- Boutons "Paramètres" (notifications, langue, aide) → ne font qu'un toast vocal, pas d'action réelle → utilisateur pense que c'est cassé.
 
-## Structure projet (existante, à finaliser)
+### 4. Routing / garde
+- `ProtectedRoute` redirige vers `/fitila/auth` mais après login on va vers `/fitila/social` (jamais vers la page demandée). Pas de `redirect` param respecté.
+
+## Corrections
+
+### Auth & contexte
+1. `AuthContext.signOut` : 
+   - `await supabase.auth.signOut({ scope: 'local' })` puis reset explicite `setUser(null)`, `setSession(null)`, `setIsAdmin(false)`.
+   - Retourner `{ error }` pour que l'appelant sache.
+   - Nettoyer les caches React Query éventuels (si présents) + clés `tamtam:*` du localStorage.
+2. `TamTamPhoneAuth` :
+   - Ne rediriger via `useEffect` que si `step === 'phone'` (sinon laisse finir le flow).
+   - Sur erreur PIN : `pin=''` + `pinInputRef.current?.focus()`.
+   - Sur erreur réseau dans `handlePhoneSubmit` : toast d'erreur + rester sur `phone` (ne pas basculer en `name`).
+   - Supprimer le second `getUser()` post-login : utiliser directement la session.
+3. `ProtectedRoute` : passer `?redirect=<from>` et le respecter après login.
+
+### Page Profil — fluidité
+4. `useMemo` pour `vocalStats`, `followersForBroadcast`, `myStories`.
+5. Réduire les animations : un seul `motion.div` parent avec `staggerChildren`, pas un par carte.
+6. Remplacer `pb-40` par `pb-24` et laisser le layout calculer la hauteur (`h-[100dvh]` + `flex-1`).
+7. Verrouiller `body { overflow: hidden }` quand un modal plein écran est ouvert (avatar preview, edit, viewer).
+8. `useTamTamProfile` : ajouter un canal realtime `tamtam_profiles` filtré sur `user_id`, mettre à jour le state local après `updateProfile` (déjà fait) + refetch sur reconnect.
+9. Démonter `ProfileEditModal` quand fermé (`{showEditProfile && <ProfileEditModal ... />}`).
+10. Brancher les 3 boutons paramètres :
+    - `notifications` → ouvrir `ProfileEditModal` onglet notifications (ou route existante)
+    - `language` → ouvrir le sélecteur `TamTamLanguageContext`
+    - `help` → naviguer vers `/fitila/learn` (page d'aide existante)
+11. Bouton **Déconnexion** : afficher une confirmation simple (dialog) avant `signOut`, puis `navigate('/fitila/auth', { replace: true })` + `window.location.reload()` si la session locale persiste.
+
+### Diagnostic global (rapide)
+12. Log centralisé : ajouter `console.warn` propres dans `AuthContext` et `useTamTamProfile` pour tracer login/logout/refetch.
+13. Vérifier qu'aucune route protégée n'utilise `navigate()` pendant le render (déjà corrigé dans `TeacherLayout`, vérifier `ProtectedRoute` et `TamTamProfile`).
+
+## Fichiers touchés
 
 ```
-remotion/
-  package.json, tsconfig.json, bun.lock
-  src/
-    index.ts, Root.tsx
-    components/PhoneFrame.tsx, Cursor.tsx
-    demos/
-      DictionnaireDemo.tsx
-      TraducteurDemo.tsx
-      ClasseDemo.tsx
-      FitilaTemIADemo.tsx
-      ApprendreDemo.tsx
-  scripts/render-remotion.mjs
+src/contexts/AuthContext.tsx
+src/components/ProtectedRoute.tsx
+src/pages/tamtam/TamTamPhoneAuth.tsx
+src/pages/tamtam/TamTamProfile.tsx
+src/hooks/useTamTamProfile.ts
 ```
 
-Les 5 compositions et l'infrastructure Remotion sont déjà scaffoldées (tour précédent). Ce plan couvre :
+## Hors-scope
 
-## Étapes d'exécution
+- Refonte visuelle complète du profil (on garde le design Kuaishou).
+- Refonte des autres modules (dictionnaire, traducteur, classe, etc.) — un audit séparé sera proposé si besoin après ces correctifs.
 
-1. **Vérifier l'installation** : `cd remotion && bun install` + correction binaire compositor musl→gnu + symlinks ffmpeg/ffprobe
-2. **QA visuel** : `bunx remotion still` à frame 100, 250, 400 pour chaque composition → inspection avec `code--view` → ajustement layouts/timings si débordement, texte coupé, ou curseur mal placé
-3. **Rendu des 5 MP4** en série via `node scripts/render-remotion.mjs` (boucle sur les 5 compositions, sortie dans `/mnt/documents/`)
-4. **Vérification finale** : ffprobe sur chaque MP4 (durée 15s, 1080×1920, codec h264)
-5. **Livraison** : 5 balises `<presentation-artifact>` pour téléchargement
+## Validation
 
-## Risques & mitigations
-
-- **Compositor binary** : NixOS nécessite l'override musl ; déjà documenté dans setup
-- **Texte coupé / overflow** : QA frame-by-frame avant rendu complet
-- **Temps de rendu** : ~2 min par vidéo × 5 = 10 min total ; rester sous timeout 600s par appel (rendre une vidéo par appel `code--exec`)
-- **Authenticité des contenus Bariba** : traductions vérifiées contre `src/data/baribaAlphabet.ts` et `learningConfig.ts`
+- Login PIN → arrivée directe sur `/fitila/social` sans écran figé.
+- Logout depuis Profil → arrivée sur `/fitila/auth`, impossible de revenir en arrière avec session active.
+- Refresh sur `/fitila/profile` non connecté → redirigé vers `/fitila/auth`.
+- Scroll de la page Profil fluide (pas de jank visible), pas de zone vide en bas.
+- Edit profil (avatar/bio/nom) → mise à jour immédiate sans rechargement.
