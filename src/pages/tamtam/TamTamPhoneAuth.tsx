@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Phone, ArrowRight, ArrowLeft, Lock, Check, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -84,6 +84,8 @@ export default function TamTamPhoneAuth() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/fitila/social';
   
   const [step, setStep] = useState<Step>('phone');
   const [phoneDigits, setPhoneDigits] = useState('');
@@ -99,8 +101,12 @@ export default function TamTamPhoneAuth() {
   const pinInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (user) navigate('/fitila/social');
-  }, [user, navigate]);
+    // Only auto-redirect when the user lands on the very first step.
+    // Mid-flow (PIN creation, security setup, etc.) we let the flow finish.
+    if (user && step === 'phone') {
+      navigate(redirectTo, { replace: true });
+    }
+  }, [user, step, redirectTo, navigate]);
 
   const formatPhone = (digits: string) => {
     const d = digits.replace(/\D/g, '');
@@ -135,11 +141,17 @@ export default function TamTamPhoneAuth() {
     }
     setIsLoading(true);
     try {
-      const { data: existingProfile } = await supabase
+      const { data: existingProfile, error: lookupError } = await supabase
         .from('tamtam_profiles')
         .select('user_id, display_name')
         .eq('phone_number', fullPhone)
         .maybeSingle();
+
+      if (lookupError) {
+        console.warn('[Auth] lookup failed', lookupError);
+        toast({ title: "Erreur réseau", description: "Vérifiez votre connexion et réessayez", variant: "destructive" });
+        return;
+      }
 
       if (existingProfile) {
         setIsExistingUser(true);
@@ -152,7 +164,7 @@ export default function TamTamPhoneAuth() {
       vibrate([50, 30, 50]);
     } catch (err) {
       console.error(err);
-      setStep('name');
+      toast({ title: "Erreur réseau", description: "Vérifiez votre connexion et réessayez", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -165,7 +177,7 @@ export default function TamTamPhoneAuth() {
     }
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error } = await supabase.auth.signInWithPassword({
         email: emailFromPhone,
         password: pin,
       });
@@ -173,24 +185,28 @@ export default function TamTamPhoneAuth() {
         toast({ title: "PIN incorrect", description: "Vérifiez votre code PIN", variant: "destructive" });
         vibrate([100, 50, 100]);
         setPin('');
+        // Re-focus the hidden input so the user can type immediately
+        setTimeout(() => pinInputRef.current?.focus(), 50);
         return;
       }
       vibrate([50, 30, 50]);
       toast({ title: "Connexion réussie", description: `Bienvenue ${displayName} !` });
-      
-      // Check if user has security setup, if not redirect to setup
-      const { data: secData } = await supabase
-        .from('security_answers')
-        .select('id')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '')
-        .maybeSingle();
-      
-      if (!secData) {
-        setStep('security-setup');
-        return;
+
+      // Check if user has security setup (uses the session we just got — no extra getUser roundtrip)
+      const uid = signInData.user?.id;
+      if (uid) {
+        const { data: secData } = await supabase
+          .from('security_answers')
+          .select('id')
+          .eq('user_id', uid)
+          .maybeSingle();
+        if (!secData) {
+          setStep('security-setup');
+          return;
+        }
       }
-      
-      navigate('/fitila/social');
+
+      navigate(redirectTo, { replace: true });
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
     } finally {
