@@ -59,7 +59,7 @@ const settingsItems = [
 export default function TamTamProfile() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, signOut } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const { profile, loading: profileLoading, updateProfile } = useTamTamProfile();
   const { followersCount, followingCount, followers } = useTamTamFollows();
   const { friendsCount } = useTamTamFriends();
@@ -128,10 +128,10 @@ export default function TamTamProfile() {
   const privateCount = myPosts.length - publicCount;
 
   useEffect(() => {
-    if (!user) {
-      navigate('/fitila/auth');
+    if (!authLoading && !user) {
+      navigate('/fitila/auth', { replace: true });
     }
-  }, [user, navigate]);
+  }, [authLoading, user, navigate]);
 
   // Lock body scroll while any full-screen modal is open
   useEffect(() => {
@@ -340,6 +340,31 @@ export default function TamTamProfile() {
     return (
       <div className="min-h-screen bg-[hsl(var(--kuaishou-bg))] flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-[hsl(var(--kuaishou-primary))] animate-spin" />
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <p className="font-bold text-lg">Profil indisponible</p>
+        <p className="text-sm text-muted-foreground max-w-sm">
+          Votre profil n'a pas pu être chargé. Réessayez ou reconnectez-vous.
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-xl bg-primary text-primary-foreground font-bold"
+          >
+            Réessayer
+          </button>
+          <button
+            onClick={async () => { await signOut(); navigate('/fitila/auth', { replace: true }); }}
+            className="px-4 py-2 rounded-xl border font-bold"
+          >
+            Se reconnecter
+          </button>
+        </div>
       </div>
     );
   }
