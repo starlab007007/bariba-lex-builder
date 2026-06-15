@@ -42,14 +42,37 @@ export function useTamTamProfile(userId?: string) {
         .eq('user_id', targetUserId)
         .maybeSingle();
       if (fetchError) throw fetchError;
-      setProfile(data as TamTamProfile);
+
+      // Self-heal: if no profile row exists for the logged-in user,
+      // create a minimal one so the profile page never stays blank.
+      if (!data && user?.id === targetUserId) {
+        const fallbackUsername = `user_${targetUserId.replace(/-/g, '').slice(0, 6)}`;
+        const { data: created, error: upsertError } = await supabase
+          .from('tamtam_profiles')
+          .upsert(
+            {
+              user_id: targetUserId,
+              username: fallbackUsername,
+              display_name: 'Utilisateur',
+            },
+            { onConflict: 'user_id' }
+          )
+          .select('*')
+          .maybeSingle();
+        if (upsertError) {
+          console.warn('[useTamTamProfile] auto-create failed:', upsertError.message);
+        }
+        setProfile((created ?? null) as TamTamProfile | null);
+      } else {
+        setProfile(data as TamTamProfile);
+      }
     } catch (err: any) {
       console.error('[useTamTamProfile] fetch error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [targetUserId]);
+  }, [targetUserId, user?.id]);
 
   useEffect(() => {
     if (!targetUserId) {

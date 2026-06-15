@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import SafeBoundary from "@/components/common/SafeBoundary";
 import React, { Suspense, lazy } from "react";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -125,7 +126,7 @@ const App = () => (
                 <Route path="templates" element={<TamTamTemplates />} />
                 <Route path="griot-studio" element={<GriotStudioPage />} />
                 <Route path="sos" element={<TamTamSOS />} />
-                <Route path="profile" element={<TamTamProfile />} />
+                <Route path="profile" element={<ProtectedRoute><SafeBoundary label="Profil"><TamTamProfile /></SafeBoundary></ProtectedRoute>} />
                 <Route path="dictionary" element={<TamTamDictionary />} />
                 <Route path="learn" element={<FitilaLearn />} />
                 <Route path="classe" element={<FitilaClasse />} />
