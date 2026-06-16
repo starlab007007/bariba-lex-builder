@@ -97,6 +97,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
+            <SafeBoundary label="Application">
             <Routes>
               {/* Redirect root to FITILA */}
               <Route path="/" element={<Navigate to="/fitila" replace />} />
@@ -179,6 +180,7 @@ const App = () => (
               />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </SafeBoundary>
           </Suspense>
         </BrowserRouter>
       </AuthProvider>

@@ -347,7 +347,11 @@ function AppContent() {
       <AppTourProvider>
         <div className="fixed inset-0 w-full h-full overflow-hidden kuaishou-bg">
           <SideMenuDrawer isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
-          <main className="w-full h-full overflow-hidden"><Outlet /></main>
+          <main className="w-full h-full overflow-hidden">
+            <SafeBoundary label="Page Fitila">
+              <Outlet />
+            </SafeBoundary>
+          </main>
           <AdminFloatingButton />
         </div>
       </AppTourProvider>

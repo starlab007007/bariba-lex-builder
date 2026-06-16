@@ -38,6 +38,20 @@ export default class SafeBoundary extends Component<Props, State> {
     } catch {
       /* ignore secondary failures */
     }
+    try {
+      window.dispatchEvent(
+        new CustomEvent('safe-boundary-error', {
+          detail: {
+            label: this.props.label ?? null,
+            message: error.message,
+            stack: error.stack,
+            componentStack: info.componentStack,
+          },
+        })
+      );
+    } catch {
+      /* ignore */
+    }
   }
 
   reset = () => this.setState({ error: null });
