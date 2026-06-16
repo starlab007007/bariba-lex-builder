@@ -181,15 +181,30 @@ async function synthesizeSpeech(text: string): Promise<{ audio_url: string; erro
  * Trouve ou crée le profil IA
  */
 async function getOrCreateAIProfile(db: any): Promise<string | null> {
-  // Chercher le profil existant
+  // Chercher le profil existant (par flag is_ai_profile, peu importe le username exact)
   const { data: existing } = await db
     .from("tamtam_profiles")
     .select("user_id")
-    .eq("username", AI_PROFILE_USERNAME)
     .eq("is_ai_profile", true)
+    .limit(1)
     .maybeSingle();
 
   if (existing?.user_id) return existing.user_id;
+
+  // Fallback: chercher par username
+  const { data: byName } = await db
+    .from("tamtam_profiles")
+    .select("user_id")
+    .ilike("username", `${AI_PROFILE_USERNAME}%`)
+    .limit(1)
+    .maybeSingle();
+
+  if (byName?.user_id) {
+    await db.from("tamtam_profiles")
+      .update({ is_ai_profile: true, is_verified: true })
+      .eq("user_id", byName.user_id);
+    return byName.user_id;
+  }
 
   // Créer un user auth fictif via admin API
   const { data: newUser, error: userError } = await db.auth.admin.createUser({
@@ -201,6 +216,19 @@ async function getOrCreateAIProfile(db: any): Promise<string | null> {
 
   if (userError || !newUser?.user?.id) {
     console.error("[super-ia] Failed to create auth user:", userError);
+    // Si l'utilisateur existe déjà, le récupérer via listUsers
+    try {
+      const { data: list } = await db.auth.admin.listUsers();
+      const found = list?.users?.find((u: any) => u.email === "fitila-ia-bot@fitila.app");
+      if (found?.id) {
+        await db.from("tamtam_profiles")
+          .update({ is_ai_profile: true, is_verified: true, display_name: "Fitila IA 🤖" })
+          .eq("user_id", found.id);
+        return found.id;
+      }
+    } catch (e) {
+      console.error("[super-ia] listUsers fallback failed:", e);
+    }
     return null;
   }
 
