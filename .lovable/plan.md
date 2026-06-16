@@ -1,97 +1,73 @@
-# Fix: page blanche sur /fitila/profile en production
+# Diagnostic /fitila/profile (page blanche en production)
 
-## Diagnostic
+## Constat
 
-La route `/fitila/profile` est définie dans `src/App.tsx` (ligne 128) **sans** `ProtectedRoute`, contrairement aux routes `/fitila/teacher`, `/fitila/classe/...`. Trois causes combinées produisent la page blanche :
+Le code source actuel contient **déjà** tous les correctifs validés lors des tours précédents :
 
-1. **Race condition d'authentification (cause principale)**
-   `TamTamProfile` redirige via `useEffect` dès que `user` est `null`, sans attendre `AuthContext.loading`. Sur un rafraîchissement direct de `/fitila/profile` (cas production), `user` est transitoirement `null` pendant que Supabase restaure la session → la page se vide avant que la session ne revienne, puis reste blanche si la redirection se croise avec le re-render.
+- `src/App.tsx` ligne 129 — la route est `<ProtectedRoute><SafeBoundary label="Profil"><TamTamProfile /></SafeBoundary></ProtectedRoute>`
+- `src/pages/tamtam/TamTamProfile.tsx` — garde `if (!profile)` (ligne 347) + redirection conditionnée sur `authLoading` (ligne 130)
+- `src/hooks/useTamTamProfile.ts` — auto-création de la ligne `tamtam_profiles` manquante + nom de channel Realtime unique (`Math.random()` suffix)
+- `src/components/ProtectedRoute.tsx` — passe `?redirect=...` quand l'utilisateur est anonyme
+- `src/contexts/AuthContext.tsx` — utilise `onAuthStateChange` + `getSession()` au montage
 
-2. **Aucun garde quand `profile` est `null`**
-   `useTamTamProfile` renvoie `loading=false` puis `profile=null` quand la ligne `tamtam_profiles` n'existe pas (utilisateur créé sans passer par le trigger, ou import). Le composant rend ensuite `KuaishouProfileHeader`, `KuaishouStatsGrid`, etc. avec `profile?.xxx` partout — un sous-composant (par ex. accès à `profile.username` non-optionnel) **crash** → React démonte tout l'arbre → écran blanc (pas d'`ErrorBoundary` autour de la route).
+## Analyse des logs
 
-3. **Route non protégée**
-   Un visiteur non connecté qui ouvre directement le lien voit aussi une page blanche au lieu d'être redirigé vers `/fitila/auth` proprement.
+- **Logs Auth (Supabase)** : ✅ Connexion phone token réussie pour l'utilisateur `d562a2ba…`, `request_id 019ed053…/user → 200`. L'auth fonctionne côté backend.
+- **Logs DB** : 2 erreurs RLS/FK sans rapport (`video_engagements`), aucune erreur liée à `tamtam_profiles`.
+- **Console client** (preview Lovable, équivalent du build prod) :
+  - `[FITILA i18n] Failed to load translations: Failed to fetch` — non bloquant, le contexte met `translationsLoaded=true` même en erreur, `t()` retombe sur la clé.
+  - `[VideoFeedCard] play() failed: NotAllowedError/AbortError` — sans impact sur /profile.
+  - **Aucune erreur React, aucun crash sur /fitila/profile.**
 
-Les routes dynamiques `/fitila/profile/:userId` fonctionnent car elles utilisent `TamTamPublicProfile` (autre composant, autre logique de chargement basée sur l'`userId` de l'URL — pas de dépendance à la session).
+## Cause la plus probable de la page blanche sur `https://fitila.bj/fitila/profile`
+
+Les correctifs ne sont pas dans le bundle servi par `fitila.bj`. Le manifeste prod référence `assets/index-CxDBvgs0.js` et `assets/TamTamSocial-14fqku3V.js` — un build antérieur à l'ajout du `ProtectedRoute`, du `SafeBoundary` et du guard `!profile`. **Il faut re-déployer.**
+
+En complément, il reste deux trous résiduels que le déploiement actuel ne couvre pas et qui peuvent provoquer un blanc total même après re-déploiement :
+
+1. **Erreur au-dessus de `SafeBoundary`** — un crash dans `FitilaApp` (providers `FitilaLanguageProvider`, `AudioDescriptionProvider`, `AppTourProvider`, `SideMenuDrawer`, `AdminFloatingButton`) ou dans `ProtectedRoute` n'est attrapé par aucun boundary → l'arbre entier se démonte → blanc.
+2. **Layout figé `fixed inset-0 overflow-hidden`** dans `AppContent` (ligne 348) : si `<Outlet/>` rend une page qui throw juste après le mount (mais après le premier render — donc avant que `SafeBoundary` ait monté son state), on peut voir un flash vide. Peu probable mais facile à blinder.
 
 ## Correctifs
 
-### 1. Protéger la route
-`src/App.tsx` ligne 128 :
-```tsx
-<Route path="profile" element={<ProtectedRoute><TamTamProfile /></ProtectedRoute>} />
-```
-Cela élimine la race : `ProtectedRoute` attend déjà `loading` avant de décider.
+### 1. Re-déployer la prod
+Action manuelle côté plateforme (`https://fitila.bj`) : déclencher un nouveau build et déploiement depuis la dernière version Lovable. Sans cela, **les correctifs précédents n'atteignent pas l'utilisateur**.
 
-### 2. Entourer d'un `SafeBoundary`
-Toujours dans `App.tsx`, envelopper l'élément :
+### 2. `SafeBoundary` autour du layout `FitilaApp` (`src/pages/fitila/FitilaApp.tsx`)
+Envelopper `<Outlet />` dans un `SafeBoundary label="Page Fitila">` afin qu'un crash dans n'importe quelle route enfant (`profile`, `social`, `learn`, …) affiche une carte d'erreur au lieu d'un blanc :
+
 ```tsx
-<ProtectedRoute>
-  <SafeBoundary label="Profil">
-    <TamTamProfile />
+<main className="w-full h-full overflow-hidden">
+  <SafeBoundary label="Page Fitila">
+    <Outlet />
   </SafeBoundary>
-</ProtectedRoute>
-```
-Plus jamais d'écran blanc total : le boundary affiche une carte d'erreur + bouton "Réessayer".
-
-### 3. Garde `profile === null` dans `TamTamProfile.tsx`
-Après le bloc `if (profileLoading)` (ligne 339), ajouter :
-```tsx
-if (!profile) {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center">
-      <p className="font-bold">Profil indisponible</p>
-      <p className="text-sm text-muted-foreground">
-        Votre profil n'a pas pu être chargé. Réessayez ou reconnectez-vous.
-      </p>
-      <div className="flex gap-2">
-        <button onClick={() => window.location.reload()} className="px-4 py-2 rounded-xl bg-primary text-primary-foreground">
-          Réessayer
-        </button>
-        <button onClick={async () => { await signOut(); navigate('/fitila/auth', { replace: true }); }} className="px-4 py-2 rounded-xl border">
-          Se reconnecter
-        </button>
-      </div>
-    </div>
-  );
-}
+</main>
 ```
 
-### 4. Auto-création de la ligne `tamtam_profiles` si manquante
-Dans `useTamTamProfile.fetchProfile`, si `data` est `null` et `user` est l'utilisateur connecté courant, faire un `upsert` minimal :
+### 3. `SafeBoundary` racine dans `App.tsx`
+Envelopper l'arbre `<Routes>` dans un dernier `SafeBoundary label="Application">` pour qu'aucun throw au niveau providers/router ne produise un écran blanc total.
+
+### 4. Logger côté client les blancs réels
+Dans `src/components/common/SafeBoundary.tsx`, ajouter un `console.error` structuré déjà présent + envoyer un `window.dispatchEvent(new CustomEvent('safe-boundary-error', {detail:{label, message}}))` pour faciliter le diagnostic prod via DevTools (sans nouveau service).
+
+### 5. Vérifier la livraison du chunk `TamTamProfile`
+Le bug fetch dynamique vu précédemment (`Failed to fetch dynamically imported module`) revient si le serveur statique `fitila.bj` purge mal son cache lors du rolling deploy. Ajouter dans `vite.config.ts` (s'il n'y est pas déjà) :
+
 ```ts
-if (!data && targetUserId === user?.id) {
-  const fallbackUsername = `user_${targetUserId.replace(/-/g,'').slice(0,6)}`;
-  const { data: created } = await supabase
-    .from('tamtam_profiles')
-    .upsert({ user_id: targetUserId, username: fallbackUsername, display_name: 'Utilisateur' }, { onConflict: 'user_id' })
-    .select('*')
-    .maybeSingle();
-  setProfile(created as TamTamProfile);
-  return;
-}
-setProfile(data as TamTamProfile);
+build: { rollupOptions: { output: { manualChunks: undefined } } }
 ```
-Couvre les comptes créés hors trigger (anciens utilisateurs, imports).
+ou conserver le chunking et s'assurer que la stratégie cache `nginx.conf` envoie `Cache-Control: no-cache` sur `index.html` (à vérifier dans `nginx.conf` du projet).
 
-### 5. Ne plus rediriger pendant `auth.loading`
-Dans `TamTamProfile.tsx`, remplacer le `useEffect` ligne 130 :
-```ts
-const { user, loading: authLoading, signOut } = useAuth();
-useEffect(() => {
-  if (!authLoading && !user) navigate('/fitila/auth', { replace: true });
-}, [authLoading, user, navigate]);
-```
-Filet de sécurité même si ProtectedRoute est retiré plus tard.
+## Fichiers à modifier
 
-## Fichiers modifiés
-- `src/App.tsx` — wrap route profil (`ProtectedRoute` + `SafeBoundary`)
-- `src/pages/tamtam/TamTamProfile.tsx` — guard `!profile`, respect `authLoading`
-- `src/hooks/useTamTamProfile.ts` — upsert auto si profil manquant
+- `src/pages/fitila/FitilaApp.tsx` — wrapper `SafeBoundary` autour de `<Outlet/>`
+- `src/App.tsx` — wrapper `SafeBoundary` autour de `<Routes>`
+- `src/components/common/SafeBoundary.tsx` — dispatch d'event pour télémétrie
+- `nginx.conf` — vérifier `add_header Cache-Control "no-cache"` sur `index.html` (pas sur les chunks `assets/*`)
 
 ## Validation
-- Test direct `/fitila/profile` non connecté → redirection `/fitila/auth?redirect=...`
-- Test rafraîchissement `/fitila/profile` connecté → spinner puis profil (plus de blanc)
-- Test compte sans ligne `tamtam_profiles` → ligne créée à la volée, profil affiché
-- Vérifier console : plus d'erreurs `Cannot read properties of null`
+
+1. Re-déployer fitila.bj puis ouvrir `https://fitila.bj/fitila/profile` non connecté → redirection vers `/fitila/auth?redirect=%2Ffitila%2Fprofile`.
+2. Connecté avec un compte **sans** ligne `tamtam_profiles` → la ligne est créée à la volée, le profil s'affiche.
+3. Forcer une erreur (ex. couper le réseau pendant le mount) → carte rouge `SafeBoundary` au lieu d'un blanc.
+4. Vérifier dans l'inspecteur réseau que `index.html` répond `Cache-Control: no-cache` et que les `assets/*.js` répondent `Cache-Control: public, max-age=31536000, immutable`.
