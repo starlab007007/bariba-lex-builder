@@ -1,73 +1,47 @@
-# Diagnostic /fitila/profile (page blanche en production)
+Diagnostic identifié pour `/fitila/profile` en production
 
-## Constat
+Problème principal
+- La page profil plante à cause de l’abonnement temps réel du hook `useTamTamProfile`.
+- L’erreur visible indique qu’un callback `postgres_changes` est ajouté sur un canal déjà abonné :
+  `cannot add postgres_changes callbacks ... after subscribe()`.
+- Le hook `useTamTamProfile()` est utilisé à plusieurs endroits autour de la même route :
+  - menu global Fitila (`FitilaApp` / drawer),
+  - page profil (`TamTamProfile`),
+  - autres écrans Fitila.
+- En production, cela peut créer plusieurs abonnements pour le même profil utilisateur, ou réutiliser un canal déjà souscrit, puis faire tomber la route entière via `SafeBoundary`.
 
-Le code source actuel contient **déjà** tous les correctifs validés lors des tours précédents :
+Autres signaux observés
+- Le backend est sain : base disponible, pool OK, connexions faibles, pas de logs backend récents corrélés à `tamtam_profiles` ou Realtime.
+- Les logs navigateur montrent aussi `Failed to fetch` pour les traductions `i18n-platform.json`, ce qui confirme un second problème global de connectivité/cache en production ou WebView.
+- La route non connectée redirige correctement vers l’écran d’authentification, donc le crash concerne surtout l’état connecté/profil.
 
-- `src/App.tsx` ligne 129 — la route est `<ProtectedRoute><SafeBoundary label="Profil"><TamTamProfile /></SafeBoundary></ProtectedRoute>`
-- `src/pages/tamtam/TamTamProfile.tsx` — garde `if (!profile)` (ligne 347) + redirection conditionnée sur `authLoading` (ligne 130)
-- `src/hooks/useTamTamProfile.ts` — auto-création de la ligne `tamtam_profiles` manquante + nom de channel Realtime unique (`Math.random()` suffix)
-- `src/components/ProtectedRoute.tsx` — passe `?redirect=...` quand l'utilisateur est anonyme
-- `src/contexts/AuthContext.tsx` — utilise `onAuthStateChange` + `getSession()` au montage
+Plan de correction
 
-## Analyse des logs
+1. Stabiliser `useTamTamProfile`
+- Supprimer ou rendre optionnel l’abonnement temps réel dans `useTamTamProfile`.
+- Par défaut, charger le profil via requête simple et mise à jour locale après `updateProfile`.
+- Éviter qu’un hook utilisé dans plusieurs composants crée plusieurs canaux Realtime identiques.
 
-- **Logs Auth (Supabase)** : ✅ Connexion phone token réussie pour l'utilisateur `d562a2ba…`, `request_id 019ed053…/user → 200`. L'auth fonctionne côté backend.
-- **Logs DB** : 2 erreurs RLS/FK sans rapport (`video_engagements`), aucune erreur liée à `tamtam_profiles`.
-- **Console client** (preview Lovable, équivalent du build prod) :
-  - `[FITILA i18n] Failed to load translations: Failed to fetch` — non bloquant, le contexte met `translationsLoaded=true` même en erreur, `t()` retombe sur la clé.
-  - `[VideoFeedCard] play() failed: NotAllowedError/AbortError` — sans impact sur /profile.
-  - **Aucune erreur React, aucun crash sur /fitila/profile.**
+2. Empêcher le crash de la route profil
+- Transformer les erreurs de profil en état contrôlé (`error`) au lieu de laisser Realtime lancer une exception qui déclenche `SafeBoundary`.
+- Afficher un message clair : “Impossible de charger le profil. Vérifiez votre connexion puis réessayez.”
+- Garder le bouton `Réessayer` fonctionnel via `refetch`.
 
-## Cause la plus probable de la page blanche sur `https://fitila.bj/fitila/profile`
+3. Réduire les appels réseau inutiles sur `/fitila/profile`
+- Éviter que le drawer global charge le profil tant que le menu n’est pas ouvert, ou utiliser un profil déjà chargé.
+- Cela réduit les doublons : profil, rôles, notifications, abonnements/friends.
 
-Les correctifs ne sont pas dans le bundle servi par `fitila.bj`. Le manifeste prod référence `assets/index-CxDBvgs0.js` et `assets/TamTamSocial-14fqku3V.js` — un build antérieur à l'ajout du `ProtectedRoute`, du `SafeBoundary` et du guard `!profile`. **Il faut re-déployer.**
+4. Améliorer les erreurs réseau visibles
+- Brancher `showErrorToast()` sur les échecs de chargement/mise à jour profil, avatar, bio audio, followers/friends si la route est hors ligne.
+- Message attendu : “Pas de connexion Internet — Vérifiez votre réseau puis réessayez.”
 
-En complément, il reste deux trous résiduels que le déploiement actuel ne couvre pas et qui peuvent provoquer un blanc total même après re-déploiement :
+5. Corriger le cache i18n production/offline
+- Remplacer le fetch `i18n-platform.json?v=Date.now()` par une stratégie compatible PWA/offline.
+- Ajouter un fallback local si le fichier ne peut pas être chargé.
+- Cela évite des erreurs console inutiles et améliore l’APK hors ligne.
 
-1. **Erreur au-dessus de `SafeBoundary`** — un crash dans `FitilaApp` (providers `FitilaLanguageProvider`, `AudioDescriptionProvider`, `AppTourProvider`, `SideMenuDrawer`, `AdminFloatingButton`) ou dans `ProtectedRoute` n'est attrapé par aucun boundary → l'arbre entier se démonte → blanc.
-2. **Layout figé `fixed inset-0 overflow-hidden`** dans `AppContent` (ligne 348) : si `<Outlet/>` rend une page qui throw juste après le mount (mais après le premier render — donc avant que `SafeBoundary` ait monté son state), on peut voir un flash vide. Peu probable mais facile à blinder.
-
-## Correctifs
-
-### 1. Re-déployer la prod
-Action manuelle côté plateforme (`https://fitila.bj`) : déclencher un nouveau build et déploiement depuis la dernière version Lovable. Sans cela, **les correctifs précédents n'atteignent pas l'utilisateur**.
-
-### 2. `SafeBoundary` autour du layout `FitilaApp` (`src/pages/fitila/FitilaApp.tsx`)
-Envelopper `<Outlet />` dans un `SafeBoundary label="Page Fitila">` afin qu'un crash dans n'importe quelle route enfant (`profile`, `social`, `learn`, …) affiche une carte d'erreur au lieu d'un blanc :
-
-```tsx
-<main className="w-full h-full overflow-hidden">
-  <SafeBoundary label="Page Fitila">
-    <Outlet />
-  </SafeBoundary>
-</main>
-```
-
-### 3. `SafeBoundary` racine dans `App.tsx`
-Envelopper l'arbre `<Routes>` dans un dernier `SafeBoundary label="Application">` pour qu'aucun throw au niveau providers/router ne produise un écran blanc total.
-
-### 4. Logger côté client les blancs réels
-Dans `src/components/common/SafeBoundary.tsx`, ajouter un `console.error` structuré déjà présent + envoyer un `window.dispatchEvent(new CustomEvent('safe-boundary-error', {detail:{label, message}}))` pour faciliter le diagnostic prod via DevTools (sans nouveau service).
-
-### 5. Vérifier la livraison du chunk `TamTamProfile`
-Le bug fetch dynamique vu précédemment (`Failed to fetch dynamically imported module`) revient si le serveur statique `fitila.bj` purge mal son cache lors du rolling deploy. Ajouter dans `vite.config.ts` (s'il n'y est pas déjà) :
-
-```ts
-build: { rollupOptions: { output: { manualChunks: undefined } } }
-```
-ou conserver le chunking et s'assurer que la stratégie cache `nginx.conf` envoie `Cache-Control: no-cache` sur `index.html` (à vérifier dans `nginx.conf` du projet).
-
-## Fichiers à modifier
-
-- `src/pages/fitila/FitilaApp.tsx` — wrapper `SafeBoundary` autour de `<Outlet/>`
-- `src/App.tsx` — wrapper `SafeBoundary` autour de `<Routes>`
-- `src/components/common/SafeBoundary.tsx` — dispatch d'event pour télémétrie
-- `nginx.conf` — vérifier `add_header Cache-Control "no-cache"` sur `index.html` (pas sur les chunks `assets/*`)
-
-## Validation
-
-1. Re-déployer fitila.bj puis ouvrir `https://fitila.bj/fitila/profile` non connecté → redirection vers `/fitila/auth?redirect=%2Ffitila%2Fprofile`.
-2. Connecté avec un compte **sans** ligne `tamtam_profiles` → la ligne est créée à la volée, le profil s'affiche.
-3. Forcer une erreur (ex. couper le réseau pendant le mount) → carte rouge `SafeBoundary` au lieu d'un blanc.
-4. Vérifier dans l'inspecteur réseau que `index.html` répond `Cache-Control: no-cache` et que les `assets/*.js` répondent `Cache-Control: public, max-age=31536000, immutable`.
+6. Vérification après correction
+- Recharger `/fitila/profile` en session connectée.
+- Vérifier que le profil s’affiche sans bannière rouge `SafeBoundary`.
+- Tester mode hors ligne : bannière globale + toast clair, sans écran cassé.
+- Vérifier qu’il n’y a plus d’erreur `cannot add postgres_changes callbacks` dans la console.
