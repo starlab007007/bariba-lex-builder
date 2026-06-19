@@ -81,22 +81,6 @@ export function useTamTamProfile(userId?: string) {
       return;
     }
     fetchProfile();
-
-    // Realtime: keep profile in sync if updated elsewhere (other tab, edit modal, etc.)
-    const channel = supabase
-      .channel(`tamtam_profile_${targetUserId}_${Math.random().toString(36).slice(2, 8)}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'tamtam_profiles', filter: `user_id=eq.${targetUserId}` },
-        (payload) => {
-          setProfile((prev) => ({ ...(prev || {} as TamTamProfile), ...(payload.new as TamTamProfile) }));
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [targetUserId, fetchProfile]);
 
   const updateProfile = async (updates: Partial<TamTamProfile>) => {
