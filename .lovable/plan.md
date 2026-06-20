@@ -1,47 +1,41 @@
-Diagnostic identifié pour `/fitila/profile` en production
+## Problème
 
-Problème principal
-- La page profil plante à cause de l’abonnement temps réel du hook `useTamTamProfile`.
-- L’erreur visible indique qu’un callback `postgres_changes` est ajouté sur un canal déjà abonné :
-  `cannot add postgres_changes callbacks ... after subscribe()`.
-- Le hook `useTamTamProfile()` est utilisé à plusieurs endroits autour de la même route :
-  - menu global Fitila (`FitilaApp` / drawer),
-  - page profil (`TamTamProfile`),
-  - autres écrans Fitila.
-- En production, cela peut créer plusieurs abonnements pour le même profil utilisateur, ou réutiliser un canal déjà souscrit, puis faire tomber la route entière via `SafeBoundary`.
+L'erreur `cannot add 'postgres_changes' callbacks for realtime:friendships-realtime after 'subscribe()'` provient de `src/hooks/useTamTamFriends.ts` (et son doublon `bariba-lex-builder/src/hooks/useTamTamFriends.ts`) :
 
-Autres signaux observés
-- Le backend est sain : base disponible, pool OK, connexions faibles, pas de logs backend récents corrélés à `tamtam_profiles` ou Realtime.
-- Les logs navigateur montrent aussi `Failed to fetch` pour les traductions `i18n-platform.json`, ce qui confirme un second problème global de connectivité/cache en production ou WebView.
-- La route non connectée redirige correctement vers l’écran d’authentification, donc le crash concerne surtout l’état connecté/profil.
+- Le canal porte un **nom constant** (`'friendships-realtime'`) → quand le hook est monté sur plusieurs écrans (drawer Fitila + page Profil + autres), Supabase renvoie l'instance déjà `SUBSCRIBED`, et le second `.on('postgres_changes', …)` lance l'exception.
+- Le hook `useTamTamProfile` a déjà été corrigé (Realtime retiré). Il reste à sécuriser **friends** et à appliquer un pattern réutilisable pour éviter la rechute ailleurs.
 
-Plan de correction
+## Correctifs
 
-1. Stabiliser `useTamTamProfile`
-- Supprimer ou rendre optionnel l’abonnement temps réel dans `useTamTamProfile`.
-- Par défaut, charger le profil via requête simple et mise à jour locale après `updateProfile`.
-- Éviter qu’un hook utilisé dans plusieurs composants crée plusieurs canaux Realtime identiques.
+### 1. `src/hooks/useTamTamFriends.ts` — canal unique + ordre strict
 
-2. Empêcher le crash de la route profil
-- Transformer les erreurs de profil en état contrôlé (`error`) au lieu de laisser Realtime lancer une exception qui déclenche `SafeBoundary`.
-- Afficher un message clair : “Impossible de charger le profil. Vérifiez votre connexion puis réessayez.”
-- Garder le bouton `Réessayer` fonctionnel via `refetch`.
+- Construire le canal **dans le `useEffect`**, avec un nom unique : `` `friendships:${user.id}:${Math.random().toString(36).slice(2)}` ``.
+- Enregistrer les deux `.on('postgres_changes', …)` **avant** `.subscribe()` (déjà le cas, à préserver).
+- Utiliser un flag `cancelled` local pour ignorer les callbacks tardifs après démontage.
+- Nettoyage : `supabase.removeChannel(channel)` systématique dans le `return` du `useEffect`.
+- Retirer l'appel `setupRealtime()` séparé : tout reste dans le même `useEffect` pour garantir l'ordre et le cleanup.
 
-3. Réduire les appels réseau inutiles sur `/fitila/profile`
-- Éviter que le drawer global charge le profil tant que le menu n’est pas ouvert, ou utiliser un profil déjà chargé.
-- Cela réduit les doublons : profil, rôles, notifications, abonnements/friends.
+### 2. Nouveau helper `src/hooks/useRealtimeChannel.ts` (optionnel mais recommandé)
 
-4. Améliorer les erreurs réseau visibles
-- Brancher `showErrorToast()` sur les échecs de chargement/mise à jour profil, avatar, bio audio, followers/friends si la route est hors ligne.
-- Message attendu : “Pas de connexion Internet — Vérifiez votre réseau puis réessayez.”
+Petit hook utilitaire qui encapsule le bon pattern (nom unique, ordre `.on()` puis `.subscribe()`, cleanup, flag `cancelled`) pour éviter que d'autres hooks reproduisent l'erreur. Signature :
 
-5. Corriger le cache i18n production/offline
-- Remplacer le fetch `i18n-platform.json?v=Date.now()` par une stratégie compatible PWA/offline.
-- Ajouter un fallback local si le fichier ne peut pas être chargé.
-- Cela évite des erreurs console inutiles et améliore l’APK hors ligne.
+```ts
+useRealtimeChannel(channelKey, [{ event, schema, table, filter, handler }], deps)
+```
 
-6. Vérification après correction
-- Recharger `/fitila/profile` en session connectée.
-- Vérifier que le profil s’affiche sans bannière rouge `SafeBoundary`.
-- Tester mode hors ligne : bannière globale + toast clair, sans écran cassé.
-- Vérifier qu’il n’y a plus d’erreur `cannot add postgres_changes callbacks` dans la console.
+Utilisé uniquement par les nouveaux abonnements ; les hooks existants ne sont pas réécrits dans ce plan, hormis `useTamTamFriends`.
+
+### 3. Synchroniser le doublon `bariba-lex-builder/src/hooks/useTamTamFriends.ts`
+
+Appliquer la même correction (ou supprimer le doublon s'il n'est pas importé — à vérifier rapidement avant l'édition). Sans cela, un build qui pointe vers ce chemin réintroduit le bug.
+
+### 4. Vérification post-correction
+
+- Charger `/fitila/profile` connecté → plus de bandeau rouge ni de message `after 'subscribe()'` dans la console.
+- Naviguer Profil ↔ Drawer ↔ une autre page Fitila plusieurs fois → aucune erreur Realtime, aucun warning de canal déjà abonné.
+- Tester en mode hors-ligne → la bannière offline existante s'affiche, pas de crash Realtime.
+
+## Hors périmètre
+
+- Pas de migration SQL ni passage à `realtime.broadcast_changes()` (sera proposé si le volume de notifications devient un problème).
+- Pas de réécriture des autres hooks Realtime (ex. notifications) tant qu'ils ne déclenchent pas l'erreur.
