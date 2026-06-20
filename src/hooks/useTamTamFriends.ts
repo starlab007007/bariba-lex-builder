@@ -31,18 +31,19 @@ export function useTamTamFriends() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      fetchFriends();
-      const cleanup = setupRealtime();
-      return cleanup;
-    }
-  }, [user]);
-
-  const setupRealtime = () => {
     if (!user) return;
 
+    let cancelled = false;
+    const safeFetch = () => {
+      if (!cancelled) fetchFriends();
+    };
+
+    safeFetch();
+
+    // Unique channel name per mount to avoid reusing an already-SUBSCRIBED channel
+    const channelName = `friendships:${user.id}:${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel('friendships-realtime')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -51,7 +52,7 @@ export function useTamTamFriends() {
           table: 'tamtam_friendships',
           filter: `requester_id=eq.${user.id}`
         },
-        () => fetchFriends()
+        safeFetch
       )
       .on(
         'postgres_changes',
@@ -61,14 +62,15 @@ export function useTamTamFriends() {
           table: 'tamtam_friendships',
           filter: `addressee_id=eq.${user.id}`
         },
-        () => fetchFriends()
+        safeFetch
       )
       .subscribe();
 
     return () => {
+      cancelled = true;
       supabase.removeChannel(channel);
     };
-  };
+  }, [user]);
 
   const fetchFriends = async () => {
     if (!user) return;
