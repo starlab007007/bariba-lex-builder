@@ -10,6 +10,7 @@ https://www.figma.com/design/hMuCnLHeAcpG5NYbWi2uR3
 - Authentification de recette avec telephone `65653468` et mot de passe `123456`.
 - Shell responsive: sidebar desktop, drawer mobile, topbar, recherche globale.
 - Fil social: posts texte/audio/video/template, creation, like, commentaire, partage.
+- Studio createur: texte, audio, video, templates, prompt IA, tags, visibilite, brouillon/publication et moderation.
 - Dictionnaire Bariba-Francais local embarque depuis `assets/data/dictionnaire_ameliore.json`.
 - Detail dictionnaire: phonetique, definition, exemples, ecoute, signalement, contribution.
 - Traducteur FR -> BA / BA -> FR avec fallback offline et point d'integration API.
@@ -39,7 +40,7 @@ Les services sont prepares dans `FitilaServices`:
 Les modules attendus cote backend viennent du parcours React inspecte:
 
 - Supabase Auth / profils: `tamtam_profiles`.
-- Fil social: posts, medias, interactions, commentaires, templates.
+- Fil social et studio createur: posts, medias, interactions, commentaires, templates, tags, visibilite, brouillons et publication programmee.
 - Classe: `classe_student_answers`, `classe_answer_keys`, `classe_grade_weights`, `classe_chapters`.
 - Audio: fonctions Supabase `french-tts`, `transcribe-audio`, services HuggingFace TTS/STT.
 - IA: historique conversationnel, cache local, corpus Tem-IA/foncier avec sources.
@@ -73,9 +74,10 @@ flutter build web --release
 
 Le design suit la maquette Figma et les tokens Flutter:
 
-- Primary: `#FF7A00`
-- Ink: `#101114`
-- Surface: `#F6F2EA`
+- Primary bleu ciel: `#38BDF8`
+- Ink: `#0F172A`
+- Surface: `#F0F9FF`
+- Border: `#BAE6FD`
 - Radius: `8`
 - Font: `Roboto`
 

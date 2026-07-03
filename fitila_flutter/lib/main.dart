@@ -8,9 +8,11 @@ void main() {
   runApp(const FitilaApp());
 }
 
-const _fitilaOrange = Color(0xFFFF7A00);
-const _fitilaInk = Color(0xFF101114);
-const _fitilaSurface = Color(0xFFF6F2EA);
+const _fitilaPrimary = Color(0xFF38BDF8);
+const _fitilaPrimarySoft = Color(0xFFE0F2FE);
+const _fitilaBorder = Color(0xFFBAE6FD);
+const _fitilaInk = Color(0xFF0F172A);
+const _fitilaSurface = Color(0xFFF0F9FF);
 const _supabaseUrl = 'https://pmrhezgnyffiskbaiudb.supabase.co';
 const _baribaLetters = [
   'ɛ',
@@ -51,7 +53,7 @@ class FitilaApp extends StatelessWidget {
         useMaterial3: true,
         fontFamily: 'Roboto',
         colorScheme: ColorScheme.fromSeed(
-          seedColor: _fitilaOrange,
+          seedColor: _fitilaPrimary,
           brightness: Brightness.light,
           surface: _fitilaSurface,
         ),
@@ -71,7 +73,7 @@ class FitilaApp extends StatelessWidget {
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
-            backgroundColor: _fitilaOrange,
+            backgroundColor: _fitilaPrimary,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
@@ -84,15 +86,15 @@ class FitilaApp extends StatelessWidget {
           fillColor: Colors.white,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFFE7DDD0)),
+            borderSide: const BorderSide(color: _fitilaBorder),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFFE7DDD0)),
+            borderSide: const BorderSide(color: _fitilaBorder),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: _fitilaOrange, width: 1.5),
+            borderSide: const BorderSide(color: _fitilaPrimary, width: 1.5),
           ),
         ),
       ),
@@ -173,6 +175,12 @@ class FeedPost {
     required this.kind,
     required this.content,
     required this.accent,
+    this.visibility = 'Public',
+    this.tags = const [],
+    this.template = 'Libre',
+    this.mediaStatus = 'Pret',
+    this.aiAssisted = false,
+    this.allowComments = true,
     this.likes = 0,
     this.comments = 0,
   });
@@ -181,6 +189,12 @@ class FeedPost {
   final String kind;
   final String content;
   final Color accent;
+  final String visibility;
+  final List<String> tags;
+  final String template;
+  final String mediaStatus;
+  final bool aiAssisted;
+  final bool allowComments;
   int likes;
   int comments;
 }
@@ -250,6 +264,7 @@ enum TranslationDirection { frenchToBariba, baribaToFrench }
 
 enum FitilaPage {
   feed,
+  creator,
   dictionary,
   translator,
   ia,
@@ -266,6 +281,7 @@ extension FitilaPageMeta on FitilaPage {
   String get title {
     return switch (this) {
       FitilaPage.feed => 'Fil',
+      FitilaPage.creator => 'Createur',
       FitilaPage.dictionary => 'Dictionnaire',
       FitilaPage.translator => 'Traducteur',
       FitilaPage.ia => 'IA',
@@ -282,6 +298,7 @@ extension FitilaPageMeta on FitilaPage {
   String get description {
     return switch (this) {
       FitilaPage.feed => 'Publications, vidéos, audios et templates',
+      FitilaPage.creator => 'Studio IA de creation de contenu',
       FitilaPage.dictionary => 'Recherche Bariba-Français avec détails',
       FitilaPage.translator => 'Traduction IA bidirectionnelle',
       FitilaPage.ia => 'Assistant conversationnel Fitila',
@@ -298,6 +315,7 @@ extension FitilaPageMeta on FitilaPage {
   IconData get icon {
     return switch (this) {
       FitilaPage.feed => Icons.dynamic_feed_rounded,
+      FitilaPage.creator => Icons.movie_creation_rounded,
       FitilaPage.dictionary => Icons.menu_book_rounded,
       FitilaPage.translator => Icons.translate_rounded,
       FitilaPage.ia => Icons.auto_awesome_rounded,
@@ -500,7 +518,12 @@ class _FitilaShellState extends State<FitilaShell> {
       kind: 'audio',
       content:
           'Capsule du matin: saluer, remercier et demander son chemin en Bàátɔ̀nú.',
-      accent: Colors.deepOrange,
+      accent: _fitilaPrimary,
+      visibility: 'Public',
+      tags: const ['salutation', 'audio', 'village'],
+      template: 'Capsule radio',
+      mediaStatus: 'Audio valide',
+      aiAssisted: true,
       likes: 42,
       comments: 7,
     ),
@@ -509,6 +532,10 @@ class _FitilaShellState extends State<FitilaShell> {
       kind: 'vidéo',
       content: 'Niveau 1: alphabet, tons et premières phrases utiles.',
       accent: Colors.teal,
+      visibility: 'Classe',
+      tags: const ['niveau 1', 'alphabet', 'video'],
+      template: 'Lecon courte',
+      mediaStatus: 'Video HD',
       likes: 31,
       comments: 4,
     ),
@@ -518,6 +545,11 @@ class _FitilaShellState extends State<FitilaShell> {
       content:
           'Comprendre les articles fonciers avec sources citées et résumé bilingue.',
       accent: Colors.indigo,
+      visibility: 'Public',
+      tags: const ['tem-ia', 'foncier', 'resume'],
+      template: 'Analyse IA',
+      mediaStatus: 'Template publie',
+      aiAssisted: true,
       likes: 68,
       comments: 12,
     ),
@@ -528,6 +560,14 @@ class _FitilaShellState extends State<FitilaShell> {
       FitilaPage.feed => FeedScreen(
         posts: _posts,
         onPostCreated: (post) => setState(() => _posts.insert(0, post)),
+      ),
+      FitilaPage.creator => ContentCreatorScreen(
+        onPostCreated: (post) {
+          setState(() {
+            _posts.insert(0, post);
+            _page = FitilaPage.feed;
+          });
+        },
       ),
       FitilaPage.dictionary => const DictionaryScreen(),
       FitilaPage.translator => const TranslatorScreen(),
@@ -610,9 +650,10 @@ class _FitilaShellState extends State<FitilaShell> {
               ),
             ],
           ),
-          floatingActionButton: _page == FitilaPage.feed
+          floatingActionButton:
+              _page == FitilaPage.feed || _page == FitilaPage.creator
               ? FloatingActionButton.extended(
-                  backgroundColor: _fitilaOrange,
+                  backgroundColor: _fitilaPrimary,
                   foregroundColor: Colors.white,
                   onPressed: () => FeedScreen.showComposer(
                     context,
@@ -644,6 +685,7 @@ class _NavigationPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final primary = [
       FitilaPage.feed,
+      FitilaPage.creator,
       FitilaPage.dictionary,
       FitilaPage.translator,
       FitilaPage.ia,
@@ -670,7 +712,7 @@ class _NavigationPanel extends StatelessWidget {
                   height: 44,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: _fitilaOrange,
+                    color: _fitilaPrimary,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(
@@ -773,7 +815,7 @@ class FeedScreen extends StatelessWidget {
                   itemCount: posts.length,
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 420,
-                    mainAxisExtent: 292,
+                    mainAxisExtent: 372,
                     crossAxisSpacing: 14,
                     mainAxisSpacing: 14,
                   ),
@@ -788,6 +830,243 @@ class FeedScreen extends StatelessWidget {
                       _PostCard(post: posts[index]),
                 );
         },
+      ),
+    );
+  }
+}
+
+class ContentCreatorScreen extends StatelessWidget {
+  const ContentCreatorScreen({super.key, required this.onPostCreated});
+
+  final ValueChanged<FeedPost> onPostCreated;
+
+  @override
+  Widget build(BuildContext context) {
+    return _PageFrame(
+      title: 'Createur de contenu',
+      subtitle:
+          'Studio bleu ciel pour texte, audio, video, templates, IA et publication.',
+      action: FilledButton.icon(
+        onPressed: () =>
+            FeedScreen.showComposer(context, onPostCreated: onPostCreated),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Composer'),
+      ),
+      child: ListView(
+        children: [
+          const _MetricStrip(
+            metrics: [
+              ('Brouillons', '12', Icons.drafts_rounded),
+              ('Publies', '48', Icons.cloud_done_rounded),
+              ('IA', 'Active', Icons.auto_awesome_rounded),
+            ],
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth > 860;
+              final pipeline = _CreatorPipeline(
+                onCompose: () => FeedScreen.showComposer(
+                  context,
+                  onPostCreated: onPostCreated,
+                ),
+              );
+              if (!wide) {
+                return Column(
+                  children: [
+                    pipeline,
+                    const SizedBox(height: 12),
+                    const _CreatorTemplateBoard(),
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 3, child: pipeline),
+                  const SizedBox(width: 12),
+                  const Expanded(flex: 2, child: _CreatorTemplateBoard()),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          const _FeatureGrid(
+            items: [
+              (
+                Icons.notes_rounded,
+                'Texte intelligent',
+                'Titre, corps, hashtags, traduction et correction IA.',
+              ),
+              (
+                Icons.mic_rounded,
+                'Audio natif',
+                'Import, enregistrement, transcription et validation qualite.',
+              ),
+              (
+                Icons.videocam_rounded,
+                'Video courte',
+                'Script, miniature, sous-titres et publication sociale.',
+              ),
+              (
+                Icons.movie_filter_rounded,
+                'Templates',
+                'Annonce, lecon, culture, Tem-IA et campagne communaute.',
+              ),
+              (
+                Icons.visibility_rounded,
+                'Audience',
+                'Public, classe, brouillon prive ou publication programmee.',
+              ),
+              (
+                Icons.verified_rounded,
+                'Moderation',
+                'Checklist langue, source, media, accessibilite et securite.',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CreatorPipeline extends StatelessWidget {
+  const _CreatorPipeline({required this.onCompose});
+
+  final VoidCallback onCompose;
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = [
+      (
+        Icons.auto_awesome_rounded,
+        'Idee IA',
+        'Prompt, ton, audience, langue et objectif du post.',
+      ),
+      (
+        Icons.edit_note_rounded,
+        'Production',
+        'Texte, audio, video ou template avec champs complets.',
+      ),
+      (
+        Icons.fact_check_rounded,
+        'Controle',
+        'Orthographe Bariba, sources, tags, visibilite et commentaires.',
+      ),
+      (
+        Icons.publish_rounded,
+        'Publication',
+        'Envoi au fil, sauvegarde brouillon ou programmation.',
+      ),
+    ];
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Parcours de creation',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: onCompose,
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Nouveau'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            for (final step in steps)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: _fitilaPrimarySoft,
+                    child: Icon(step.$1, color: _fitilaPrimary),
+                  ),
+                  title: Text(
+                    step.$2,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  subtitle: Text(step.$3),
+                  trailing: const Icon(Icons.check_circle_rounded),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CreatorTemplateBoard extends StatelessWidget {
+  const _CreatorTemplateBoard();
+
+  @override
+  Widget build(BuildContext context) {
+    final templates = [
+      ('Annonce village', Icons.campaign_rounded, 'Texte + audio'),
+      ('Lecon courte', Icons.school_rounded, 'Video + quiz'),
+      ('Culture Bariba', Icons.groups_rounded, 'Recit + image'),
+      ('Tem-IA foncier', Icons.gavel_rounded, 'Sources + resume'),
+    ];
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Templates rapides',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 12),
+            for (final template in templates)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: _fitilaBorder),
+                    borderRadius: BorderRadius.circular(8),
+                    color: _fitilaSurface,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(template.$2, color: _fitilaPrimary),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              template.$1,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            Text(
+                              template.$3,
+                              style: TextStyle(color: Colors.grey.shade700),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1138,10 +1417,10 @@ class _AiScreenState extends State<AiScreen> {
                     constraints: const BoxConstraints(maxWidth: 680),
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: mine ? _fitilaOrange : Colors.white,
+                        color: mine ? _fitilaPrimary : Colors.white,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: mine ? _fitilaOrange : const Color(0xFFE7DDD0),
+                          color: mine ? _fitilaPrimary : _fitilaBorder,
                         ),
                       ),
                       child: Padding(
@@ -1505,7 +1784,7 @@ class ProfileScreen extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 38,
-                    backgroundColor: _fitilaOrange,
+                    backgroundColor: _fitilaPrimary,
                     child: Text(
                       session.displayName.characters.first,
                       style: const TextStyle(
@@ -1723,7 +2002,7 @@ class _HeroPanel extends StatelessWidget {
         children: [
           const Icon(
             Icons.local_fire_department_rounded,
-            color: _fitilaOrange,
+            color: _fitilaPrimary,
             size: 54,
           ),
           const SizedBox(height: 18),
@@ -1840,6 +2119,40 @@ class _PostCardState extends State<_PostCard> {
               ),
             ),
             const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                _PostMetaChip(
+                  icon: Icons.visibility_rounded,
+                  label: post.visibility,
+                  color: post.accent,
+                ),
+                _PostMetaChip(
+                  icon: Icons.movie_filter_rounded,
+                  label: post.template,
+                  color: post.accent,
+                ),
+                _PostMetaChip(
+                  icon: Icons.perm_media_rounded,
+                  label: post.mediaStatus,
+                  color: post.accent,
+                ),
+                if (post.aiAssisted)
+                  _PostMetaChip(
+                    icon: Icons.auto_awesome_rounded,
+                    label: 'IA',
+                    color: post.accent,
+                  ),
+                for (final tag in post.tags.take(3))
+                  _PostMetaChip(
+                    icon: Icons.tag_rounded,
+                    label: tag,
+                    color: post.accent,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
             Row(
               children: [
                 IconButton(
@@ -1858,7 +2171,9 @@ class _PostCardState extends State<_PostCard> {
                 Text('${post.likes}'),
                 IconButton(
                   tooltip: 'Commenter',
-                  onPressed: () => setState(() => post.comments++),
+                  onPressed: post.allowComments
+                      ? () => setState(() => post.comments++)
+                      : null,
                   icon: const Icon(Icons.mode_comment_outlined),
                 ),
                 Text('${post.comments}'),
@@ -1877,6 +2192,45 @@ class _PostCardState extends State<_PostCard> {
   }
 }
 
+class _PostMetaChip extends StatelessWidget {
+  const _PostMetaChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CreatePostSheet extends StatefulWidget {
   const _CreatePostSheet({required this.onPostCreated});
 
@@ -1887,24 +2241,88 @@ class _CreatePostSheet extends StatefulWidget {
 }
 
 class _CreatePostSheetState extends State<_CreatePostSheet> {
+  final _title = TextEditingController();
   final _text = TextEditingController();
+  final _prompt = TextEditingController();
+  final _tags = TextEditingController(text: 'bariba, fitila');
   String _kind = 'texte';
+  String _visibility = 'Public';
+  String _template = 'Annonce village';
+  bool _publishNow = true;
+  bool _allowComments = true;
 
   @override
   void dispose() {
+    _title.dispose();
     _text.dispose();
+    _prompt.dispose();
+    _tags.dispose();
     super.dispose();
   }
 
+  Color get _kindAccent {
+    return switch (_kind) {
+      'audio' => Colors.teal,
+      'vidéo' => Colors.indigo,
+      'template' => Colors.purple,
+      'ia' => Colors.green,
+      _ => _fitilaPrimary,
+    };
+  }
+
+  String get _mediaStatus {
+    return switch (_kind) {
+      'audio' => 'Audio pret',
+      'vidéo' => 'Video prete',
+      'template' => 'Template pret',
+      'ia' => 'IA validee',
+      _ => 'Texte pret',
+    };
+  }
+
+  List<String> get _tagList {
+    return _tags.text
+        .split(',')
+        .map((tag) => tag.trim())
+        .where((tag) => tag.isNotEmpty)
+        .take(6)
+        .toList(growable: false);
+  }
+
+  void _generateWithIa() {
+    final prompt = _prompt.text.trim().isEmpty
+        ? 'Annonce communautaire en Bariba avec traduction francaise'
+        : _prompt.text.trim();
+    setState(() {
+      _kind = 'ia';
+      _title.text = 'Publication Fitila IA';
+      _text.text =
+          'Projet: $prompt\n\nBàátɔ̀nú: Wɛɛrɛ, partageons cette information avec clarte.\nFrancais: Message prepare pour la communaute avec ton respectueux, source et appel a l action.';
+      _tags.text = 'ia, bariba, communaute';
+      _template = 'Tem-IA foncier';
+    });
+  }
+
   void _publish() {
-    final content = _text.text.trim();
-    if (content.isEmpty) return;
+    final title = _title.text.trim();
+    final body = _text.text.trim();
+    if (title.isEmpty && body.isEmpty) return;
+    final content = [
+      if (title.isNotEmpty) title,
+      if (body.isNotEmpty) body,
+    ].join('\n\n');
     widget.onPostCreated(
       FeedPost(
         author: 'Utilisateur Fitila',
         kind: _kind,
         content: content,
-        accent: _fitilaOrange,
+        accent: _kindAccent,
+        visibility: _visibility,
+        tags: _tagList,
+        template: _template,
+        mediaStatus: _publishNow ? _mediaStatus : 'Brouillon',
+        aiAssisted: _prompt.text.trim().isNotEmpty || _kind == 'ia',
+        allowComments: _allowComments,
       ),
     );
     Navigator.pop(context);
@@ -1912,65 +2330,205 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + 16,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.88,
+      minChildSize: 0.58,
+      maxChildSize: 0.96,
+      builder: (context, controller) => ListView(
+        controller: controller,
+        padding: EdgeInsets.fromLTRB(16, 0, 16, bottomInset + 16),
         children: [
-          const Text(
-            'Créer une publication',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+          Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Studio de creation',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text('Texte, audio, video, templates et IA'),
+                  ],
+                ),
+              ),
+              IconButton.filledTonal(
+                tooltip: 'Generer avec IA',
+                onPressed: _generateWithIa,
+                icon: const Icon(Icons.auto_awesome_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _kindChip('texte', Icons.notes_rounded, 'Texte'),
+              _kindChip('audio', Icons.mic_rounded, 'Audio'),
+              _kindChip('vidéo', Icons.videocam_rounded, 'Video'),
+              _kindChip('template', Icons.movie_filter_rounded, 'Template'),
+              _kindChip('ia', Icons.auto_awesome_rounded, 'IA'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _title,
+            decoration: const InputDecoration(
+              labelText: 'Titre',
+              prefixIcon: Icon(Icons.title_rounded),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _text,
+            minLines: 5,
+            maxLines: 9,
+            decoration: InputDecoration(
+              labelText: 'Contenu',
+              hintText: _kind == 'audio'
+                  ? 'Script audio, transcription ou note vocale...'
+                  : _kind == 'vidéo'
+                  ? 'Script video, sous-titres, description...'
+                  : 'Que voulez-vous partager ?',
+              prefixIcon: const Icon(Icons.edit_note_rounded),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _prompt,
+            minLines: 2,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'Prompt IA / consigne',
+              hintText: 'Ex: Corrige le Bariba et rends le texte plus clair.',
+              prefixIcon: Icon(Icons.auto_awesome_rounded),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _tags,
+            decoration: const InputDecoration(
+              labelText: 'Tags separes par virgule',
+              prefixIcon: Icon(Icons.tag_rounded),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text('Template', style: TextStyle(fontWeight: FontWeight.w900)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final template in const [
+                'Annonce village',
+                'Lecon courte',
+                'Culture Bariba',
+                'Tem-IA foncier',
+                'Publication libre',
+              ])
+                ChoiceChip(
+                  selected: _template == template,
+                  label: Text(template),
+                  onSelected: (_) => setState(() => _template = template),
+                ),
+            ],
           ),
           const SizedBox(height: 12),
           SegmentedButton<String>(
             segments: const [
               ButtonSegment(
-                value: 'texte',
-                label: Text('Texte'),
-                icon: Icon(Icons.notes_rounded),
+                value: 'Public',
+                label: Text('Public'),
+                icon: Icon(Icons.public_rounded),
               ),
               ButtonSegment(
-                value: 'audio',
-                label: Text('Audio'),
-                icon: Icon(Icons.mic_rounded),
+                value: 'Classe',
+                label: Text('Classe'),
+                icon: Icon(Icons.school_rounded),
               ),
               ButtonSegment(
-                value: 'vidéo',
-                label: Text('Vidéo'),
-                icon: Icon(Icons.videocam_rounded),
-              ),
-              ButtonSegment(
-                value: 'template',
-                label: Text('Template'),
-                icon: Icon(Icons.movie_filter_rounded),
+                value: 'Prive',
+                label: Text('Prive'),
+                icon: Icon(Icons.lock_rounded),
               ),
             ],
-            selected: {_kind},
+            selected: {_visibility},
             onSelectionChanged: (values) =>
-                setState(() => _kind = values.first),
+                setState(() => _visibility = values.first),
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: _text,
-            minLines: 4,
-            maxLines: 7,
-            decoration: const InputDecoration(
-              hintText: 'Que voulez-vous partager ?',
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  value: _publishNow,
+                  onChanged: (value) => setState(() => _publishNow = value),
+                  secondary: const Icon(Icons.schedule_send_rounded),
+                  title: const Text('Publier maintenant'),
+                  subtitle: const Text(
+                    'Sinon, la publication reste en brouillon',
+                  ),
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  value: _allowComments,
+                  onChanged: (value) => setState(() => _allowComments = value),
+                  secondary: const Icon(Icons.mode_comment_rounded),
+                  title: const Text('Autoriser les commentaires'),
+                  subtitle: const Text('Active les echanges dans le fil'),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: const [
+              _StatusChip(icon: Icons.check_circle_rounded, label: 'Langue'),
+              _StatusChip(icon: Icons.subtitles_rounded, label: 'Sous-titres'),
+              _StatusChip(icon: Icons.shield_rounded, label: 'Moderation'),
+              _StatusChip(
+                icon: Icons.cloud_done_rounded,
+                label: 'Pret backend',
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
           FilledButton.icon(
             onPressed: _publish,
-            icon: const Icon(Icons.publish_rounded),
-            label: const Text('Publier'),
+            icon: Icon(
+              _publishNow ? Icons.publish_rounded : Icons.save_rounded,
+            ),
+            label: Text(_publishNow ? 'Publier' : 'Enregistrer brouillon'),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _kindChip(String value, IconData icon, String label) {
+    final selected = _kind == value;
+    return ChoiceChip(
+      selected: selected,
+      avatar: Icon(
+        icon,
+        size: 18,
+        color: selected ? Colors.white : _kindAccent,
+      ),
+      label: Text(label),
+      selectedColor: _kindAccent,
+      labelStyle: TextStyle(
+        color: selected ? Colors.white : _fitilaInk,
+        fontWeight: FontWeight.w800,
+      ),
+      onSelected: (_) => setState(() => _kind = value),
     );
   }
 }
@@ -1987,8 +2545,8 @@ class _DictionaryTile extends StatelessWidget {
       child: ListTile(
         onTap: onTap,
         leading: const CircleAvatar(
-          backgroundColor: Color(0xFFFFEDD8),
-          child: Icon(Icons.menu_book_rounded, color: _fitilaOrange),
+          backgroundColor: _fitilaPrimarySoft,
+          child: Icon(Icons.menu_book_rounded, color: _fitilaPrimary),
         ),
         title: Text(
           entry.word,
@@ -2094,7 +2652,7 @@ class _LessonCard extends StatelessWidget {
               const SizedBox(height: 10),
               LinearProgressIndicator(
                 value: lesson.progress,
-                color: _fitilaOrange,
+                color: _fitilaPrimary,
                 minHeight: 7,
                 borderRadius: BorderRadius.circular(999),
               ),
@@ -2147,12 +2705,12 @@ class _ClasseLessonTileState extends State<_ClasseLessonTile> {
                   width: 46,
                   height: 46,
                   decoration: BoxDecoration(
-                    color: _fitilaOrange.withValues(alpha: 0.14),
+                    color: _fitilaPrimary.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
                     Icons.assignment_rounded,
-                    color: _fitilaOrange,
+                    color: _fitilaPrimary,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -2195,7 +2753,7 @@ class _ClasseLessonTileState extends State<_ClasseLessonTile> {
                       const Icon(
                         Icons.help_rounded,
                         size: 18,
-                        color: _fitilaOrange,
+                        color: _fitilaPrimary,
                       ),
                       const SizedBox(width: 8),
                       Expanded(child: Text(q)),
@@ -2304,7 +2862,7 @@ class _FeatureGrid extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(item.$1, color: _fitilaOrange),
+                    Icon(item.$1, color: _fitilaPrimary),
                     const SizedBox(height: 10),
                     Text(
                       item.$2,
@@ -2344,8 +2902,8 @@ class _ActionList extends StatelessWidget {
             child: Card(
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: const Color(0xFFFFEDD8),
-                  child: Icon(item.icon, color: _fitilaOrange),
+                  backgroundColor: _fitilaPrimarySoft,
+                  child: Icon(item.icon, color: _fitilaPrimary),
                 ),
                 title: Text(
                   item.title,
@@ -2395,7 +2953,7 @@ class _MetricStrip extends StatelessWidget {
                 padding: const EdgeInsets.all(14),
                 child: Row(
                   children: [
-                    Icon(metric.$3, color: _fitilaOrange, size: 34),
+                    Icon(metric.$3, color: _fitilaPrimary, size: 34),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -2489,7 +3047,7 @@ class _ProfileTile extends StatelessWidget {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: _fitilaOrange,
+            backgroundColor: _fitilaPrimary,
             child: Text(
               session.displayName.characters.first,
               style: const TextStyle(color: Colors.white),
@@ -2541,10 +3099,10 @@ class _NavItem extends StatelessWidget {
         selected: selected,
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        selectedTileColor: _fitilaOrange.withValues(alpha: 0.18),
+        selectedTileColor: _fitilaPrimary.withValues(alpha: 0.18),
         leading: Icon(
           page.icon,
-          color: selected ? _fitilaOrange : Colors.white70,
+          color: selected ? _fitilaPrimary : Colors.white70,
         ),
         title: Text(
           page.title,
@@ -2656,10 +3214,10 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Chip(
-      avatar: Icon(icon, size: 16, color: _fitilaOrange),
+      avatar: Icon(icon, size: 16, color: _fitilaPrimary),
       label: Text(label),
       visualDensity: VisualDensity.compact,
-      side: const BorderSide(color: Color(0xFFE7DDD0)),
+      side: const BorderSide(color: _fitilaBorder),
       backgroundColor: Colors.white,
     );
   }
@@ -2675,13 +3233,13 @@ class _StatusPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFEDD8),
+        color: _fitilaPrimarySoft,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         text,
         style: const TextStyle(
-          color: _fitilaOrange,
+          color: _fitilaPrimary,
           fontSize: 11,
           fontWeight: FontWeight.w900,
         ),
@@ -2711,7 +3269,7 @@ class _SwitchTile extends StatelessWidget {
         child: SwitchListTile(
           value: value,
           onChanged: onChanged,
-          secondary: Icon(icon, color: _fitilaOrange),
+          secondary: Icon(icon, color: _fitilaPrimary),
           title: Text(
             title,
             style: const TextStyle(fontWeight: FontWeight.w800),
@@ -2774,7 +3332,7 @@ void _showDictionaryDetail(BuildContext context, DictionaryEntry entry) {
             Text(
               entry.phonetic!,
               style: const TextStyle(
-                color: _fitilaOrange,
+                color: _fitilaPrimary,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -2876,7 +3434,7 @@ void _showLesson(BuildContext context, LessonCardData lesson) {
           Text(
             '${lesson.level} · ${lesson.module}',
             style: const TextStyle(
-              color: _fitilaOrange,
+              color: _fitilaPrimary,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -2964,7 +3522,7 @@ class _InfoBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE7DDD0)),
+        border: Border.all(color: _fitilaBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2972,7 +3530,7 @@ class _InfoBox extends StatelessWidget {
           Text(
             title.toUpperCase(),
             style: const TextStyle(
-              color: _fitilaOrange,
+              color: _fitilaPrimary,
               fontSize: 11,
               fontWeight: FontWeight.w900,
             ),
