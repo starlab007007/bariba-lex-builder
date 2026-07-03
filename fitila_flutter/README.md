@@ -11,10 +11,14 @@ https://www.figma.com/design/hMuCnLHeAcpG5NYbWi2uR3
 - Shell responsive: sidebar desktop, drawer mobile, topbar, recherche globale.
 - Fil social: posts texte/audio/video/template, creation, like, commentaire, partage.
 - Studio createur: texte, audio, video, templates, prompt IA, tags, visibilite, brouillon/publication et moderation.
+- Workflow createur inspire React: discover, capture, preview, finalisation et success.
+- Galerie templates: recherche, categories, preview verticale 9:16, badges premium/nouveau.
+- Modules React `/fitila/*`: services, marche, agriculture, finance, education, sante, SOS, messages, decouvrir, installation, brouillons, offline, portefeuille, historique, scanner et boutique.
 - Dictionnaire Bariba-Francais local embarque depuis `assets/data/dictionnaire_ameliore.json`.
 - Detail dictionnaire: phonetique, definition, exemples, ecoute, signalement, contribution.
 - Traducteur FR -> BA / BA -> FR avec fallback offline et point d'integration API.
 - Fitila IA: chat, suggestions Tem-IA, aide classe, culture, sources.
+- Tem-IA foncier: analyse, sources citees, resume bilingue et voix.
 - Apprendre: modules, progression, lecons, exercices.
 - Classe: Niveau 1, Niveau 2, reponses texte/vocales, corrections, notes.
 - Clavier Bariba: caracteres speciaux integres et guide Android.

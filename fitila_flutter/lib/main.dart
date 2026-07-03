@@ -217,6 +217,32 @@ class LessonCardData {
   final List<String> questions;
 }
 
+class FitilaTemplateData {
+  const FitilaTemplateData({
+    required this.id,
+    required this.name,
+    required this.baribaName,
+    required this.category,
+    required this.summary,
+    required this.duration,
+    required this.icon,
+    required this.accent,
+    this.premium = false,
+    this.newBadge = false,
+  });
+
+  final String id;
+  final String name;
+  final String baribaName;
+  final String category;
+  final String summary;
+  final int duration;
+  final IconData icon;
+  final Color accent;
+  final bool premium;
+  final bool newBadge;
+}
+
 class FitilaServices {
   static Future<List<DictionaryEntry>> loadDictionary() async {
     final raw = await rootBundle.loadString(
@@ -262,12 +288,32 @@ class FitilaServices {
 
 enum TranslationDirection { frenchToBariba, baribaToFrench }
 
+enum CreatorPhase { discover, capturing, reviewing, finalizing, success }
+
 enum FitilaPage {
   feed,
   creator,
+  templates,
+  services,
+  market,
+  agriculture,
+  finance,
+  education,
+  health,
+  sos,
+  messages,
+  discover,
+  install,
+  drafts,
+  offline,
+  wallet,
+  history,
+  scan,
+  shop,
   dictionary,
   translator,
   ia,
+  temIa,
   learn,
   classe,
   keyboard,
@@ -282,9 +328,27 @@ extension FitilaPageMeta on FitilaPage {
     return switch (this) {
       FitilaPage.feed => 'Fil',
       FitilaPage.creator => 'Createur',
+      FitilaPage.templates => 'Templates',
+      FitilaPage.services => 'Services',
+      FitilaPage.market => 'Marche',
+      FitilaPage.agriculture => 'Agriculture',
+      FitilaPage.finance => 'Finance',
+      FitilaPage.education => 'Education',
+      FitilaPage.health => 'Sante',
+      FitilaPage.sos => 'SOS',
+      FitilaPage.messages => 'Messages',
+      FitilaPage.discover => 'Decouvrir',
+      FitilaPage.install => 'Installer',
+      FitilaPage.drafts => 'Brouillons',
+      FitilaPage.offline => 'Hors ligne',
+      FitilaPage.wallet => 'Portefeuille',
+      FitilaPage.history => 'Historique',
+      FitilaPage.scan => 'Scanner',
+      FitilaPage.shop => 'Boutique',
       FitilaPage.dictionary => 'Dictionnaire',
       FitilaPage.translator => 'Traducteur',
       FitilaPage.ia => 'IA',
+      FitilaPage.temIa => 'Tem-IA',
       FitilaPage.learn => 'Apprendre',
       FitilaPage.classe => 'Classe',
       FitilaPage.keyboard => 'Clavier',
@@ -299,9 +363,27 @@ extension FitilaPageMeta on FitilaPage {
     return switch (this) {
       FitilaPage.feed => 'Publications, vidéos, audios et templates',
       FitilaPage.creator => 'Studio IA de creation de contenu',
+      FitilaPage.templates => 'Galerie premium et apercu plein ecran',
+      FitilaPage.services => 'Services communautaires et outils locaux',
+      FitilaPage.market => 'Produits, jobs et annonces du marche',
+      FitilaPage.agriculture => 'Conseils agricoles, meteo et prix',
+      FitilaPage.finance => 'Portefeuille, tontine et mobile money',
+      FitilaPage.education => 'Education, modules et progression',
+      FitilaPage.health => 'Sante, prevention et assistance',
+      FitilaPage.sos => 'Alerte rapide et contacts de confiance',
+      FitilaPage.messages => 'Messages prives, vocaux et groupes',
+      FitilaPage.discover => 'Tendances, createurs et contenus',
+      FitilaPage.install => 'Installation PWA, APK et clavier',
+      FitilaPage.drafts => 'Brouillons du createur et autosauvegarde',
+      FitilaPage.offline => 'Cache local et synchronisation differee',
+      FitilaPage.wallet => 'Solde, paiements et historiques',
+      FitilaPage.history => 'Activite, recherches et contenus vus',
+      FitilaPage.scan => 'QR, documents et photo-traduction',
+      FitilaPage.shop => 'Boutique, packs et services',
       FitilaPage.dictionary => 'Recherche Bariba-Français avec détails',
       FitilaPage.translator => 'Traduction IA bidirectionnelle',
       FitilaPage.ia => 'Assistant conversationnel Fitila',
+      FitilaPage.temIa => 'Assistant foncier avec sources citees',
       FitilaPage.learn => 'Cours guidés et parcours culture',
       FitilaPage.classe => 'Niveaux, exercices, notes et corrections',
       FitilaPage.keyboard => 'Clavier natif Bariba intégré',
@@ -316,9 +398,27 @@ extension FitilaPageMeta on FitilaPage {
     return switch (this) {
       FitilaPage.feed => Icons.dynamic_feed_rounded,
       FitilaPage.creator => Icons.movie_creation_rounded,
+      FitilaPage.templates => Icons.video_library_rounded,
+      FitilaPage.services => Icons.apps_rounded,
+      FitilaPage.market => Icons.storefront_rounded,
+      FitilaPage.agriculture => Icons.agriculture_rounded,
+      FitilaPage.finance => Icons.account_balance_wallet_rounded,
+      FitilaPage.education => Icons.cast_for_education_rounded,
+      FitilaPage.health => Icons.health_and_safety_rounded,
+      FitilaPage.sos => Icons.sos_rounded,
+      FitilaPage.messages => Icons.forum_rounded,
+      FitilaPage.discover => Icons.explore_rounded,
+      FitilaPage.install => Icons.install_mobile_rounded,
+      FitilaPage.drafts => Icons.drafts_rounded,
+      FitilaPage.offline => Icons.cloud_off_rounded,
+      FitilaPage.wallet => Icons.wallet_rounded,
+      FitilaPage.history => Icons.history_rounded,
+      FitilaPage.scan => Icons.qr_code_scanner_rounded,
+      FitilaPage.shop => Icons.shopping_bag_rounded,
       FitilaPage.dictionary => Icons.menu_book_rounded,
       FitilaPage.translator => Icons.translate_rounded,
       FitilaPage.ia => Icons.auto_awesome_rounded,
+      FitilaPage.temIa => Icons.gavel_rounded,
       FitilaPage.learn => Icons.school_rounded,
       FitilaPage.classe => Icons.assignment_rounded,
       FitilaPage.keyboard => Icons.keyboard_alt_rounded,
@@ -569,9 +669,173 @@ class _FitilaShellState extends State<FitilaShell> {
           });
         },
       ),
+      FitilaPage.templates => TemplatesScreen(
+        onUseTemplate: (_) => setState(() => _page = FitilaPage.creator),
+      ),
+      FitilaPage.services => const FitilaModuleScreen(
+        page: FitilaPage.services,
+        metrics: [
+          ('Services', '18', Icons.apps_rounded),
+          ('Actifs', '12', Icons.verified_rounded),
+          ('Offline', '6', Icons.cloud_done_rounded),
+        ],
+        items: [
+          (
+            Icons.medical_services_rounded,
+            'Assistance locale',
+            'Sante, SOS, documents, signalement et support vocal.',
+          ),
+          (
+            Icons.storefront_rounded,
+            'Marche communautaire',
+            'Produits, emplois, annonces et contacts rapides.',
+          ),
+          (
+            Icons.school_rounded,
+            'Education',
+            'Classe, apprentissage, corrections et suivi enseignant.',
+          ),
+        ],
+      ),
+      FitilaPage.market => const FitilaModuleScreen(
+        page: FitilaPage.market,
+        metrics: [
+          ('Produits', '86', Icons.inventory_2_rounded),
+          ('Jobs', '14', Icons.work_rounded),
+          ('Vendeurs', '32', Icons.groups_rounded),
+        ],
+        items: [
+          (
+            Icons.sell_rounded,
+            'Annonces',
+            'Creation produit, prix, image, localisation et contact.',
+          ),
+          (
+            Icons.work_history_rounded,
+            'Jobs',
+            'Offres locales avec filtre metier, commune et urgence.',
+          ),
+          (
+            Icons.chat_bubble_rounded,
+            'Negociation',
+            'Message vocal, traduction et partage dans le fil.',
+          ),
+        ],
+      ),
+      FitilaPage.agriculture => const FitilaModuleScreen(
+        page: FitilaPage.agriculture,
+        metrics: [
+          ('Cultures', '9', Icons.grass_rounded),
+          ('Alertes', '3', Icons.warning_rounded),
+          ('Prix', 'Live', Icons.trending_up_rounded),
+        ],
+        items: [
+          (
+            Icons.wb_sunny_rounded,
+            'Meteo agricole',
+            'Conseils par saison, pluie, semis et alerte terrain.',
+          ),
+          (
+            Icons.payments_rounded,
+            'Prix marche',
+            'Suivi mais, igname, coton et produits locaux.',
+          ),
+          (
+            Icons.record_voice_over_rounded,
+            'Conseil vocal',
+            'Question en francais ou Bariba avec reponse audio.',
+          ),
+        ],
+      ),
+      FitilaPage.finance => const FitilaModuleScreen(
+        page: FitilaPage.finance,
+        metrics: [
+          ('Solde', '25k', Icons.account_balance_wallet_rounded),
+          ('Tontines', '4', Icons.savings_rounded),
+          ('Reçus', '28', Icons.receipt_long_rounded),
+        ],
+        items: [
+          (
+            Icons.savings_rounded,
+            'Tontine',
+            'Cotisations, rappels et preuves.',
+          ),
+          (
+            Icons.swap_horiz_rounded,
+            'Transfert',
+            'Mobile money, historique et notifications.',
+          ),
+          (
+            Icons.analytics_rounded,
+            'Rapport',
+            'Depenses, revenus, marche et export PDF.',
+          ),
+        ],
+      ),
+      FitilaPage.education => const FitilaModuleScreen(
+        page: FitilaPage.education,
+        metrics: [
+          ('Cours', '42', Icons.menu_book_rounded),
+          ('Quiz', '19', Icons.quiz_rounded),
+          ('Audio', 'Pret', Icons.volume_up_rounded),
+        ],
+        items: [
+          (
+            Icons.school_rounded,
+            'Modules',
+            'Alphabet, conversation, grammaire et culture.',
+          ),
+          (
+            Icons.assignment_turned_in_rounded,
+            'Exercices',
+            'Reponses texte et vocales avec correction.',
+          ),
+          (
+            Icons.emoji_events_rounded,
+            'Progression',
+            'Badges, points et parcours adapte.',
+          ),
+        ],
+      ),
+      FitilaPage.health => const FitilaModuleScreen(
+        page: FitilaPage.health,
+        metrics: [
+          ('Guides', '24', Icons.health_and_safety_rounded),
+          ('Contacts', '8', Icons.contact_phone_rounded),
+          ('Alertes', '2', Icons.notifications_active_rounded),
+        ],
+        items: [
+          (
+            Icons.local_hospital_rounded,
+            'Prevention',
+            'Fiches sante simples, traduites et vocales.',
+          ),
+          (
+            Icons.phone_in_talk_rounded,
+            'Contacts utiles',
+            'Centre, urgence, pharmacie et relais local.',
+          ),
+          (
+            Icons.verified_user_rounded,
+            'Securite',
+            'Messages moderes et non diagnostiques.',
+          ),
+        ],
+      ),
+      FitilaPage.sos => const UtilityScreen(page: FitilaPage.sos),
+      FitilaPage.messages => const UtilityScreen(page: FitilaPage.messages),
+      FitilaPage.discover => const UtilityScreen(page: FitilaPage.discover),
+      FitilaPage.install => const UtilityScreen(page: FitilaPage.install),
+      FitilaPage.drafts => const UtilityScreen(page: FitilaPage.drafts),
+      FitilaPage.offline => const UtilityScreen(page: FitilaPage.offline),
+      FitilaPage.wallet => const UtilityScreen(page: FitilaPage.wallet),
+      FitilaPage.history => const UtilityScreen(page: FitilaPage.history),
+      FitilaPage.scan => const UtilityScreen(page: FitilaPage.scan),
+      FitilaPage.shop => const UtilityScreen(page: FitilaPage.shop),
       FitilaPage.dictionary => const DictionaryScreen(),
       FitilaPage.translator => const TranslatorScreen(),
       FitilaPage.ia => const AiScreen(),
+      FitilaPage.temIa => const TemIaScreen(),
       FitilaPage.learn => const LearnScreen(),
       FitilaPage.classe => const ClasseScreen(),
       FitilaPage.keyboard => const KeyboardScreen(),
@@ -686,16 +950,36 @@ class _NavigationPanel extends StatelessWidget {
     final primary = [
       FitilaPage.feed,
       FitilaPage.creator,
+      FitilaPage.templates,
       FitilaPage.dictionary,
       FitilaPage.translator,
       FitilaPage.ia,
+      FitilaPage.temIa,
       FitilaPage.learn,
       FitilaPage.classe,
+    ];
+    final services = [
+      FitilaPage.services,
+      FitilaPage.market,
+      FitilaPage.agriculture,
+      FitilaPage.finance,
+      FitilaPage.education,
+      FitilaPage.health,
+      FitilaPage.sos,
+      FitilaPage.messages,
+      FitilaPage.discover,
+      FitilaPage.install,
     ];
     final tools = [
       FitilaPage.keyboard,
       FitilaPage.voiceLab,
       FitilaPage.teacher,
+      FitilaPage.drafts,
+      FitilaPage.offline,
+      FitilaPage.wallet,
+      FitilaPage.history,
+      FitilaPage.scan,
+      FitilaPage.shop,
       FitilaPage.profile,
       FitilaPage.settings,
     ];
@@ -757,6 +1041,9 @@ class _NavigationPanel extends StatelessWidget {
                 onTap: () => onSelected(item),
               ),
             ),
+            const SizedBox(height: 16),
+            const _SectionLabel('Services'),
+            _NavGrid(pages: services, selected: page, onSelected: onSelected),
             const SizedBox(height: 16),
             const _SectionLabel('Outils'),
             ...tools.map(
@@ -835,10 +1122,48 @@ class FeedScreen extends StatelessWidget {
   }
 }
 
-class ContentCreatorScreen extends StatelessWidget {
+class ContentCreatorScreen extends StatefulWidget {
   const ContentCreatorScreen({super.key, required this.onPostCreated});
 
   final ValueChanged<FeedPost> onPostCreated;
+
+  @override
+  State<ContentCreatorScreen> createState() => _ContentCreatorScreenState();
+}
+
+class _ContentCreatorScreenState extends State<ContentCreatorScreen> {
+  CreatorPhase _phase = CreatorPhase.discover;
+  FitilaTemplateData _template = _fitilaTemplates.first;
+
+  void _nextPhase() {
+    setState(() {
+      _phase = switch (_phase) {
+        CreatorPhase.discover => CreatorPhase.capturing,
+        CreatorPhase.capturing => CreatorPhase.reviewing,
+        CreatorPhase.reviewing => CreatorPhase.finalizing,
+        CreatorPhase.finalizing => CreatorPhase.success,
+        CreatorPhase.success => CreatorPhase.discover,
+      };
+    });
+  }
+
+  void _publishFromWorkflow() {
+    widget.onPostCreated(
+      FeedPost(
+        author: 'Utilisateur Fitila',
+        kind: 'vidéo',
+        content:
+            '${_template.name}\n\nPublication creee depuis le workflow natif: template, capture, preview, finalisation et publication.',
+        accent: _template.accent,
+        visibility: 'Public',
+        tags: ['template', _template.category.toLowerCase(), 'fitila'],
+        template: _template.name,
+        mediaStatus: 'Video publiee',
+        aiAssisted: true,
+      ),
+    );
+    setState(() => _phase = CreatorPhase.success);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -847,8 +1172,10 @@ class ContentCreatorScreen extends StatelessWidget {
       subtitle:
           'Studio bleu ciel pour texte, audio, video, templates, IA et publication.',
       action: FilledButton.icon(
-        onPressed: () =>
-            FeedScreen.showComposer(context, onPostCreated: onPostCreated),
+        onPressed: () => FeedScreen.showComposer(
+          context,
+          onPostCreated: widget.onPostCreated,
+        ),
         icon: const Icon(Icons.add_rounded),
         label: const Text('Composer'),
       ),
@@ -862,13 +1189,24 @@ class ContentCreatorScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
+          _CreatorPhaseBar(phase: _phase),
+          const SizedBox(height: 12),
+          _CreatorWorkflowPanel(
+            phase: _phase,
+            template: _template,
+            onNext: _phase == CreatorPhase.finalizing
+                ? _publishFromWorkflow
+                : _nextPhase,
+            onReset: () => setState(() => _phase = CreatorPhase.discover),
+          ),
+          const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth > 860;
               final pipeline = _CreatorPipeline(
                 onCompose: () => FeedScreen.showComposer(
                   context,
-                  onPostCreated: onPostCreated,
+                  onPostCreated: widget.onPostCreated,
                 ),
               );
               if (!wide) {
@@ -889,6 +1227,38 @@ class ContentCreatorScreen extends StatelessWidget {
                 ],
               );
             },
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Selection template',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final template in _fitilaTemplates.take(8))
+                        ChoiceChip(
+                          selected: template.id == _template.id,
+                          avatar: Icon(template.icon, size: 18),
+                          label: Text(template.name),
+                          onSelected: (_) => setState(() {
+                            _template = template;
+                            _phase = CreatorPhase.capturing;
+                          }),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           const _FeatureGrid(
@@ -926,6 +1296,176 @@ class ContentCreatorScreen extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CreatorPhaseBar extends StatelessWidget {
+  const _CreatorPhaseBar({required this.phase});
+
+  final CreatorPhase phase;
+
+  @override
+  Widget build(BuildContext context) {
+    final phases = CreatorPhase.values;
+    final current = phases.indexOf(phase);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            for (var index = 0; index < phases.length; index++) ...[
+              Expanded(
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: index <= current
+                          ? _fitilaPrimary
+                          : _fitilaPrimarySoft,
+                      child: Text(
+                        '${index + 1}',
+                        style: TextStyle(
+                          color: index <= current ? Colors.white : _fitilaInk,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      phases[index].name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (index < phases.length - 1)
+                Container(
+                  width: 18,
+                  height: 2,
+                  color: index < current ? _fitilaPrimary : _fitilaBorder,
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CreatorWorkflowPanel extends StatelessWidget {
+  const _CreatorWorkflowPanel({
+    required this.phase,
+    required this.template,
+    required this.onNext,
+    required this.onReset,
+  });
+
+  final CreatorPhase phase;
+  final FitilaTemplateData template;
+  final VoidCallback onNext;
+  final VoidCallback onReset;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = switch (phase) {
+      CreatorPhase.discover => (
+        Icons.video_library_rounded,
+        'Discover',
+        'Choisissez un template premium, une categorie et un format 9:16.',
+        'Choisir',
+      ),
+      CreatorPhase.capturing => (
+        Icons.videocam_rounded,
+        'Capture',
+        'Segments video, audio, sous-titres, effets et brouillon automatique.',
+        'Previsualiser',
+      ),
+      CreatorPhase.reviewing => (
+        Icons.play_circle_rounded,
+        'Preview',
+        'Lecture verticale, controle audio, textes, stickers et correction IA.',
+        'Finaliser',
+      ),
+      CreatorPhase.finalizing => (
+        Icons.publish_rounded,
+        'Finalisation',
+        'Caption, hashtags, audience, moderation et publication Supabase.',
+        'Publier',
+      ),
+      CreatorPhase.success => (
+        Icons.check_circle_rounded,
+        'Success',
+        'Publication ajoutee au fil avec metadata, template et statut media.',
+        'Recommencer',
+      ),
+    };
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Container(
+              width: 104,
+              height: 156,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: template.accent.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(template.icon, color: template.accent, size: 46),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _PostMetaChip(
+                    icon: data.$1,
+                    label: data.$2,
+                    color: template.accent,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    template.name,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(data.$3, style: TextStyle(color: Colors.grey.shade700)),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: onNext,
+                        icon: Icon(
+                          phase == CreatorPhase.success
+                              ? Icons.refresh_rounded
+                              : Icons.arrow_forward_rounded,
+                        ),
+                        label: Text(data.$4),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: onReset,
+                        icon: const Icon(Icons.restart_alt_rounded),
+                        label: const Text('Reset'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1067,6 +1607,379 @@ class _CreatorTemplateBoard extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class TemplatesScreen extends StatefulWidget {
+  const TemplatesScreen({super.key, required this.onUseTemplate});
+
+  final ValueChanged<FitilaTemplateData> onUseTemplate;
+
+  @override
+  State<TemplatesScreen> createState() => _TemplatesScreenState();
+}
+
+class _TemplatesScreenState extends State<TemplatesScreen> {
+  String _query = '';
+  String _category = 'Tous';
+  FitilaTemplateData? _preview;
+
+  List<FitilaTemplateData> get _filtered {
+    return _fitilaTemplates
+        .where((template) {
+          final q = _query.trim().toLowerCase();
+          final matchesQuery =
+              q.isEmpty ||
+              template.name.toLowerCase().contains(q) ||
+              template.summary.toLowerCase().contains(q) ||
+              template.baribaName.toLowerCase().contains(q);
+          final matchesCategory =
+              _category == 'Tous' || template.category == _category;
+          return matchesQuery && matchesCategory;
+        })
+        .toList(growable: false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final categories = [
+      'Tous',
+      ..._fitilaTemplates.map((template) => template.category).toSet(),
+    ];
+    return _PageFrame(
+      title: 'Templates',
+      subtitle:
+          'Galerie premium avec recherche, categories, preview et envoi createur.',
+      child: ListView(
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Galerie Kuaishou FITILA',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    decoration: const InputDecoration(
+                      hintText: 'Rechercher un template',
+                      prefixIcon: Icon(Icons.search_rounded),
+                    ),
+                    onChanged: (value) => setState(() => _query = value),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final category in categories)
+                        ChoiceChip(
+                          selected: _category == category,
+                          label: Text(category),
+                          onSelected: (_) =>
+                              setState(() => _category = category),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          GridView.builder(
+            itemCount: _filtered.length,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 360,
+              mainAxisExtent: 236,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemBuilder: (context, index) => _TemplateCard(
+              template: _filtered[index],
+              onPreview: () => setState(() => _preview = _filtered[index]),
+              onUse: () => widget.onUseTemplate(_filtered[index]),
+            ),
+          ),
+          if (_preview != null) ...[
+            const SizedBox(height: 12),
+            _TemplatePreviewPanel(
+              template: _preview!,
+              onClose: () => setState(() => _preview = null),
+              onUse: () => widget.onUseTemplate(_preview!),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TemplateCard extends StatelessWidget {
+  const _TemplateCard({
+    required this.template,
+    required this.onPreview,
+    required this.onUse,
+  });
+
+  final FitilaTemplateData template;
+  final VoidCallback onPreview;
+  final VoidCallback onUse;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: template.accent.withValues(alpha: 0.16),
+                  child: Icon(template.icon, color: template.accent),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    template.name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                if (template.newBadge)
+                  const _StatusPill(text: 'NEW')
+                else if (template.premium)
+                  const _StatusPill(text: 'PRO'),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              template.summary,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: Colors.grey.shade700, height: 1.28),
+            ),
+            const Spacer(),
+            Wrap(
+              spacing: 6,
+              children: [
+                _PostMetaChip(
+                  icon: Icons.category_rounded,
+                  label: template.category,
+                  color: template.accent,
+                ),
+                _PostMetaChip(
+                  icon: Icons.timer_rounded,
+                  label: '${template.duration}s',
+                  color: template.accent,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                OutlinedButton.icon(
+                  onPressed: onPreview,
+                  icon: const Icon(Icons.visibility_rounded),
+                  label: const Text('Preview'),
+                ),
+                const Spacer(),
+                FilledButton.icon(
+                  onPressed: onUse,
+                  icon: const Icon(Icons.movie_creation_rounded),
+                  label: const Text('Utiliser'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TemplatePreviewPanel extends StatelessWidget {
+  const _TemplatePreviewPanel({
+    required this.template,
+    required this.onClose,
+    required this.onUse,
+  });
+
+  final FitilaTemplateData template;
+  final VoidCallback onClose;
+  final VoidCallback onUse;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _fitilaInk,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(template.icon, color: _fitilaPrimary, size: 32),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '${template.name} · ${template.baribaName}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Fermer',
+                onPressed: onClose,
+                icon: const Icon(Icons.close_rounded, color: Colors.white),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          AspectRatio(
+            aspectRatio: 9 / 16,
+            child: Container(
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: template.accent.withValues(alpha: 0.24),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(template.icon, color: Colors.white, size: 64),
+                  const SizedBox(height: 12),
+                  Text(
+                    template.name,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            template.summary,
+            style: const TextStyle(color: Colors.white70, height: 1.35),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: onUse,
+            icon: const Icon(Icons.play_arrow_rounded),
+            label: const Text('Ouvrir dans le createur'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class FitilaModuleScreen extends StatelessWidget {
+  const FitilaModuleScreen({
+    super.key,
+    required this.page,
+    required this.metrics,
+    required this.items,
+  });
+
+  final FitilaPage page;
+  final List<(String, String, IconData)> metrics;
+  final List<(IconData, String, String)> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return _PageFrame(
+      title: page.title,
+      subtitle: page.description,
+      child: ListView(
+        children: [
+          _MetricStrip(metrics: metrics),
+          const SizedBox(height: 12),
+          _FeatureGrid(items: items),
+          const SizedBox(height: 12),
+          _ActionList(
+            items: [
+              _ActionItem(
+                page.icon,
+                'Synchronisation backend',
+                'Structure prete pour repository, Supabase, cache et realtime.',
+              ),
+              const _ActionItem(
+                Icons.keyboard_voice_rounded,
+                'Voix et accessibilite',
+                'TTS, STT, lecture des libelles et grands boutons tactiles.',
+              ),
+              const _ActionItem(
+                Icons.offline_bolt_rounded,
+                'Mode offline',
+                'Donnees locales, file de synchronisation et reprise reseau.',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class UtilityScreen extends StatelessWidget {
+  const UtilityScreen({super.key, required this.page});
+
+  final FitilaPage page;
+
+  @override
+  Widget build(BuildContext context) {
+    return _PageFrame(
+      title: page.title,
+      subtitle: page.description,
+      child: ListView(
+        children: [
+          _MetricStrip(
+            metrics: [
+              ('Etat', 'Pret', page.icon),
+              ('Sync', 'Locale', Icons.sync_rounded),
+              ('Acces', 'Mobile', Icons.touch_app_rounded),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _ActionList(
+            items: [
+              _ActionItem(page.icon, page.title, page.description),
+              const _ActionItem(
+                Icons.security_rounded,
+                'Controle visuel',
+                'Verifie les actions sensibles comme dans le web React.',
+              ),
+              const _ActionItem(
+                Icons.api_rounded,
+                'Connexion backend',
+                'Point pret pour brancher Supabase dans la prochaine etape.',
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1488,6 +2401,89 @@ class _AiScreenState extends State<AiScreen> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TemIaScreen extends StatefulWidget {
+  const TemIaScreen({super.key});
+
+  @override
+  State<TemIaScreen> createState() => _TemIaScreenState();
+}
+
+class _TemIaScreenState extends State<TemIaScreen> {
+  final _query = TextEditingController(
+    text: 'Explique un article foncier en mots simples.',
+  );
+  String _answer =
+      'Tem-IA analyse le texte, cite les sources et produit un resume bilingue Francais / Bàátɔ̀nú.';
+
+  @override
+  void dispose() {
+    _query.dispose();
+    super.dispose();
+  }
+
+  void _analyze() {
+    final text = _query.text.trim();
+    if (text.isEmpty) return;
+    setState(() {
+      _answer =
+          'Analyse Tem-IA: "$text"\n\nResume: le sujet est reformule en langage clair, avec les points importants et une explication culturelle.\n\nSources: corpus foncier, dictionnaire Bariba, documents classes.';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _PageFrame(
+      title: 'Tem-IA foncier',
+      subtitle: 'Assistant specialise avec sources citees, resume et voix.',
+      child: ListView(
+        children: [
+          const _MetricStrip(
+            metrics: [
+              ('Sources', '128', Icons.source_rounded),
+              ('Langues', 'FR/BA', Icons.translate_rounded),
+              ('Mode', 'Foncier', Icons.gavel_rounded),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _TextPanel(
+            title: 'Question ou document',
+            controller: _query,
+            hint: 'Coller un article, poser une question ou dicter...',
+            maxLines: 6,
+          ),
+          const SizedBox(height: 10),
+          FilledButton.icon(
+            onPressed: _analyze,
+            icon: const Icon(Icons.auto_awesome_rounded),
+            label: const Text('Analyser avec Tem-IA'),
+          ),
+          const SizedBox(height: 12),
+          _InfoBox(title: 'Resultat', text: _answer),
+          const _FeatureGrid(
+            items: [
+              (
+                Icons.format_quote_rounded,
+                'Sources citees',
+                'Chaque reponse prepare les references pour affichage backend.',
+              ),
+              (
+                Icons.record_voice_over_rounded,
+                'Lecture vocale',
+                'Restitution audio en Francais et Bariba.',
+              ),
+              (
+                Icons.verified_rounded,
+                'Controle',
+                'Avertissement, moderation et validation humaine.',
+              ),
+            ],
           ),
         ],
       ),
@@ -3122,6 +4118,82 @@ class _NavItem extends StatelessWidget {
   }
 }
 
+class _NavGrid extends StatelessWidget {
+  const _NavGrid({
+    required this.pages,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final List<FitilaPage> pages;
+  final FitilaPage selected;
+  final ValueChanged<FitilaPage> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      itemCount: pages.length,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisExtent: 94,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+      ),
+      itemBuilder: (context, index) {
+        final page = pages[index];
+        final active = page == selected;
+        return InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => onSelected(page),
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: active
+                  ? _fitilaPrimary.withValues(alpha: 0.18)
+                  : Colors.white.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: active
+                    ? _fitilaPrimary.withValues(alpha: 0.38)
+                    : Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  page.icon,
+                  size: 20,
+                  color: active ? _fitilaPrimary : Colors.white70,
+                ),
+                const Spacer(),
+                Text(
+                  page.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  page.description,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white38, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);
 
@@ -3618,5 +4690,94 @@ const _lessons = [
       'Comparer avec le modèle audio.',
       'Soumettre une lecture propre.',
     ],
+  ),
+];
+
+const _fitilaTemplates = [
+  FitilaTemplateData(
+    id: 'griot-digital',
+    name: 'Griot Digital',
+    baribaName: 'Gando yɔyɔ',
+    category: 'storytelling',
+    summary: 'Recit patrimonial avec voix, sous-titres et rythme local.',
+    duration: 30,
+    icon: Icons.history_edu_rounded,
+    accent: Color(0xFF8B5CF6),
+    premium: true,
+    newBadge: true,
+  ),
+  FitilaTemplateData(
+    id: 'radio-village',
+    name: 'Radio Village',
+    baribaName: 'Wuu nɔɔ',
+    category: 'social',
+    summary:
+        'Annonce audio courte, visuel radial et publication communautaire.',
+    duration: 20,
+    icon: Icons.campaign_rounded,
+    accent: _fitilaPrimary,
+    newBadge: true,
+  ),
+  FitilaTemplateData(
+    id: 'lecon-du-jour',
+    name: 'Lecon du jour',
+    baribaName: 'Karo din',
+    category: 'education',
+    summary: 'Format classe avec exemple, quiz, repetition et correction.',
+    duration: 45,
+    icon: Icons.school_rounded,
+    accent: Color(0xFF14B8A6),
+  ),
+  FitilaTemplateData(
+    id: 'mini-doc-village',
+    name: 'Mini-doc Village',
+    baribaName: 'Tɔbu',
+    category: 'storytelling',
+    summary: 'Mini documentaire vertical avec chapitres et sources.',
+    duration: 60,
+    icon: Icons.movie_filter_rounded,
+    accent: Color(0xFF6366F1),
+    premium: true,
+  ),
+  FitilaTemplateData(
+    id: 'tem-ia-foncier',
+    name: 'Tem-IA Foncier',
+    baribaName: 'Tem-IA',
+    category: 'education',
+    summary: 'Explication juridique simple avec resume bilingue et citations.',
+    duration: 35,
+    icon: Icons.gavel_rounded,
+    accent: Color(0xFF22C55E),
+    premium: true,
+  ),
+  FitilaTemplateData(
+    id: 'smart-captions',
+    name: 'Smart Captions',
+    baribaName: 'Kpari',
+    category: 'social',
+    summary: 'Sous-titres automatiques, traduction et emphase karaoke.',
+    duration: 25,
+    icon: Icons.subtitles_rounded,
+    accent: Color(0xFFEC4899),
+  ),
+  FitilaTemplateData(
+    id: 'parole-ancien',
+    name: 'Parole ancien',
+    baribaName: 'Nɔɔ agba',
+    category: 'culture',
+    summary: 'Interview courte, transcription, citation et archive orale.',
+    duration: 50,
+    icon: Icons.elderly_rounded,
+    accent: Color(0xFFF59E0B),
+  ),
+  FitilaTemplateData(
+    id: 'annonce-communautaire',
+    name: 'Annonce communautaire',
+    baribaName: 'Kpɔn nɔɔ',
+    category: 'social',
+    summary: 'Message public, appel a action, lieux, date et partage rapide.',
+    duration: 18,
+    icon: Icons.notifications_active_rounded,
+    accent: Color(0xFF0EA5E9),
   ),
 ];
