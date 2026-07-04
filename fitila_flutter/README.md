@@ -17,10 +17,13 @@ https://www.figma.com/design/hMuCnLHeAcpG5NYbWi2uR3
 - Dictionnaire Bariba-Francais local embarque depuis `assets/data/dictionnaire_ameliore.json`.
 - Detail dictionnaire: phonetique, definition, exemples, ecoute, signalement, contribution.
 - Traducteur FR -> BA / BA -> FR avec fallback offline et point d'integration API.
+- Traducteur avance: texte, voix, photo/OCR, offline, historique, suggestions, feedback et switch moteur.
 - Fitila IA: chat, suggestions Tem-IA, aide classe, culture, sources.
+- Fitila IA avance: modes assistant, classe, culture, documents, sources, historique, voix et citations.
 - Tem-IA foncier: analyse, sources citees, resume bilingue et voix.
+- Tem-IA avance: recherche locale, documents, citations, validation humaine et historique.
 - Apprendre: modules, progression, lecons, exercices.
-- Classe: Niveau 1, Niveau 2, reponses texte/vocales, corrections, notes.
+- Classe avancee: Niveau 1, Niveau 2, alphabet, calcul, evaluations, corrections, notes, facilitateur, grammaire N2, production N2, gestion N2, reponses texte/vocales et audio review.
 - Clavier Bariba: caracteres speciaux integres et guide Android.
 - Voice Lab: TTS, STT, corpus vocal, diagnostic.
 - Espace enseignant: eleves, corrections, ponderations, releves PDF.

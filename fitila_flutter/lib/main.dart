@@ -2135,7 +2135,15 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
   final _input = TextEditingController();
   final _output = TextEditingController();
   TranslationDirection _direction = TranslationDirection.frenchToBariba;
+  String _mode = 'Texte';
+  String _model = 'Smart Translator';
+  bool _offline = true;
+  bool _autoSpeak = false;
   bool _busy = false;
+  final List<String> _history = [
+    'Bonjour -> Wɛɛrɛ',
+    'Je vais au marche -> Bariba: Je vais au marche',
+  ];
 
   @override
   void dispose() {
@@ -2151,7 +2159,117 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
     setState(() {
       _busy = false;
       _output.text = translated;
+      _history.insert(0, '${_input.text.trim()} -> $translated');
     });
+  }
+
+  Widget _modeChip(String mode, IconData icon) {
+    return ChoiceChip(
+      selected: _mode == mode,
+      avatar: Icon(icon, size: 18),
+      label: Text(mode),
+      onSelected: (_) => setState(() => _mode = mode),
+    );
+  }
+
+  Widget _translatorSubmodule() {
+    return switch (_mode) {
+      'Voix' => const _FeatureGrid(
+        items: [
+          (
+            Icons.mic_rounded,
+            'Voice Translator',
+            'Dictée FR/BA, detection langue, transcription et correction.',
+          ),
+          (
+            Icons.volume_up_rounded,
+            'Lecture TTS',
+            'Lecture audio du resultat avec voix Bariba et Francais.',
+          ),
+          (
+            Icons.record_voice_over_rounded,
+            'Voice Only',
+            'Mode conversation mains libres avec reponse vocale.',
+          ),
+        ],
+      ),
+      'Photo' => const _FeatureGrid(
+        items: [
+          (
+            Icons.photo_camera_rounded,
+            'Photo traducteur',
+            'Capture image, OCR, selection zone et traduction.',
+          ),
+          (
+            Icons.document_scanner_rounded,
+            'Document',
+            'Lecture affiche, fiche, ordonnance ou note de classe.',
+          ),
+          (
+            Icons.crop_rounded,
+            'Recadrage',
+            'Nettoyage visuel avant envoi au backend OCR.',
+          ),
+        ],
+      ),
+      'Offline' => _ActionList(
+        items: [
+          _ActionItem(
+            Icons.offline_bolt_rounded,
+            'OfflineTranslationService',
+            _offline
+                ? 'Cache actif: dictionnaire et phrases utiles disponibles.'
+                : 'Cache desactive pour test reseau.',
+          ),
+          const _ActionItem(
+            Icons.storage_rounded,
+            'TranslationCache',
+            'Historique local, favoris, reprise et synchronisation differee.',
+          ),
+          const _ActionItem(
+            Icons.sync_problem_rounded,
+            'Fallback',
+            'Si Supabase/HuggingFace echoue, le module garde une reponse locale.',
+          ),
+        ],
+      ),
+      'Historique' => _ActionList(
+        items: [
+          for (final item in _history.take(6))
+            _ActionItem(Icons.history_rounded, 'Historique', item),
+        ],
+      ),
+      'Suggestions' => const _FeatureGrid(
+        items: [
+          (
+            Icons.tips_and_updates_rounded,
+            'Suggestions',
+            'Corrections phonétiques, variantes et expressions proches.',
+          ),
+          (
+            Icons.spellcheck_rounded,
+            'Feedback',
+            'Evaluation utilisateur, signalement et amélioration corpus.',
+          ),
+          (
+            Icons.compare_arrows_rounded,
+            'Model switcher',
+            'Basculer entre modele simple, Smart Translator et ByT5.',
+          ),
+        ],
+      ),
+      _ => Card(
+        child: SwitchListTile(
+          value: _autoSpeak,
+          onChanged: (value) => setState(() => _autoSpeak = value),
+          secondary: const Icon(Icons.hearing_rounded),
+          title: Text('Mode $_model'),
+          subtitle: const Text(
+            'Traduction texte avec clavier Bariba, suggestions et sortie vocale.',
+          ),
+        ),
+      ),
+    };
   }
 
   @override
@@ -2163,6 +2281,52 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
           'Traduction Français-Bariba avec voix, suggestions et clavier natif.',
       child: ListView(
         children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _modeChip('Texte', Icons.translate_rounded),
+              _modeChip('Voix', Icons.mic_rounded),
+              _modeChip('Photo', Icons.photo_camera_rounded),
+              _modeChip('Offline', Icons.offline_bolt_rounded),
+              _modeChip('Historique', Icons.history_rounded),
+              _modeChip('Suggestions', Icons.tips_and_updates_rounded),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: _model,
+                  decoration: const InputDecoration(
+                    labelText: 'Moteur',
+                    prefixIcon: Icon(Icons.memory_rounded),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'Smart Translator',
+                      child: Text('Smart Translator'),
+                    ),
+                    DropdownMenuItem(value: 'ByT5', child: Text('ByT5')),
+                    DropdownMenuItem(
+                      value: 'Offline simple',
+                      child: Text('Offline simple'),
+                    ),
+                  ],
+                  onChanged: (value) => setState(() => _model = value!),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilterChip(
+                selected: _offline,
+                avatar: const Icon(Icons.cloud_off_rounded),
+                label: const Text('Offline'),
+                onSelected: (value) => setState(() => _offline = value),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -2256,6 +2420,8 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
             label: const Text('Traduire'),
           ),
           const SizedBox(height: 14),
+          _translatorSubmodule(),
+          const SizedBox(height: 14),
           const Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -2280,6 +2446,9 @@ class AiScreen extends StatefulWidget {
 
 class _AiScreenState extends State<AiScreen> {
   final _message = TextEditingController();
+  String _mode = 'Assistant';
+  bool _voice = true;
+  bool _sources = true;
   final List<({String role, String text})> _messages = [
     (
       role: 'assistant',
@@ -2308,6 +2477,133 @@ class _AiScreenState extends State<AiScreen> {
     });
   }
 
+  Widget _aiModeChip(String mode, IconData icon) {
+    return ChoiceChip(
+      selected: _mode == mode,
+      avatar: Icon(icon, size: 18),
+      label: Text(mode),
+      onSelected: (_) => setState(() => _mode = mode),
+    );
+  }
+
+  Widget _aiSubmodule() {
+    return switch (_mode) {
+      'Classe' => const _FeatureGrid(
+        items: [
+          (
+            Icons.school_rounded,
+            'Aide classe',
+            'Correction de phrase, explication leçon, quiz et réponse vocale.',
+          ),
+          (
+            Icons.compare_rounded,
+            'Answer diff',
+            'Compare la réponse élève au corrigé avec feedback clair.',
+          ),
+          (
+            Icons.grade_rounded,
+            'Note formative',
+            'Prépare une note, un commentaire et une remédiation.',
+          ),
+        ],
+      ),
+      'Culture' => const _FeatureGrid(
+        items: [
+          (
+            Icons.groups_rounded,
+            'Culture',
+            'Coutumes, proverbes, récits, contexte et variantes locales.',
+          ),
+          (
+            Icons.history_edu_rounded,
+            'Raconte-moi',
+            'Assistant conte vivant avec branches et sources culturelles.',
+          ),
+          (
+            Icons.translate_rounded,
+            'Bilingue',
+            'Réponse Français / Bàátɔ̀nú avec simplification.',
+          ),
+        ],
+      ),
+      'Documents' => const _FeatureGrid(
+        items: [
+          (
+            Icons.upload_file_rounded,
+            'Analyse document',
+            'Collage texte, résumé, extraction questions et sources.',
+          ),
+          (
+            Icons.find_in_page_rounded,
+            'Recherche locale',
+            'Interroge corpus, dictionnaire, classe et cache Tem-IA.',
+          ),
+          (
+            Icons.picture_as_pdf_rounded,
+            'Export',
+            'Prépare PDF, fiche classe et synthèse partageable.',
+          ),
+        ],
+      ),
+      'Sources' => _ActionList(
+        items: const [
+          _ActionItem(
+            Icons.source_rounded,
+            'Corpus dictionnaire',
+            'Mots, exemples, phonétique et expressions embarquées.',
+          ),
+          _ActionItem(
+            Icons.school_rounded,
+            'Corpus classe',
+            'Leçons, évaluations, réponses, corrigés et grammaire.',
+          ),
+          _ActionItem(
+            Icons.gavel_rounded,
+            'Corpus Tem-IA',
+            'Foncier, documents, citations et synthèse bilingue.',
+          ),
+        ],
+      ),
+      'Historique' => _ActionList(
+        items: [
+          for (final msg in _messages.reversed.take(6))
+            _ActionItem(
+              msg.role == 'user'
+                  ? Icons.person_rounded
+                  : Icons.smart_toy_rounded,
+              msg.role == 'user' ? 'Utilisateur' : 'Fitila IA',
+              msg.text,
+            ),
+        ],
+      ),
+      _ => Card(
+        child: Column(
+          children: [
+            SwitchListTile(
+              value: _voice,
+              onChanged: (value) => setState(() => _voice = value),
+              secondary: const Icon(Icons.record_voice_over_rounded),
+              title: const Text('Voix IA active'),
+              subtitle: const Text(
+                'Lecture, dictée et assistant conversationnel.',
+              ),
+            ),
+            const Divider(height: 1),
+            SwitchListTile(
+              value: _sources,
+              onChanged: (value) => setState(() => _sources = value),
+              secondary: const Icon(Icons.format_quote_rounded),
+              title: const Text('Sources citées'),
+              subtitle: const Text(
+                'Affiche les bases utilisées dans la réponse.',
+              ),
+            ),
+          ],
+        ),
+      ),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return _PageFrame(
@@ -2315,6 +2611,22 @@ class _AiScreenState extends State<AiScreen> {
       subtitle: 'Conversation, voix, sources citées et mode Tem-IA foncier.',
       child: Column(
         children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _aiModeChip('Assistant', Icons.auto_awesome_rounded),
+                _aiModeChip('Classe', Icons.school_rounded),
+                _aiModeChip('Culture', Icons.groups_rounded),
+                _aiModeChip('Documents', Icons.upload_file_rounded),
+                _aiModeChip('Sources', Icons.source_rounded),
+                _aiModeChip('Historique', Icons.history_rounded),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
           Expanded(
             child: ListView.separated(
               itemCount: _messages.length,
@@ -2382,6 +2694,8 @@ class _AiScreenState extends State<AiScreen> {
             ],
           ),
           const SizedBox(height: 8),
+          Align(alignment: Alignment.centerLeft, child: _aiSubmodule()),
+          const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerLeft,
             child: Wrap(
@@ -2419,6 +2733,8 @@ class _TemIaScreenState extends State<TemIaScreen> {
   final _query = TextEditingController(
     text: 'Explique un article foncier en mots simples.',
   );
+  String _section = 'Analyse';
+  bool _humanReview = true;
   String _answer =
       'Tem-IA analyse le texte, cite les sources et produit un resume bilingue Francais / Bàátɔ̀nú.';
 
@@ -2437,6 +2753,103 @@ class _TemIaScreenState extends State<TemIaScreen> {
     });
   }
 
+  Widget _temChip(String value, IconData icon) {
+    return ChoiceChip(
+      selected: _section == value,
+      avatar: Icon(icon, size: 18),
+      label: Text(value),
+      onSelected: (_) => setState(() => _section = value),
+    );
+  }
+
+  Widget _temSection() {
+    return switch (_section) {
+      'Recherche' => const _FeatureGrid(
+        items: [
+          (
+            Icons.search_rounded,
+            'Recherche locale',
+            'Cherche dans corpus foncier, dictionnaire et cache offline.',
+          ),
+          (
+            Icons.filter_alt_rounded,
+            'Filtres',
+            'Type document, commune, theme, date et niveau de confiance.',
+          ),
+          (
+            Icons.saved_search_rounded,
+            'Resultats',
+            'Extraits, score, source et lien vers le document.',
+          ),
+        ],
+      ),
+      'Documents' => const _FeatureGrid(
+        items: [
+          (
+            Icons.description_rounded,
+            'Document',
+            'Coller texte, importer PDF/image ou dicter une question.',
+          ),
+          (
+            Icons.summarize_rounded,
+            'Résumé',
+            'Synthèse courte, points de vigilance et version bilingue.',
+          ),
+          (
+            Icons.picture_as_pdf_rounded,
+            'Export',
+            'Fiche partageable pour classe, communauté ou enseignant.',
+          ),
+        ],
+      ),
+      'Citations' => _ActionList(
+        items: const [
+          _ActionItem(
+            Icons.format_quote_rounded,
+            'Citation 1',
+            'Référence au corpus foncier avec extrait court et contexte.',
+          ),
+          _ActionItem(
+            Icons.menu_book_rounded,
+            'Citation dictionnaire',
+            'Termes Bariba importants et explication simple.',
+          ),
+          _ActionItem(
+            Icons.school_rounded,
+            'Citation classe',
+            'Lien pédagogique vers leçon, quiz ou correction.',
+          ),
+        ],
+      ),
+      'Validation' => Card(
+        child: SwitchListTile(
+          value: _humanReview,
+          onChanged: (value) => setState(() => _humanReview = value),
+          secondary: const Icon(Icons.verified_user_rounded),
+          title: const Text('Validation humaine'),
+          subtitle: const Text(
+            'Active avertissement, moderation et contrôle avant usage sensible.',
+          ),
+        ),
+      ),
+      'Historique' => _ActionList(
+        items: const [
+          _ActionItem(
+            Icons.history_rounded,
+            'Analyse article foncier',
+            'Résumé bilingue, 3 citations, prudence activée.',
+          ),
+          _ActionItem(
+            Icons.question_answer_rounded,
+            'Question utilisateur',
+            'Explication simplifiée et points clés.',
+          ),
+        ],
+      ),
+      _ => _InfoBox(title: 'Resultat', text: _answer),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return _PageFrame(
@@ -2449,6 +2862,19 @@ class _TemIaScreenState extends State<TemIaScreen> {
               ('Sources', '128', Icons.source_rounded),
               ('Langues', 'FR/BA', Icons.translate_rounded),
               ('Mode', 'Foncier', Icons.gavel_rounded),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _temChip('Analyse', Icons.auto_awesome_rounded),
+              _temChip('Recherche', Icons.search_rounded),
+              _temChip('Documents', Icons.description_rounded),
+              _temChip('Citations', Icons.format_quote_rounded),
+              _temChip('Validation', Icons.verified_user_rounded),
+              _temChip('Historique', Icons.history_rounded),
             ],
           ),
           const SizedBox(height: 12),
@@ -2465,7 +2891,8 @@ class _TemIaScreenState extends State<TemIaScreen> {
             label: const Text('Analyser avec Tem-IA'),
           ),
           const SizedBox(height: 12),
-          _InfoBox(title: 'Resultat', text: _answer),
+          _temSection(),
+          const SizedBox(height: 12),
           const _FeatureGrid(
             items: [
               (
@@ -2531,6 +2958,305 @@ class ClasseScreen extends StatefulWidget {
 
 class _ClasseScreenState extends State<ClasseScreen> {
   String _level = 'Niveau 1';
+  String _section = 'Leçons';
+
+  Widget _sectionChip(String value, IconData icon) {
+    final enabled =
+        _level == 'Niveau 2' ||
+        !['Grammaire N2', 'Production N2', 'Gestion N2'].contains(value);
+    return ChoiceChip(
+      selected: _section == value,
+      avatar: Icon(icon, size: 18),
+      label: Text(value),
+      onSelected: enabled ? (_) => setState(() => _section = value) : null,
+    );
+  }
+
+  Widget _lessonList(List<LessonCardData> lessons) {
+    return ListView.separated(
+      itemCount: lessons.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 10),
+      itemBuilder: (context, index) =>
+          _ClasseLessonTile(lesson: lessons[index]),
+    );
+  }
+
+  Widget _classeBody(List<LessonCardData> lessons) {
+    return switch (_section) {
+      'Accueil' => ListView(
+        children: [
+          _MetricStrip(
+            metrics: [
+              (_level, '${lessons.length}', Icons.school_rounded),
+              ('Progression', '62%', Icons.trending_up_rounded),
+              ('Audio', 'Actif', Icons.record_voice_over_rounded),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const _FeatureGrid(
+            items: [
+              (
+                Icons.menu_book_rounded,
+                'Leçons',
+                'Themes, detail, images, phonétique, écoute et exercices.',
+              ),
+              (
+                Icons.assignment_rounded,
+                'Evaluations',
+                'Questions, réponses, auto-évaluation et correction.',
+              ),
+              (
+                Icons.rate_review_rounded,
+                'Corrections',
+                'Diff de réponse, feedback élève, notes et commentaires.',
+              ),
+              (
+                Icons.mic_rounded,
+                'Réponse vocale',
+                'Enregistrement, transcription, écoute et validation qualité.',
+              ),
+            ],
+          ),
+        ],
+      ),
+      'Alphabet' => ListView(
+        children: [
+          const _MetricStrip(
+            metrics: [
+              ('Voyelles', '7', Icons.text_fields_rounded),
+              ('Consonnes', '23', Icons.abc_rounded),
+              ('Tons', '4', Icons.graphic_eq_rounded),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _BaribaKeyboard(onInsert: (_) {}),
+          const SizedBox(height: 12),
+          const _FeatureGrid(
+            items: [
+              (
+                Icons.hearing_rounded,
+                'Ecoute',
+                'Lire son, ton, nasale et syllabe avec audio.',
+              ),
+              (
+                Icons.edit_rounded,
+                'Ecriture',
+                'Tracer, saisir et corriger les caractères Bariba.',
+              ),
+              (
+                Icons.compare_rounded,
+                'Phonétique',
+                'Comparer français, Bariba et variantes de prononciation.',
+              ),
+            ],
+          ),
+        ],
+      ),
+      'Calcul' => const _FeatureGrid(
+        items: [
+          (
+            Icons.calculate_rounded,
+            'Nombres',
+            'Compter, lire, écrire et écouter les nombres.',
+          ),
+          (
+            Icons.storefront_rounded,
+            'Marché',
+            'Prix, monnaie, quantité, dialogue vendeur/client.',
+          ),
+          (
+            Icons.quiz_rounded,
+            'Exercices',
+            'Questions calculées, correction et score.',
+          ),
+        ],
+      ),
+      'Evaluations' => ListView(
+        children: [
+          const _MetricStrip(
+            metrics: [
+              ('Langue', '12', Icons.menu_book_rounded),
+              ('Calcul', '6', Icons.calculate_rounded),
+              ('Score', '84%', Icons.grade_rounded),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _ActionList(
+            items: [
+              const _ActionItem(
+                Icons.assignment_turned_in_rounded,
+                'Evaluation langue',
+                'Questions, choix, réponse libre et écoute.',
+              ),
+              const _ActionItem(
+                Icons.calculate_rounded,
+                'Evaluation calcul',
+                'Problèmes, marché, nombres et validation.',
+              ),
+              _ActionItem(
+                Icons.fact_check_rounded,
+                'Soumission',
+                'Enregistrer texte, voix et auto-évaluation pour $_level.',
+              ),
+            ],
+          ),
+        ],
+      ),
+      'Corrections' => ListView(
+        children: const [
+          _MetricStrip(
+            metrics: [
+              ('A corriger', '12', Icons.pending_actions_rounded),
+              ('Diff', 'Actif', Icons.compare_rounded),
+              ('Feedback', 'Vocal', Icons.record_voice_over_rounded),
+            ],
+          ),
+          SizedBox(height: 12),
+          _FeatureGrid(
+            items: [
+              (
+                Icons.difference_rounded,
+                'AnswerDiff',
+                'Comparer réponse élève, corrigé attendu et écarts.',
+              ),
+              (
+                Icons.feedback_rounded,
+                'Feedback',
+                'Commentaire enseignant, conseil et remédiation.',
+              ),
+              (
+                Icons.play_circle_rounded,
+                'VoiceAnswerPlayer',
+                'Ecoute de la réponse vocale et transcription.',
+              ),
+            ],
+          ),
+        ],
+      ),
+      'Notes' => ListView(
+        children: [
+          const _MetricStrip(
+            metrics: [
+              ('Moyenne', '14.8', Icons.grade_rounded),
+              ('Badges', '6', Icons.emoji_events_rounded),
+              ('Export', 'PDF', Icons.picture_as_pdf_rounded),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _ActionList(
+            items: const [
+              _ActionItem(
+                Icons.bar_chart_rounded,
+                'MyGradeReport',
+                'Résumé notes, progression, commentaires et points faibles.',
+              ),
+              _ActionItem(
+                Icons.download_rounded,
+                'Export',
+                'Relevé PDF pour élève, parent et enseignant.',
+              ),
+            ],
+          ),
+        ],
+      ),
+      'Facilitateur' => const _FeatureGrid(
+        items: [
+          (
+            Icons.workspace_premium_rounded,
+            'Guide pédagogique',
+            'Objectifs, déroulé, consignes, pièges et corrections.',
+          ),
+          (
+            Icons.groups_rounded,
+            'Animation classe',
+            'Activités collectives, écoute, répétition et jeux de rôle.',
+          ),
+          (
+            Icons.tune_rounded,
+            'Adaptation',
+            'Difficulté, durée, pondération et accessibilité.',
+          ),
+        ],
+      ),
+      'Grammaire N2' => const _FeatureGrid(
+        items: [
+          (
+            Icons.rule_rounded,
+            'Classes grammaticales',
+            'Noms, verbes, pronoms, tons et constructions.',
+          ),
+          (
+            Icons.account_tree_rounded,
+            'Structure',
+            'Sujet, objet, temps, négation et comparaison.',
+          ),
+          (
+            Icons.spellcheck_rounded,
+            'Correction',
+            'Analyse phrase, erreur et proposition corrigée.',
+          ),
+        ],
+      ),
+      'Production N2' => const _FeatureGrid(
+        items: [
+          (
+            Icons.edit_note_rounded,
+            'Production écrite',
+            'Récit, description, annonce, dialogue, résumé, lettre.',
+          ),
+          (
+            Icons.auto_awesome_rounded,
+            'Assistant IA',
+            'Plan, reformulation, correction et enrichissement Bariba.',
+          ),
+          (
+            Icons.checklist_rounded,
+            'Rubrique',
+            'Critères, score, feedback et version finale.',
+          ),
+        ],
+      ),
+      'Gestion N2' => const _FeatureGrid(
+        items: [
+          (
+            Icons.folder_rounded,
+            'Documents',
+            'Fiche, registre, note, rapport, annonce et inventaire.',
+          ),
+          (
+            Icons.business_center_rounded,
+            'Situation métier',
+            'Gestion locale, marché, association et école.',
+          ),
+          (
+            Icons.picture_as_pdf_rounded,
+            'Export',
+            'Modèles prêts à imprimer ou partager.',
+          ),
+        ],
+      ),
+      'Audio' => const _FeatureGrid(
+        items: [
+          (
+            Icons.mic_rounded,
+            'VoiceAnswerRecorder',
+            'Enregistrer réponse, durée, niveau et consentement.',
+          ),
+          (
+            Icons.graphic_eq_rounded,
+            'Analyse audio',
+            'Bruit, lisibilité, transcription STT et validation.',
+          ),
+          (
+            Icons.admin_panel_settings_rounded,
+            'Audio review',
+            'File admin pour vérifier corpus et réponses classe.',
+          ),
+        ],
+      ),
+      _ => _lessonList(lessons),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2556,35 +3282,46 @@ class _ClasseScreenState extends State<ClasseScreen> {
       ),
       child: Column(
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(
-                  value: 'Niveau 1',
-                  label: Text('Niveau 1'),
-                  icon: Icon(Icons.looks_one_rounded),
-                ),
-                ButtonSegment(
-                  value: 'Niveau 2',
-                  label: Text('Niveau 2'),
-                  icon: Icon(Icons.looks_two_rounded),
-                ),
-              ],
-              selected: {_level},
-              onSelectionChanged: (values) =>
-                  setState(() => _level = values.first),
-            ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(
+                    value: 'Niveau 1',
+                    label: Text('Niveau 1'),
+                    icon: Icon(Icons.looks_one_rounded),
+                  ),
+                  ButtonSegment(
+                    value: 'Niveau 2',
+                    label: Text('Niveau 2'),
+                    icon: Icon(Icons.looks_two_rounded),
+                  ),
+                ],
+                selected: {_level},
+                onSelectionChanged: (values) => setState(() {
+                  _level = values.first;
+                  _section = 'Accueil';
+                }),
+              ),
+              _sectionChip('Accueil', Icons.home_rounded),
+              _sectionChip('Leçons', Icons.menu_book_rounded),
+              _sectionChip('Alphabet', Icons.abc_rounded),
+              _sectionChip('Calcul', Icons.calculate_rounded),
+              _sectionChip('Evaluations', Icons.assignment_rounded),
+              _sectionChip('Corrections', Icons.fact_check_rounded),
+              _sectionChip('Notes', Icons.grade_rounded),
+              _sectionChip('Facilitateur', Icons.workspace_premium_rounded),
+              _sectionChip('Audio', Icons.mic_rounded),
+              _sectionChip('Grammaire N2', Icons.rule_rounded),
+              _sectionChip('Production N2', Icons.edit_note_rounded),
+              _sectionChip('Gestion N2', Icons.folder_rounded),
+            ],
           ),
           const SizedBox(height: 12),
-          Expanded(
-            child: ListView.separated(
-              itemCount: lessons.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 10),
-              itemBuilder: (context, index) =>
-                  _ClasseLessonTile(lesson: lessons[index]),
-            ),
-          ),
+          Expanded(child: _classeBody(lessons)),
         ],
       ),
     );
