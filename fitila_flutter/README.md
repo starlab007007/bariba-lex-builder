@@ -25,7 +25,9 @@ https://www.figma.com/design/hMuCnLHeAcpG5NYbWi2uR3
 - Tem-IA foncier: analyse, domaines, sources citees, resume bilingue et voix.
 - Tem-IA avance: recherche locale, documents, citations, validation humaine, sources obligatoires, risques, garde-fous et historique.
 - Apprendre: parcours recommande, modules, progression, lecons, quiz, exercices, audio, badges et offline.
-- Classe avancee: Niveau 1, Niveau 2, alphabet, calcul, evaluations, corrections, notes, facilitateur, grammaire N2, production N2, gestion N2, reponses texte/vocales et audio review.
+- Classe avancee: Niveau 1, Niveau 2, alphabet, calcul, evaluations, corrections, notes, baremes, facilitateur, grammaire N2, production N2, gestion N2, reponses texte/vocales, auto-evaluation, pre-correction, audio review et synchronisation.
+- Classe cote apprenant: ClasseLessonView, BaribaSmartInput, SelfAssessment, VoiceAnswerRecorder, StudentAnswerFeedback, progression locale, badges et cache offline.
+- Classe cote enseignant: TeacherDashboard, StudentList, StudentDetail, PendingGrading, AnswerReview, AnswerDiff, AnswerKeysManager, WeightsManager, GradeOverview, ClassStats, VoiceReadingStudio, ClasseAudioReview et exports PDF/CSV.
 - Clavier Bariba: caracteres speciaux integres, guide Android, compagnon flottant, suggestions, normalisation, haptique et confidentialite.
 - Voice Lab: TTS, STT, corpus vocal, diagnostic.
 - Espace enseignant: eleves, corrections, ponderations, releves PDF.

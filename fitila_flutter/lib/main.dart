@@ -3935,6 +3935,32 @@ class _ClasseScreenState extends State<ClasseScreen> {
           ),
         ],
       ),
+      'Apprenant' => ListView(
+        children: const [
+          _MetricStrip(
+            metrics: [
+              ('Parcours', 'N1/N2', Icons.route_rounded),
+              ('Réponses', 'Texte/Voix', Icons.mic_rounded),
+              ('Auto-éval', 'Active', Icons.psychology_rounded),
+            ],
+          ),
+          SizedBox(height: 12),
+          _ClasseStudentBoard(),
+        ],
+      ),
+      'Enseignant' => ListView(
+        children: const [
+          _MetricStrip(
+            metrics: [
+              ('Élèves', '38', Icons.groups_rounded),
+              ('À corriger', '12', Icons.pending_actions_rounded),
+              ('Barèmes', '4', Icons.tune_rounded),
+            ],
+          ),
+          SizedBox(height: 12),
+          _ClasseTeacherBoard(),
+        ],
+      ),
       'Alphabet' => ListView(
         children: [
           const _MetricStrip(
@@ -3991,11 +4017,13 @@ class _ClasseScreenState extends State<ClasseScreen> {
         children: [
           const _MetricStrip(
             metrics: [
-              ('Langue', '12', Icons.menu_book_rounded),
+              ('Langue', '10', Icons.menu_book_rounded),
               ('Calcul', '6', Icons.calculate_rounded),
               ('Score', '84%', Icons.grade_rounded),
             ],
           ),
+          const SizedBox(height: 12),
+          const _ClasseEvaluationBoard(),
           const SizedBox(height: 12),
           _ActionList(
             items: [
@@ -4028,6 +4056,8 @@ class _ClasseScreenState extends State<ClasseScreen> {
             ],
           ),
           SizedBox(height: 12),
+          _ClasseCorrectionWorkflowBoard(),
+          SizedBox(height: 12),
           _FeatureGrid(
             items: [
               (
@@ -4059,6 +4089,8 @@ class _ClasseScreenState extends State<ClasseScreen> {
             ],
           ),
           const SizedBox(height: 12),
+          const _ClasseGradebookBoard(),
+          const SizedBox(height: 12),
           _ActionList(
             items: const [
               _ActionItem(
@@ -4070,6 +4102,68 @@ class _ClasseScreenState extends State<ClasseScreen> {
                 Icons.download_rounded,
                 'Export',
                 'Relevé PDF pour élève, parent et enseignant.',
+              ),
+            ],
+          ),
+        ],
+      ),
+      'Barèmes' => ListView(
+        children: const [
+          _MetricStrip(
+            metrics: [
+              ('Langue', '40%', Icons.menu_book_rounded),
+              ('Oral', '30%', Icons.record_voice_over_rounded),
+              ('Calcul', '30%', Icons.calculate_rounded),
+            ],
+          ),
+          SizedBox(height: 12),
+          _FeatureGrid(
+            items: [
+              (
+                Icons.tune_rounded,
+                'WeightsManager',
+                'Configurer poids par niveau, module, chapitre, leçon et section.',
+              ),
+              (
+                Icons.rule_folder_rounded,
+                'AnswerKeysManager',
+                'Corrigés officiels, variantes acceptées et score automatique.',
+              ),
+              (
+                Icons.checklist_rounded,
+                'Rubriques',
+                'Critères production écrite, lecture vocale, calcul et grammaire.',
+              ),
+            ],
+          ),
+        ],
+      ),
+      'Synchronisation' => ListView(
+        children: const [
+          _MetricStrip(
+            metrics: [
+              ('Sync', 'Queue', Icons.sync_rounded),
+              ('Tables', '7', Icons.storage_rounded),
+              ('Offline', 'Prêt', Icons.offline_bolt_rounded),
+            ],
+          ),
+          SizedBox(height: 12),
+          _ActionList(
+            items: [
+              _ActionItem(
+                Icons.cloud_upload_rounded,
+                'classeSync',
+                'syncAnswer, syncProgress, syncEvaluation et reprise réseau.',
+              ),
+              _ActionItem(
+                Icons.dataset_rounded,
+                'Tables backend',
+                'classe_student_answers, answer_keys, grade_weights, chapters.',
+              ),
+              _ActionItem(
+                Icons.security_rounded,
+                'Rôles',
+                'Apprenant, enseignant, admin audio et accès protégé.',
               ),
             ],
           ),
@@ -4223,14 +4317,18 @@ class _ClasseScreenState extends State<ClasseScreen> {
                 }),
               ),
               _sectionChip('Accueil', Icons.home_rounded),
+              _sectionChip('Apprenant', Icons.person_rounded),
+              _sectionChip('Enseignant', Icons.workspace_premium_rounded),
               _sectionChip('Leçons', Icons.menu_book_rounded),
               _sectionChip('Alphabet', Icons.abc_rounded),
               _sectionChip('Calcul', Icons.calculate_rounded),
               _sectionChip('Evaluations', Icons.assignment_rounded),
               _sectionChip('Corrections', Icons.fact_check_rounded),
               _sectionChip('Notes', Icons.grade_rounded),
+              _sectionChip('Barèmes', Icons.tune_rounded),
               _sectionChip('Facilitateur', Icons.workspace_premium_rounded),
               _sectionChip('Audio', Icons.mic_rounded),
+              _sectionChip('Synchronisation', Icons.sync_rounded),
               _sectionChip('Grammaire N2', Icons.rule_rounded),
               _sectionChip('Production N2', Icons.edit_note_rounded),
               _sectionChip('Gestion N2', Icons.folder_rounded),
@@ -4240,6 +4338,176 @@ class _ClasseScreenState extends State<ClasseScreen> {
           Expanded(child: _classeBody(lessons)),
         ],
       ),
+    );
+  }
+}
+
+class _ClasseStudentBoard extends StatelessWidget {
+  const _ClasseStudentBoard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _FeatureGrid(
+      items: const [
+        (
+          Icons.menu_book_rounded,
+          'ClasseLessonView',
+          'Image, audio, texte, détail, consignes, exemples et questions.',
+        ),
+        (
+          Icons.keyboard_alt_rounded,
+          'BaribaSmartInput',
+          'Saisie Bariba, accents, suggestions, normalisation et validation.',
+        ),
+        (
+          Icons.psychology_rounded,
+          'SelfAssessment',
+          'Je comprends, je dois revoir, confiance, difficulté et commentaire.',
+        ),
+        (
+          Icons.mic_rounded,
+          'VoiceAnswerRecorder',
+          'Enregistrement vocal, niveau, durée, consentement et transcription.',
+        ),
+        (
+          Icons.save_rounded,
+          'Progression locale',
+          'Leçon terminée, étoiles, badges, dernier module et cache offline.',
+        ),
+        (
+          Icons.feedback_rounded,
+          'StudentAnswerFeedback',
+          'Retour enseignant, correction, note, audio et remédiation.',
+        ),
+      ],
+    );
+  }
+}
+
+class _ClasseTeacherBoard extends StatelessWidget {
+  const _ClasseTeacherBoard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _ActionList(
+      items: const [
+        _ActionItem(
+          Icons.dashboard_rounded,
+          'TeacherDashboard',
+          'Vue globale: élèves, moyenne, retard, corrections et alertes.',
+        ),
+        _ActionItem(
+          Icons.people_rounded,
+          'StudentList / StudentDetail',
+          'Profil élève, progression, réponses texte/audio et historique.',
+        ),
+        _ActionItem(
+          Icons.rate_review_rounded,
+          'PendingGrading',
+          'File de correction, diff, barème, note sur 20 et commentaire.',
+        ),
+        _ActionItem(
+          Icons.graphic_eq_rounded,
+          'VoiceReadingStudio',
+          'Lecture vocale, qualité, écoute, transcription et validation corpus.',
+        ),
+      ],
+    );
+  }
+}
+
+class _ClasseEvaluationBoard extends StatelessWidget {
+  const _ClasseEvaluationBoard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _FeatureGrid(
+      items: const [
+        (
+          Icons.quiz_rounded,
+          '10 évaluations langue',
+          'QCM, réponse libre, dictée, image, audio et score meilleur.',
+        ),
+        (
+          Icons.calculate_rounded,
+          'Calcul intégré',
+          'Nombres, monnaie, marché, opérations et problèmes contextualisés.',
+        ),
+        (
+          Icons.assignment_turned_in_rounded,
+          'Soumission complète',
+          'Texte, voix, auto-évaluation, brouillon et synchronisation backend.',
+        ),
+        (
+          Icons.fact_check_rounded,
+          'Correction automatique',
+          'Corrigé attendu, variantes, similarité, mots manquants et score.',
+        ),
+      ],
+    );
+  }
+}
+
+class _ClasseCorrectionWorkflowBoard extends StatelessWidget {
+  const _ClasseCorrectionWorkflowBoard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _ActionList(
+      items: const [
+        _ActionItem(
+          Icons.difference_rounded,
+          'AnswerDiff',
+          'Compare réponse élève, corrigé attendu, écarts et variantes acceptées.',
+        ),
+        _ActionItem(
+          Icons.edit_note_rounded,
+          'AnswerReview',
+          'Annotation enseignant, note, statut, commentaire texte et audio.',
+        ),
+        _ActionItem(
+          Icons.record_voice_over_rounded,
+          'VoiceAnswerPlayer',
+          'Écoute, transcription, qualité, vitesse et commentaire vocal.',
+        ),
+        _ActionItem(
+          Icons.auto_awesome_rounded,
+          'Remédiation IA',
+          'Conseil personnalisé, exercice de reprise et prochaine leçon.',
+        ),
+      ],
+    );
+  }
+}
+
+class _ClasseGradebookBoard extends StatelessWidget {
+  const _ClasseGradebookBoard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _FeatureGrid(
+      items: const [
+        (
+          Icons.bar_chart_rounded,
+          'GradeOverview',
+          'Moyenne, distribution, évolution, retard et modules faibles.',
+        ),
+        (
+          Icons.table_chart_rounded,
+          'Carnet de notes',
+          'Notes par élève, module, évaluation, oral, calcul et production.',
+        ),
+        (
+          Icons.picture_as_pdf_rounded,
+          'MyGradeReport',
+          'Relevé PDF élève/parent/enseignant avec commentaires.',
+        ),
+        (
+          Icons.insights_rounded,
+          'ClassStats',
+          'Performance classe, objectifs, assiduité et recommandations.',
+        ),
+      ],
     );
   }
 }
@@ -4436,8 +4704,107 @@ class VoiceLabScreen extends StatelessWidget {
   }
 }
 
-class TeacherScreen extends StatelessWidget {
+class TeacherScreen extends StatefulWidget {
   const TeacherScreen({super.key});
+
+  @override
+  State<TeacherScreen> createState() => _TeacherScreenState();
+}
+
+class _TeacherScreenState extends State<TeacherScreen> {
+  String _tab = 'Dashboard';
+
+  Widget _teacherChip(String value, IconData icon) {
+    return ChoiceChip(
+      selected: _tab == value,
+      avatar: Icon(icon, size: 18),
+      label: Text(value),
+      onSelected: (_) => setState(() => _tab = value),
+    );
+  }
+
+  Widget _teacherBody() {
+    return switch (_tab) {
+      'Élèves' => _ActionList(
+        items: const [
+          _ActionItem(
+            Icons.people_rounded,
+            'StudentList',
+            'Recherche, filtre niveau, statut, progression et dernier devoir.',
+          ),
+          _ActionItem(
+            Icons.person_search_rounded,
+            'StudentDetail',
+            'Profil, réponses, audio, notes, badges et historique complet.',
+          ),
+          _ActionItem(
+            Icons.notifications_active_rounded,
+            'Alertes',
+            'Retard, faible progression, correction non lue et relance.',
+          ),
+        ],
+      ),
+      'Corrections' => const _ClasseCorrectionWorkflowBoard(),
+      'Barèmes' => const _FeatureGrid(
+        items: [
+          (
+            Icons.tune_rounded,
+            'WeightsManager',
+            'Pondérations par module, niveau, chapitre, leçon et compétence.',
+          ),
+          (
+            Icons.rule_folder_rounded,
+            'AnswerKeysManager',
+            'Corrigés, variantes acceptées, mots clés et barème automatique.',
+          ),
+          (
+            Icons.verified_rounded,
+            'Validation',
+            'Publier corrigé, verrouiller note et historiser modification.',
+          ),
+        ],
+      ),
+      'Notes' => const _ClasseGradebookBoard(),
+      'Lecture vocale' => const _FeatureGrid(
+        items: [
+          (
+            Icons.record_voice_over_rounded,
+            'VoiceReadingHome',
+            'Sélection texte, niveau, modèle audio et consigne de lecture.',
+          ),
+          (
+            Icons.graphic_eq_rounded,
+            'VoiceReadingStudio',
+            'Waveform, bruit, vitesse, transcription et score de fluidité.',
+          ),
+          (
+            Icons.health_and_safety_rounded,
+            'ClasseAudioReview',
+            'Validation admin, consentement, qualité et ajout au corpus.',
+          ),
+        ],
+      ),
+      _ => const _FeatureGrid(
+        items: [
+          (
+            Icons.dashboard_rounded,
+            'TeacherDashboard',
+            'Moyenne, élèves actifs, corrections, tendances et alertes.',
+          ),
+          (
+            Icons.pending_actions_rounded,
+            'Travail en attente',
+            'Réponses texte, audio, évaluations et productions N2 à noter.',
+          ),
+          (
+            Icons.picture_as_pdf_rounded,
+            'Exports',
+            'Relevés PDF, carnet CSV, synthèse parent et rapport classe.',
+          ),
+        ],
+      ),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -4455,30 +4822,20 @@ class TeacherScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _ActionList(
-            items: [
-              _ActionItem(
-                Icons.people_rounded,
-                'Liste des élèves',
-                'Profil, progression, réponses audio et texte.',
-              ),
-              _ActionItem(
-                Icons.rate_review_rounded,
-                'Correction rapide',
-                'Comparer aux corrigés, noter sur 20, commentaire vocal.',
-              ),
-              _ActionItem(
-                Icons.tune_rounded,
-                'Pondérations',
-                'Configurer poids module, chapitre, leçon et section.',
-              ),
-              _ActionItem(
-                Icons.picture_as_pdf_rounded,
-                'Relevés PDF',
-                'Exporter les notes complètes comme sur le web React.',
-              ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _teacherChip('Dashboard', Icons.dashboard_rounded),
+              _teacherChip('Élèves', Icons.people_rounded),
+              _teacherChip('Corrections', Icons.rate_review_rounded),
+              _teacherChip('Barèmes', Icons.tune_rounded),
+              _teacherChip('Notes', Icons.grade_rounded),
+              _teacherChip('Lecture vocale', Icons.record_voice_over_rounded),
             ],
           ),
+          const SizedBox(height: 12),
+          _teacherBody(),
         ],
       ),
     );
@@ -5598,6 +5955,8 @@ class _ClasseLessonTile extends StatefulWidget {
 
 class _ClasseLessonTileState extends State<_ClasseLessonTile> {
   bool _expanded = false;
+  bool _voiceAnswer = false;
+  String _confidence = 'Compris';
   final _answer = TextEditingController();
 
   @override
@@ -5685,10 +6044,45 @@ class _ClasseLessonTileState extends State<_ClasseLessonTile> {
                 ),
               ),
               const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final confidence in const [
+                    'Compris',
+                    'À revoir',
+                    'Besoin aide',
+                  ])
+                    ChoiceChip(
+                      selected: _confidence == confidence,
+                      avatar: Icon(switch (confidence) {
+                        'Compris' => Icons.check_circle_rounded,
+                        'À revoir' => Icons.replay_rounded,
+                        _ => Icons.support_agent_rounded,
+                      }, size: 18),
+                      label: Text(confidence),
+                      onSelected: (_) =>
+                          setState(() => _confidence = confidence),
+                    ),
+                  FilterChip(
+                    selected: _voiceAnswer,
+                    avatar: const Icon(Icons.mic_rounded),
+                    label: const Text('Audio joint'),
+                    onSelected: (value) => setState(() => _voiceAnswer = value),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              const _InfoBox(
+                title: 'Pré-correction',
+                text:
+                    'Réponse prête pour diff automatique, corrigé attendu, score, commentaire enseignant et synchronisation classe_student_answers.',
+              ),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () => setState(() => _voiceAnswer = true),
                     icon: const Icon(Icons.mic_rounded),
                     label: const Text('Réponse vocale'),
                   ),
@@ -6477,6 +6871,16 @@ void _showCorrections(BuildContext context) {
             'Similarité avec la réponse attendue, mots manquants et explication.',
           ),
           _ActionItem(
+            Icons.rule_folder_rounded,
+            'Corrigés et variantes',
+            'AnswerKeysManager, mots clés, alternatives acceptées et score.',
+          ),
+          _ActionItem(
+            Icons.edit_note_rounded,
+            'Notation enseignant',
+            'Note sur 20, statut, commentaire texte et remédiation.',
+          ),
+          _ActionItem(
             Icons.headphones_rounded,
             'Correction vocale',
             'Lecture du commentaire enseignant et réponse audio apprenant.',
@@ -6497,7 +6901,8 @@ void _showGrades(BuildContext context) {
         metrics: [
           ('Moyenne générale', '15.2/20', Icons.grade_rounded),
           ('Questions corrigées', '46/60', Icons.fact_check_rounded),
-          ('PDF', 'Prêt', Icons.picture_as_pdf_rounded),
+          ('Barèmes', 'Actifs', Icons.tune_rounded),
+          ('PDF/CSV', 'Prêt', Icons.picture_as_pdf_rounded),
         ],
       ),
     ),
