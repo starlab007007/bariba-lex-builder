@@ -1062,7 +1062,7 @@ class _NavigationPanel extends StatelessWidget {
   }
 }
 
-class FeedScreen extends StatelessWidget {
+class FeedScreen extends StatefulWidget {
   const FeedScreen({
     super.key,
     required this.posts,
@@ -1085,21 +1085,166 @@ class FeedScreen extends StatelessWidget {
   }
 
   @override
+  State<FeedScreen> createState() => _FeedScreenState();
+}
+
+class _FeedScreenState extends State<FeedScreen> {
+  String _mode = 'Pour toi';
+
+  Widget _modeChip(String value, IconData icon) {
+    return ChoiceChip(
+      selected: _mode == value,
+      avatar: Icon(icon, size: 18),
+      label: Text(value),
+      onSelected: (_) => setState(() => _mode = value),
+    );
+  }
+
+  Widget _feedSubmodule() {
+    return switch (_mode) {
+      'Ma voix' => const _FeatureGrid(
+        items: [
+          (
+            Icons.mic_rounded,
+            'Radio courte',
+            'Flux audio, transcription, onde, écoute et arrêt automatique.',
+          ),
+          (
+            Icons.graphic_eq_rounded,
+            'Qualité audio',
+            'Volume, bruit, durée, consentement et statut de modération.',
+          ),
+          (
+            Icons.subtitles_rounded,
+            'Sous-titres',
+            'Transcription FR/BA synchronisée avec le lecteur.',
+          ),
+        ],
+      ),
+      'Vidéos' => const _FeatureGrid(
+        items: [
+          (
+            Icons.play_circle_rounded,
+            'Lecteur vertical',
+            'Lecture vidéo 9:16, pause, replay, miniature et progression.',
+          ),
+          (
+            Icons.movie_filter_rounded,
+            'Effets',
+            'Template appliqué, stickers, légende et piste musicale.',
+          ),
+          (
+            Icons.fullscreen_rounded,
+            'Preview plein écran',
+            'Ouverture immersive avec actions like/commentaire/partage.',
+          ),
+        ],
+      ),
+      'Communauté' => _ActionList(
+        items: const [
+          _ActionItem(
+            Icons.groups_rounded,
+            'Villages et cercles',
+            'Flux par communauté, langue, sujet et proximité culturelle.',
+          ),
+          _ActionItem(
+            Icons.forum_rounded,
+            'Commentaires',
+            'Réponses, mentions, signalement et modération visuelle.',
+          ),
+          _ActionItem(
+            Icons.notifications_active_rounded,
+            'Temps réel',
+            'Nouveaux posts, messages et interactions à synchroniser.',
+          ),
+        ],
+      ),
+      'Création' => _ActionList(
+        items: const [
+          _ActionItem(
+            Icons.add_circle_rounded,
+            'Bouton plus',
+            'Créer texte, audio, vidéo, leçon, annonce ou template.',
+          ),
+          _ActionItem(
+            Icons.drafts_rounded,
+            'Brouillons',
+            'Reprendre les captures non publiées et posts programmés.',
+          ),
+          _ActionItem(
+            Icons.publish_rounded,
+            'Publication',
+            'Audience, hashtags, modération, offline queue et succès.',
+          ),
+        ],
+      ),
+      _ => const _FeatureGrid(
+        items: [
+          (
+            Icons.auto_awesome_rounded,
+            'Algorithme adaptatif',
+            'Mélange posts, audio, vidéos, templates et contenus locaux.',
+          ),
+          (
+            Icons.tune_rounded,
+            'Filtres de fil',
+            'Pour toi, suivis, village, classe, templates et populaire.',
+          ),
+          (
+            Icons.bookmark_rounded,
+            'Sauvegarde',
+            'Favoris, historique, partage et reprise hors connexion.',
+          ),
+        ],
+      ),
+    };
+  }
+
+  @override
   Widget build(BuildContext context) {
     return _PageFrame(
       title: 'Fil Fitila',
       subtitle: 'Posts, audio, vidéos, modèles et publication rapide.',
       action: FilledButton.icon(
-        onPressed: () => showComposer(context, onPostCreated: onPostCreated),
+        onPressed: () => FeedScreen.showComposer(
+          context,
+          onPostCreated: widget.onPostCreated,
+        ),
         icon: const Icon(Icons.add_rounded),
         label: const Text('Nouveau post'),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final grid = constraints.maxWidth > 860;
-          return grid
-              ? GridView.builder(
-                  itemCount: posts.length,
+      child: ListView(
+        children: [
+          const _MetricStrip(
+            metrics: [
+              ('Posts', '128', Icons.dynamic_feed_rounded),
+              ('Vidéos', '36', Icons.play_circle_rounded),
+              ('Audio', '54', Icons.mic_rounded),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _modeChip('Pour toi', Icons.auto_awesome_rounded),
+              _modeChip('Ma voix', Icons.mic_rounded),
+              _modeChip('Vidéos', Icons.ondemand_video_rounded),
+              _modeChip('Communauté', Icons.groups_rounded),
+              _modeChip('Création', Icons.add_circle_rounded),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _feedSubmodule(),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final grid = constraints.maxWidth > 860;
+              if (grid) {
+                return GridView.builder(
+                  itemCount: widget.posts.length,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 420,
                     mainAxisExtent: 372,
@@ -1107,16 +1252,21 @@ class FeedScreen extends StatelessWidget {
                     mainAxisSpacing: 14,
                   ),
                   itemBuilder: (context, index) =>
-                      _PostCard(post: posts[index]),
-                )
-              : ListView.separated(
-                  itemCount: posts.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 12),
-                  itemBuilder: (context, index) =>
-                      _PostCard(post: posts[index]),
+                      _PostCard(post: widget.posts[index]),
                 );
-        },
+              }
+              return ListView.separated(
+                itemCount: widget.posts.length,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 12),
+                itemBuilder: (context, index) =>
+                    _PostCard(post: widget.posts[index]),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -1134,6 +1284,11 @@ class ContentCreatorScreen extends StatefulWidget {
 class _ContentCreatorScreenState extends State<ContentCreatorScreen> {
   CreatorPhase _phase = CreatorPhase.discover;
   FitilaTemplateData _template = _fitilaTemplates.first;
+  String _captureMode = 'Vidéo';
+  bool _autoDraft = true;
+  bool _captions = true;
+  bool _music = false;
+  bool _debugPanel = false;
 
   void _nextPhase() {
     setState(() {
@@ -1198,6 +1353,91 @@ class _ContentCreatorScreenState extends State<ContentCreatorScreen> {
                 ? _publishFromWorkflow
                 : _nextPhase,
             onReset: () => setState(() => _phase = CreatorPhase.discover),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Console de production React parity',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final mode in const [
+                        'Texte',
+                        'Audio',
+                        'Vidéo',
+                        'Template',
+                      ])
+                        ChoiceChip(
+                          selected: _captureMode == mode,
+                          avatar: Icon(switch (mode) {
+                            'Texte' => Icons.text_fields_rounded,
+                            'Audio' => Icons.mic_rounded,
+                            'Vidéo' => Icons.videocam_rounded,
+                            _ => Icons.movie_filter_rounded,
+                          }, size: 18),
+                          label: Text(mode),
+                          onSelected: (_) =>
+                              setState(() => _captureMode = mode),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  SwitchListTile(
+                    value: _autoDraft,
+                    onChanged: (value) => setState(() => _autoDraft = value),
+                    secondary: const Icon(Icons.drafts_rounded),
+                    title: const Text('Brouillon automatique'),
+                    subtitle: const Text(
+                      'Sauvegarde locale, reprise offline et synchronisation future.',
+                    ),
+                  ),
+                  SwitchListTile(
+                    value: _captions,
+                    onChanged: (value) => setState(() => _captions = value),
+                    secondary: const Icon(Icons.subtitles_rounded),
+                    title: const Text('Sous-titres et traduction'),
+                    subtitle: const Text(
+                      'Génère caption, hashtags, traduction Bariba et accessibilité.',
+                    ),
+                  ),
+                  SwitchListTile(
+                    value: _music,
+                    onChanged: (value) => setState(() => _music = value),
+                    secondary: const Icon(Icons.music_note_rounded),
+                    title: const Text('Piste musicale / ambiance'),
+                    subtitle: const Text(
+                      'Prépare sélection audio, volume, droits et mix final.',
+                    ),
+                  ),
+                  SwitchListTile(
+                    value: _debugPanel,
+                    onChanged: (value) => setState(() => _debugPanel = value),
+                    secondary: const Icon(Icons.bug_report_rounded),
+                    title: const Text('Panneau debug publication'),
+                    subtitle: const Text(
+                      'Expose metadata media, template, queue offline et payload backend.',
+                    ),
+                  ),
+                  if (_debugPanel) ...[
+                    const SizedBox(height: 8),
+                    const _InfoBox(
+                      title: 'Payload prêt',
+                      text:
+                          'content_type, template_id, media_url, audio_url, visibility, hashtags, ai_metadata, moderation_status, scheduled_at.',
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           LayoutBuilder(
@@ -1625,6 +1865,9 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
   String _query = '';
   String _category = 'Tous';
   FitilaTemplateData? _preview;
+  bool _premiumOnly = false;
+  bool _newOnly = false;
+  bool _showPublishFlow = true;
 
   List<FitilaTemplateData> get _filtered {
     return _fitilaTemplates
@@ -1637,7 +1880,12 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
               template.baribaName.toLowerCase().contains(q);
           final matchesCategory =
               _category == 'Tous' || template.category == _category;
-          return matchesQuery && matchesCategory;
+          final matchesPremium = !_premiumOnly || template.premium;
+          final matchesNew = !_newOnly || template.newBadge;
+          return matchesQuery &&
+              matchesCategory &&
+              matchesPremium &&
+              matchesNew;
         })
         .toList(growable: false);
   }
@@ -1654,6 +1902,14 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
           'Galerie premium avec recherche, categories, preview et envoi createur.',
       child: ListView(
         children: [
+          const _MetricStrip(
+            metrics: [
+              ('Templates', '42', Icons.movie_filter_rounded),
+              ('Premium', '18', Icons.workspace_premium_rounded),
+              ('Exports', '9:16', Icons.smart_display_rounded),
+            ],
+          ),
+          const SizedBox(height: 12),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(14),
@@ -1686,10 +1942,64 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                         ),
                     ],
                   ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      FilterChip(
+                        selected: _premiumOnly,
+                        avatar: const Icon(Icons.workspace_premium_rounded),
+                        label: const Text('Premium seulement'),
+                        onSelected: (value) =>
+                            setState(() => _premiumOnly = value),
+                      ),
+                      FilterChip(
+                        selected: _newOnly,
+                        avatar: const Icon(Icons.fiber_new_rounded),
+                        label: const Text('Nouveautés'),
+                        onSelected: (value) => setState(() => _newOnly = value),
+                      ),
+                      FilterChip(
+                        selected: _showPublishFlow,
+                        avatar: const Icon(Icons.publish_rounded),
+                        label: const Text('Flux publication'),
+                        onSelected: (value) =>
+                            setState(() => _showPublishFlow = value),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
           ),
+          if (_showPublishFlow) ...[
+            const SizedBox(height: 12),
+            const _FeatureGrid(
+              items: [
+                (
+                  Icons.video_library_rounded,
+                  'TemplateHeroSection',
+                  'Accroche visuelle, catégorie, format, durée et badge.',
+                ),
+                (
+                  Icons.grid_view_rounded,
+                  'TemplateGalleryGrid',
+                  'Cartes, recherche, filtres, premium, favoris et usage.',
+                ),
+                (
+                  Icons.fullscreen_rounded,
+                  'TemplatePreviewFullscreen',
+                  'Preview verticale, scènes, audio, CTA et sortie.',
+                ),
+                (
+                  Icons.publish_rounded,
+                  'TemplatePublishFlow',
+                  'Caption, hashtags, visibilité, modération et création post.',
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
           GridView.builder(
             itemCount: _filtered.length,
@@ -1996,6 +2306,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   late Future<List<DictionaryEntry>> _entries;
   final _query = TextEditingController();
   String _filter = 'Tout';
+  String _panel = 'Recherche';
 
   @override
   void initState() {
@@ -2034,6 +2345,96 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           .toList();
     }
     return filtered;
+  }
+
+  Widget _panelChip(String value, IconData icon) {
+    return ChoiceChip(
+      selected: _panel == value,
+      avatar: Icon(icon, size: 18),
+      label: Text(value),
+      onSelected: (_) => setState(() => _panel = value),
+    );
+  }
+
+  Widget _dictionaryPanel() {
+    return switch (_panel) {
+      'Audio' => const _FeatureGrid(
+        items: [
+          (
+            Icons.volume_up_rounded,
+            'Écoute entrée',
+            'Lecture mot, exemple, variante phonétique et vitesse lente.',
+          ),
+          (
+            Icons.mic_rounded,
+            'Recherche vocale',
+            'Dictée Bariba/Français, normalisation et proposition proche.',
+          ),
+          (
+            Icons.graphic_eq_rounded,
+            'Corpus vocal',
+            'Validation qualité et contribution audio communautaire.',
+          ),
+        ],
+      ),
+      'Contribution' => _ActionList(
+        items: const [
+          _ActionItem(
+            Icons.add_rounded,
+            'Nouvelle entrée',
+            'Mot, traduction, définition, exemple, audio, source et statut.',
+          ),
+          _ActionItem(
+            Icons.rate_review_rounded,
+            'Feedback',
+            'Signaler erreur, variante, doublon ou sens manquant.',
+          ),
+          _ActionItem(
+            Icons.verified_rounded,
+            'Validation',
+            'File de revue lexicographe avant publication publique.',
+          ),
+        ],
+      ),
+      'Admin' => _ActionList(
+        items: const [
+          _ActionItem(
+            Icons.dataset_rounded,
+            'Data viewer',
+            'Explorer JSON, doublons, entrées faibles et enrichissement IA.',
+          ),
+          _ActionItem(
+            Icons.file_download_rounded,
+            'Exporter',
+            'Préparer CSV/JSON, sauvegarde et audit de version.',
+          ),
+          _ActionItem(
+            Icons.health_and_safety_rounded,
+            'Qualité',
+            'Score définition, exemple, audio, source et statut moderation.',
+          ),
+        ],
+      ),
+      _ => const _FeatureGrid(
+        items: [
+          (
+            Icons.saved_search_rounded,
+            'Recherche avancée',
+            'Mot exact, contient, expression, définition, exemple et source.',
+          ),
+          (
+            Icons.filter_alt_rounded,
+            'Filtres React',
+            'Mots, expressions, catégories, favoris, nouveaux et validés.',
+          ),
+          (
+            Icons.lightbulb_rounded,
+            'Suggestions',
+            'Tolérance accents, variantes orthographiques et mots proches.',
+          ),
+        ],
+      ),
+    };
   }
 
   @override
@@ -2090,6 +2491,22 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                   setState(() => _filter = values.first),
             ),
           ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _panelChip('Recherche', Icons.saved_search_rounded),
+                _panelChip('Audio', Icons.volume_up_rounded),
+                _panelChip('Contribution', Icons.edit_note_rounded),
+                _panelChip('Admin', Icons.admin_panel_settings_rounded),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          _dictionaryPanel(),
           const SizedBox(height: 12),
           Expanded(
             child: FutureBuilder<List<DictionaryEntry>>(
@@ -2734,7 +3151,9 @@ class _TemIaScreenState extends State<TemIaScreen> {
     text: 'Explique un article foncier en mots simples.',
   );
   String _section = 'Analyse';
+  String _domain = 'Foncier';
   bool _humanReview = true;
+  bool _strictSources = true;
   String _answer =
       'Tem-IA analyse le texte, cite les sources et produit un resume bilingue Francais / Bàátɔ̀nú.';
 
@@ -2749,7 +3168,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
     if (text.isEmpty) return;
     setState(() {
       _answer =
-          'Analyse Tem-IA: "$text"\n\nResume: le sujet est reformule en langage clair, avec les points importants et une explication culturelle.\n\nSources: corpus foncier, dictionnaire Bariba, documents classes.';
+          'Analyse Tem-IA ($_domain): "$text"\n\nResume: le sujet est reformule en langage clair, avec les points importants et une explication culturelle.\n\nSources: corpus $_domain, dictionnaire Bariba, documents classes.';
     });
   }
 
@@ -2822,15 +3241,47 @@ class _TemIaScreenState extends State<TemIaScreen> {
         ],
       ),
       'Validation' => Card(
-        child: SwitchListTile(
-          value: _humanReview,
-          onChanged: (value) => setState(() => _humanReview = value),
-          secondary: const Icon(Icons.verified_user_rounded),
-          title: const Text('Validation humaine'),
-          subtitle: const Text(
-            'Active avertissement, moderation et contrôle avant usage sensible.',
-          ),
+        child: Column(
+          children: [
+            SwitchListTile(
+              value: _humanReview,
+              onChanged: (value) => setState(() => _humanReview = value),
+              secondary: const Icon(Icons.verified_user_rounded),
+              title: const Text('Validation humaine'),
+              subtitle: const Text(
+                'Active avertissement, moderation et contrôle avant usage sensible.',
+              ),
+            ),
+            SwitchListTile(
+              value: _strictSources,
+              onChanged: (value) => setState(() => _strictSources = value),
+              secondary: const Icon(Icons.source_rounded),
+              title: const Text('Sources obligatoires'),
+              subtitle: const Text(
+                'Bloque les réponses sensibles sans citation ou niveau de confiance.',
+              ),
+            ),
+          ],
         ),
+      ),
+      'Risques' => const _FeatureGrid(
+        items: [
+          (
+            Icons.warning_rounded,
+            'Avertissement sensible',
+            'Foncier, santé, finance ou droit nécessitent prudence et validation.',
+          ),
+          (
+            Icons.rule_rounded,
+            'Garde-fous IA',
+            'Réponse claire, refus contextualisé et invitation à confirmer.',
+          ),
+          (
+            Icons.fact_check_rounded,
+            'Confiance',
+            'Score source, fraîcheur, domaine et niveau pédagogique.',
+          ),
+        ],
       ),
       'Historique' => _ActionList(
         items: const [
@@ -2874,8 +3325,25 @@ class _TemIaScreenState extends State<TemIaScreen> {
               _temChip('Documents', Icons.description_rounded),
               _temChip('Citations', Icons.format_quote_rounded),
               _temChip('Validation', Icons.verified_user_rounded),
+              _temChip('Risques', Icons.warning_rounded),
               _temChip('Historique', Icons.history_rounded),
             ],
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            initialValue: _domain,
+            decoration: const InputDecoration(
+              labelText: 'Domaine Tem-IA',
+              prefixIcon: Icon(Icons.hub_rounded),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'Foncier', child: Text('Foncier')),
+              DropdownMenuItem(value: 'Culture', child: Text('Culture')),
+              DropdownMenuItem(value: 'Classe', child: Text('Classe')),
+              DropdownMenuItem(value: 'Document', child: Text('Document')),
+              DropdownMenuItem(value: 'Audio', child: Text('Audio')),
+            ],
+            onChanged: (value) => setState(() => _domain = value ?? _domain),
           ),
           const SizedBox(height: 12),
           _TextPanel(
@@ -2918,32 +3386,156 @@ class _TemIaScreenState extends State<TemIaScreen> {
   }
 }
 
-class LearnScreen extends StatelessWidget {
+class LearnScreen extends StatefulWidget {
   const LearnScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  State<LearnScreen> createState() => _LearnScreenState();
+}
+
+class _LearnScreenState extends State<LearnScreen> {
+  String _section = 'Parcours';
+
+  Widget _learnChip(String value, IconData icon) {
+    return ChoiceChip(
+      selected: _section == value,
+      avatar: Icon(icon, size: 18),
+      label: Text(value),
+      onSelected: (_) => setState(() => _section = value),
+    );
+  }
+
+  Widget _modulesGrid() {
     final lessons = _lessons;
+    return GridView.builder(
+      itemCount: lessons.length,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 390,
+        mainAxisExtent: 238,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
+      itemBuilder: (context, index) => _LessonCard(
+        lesson: lessons[index],
+        onOpen: () => _showLesson(context, lessons[index]),
+      ),
+    );
+  }
+
+  Widget _learnPanel() {
+    return switch (_section) {
+      'Modules' => _modulesGrid(),
+      'Quiz' => const _FeatureGrid(
+        items: [
+          (
+            Icons.quiz_rounded,
+            'Questions',
+            'Choix multiple, réponse libre, dictée et association image/mot.',
+          ),
+          (
+            Icons.fact_check_rounded,
+            'Correction',
+            'Score, bonne réponse, explication et reprise de la leçon.',
+          ),
+          (
+            Icons.timer_rounded,
+            'Défi rapide',
+            'Session courte, chrono, série et badge de réussite.',
+          ),
+        ],
+      ),
+      'Audio' => const _FeatureGrid(
+        items: [
+          (
+            Icons.hearing_rounded,
+            'Écoute guidée',
+            'Mot, phrase, dialogue, vitesse lente et répétition.',
+          ),
+          (
+            Icons.mic_rounded,
+            'Prononciation',
+            'Enregistrer, comparer et envoyer au Voice Lab.',
+          ),
+          (
+            Icons.volume_up_rounded,
+            'Lecture bilingue',
+            'Français, Bàátɔ̀nú et mode classe avec grands contrôles.',
+          ),
+        ],
+      ),
+      'Progression' => _ActionList(
+        items: const [
+          _ActionItem(
+            Icons.trending_up_rounded,
+            'Progression globale',
+            'Leçons terminées, temps, niveau, dernière activité et série.',
+          ),
+          _ActionItem(
+            Icons.emoji_events_rounded,
+            'Badges',
+            'Alphabet, conversation, culture, calcul et régularité.',
+          ),
+          _ActionItem(
+            Icons.offline_bolt_rounded,
+            'Offline',
+            'Téléchargement modules, quiz local et synchronisation différée.',
+          ),
+        ],
+      ),
+      _ => const _FeatureGrid(
+        items: [
+          (
+            Icons.route_rounded,
+            'Parcours recommandé',
+            'Niveau, objectif, temps disponible et prochaine leçon intelligente.',
+          ),
+          (
+            Icons.school_rounded,
+            'Classe connectée',
+            'Pont vers Classe Niveau 1/2, devoirs et corrections.',
+          ),
+          (
+            Icons.groups_rounded,
+            'Culture vivante',
+            'Histoires, proverbes, marché, famille et scènes quotidiennes.',
+          ),
+        ],
+      ),
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return _PageFrame(
       title: 'Apprendre',
       subtitle:
           'Parcours progressif: alphabet, conversation, calcul, grammaire et culture.',
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return GridView.builder(
-            itemCount: lessons.length,
-            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 390,
-              mainAxisExtent: 238,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemBuilder: (context, index) => _LessonCard(
-              lesson: lessons[index],
-              onOpen: () => _showLesson(context, lessons[index]),
-            ),
-          );
-        },
+      child: ListView(
+        children: [
+          const _MetricStrip(
+            metrics: [
+              ('Niveau', 'A1', Icons.school_rounded),
+              ('Progression', '62%', Icons.trending_up_rounded),
+              ('Série', '8j', Icons.local_fire_department_rounded),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _learnChip('Parcours', Icons.route_rounded),
+              _learnChip('Modules', Icons.grid_view_rounded),
+              _learnChip('Quiz', Icons.quiz_rounded),
+              _learnChip('Audio', Icons.volume_up_rounded),
+              _learnChip('Progression', Icons.emoji_events_rounded),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _learnPanel(),
+        ],
       ),
     );
   }
@@ -3337,6 +3929,10 @@ class KeyboardScreen extends StatefulWidget {
 
 class _KeyboardScreenState extends State<KeyboardScreen> {
   final _controller = TextEditingController();
+  bool _floating = true;
+  bool _suggestions = true;
+  bool _haptic = false;
+  bool _autoNormalize = true;
 
   @override
   void dispose() {
@@ -3375,12 +3971,70 @@ class _KeyboardScreenState extends State<KeyboardScreen> {
           const SizedBox(height: 12),
           _BaribaKeyboard(onInsert: _insert),
           const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Paramètres clavier natif',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    value: _floating,
+                    onChanged: (value) => setState(() => _floating = value),
+                    secondary: const Icon(Icons.open_in_full_rounded),
+                    title: const Text('Compagnon flottant'),
+                    subtitle: const Text(
+                      'Bouton clavier disponible dans IA, traducteur, classe et fil.',
+                    ),
+                  ),
+                  SwitchListTile(
+                    value: _suggestions,
+                    onChanged: (value) => setState(() => _suggestions = value),
+                    secondary: const Icon(Icons.lightbulb_rounded),
+                    title: const Text('Suggestions phonétiques'),
+                    subtitle: const Text(
+                      'Propose accents, tons, corrections et variantes proches.',
+                    ),
+                  ),
+                  SwitchListTile(
+                    value: _autoNormalize,
+                    onChanged: (value) =>
+                        setState(() => _autoNormalize = value),
+                    secondary: const Icon(Icons.spellcheck_rounded),
+                    title: const Text('Normalisation automatique'),
+                    subtitle: const Text(
+                      'Nettoie apostrophes, tons, espaces et caractères Bariba.',
+                    ),
+                  ),
+                  SwitchListTile(
+                    value: _haptic,
+                    onChanged: (value) => setState(() => _haptic = value),
+                    secondary: const Icon(Icons.vibration_rounded),
+                    title: const Text('Retour haptique'),
+                    subtitle: const Text(
+                      'Prépare vibration légère sur mobile Android/iOS.',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           const _FeatureGrid(
             items: [
               (
                 Icons.android_rounded,
                 'Activation Android',
                 'Paramètres > Langues et saisie > Clavier Fitila.',
+              ),
+              (
+                Icons.settings_applications_rounded,
+                'Guide pas à pas',
+                'Activer, choisir par défaut, tester, changer de clavier.',
               ),
               (
                 Icons.touch_app_rounded,
@@ -3391,6 +4045,16 @@ class _KeyboardScreenState extends State<KeyboardScreen> {
                 Icons.sync_rounded,
                 'Suggestions phonétiques',
                 'Normalise les accents et variantes Bariba.',
+              ),
+              (
+                Icons.security_rounded,
+                'Confidentialité',
+                'Saisie locale, aucun texte sensible envoyé sans consentement.',
+              ),
+              (
+                Icons.extension_rounded,
+                'Intégration native',
+                'Pont prévu vers InputMethodService Android et TextInput Flutter.',
               ),
             ],
           ),
@@ -3497,10 +4161,126 @@ class TeacherScreen extends StatelessWidget {
   }
 }
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.session});
 
   final FitilaSession session;
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  String _tab = 'Posts';
+
+  Widget _profileTab(String value, IconData icon) {
+    return ChoiceChip(
+      selected: _tab == value,
+      avatar: Icon(icon, size: 18),
+      label: Text(value),
+      onSelected: (_) => setState(() => _tab = value),
+    );
+  }
+
+  Widget _profileBody() {
+    return switch (_tab) {
+      'Vidéos' => const _FeatureGrid(
+        items: [
+          (
+            Icons.play_circle_rounded,
+            'Vidéos publiées',
+            'Preview verticale, vues, likes, commentaires et partage.',
+          ),
+          (
+            Icons.movie_filter_rounded,
+            'Templates utilisés',
+            'Historique des modèles et performances par format.',
+          ),
+          (
+            Icons.analytics_rounded,
+            'Statistiques',
+            'Rétention, complétion, audience et meilleure heure.',
+          ),
+        ],
+      ),
+      'Audio' => const _FeatureGrid(
+        items: [
+          (
+            Icons.mic_rounded,
+            'Posts vocaux',
+            'Radio, proverbes, dictées, transcription et qualité audio.',
+          ),
+          (
+            Icons.graphic_eq_rounded,
+            'Voice Lab',
+            'Contributions au corpus et diagnostics de prononciation.',
+          ),
+          (
+            Icons.volume_up_rounded,
+            'Lecture publique',
+            'Contrôles accessibles et écoute bilingue.',
+          ),
+        ],
+      ),
+      'Badges' => _ActionList(
+        items: const [
+          _ActionItem(
+            Icons.emoji_events_rounded,
+            'Badges culture',
+            'Culture Bariba, alphabet, conversation et partage communautaire.',
+          ),
+          _ActionItem(
+            Icons.school_rounded,
+            'Réussites apprentissage',
+            'Leçons terminées, série, quiz et progression classe.',
+          ),
+          _ActionItem(
+            Icons.verified_rounded,
+            'Contributeur validé',
+            'Dictionnaire, audio, corrections et contenus approuvés.',
+          ),
+        ],
+      ),
+      'Sécurité' => _ActionList(
+        items: const [
+          _ActionItem(
+            Icons.lock_rounded,
+            'Code PIN',
+            'Accès rapide, verrouillage et récupération de session.',
+          ),
+          _ActionItem(
+            Icons.visibility_rounded,
+            'Contrôle visuel',
+            'Confirmation avant actions sensibles et publication publique.',
+          ),
+          _ActionItem(
+            Icons.manage_accounts_rounded,
+            'Modifier profil',
+            'Photo, nom, rôle, village, bio, langue et préférences.',
+          ),
+        ],
+      ),
+      _ => const _FeatureGrid(
+        items: [
+          (
+            Icons.grid_view_rounded,
+            'Posts',
+            'Texte, audio, vidéo, templates, brouillons et favoris.',
+          ),
+          (
+            Icons.chat_bubble_rounded,
+            'Interactions',
+            'Commentaires, mentions, partages, réponses et signalements.',
+          ),
+          (
+            Icons.person_search_rounded,
+            'Profil public',
+            'Vue visiteur, bio, village, rôle et contenus visibles.',
+          ),
+        ],
+      ),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3519,7 +4299,7 @@ class ProfileScreen extends StatelessWidget {
                     radius: 38,
                     backgroundColor: _fitilaPrimary,
                     child: Text(
-                      session.displayName.characters.first,
+                      widget.session.displayName.characters.first,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 30,
@@ -3533,14 +4313,14 @@ class ProfileScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          session.displayName,
+                          widget.session.displayName,
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                         Text(
-                          '${session.phone} · ${session.role}',
+                          '${widget.session.phone} · ${widget.session.role}',
                           style: TextStyle(color: Colors.grey.shade700),
                         ),
                         const SizedBox(height: 8),
@@ -3578,25 +4358,19 @@ class ProfileScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          const _FeatureGrid(
-            items: [
-              (
-                Icons.grid_view_rounded,
-                'Mes publications',
-                'Audio, vidéo, templates et posts sauvegardés.',
-              ),
-              (
-                Icons.notifications_rounded,
-                'Notifications',
-                'Corrections, mentions, réponses et nouveautés.',
-              ),
-              (
-                Icons.lock_rounded,
-                'Sécurité',
-                'Code PIN, contrôle visuel et session active.',
-              ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _profileTab('Posts', Icons.grid_view_rounded),
+              _profileTab('Vidéos', Icons.play_circle_rounded),
+              _profileTab('Audio', Icons.mic_rounded),
+              _profileTab('Badges', Icons.emoji_events_rounded),
+              _profileTab('Sécurité', Icons.lock_rounded),
             ],
           ),
+          const SizedBox(height: 12),
+          _profileBody(),
         ],
       ),
     );
@@ -3616,6 +4390,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _baribaFirst = false;
   bool _offline = true;
   bool _audio = true;
+  bool _push = true;
+  bool _largeTouch = false;
+  bool _visualSecurity = true;
+  bool _analytics = false;
+  bool _adminMode = false;
 
   @override
   Widget build(BuildContext context) {
@@ -3642,6 +4421,83 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: _audio,
             onChanged: (value) => setState(() => _audio = value),
           ),
+          _SwitchTile(
+            icon: Icons.notifications_rounded,
+            title: 'Notifications fil, classe et corrections',
+            value: _push,
+            onChanged: (value) => setState(() => _push = value),
+          ),
+          _SwitchTile(
+            icon: Icons.touch_app_rounded,
+            title: 'Grands contrôles tactiles',
+            value: _largeTouch,
+            onChanged: (value) => setState(() => _largeTouch = value),
+          ),
+          _SwitchTile(
+            icon: Icons.visibility_rounded,
+            title: 'Contrôle visuel avant actions sensibles',
+            value: _visualSecurity,
+            onChanged: (value) => setState(() => _visualSecurity = value),
+          ),
+          _SwitchTile(
+            icon: Icons.analytics_rounded,
+            title: 'Partager diagnostics anonymes',
+            value: _analytics,
+            onChanged: (value) => setState(() => _analytics = value),
+          ),
+          _SwitchTile(
+            icon: Icons.admin_panel_settings_rounded,
+            title: 'Afficher les outils admin',
+            value: _adminMode,
+            onChanged: (value) => setState(() => _adminMode = value),
+          ),
+          const SizedBox(height: 12),
+          const _FeatureGrid(
+            items: [
+              (
+                Icons.language_rounded,
+                'Langues',
+                'Français, Bàátɔ̀nú, affichage prioritaire et clavier.',
+              ),
+              (
+                Icons.storage_rounded,
+                'Cache offline',
+                'Dictionnaire, leçons, brouillons, posts et file de sync.',
+              ),
+              (
+                Icons.security_rounded,
+                'Sécurité',
+                'Session, PIN, contrôle visuel, confidentialité et consentement.',
+              ),
+              (
+                Icons.api_rounded,
+                'Backend',
+                'Endpoints Supabase, realtime, storage, fonctions IA et logs.',
+              ),
+            ],
+          ),
+          if (_adminMode) ...[
+            const SizedBox(height: 12),
+            _ActionList(
+              items: const [
+                _ActionItem(
+                  Icons.health_and_safety_rounded,
+                  'Diagnostic système',
+                  'Auth, dictionnaire, feed, templates, IA, traduction et classe.',
+                ),
+                _ActionItem(
+                  Icons.sync_problem_rounded,
+                  'Queue de synchronisation',
+                  'Brouillons, médias, réponses classe et contributions offline.',
+                ),
+                _ActionItem(
+                  Icons.rule_folder_rounded,
+                  'Règles de modération',
+                  'Signalements, publication, visibilité et validation humaine.',
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 16),
           OutlinedButton.icon(
             onPressed: widget.onSignedOut,
@@ -4583,7 +5439,7 @@ class _FeatureGrid extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
             maxCrossAxisExtent: 360,
-            mainAxisExtent: 150,
+            mainAxisExtent: 168,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
           ),
@@ -4599,14 +5455,20 @@ class _FeatureGrid extends StatelessWidget {
                     const SizedBox(height: 10),
                     Text(
                       item.$2,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w900),
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      item.$3,
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        height: 1.3,
+                    Expanded(
+                      child: Text(
+                        item.$3,
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          height: 1.3,
+                        ),
                       ),
                     ),
                   ],

@@ -9,25 +9,25 @@ https://www.figma.com/design/hMuCnLHeAcpG5NYbWi2uR3
 
 - Authentification de recette avec telephone `65653468` et mot de passe `123456`.
 - Shell responsive: sidebar desktop, drawer mobile, topbar, recherche globale.
-- Fil social: posts texte/audio/video/template, creation, like, commentaire, partage.
-- Studio createur: texte, audio, video, templates, prompt IA, tags, visibilite, brouillon/publication et moderation.
-- Workflow createur inspire React: discover, capture, preview, finalisation et success.
-- Galerie templates: recherche, categories, preview verticale 9:16, badges premium/nouveau.
+- Fil social avance: flux adaptatif, audio/radio, videos verticales, communaute, creation, posts texte/audio/video/template, like, commentaire et partage.
+- Studio createur: texte, audio, video, templates, prompt IA, tags, visibilite, brouillon/publication, musique, sous-titres, moderation et payload backend.
+- Workflow createur inspire React: discover, capture, preview, finalisation, success, debug publication et reprise brouillon.
+- Galerie templates: recherche, categories, filtres premium/nouveau, preview verticale 9:16, badges, TemplateHeroSection, TemplateGalleryGrid, TemplatePreviewFullscreen et TemplatePublishFlow.
 - Modules React `/fitila/*`: services, marche, agriculture, finance, education, sante, SOS, messages, decouvrir, installation, brouillons, offline, portefeuille, historique, scanner et boutique.
 - Dictionnaire Bariba-Francais local embarque depuis `assets/data/dictionnaire_ameliore.json`.
-- Detail dictionnaire: phonetique, definition, exemples, ecoute, signalement, contribution.
+- Detail dictionnaire: recherche avancee, phonetique, definition, exemples, ecoute, recherche vocale, feedback, contribution, admin qualite et export.
 - Traducteur FR -> BA / BA -> FR avec fallback offline et point d'integration API.
 - Traducteur avance: texte, voix, photo/OCR, offline, historique, suggestions, feedback et switch moteur.
 - Fitila IA: chat, suggestions Tem-IA, aide classe, culture, sources.
 - Fitila IA avance: modes assistant, classe, culture, documents, sources, historique, voix et citations.
-- Tem-IA foncier: analyse, sources citees, resume bilingue et voix.
-- Tem-IA avance: recherche locale, documents, citations, validation humaine et historique.
-- Apprendre: modules, progression, lecons, exercices.
+- Tem-IA foncier: analyse, domaines, sources citees, resume bilingue et voix.
+- Tem-IA avance: recherche locale, documents, citations, validation humaine, sources obligatoires, risques, garde-fous et historique.
+- Apprendre: parcours recommande, modules, progression, lecons, quiz, exercices, audio, badges et offline.
 - Classe avancee: Niveau 1, Niveau 2, alphabet, calcul, evaluations, corrections, notes, facilitateur, grammaire N2, production N2, gestion N2, reponses texte/vocales et audio review.
-- Clavier Bariba: caracteres speciaux integres et guide Android.
+- Clavier Bariba: caracteres speciaux integres, guide Android, compagnon flottant, suggestions, normalisation, haptique et confidentialite.
 - Voice Lab: TTS, STT, corpus vocal, diagnostic.
 - Espace enseignant: eleves, corrections, ponderations, releves PDF.
-- Profil et parametres: securite, langue, cache offline, audio, deconnexion.
+- Profil et parametres: profil social, posts, videos, audio, badges, securite, langue, cache offline, audio, notifications, accessibilite, diagnostics admin et deconnexion.
 
 ## Architecture actuelle
 
