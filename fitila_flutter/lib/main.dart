@@ -448,6 +448,9 @@ class _AuthScreenState extends State<AuthScreen> {
   final _password = TextEditingController(text: '123456');
   bool _busy = false;
   bool _obscure = true;
+  bool _remember = true;
+  bool _biometric = false;
+  String _role = 'Apprenant';
 
   @override
   void dispose() {
@@ -468,7 +471,7 @@ class _AuthScreenState extends State<AuthScreen> {
         FitilaSession(
           phone: phone,
           displayName: 'Utilisateur Fitila',
-          role: 'Apprenant',
+          role: _role,
         ),
       );
     } else {
@@ -501,7 +504,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       children: [
                         Expanded(child: hero),
                         const SizedBox(width: 22),
-                        Expanded(child: form),
+                        Expanded(child: SingleChildScrollView(child: form)),
                       ],
                     )
                   : ListView(
@@ -536,6 +539,29 @@ class _AuthScreenState extends State<AuthScreen> {
               style: TextStyle(color: Colors.grey.shade700),
             ),
             const SizedBox(height: 22),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(
+                  value: 'Apprenant',
+                  label: Text('Apprenant'),
+                  icon: Icon(Icons.school_rounded),
+                ),
+                ButtonSegment(
+                  value: 'Enseignant',
+                  label: Text('Enseignant'),
+                  icon: Icon(Icons.workspace_premium_rounded),
+                ),
+                ButtonSegment(
+                  value: 'Admin',
+                  label: Text('Admin'),
+                  icon: Icon(Icons.admin_panel_settings_rounded),
+                ),
+              ],
+              selected: {_role},
+              onSelectionChanged: (values) =>
+                  setState(() => _role = values.first),
+            ),
+            const SizedBox(height: 12),
             TextField(
               controller: _phone,
               keyboardType: TextInputType.phone,
@@ -563,7 +589,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               onSubmitted: (_) => _signIn(),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             FilledButton.icon(
               onPressed: _busy ? null : _signIn,
               icon: _busy
@@ -573,6 +599,52 @@ class _AuthScreenState extends State<AuthScreen> {
                     )
                   : const Icon(Icons.login_rounded),
               label: const Text('Se connecter'),
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              value: _remember,
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              onChanged: (value) => setState(() => _remember = value),
+              secondary: const Icon(Icons.verified_user_rounded),
+              title: const Text('Mémoriser cette session'),
+              subtitle: const Text(
+                'Session locale, reprise offline et refresh token.',
+              ),
+            ),
+            SwitchListTile(
+              value: _biometric,
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              onChanged: (value) => setState(() => _biometric = value),
+              secondary: const Icon(Icons.fingerprint_rounded),
+              title: const Text('Activer PIN / biométrie'),
+              subtitle: const Text('Prépare verrouillage rapide mobile.'),
+            ),
+            const SizedBox(height: 16),
+            const _FeatureGrid(
+              items: [
+                (
+                  Icons.phone_android_rounded,
+                  'Connexion téléphone',
+                  'Identifiant, mot de passe, validation, erreur et reprise session.',
+                ),
+                (
+                  Icons.security_rounded,
+                  'AuthContext',
+                  'Session, rôle, profil Supabase et déconnexion contrôlée.',
+                ),
+                (
+                  Icons.offline_bolt_rounded,
+                  'Fallback offline',
+                  'Accès recette, cache local et queue de synchronisation.',
+                ),
+                (
+                  Icons.help_rounded,
+                  'Aide accès',
+                  'Mot de passe oublié, support vocal et guide première connexion.',
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             const Wrap(
@@ -2578,41 +2650,366 @@ class FitilaModuleScreen extends StatelessWidget {
   }
 }
 
-class UtilityScreen extends StatelessWidget {
+class UtilityScreen extends StatefulWidget {
   const UtilityScreen({super.key, required this.page});
 
   final FitilaPage page;
 
   @override
+  State<UtilityScreen> createState() => _UtilityScreenState();
+}
+
+class _UtilityScreenState extends State<UtilityScreen> {
+  String _tab = 'Vue';
+
+  List<(String, IconData)> get _tabs {
+    return switch (widget.page) {
+      FitilaPage.messages => [
+        ('Vue', Icons.inbox_rounded),
+        ('Vocaux', Icons.mic_rounded),
+        ('Groupes', Icons.groups_rounded),
+        ('Modération', Icons.security_rounded),
+      ],
+      FitilaPage.install => [
+        ('Vue', Icons.install_mobile_rounded),
+        ('PWA', Icons.web_asset_rounded),
+        ('APK', Icons.android_rounded),
+        ('Clavier', Icons.keyboard_alt_rounded),
+      ],
+      FitilaPage.drafts => [
+        ('Vue', Icons.drafts_rounded),
+        ('Créateur', Icons.movie_creation_rounded),
+        ('Classe', Icons.school_rounded),
+        ('Sync', Icons.sync_rounded),
+      ],
+      FitilaPage.offline => [
+        ('Vue', Icons.cloud_off_rounded),
+        ('Cache', Icons.storage_rounded),
+        ('Queue', Icons.sync_problem_rounded),
+        ('Conflits', Icons.merge_type_rounded),
+      ],
+      FitilaPage.wallet => [
+        ('Vue', Icons.wallet_rounded),
+        ('Tontine', Icons.savings_rounded),
+        ('Reçus', Icons.receipt_long_rounded),
+        ('Sécurité', Icons.lock_rounded),
+      ],
+      FitilaPage.history => [
+        ('Vue', Icons.history_rounded),
+        ('Recherches', Icons.search_rounded),
+        ('Activité', Icons.timeline_rounded),
+        ('Exports', Icons.download_rounded),
+      ],
+      FitilaPage.scan => [
+        ('Vue', Icons.qr_code_scanner_rounded),
+        ('QR', Icons.qr_code_rounded),
+        ('Document', Icons.document_scanner_rounded),
+        ('OCR', Icons.text_snippet_rounded),
+      ],
+      FitilaPage.sos => [
+        ('Vue', Icons.sos_rounded),
+        ('Contacts', Icons.phone_in_talk_rounded),
+        ('Alerte', Icons.notifications_active_rounded),
+        ('Localisation', Icons.location_on_rounded),
+      ],
+      _ => [
+        ('Vue', widget.page.icon),
+        ('Actions', Icons.touch_app_rounded),
+        ('Backend', Icons.api_rounded),
+        ('Offline', Icons.offline_bolt_rounded),
+      ],
+    };
+  }
+
+  Widget _utilityChip(String value, IconData icon) {
+    return ChoiceChip(
+      selected: _tab == value,
+      avatar: Icon(icon, size: 18),
+      label: Text(value),
+      onSelected: (_) => setState(() => _tab = value),
+    );
+  }
+
+  Widget _utilityBody() {
+    if (widget.page == FitilaPage.messages) {
+      return switch (_tab) {
+        'Vocaux' => const _FeatureGrid(
+          items: [
+            (
+              Icons.mic_rounded,
+              'Message vocal',
+              'Enregistrer, transcrire, traduire et envoyer avec consentement.',
+            ),
+            (
+              Icons.volume_up_rounded,
+              'Lecture accessible',
+              'Vitesse, replay, transcription et lecture Bariba/Français.',
+            ),
+            (
+              Icons.cloud_upload_rounded,
+              'Sync médias',
+              'Upload audio, statut, reprise réseau et file offline.',
+            ),
+          ],
+        ),
+        'Groupes' => _ActionList(
+          items: const [
+            _ActionItem(
+              Icons.groups_rounded,
+              'Communautés',
+              'Groupes village, classe, famille, enseignants et modérateurs.',
+            ),
+            _ActionItem(
+              Icons.forum_rounded,
+              'Threads',
+              'Réponses, mentions, réactions, partage de post et traduction.',
+            ),
+            _ActionItem(
+              Icons.admin_panel_settings_rounded,
+              'Rôles',
+              'Admin groupe, membre, invité et contrôle visuel.',
+            ),
+          ],
+        ),
+        'Modération' => const _FeatureGrid(
+          items: [
+            (
+              Icons.report_rounded,
+              'Signalement',
+              'Spam, abus, contenu sensible et escalade admin.',
+            ),
+            (
+              Icons.visibility_rounded,
+              'Contrôle visuel',
+              'Confirmation avant partage public ou message sensible.',
+            ),
+            (
+              Icons.security_rounded,
+              'Confidentialité',
+              'Blocage, sourdine, suppression et protection profil.',
+            ),
+          ],
+        ),
+        _ => const _FeatureGrid(
+          items: [
+            (
+              Icons.inbox_rounded,
+              'Boîte de réception',
+              'Messages privés, non lus, favoris et recherche.',
+            ),
+            (
+              Icons.chat_bubble_rounded,
+              'Conversation',
+              'Texte, audio, traduction et pièces jointes.',
+            ),
+            (
+              Icons.notifications_rounded,
+              'Notifications',
+              'Mentions, réponses, corrections et annonces.',
+            ),
+          ],
+        ),
+      };
+    }
+    if (widget.page == FitilaPage.install) {
+      return const _FeatureGrid(
+        items: [
+          (
+            Icons.web_asset_rounded,
+            'PWA',
+            'Installer depuis navigateur, écran d’accueil et mode hors ligne.',
+          ),
+          (
+            Icons.android_rounded,
+            'APK Android',
+            'Préparer build, permissions, stockage, micro et clavier.',
+          ),
+          (
+            Icons.keyboard_alt_rounded,
+            'Clavier natif',
+            'Activation système, guide pas à pas et test de saisie.',
+          ),
+          (
+            Icons.system_update_rounded,
+            'Mises à jour',
+            'Version, migration cache, assets et compatibilité backend.',
+          ),
+        ],
+      );
+    }
+    if (widget.page == FitilaPage.offline) {
+      return const _FeatureGrid(
+        items: [
+          (
+            Icons.storage_rounded,
+            'Cache local',
+            'Dictionnaire, leçons, templates, posts, brouillons et paramètres.',
+          ),
+          (
+            Icons.sync_problem_rounded,
+            'Queue sync',
+            'Réponses classe, posts, médias, contributions et messages.',
+          ),
+          (
+            Icons.merge_type_rounded,
+            'Conflits',
+            'Comparaison local/serveur, priorité et résolution utilisateur.',
+          ),
+          (
+            Icons.health_and_safety_rounded,
+            'Diagnostic',
+            'Taille cache, dernières erreurs, retry et purge contrôlée.',
+          ),
+        ],
+      );
+    }
+    if (widget.page == FitilaPage.drafts) {
+      return const _FeatureGrid(
+        items: [
+          (
+            Icons.movie_creation_rounded,
+            'Brouillons créateur',
+            'Templates, médias, captions, effets et état publication.',
+          ),
+          (
+            Icons.school_rounded,
+            'Brouillons classe',
+            'Réponses texte/audio, auto-évaluation et soumission différée.',
+          ),
+          (
+            Icons.edit_note_rounded,
+            'Notes IA',
+            'Prompts, réponses, traductions et documents en attente.',
+          ),
+          (
+            Icons.sync_rounded,
+            'Reprise',
+            'Ouvrir, publier, supprimer, programmer ou synchroniser.',
+          ),
+        ],
+      );
+    }
+    if (widget.page == FitilaPage.wallet) {
+      return const _FeatureGrid(
+        items: [
+          (
+            Icons.account_balance_wallet_rounded,
+            'Solde',
+            'Crédit, bonus, historique et statut paiement.',
+          ),
+          (
+            Icons.savings_rounded,
+            'Tontine',
+            'Groupes, cotisations, rappels, preuves et reçus.',
+          ),
+          (
+            Icons.receipt_long_rounded,
+            'Reçus',
+            'PDF, partage, QR de vérification et export.',
+          ),
+          (
+            Icons.lock_rounded,
+            'Sécurité paiement',
+            'PIN, confirmation visuelle, limites et journal.',
+          ),
+        ],
+      );
+    }
+    if (widget.page == FitilaPage.history) {
+      return const _FeatureGrid(
+        items: [
+          (
+            Icons.search_rounded,
+            'Recherches',
+            'Dictionnaire, traducteur, IA, Tem-IA et classe.',
+          ),
+          (
+            Icons.timeline_rounded,
+            'Activité',
+            'Posts vus, leçons ouvertes, corrections, scans et exports.',
+          ),
+          (
+            Icons.bookmark_rounded,
+            'Favoris',
+            'Mots, templates, leçons, réponses IA et contenus enregistrés.',
+          ),
+          (
+            Icons.delete_outline_rounded,
+            'Confidentialité',
+            'Effacer historique, export données et rétention locale.',
+          ),
+        ],
+      );
+    }
+    if (widget.page == FitilaPage.scan) {
+      return const _FeatureGrid(
+        items: [
+          (
+            Icons.qr_code_rounded,
+            'QR',
+            'Profil, reçu, classe, contenu et vérification rapide.',
+          ),
+          (
+            Icons.document_scanner_rounded,
+            'Document',
+            'Photo, recadrage, OCR, traduction et résumé IA.',
+          ),
+          (
+            Icons.text_snippet_rounded,
+            'OCR Bariba/FR',
+            'Extraction texte, correction, dictionnaire et audio.',
+          ),
+          (
+            Icons.security_rounded,
+            'Sécurité',
+            'Consentement, données sensibles et stockage local contrôlé.',
+          ),
+        ],
+      );
+    }
+    return _ActionList(
+      items: [
+        _ActionItem(
+          widget.page.icon,
+          widget.page.title,
+          widget.page.description,
+        ),
+        const _ActionItem(
+          Icons.security_rounded,
+          'Controle visuel',
+          'Verifie les actions sensibles comme dans le web React.',
+        ),
+        const _ActionItem(
+          Icons.api_rounded,
+          'Connexion backend',
+          'Point pret pour brancher Supabase dans la prochaine etape.',
+        ),
+      ],
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return _PageFrame(
-      title: page.title,
-      subtitle: page.description,
+      title: widget.page.title,
+      subtitle: widget.page.description,
       child: ListView(
         children: [
           _MetricStrip(
             metrics: [
-              ('Etat', 'Pret', page.icon),
+              ('Etat', 'Pret', widget.page.icon),
               ('Sync', 'Locale', Icons.sync_rounded),
               ('Acces', 'Mobile', Icons.touch_app_rounded),
             ],
           ),
           const SizedBox(height: 12),
-          _ActionList(
-            items: [
-              _ActionItem(page.icon, page.title, page.description),
-              const _ActionItem(
-                Icons.security_rounded,
-                'Controle visuel',
-                'Verifie les actions sensibles comme dans le web React.',
-              ),
-              const _ActionItem(
-                Icons.api_rounded,
-                'Connexion backend',
-                'Point pret pour brancher Supabase dans la prochaine etape.',
-              ),
-            ],
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [for (final tab in _tabs) _utilityChip(tab.$1, tab.$2)],
           ),
+          const SizedBox(height: 12),
+          _utilityBody(),
         ],
       ),
     );
@@ -4941,6 +5338,82 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
+      'Identité' => const _FeatureGrid(
+        items: [
+          (
+            Icons.badge_rounded,
+            'Informations profil',
+            'Nom, téléphone, rôle, village, bio, langue préférée et avatar.',
+          ),
+          (
+            Icons.photo_camera_rounded,
+            'Photo / couverture',
+            'Upload, recadrage, aperçu public et suppression contrôlée.',
+          ),
+          (
+            Icons.verified_user_rounded,
+            'Vérification',
+            'Compte test, rôle enseignant, contributeur validé et statut IA.',
+          ),
+        ],
+      ),
+      'Activité' => const _FeatureGrid(
+        items: [
+          (
+            Icons.timeline_rounded,
+            'Timeline personnelle',
+            'Posts, commentaires, leçons, corrections, scans et recherches.',
+          ),
+          (
+            Icons.bookmark_rounded,
+            'Favoris',
+            'Mots, templates, leçons, contenus IA et posts sauvegardés.',
+          ),
+          (
+            Icons.download_rounded,
+            'Export données',
+            'Archive activité, profil, notes, contributions et historique.',
+          ),
+        ],
+      ),
+      'Confidentialité' => _ActionList(
+        items: const [
+          _ActionItem(
+            Icons.visibility_off_rounded,
+            'Visibilité profil',
+            'Public, communauté, classe seulement ou privé.',
+          ),
+          _ActionItem(
+            Icons.block_rounded,
+            'Blocage et signalement',
+            'Comptes bloqués, contenus signalés et modération.',
+          ),
+          _ActionItem(
+            Icons.delete_outline_rounded,
+            'Données personnelles',
+            'Effacer historique, exporter données et demander suppression.',
+          ),
+        ],
+      ),
+      'Backend' => _ActionList(
+        items: const [
+          _ActionItem(
+            Icons.storage_rounded,
+            'tamtam_profiles',
+            'Champs profil, avatar, rôle, langue, village et statut IA.',
+          ),
+          _ActionItem(
+            Icons.sync_rounded,
+            'Synchronisation',
+            'Profil local, session, cache, conflit et mise à jour Supabase.',
+          ),
+          _ActionItem(
+            Icons.security_rounded,
+            'RLS / permissions',
+            'Lecture publique, édition propriétaire et accès enseignant/admin.',
+          ),
+        ],
+      ),
       _ => const _FeatureGrid(
         items: [
           (
@@ -5044,10 +5517,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             runSpacing: 8,
             children: [
               _profileTab('Posts', Icons.grid_view_rounded),
+              _profileTab('Identité', Icons.badge_rounded),
               _profileTab('Vidéos', Icons.play_circle_rounded),
               _profileTab('Audio', Icons.mic_rounded),
               _profileTab('Badges', Icons.emoji_events_rounded),
+              _profileTab('Activité', Icons.timeline_rounded),
+              _profileTab('Confidentialité', Icons.visibility_off_rounded),
               _profileTab('Sécurité', Icons.lock_rounded),
+              _profileTab('Backend', Icons.storage_rounded),
             ],
           ),
           const SizedBox(height: 12),
@@ -5068,6 +5545,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  String _section = 'Général';
   bool _baribaFirst = false;
   bool _offline = true;
   bool _audio = true;
@@ -5077,12 +5555,113 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _analytics = false;
   bool _adminMode = false;
 
-  @override
-  Widget build(BuildContext context) {
-    return _PageFrame(
-      title: 'Paramètres',
-      subtitle: 'Langue, mode offline, audio, sécurité et session.',
-      child: ListView(
+  Widget _settingsChip(String value, IconData icon) {
+    return ChoiceChip(
+      selected: _section == value,
+      avatar: Icon(icon, size: 18),
+      label: Text(value),
+      onSelected: (_) => setState(() => _section = value),
+    );
+  }
+
+  Widget _settingsBody() {
+    return switch (_section) {
+      'Sécurité' => _ActionList(
+        items: const [
+          _ActionItem(
+            Icons.lock_rounded,
+            'Session et PIN',
+            'Verrouillage, biométrie, expiration, refresh token et appareils.',
+          ),
+          _ActionItem(
+            Icons.visibility_rounded,
+            'Contrôle visuel',
+            'Confirmation avant paiement, publication, suppression et export.',
+          ),
+          _ActionItem(
+            Icons.privacy_tip_rounded,
+            'Confidentialité',
+            'Données personnelles, historique, blocage et permissions profil.',
+          ),
+        ],
+      ),
+      'Offline' => const _FeatureGrid(
+        items: [
+          (
+            Icons.storage_rounded,
+            'Stockage local',
+            'Dictionnaire, leçons, templates, posts, brouillons et paramètres.',
+          ),
+          (
+            Icons.sync_problem_rounded,
+            'File de synchronisation',
+            'Réponses classe, médias, contributions, messages et paiements.',
+          ),
+          (
+            Icons.cleaning_services_rounded,
+            'Nettoyage cache',
+            'Taille, purge sélective, migration et diagnostic.',
+          ),
+        ],
+      ),
+      'Notifications' => const _FeatureGrid(
+        items: [
+          (
+            Icons.dynamic_feed_rounded,
+            'Fil et messages',
+            'Mentions, commentaires, nouveaux posts et messages vocaux.',
+          ),
+          (
+            Icons.school_rounded,
+            'Classe',
+            'Corrections, notes, devoirs, relances et feedback enseignant.',
+          ),
+          (
+            Icons.warning_rounded,
+            'Alertes',
+            'SOS, santé, sécurité, sync bloquée et actions sensibles.',
+          ),
+        ],
+      ),
+      'Accessibilité' => const _FeatureGrid(
+        items: [
+          (
+            Icons.touch_app_rounded,
+            'Ergonomie',
+            'Grands boutons, contrastes, densité UI et lecture facile.',
+          ),
+          (
+            Icons.volume_up_rounded,
+            'Audio',
+            'TTS, STT, lecture automatique, vitesse et mode classe.',
+          ),
+          (
+            Icons.keyboard_alt_rounded,
+            'Clavier Bariba',
+            'Suggestions, haptique, normalisation et compagnon flottant.',
+          ),
+        ],
+      ),
+      'Backend' => _ActionList(
+        items: const [
+          _ActionItem(
+            Icons.api_rounded,
+            'Supabase endpoints',
+            'Auth, profils, feed, classe, dictionnaire, storage, IA et realtime.',
+          ),
+          _ActionItem(
+            Icons.health_and_safety_rounded,
+            'Diagnostic système',
+            'Statut services, latence, erreurs, logs et version app.',
+          ),
+          _ActionItem(
+            Icons.admin_panel_settings_rounded,
+            'Administration',
+            'Modération, audit, imports, exports et outils de maintenance.',
+          ),
+        ],
+      ),
+      _ => Column(
         children: [
           _SwitchTile(
             icon: Icons.language_rounded,
@@ -5132,6 +5711,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: _adminMode,
             onChanged: (value) => setState(() => _adminMode = value),
           ),
+        ],
+      ),
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _PageFrame(
+      title: 'Paramètres',
+      subtitle: 'Langue, mode offline, audio, sécurité et session.',
+      child: ListView(
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _settingsChip('Général', Icons.tune_rounded),
+              _settingsChip('Sécurité', Icons.lock_rounded),
+              _settingsChip('Offline', Icons.cloud_off_rounded),
+              _settingsChip('Notifications', Icons.notifications_rounded),
+              _settingsChip('Accessibilité', Icons.accessibility_new_rounded),
+              _settingsChip('Backend', Icons.api_rounded),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _settingsBody(),
           const SizedBox(height: 12),
           const _FeatureGrid(
             items: [

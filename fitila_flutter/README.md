@@ -8,6 +8,7 @@ https://www.figma.com/design/hMuCnLHeAcpG5NYbWi2uR3
 ## Couverture fonctionnelle
 
 - Authentification de recette avec telephone `65653468` et mot de passe `123456`.
+- Connexion avancee: roles apprenant/enseignant/admin, memorisation session, PIN/biometrie, securite visuelle, fallback offline, aide acces et points de branchement AuthContext/Supabase.
 - Shell responsive: sidebar desktop, drawer mobile, topbar, recherche globale.
 - Fil social avance: flux adaptatif, audio/radio, videos verticales, communaute, creation, posts texte/audio/video/template, like, commentaire et partage.
 - Studio createur: texte, audio, video, templates, prompt IA, tags, visibilite, brouillon/publication, musique, sous-titres, moderation et payload backend.
@@ -16,6 +17,7 @@ https://www.figma.com/design/hMuCnLHeAcpG5NYbWi2uR3
 - Catalogue createur et templates elargi: storytelling, music, business, education, future, social et culture avec modeles premium, nouveaux, tags, capacites moteur et recherche avancee.
 - Galerie templates: recherche, categories, filtres premium/nouveau, preview verticale 9:16, badges, TemplateHeroSection, TemplateGalleryGrid, TemplatePreviewFullscreen et TemplatePublishFlow.
 - Modules React `/fitila/*`: services, marche, agriculture, finance, education, sante, SOS, messages, decouvrir, installation, brouillons, offline, portefeuille, historique, scanner et boutique.
+- Modules utilitaires approfondis: messages texte/vocaux/groupes/moderation, installation PWA/APK/clavier, brouillons createur/classe/IA, cache offline/queue/conflits, portefeuille/tontine/reçus/securite, historique/recherches/favoris/confidentialite, scanner QR/document/OCR.
 - Dictionnaire Bariba-Francais local embarque depuis `assets/data/dictionnaire_ameliore.json`.
 - Detail dictionnaire: recherche avancee, phonetique, definition, exemples, ecoute, recherche vocale, feedback, contribution, admin qualite et export.
 - Traducteur FR -> BA / BA -> FR avec fallback offline et point d'integration API.
@@ -31,7 +33,7 @@ https://www.figma.com/design/hMuCnLHeAcpG5NYbWi2uR3
 - Clavier Bariba: caracteres speciaux integres, guide Android, compagnon flottant, suggestions, normalisation, haptique et confidentialite.
 - Voice Lab: TTS, STT, corpus vocal, diagnostic.
 - Espace enseignant: eleves, corrections, ponderations, releves PDF.
-- Profil et parametres: profil social, posts, videos, audio, badges, securite, langue, cache offline, audio, notifications, accessibilite, diagnostics admin et deconnexion.
+- Profil et parametres: profil social, identite, avatar, couverture, posts, videos, audio, badges, activite, favoris, confidentialite, securite, backend `tamtam_profiles`, langue, cache offline, audio, notifications, accessibilite, diagnostics admin et deconnexion.
 
 ## Architecture actuelle
 
