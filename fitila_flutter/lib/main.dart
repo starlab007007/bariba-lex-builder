@@ -229,6 +229,8 @@ class FitilaTemplateData {
     required this.accent,
     this.premium = false,
     this.newBadge = false,
+    this.capabilities = const [],
+    this.tags = const [],
   });
 
   final String id;
@@ -241,6 +243,8 @@ class FitilaTemplateData {
   final Color accent;
   final bool premium;
   final bool newBadge;
+  final List<String> capabilities;
+  final List<String> tags;
 }
 
 class FitilaServices {
@@ -1285,6 +1289,7 @@ class _ContentCreatorScreenState extends State<ContentCreatorScreen> {
   CreatorPhase _phase = CreatorPhase.discover;
   FitilaTemplateData _template = _fitilaTemplates.first;
   String _captureMode = 'Vidéo';
+  String _enginePanel = 'Moteur';
   bool _autoDraft = true;
   bool _captions = true;
   bool _music = false;
@@ -1318,6 +1323,120 @@ class _ContentCreatorScreenState extends State<ContentCreatorScreen> {
       ),
     );
     setState(() => _phase = CreatorPhase.success);
+  }
+
+  Widget _engineChip(String value, IconData icon) {
+    return ChoiceChip(
+      selected: _enginePanel == value,
+      avatar: Icon(icon, size: 18),
+      label: Text(value),
+      onSelected: (_) => setState(() => _enginePanel = value),
+    );
+  }
+
+  Widget _creatorEngineBody() {
+    return switch (_enginePanel) {
+      'Timeline' => const _FeatureGrid(
+        items: [
+          (
+            Icons.timeline_rounded,
+            'MiniTimeline',
+            'Segments vidéo/audio, cuts, scènes, transitions et marqueurs.',
+          ),
+          (
+            Icons.text_fields_rounded,
+            'TextOverlayEditor',
+            'Texte draggable, styles, inline edit, stickers et sous-titres.',
+          ),
+          (
+            Icons.animation_rounded,
+            'TemplateEffectsTimeline',
+            'Effets synchronisés, keyframes, intensité et aperçu temps réel.',
+          ),
+        ],
+      ),
+      'Assets' => const _FeatureGrid(
+        items: [
+          (
+            Icons.folder_rounded,
+            'AssetManager',
+            'Images, vidéos, sons, cache local, progression et reprise.',
+          ),
+          (
+            Icons.cloud_download_rounded,
+            'TemplateAssetLoader',
+            'Téléchargement assets, IndexedDB web, fallback offline Flutter.',
+          ),
+          (
+            Icons.perm_media_rounded,
+            'Media slots',
+            'TemplateSlotPicker, remplacement média et validation format.',
+          ),
+        ],
+      ),
+      'Drawers' => const _FeatureGrid(
+        items: [
+          (
+            Icons.music_note_rounded,
+            'MusicDrawer',
+            'Bibliothèque audio, trim, mix, volume et droits.',
+          ),
+          (
+            Icons.closed_caption_rounded,
+            'CaptionsDrawer',
+            'Transcription, traduction, karaoke, timing et correction.',
+          ),
+          (
+            Icons.auto_fix_high_rounded,
+            'MagicDrawer',
+            'IA créative: hook, reformulation, b-roll, voice clone et style.',
+          ),
+          (
+            Icons.brush_rounded,
+            'GraphicsDrawer',
+            'Stickers, formes, AR effects, overlays et charte FITILA.',
+          ),
+        ],
+      ),
+      'Export' => _ActionList(
+        items: const [
+          _ActionItem(
+            Icons.high_quality_rounded,
+            'OptimizedExportScreen',
+            'Rendu 9:16, qualité, watermark, preview finale et progression.',
+          ),
+          _ActionItem(
+            Icons.publish_rounded,
+            'PublishScreen',
+            'Caption, hashtags, audience, commentaires, brouillon et planning.',
+          ),
+          _ActionItem(
+            Icons.check_circle_rounded,
+            'SuccessScreen',
+            'Confirmation, ajout au fil, partage et retour au studio.',
+          ),
+        ],
+      ),
+      _ => const _FeatureGrid(
+        items: [
+          (
+            Icons.hub_rounded,
+            'TemplateRegistry',
+            'Catalogue, catégories, recherche, premium, nouveau et populaire.',
+          ),
+          (
+            Icons.precision_manufacturing_rounded,
+            'TemplateEngine',
+            'Slots, overrides, rendu, effets, audio et composition finale.',
+          ),
+          (
+            Icons.view_in_ar_rounded,
+            'Preview 2D/3D',
+            'StudioRenderer2D, ThreeJSPreview, overlays et rendu live.',
+          ),
+        ],
+      ),
+    };
   }
 
   @override
@@ -1432,9 +1551,41 @@ class _ContentCreatorScreenState extends State<ContentCreatorScreen> {
                     const _InfoBox(
                       title: 'Payload prêt',
                       text:
-                          'content_type, template_id, media_url, audio_url, visibility, hashtags, ai_metadata, moderation_status, scheduled_at.',
+                          'content_type, template_id, media_url, audio_url, slots, overrides, effects, captions, visibility, hashtags, ai_metadata, moderation_status, scheduled_at.',
                     ),
                   ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Grand moteur créateur',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _engineChip(
+                        'Moteur',
+                        Icons.precision_manufacturing_rounded,
+                      ),
+                      _engineChip('Timeline', Icons.timeline_rounded),
+                      _engineChip('Assets', Icons.perm_media_rounded),
+                      _engineChip('Drawers', Icons.dashboard_customize_rounded),
+                      _engineChip('Export', Icons.high_quality_rounded),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _creatorEngineBody(),
                 ],
               ),
             ),
@@ -1484,7 +1635,7 @@ class _ContentCreatorScreenState extends State<ContentCreatorScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      for (final template in _fitilaTemplates.take(8))
+                      for (final template in _fitilaTemplates.take(18))
                         ChoiceChip(
                           selected: template.id == _template.id,
                           avatar: Icon(template.icon, size: 18),
@@ -1499,6 +1650,14 @@ class _ContentCreatorScreenState extends State<ContentCreatorScreen> {
                 ],
               ),
             ),
+          ),
+          const SizedBox(height: 12),
+          _CreatorTemplateCoverageBoard(
+            selected: _template,
+            onSelected: (template) => setState(() {
+              _template = template;
+              _phase = CreatorPhase.capturing;
+            }),
           ),
           const SizedBox(height: 12),
           const _FeatureGrid(
@@ -1852,6 +2011,149 @@ class _CreatorTemplateBoard extends StatelessWidget {
   }
 }
 
+IconData _templateCategoryIcon(String category) {
+  return switch (category) {
+    'storytelling' => Icons.history_edu_rounded,
+    'music' => Icons.music_note_rounded,
+    'business' => Icons.business_center_rounded,
+    'education' => Icons.school_rounded,
+    'future' => Icons.auto_awesome_rounded,
+    'social' => Icons.groups_rounded,
+    'culture' => Icons.diversity_3_rounded,
+    _ => Icons.movie_filter_rounded,
+  };
+}
+
+class _CreatorTemplateCoverageBoard extends StatelessWidget {
+  const _CreatorTemplateCoverageBoard({
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final FitilaTemplateData selected;
+  final ValueChanged<FitilaTemplateData> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final categories = _fitilaTemplates
+        .fold<Map<String, List<FitilaTemplateData>>>(
+          {},
+          (map, template) =>
+              map..putIfAbsent(template.category, () => []).add(template),
+        )
+        .entries
+        .toList(growable: false);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Couverture templates React',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                  ),
+                ),
+                _StatusPill(text: '${_fitilaTemplates.length} modèles'),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Storytelling, musique, business, éducation, futur, social et culture avec capacités moteur prêtes pour branchement backend.',
+              style: TextStyle(color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 12),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return GridView.builder(
+                  itemCount: categories.length,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: constraints.maxWidth > 900 ? 360 : 520,
+                    mainAxisExtent: 238,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                  ),
+                  itemBuilder: (context, index) {
+                    final category = categories[index];
+                    final templates = category.value;
+                    final premiumCount = templates
+                        .where((template) => template.premium)
+                        .length;
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _fitilaSurface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: _fitilaBorder),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: _fitilaPrimarySoft,
+                                child: Icon(
+                                  _templateCategoryIcon(category.key),
+                                  color: _fitilaPrimary,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  category.key,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              _StatusPill(text: '${templates.length}'),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '$premiumCount premium · ${templates.where((template) => template.newBadge).length} nouveaux',
+                            style: TextStyle(color: Colors.grey.shade700),
+                          ),
+                          const SizedBox(height: 8),
+                          Expanded(
+                            child: Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [
+                                for (final template in templates.take(6))
+                                  ActionChip(
+                                    avatar: Icon(template.icon, size: 16),
+                                    label: Text(template.name),
+                                    onPressed: () => onSelected(template),
+                                    backgroundColor: template.id == selected.id
+                                        ? _fitilaPrimarySoft
+                                        : Colors.white,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class TemplatesScreen extends StatefulWidget {
   const TemplatesScreen({super.key, required this.onUseTemplate});
 
@@ -1877,7 +2179,11 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
               q.isEmpty ||
               template.name.toLowerCase().contains(q) ||
               template.summary.toLowerCase().contains(q) ||
-              template.baribaName.toLowerCase().contains(q);
+              template.baribaName.toLowerCase().contains(q) ||
+              template.tags.any((tag) => tag.toLowerCase().contains(q)) ||
+              template.capabilities.any(
+                (capability) => capability.toLowerCase().contains(q),
+              );
           final matchesCategory =
               _category == 'Tous' || template.category == _category;
           final matchesPremium = !_premiumOnly || template.premium;
@@ -2082,6 +2388,7 @@ class _TemplateCard extends StatelessWidget {
             const Spacer(),
             Wrap(
               spacing: 6,
+              runSpacing: 6,
               children: [
                 _PostMetaChip(
                   icon: Icons.category_rounded,
@@ -2093,6 +2400,12 @@ class _TemplateCard extends StatelessWidget {
                   label: '${template.duration}s',
                   color: template.accent,
                 ),
+                if (template.capabilities.isNotEmpty)
+                  _PostMetaChip(
+                    icon: Icons.bolt_rounded,
+                    label: template.capabilities.first,
+                    color: template.accent,
+                  ),
               ],
             ),
             const SizedBox(height: 10),
@@ -2194,6 +2507,17 @@ class _TemplatePreviewPanel extends StatelessWidget {
             template.summary,
             style: const TextStyle(color: Colors.white70, height: 1.35),
           ),
+          if (template.capabilities.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final capability in template.capabilities)
+                  _DarkChip(icon: Icons.bolt_rounded, label: capability),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: onUse,
@@ -4888,7 +5212,7 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
       _text.text =
           'Projet: $prompt\n\nBàátɔ̀nú: Wɛɛrɛ, partageons cette information avec clarte.\nFrancais: Message prepare pour la communaute avec ton respectueux, source et appel a l action.';
       _tags.text = 'ia, bariba, communaute';
-      _template = 'Tem-IA foncier';
+      _template = 'Tem-IA Foncier';
     });
   }
 
@@ -5014,18 +5338,20 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final template in const [
-                'Annonce village',
-                'Lecon courte',
-                'Culture Bariba',
-                'Tem-IA foncier',
-                'Publication libre',
-              ])
+              for (final template in _fitilaTemplates.take(20))
                 ChoiceChip(
-                  selected: _template == template,
-                  label: Text(template),
-                  onSelected: (_) => setState(() => _template = template),
+                  selected: _template == template.name,
+                  avatar: Icon(template.icon, size: 18),
+                  label: Text(template.name),
+                  onSelected: (_) => setState(() => _template = template.name),
                 ),
+              ChoiceChip(
+                selected: _template == 'Publication libre',
+                avatar: const Icon(Icons.edit_note_rounded, size: 18),
+                label: const Text('Publication libre'),
+                onSelected: (_) =>
+                    setState(() => _template = 'Publication libre'),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -6294,38 +6620,171 @@ const _lessons = [
 
 const _fitilaTemplates = [
   FitilaTemplateData(
+    id: 'griot-anime',
+    name: 'Griot Animé IA',
+    baribaName: 'Kɔ̀gbɛ́ Táárù IA',
+    category: 'storytelling',
+    summary: 'Conte animé premium avec scènes IA, voix, images et narration.',
+    duration: 60,
+    icon: Icons.theater_comedy_rounded,
+    accent: Color(0xFF8B5CF6),
+    premium: true,
+    newBadge: true,
+    capabilities: ['storyboard', 'image IA', 'voix', 'sous-titres'],
+    tags: ['premium', 'conte', 'anime', 'griot'],
+  ),
+  FitilaTemplateData(
+    id: 'beat-maker-ai',
+    name: 'Beat Maker AI',
+    baribaName: 'Wùúsú Koru IA',
+    category: 'music',
+    summary: 'Studio beat afro, amapiano et coupé-décalé avec IA musicale.',
+    duration: 90,
+    icon: Icons.piano_rounded,
+    accent: Color(0xFFEC4899),
+    premium: true,
+    newBadge: true,
+    capabilities: ['beat', 'mix', 'trim', 'export audio'],
+    tags: ['premium', 'music', 'daw', 'afrobeat'],
+  ),
+  FitilaTemplateData(
+    id: 'village-chronicle',
+    name: 'Village Chronicle',
+    baribaName: 'Tɔ̀bù Nɔɔ',
+    category: 'storytelling',
+    summary: 'Journal vidéo village, script, séquences et rendu reportage.',
+    duration: 75,
+    icon: Icons.live_tv_rounded,
+    accent: Color(0xFF0EA5E9),
+    premium: true,
+    newBadge: true,
+    capabilities: ['script', 'chapitres', 'reportage', 'source'],
+    tags: ['premium', 'chronique', 'village'],
+  ),
+  FitilaTemplateData(
     id: 'griot-digital',
     name: 'Griot Digital',
     baribaName: 'Gando yɔyɔ',
     category: 'storytelling',
-    summary: 'Recit patrimonial avec voix, sous-titres et rythme local.',
+    summary: 'Récit patrimonial avec voix, sous-titres et rythme local.',
     duration: 30,
     icon: Icons.history_edu_rounded,
     accent: Color(0xFF8B5CF6),
     premium: true,
-    newBadge: true,
+    capabilities: ['voix', 'captions', 'archive'],
+    tags: ['patrimoine', 'griot'],
   ),
   FitilaTemplateData(
-    id: 'radio-village',
-    name: 'Radio Village',
-    baribaName: 'Wuu nɔɔ',
-    category: 'social',
-    summary:
-        'Annonce audio courte, visuel radial et publication communautaire.',
-    duration: 20,
-    icon: Icons.campaign_rounded,
-    accent: _fitilaPrimary,
-    newBadge: true,
+    id: 'beat-sync-ultra',
+    name: 'Beat Sync Ultra',
+    baribaName: 'Wùúsú Sínkì',
+    category: 'music',
+    summary: 'Synchronisation cuts, transitions et overlays sur le beat.',
+    duration: 35,
+    icon: Icons.graphic_eq_rounded,
+    accent: Color(0xFF06B6D4),
+    capabilities: ['beat sync', 'cuts', 'transitions'],
+    tags: ['music', 'sync'],
   ),
   FitilaTemplateData(
-    id: 'lecon-du-jour',
-    name: 'Lecon du jour',
-    baribaName: 'Karo din',
-    category: 'education',
-    summary: 'Format classe avec exemple, quiz, repetition et correction.',
+    id: 'style-cinema-local',
+    name: 'Style Cinéma Local',
+    baribaName: 'Sinema tɔ̀bù',
+    category: 'future',
+    summary: 'Color grading, titres cinéma et ambiance locale premium.',
     duration: 45,
-    icon: Icons.school_rounded,
+    icon: Icons.local_movies_rounded,
+    accent: Color(0xFFF97316),
+    premium: true,
+    capabilities: ['grading', 'titres', 'motion'],
+    tags: ['cinema', 'style'],
+  ),
+  FitilaTemplateData(
+    id: 'one-take-pro',
+    name: 'One Take Pro',
+    baribaName: 'Kpa kan',
+    category: 'business',
+    summary: 'Pitch rapide en une prise, prompteur et correction IA.',
+    duration: 30,
+    icon: Icons.video_camera_front_rounded,
+    accent: Color(0xFF22C55E),
+    capabilities: ['prompteur', 'pitch', 'correction'],
+    tags: ['business', 'one-take'],
+  ),
+  FitilaTemplateData(
+    id: 'quick-story',
+    name: 'Quick Story',
+    baribaName: 'Tári fíí',
+    category: 'future',
+    summary: 'Story rapide avec hook, scènes, stickers et CTA.',
+    duration: 15,
+    icon: Icons.flash_on_rounded,
+    accent: Color(0xFFFACC15),
+    newBadge: true,
+    capabilities: ['hook', 'sticker', 'cta'],
+    tags: ['rapide', 'story'],
+  ),
+  FitilaTemplateData(
+    id: 'magic-transform',
+    name: 'Magic Transform',
+    baribaName: 'Yípadà mágìkì',
+    category: 'future',
+    summary: 'Transformation IA avant/après, masque et effet magique.',
+    duration: 18,
+    icon: Icons.auto_fix_high_rounded,
+    accent: Color(0xFFA855F7),
+    premium: true,
+    capabilities: ['masque', 'IA', 'avant-après'],
+    tags: ['magic', 'ai'],
+  ),
+  FitilaTemplateData(
+    id: 'smart-captions',
+    name: 'Smart Captions',
+    baribaName: 'Kpari',
+    category: 'education',
+    summary: 'Sous-titres automatiques, traduction et emphase karaoke.',
+    duration: 25,
+    icon: Icons.subtitles_rounded,
+    accent: Color(0xFFEC4899),
+    capabilities: ['captions', 'traduction', 'karaoke'],
+    tags: ['captions', 'bariba'],
+  ),
+  FitilaTemplateData(
+    id: 'multi-format',
+    name: 'Multi Format',
+    baribaName: 'Fɔ̀ɔmù púpò',
+    category: 'business',
+    summary: 'Déclinaison 9:16, 1:1, 16:9 et export multi-plateforme.',
+    duration: 30,
+    icon: Icons.dashboard_customize_rounded,
+    accent: Color(0xFF38BDF8),
+    capabilities: ['9:16', '1:1', '16:9', 'export'],
+    tags: ['export', 'format'],
+  ),
+  FitilaTemplateData(
+    id: 'auto-broll-booster',
+    name: 'Auto B-roll Booster',
+    baribaName: 'Àwòrán iranwọ́',
+    category: 'future',
+    summary: 'Ajoute plans de coupe, images, zoom et emphase automatique.',
+    duration: 40,
+    icon: Icons.movie_creation_rounded,
+    accent: Color(0xFF10B981),
+    capabilities: ['b-roll', 'zoom', 'IA'],
+    tags: ['broll', 'automation'],
+  ),
+  FitilaTemplateData(
+    id: 'voice-clone-hook',
+    name: 'Voice Clone Hook',
+    baribaName: 'Ohùn hook',
+    category: 'business',
+    summary: 'Hook vocal, clone de style, intro forte et disclaimer.',
+    duration: 20,
+    icon: Icons.record_voice_over_rounded,
     accent: Color(0xFF14B8A6),
+    premium: true,
+    capabilities: ['voice', 'hook', 'consentement'],
+    tags: ['voice', 'hook'],
   ),
   FitilaTemplateData(
     id: 'mini-doc-village',
@@ -6337,27 +6796,44 @@ const _fitilaTemplates = [
     icon: Icons.movie_filter_rounded,
     accent: Color(0xFF6366F1),
     premium: true,
+    capabilities: ['chapitres', 'sources', 'voix'],
+    tags: ['doc', 'village'],
   ),
   FitilaTemplateData(
-    id: 'tem-ia-foncier',
-    name: 'Tem-IA Foncier',
-    baribaName: 'Tem-IA',
+    id: 'metiers-terroir',
+    name: 'Métiers Terroir',
+    baribaName: 'Iṣẹ́ ilẹ̀',
     category: 'education',
-    summary: 'Explication juridique simple avec resume bilingue et citations.',
-    duration: 35,
-    icon: Icons.gavel_rounded,
-    accent: Color(0xFF22C55E),
-    premium: true,
+    summary: 'Présente un métier local avec étapes, mots clés et audio.',
+    duration: 45,
+    icon: Icons.agriculture_rounded,
+    accent: Color(0xFF84CC16),
+    capabilities: ['étapes', 'vocabulaire', 'audio'],
+    tags: ['metier', 'terroir'],
   ),
   FitilaTemplateData(
-    id: 'smart-captions',
-    name: 'Smart Captions',
-    baribaName: 'Kpari',
-    category: 'social',
-    summary: 'Sous-titres automatiques, traduction et emphase karaoke.',
-    duration: 25,
-    icon: Icons.subtitles_rounded,
-    accent: Color(0xFFEC4899),
+    id: 'histoire-vraie',
+    name: 'Histoire Vraie',
+    baribaName: 'Tári gidi',
+    category: 'storytelling',
+    summary: 'Témoignage structuré avec intro, émotion, preuve et morale.',
+    duration: 50,
+    icon: Icons.volunteer_activism_rounded,
+    accent: Color(0xFFEF4444),
+    capabilities: ['témoignage', 'preuve', 'morale'],
+    tags: ['histoire', 'temoignage'],
+  ),
+  FitilaTemplateData(
+    id: 'conte-du-soir',
+    name: 'Conte du Soir',
+    baribaName: 'Tári alẹ́',
+    category: 'storytelling',
+    summary: 'Conte doux, ambiance nuit, voix lente et illustrations.',
+    duration: 55,
+    icon: Icons.nights_stay_rounded,
+    accent: Color(0xFF312E81),
+    capabilities: ['ambiance', 'illustration', 'voix lente'],
+    tags: ['conte', 'soir'],
   ),
   FitilaTemplateData(
     id: 'parole-ancien',
@@ -6368,6 +6844,82 @@ const _fitilaTemplates = [
     duration: 50,
     icon: Icons.elderly_rounded,
     accent: Color(0xFFF59E0B),
+    capabilities: ['interview', 'transcription', 'archive'],
+    tags: ['ancien', 'oralite'],
+  ),
+  FitilaTemplateData(
+    id: 'avant-apres-village',
+    name: 'Avant Après Village',
+    baribaName: 'Ṣáájú lẹ́yìn',
+    category: 'storytelling',
+    summary: 'Comparaison visuelle avant/après avec split et transitions.',
+    duration: 25,
+    icon: Icons.compare_rounded,
+    accent: Color(0xFF0F766E),
+    capabilities: ['split', 'transition', 'comparaison'],
+    tags: ['avant-apres', 'village'],
+  ),
+  FitilaTemplateData(
+    id: 'carte-postale-beaute',
+    name: 'Carte Postale Beauté',
+    baribaName: 'Kaadi ẹwa',
+    category: 'storytelling',
+    summary: 'Montage beauté lieu/objet/personne avec texte élégant.',
+    duration: 22,
+    icon: Icons.photo_camera_rounded,
+    accent: Color(0xFFF472B6),
+    capabilities: ['photo', 'texte', 'slideshow'],
+    tags: ['beaute', 'photo'],
+  ),
+  FitilaTemplateData(
+    id: 'lecon-du-jour',
+    name: 'Leçon du jour',
+    baribaName: 'Karo din',
+    category: 'education',
+    summary: 'Format classe avec exemple, quiz, répétition et correction.',
+    duration: 45,
+    icon: Icons.school_rounded,
+    accent: Color(0xFF14B8A6),
+    capabilities: ['quiz', 'répétition', 'correction'],
+    tags: ['classe', 'lesson'],
+  ),
+  FitilaTemplateData(
+    id: 'histoire-en-images',
+    name: 'Histoire en Images',
+    baribaName: 'Tári nínú àwòrán',
+    category: 'education',
+    summary: 'Transforme images en récit, légendes et voix off.',
+    duration: 35,
+    icon: Icons.photo_library_rounded,
+    accent: Color(0xFF7C3AED),
+    capabilities: ['images', 'légendes', 'voix off'],
+    tags: ['image', 'story'],
+  ),
+  FitilaTemplateData(
+    id: 'doc-express-patrimoine',
+    name: 'Doc Express Patrimoine',
+    baribaName: 'Dokù pẹ̀lú ìtàn',
+    category: 'education',
+    summary: 'Mini fiche patrimoniale avec sources, dates et citations.',
+    duration: 40,
+    icon: Icons.account_balance_rounded,
+    accent: Color(0xFF92400E),
+    capabilities: ['sources', 'dates', 'citations'],
+    tags: ['patrimoine', 'doc'],
+  ),
+  FitilaTemplateData(
+    id: 'radio-village',
+    name: 'Radio Village',
+    baribaName: 'Wuu nɔɔ',
+    category: 'business',
+    summary:
+        'Annonce audio courte, visuel radial et publication communautaire.',
+    duration: 20,
+    icon: Icons.campaign_rounded,
+    accent: _fitilaPrimary,
+    newBadge: true,
+    capabilities: ['audio', 'radial', 'annonce'],
+    tags: ['radio', 'village'],
   ),
   FitilaTemplateData(
     id: 'annonce-communautaire',
@@ -6378,5 +6930,237 @@ const _fitilaTemplates = [
     duration: 18,
     icon: Icons.notifications_active_rounded,
     accent: Color(0xFF0EA5E9),
+    capabilities: ['date', 'lieu', 'cta'],
+    tags: ['annonce', 'social'],
+  ),
+  FitilaTemplateData(
+    id: 'debat-express',
+    name: 'Débat Express',
+    baribaName: 'Jíròrò fíí',
+    category: 'business',
+    summary: 'Question, deux arguments, synthèse et appel à réagir.',
+    duration: 35,
+    icon: Icons.forum_rounded,
+    accent: Color(0xFF2563EB),
+    capabilities: ['débat', 'arguments', 'commentaires'],
+    tags: ['debat', 'discussion'],
+  ),
+  FitilaTemplateData(
+    id: 'traduction-voix',
+    name: 'Traduction Voix',
+    baribaName: 'Itumọ̀ ohùn',
+    category: 'education',
+    summary: 'Audio source, transcription, traduction et lecture bilingue.',
+    duration: 30,
+    icon: Icons.translate_rounded,
+    accent: Color(0xFF059669),
+    capabilities: ['stt', 'traduction', 'tts'],
+    tags: ['voice', 'translate'],
+  ),
+  FitilaTemplateData(
+    id: 'chorale-collective',
+    name: 'Chorale Collective',
+    baribaName: 'Ẹgbẹ́ orin',
+    category: 'music',
+    summary: 'Empilement voix, crédits participants et rendu musical.',
+    duration: 60,
+    icon: Icons.groups_2_rounded,
+    accent: Color(0xFFDB2777),
+    capabilities: ['multi-voix', 'credits', 'mix'],
+    tags: ['chorale', 'music'],
+  ),
+  FitilaTemplateData(
+    id: 'voix-de-famille',
+    name: 'Voix de Famille',
+    baribaName: 'Ohùn ìdílé',
+    category: 'storytelling',
+    summary: 'Souvenir familial, voix multiples, photos et archive.',
+    duration: 45,
+    icon: Icons.family_restroom_rounded,
+    accent: Color(0xFFEA580C),
+    capabilities: ['photos', 'voix multiples', 'archive'],
+    tags: ['famille', 'archive'],
+  ),
+  FitilaTemplateData(
+    id: 'neon-glow',
+    name: 'Neon Glow',
+    baribaName: 'Imọlẹ neon',
+    category: 'future',
+    summary: 'Effets néon, contour sujet, glow et motion futuriste.',
+    duration: 22,
+    icon: Icons.light_mode_rounded,
+    accent: Color(0xFF22D3EE),
+    capabilities: ['glow', 'mask', 'motion'],
+    tags: ['neon', 'effect'],
+  ),
+  FitilaTemplateData(
+    id: 'split-screen-duo',
+    name: 'Split Screen Duo',
+    baribaName: 'Iboju méjì',
+    category: 'music',
+    summary: 'Duo côte à côte, réponse, réaction et synchronisation.',
+    duration: 30,
+    icon: Icons.splitscreen_rounded,
+    accent: Color(0xFF6366F1),
+    capabilities: ['duo', 'reaction', 'sync'],
+    tags: ['duo', 'split'],
+  ),
+  FitilaTemplateData(
+    id: 'photo-slideshow',
+    name: 'Photo Slideshow',
+    baribaName: 'Àwòrán yíyí',
+    category: 'storytelling',
+    summary: 'Diaporama photo, transitions, captions et musique.',
+    duration: 35,
+    icon: Icons.slideshow_rounded,
+    accent: Color(0xFF64748B),
+    capabilities: ['slideshow', 'transitions', 'music'],
+    tags: ['photo', 'slideshow'],
+  ),
+  FitilaTemplateData(
+    id: 'karaoke-mode',
+    name: 'Karaoke Mode',
+    baribaName: 'Karaoke',
+    category: 'music',
+    summary: 'Paroles synchronisées, highlights, piste voix et fond musical.',
+    duration: 60,
+    icon: Icons.lyrics_rounded,
+    accent: Color(0xFFE11D48),
+    capabilities: ['lyrics', 'sync', 'audio'],
+    tags: ['karaoke', 'lyrics'],
+  ),
+  FitilaTemplateData(
+    id: 'ai-portrait-pro',
+    name: 'AI Portrait Pro',
+    baribaName: 'Àwòrán ènìyàn IA',
+    category: 'future',
+    summary: 'Portrait IA, détourage, fond dynamique et style premium.',
+    duration: 25,
+    icon: Icons.portrait_rounded,
+    accent: Color(0xFFA855F7),
+    premium: true,
+    capabilities: ['portrait', 'cutout', 'background'],
+    tags: ['portrait', 'ai'],
+  ),
+  FitilaTemplateData(
+    id: 'hologram-effect',
+    name: 'Hologram Effect',
+    baribaName: 'Hologram',
+    category: 'future',
+    summary: 'Projection holographique, scanlines et ambiance tech.',
+    duration: 20,
+    icon: Icons.view_in_ar_rounded,
+    accent: Color(0xFF06B6D4),
+    capabilities: ['ar', 'scanline', 'effect'],
+    tags: ['hologram', 'future'],
+  ),
+  FitilaTemplateData(
+    id: 'glitch-art',
+    name: 'Glitch Art',
+    baribaName: 'Glitch',
+    category: 'future',
+    summary: 'Distorsion visuelle, frames rapides et effet digital.',
+    duration: 16,
+    icon: Icons.blur_on_rounded,
+    accent: Color(0xFF7C2D12),
+    capabilities: ['glitch', 'frames', 'digital'],
+    tags: ['glitch', 'art'],
+  ),
+  FitilaTemplateData(
+    id: 'cyberpunk-vibes',
+    name: 'Cyberpunk Vibes',
+    baribaName: 'Cyberpunk',
+    category: 'future',
+    summary: 'Couleurs tech, lumières, texte animé et transitions fortes.',
+    duration: 24,
+    icon: Icons.electric_bolt_rounded,
+    accent: Color(0xFF9333EA),
+    capabilities: ['lighting', 'animated text', 'transition'],
+    tags: ['cyberpunk', 'vibes'],
+  ),
+  FitilaTemplateData(
+    id: 'matrix-rain',
+    name: 'Matrix Rain',
+    baribaName: 'Òjò matrix',
+    category: 'future',
+    summary: 'Pluie de caractères, couche code et transition futuriste.',
+    duration: 18,
+    icon: Icons.grid_on_rounded,
+    accent: Color(0xFF16A34A),
+    capabilities: ['code rain', 'overlay', 'transition'],
+    tags: ['matrix', 'rain'],
+  ),
+  FitilaTemplateData(
+    id: 'afrobeat-pulse',
+    name: 'Afrobeat Pulse',
+    baribaName: 'Afrobeat',
+    category: 'music',
+    summary: 'Pulse musical, couleurs chaudes, beat sync et danse.',
+    duration: 30,
+    icon: Icons.album_rounded,
+    accent: Color(0xFFF97316),
+    capabilities: ['pulse', 'beat', 'dance'],
+    tags: ['afrobeat', 'pulse'],
+  ),
+  FitilaTemplateData(
+    id: 'dj-mix-visual',
+    name: 'DJ Mix Visual',
+    baribaName: 'DJ mix',
+    category: 'music',
+    summary: 'Waveform, equalizer, cover art et transitions audio.',
+    duration: 45,
+    icon: Icons.equalizer_rounded,
+    accent: Color(0xFF0891B2),
+    capabilities: ['waveform', 'equalizer', 'cover'],
+    tags: ['dj', 'mix'],
+  ),
+  FitilaTemplateData(
+    id: 'dance-challenge',
+    name: 'Dance Challenge',
+    baribaName: 'Ijó challenge',
+    category: 'music',
+    summary: 'Challenge danse, compte à rebours, duo et hashtag.',
+    duration: 25,
+    icon: Icons.directions_run_rounded,
+    accent: Color(0xFFF43F5E),
+    capabilities: ['countdown', 'duo', 'hashtag'],
+    tags: ['dance', 'challenge'],
+  ),
+  FitilaTemplateData(
+    id: 'lyric-video',
+    name: 'Lyric Video',
+    baribaName: 'Ọ̀rọ̀ orin',
+    category: 'music',
+    summary: 'Vidéo paroles avec timing, fond animé et export social.',
+    duration: 60,
+    icon: Icons.queue_music_rounded,
+    accent: Color(0xFF4F46E5),
+    capabilities: ['lyrics', 'timing', 'background'],
+    tags: ['lyric', 'video'],
+  ),
+  FitilaTemplateData(
+    id: 'concert-live',
+    name: 'Concert Live',
+    baribaName: 'Konser live',
+    category: 'music',
+    summary: 'Ambiance live, light show, foule, titre et intro artiste.',
+    duration: 50,
+    icon: Icons.festival_rounded,
+    accent: Color(0xFFDC2626),
+    capabilities: ['live', 'light show', 'artist intro'],
+    tags: ['concert', 'live'],
+  ),
+  FitilaTemplateData(
+    id: 'tem-ia-foncier',
+    name: 'Tem-IA Foncier',
+    baribaName: 'Tem-IA',
+    category: 'education',
+    summary: 'Explication juridique simple avec résumé bilingue et citations.',
+    duration: 35,
+    icon: Icons.gavel_rounded,
+    accent: Color(0xFF22C55E),
+    premium: true,
+    capabilities: ['sources', 'résumé', 'citations'],
+    tags: ['tem-ia', 'foncier'],
   ),
 ];

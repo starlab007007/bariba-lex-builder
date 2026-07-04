@@ -12,6 +12,8 @@ https://www.figma.com/design/hMuCnLHeAcpG5NYbWi2uR3
 - Fil social avance: flux adaptatif, audio/radio, videos verticales, communaute, creation, posts texte/audio/video/template, like, commentaire et partage.
 - Studio createur: texte, audio, video, templates, prompt IA, tags, visibilite, brouillon/publication, musique, sous-titres, moderation et payload backend.
 - Workflow createur inspire React: discover, capture, preview, finalisation, success, debug publication et reprise brouillon.
+- Grand moteur createur: TemplateRegistry, TemplateEngine, Preview 2D/3D, timeline, AssetManager, media slots, MusicDrawer, CaptionsDrawer, MagicDrawer, GraphicsDrawer, OptimizedExportScreen, PublishScreen et SuccessScreen.
+- Catalogue createur et templates elargi: storytelling, music, business, education, future, social et culture avec modeles premium, nouveaux, tags, capacites moteur et recherche avancee.
 - Galerie templates: recherche, categories, filtres premium/nouveau, preview verticale 9:16, badges, TemplateHeroSection, TemplateGalleryGrid, TemplatePreviewFullscreen et TemplatePublishFlow.
 - Modules React `/fitila/*`: services, marche, agriculture, finance, education, sante, SOS, messages, decouvrir, installation, brouillons, offline, portefeuille, historique, scanner et boutique.
 - Dictionnaire Bariba-Francais local embarque depuis `assets/data/dictionnaire_ameliore.json`.
