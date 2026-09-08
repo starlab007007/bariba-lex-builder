@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { uniqueChannelName } from '@/lib/realtime';
 import { useAuth } from '@/contexts/AuthContext';
 
 export const useStoryViews = (storyId: string | null) => {
@@ -68,7 +69,7 @@ export const useStoryViews = (storyId: string | null) => {
     fetchViewCount();
 
     const channel = supabase
-      .channel(`story-views-${storyId}`)
+      .channel(uniqueChannelName(`story-views-${storyId}`))
       .on(
         'postgres_changes',
         {

@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { uniqueChannelName } from '@/lib/realtime';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBaribaSTT } from '@/hooks/useBaribaSTT';
 import { useSimpleTranslation } from '@/hooks/useSimpleTranslation';
@@ -66,7 +67,7 @@ export function usePrivateVoiceMessages(conversationPartnerId?: string) {
 
     // Realtime subscription
     const channel = supabase
-      .channel(`messages-${conversationPartnerId}`)
+      .channel(uniqueChannelName(`messages-${conversationPartnerId}`))
       .on(
         'postgres_changes',
         {

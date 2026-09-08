@@ -5,6 +5,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { uniqueChannelName } from '@/lib/realtime';
 import { toast } from 'sonner';
 
 // ============================================================================
@@ -246,7 +247,7 @@ export const AssetImportProvider: React.FC<AssetImportProviderProps> = ({ childr
   // Setup Realtime subscription
   useEffect(() => {
     const channel = supabase
-      .channel('asset_imports_changes')
+      .channel(uniqueChannelName('asset_imports_changes'))
       .on(
         'postgres_changes',
         {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { uniqueChannelName } from '@/lib/realtime';
 import { useAuth } from '@/contexts/AuthContext';
 import { triggerFeedback, FeedbackType } from '@/utils/tamtamFeedback';
 
@@ -37,7 +38,7 @@ export function useTamTamNotifications() {
     if (!user) return;
 
     const channel = supabase
-      .channel('notifications-realtime')
+      .channel(uniqueChannelName('notifications-realtime'))
       .on(
         'postgres_changes',
         {

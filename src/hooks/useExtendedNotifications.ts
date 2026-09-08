@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { uniqueChannelName } from '@/lib/realtime';
 import { usePushNotifications } from './usePushNotifications';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 
@@ -14,7 +15,7 @@ export function useExtendedNotifications() {
 
     // Subscribe to likes on user's posts
     const reactionsChannel = supabase
-      .channel('reaction-notifications')
+      .channel(uniqueChannelName('reaction-notifications'))
       .on(
         'postgres_changes',
         {
@@ -55,7 +56,7 @@ export function useExtendedNotifications() {
 
     // Subscribe to comments on user's posts
     const commentsChannel = supabase
-      .channel('comment-notifications')
+      .channel(uniqueChannelName('comment-notifications'))
       .on(
         'postgres_changes',
         {
@@ -95,7 +96,7 @@ export function useExtendedNotifications() {
 
     // Subscribe to follows
     const followsChannel = supabase
-      .channel('follow-notifications')
+      .channel(uniqueChannelName('follow-notifications'))
       .on(
         'postgres_changes',
         {
@@ -127,7 +128,7 @@ export function useExtendedNotifications() {
 
     // Subscribe to friend requests
     const friendsChannel = supabase
-      .channel('friend-notifications')
+      .channel(uniqueChannelName('friend-notifications'))
       .on(
         'postgres_changes',
         {

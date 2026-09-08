@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { uniqueChannelName } from '@/lib/realtime';
 import { ASSET_INVENTORY, getAssetStats as getLocalAssetStats } from '@/lib/AssetRealMapping';
 
 // ============================================================================
@@ -216,7 +217,7 @@ export function useAssetStats() {
   // Setup Realtime subscription for live updates
   useEffect(() => {
     const channel = supabase
-      .channel('asset_stats_updates')
+      .channel(uniqueChannelName('asset_stats_updates'))
       .on(
         'postgres_changes',
         {
@@ -321,7 +322,7 @@ export function useQuickAssetStats() {
 
     // Subscribe to changes
     const channel = supabase
-      .channel('quick_stats')
+      .channel(uniqueChannelName('quick_stats'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'asset_imports' }, fetchQuickStats)
       .subscribe();
 

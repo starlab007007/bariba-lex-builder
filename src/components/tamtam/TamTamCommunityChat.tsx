@@ -9,6 +9,7 @@ import { TamTamGroup, useTamTamCommunities, GroupPost } from '@/hooks/useTamTamC
 import { SmartVoiceRecorder } from '@/components/voice/SmartVoiceRecorder';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
+import { uniqueChannelName } from '@/lib/realtime';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
@@ -61,7 +62,7 @@ export function TamTamCommunityChat({ community, onClose }: TamTamCommunityChatP
 
     // Realtime subscription
     const channel = supabase
-      .channel(`community-${community.id}`)
+      .channel(uniqueChannelName(`community-${community.id}`))
       .on(
         'postgres_changes',
         {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { uniqueChannelName } from '@/lib/realtime';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface VoiceRoom {
@@ -166,7 +167,7 @@ export function useVoiceRooms() {
     fetchRooms();
 
     const channel = supabase
-      .channel('voice-rooms')
+      .channel(uniqueChannelName('voice-rooms'))
       .on(
         'postgres_changes',
         {
