@@ -34,11 +34,11 @@ export function useTamTamMessages(conversationPartnerId?: string) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user && conversationPartnerId) {
-      fetchMessages();
-      setupRealtime();
-    }
+    if (!user || !conversationPartnerId) return;
+    fetchMessages();
+    return setupRealtime();
   }, [user, conversationPartnerId]);
+
 
   const setupRealtime = () => {
     if (!user || !conversationPartnerId) return;
