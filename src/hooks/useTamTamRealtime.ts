@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { uniqueChannelName } from '@/lib/realtime';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface TamTamMessage {
@@ -33,17 +34,17 @@ export function useTamTamMessages(conversationPartnerId?: string) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user && conversationPartnerId) {
-      fetchMessages();
-      setupRealtime();
-    }
+    if (!user || !conversationPartnerId) return;
+    fetchMessages();
+    return setupRealtime();
   }, [user, conversationPartnerId]);
+
 
   const setupRealtime = () => {
     if (!user || !conversationPartnerId) return;
 
     const channel = supabase
-      .channel(`messages-${conversationPartnerId}`)
+      .channel(uniqueChannelName(`messages-${conversationPartnerId}`))
       .on(
         'postgres_changes',
         {
@@ -135,12 +136,13 @@ export function useTamTamLiveRooms() {
 
   useEffect(() => {
     fetchRooms();
-    setupRealtime();
+    return setupRealtime();
   }, []);
+
 
   const setupRealtime = () => {
     const channel = supabase
-      .channel('live-rooms')
+      .channel(uniqueChannelName('live-rooms'))
       .on(
         'postgres_changes',
         {

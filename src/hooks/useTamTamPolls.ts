@@ -1,6 +1,7 @@
 // TamTam Polls Hook - manages vocal polls with voting
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { uniqueChannelName } from '@/lib/realtime';
 import { useToast } from '@/hooks/use-toast';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 export interface PollOption {
@@ -246,7 +247,7 @@ export function useTamTamPolls() {
   // Subscribe to realtime updates
   useEffect(() => {
     const channel = supabase
-      .channel('polls-changes')
+      .channel(uniqueChannelName('polls-changes'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tamtam_polls' }, () => {
         fetchPolls();
       })

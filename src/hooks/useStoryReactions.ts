@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { uniqueChannelName } from '@/lib/realtime';
 import { useAuth } from '@/contexts/AuthContext';
 import { tamtamFeedback, FeedbackType } from '@/utils/tamtamFeedback';
 
@@ -117,7 +118,7 @@ export const useStoryReactions = (storyId: string | null) => {
     fetchReactions();
 
     const channel = supabase
-      .channel(`story-reactions-${storyId}`)
+      .channel(uniqueChannelName(`story-reactions-${storyId}`))
       .on(
         'postgres_changes',
         {

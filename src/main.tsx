@@ -2,8 +2,23 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
+// After a new deploy, an old cached page may ask for chunks that no longer
+// exist. Reload once (guarded flag) instead of showing a blank screen.
+window.addEventListener("vite:preloadError", (event) => {
+  event.preventDefault();
+  const FLAG = "fitila:chunk-reload";
+  if (sessionStorage.getItem(FLAG)) return;
+  sessionStorage.setItem(FLAG, "1");
+  window.location.reload();
+});
+window.addEventListener("load", () => {
+  // Successful load means the current bundle is fine again.
+  setTimeout(() => sessionStorage.removeItem("fitila:chunk-reload"), 5000);
+});
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   const root = document.getElementById("root")!;

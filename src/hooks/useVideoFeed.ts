@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { uniqueChannelName } from '@/lib/realtime';
 
 export interface FeedVideo {
   id: string;
@@ -122,7 +123,7 @@ export function useVideoFeed(): UseVideoFeedReturn {
 
     // Set up realtime subscription for new videos
     const channel = supabase
-      .channel('videos-feed-realtime')
+      .channel(uniqueChannelName('videos-feed-realtime'))
       .on(
         'postgres_changes',
         {
