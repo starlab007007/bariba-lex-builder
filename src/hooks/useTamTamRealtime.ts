@@ -136,8 +136,9 @@ export function useTamTamLiveRooms() {
 
   useEffect(() => {
     fetchRooms();
-    setupRealtime();
+    return setupRealtime();
   }, []);
+
 
   const setupRealtime = () => {
     const channel = supabase
