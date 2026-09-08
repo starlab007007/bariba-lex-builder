@@ -28,11 +28,11 @@ export function useTamTamNotifications() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      fetchNotifications();
-      setupRealtime();
-    }
+    if (!user) return;
+    fetchNotifications();
+    return setupRealtime();
   }, [user]);
+
 
   const setupRealtime = () => {
     if (!user) return;
