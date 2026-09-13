@@ -6809,7 +6809,7 @@ class _FeatureGrid extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
             maxCrossAxisExtent: 360,
-            mainAxisExtent: 168,
+            mainAxisExtent: 184,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
           ),
