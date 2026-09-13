@@ -1059,8 +1059,8 @@ class _NavigationPanel extends StatelessWidget {
       FitilaPage.profile,
       FitilaPage.settings,
     ];
-    return DecoratedBox(
-      decoration: const BoxDecoration(color: _fitilaInk),
+    return Material(
+      color: _fitilaInk,
       child: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
