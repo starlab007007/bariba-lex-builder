@@ -1,9 +1,9 @@
-name: FITILA Flutter Android Release
+name: FITILA Flutter Android Release 1.8.1
 
 on:
   push:
     branches:
-      - release/fitila-flutter-android-v1.0.1
+      - release/fitila-flutter-android-v1.8.1
   workflow_dispatch:
 
 permissions:
@@ -12,7 +12,7 @@ permissions:
 jobs:
   build-android:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
 
     defaults:
       run:
@@ -38,6 +38,11 @@ jobs:
       - name: Flutter environment
         run: flutter doctor -v
 
+      - name: Verify release metadata
+        run: |
+          grep -q '^version: 1.8.1+181$' pubspec.yaml
+          grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
+
       - name: Resolve dependencies
         run: flutter pub get
 
@@ -50,18 +55,23 @@ jobs:
       - name: Build optimized installable APK
         run: flutter build apk --release --obfuscate --split-debug-info=build/symbols
 
+      - name: Validate APK integrity
+        run: |
+          test -s build/app/outputs/flutter-apk/app-release.apk
+          unzip -t build/app/outputs/flutter-apk/app-release.apk >/dev/null
+
       - name: Prepare named artifact
         run: |
           mkdir -p build/release-artifacts
-          cp build/app/outputs/flutter-apk/app-release.apk build/release-artifacts/FITILA-Android-v1.0.1-build2-release.apk
-          sha256sum build/release-artifacts/FITILA-Android-v1.0.1-build2-release.apk | tee build/release-artifacts/SHA256SUMS.txt
+          cp build/app/outputs/flutter-apk/app-release.apk build/release-artifacts/FITILA-Android-v1.8.1-build181-release.apk
+          sha256sum build/release-artifacts/FITILA-Android-v1.8.1-build181-release.apk | tee build/release-artifacts/SHA256SUMS.txt
 
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
-          name: FITILA-Android-v1.0.1-build2
+          name: FITILA-Android-v1.8.1-build181
           path: |
-            fitila_flutter/build/release-artifacts/FITILA-Android-v1.0.1-build2-release.apk
+            fitila_flutter/build/release-artifacts/FITILA-Android-v1.8.1-build181-release.apk
             fitila_flutter/build/release-artifacts/SHA256SUMS.txt
             fitila_flutter/build/symbols/
           if-no-files-found: error
