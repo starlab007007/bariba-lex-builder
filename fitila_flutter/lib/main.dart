@@ -3509,12 +3509,53 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          Flex(
-            direction: wide ? Axis.horizontal : Axis.vertical,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _TextPanel(
+          if (wide)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _TextPanel(
+                    title: _direction == TranslationDirection.frenchToBariba
+                        ? 'Français'
+                        : 'Bariba',
+                    controller: _input,
+                    hint: 'Saisir le texte à traduire',
+                    maxLines: 10,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                IconButton.filled(
+                  tooltip: 'Inverser',
+                  onPressed: () => setState(() {
+                    _direction =
+                        _direction == TranslationDirection.frenchToBariba
+                        ? TranslationDirection.baribaToFrench
+                        : TranslationDirection.frenchToBariba;
+                    final temp = _input.text;
+                    _input.text = _output.text;
+                    _output.text = temp;
+                  }),
+                  icon: const Icon(Icons.swap_horiz_rounded),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _TextPanel(
+                    title: _direction == TranslationDirection.frenchToBariba
+                        ? 'Bariba'
+                        : 'Français',
+                    controller: _output,
+                    hint: 'Résultat',
+                    readOnly: true,
+                    maxLines: 10,
+                  ),
+                ),
+              ],
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _TextPanel(
                   title: _direction == TranslationDirection.frenchToBariba
                       ? 'Français'
                       : 'Bariba',
@@ -3522,23 +3563,24 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
                   hint: 'Saisir le texte à traduire',
                   maxLines: 10,
                 ),
-              ),
-              SizedBox(width: wide ? 12 : 0, height: wide ? 0 : 12),
-              IconButton.filled(
-                tooltip: 'Inverser',
-                onPressed: () => setState(() {
-                  _direction = _direction == TranslationDirection.frenchToBariba
-                      ? TranslationDirection.baribaToFrench
-                      : TranslationDirection.frenchToBariba;
-                  final temp = _input.text;
-                  _input.text = _output.text;
-                  _output.text = temp;
-                }),
-                icon: const Icon(Icons.swap_horiz_rounded),
-              ),
-              SizedBox(width: wide ? 12 : 0, height: wide ? 0 : 12),
-              Expanded(
-                child: _TextPanel(
+                const SizedBox(height: 12),
+                Align(
+                  child: IconButton.filled(
+                    tooltip: 'Inverser',
+                    onPressed: () => setState(() {
+                      _direction =
+                          _direction == TranslationDirection.frenchToBariba
+                          ? TranslationDirection.baribaToFrench
+                          : TranslationDirection.frenchToBariba;
+                      final temp = _input.text;
+                      _input.text = _output.text;
+                      _output.text = temp;
+                    }),
+                    icon: const Icon(Icons.swap_vert_rounded),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _TextPanel(
                   title: _direction == TranslationDirection.frenchToBariba
                       ? 'Bariba'
                       : 'Français',
@@ -3547,9 +3589,8 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
                   readOnly: true,
                   maxLines: 10,
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
           const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: _busy ? null : _translate,
