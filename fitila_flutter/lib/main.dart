@@ -2385,7 +2385,7 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
               maxCrossAxisExtent: 360,
-              mainAxisExtent: 236,
+              mainAxisExtent: 292,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
             ),
@@ -2483,16 +2483,20 @@ class _TemplateCard extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                OutlinedButton.icon(
-                  onPressed: onPreview,
-                  icon: const Icon(Icons.visibility_rounded),
-                  label: const Text('Preview'),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onPreview,
+                    icon: const Icon(Icons.visibility_rounded),
+                    label: const Text('Preview'),
+                  ),
                 ),
-                const Spacer(),
-                FilledButton.icon(
-                  onPressed: onUse,
-                  icon: const Icon(Icons.movie_creation_rounded),
-                  label: const Text('Utiliser'),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: onUse,
+                    icon: const Icon(Icons.movie_creation_rounded),
+                    label: const Text('Utiliser'),
+                  ),
                 ),
               ],
             ),
