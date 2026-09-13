@@ -6907,7 +6907,7 @@ class _MetricStrip extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
             maxCrossAxisExtent: 300,
-            mainAxisExtent: 110,
+            mainAxisExtent: 124,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
           ),
