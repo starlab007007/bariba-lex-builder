@@ -67,7 +67,8 @@ void main() {
 
       await tester.ensureVisible(item.first);
       await tester.tap(item.first);
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump();
 
       expect(
         tester.takeException(),
