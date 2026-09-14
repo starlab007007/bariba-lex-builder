@@ -4678,10 +4678,69 @@ class _LearnScreenState extends State<LearnScreen> {
   Widget build(BuildContext context) {
     return _PageFrame(
       title: 'Apprendre',
-      subtitle:
-          'Parcours progressif: alphabet, conversation, calcul, grammaire et culture.',
+      subtitle: 'Astuces, radio, culture et parcours Bàátɔ̀nú.',
       child: ListView(
         children: [
+          const Text(
+            "Aujourd'hui",
+            style: TextStyle(
+              color: _fitilaMuted,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          const _FeatureGrid(
+            items: [
+              (
+                Icons.auto_awesome_rounded,
+                'Astuce du jour',
+                'Expression courante',
+              ),
+              (
+                Icons.radio_rounded,
+                'Radio Bariba',
+                'Écouter les contenus Bàátɔ̀nú',
+              ),
+              (
+                Icons.account_balance_rounded,
+                'Culture',
+                'Patrimoine Bàátɔ̀nú',
+              ),
+              (
+                Icons.ondemand_video_rounded,
+                'Vidéos leçons',
+                'Apprendre en regardant',
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Proverbe à retenir',
+            style: TextStyle(
+              color: _fitilaMuted,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _fitilaCard,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: _fitilaBorder),
+            ),
+            child: const Text(
+              "La sagesse Bàátɔ̀nú du jour s'affiche ici avec sa traduction et son contexte d'usage.",
+              style: TextStyle(
+                color: _fitilaInkSoft,
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
           const _MetricStrip(
             metrics: [
               ('Niveau', 'A1', Icons.school_rounded),
@@ -6228,104 +6287,107 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final posts = '${_profile?['posts_count'] ?? 0}';
+    final followers = '${_profile?['followers_count'] ?? 0}';
+    final following = '${_profile?['following_count'] ?? 0}';
+
     return _PageFrame(
       title: 'Profil',
-      subtitle:
-          'Compte, posts, statistiques, sécurité visuelle et paramètres rapides.',
+      subtitle: 'Compte, progression et paramètres personnels.',
       child: ListView(
         children: [
           if (_loading) const LinearProgressIndicator(),
           if (_loading) const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
+          Stack(
+            alignment: Alignment.topRight,
+            children: [
+              Column(
                 children: [
-                  CircleAvatar(
-                    radius: 38,
-                    backgroundColor: _fitilaPrimary,
+                  Container(
+                    width: 84,
+                    height: 84,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: _fitilaSurfaceAlt,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: _fitilaPrimary, width: 2),
+                    ),
                     child: Text(
                       _displayName.characters.first,
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: _fitilaGoldDeep,
+                        fontFamily: 'serif',
                         fontSize: 30,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _displayName,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        Text(
-                          '${widget.session.phone} · ${widget.session.role}',
-                          style: TextStyle(color: Colors.grey.shade700),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            _StatusChip(
-                              icon: _profile?['is_verified'] == true
-                                  ? Icons.verified_rounded
-                                  : Icons.person_rounded,
-                              label:
-                                  _profile?['username']
-                                          ?.toString()
-                                          .isNotEmpty ==
-                                      true
-                                  ? '@${_profile!['username']}'
-                                  : 'Compte FITILA',
-                            ),
-                            _StatusChip(
-                              icon: Icons.security_rounded,
-                              label: 'Sécurité active',
-                            ),
-                          ],
-                        ),
-                      ],
+                  const SizedBox(height: 12),
+                  Text(
+                    _displayName,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: _fitilaInk,
+                      fontFamily: 'serif',
+                      fontSize: 19,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  IconButton.filledTonal(
-                    tooltip: 'Modifier',
-                    onPressed: widget.session.accessToken.isEmpty
-                        ? null
-                        : _editProfile,
-                    icon: const Icon(Icons.edit_rounded),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${widget.session.phone} · ${widget.session.role}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: _fitilaMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _PremiumProfileStat(
+                          value: posts,
+                          label: 'posts',
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _PremiumProfileStat(
+                          value: followers,
+                          label: 'abonnés',
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _PremiumProfileStat(
+                          value: following,
+                          label: 'abonnements',
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          _MetricStrip(
-            metrics: [
-              (
-                'Posts',
-                '${_profile?['posts_count'] ?? 0}',
-                Icons.dynamic_feed_rounded,
-              ),
-              (
-                'Abonnés',
-                '${_profile?['followers_count'] ?? 0}',
-                Icons.groups_rounded,
-              ),
-              (
-                'Abonnements',
-                '${_profile?['following_count'] ?? 0}',
-                Icons.person_add_rounded,
+              _PremiumTopIcon(
+                icon: Icons.edit_rounded,
+                tooltip: 'Modifier',
+                onPressed: widget.session.accessToken.isEmpty
+                    ? () {}
+                    : _editProfile,
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
+          const Text(
+            'Paramètres & activité',
+            style: TextStyle(
+              color: _fitilaMuted,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -6356,6 +6418,49 @@ class SettingsScreen extends StatefulWidget {
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _PremiumProfileStat extends StatelessWidget {
+  const _PremiumProfileStat({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      decoration: BoxDecoration(
+        color: _fitilaCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _fitilaBorder),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _fitilaInk,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _fitilaMuted,
+              fontSize: 10,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
