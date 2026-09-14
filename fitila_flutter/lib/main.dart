@@ -1377,14 +1377,16 @@ class _FitilaShellState extends State<FitilaShell> {
   }
 
   int get _destination => switch (_page) {
-    FitilaPage.dictionary ||
-    FitilaPage.translator ||
-    FitilaPage.keyboard ||
-    FitilaPage.voiceLab => 1,
-    FitilaPage.ia || FitilaPage.temIa => 2,
-    FitilaPage.learn || FitilaPage.classe || FitilaPage.teacher => 3,
-    FitilaPage.profile || FitilaPage.settings => 4,
-    _ => 0,
+    FitilaPage.feed => 0,
+    FitilaPage.learn => 1,
+    FitilaPage.classe || FitilaPage.teacher => 2,
+    FitilaPage.dictionary || FitilaPage.keyboard || FitilaPage.voiceLab => 3,
+    FitilaPage.translator => 4,
+    FitilaPage.ia || FitilaPage.temIa => 5,
+    // Créateur/Templates, Profil et Réglages n'ont pas d'onglet dédié dans
+    // la barre du bas (comme sur le web) : ils sont ouverts via le bouton
+    // central « + » ou le menu latéral, donc aucun onglet n'est actif.
+    _ => -1,
   };
 
   bool _feedLoading = false;
@@ -1647,15 +1649,18 @@ class _FitilaShellState extends State<FitilaShell> {
                         case 0:
                           _navigate(FitilaPage.feed);
                         case 1:
-                          _navigate(FitilaPage.dictionary);
-                        case 2:
-                          _navigate(FitilaPage.ia);
-                        case 3:
                           _navigate(FitilaPage.learn);
+                        case 2:
+                          _navigate(FitilaPage.classe);
+                        case 3:
+                          _navigate(FitilaPage.dictionary);
                         case 4:
-                          _navigate(FitilaPage.profile);
+                          _navigate(FitilaPage.translator);
+                        case 5:
+                          _navigate(FitilaPage.ia);
                       }
                     },
+                    onCreate: () => _navigate(FitilaPage.creator),
                   ),
             floatingActionButton:
                 _page == FitilaPage.feed || _page == FitilaPage.creator
@@ -9731,10 +9736,12 @@ class _PremiumBottomNav extends StatelessWidget {
   const _PremiumBottomNav({
     required this.selectedIndex,
     required this.onSelected,
+    required this.onCreate,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+  final VoidCallback onCreate;
 
   @override
   Widget build(BuildContext context) {
@@ -9769,11 +9776,20 @@ class _PremiumBottomNav extends StatelessWidget {
             ),
             Expanded(
               child: _PremiumBottomItem(
-                icon: Icons.menu_book_outlined,
-                activeIcon: Icons.menu_book_rounded,
-                label: 'Dico',
+                icon: Icons.school_outlined,
+                activeIcon: Icons.school_rounded,
+                label: 'Apprendre',
                 active: selectedIndex == 1,
                 onTap: () => onSelected(1),
+              ),
+            ),
+            Expanded(
+              child: _PremiumBottomItem(
+                icon: Icons.assignment_outlined,
+                activeIcon: Icons.assignment_rounded,
+                label: 'Classe',
+                active: selectedIndex == 2,
+                onTap: () => onSelected(2),
               ),
             ),
             Expanded(
@@ -9781,10 +9797,10 @@ class _PremiumBottomNav extends StatelessWidget {
                 offset: const Offset(0, -14),
                 child: Semantics(
                   button: true,
-                  label: 'IA Fitila',
+                  label: 'Création',
                   child: InkWell(
                     customBorder: const CircleBorder(),
-                    onTap: () => onSelected(2),
+                    onTap: onCreate,
                     child: Container(
                       width: 52,
                       height: 52,
@@ -9804,14 +9820,14 @@ class _PremiumBottomNav extends StatelessWidget {
                             spreadRadius: -8,
                           ),
                         ],
-                        border: selectedIndex == 2
+                        border: selectedIndex == -1
                             ? Border.all(color: _fitilaGoldDeep, width: 2)
                             : null,
                       ),
                       child: const Icon(
-                        Icons.auto_awesome_rounded,
+                        Icons.add_rounded,
                         color: Color(0xFF2B2110),
-                        size: 24,
+                        size: 26,
                       ),
                     ),
                   ),
@@ -9820,20 +9836,29 @@ class _PremiumBottomNav extends StatelessWidget {
             ),
             Expanded(
               child: _PremiumBottomItem(
-                icon: Icons.school_outlined,
-                activeIcon: Icons.school_rounded,
-                label: 'Apprendre',
+                icon: Icons.menu_book_outlined,
+                activeIcon: Icons.menu_book_rounded,
+                label: 'Dico',
                 active: selectedIndex == 3,
                 onTap: () => onSelected(3),
               ),
             ),
             Expanded(
               child: _PremiumBottomItem(
-                icon: Icons.person_outline_rounded,
-                activeIcon: Icons.person_rounded,
-                label: 'Profil',
+                icon: Icons.translate_outlined,
+                activeIcon: Icons.translate_rounded,
+                label: 'Traduc.',
                 active: selectedIndex == 4,
                 onTap: () => onSelected(4),
+              ),
+            ),
+            Expanded(
+              child: _PremiumBottomItem(
+                icon: Icons.auto_awesome_outlined,
+                activeIcon: Icons.auto_awesome_rounded,
+                label: 'Fitila IA',
+                active: selectedIndex == 5,
+                onTap: () => onSelected(5),
               ),
             ),
           ],
