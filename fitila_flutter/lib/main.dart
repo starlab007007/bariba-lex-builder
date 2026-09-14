@@ -3539,6 +3539,599 @@ class FitilaModuleScreen extends StatelessWidget {
   }
 }
 
+
+class _WebParityAction {
+  const _WebParityAction({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.target,
+    this.badge,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final FitilaPage? target;
+  final String? badge;
+}
+
+class WebParityModuleScreen extends StatefulWidget {
+  const WebParityModuleScreen({
+    super.key,
+    required this.page,
+    this.onNavigate,
+  });
+
+  final FitilaPage page;
+  final ValueChanged<FitilaPage>? onNavigate;
+
+  @override
+  State<WebParityModuleScreen> createState() => _WebParityModuleScreenState();
+}
+
+class _WebParityModuleScreenState extends State<WebParityModuleScreen> {
+  int _selectedTab = 0;
+  final _assistant = TextEditingController();
+
+  @override
+  void dispose() {
+    _assistant.dispose();
+    super.dispose();
+  }
+
+  List<(String, String, IconData)> get _metrics {
+    return switch (widget.page) {
+      FitilaPage.services => const [
+          ('Services', '8', Icons.apps_rounded),
+          ('Langues', '2', Icons.translate_rounded),
+          ('Assistant', 'Vocal', Icons.mic_rounded),
+        ],
+      FitilaPage.market => const [
+          ('Produits', '86', Icons.inventory_2_rounded),
+          ('Emplois', '14', Icons.work_rounded),
+          ('Espace', 'Vendeur', Icons.storefront_rounded),
+        ],
+      FitilaPage.agriculture => const [
+          ('Météo', 'Live', Icons.wb_sunny_rounded),
+          ('Marchés', '4', Icons.store_rounded),
+          ('Conseil', 'Terrain', Icons.agriculture_rounded),
+        ],
+      FitilaPage.finance => const [
+          ('Ventes', '45k', Icons.trending_up_rounded),
+          ('Dépenses', '12k', Icons.trending_down_rounded),
+          ('Épargne', 'Active', Icons.savings_rounded),
+        ],
+      FitilaPage.education => const [
+          ('Modules', '6', Icons.menu_book_rounded),
+          ('Leçons', '57', Icons.school_rounded),
+          ('Audio', 'Actif', Icons.volume_up_rounded),
+        ],
+      FitilaPage.health => const [
+          ('Guides', '5', Icons.health_and_safety_rounded),
+          ('Urgence', '112', Icons.emergency_rounded),
+          ('Assistant', 'Santé', Icons.chat_rounded),
+        ],
+      _ => const [
+          ('Modules', '3', Icons.dashboard_rounded),
+          ('Actions', 'Actives', Icons.touch_app_rounded),
+          ('Offline', 'Oui', Icons.cloud_done_rounded),
+        ],
+    };
+  }
+
+  List<String> get _tabs {
+    return switch (widget.page) {
+      FitilaPage.market => const [
+          'Accueil',
+          'Acheter',
+          'Vendre',
+          'Emploi',
+          'Recruter',
+          'Mon espace',
+        ],
+      FitilaPage.finance => const [
+          'Accueil',
+          'Ventes',
+          'Dépenses',
+          'Tontine',
+          'Crédit',
+          'Épargne',
+        ],
+      FitilaPage.education => const [
+          'Accueil',
+          'Cultures',
+          'Élevage',
+          'Commerce',
+          'Santé',
+          'Histoires',
+        ],
+      FitilaPage.health => const [
+          'Accueil',
+          'Secours',
+          'Médicaments',
+          'Maternité',
+          'Maladies',
+          'Nutrition',
+        ],
+      FitilaPage.agriculture => const [
+          'Accueil',
+          'Météo',
+          'Cultures',
+          'Élevage',
+          'Eau',
+          'Prix',
+        ],
+      _ => const ['Services'],
+    };
+  }
+
+  List<_WebParityAction> get _actions {
+    return switch (widget.page) {
+      FitilaPage.services => const [
+          _WebParityAction(
+            icon: Icons.translate_rounded,
+            title: 'Traducteur',
+            subtitle: 'Texte, voix, photo, document et conversation.',
+            target: FitilaPage.translator,
+          ),
+          _WebParityAction(
+            icon: Icons.health_and_safety_rounded,
+            title: 'Santé',
+            subtitle: 'Premiers secours, médicaments et contacts utiles.',
+            target: FitilaPage.health,
+          ),
+          _WebParityAction(
+            icon: Icons.school_rounded,
+            title: 'Éducation',
+            subtitle: 'Cours, exercices, classe et apprentissage.',
+            target: FitilaPage.education,
+          ),
+          _WebParityAction(
+            icon: Icons.account_balance_wallet_rounded,
+            title: 'Finance',
+            subtitle: 'Ventes, dépenses, tontine, crédit et épargne.',
+            target: FitilaPage.finance,
+          ),
+          _WebParityAction(
+            icon: Icons.agriculture_rounded,
+            title: 'Agriculture',
+            subtitle: 'Météo, cultures, élevage, eau et prix.',
+            target: FitilaPage.agriculture,
+          ),
+          _WebParityAction(
+            icon: Icons.menu_book_rounded,
+            title: 'Dictionnaire',
+            subtitle: 'Recherche Bàátɔ̀nú ↔ Français.',
+            target: FitilaPage.dictionary,
+          ),
+          _WebParityAction(
+            icon: Icons.sos_rounded,
+            title: 'Sécurité / SOS',
+            subtitle: 'Alerte, contacts et message vocal.',
+            target: FitilaPage.sos,
+          ),
+          _WebParityAction(
+            icon: Icons.storefront_rounded,
+            title: 'Marché',
+            subtitle: 'Acheter, vendre, emploi et espace vendeur.',
+            target: FitilaPage.market,
+          ),
+        ],
+      FitilaPage.market => const [
+          _WebParityAction(
+            icon: Icons.shopping_bag_rounded,
+            title: 'Acheter',
+            subtitle: 'Parcourir les produits, filtrer et contacter un vendeur.',
+            badge: 'Produits',
+          ),
+          _WebParityAction(
+            icon: Icons.add_business_rounded,
+            title: 'Vendre',
+            subtitle: 'Créer une annonce produit avec photo, prix et localisation.',
+            badge: 'Annonce',
+          ),
+          _WebParityAction(
+            icon: Icons.work_outline_rounded,
+            title: 'Chercher un emploi',
+            subtitle: 'Offres locales par métier et commune.',
+            badge: 'Jobs',
+          ),
+          _WebParityAction(
+            icon: Icons.person_search_rounded,
+            title: 'Recruter',
+            subtitle: 'Publier une offre et recevoir des candidatures.',
+            badge: 'Emploi',
+          ),
+          _WebParityAction(
+            icon: Icons.store_mall_directory_rounded,
+            title: 'Mon espace vendeur',
+            subtitle: 'Produits, commandes et statistiques.',
+          ),
+          _WebParityAction(
+            icon: Icons.campaign_rounded,
+            title: 'Mes annonces',
+            subtitle: 'Gérer produits et offres publiés.',
+          ),
+        ],
+      FitilaPage.agriculture => const [
+          _WebParityAction(
+            icon: Icons.wb_sunny_rounded,
+            title: 'Météo',
+            subtitle: 'Prévisions agricoles et conditions du jour.',
+            badge: 'Aujourd’hui',
+          ),
+          _WebParityAction(
+            icon: Icons.grass_rounded,
+            title: 'Cultures',
+            subtitle: 'Conseils de semis, entretien et récolte.',
+          ),
+          _WebParityAction(
+            icon: Icons.pets_rounded,
+            title: 'Élevage',
+            subtitle: 'Santé animale, alimentation et suivi.',
+          ),
+          _WebParityAction(
+            icon: Icons.water_drop_rounded,
+            title: 'Eau',
+            subtitle: 'Irrigation, disponibilité et bonnes pratiques.',
+          ),
+          _WebParityAction(
+            icon: Icons.engineering_rounded,
+            title: 'Technicien agricole',
+            subtitle: 'Demander l’appui d’un technicien.',
+            badge: 'Rappel',
+          ),
+          _WebParityAction(
+            icon: Icons.payments_rounded,
+            title: 'Prix du marché',
+            subtitle: 'Maïs, igname, coton et produits locaux.',
+            badge: 'FCFA',
+          ),
+        ],
+      FitilaPage.finance => const [
+          _WebParityAction(
+            icon: Icons.point_of_sale_rounded,
+            title: 'Ventes',
+            subtitle: 'Enregistrer et suivre les recettes.',
+          ),
+          _WebParityAction(
+            icon: Icons.receipt_long_rounded,
+            title: 'Dépenses',
+            subtitle: 'Saisir les dépenses et leur motif.',
+          ),
+          _WebParityAction(
+            icon: Icons.groups_rounded,
+            title: 'Tontine',
+            subtitle: 'Membres, cotisations, tours et rappels.',
+          ),
+          _WebParityAction(
+            icon: Icons.credit_score_rounded,
+            title: 'Crédit',
+            subtitle: 'Suivi des prêts, échéances et remboursements.',
+          ),
+          _WebParityAction(
+            icon: Icons.savings_rounded,
+            title: 'Épargne',
+            subtitle: 'Objectif, progression et historique.',
+          ),
+          _WebParityAction(
+            icon: Icons.support_agent_rounded,
+            title: 'Conseiller',
+            subtitle: 'Assistant financier bilingue.',
+          ),
+        ],
+      FitilaPage.education => const [
+          _WebParityAction(
+            icon: Icons.grass_rounded,
+            title: 'Agriculture',
+            subtitle: 'Cours pratiques sur les cultures.',
+          ),
+          _WebParityAction(
+            icon: Icons.pets_rounded,
+            title: 'Élevage',
+            subtitle: 'Modules pratiques et vocabulaire.',
+          ),
+          _WebParityAction(
+            icon: Icons.storefront_rounded,
+            title: 'Commerce',
+            subtitle: 'Vente, calcul et gestion quotidienne.',
+          ),
+          _WebParityAction(
+            icon: Icons.health_and_safety_rounded,
+            title: 'Santé',
+            subtitle: 'Prévention et vocabulaire utile.',
+          ),
+          _WebParityAction(
+            icon: Icons.school_rounded,
+            title: 'Classe FITILA',
+            subtitle: 'N1/N2, 57 leçons et exercices.',
+            target: FitilaPage.classe,
+          ),
+          _WebParityAction(
+            icon: Icons.auto_stories_rounded,
+            title: 'Témoignages',
+            subtitle: 'Histoires et contenus culturels.',
+          ),
+        ],
+      FitilaPage.health => const [
+          _WebParityAction(
+            icon: Icons.emergency_rounded,
+            title: 'Premiers secours',
+            subtitle: 'Décrire une urgence et obtenir les gestes prioritaires.',
+            badge: 'Urgence',
+          ),
+          _WebParityAction(
+            icon: Icons.medication_rounded,
+            title: 'Médicaments',
+            subtitle: 'Questions générales sur l’utilisation des médicaments.',
+          ),
+          _WebParityAction(
+            icon: Icons.pregnant_woman_rounded,
+            title: 'Maternité',
+            subtitle: 'Informations grossesse, mère et bébé.',
+          ),
+          _WebParityAction(
+            icon: Icons.coronavirus_rounded,
+            title: 'Maladies',
+            subtitle: 'Informations sur les maladies courantes.',
+          ),
+          _WebParityAction(
+            icon: Icons.restaurant_rounded,
+            title: 'Nutrition',
+            subtitle: 'Conseils alimentation et bien-être.',
+          ),
+          _WebParityAction(
+            icon: Icons.local_hospital_rounded,
+            title: 'Contacts d’urgence',
+            subtitle: 'SAMU Bénin, centre de santé et pharmacie.',
+            badge: '112',
+          ),
+        ],
+      _ => const [],
+    };
+  }
+
+  void _openAction(_WebParityAction action) {
+    if (action.target != null && widget.onNavigate != null) {
+      widget.onNavigate!(action.target!);
+      return;
+    }
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 0, 18, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 58,
+                height: 58,
+                decoration: const BoxDecoration(
+                  color: _fitilaPrimarySoft,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(action.icon, color: _fitilaGoldDeep, size: 28),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                action.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: _fitilaInk,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                action.subtitle,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: _fitilaMuted,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '${action.title} : action ouverte dans FITILA.',
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                  label: const Text('Continuer'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tabs = _tabs;
+    final actions = _actions;
+    return _PageFrame(
+      title: widget.page.title,
+      subtitle: widget.page.description,
+      child: ListView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        children: [
+          _MetricStrip(metrics: _metrics),
+          const SizedBox(height: 12),
+          if (tabs.length > 1)
+            SizedBox(
+              height: 42,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: tabs.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 7),
+                itemBuilder: (context, index) => ChoiceChip(
+                  selected: _selectedTab == index,
+                  label: Text(tabs[index]),
+                  onSelected: (_) => setState(() => _selectedTab = index),
+                ),
+              ),
+            ),
+          if (tabs.length > 1) const SizedBox(height: 12),
+          GridView.builder(
+            itemCount: actions.length,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisExtent: 156,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+            ),
+            itemBuilder: (context, index) {
+              final action = actions[index];
+              return Material(
+                color: _fitilaCard,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: const BorderSide(color: _fitilaBorder),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () => _openAction(action),
+                  child: Padding(
+                    padding: const EdgeInsets.all(13),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 43,
+                              height: 43,
+                              decoration: const BoxDecoration(
+                                color: _fitilaPrimarySoft,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                action.icon,
+                                color: _fitilaGoldDeep,
+                                size: 22,
+                              ),
+                            ),
+                            const Spacer(),
+                            if (action.badge != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFDCEAE0),
+                                  borderRadius: BorderRadius.circular(99),
+                                ),
+                                child: Text(
+                                  action.badge!,
+                                  style: const TextStyle(
+                                    color: _fitilaSage,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const Spacer(),
+                        Text(
+                          action.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: _fitilaInk,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          action.subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: _fitilaMuted,
+                            fontSize: 10,
+                            height: 1.25,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _fitilaCard,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: _fitilaBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Assistant vocal / texte',
+                  style: TextStyle(
+                    color: _fitilaInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _assistant,
+                  minLines: 1,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'Décrivez votre besoin...',
+                    prefixIcon: const Icon(Icons.mic_rounded),
+                    suffixIcon: IconButton(
+                      tooltip: 'Envoyer',
+                      onPressed: () {
+                        final text = _assistant.text.trim();
+                        if (text.isEmpty) return;
+                        _assistant.clear();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Demande prise en compte : $text',
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.send_rounded),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class UtilityScreen extends StatefulWidget {
   const UtilityScreen({super.key, required this.page});
 
