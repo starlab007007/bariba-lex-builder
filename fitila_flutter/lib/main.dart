@@ -5111,11 +5111,12 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
                       children: [
                         OutlinedButton.icon(
                           onPressed: () async {
+                            final messenger = ScaffoldMessenger.of(context);
                             await Clipboard.setData(
                               ClipboardData(text: _output.text),
                             );
                             if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            messenger.showSnackBar(
                               const SnackBar(
                                 content: Text('Traduction copiée.'),
                               ),
@@ -5201,14 +5202,12 @@ class _AiChatMessage {
   _AiChatMessage({
     required this.role,
     required this.text,
-    this.translationFr,
-    this.translating = false,
   });
 
   final String role;
   final String text;
   String? translationFr;
-  bool translating;
+  bool translating = false;
 }
 
 class _AiScreenState extends State<AiScreen> {
@@ -8115,6 +8114,70 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
   }
 }
 
+class _ClasseCorrectionWorkflowBoard extends StatelessWidget {
+  const _ClasseCorrectionWorkflowBoard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _ActionList(
+      items: const [
+        _ActionItem(
+          Icons.difference_rounded,
+          'AnswerDiff',
+          'Compare réponse élève, corrigé attendu, écarts et variantes acceptées.',
+        ),
+        _ActionItem(
+          Icons.edit_note_rounded,
+          'AnswerReview',
+          'Annotation enseignant, note, statut, commentaire texte et audio.',
+        ),
+        _ActionItem(
+          Icons.record_voice_over_rounded,
+          'VoiceAnswerPlayer',
+          'Écoute, transcription, qualité, vitesse et commentaire vocal.',
+        ),
+        _ActionItem(
+          Icons.auto_awesome_rounded,
+          'Remédiation IA',
+          'Conseil personnalisé, exercice de reprise et prochaine leçon.',
+        ),
+      ],
+    );
+  }
+}
+
+class _ClasseGradebookBoard extends StatelessWidget {
+  const _ClasseGradebookBoard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _FeatureGrid(
+      items: const [
+        (
+          Icons.bar_chart_rounded,
+          'GradeOverview',
+          'Moyenne, distribution, évolution, retard et modules faibles.',
+        ),
+        (
+          Icons.table_chart_rounded,
+          'Carnet de notes',
+          'Notes par élève, module, évaluation, oral, calcul et production.',
+        ),
+        (
+          Icons.picture_as_pdf_rounded,
+          'MyGradeReport',
+          'Relevé PDF élève/parent/enseignant avec commentaires.',
+        ),
+        (
+          Icons.insights_rounded,
+          'ClassStats',
+          'Performance classe, objectifs, assiduité et recommandations.',
+        ),
+      ],
+    );
+  }
+}
+
 class TeacherScreen extends StatefulWidget {
   const TeacherScreen({super.key});
 
@@ -10053,64 +10116,6 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
   }
 }
 
-class _DictionaryTile extends StatelessWidget {
-  const _DictionaryTile({required this.entry, required this.onTap});
-
-  final DictionaryEntry entry;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: _fitilaCard,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: _fitilaBorder),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: RichText(
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  text: TextSpan(
-                    style: const TextStyle(color: _fitilaInk),
-                    children: [
-                      TextSpan(
-                        text: entry.word,
-                        style: const TextStyle(
-                          fontFamily: 'serif',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      TextSpan(
-                        text: '  ${entry.definition}',
-                        style: const TextStyle(
-                          color: _fitilaMuted,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right_rounded, color: _fitilaMuted, size: 18),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _TextPanel extends StatelessWidget {
   const _TextPanel({
     required this.title,
@@ -11082,65 +11087,6 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-void _showDictionaryDetail(BuildContext context, DictionaryEntry entry) {
-  showModalBottomSheet<void>(
-    context: context,
-    showDragHandle: true,
-    isScrollControlled: true,
-    builder: (context) => DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.68,
-      maxChildSize: 0.92,
-      builder: (context, controller) => ListView(
-        controller: controller,
-        padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-        children: [
-          Text(
-            entry.word,
-            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900),
-          ),
-          if (entry.phonetic?.isNotEmpty == true)
-            Text(
-              entry.phonetic!,
-              style: const TextStyle(
-                color: _fitilaPrimary,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          const SizedBox(height: 12),
-          Text(
-            entry.definition,
-            style: const TextStyle(fontSize: 18, height: 1.35),
-          ),
-          const SizedBox(height: 12),
-          if (entry.partOfSpeech?.isNotEmpty == true)
-            _InfoBox(title: 'Classe grammaticale', text: entry.partOfSpeech!),
-          if (entry.exampleBariba?.isNotEmpty == true)
-            _InfoBox(title: 'Exemple Bariba', text: entry.exampleBariba!),
-          if (entry.exampleFrancais?.isNotEmpty == true)
-            _InfoBox(title: 'Exemple Français', text: entry.exampleFrancais!),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            children: [
-              FilledButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.volume_up_rounded),
-                label: const Text('Écouter'),
-              ),
-              OutlinedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.flag_rounded),
-                label: const Text('Signaler'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
 void _showContribution(BuildContext context) {
   showDialog<void>(
     context: context,
@@ -11231,58 +11177,6 @@ void _showLesson(BuildContext context, LessonCardData lesson) {
             icon: const Icon(Icons.play_arrow_rounded),
             label: const Text('Continuer la leçon'),
           ),
-        ],
-      ),
-    ),
-  );
-}
-
-void _showCorrections(BuildContext context) {
-  showModalBottomSheet<void>(
-    context: context,
-    showDragHandle: true,
-    builder: (_) => const Padding(
-      padding: EdgeInsets.all(18),
-      child: _ActionList(
-        items: [
-          _ActionItem(
-            Icons.check_circle_rounded,
-            'Comparaison automatique',
-            'Similarité avec la réponse attendue, mots manquants et explication.',
-          ),
-          _ActionItem(
-            Icons.rule_folder_rounded,
-            'Corrigés et variantes',
-            'AnswerKeysManager, mots clés, alternatives acceptées et score.',
-          ),
-          _ActionItem(
-            Icons.edit_note_rounded,
-            'Notation enseignant',
-            'Note sur 20, statut, commentaire texte et remédiation.',
-          ),
-          _ActionItem(
-            Icons.headphones_rounded,
-            'Correction vocale',
-            'Lecture du commentaire enseignant et réponse audio apprenant.',
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-void _showGrades(BuildContext context) {
-  showModalBottomSheet<void>(
-    context: context,
-    showDragHandle: true,
-    builder: (_) => const Padding(
-      padding: EdgeInsets.all(18),
-      child: _MetricStrip(
-        metrics: [
-          ('Moyenne générale', '15.2/20', Icons.grade_rounded),
-          ('Questions corrigées', '46/60', Icons.fact_check_rounded),
-          ('Barèmes', 'Actifs', Icons.tune_rounded),
-          ('PDF/CSV', 'Prêt', Icons.picture_as_pdf_rounded),
         ],
       ),
     ),
