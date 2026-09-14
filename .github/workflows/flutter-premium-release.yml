@@ -36,8 +36,45 @@ jobs:
       - name: Verify release metadata
         run: |
           flutter --version
-          grep -q '^version: 1.8.1+10$' pubspec.yaml
+          grep -q '^version: 1.8.1+11$' pubspec.yaml
           grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
+
+      - name: Prepare server configuration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          env = {}
+          for raw in Path('../.env').read_text(encoding='utf-8').splitlines():
+              line = raw.strip()
+              if not line or line.startswith('#') or '=' not in line:
+                  continue
+              key, value = line.split('=', 1)
+              env[key.strip()] = value.strip().strip('"').strip("'")
+
+          url = env.get('SUPABASE_URL') or env.get('VITE_SUPABASE_URL') or ''
+          key = (
+              env.get('SUPABASE_ANON_KEY')
+              or env.get('SUPABASE_PUBLISHABLE_KEY')
+              or env.get('VITE_SUPABASE_PUBLISHABLE_KEY')
+              or ''
+          )
+
+          if not url or not key:
+              raise SystemExit('FITILA server configuration is missing from ../.env')
+
+          Path('.ci-dart-defines.json').write_text(
+              json.dumps(
+                  {
+                      'SUPABASE_URL': url,
+                      'SUPABASE_ANON_KEY': key,
+                  }
+              ),
+              encoding='utf-8',
+          )
+          print('FITILA server configuration prepared: URL and publishable key are present.')
+          PY
 
       - name: Resolve dependencies
         run: flutter pub get
@@ -46,11 +83,12 @@ jobs:
         run: flutter analyze
 
       - name: Widget and UI tests
-        run: flutter test --reporter compact
+        run: flutter test --dart-define-from-file=.ci-dart-defines.json --reporter compact
 
       - name: Build optimized release APK
         run: |
           flutter build apk --release \
+            --dart-define-from-file=.ci-dart-defines.json \
             --obfuscate \
             --split-debug-info=build/symbols
 
@@ -63,16 +101,16 @@ jobs:
         run: |
           mkdir -p build/release-output
           cp build/app/outputs/flutter-apk/app-release.apk \
-            build/release-output/FITILA-Android-v1.8.1-build10-premium-release.apk
+            build/release-output/FITILA-Android-v1.8.1-build11-premium-serverfix-release.apk
           cp -R build/symbols build/release-output/symbols
           cd build/release-output
-          sha256sum FITILA-Android-v1.8.1-build10-premium-release.apk | tee SHA256SUMS.txt
-          ls -lh FITILA-Android-v1.8.1-build10-premium-release.apk
+          sha256sum FITILA-Android-v1.8.1-build11-premium-serverfix-release.apk | tee SHA256SUMS.txt
+          ls -lh FITILA-Android-v1.8.1-build11-premium-serverfix-release.apk
 
       - name: Upload optimized APK
         uses: actions/upload-artifact@v4
         with:
-          name: FITILA-Android-v1.8.1-build10-premium-release
+          name: FITILA-Android-v1.8.1-build11-premium-serverfix-release
           path: fitila_flutter/build/release-output/
           if-no-files-found: error
           retention-days: 14
