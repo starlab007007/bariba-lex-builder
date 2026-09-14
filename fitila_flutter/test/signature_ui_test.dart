@@ -84,10 +84,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Fil'), findsWidgets);
+    expect(find.text('Apprendre'), findsOneWidget);
+    expect(find.text('Classe'), findsOneWidget);
+    expect(find.bySemanticsLabel('Création'), findsOneWidget);
     expect(find.text('Dico'), findsOneWidget);
-    expect(find.text('Apprendre'), findsWidgets);
-    expect(find.text('Profil'), findsWidgets);
-    expect(find.bySemanticsLabel('IA Fitila'), findsOneWidget);
+    expect(find.text('Traduc.'), findsOneWidget);
+    expect(find.text('Fitila IA'), findsOneWidget);
 
     await tester.tap(find.text('Dico'));
     await tester.pump(const Duration(milliseconds: 350));
@@ -95,10 +97,16 @@ void main() {
     expect(find.text('Dictionnaire'), findsWidgets);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.bySemanticsLabel('IA Fitila'));
+    await tester.tap(find.text('Fitila IA'));
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
     expect(find.text('Fitila IA'), findsWidgets);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.bySemanticsLabel('Création'));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+    expect(find.text('Créateur'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
