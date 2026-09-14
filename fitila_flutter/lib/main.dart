@@ -5197,19 +5197,37 @@ class AiScreen extends StatefulWidget {
   State<AiScreen> createState() => _AiScreenState();
 }
 
+class _AiChatMessage {
+  _AiChatMessage({
+    required this.role,
+    required this.text,
+    this.translationFr,
+    this.translating = false,
+  });
+
+  final String role;
+  final String text;
+  String? translationFr;
+  bool translating;
+}
+
 class _AiScreenState extends State<AiScreen> {
   final _message = TextEditingController();
-  String _mode = 'Assistant';
-  bool _voice = true;
-  bool _sources = true;
+  final List<_AiChatMessage> _messages = [];
+  List<DictionaryEntry> _dictionary = const [];
   bool _busy = false;
-  final List<({String role, String text})> _messages = [
-    (
-      role: 'assistant',
-      text:
-          'Wɛɛrɛ. Je peux aider en traduction, culture, classe et dictionnaire.',
-    ),
-  ];
+  bool _showKeyboard = false;
+
+  @override
+  void initState() {
+    super.initState();
+    FitilaServices.loadDictionary().then((value) {
+      if (mounted) setState(() => _dictionary = value);
+    }).catchError((_) {});
+    _message.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   void dispose() {
@@ -5217,18 +5235,55 @@ class _AiScreenState extends State<AiScreen> {
     super.dispose();
   }
 
-  Future<void> _send() async {
-    final text = _message.text.trim();
+  List<DictionaryEntry> get _suggestions {
+    final current = _message.text.trim().split(RegExp(r'\s+')).lastOrNull ?? '';
+    if (current.isEmpty) return const [];
+    final q = current.toLowerCase();
+    return _dictionary
+        .where((entry) => entry.word.toLowerCase().startsWith(q))
+        .take(6)
+        .toList(growable: false);
+  }
+
+  void _chooseSuggestion(String word) {
+    final raw = _message.text;
+    final parts = raw.split(RegExp(r'\s+'));
+    if (parts.isEmpty) {
+      _message.text = '$word ';
+    } else {
+      parts[parts.length - 1] = word;
+      _message.text = '${parts.join(' ')} ';
+    }
+    _message.selection = TextSelection.collapsed(offset: _message.text.length);
+  }
+
+  void _insertCharacter(String char) {
+    final selection = _message.selection;
+    final text = _message.text;
+    final start = selection.start < 0 ? text.length : selection.start;
+    final end = selection.end < 0 ? text.length : selection.end;
+    _message.value = TextEditingValue(
+      text: text.replaceRange(start, end, char),
+      selection: TextSelection.collapsed(offset: start + char.length),
+    );
+  }
+
+  Future<void> _send([String? preset]) async {
+    final text = (preset ?? _message.text).trim();
     if (text.isEmpty || _busy) return;
     setState(() {
       _busy = true;
-      _messages.add((role: 'user', text: text));
+      _messages.add(_AiChatMessage(role: 'user', text: text));
       _message.clear();
+      _showKeyboard = false;
     });
+
     try {
       final answer = await FitilaBackend.askFitilaIa(text);
       if (!mounted) return;
-      setState(() => _messages.add((role: 'assistant', text: answer)));
+      setState(() {
+        _messages.add(_AiChatMessage(role: 'assistant', text: answer));
+      });
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -5241,253 +5296,422 @@ class _AiScreenState extends State<AiScreen> {
     }
   }
 
-  Widget _aiModeChip(String mode, IconData icon) {
-    return ChoiceChip(
-      selected: _mode == mode,
-      avatar: Icon(icon, size: 18),
-      label: Text(mode),
-      onSelected: (_) => setState(() => _mode = mode),
-    );
+  Future<void> _translateToFrench(int index) async {
+    if (index < 0 || index >= _messages.length) return;
+    final message = _messages[index];
+    if (message.role != 'assistant' || message.translating) return;
+    setState(() => message.translating = true);
+    try {
+      final response = await FitilaBackend.client.functions.invoke(
+        'byt5-bariba-translate',
+        body: {
+          'text': message.text,
+          'sourceLang': 'bariba',
+          'targetLang': 'french',
+        },
+      );
+      final data = response.data;
+      final translation = data is Map
+          ? (data['translatedText'] ?? data['translation'])?.toString().trim()
+          : null;
+      if (!mounted) return;
+      setState(() {
+        message.translationFr =
+            translation?.isNotEmpty == true ? translation : 'Traduction indisponible';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erreur de traduction.')),
+      );
+    } finally {
+      if (mounted) setState(() => message.translating = false);
+    }
   }
 
-  Widget _aiSubmodule() {
-    return switch (_mode) {
-      'Classe' => const _FeatureGrid(
-        items: [
-          (
-            Icons.school_rounded,
-            'Aide classe',
-            'Correction de phrase, explication leçon, quiz et réponse vocale.',
-          ),
-          (
-            Icons.compare_rounded,
-            'Answer diff',
-            'Compare la réponse élève au corrigé avec feedback clair.',
-          ),
-          (
-            Icons.grade_rounded,
-            'Note formative',
-            'Prépare une note, un commentaire et une remédiation.',
-          ),
-        ],
-      ),
-      'Culture' => const _FeatureGrid(
-        items: [
-          (
-            Icons.groups_rounded,
-            'Culture',
-            'Coutumes, proverbes, récits, contexte et variantes locales.',
-          ),
-          (
-            Icons.history_edu_rounded,
-            'Raconte-moi',
-            'Assistant conte vivant avec branches et sources culturelles.',
-          ),
-          (
-            Icons.translate_rounded,
-            'Bilingue',
-            'Réponse Français / Bàátɔ̀nú avec simplification.',
-          ),
-        ],
-      ),
-      'Documents' => const _FeatureGrid(
-        items: [
-          (
-            Icons.upload_file_rounded,
-            'Analyse document',
-            'Collage texte, résumé, extraction questions et sources.',
-          ),
-          (
-            Icons.find_in_page_rounded,
-            'Recherche locale',
-            'Interroge corpus, dictionnaire, classe et cache Tem-IA.',
-          ),
-          (
-            Icons.picture_as_pdf_rounded,
-            'Export',
-            'Prépare PDF, fiche classe et synthèse partageable.',
-          ),
-        ],
-      ),
-      'Sources' => _ActionList(
-        items: const [
-          _ActionItem(
-            Icons.source_rounded,
-            'Corpus dictionnaire',
-            'Mots, exemples, phonétique et expressions embarquées.',
-          ),
-          _ActionItem(
-            Icons.school_rounded,
-            'Corpus classe',
-            'Leçons, évaluations, réponses, corrigés et grammaire.',
-          ),
-          _ActionItem(
-            Icons.gavel_rounded,
-            'Corpus Tem-IA',
-            'Foncier, documents, citations et synthèse bilingue.',
-          ),
-        ],
-      ),
-      'Historique' => _ActionList(
-        items: [
-          for (final msg in _messages.reversed.take(6))
-            _ActionItem(
-              msg.role == 'user'
-                  ? Icons.person_rounded
-                  : Icons.smart_toy_rounded,
-              msg.role == 'user' ? 'Utilisateur' : 'Fitila IA',
-              msg.text,
-            ),
-        ],
-      ),
-      _ => Card(
+  Widget _emptyState() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(18),
         child: Column(
           children: [
-            SwitchListTile(
-              value: _voice,
-              onChanged: (value) => setState(() => _voice = value),
-              secondary: const Icon(Icons.record_voice_over_rounded),
-              title: const Text('Voix IA active'),
-              subtitle: const Text(
-                'Lecture, dictée et assistant conversationnel.',
+            Container(
+              width: 86,
+              height: 86,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFE7E5FF), Color(0xFFF1E8FA)],
+                ),
+                border: Border.all(color: const Color(0xFFD8D2F1)),
+              ),
+              child: const Icon(
+                Icons.smart_toy_rounded,
+                color: Color(0xFF6758C9),
+                size: 43,
               ),
             ),
-            const Divider(height: 1),
-            SwitchListTile(
-              value: _sources,
-              onChanged: (value) => setState(() => _sources = value),
-              secondary: const Icon(Icons.format_quote_rounded),
-              title: const Text('Sources citées'),
-              subtitle: const Text(
-                'Affiche les bases utilisées dans la réponse.',
+            const SizedBox(height: 18),
+            const Text(
+              'Yaa sɔ̃ɔ wírú Bariba mɛ̀, ǹ nɛ́ɛ̀ daa gɔ!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _fitilaInk,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
               ),
+            ),
+            const SizedBox(height: 7),
+            const Text(
+              'Posez vos questions en Bàátɔ̀nú',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _fitilaMuted, fontSize: 12.5),
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ActionChip(
+                  label: const Text('Comment saluer ?'),
+                  onPressed: () => _send('Comment saluer en Bàátɔ̀nú ?'),
+                ),
+                ActionChip(
+                  label: const Text('Explique une coutume'),
+                  onPressed: () => _send('Explique une coutume Bàátɔ̀nú'),
+                ),
+                ActionChip(
+                  label: const Text('Aide-moi en classe'),
+                  onPressed: () => _send('Aide-moi à apprendre le Bàátɔ̀nú'),
+                ),
+              ],
             ),
           ],
         ),
       ),
-    };
+    );
+  }
+
+  Widget _bubble(int index, _AiChatMessage message) {
+    final mine = message.role == 'user';
+    return Align(
+      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 690),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment:
+              mine ? MainAxisAlignment.end : MainAxisAlignment.start,
+          children: [
+            if (!mine) ...[
+              const CircleAvatar(
+                radius: 15,
+                backgroundColor: Color(0xFF6758C9),
+                foregroundColor: Colors.white,
+                child: Icon(Icons.smart_toy_rounded, size: 15),
+              ),
+              const SizedBox(width: 7),
+            ],
+            Flexible(
+              child: Column(
+                crossAxisAlignment:
+                    mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 11,
+                    ),
+                    decoration: BoxDecoration(
+                      color: mine ? _fitilaClay : _fitilaCard,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(mine ? 18 : 6),
+                        topRight: Radius.circular(mine ? 6 : 18),
+                        bottomLeft: const Radius.circular(18),
+                        bottomRight: const Radius.circular(18),
+                      ),
+                      border:
+                          mine ? null : Border.all(color: _fitilaBorder),
+                    ),
+                    child: Text(
+                      message.text,
+                      style: TextStyle(
+                        color: mine ? Colors.white : _fitilaInkSoft,
+                        fontSize: 13.5,
+                        height: 1.45,
+                      ),
+                    ),
+                  ),
+                  if (!mine) ...[
+                    const SizedBox(height: 4),
+                    if (message.translationFr == null)
+                      TextButton.icon(
+                        onPressed: message.translating
+                            ? null
+                            : () => _translateToFrench(index),
+                        icon: message.translating
+                            ? const SizedBox.square(
+                                dimension: 13,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.translate_rounded, size: 15),
+                        label: Text(
+                          message.translating
+                              ? 'Traduction...'
+                              : 'Traduire en français',
+                        ),
+                      )
+                    else
+                      Container(
+                        margin: const EdgeInsets.only(top: 3),
+                        padding: const EdgeInsets.all(11),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEDEAFF),
+                          borderRadius: BorderRadius.circular(13),
+                          border: Border.all(
+                            color: const Color(0xFFD8D2F1),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'FRANÇAIS',
+                              style: TextStyle(
+                                color: Color(0xFF6758C9),
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: .5,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              message.translationFr!,
+                              style: const TextStyle(
+                                color: _fitilaInkSoft,
+                                fontSize: 12.5,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+            if (mine) ...[
+              const SizedBox(width: 7),
+              const CircleAvatar(
+                radius: 15,
+                backgroundColor: _fitilaClay,
+                foregroundColor: Colors.white,
+                child: Icon(Icons.person_rounded, size: 15),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final suggestions = _suggestions;
     return _PageFrame(
-      title: 'Fitila IA',
-      subtitle: 'Conversation, voix, sources citées et mode Tem-IA foncier.',
+      title: '🤖 Fitila IA',
+      subtitle: 'Assistant intelligent en Bàátɔ̀nú',
       child: Column(
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _aiModeChip('Assistant', Icons.auto_awesome_rounded),
-                _aiModeChip('Classe', Icons.school_rounded),
-                _aiModeChip('Culture', Icons.groups_rounded),
-                _aiModeChip('Documents', Icons.upload_file_rounded),
-                _aiModeChip('Sources', Icons.source_rounded),
-                _aiModeChip('Historique', Icons.history_rounded),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
           Expanded(
-            child: ListView.separated(
-              itemCount: _messages.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                final mine = msg.role == 'user';
-                return Align(
-                  alignment: mine
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 680),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: mine ? _fitilaPrimary : Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: mine ? _fitilaPrimary : _fitilaBorder,
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Text(
-                          msg.text,
-                          style: TextStyle(
-                            color: mine ? const Color(0xFF2B2110) : _fitilaInkSoft,
-                            height: 1.35,
+            child: _messages.isEmpty
+                ? _emptyState()
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: _messages.length + (_busy ? 1 : 0),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      if (_busy && index == _messages.length) {
+                        return const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircleAvatar(
+                                radius: 15,
+                                backgroundColor: Color(0xFF6758C9),
+                                child: Icon(
+                                  Icons.smart_toy_rounded,
+                                  color: Colors.white,
+                                  size: 15,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              _AiThinkingIndicator(),
+                            ],
                           ),
+                        );
+                      }
+                      return _bubble(index, _messages[index]);
+                    },
+                  ),
+          ),
+          if (suggestions.isNotEmpty)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 7),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _fitilaCard,
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: _fitilaBorder),
+              ),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final suggestion in suggestions)
+                    ActionChip(
+                      label: Text(suggestion.word),
+                      onPressed: () => _chooseSuggestion(suggestion.word),
+                    ),
+                ],
+              ),
+            ),
+          if (_showKeyboard)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 7),
+              child: _BaribaKeyboard(onInsert: _insertCharacter),
+            ),
+          Container(
+            padding: const EdgeInsets.only(top: 9),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: _fitilaBorder)),
+            ),
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: 'Clavier Bàátɔ̀nú',
+                  onPressed: () =>
+                      setState(() => _showKeyboard = !_showKeyboard),
+                  icon: const Icon(Icons.keyboard_alt_rounded),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: TextField(
+                    controller: _message,
+                    minLines: 1,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      hintText: 'Yaa sɔ̃ɔ...',
+                    ),
+                    onSubmitted: (_) => _send(),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                IconButton(
+                  tooltip: 'Voix',
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'La dictée Bariba est accessible depuis Voice Lab.',
                         ),
                       ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              IconButton.filledTonal(
-                tooltip: 'Voix',
-                onPressed: () =>
-                    _message.text = 'Explique une salutation en Bariba.',
-                icon: const Icon(Icons.mic_rounded),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _message,
-                  minLines: 1,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    hintText: 'Demander à Fitila IA...',
-                  ),
-                  onSubmitted: (_) {
-                    if (!_busy) _send();
+                    );
                   },
+                  icon: const Icon(Icons.mic_rounded),
                 ),
-              ),
-              const SizedBox(width: 8),
-              IconButton.filled(
-                tooltip: 'Envoyer',
-                onPressed: _busy ? null : _send,
-                icon: _busy
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.send_rounded),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Align(alignment: Alignment.centerLeft, child: _aiSubmodule()),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Wrap(
-              spacing: 8,
-              children: [
-                ActionChip(
-                  label: const Text('Tem-IA foncier'),
-                  onPressed: () => _message.text = 'Article 12 foncier',
-                ),
-                ActionChip(
-                  label: const Text('Aide classe'),
-                  onPressed: () => _message.text = 'Corrige ma phrase',
-                ),
-                ActionChip(
-                  label: const Text('Culture'),
-                  onPressed: () => _message.text = 'Explique une coutume',
+                const SizedBox(width: 6),
+                IconButton.filled(
+                  tooltip: 'Envoyer',
+                  onPressed: _busy ? null : () => _send(),
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFF6758C9),
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.send_rounded),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AiThinkingIndicator extends StatefulWidget {
+  const _AiThinkingIndicator();
+
+  @override
+  State<_AiThinkingIndicator> createState() => _AiThinkingIndicatorState();
+}
+
+class _AiThinkingIndicatorState extends State<_AiThinkingIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 850),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+      decoration: BoxDecoration(
+        color: _fitilaCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _fitilaBorder),
+      ),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          final phase = (_controller.value * 3).floor();
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < 3; i++) ...[
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: i == phase
+                        ? const Color(0xFF6758C9)
+                        : _fitilaBorder,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                if (i < 2) const SizedBox(width: 4),
+              ],
+              const SizedBox(width: 8),
+              const Text(
+                'Ǹ nɛ́ɛ̀ dɔɔ bírú...',
+                style: TextStyle(
+                  color: _fitilaMuted,
+                  fontSize: 10.5,
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
