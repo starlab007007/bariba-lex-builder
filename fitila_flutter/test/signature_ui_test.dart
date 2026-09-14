@@ -84,7 +84,9 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(const FitilaApp(demoMode: true));
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Se connecter'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Se connecter'));
     await tester.pumpAndSettle();
 
@@ -116,6 +118,9 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(const FitilaApp(demoMode: true));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Se connecter'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Se connecter'));
     await tester.pumpAndSettle();
 
