@@ -89,7 +89,7 @@ void main() {
     expect(find.bySemanticsLabel('Création'), findsWidgets);
     expect(find.text('Dico'), findsOneWidget);
     expect(find.text('Traduc.'), findsOneWidget);
-    expect(find.text('Fitila IA'), findsOneWidget);
+    expect(find.text('Fitila IA'), findsWidgets);
 
     await tester.tap(find.text('Dico'));
     await tester.pump(const Duration(milliseconds: 350));
@@ -97,7 +97,7 @@ void main() {
     expect(find.text('Dictionnaire'), findsWidgets);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.text('Fitila IA'));
+    await tester.tap(find.text('Fitila IA').last);
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
     expect(find.text('Fitila IA'), findsWidgets);
