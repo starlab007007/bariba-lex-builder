@@ -456,12 +456,30 @@ extension FitilaPageMeta on FitilaPage {
       FitilaPage.feed => 'Fil',
       FitilaPage.creator => 'Createur',
       FitilaPage.templates => 'Templates',
-      FitilaPage.services => 'Services',
-      FitilaPage.market => 'Marche',
-      FitilaPage.agriculture => 'Agriculture',
-      FitilaPage.finance => 'Finance',
-      FitilaPage.education => 'Education',
-      FitilaPage.health => 'Sante',
+      FitilaPage.services => WebParityModuleScreen(
+        page: FitilaPage.services,
+        onNavigate: _navigate,
+      ),
+      FitilaPage.market => WebParityModuleScreen(
+        page: FitilaPage.market,
+        onNavigate: _navigate,
+      ),
+      FitilaPage.agriculture => WebParityModuleScreen(
+        page: FitilaPage.agriculture,
+        onNavigate: _navigate,
+      ),
+      FitilaPage.finance => WebParityModuleScreen(
+        page: FitilaPage.finance,
+        onNavigate: _navigate,
+      ),
+      FitilaPage.education => WebParityModuleScreen(
+        page: FitilaPage.education,
+        onNavigate: _navigate,
+      ),
+      FitilaPage.health => WebParityModuleScreen(
+        page: FitilaPage.health,
+        onNavigate: _navigate,
+      ),
       FitilaPage.sos => 'SOS',
       FitilaPage.messages => 'Messages',
       FitilaPage.discover => 'Decouvrir',
