@@ -24,11 +24,8 @@ const _fitilaPrimary = Color(0xFFC99530);
 const _fitilaGoldDeep = Color(0xFF9C6B1D);
 const _fitilaPrimarySoft = Color(0xFFF3E3B9);
 const _fitilaClay = Color(0xFFB54E33);
-const _fitilaClaySoft = Color(0xFFF4DED2);
 const _fitilaSage = Color(0xFF3F6E52);
-const _fitilaSageSoft = Color(0xFFDCEAE0);
 const _fitilaBorder = Color(0xFFE4DFCC);
-const _fitilaBorderStrong = Color(0xFFD5CEB3);
 const _fitilaInk = Color(0xFF241F2E);
 const _fitilaInkSoft = Color(0xFF3A3448);
 const _fitilaMuted = Color(0xFF8C8571);
@@ -873,49 +870,6 @@ class _FitilaShellState extends State<FitilaShell> {
     _ => 0,
   };
 
-  void _chooseModule(String title, List<FitilaPage> pages) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: Theme.of(context).textTheme.headlineSmall),
-              const SizedBox(height: 16),
-              for (final page in pages)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Card(
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.all(12),
-                      leading: CircleAvatar(
-                        backgroundColor: _fitilaPrimarySoft,
-                        child: Icon(
-                          page.icon,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                      title: Text(page.title),
-                      subtitle: Text(page.description),
-                      trailing: const Icon(Icons.arrow_forward_rounded),
-                      onTap: () {
-                        Navigator.pop(sheetContext);
-                        _navigate(page);
-                      },
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   bool _feedLoading = false;
   String? _feedError;
   final List<FeedPost> _posts = [
@@ -1325,7 +1279,7 @@ class _FitilaShellState extends State<FitilaShell> {
                           ? null
                           : _persistPost,
                     ),
-                    icon: const Icon(Icons.add_rounded),
+                    child: const Icon(Icons.add_rounded),
                   )
                 : null,
           ),
