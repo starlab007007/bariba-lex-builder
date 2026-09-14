@@ -1562,6 +1562,8 @@ class _FeedScreenState extends State<FeedScreen> {
       ),
       child: ListView(
         children: [
+          const _PremiumStoryRow(),
+          const SizedBox(height: 14),
           if (widget.loading) const LinearProgressIndicator(),
           if (widget.error != null)
             Card(
@@ -1637,6 +1639,82 @@ class _FeedScreenState extends State<FeedScreen> {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PremiumStoryRow extends StatelessWidget {
+  const _PremiumStoryRow();
+
+  static const _items = <(String, String)>[
+    ('+', 'Ajouter'),
+    ('RB', 'Radio'),
+    ('CL', 'Classe'),
+    ('CU', 'Culture'),
+    ('IA', 'Fitila IA'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 82,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _items.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final item = _items[index];
+          return SizedBox(
+            width: 62,
+            child: Column(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  padding: const EdgeInsets.all(2.5),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: SweepGradient(
+                      colors: [
+                        _fitilaPrimary,
+                        _fitilaClay,
+                        _fitilaSage,
+                        _fitilaPrimary,
+                      ],
+                    ),
+                  ),
+                  child: Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: _fitilaSurfaceAlt,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: _fitilaSurface, width: 2),
+                    ),
+                    child: Text(
+                      item.$1,
+                      style: const TextStyle(
+                        color: _fitilaInk,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  item.$2,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _fitilaMuted,
+                    fontSize: 10.5,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -8170,35 +8248,65 @@ class _BaribaKeyboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final letter in _baribaLetters)
-              SizedBox(
-                width: 52,
-                height: 46,
-                child: FilledButton.tonal(
-                  onPressed: () => onInsert(letter),
-                  child: Text(
-                    letter,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 14),
+      decoration: BoxDecoration(
+        color: _fitilaSurfaceAlt,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _fitilaBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(6, 0, 6, 8),
+            child: Text(
+              'Clavier Bàátɔ̀nú natif',
+              style: TextStyle(
+                color: _fitilaGoldDeep,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: .4,
+              ),
+            ),
+          ),
+          Wrap(
+            spacing: 5,
+            runSpacing: 6,
+            children: [
+              for (final letter in _baribaLetters)
+                SizedBox(
+                  width: 42,
+                  height: 38,
+                  child: Material(
+                    color: _fitilaCard,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: const BorderSide(color: _fitilaBorder),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => onInsert(letter),
+                      child: Center(
+                        child: Text(
+                          letter,
+                          style: const TextStyle(
+                            color: _fitilaGoldDeep,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
-
 class _FeatureGrid extends StatelessWidget {
   const _FeatureGrid({required this.items});
 
@@ -8742,23 +8850,27 @@ class _SwitchTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Card(
-        child: SwitchListTile(
-          value: value,
-          onChanged: onChanged,
-          secondary: Icon(icon, color: _fitilaPrimary),
-          title: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w800),
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: _fitilaBorder)),
+      ),
+      child: SwitchListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        value: value,
+        onChanged: onChanged,
+        secondary: Icon(icon, color: _fitilaGoldDeep, size: 19),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: _fitilaInk,
+            fontSize: 13.5,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
     );
   }
 }
-
 class _EmptyState extends StatelessWidget {
   const _EmptyState({
     required this.icon,
