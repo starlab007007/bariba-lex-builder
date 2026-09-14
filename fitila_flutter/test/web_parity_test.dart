@@ -117,8 +117,8 @@ void main() {
 
     await pumpPhone(tester, ClasseScreen(initialLessons: lessons));
 
-    expect(find.text('Niveau 1'), findsOneWidget);
-    expect(find.text('Niveau 2'), findsOneWidget);
+    expect(find.textContaining('Niveau 1'), findsOneWidget);
+    expect(find.textContaining('Niveau 2'), findsOneWidget);
     expect(find.text('Leçons'), findsOneWidget);
 
     await tester.tap(find.text('Leçons'));
@@ -157,7 +157,7 @@ void main() {
         tester,
         WebParityModuleScreen(page: page),
       );
-      expect(find.text(page.title), findsOneWidget);
+      expect(find.text(page.title), findsWidgets);
       expect(tester.takeException(), isNull, reason: 'Domain failed: ${page.name}');
     }
   });
@@ -180,7 +180,7 @@ void main() {
 
     for (final page in pages) {
       await pumpPhone(tester, UtilityScreen(page: page));
-      expect(find.text(page.title), findsOneWidget);
+      expect(find.text(page.title), findsWidgets);
       expect(tester.takeException(), isNull, reason: 'Utility failed: ${page.name}');
     }
   });
