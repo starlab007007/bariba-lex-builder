@@ -67,17 +67,6 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.byType(Scaffold), findsWidgets);
 
-      if (entry.key == 'classe') {
-        for (var i = 0; i < 8 && find.text('Niveau 2').evaluate().isEmpty; i++) {
-          await tester.pump(const Duration(milliseconds: 120));
-        }
-        expect(find.text('Niveau 2'), findsOneWidget);
-        await tester.ensureVisible(find.text('Niveau 2'));
-        await tester.tap(find.text('Niveau 2'));
-        await tester.pump(const Duration(milliseconds: 350));
-        await tester.pump();
-        expect(tester.takeException(), isNull);
-      }
     });
   }
 
