@@ -5,6 +5,7 @@ import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { supabase } from '@/integrations/supabase/client';
+import { uniqueChannelName } from '@/lib/realtime';
 import { useAuth } from '@/contexts/AuthContext';
 import { Volume2, Loader2 } from 'lucide-react';
 import { useVoiceMenu } from '@/hooks/useVoiceMenu';
@@ -44,7 +45,7 @@ export function TamTamNavigation() {
 
     // Subscribe to new messages
     const channel = supabase
-      .channel('nav-unread-messages')
+      .channel(uniqueChannelName('nav-unread-messages'))
       .on(
         'postgres_changes',
         {

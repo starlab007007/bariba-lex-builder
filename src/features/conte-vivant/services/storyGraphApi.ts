@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { Json, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 import type { ConteVivantStory, StoryGraph } from '../types/story.types';
 
 // ===== STORIES CRUD =====
@@ -43,11 +44,11 @@ export async function createStory(story: {
   total_endings: number;
   thumbnail_url?: string;
 }): Promise<ConteVivantStory> {
-  const insertPayload: Record<string, unknown> = {
+  const insertPayload: TablesInsert<'conte_vivant_stories'> = {
     creator_id: story.creator_id,
     title: story.title,
     description: story.description,
-    graph: story.graph as unknown as Record<string, unknown>,
+    graph: story.graph as unknown as Json,
     languages: story.languages,
     total_segments: story.total_segments,
     total_endings: story.total_endings,
@@ -56,7 +57,7 @@ export async function createStory(story: {
   };
   const { data, error } = await supabase
     .from('conte_vivant_stories')
-    .insert(insertPayload as any)
+    .insert(insertPayload)
     .select()
     .single();
   if (error) throw error;
@@ -73,9 +74,10 @@ export async function updateStory(id: string, updates: Partial<{
   thumbnail_url: string;
   published_at: string;
 }>): Promise<void> {
-  const payload: Record<string, unknown> = { ...updates };
+  const { graph, ...fields } = updates;
+  const payload: TablesUpdate<'conte_vivant_stories'> = { ...fields };
   if (updates.graph) {
-    payload.graph = updates.graph as unknown as Record<string, unknown>;
+    payload.graph = updates.graph as unknown as Json;
   }
   const { error } = await supabase
     .from('conte_vivant_stories')
@@ -125,7 +127,7 @@ export async function upsertProgress(progress: {
     user_id: progress.user_id,
     story_id: progress.story_id,
     path_taken: progress.path_taken,
-    choices: progress.choices as unknown as Record<string, unknown>,
+    choices: progress.choices as unknown as Json,
     endings_unlocked: progress.endings_unlocked,
     completed_at: progress.completed_at,
     replay_count: progress.replay_count,

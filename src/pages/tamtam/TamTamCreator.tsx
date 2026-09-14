@@ -372,7 +372,7 @@ const TamTamCreator: React.FC = () => {
       const { data: postData, error: postError } = await supabase
         .from('tamtam_posts')
         .insert({
-          content: caption || '',
+          transcript: caption || '',
           audio_url: mediaUrl || 'local://preview',
           media_type: 'video',
           media_url: mediaUrl,

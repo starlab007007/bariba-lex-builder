@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { uniqueChannelName } from '@/lib/realtime';
 import { triggerFeedback, FeedbackType } from '@/utils/tamtamFeedback';
 
 export function usePushNotifications() {
@@ -63,7 +64,7 @@ export function usePushNotifications() {
     if (!user || permission !== 'granted') return;
 
     const channel = supabase
-      .channel('push-notifications')
+      .channel(uniqueChannelName('push-notifications'))
       .on(
         'postgres_changes',
         {

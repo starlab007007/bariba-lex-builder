@@ -1,73 +1,37 @@
-# Welcome to your Lovable project
+# FITILA — application Flutter native
 
-## Project info
+Le projet principal pour le mobile est **fitila_flutter/**. Son interface est écrite en Dart/Flutter ; elle n’utilise ni React, ni Capacitor, ni WebView. Les anciens projets Web/Capacitor et le backend Supabase sont conservés pour préserver le travail existant.
 
-**URL**: https://lovable.dev/projects/a8b67aa7-de06-4bed-97db-29852f4f01ed
+## Démarrage Windows
 
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/a8b67aa7-de06-4bed-97db-29852f4f01ed) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```powershell
+cd fitila_flutter
+flutter pub get
+flutter analyze
+flutter test
+flutter run -d emulator-5554
 ```
 
-**Edit a file directly in GitHub**
+L’émulateur attendu est FITILA_API_35. Pour générer les deux formats Android depuis la racine :
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```powershell
+.\scripts\build-flutter.ps1
+```
 
-**Use GitHub Codespaces**
+Sorties standard : fitila_flutter/build/app/outputs/flutter-apk/app-release.apk et fitila_flutter/build/app/outputs/bundle/release/app-release.aab.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## État fonctionnel à connaître
 
-## What technologies are used for this project?
+- Interface, navigation et dictionnaire embarqué natifs Flutter.
+- Traduction locale fondée sur les correspondances réelles du dictionnaire. Un texte inconnu affiche une indisponibilité ; il n’est plus présenté comme traduit.
+- Contrat de traduction Supabase ai-translate préparé avec authentification obligatoire. La connexion de recette ne produit pas de session Supabase.
+- L’authentification, les rôles choisis localement et plusieurs modules sociaux/enseignants restent une maquette de recette. Ils ne constituent pas des autorisations serveur et ne sont pas validés comme services de production.
+- La configuration Flutter héritée signe les releases avec la clé debug. Une signature de distribution et le raccordement des repositories au backend sont nécessaires avant publication.
 
-This project is built with:
+## Documents
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- [Provenance Flutter](fitila_flutter/RECONSTRUCTION.md)
+- [Rapport d’audit et résultats](AUDIT_FITILA.md)
+- [Détails de la maquette Flutter](fitila_flutter/README.md)
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/a8b67aa7-de06-4bed-97db-29852f4f01ed) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Les données, fonctions et migrations Supabase ont été conservées. Aucun déploiement distant ni aucune migration de base de données n’a été exécuté pendant cette reconstruction.

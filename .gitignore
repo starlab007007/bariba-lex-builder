@@ -22,3 +22,18 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local audit artifacts and browser test output
+.fitila-audit/
+playwright-report/
+test-results/
+# FITILA - fichiers locaux sensibles et temporaires
+android/app/signing.properties
+android/.kotlin/
+**/.kotlin/
+**/local.properties
+**/key.properties
+*.jks
+*.keystore
+*.p12
+*.pem

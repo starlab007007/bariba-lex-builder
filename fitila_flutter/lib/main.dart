@@ -12,6 +12,7 @@ import 'package:video_player/video_player.dart';
 import 'core/fitila_backend.dart';
 import 'core/fitila_media.dart';
 import 'core/foncier_rag.dart';
+import 'core/signature_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,9 +22,9 @@ Future<void> main() async {
 
 const _fitilaPrimary = Color(0xFFFF7A00);
 const _fitilaPrimarySoft = Color(0xFFFFEDD5);
-const _fitilaBorder = Color(0xFFFED7AA);
-const _fitilaInk = Color(0xFF0F172A);
-const _fitilaSurface = Color(0xFFFFFBF5);
+const _fitilaBorder = Color(0xFFE9E4DC);
+const _fitilaInk = Color(0xFF202320);
+const _fitilaSurface = Color(0xFFFAF7F2);
 const _supabaseUrl = FitilaBackend.supabaseUrl;
 const _baribaLetters = [
   'ɛ',
@@ -62,55 +63,7 @@ class FitilaApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'FITILA',
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: _fitilaPrimary,
-          brightness: Brightness.light,
-          surface: _fitilaSurface,
-        ),
-        scaffoldBackgroundColor: _fitilaSurface,
-        appBarTheme: const AppBarTheme(
-          centerTitle: false,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          backgroundColor: _fitilaSurface,
-          foregroundColor: _fitilaInk,
-        ),
-        cardTheme: CardThemeData(
-          color: Colors.white,
-          elevation: 0,
-          margin: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            backgroundColor: _fitilaPrimary,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            minimumSize: const Size(48, 48),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: _fitilaBorder),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: _fitilaBorder),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: _fitilaPrimary, width: 1.5),
-          ),
-        ),
-      ),
+      theme: SignatureTheme.light(),
       home: AuthGate(demoMode: demoMode),
     );
   }
@@ -887,6 +840,72 @@ class FitilaShell extends StatefulWidget {
 
 class _FitilaShellState extends State<FitilaShell> {
   FitilaPage _page = FitilaPage.feed;
+  final Set<FitilaPage> _visited = {FitilaPage.feed};
+  final List<FitilaPage> _history = [];
+
+  void _navigate(FitilaPage page) {
+    if (page == _page) return;
+    setState(() {
+      _history.add(_page);
+      _page = page;
+      _visited.add(page);
+    });
+  }
+
+  int get _destination => switch (_page) {
+    FitilaPage.learn || FitilaPage.classe || FitilaPage.teacher => 1,
+    FitilaPage.dictionary ||
+    FitilaPage.translator ||
+    FitilaPage.keyboard ||
+    FitilaPage.voiceLab => 2,
+    FitilaPage.ia || FitilaPage.temIa => 3,
+    FitilaPage.profile || FitilaPage.settings => 4,
+    _ => 0,
+  };
+
+  void _chooseModule(String title, List<FitilaPage> pages) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: 16),
+              for (final page in pages)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Card(
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.all(12),
+                      leading: CircleAvatar(
+                        backgroundColor: _fitilaPrimarySoft,
+                        child: Icon(
+                          page.icon,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      title: Text(page.title),
+                      subtitle: Text(page.description),
+                      trailing: const Icon(Icons.arrow_forward_rounded),
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        _navigate(page);
+                      },
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   bool _feedLoading = false;
   String? _feedError;
   final List<FeedPost> _posts = [
@@ -1189,86 +1208,169 @@ class _FitilaShellState extends State<FitilaShell> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 980;
-        return Scaffold(
-          appBar: wide
-              ? null
-              : AppBar(
-                  title: Text(_page.title),
-                  actions: [
-                    IconButton(
-                      tooltip: 'Profil',
-                      onPressed: () =>
-                          setState(() => _page = FitilaPage.profile),
-                      icon: const Icon(Icons.account_circle_rounded),
-                    ),
-                  ],
-                ),
-          drawer: wide
-              ? null
-              : Drawer(
-                  child: _NavigationPanel(
-                    page: _page,
-                    session: widget.session,
-                    onSelected: (page) {
-                      Navigator.pop(context);
-                      setState(() => _page = page);
-                    },
-                  ),
-                ),
-          body: Row(
-            children: [
-              if (wide)
-                SizedBox(
-                  width: 304,
-                  child: _NavigationPanel(
-                    page: _page,
-                    session: widget.session,
-                    onSelected: (page) => setState(() => _page = page),
-                  ),
-                ),
-              Expanded(
-                child: SafeArea(
-                  child: Column(
-                    children: [
-                      if (wide)
-                        _DesktopTopBar(
-                          page: _page,
-                          session: widget.session,
-                          onProfile: () =>
-                              setState(() => _page = FitilaPage.profile),
-                        ),
-                      Expanded(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 220),
-                          child: KeyedSubtree(
-                            key: ValueKey(_page),
-                            child: _screenFor(_page),
-                          ),
-                        ),
+        return PopScope(
+          canPop: _history.isEmpty,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop && _history.isNotEmpty) {
+              setState(() => _page = _history.removeLast());
+            }
+          },
+          child: Scaffold(
+            appBar: wide
+                ? null
+                : AppBar(
+                    title: Text(_page.title),
+                    actions: [
+                      IconButton(
+                        tooltip: 'Profil',
+                        onPressed: () => _navigate(FitilaPage.profile),
+                        icon: const Icon(Icons.account_circle_rounded),
                       ),
                     ],
                   ),
-                ),
-              ),
-            ],
-          ),
-          floatingActionButton:
-              _page == FitilaPage.feed || _page == FitilaPage.creator
-              ? FloatingActionButton.extended(
-                  backgroundColor: _fitilaPrimary,
-                  foregroundColor: Colors.white,
-                  onPressed: () => FeedScreen.showComposer(
-                    context,
-                    onPostCreated: (post) =>
-                        setState(() => _posts.insert(0, post)),
-                    onPersistPost: widget.session.accessToken.isEmpty
-                        ? null
-                        : _persistPost,
+            drawer: wide
+                ? null
+                : Drawer(
+                    child: _NavigationPanel(
+                      page: _page,
+                      session: widget.session,
+                      onSelected: (page) {
+                        Navigator.pop(context);
+                        _navigate(page);
+                      },
+                    ),
                   ),
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Créer'),
-                )
-              : null,
+            body: Row(
+              children: [
+                if (wide)
+                  SizedBox(
+                    width: 304,
+                    child: _NavigationPanel(
+                      page: _page,
+                      session: widget.session,
+                      onSelected: (page) => _navigate(page),
+                    ),
+                  ),
+                Expanded(
+                  child: SafeArea(
+                    child: Column(
+                      children: [
+                        if (wide)
+                          _DesktopTopBar(
+                            page: _page,
+                            session: widget.session,
+                            onProfile: () => _navigate(FitilaPage.profile),
+                          ),
+                        Expanded(
+                          child: IndexedStack(
+                            index: FitilaPage.values.indexOf(_page),
+                            children: [
+                              for (final page in FitilaPage.values)
+                                TickerMode(
+                                  enabled: page == _page,
+                                  child:
+                                      page == _page ||
+                                          (_visited.contains(page) &&
+                                              const {
+                                                FitilaPage.dictionary,
+                                                FitilaPage.translator,
+                                                FitilaPage.classe,
+                                                FitilaPage.learn,
+                                                FitilaPage.ia,
+                                                FitilaPage.temIa,
+                                              }.contains(page))
+                                      ? KeyedSubtree(
+                                          key: ValueKey(page),
+                                          child: _screenFor(page),
+                                        )
+                                      : const SizedBox.shrink(),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            bottomNavigationBar: wide
+                ? null
+                : NavigationBar(
+                    selectedIndex: _destination,
+                    onDestinationSelected: (index) {
+                      switch (index) {
+                        case 0:
+                          _navigate(FitilaPage.feed);
+                        case 1:
+                          _chooseModule('Apprendre à votre rythme', [
+                            FitilaPage.classe,
+                            FitilaPage.learn,
+                          ]);
+                        case 2:
+                          _chooseModule('Votre espace langues', [
+                            FitilaPage.dictionary,
+                            FitilaPage.translator,
+                            FitilaPage.voiceLab,
+                            FitilaPage.keyboard,
+                          ]);
+                        case 3:
+                          _chooseModule('Une aide adaptée à votre question', [
+                            FitilaPage.ia,
+                            FitilaPage.temIa,
+                          ]);
+                        case 4:
+                          _chooseModule('Votre espace personnel', [
+                            FitilaPage.profile,
+                            FitilaPage.settings,
+                          ]);
+                      }
+                    },
+                    destinations: const [
+                      NavigationDestination(
+                        icon: Icon(Icons.dynamic_feed_outlined),
+                        selectedIcon: Icon(Icons.dynamic_feed_rounded),
+                        label: 'Fil',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.school_outlined),
+                        selectedIcon: Icon(Icons.school_rounded),
+                        label: 'Apprendre',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.translate_rounded),
+                        label: 'Langues',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.auto_awesome_outlined),
+                        selectedIcon: Icon(Icons.auto_awesome_rounded),
+                        label: 'IA',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.person_outline_rounded),
+                        selectedIcon: Icon(Icons.person_rounded),
+                        label: 'Moi',
+                      ),
+                    ],
+                  ),
+            floatingActionButton:
+                _page == FitilaPage.feed || _page == FitilaPage.creator
+                ? FloatingActionButton.extended(
+                    backgroundColor: _fitilaPrimary,
+                    foregroundColor: Colors.white,
+                    onPressed: () => FeedScreen.showComposer(
+                      context,
+                      onPostCreated: (post) =>
+                          setState(() => _posts.insert(0, post)),
+                      onPersistPost: widget.session.accessToken.isEmpty
+                          ? null
+                          : _persistPost,
+                    ),
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Créer'),
+                  )
+                : null,
+          ),
         );
       },
     );
@@ -1338,7 +1440,7 @@ class _NavigationPanel extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: _fitilaPrimary,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Text(
                     'F',
@@ -2189,7 +2291,7 @@ class _CreatorWorkflowPanel extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: template.accent.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(template.icon, color: template.accent, size: 46),
             ),
@@ -2348,7 +2450,7 @@ class _CreatorTemplateBoard extends StatelessWidget {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     border: Border.all(color: _fitilaBorder),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(16),
                     color: _fitilaSurface,
                   ),
                   child: Row(
@@ -2462,7 +2564,7 @@ class _CreatorTemplateCoverageBoard extends StatelessWidget {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: _fitilaSurface,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: _fitilaBorder),
                       ),
                       child: Column(
@@ -2821,7 +2923,7 @@ class _TemplatePreviewPanel extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _fitilaInk,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2854,7 +2956,7 @@ class _TemplatePreviewPanel extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: template.accent.withValues(alpha: 0.24),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.white24),
               ),
               child: Column(
@@ -3318,7 +3420,9 @@ class _UtilityScreenState extends State<UtilityScreen> {
 }
 
 class DictionaryScreen extends StatefulWidget {
-  const DictionaryScreen({super.key});
+  const DictionaryScreen({super.key, this.loadEntries});
+
+  final Future<List<DictionaryEntry>> Function()? loadEntries;
 
   @override
   State<DictionaryScreen> createState() => _DictionaryScreenState();
@@ -3333,7 +3437,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   @override
   void initState() {
     super.initState();
-    _entries = FitilaServices.loadDictionary();
+    _entries = (widget.loadEntries ?? FitilaServices.loadDictionary)();
     _query.addListener(() => setState(() {}));
   }
 
@@ -3374,7 +3478,24 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       selected: _panel == value,
       avatar: Icon(icon, size: 18),
       label: Text(value),
-      onSelected: (_) => setState(() => _panel = value),
+      onSelected: (_) {
+        setState(() => _panel = value);
+        if (value != 'Recherche') {
+          showModalBottomSheet<void>(
+            context: context,
+            isScrollControlled: true,
+            builder: (context) => SafeArea(
+              child: SizedBox(
+                height: MediaQuery.sizeOf(context).height * .65,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: _dictionaryPanel(),
+                ),
+              ),
+            ),
+          );
+        }
+      },
     );
   }
 
@@ -3528,12 +3649,20 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          _dictionaryPanel(),
-          const SizedBox(height: 12),
+
           Expanded(
             child: FutureBuilder<List<DictionaryEntry>>(
               future: _entries,
               builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: FilledButton.icon(
+                    onPressed: () => setState(() {
+                      _entries = (widget.loadEntries ?? FitilaServices.loadDictionary)();
+                    }),
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Recharger le dictionnaire'),
+                  ));
+                }
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
@@ -3760,6 +3889,7 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: _model,
                   decoration: const InputDecoration(
                     labelText: 'Moteur',
@@ -3830,10 +3960,11 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
           ),
           const SizedBox(height: 12),
           Flex(
+            mainAxisSize: MainAxisSize.min,
             direction: wide ? Axis.horizontal : Axis.vertical,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
+              Flexible(
                 child: _TextPanel(
                   title: _direction == TranslationDirection.frenchToBariba
                       ? 'Français'
@@ -3857,7 +3988,7 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
                 icon: const Icon(Icons.swap_horiz_rounded),
               ),
               SizedBox(width: wide ? 12 : 0, height: wide ? 0 : 12),
-              Expanded(
+              Flexible(
                 child: _TextPanel(
                   title: _direction == TranslationDirection.frenchToBariba
                       ? 'Bariba'
@@ -4116,7 +4247,7 @@ class _AiScreenState extends State<AiScreen> {
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         color: mine ? _fitilaPrimary : Colors.white,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: mine ? _fitilaPrimary : _fitilaBorder,
                         ),
@@ -5068,47 +5199,50 @@ class _ClasseScreenState extends State<ClasseScreen> {
       ),
       child: Column(
         children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(
-                    value: 'Niveau 1',
-                    label: Text('Niveau 1'),
-                    icon: Icon(Icons.looks_one_rounded),
-                  ),
-                  ButtonSegment(
-                    value: 'Niveau 2',
-                    label: Text('Niveau 2'),
-                    icon: Icon(Icons.looks_two_rounded),
-                  ),
-                ],
-                selected: {_level},
-                onSelectionChanged: (values) => setState(() {
-                  _level = values.first;
-                  _section = 'Accueil';
-                }),
-              ),
-              _sectionChip('Accueil', Icons.home_rounded),
-              _sectionChip('Apprenant', Icons.person_rounded),
-              _sectionChip('Enseignant', Icons.workspace_premium_rounded),
-              _sectionChip('Leçons', Icons.menu_book_rounded),
-              _sectionChip('Alphabet', Icons.abc_rounded),
-              _sectionChip('Calcul', Icons.calculate_rounded),
-              _sectionChip('Evaluations', Icons.assignment_rounded),
-              _sectionChip('Corrections', Icons.fact_check_rounded),
-              _sectionChip('Notes', Icons.grade_rounded),
-              _sectionChip('Barèmes', Icons.tune_rounded),
-              _sectionChip('Facilitateur', Icons.workspace_premium_rounded),
-              _sectionChip('Audio', Icons.mic_rounded),
-              _sectionChip('Synchronisation', Icons.sync_rounded),
-              _sectionChip('Grammaire N2', Icons.rule_rounded),
-              _sectionChip('Production N2', Icons.edit_note_rounded),
-              _sectionChip('Gestion N2', Icons.folder_rounded),
-            ],
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                      value: 'Niveau 1',
+                      label: Text('Niveau 1'),
+                      icon: Icon(Icons.looks_one_rounded),
+                    ),
+                    ButtonSegment(
+                      value: 'Niveau 2',
+                      label: Text('Niveau 2'),
+                      icon: Icon(Icons.looks_two_rounded),
+                    ),
+                  ],
+                  selected: {_level},
+                  onSelectionChanged: (values) => setState(() {
+                    _level = values.first;
+                    _section = 'Accueil';
+                  }),
+                ),
+                _sectionChip('Accueil', Icons.home_rounded),
+                _sectionChip('Apprenant', Icons.person_rounded),
+                _sectionChip('Enseignant', Icons.workspace_premium_rounded),
+                _sectionChip('Leçons', Icons.menu_book_rounded),
+                _sectionChip('Alphabet', Icons.abc_rounded),
+                _sectionChip('Calcul', Icons.calculate_rounded),
+                _sectionChip('Evaluations', Icons.assignment_rounded),
+                _sectionChip('Corrections', Icons.fact_check_rounded),
+                _sectionChip('Notes', Icons.grade_rounded),
+                _sectionChip('Barèmes', Icons.tune_rounded),
+                _sectionChip('Facilitateur', Icons.workspace_premium_rounded),
+                _sectionChip('Audio', Icons.mic_rounded),
+                _sectionChip('Synchronisation', Icons.sync_rounded),
+                _sectionChip('Grammaire N2', Icons.rule_rounded),
+                _sectionChip('Production N2', Icons.edit_note_rounded),
+                _sectionChip('Gestion N2', Icons.folder_rounded),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           Expanded(child: _classeBody(lessons)),
@@ -5890,6 +6024,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final profile = await FitilaBackend.fetchProfile(widget.session.userId);
       if (mounted) setState(() => _profile = profile);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Le profil ne peut pas être chargé pour le moment.',
+            ),
+            action: SnackBarAction(label: 'Réessayer', onPressed: _loadProfile),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -6601,7 +6746,7 @@ class _HeroPanel extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: _fitilaInk,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
@@ -6849,7 +6994,7 @@ class _PostCardState extends State<_PostCard> {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: post.accent.withValues(alpha: 0.09),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
                   post.content,
@@ -7237,7 +7382,7 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
               ListTile(
                 tileColor: _fitilaPrimarySoft,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 leading: const Icon(Icons.check_circle_rounded),
                 title: Text(_media!.name),
@@ -7497,7 +7642,7 @@ class _LessonCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         onTap: onOpen,
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -7589,7 +7734,7 @@ class _ClasseLessonTileState extends State<_ClasseLessonTile> {
                   height: 46,
                   decoration: BoxDecoration(
                     color: _fitilaPrimary.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Icon(
                     Icons.assignment_rounded,
@@ -7933,7 +8078,7 @@ class _DesktopTopBar extends StatelessWidget {
               elevation: const WidgetStatePropertyAll(0),
               backgroundColor: const WidgetStatePropertyAll(Colors.white),
               shape: WidgetStatePropertyAll(
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
             ),
           ),
@@ -7966,7 +8111,7 @@ class _ProfileTile extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
@@ -8022,7 +8167,7 @@ class _NavItem extends StatelessWidget {
       child: ListTile(
         selected: selected,
         onTap: onTap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         selectedTileColor: _fitilaPrimary.withValues(alpha: 0.18),
         leading: Icon(
           page.icon,
@@ -8073,7 +8218,7 @@ class _NavGrid extends StatelessWidget {
         final page = pages[index];
         final active = page == selected;
         return InkWell(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(16),
           onTap: () => onSelected(page),
           child: Container(
             padding: const EdgeInsets.all(10),
@@ -8081,7 +8226,7 @@ class _NavGrid extends StatelessWidget {
               color: active
                   ? _fitilaPrimary.withValues(alpha: 0.18)
                   : Colors.white.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: active
                     ? _fitilaPrimary.withValues(alpha: 0.38)
@@ -8152,7 +8297,7 @@ class _LanguageSwitch extends StatelessWidget {
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: const Row(
         children: [
@@ -8181,7 +8326,7 @@ class _DarkChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -8532,7 +8677,7 @@ class _InfoBox extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _fitilaBorder),
       ),
       child: Column(

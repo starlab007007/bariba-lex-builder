@@ -1,0 +1,111 @@
+import 'package:fitila_native/main.dart';
+import 'package:fitila_native/core/signature_theme.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  late List<DictionaryEntry> dictionaryEntries;
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final loader = FontLoader('Inter')
+      ..addFont(
+        rootBundle.load('assets/fonts/Inter-VariableFont_opsz,wght.ttf'),
+      );
+    await loader.load();
+    final icons = FontLoader('MaterialIcons')..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
+    await icons.load();
+    dictionaryEntries = await FitilaServices.loadDictionary();
+  });
+
+  final screens = <String, Widget>{
+    'login': AuthScreen(onSignedIn: (_) {}, demoMode: true),
+    'feed': FeedScreen(posts: const [], onPostCreated: (_) {}),
+    'creator': ContentCreatorScreen(onPostCreated: (_) {}),
+    'templates': TemplatesScreen(onUseTemplate: (_) {}),
+    'dictionary': DictionaryScreen(loadEntries: () async => dictionaryEntries),
+    'translator': const TranslatorScreen(accessToken: ''),
+    'ai': const AiScreen(),
+    'tem_ai': const TemIaScreen(),
+    'learn': const LearnScreen(),
+    'classe': const ClasseScreen(),
+    'keyboard': const KeyboardScreen(),
+    'teacher': const TeacherScreen(),
+    'profile': const ProfileScreen(
+      session: FitilaSession(
+        userId: 'preview',
+        phone: '',
+        displayName: 'Compte de démonstration',
+        role: 'user',
+        accessToken: '',
+      ),
+    ),
+    'settings': SettingsScreen(onSignedOut: () {}),
+  };
+  for (final entry in screens.entries) {
+    testWidgets('Signature ${entry.key} phone rendering', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(debugShowCheckedModeBanner: false, 
+          theme: SignatureTheme.light(),
+          home: Scaffold(body: SafeArea(child: entry.value)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('goldens/signature_${entry.key}.png'),
+      );
+      if (entry.key == 'classe') {
+        await tester.tap(find.text('Niveau 2'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await expectLater(
+          find.byType(MaterialApp),
+          matchesGoldenFile('goldens/signature_classe_niveau2.png'),
+        );
+      }
+    });
+  }
+
+  testWidgets(
+    'navigation retains translator text and Android back returns to feed',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(const FitilaApp(demoMode: true));
+      await tester.ensureVisible(find.text('Se connecter'));
+      await tester.tap(find.text('Se connecter'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Langues'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Traducteur'));
+      await tester.pumpAndSettle();
+      final field = find.byType(TextField).first;
+      await tester.ensureVisible(field);
+      await tester.enterText(field, 'Bonjour FITILA');
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text('Fil'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Langues'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Traducteur'));
+      await tester.pumpAndSettle();
+      expect(find.text('Bonjour FITILA'), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Fil Fitila'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+}

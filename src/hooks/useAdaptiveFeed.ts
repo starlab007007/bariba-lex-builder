@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { uniqueChannelName } from '@/lib/realtime';
 import type { FeedVideo } from './useVideoFeed';
 
 interface VideoWithScore extends FeedVideo {
@@ -315,7 +316,7 @@ export function useAdaptiveFeed() {
   // Realtime INSERT : nouveaux posts publics → push en haut
   useEffect(() => {
     const channel = supabase
-      .channel('adaptive-feed-realtime')
+      .channel(uniqueChannelName('adaptive-feed-realtime'))
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'videos' }, async (payload) => {
         const v = payload.new as any;
         if (!v?.is_public || seenIdsRef.current.has(v.id)) return;

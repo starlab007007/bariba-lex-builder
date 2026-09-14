@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { TablesUpdate } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -161,13 +162,11 @@ export const useGamification = () => {
       const { data: levelData } = await supabase.rpc('calculate_level', { points: newPoints });
       const newLevel = levelData || 1;
 
+      const updates: TablesUpdate<'user_achievements'> = { total_points: newPoints, level: newLevel };
+      updates[type] = newValue;
       const { data, error } = await supabase
         .from('user_achievements')
-        .update({
-          [type]: newValue,
-          total_points: newPoints,
-          level: newLevel,
-        })
+        .update(updates)
         .eq('user_id', user.id)
         .select()
         .single();

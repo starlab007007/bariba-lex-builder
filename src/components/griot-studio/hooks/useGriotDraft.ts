@@ -6,6 +6,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import type { Json, TablesInsert } from '@/integrations/supabase/types';
 import type { AnimeStyleName } from '../AnimeStyleSelector';
 import type { StoryScene } from './useAnimeStoryGenerator';
 
@@ -126,13 +127,13 @@ export function useGriotDraft(): UseGriotDraftReturn {
         return null;
       }
 
-      const payload: Record<string, unknown> = {
+      const payload: TablesInsert<'griot_drafts'> = {
         user_id: user.id,
         title: data.title ?? draft?.title ?? null,
         style: data.style ?? draft?.style ?? 'african',
         duration: data.duration ?? draft?.duration ?? 30,
         audio_url: data.audioUrl ?? draft?.audioUrl ?? null,
-        scenes: data.scenes ?? draft?.scenes ?? null,
+        scenes: (data.scenes ?? draft?.scenes ?? null) as unknown as Json,
         narrator_avatar_url: data.narratorAvatarUrl ?? draft?.narratorAvatarUrl ?? null,
         step: data.step ?? draft?.step ?? 'create',
       };
@@ -152,7 +153,7 @@ export function useGriotDraft(): UseGriotDraftReturn {
         // Insert new
         const { data: inserted, error } = await supabase
           .from('griot_drafts')
-          .insert(payload as any)
+          .insert(payload)
           .select()
           .single();
         if (error) throw error;

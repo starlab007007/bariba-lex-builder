@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { uniqueChannelName } from '@/lib/realtime';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface TamTamLive {
@@ -166,7 +167,7 @@ export function useTamTamLive() {
 
       // Subscribe to reactions
       const channel = supabase
-        .channel(`live-reactions-${liveId}`)
+        .channel(uniqueChannelName(`live-reactions-${liveId}`))
         .on(
           'postgres_changes',
           {

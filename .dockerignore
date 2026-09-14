@@ -18,3 +18,9 @@ playwright-report
 test-results
 public/data
 public/templates
+.fitila-audit
+.keystore
+android
+bariba-lex-builder
+
+fitila_flutter
