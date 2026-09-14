@@ -50,14 +50,23 @@ class WebClasseLesson {
       return value.map((item) => item.toString()).toList(growable: false);
     }
 
+    final text = json['text']?.toString() ?? '';
+    final explicitTitle = json['title']?.toString().trim() ?? '';
+    final fallbackTitle = text
+        .split('\n')
+        .map((line) => line.trim())
+        .firstWhere((line) => line.isNotEmpty, orElse: () => 'Leçon');
+    final title = explicitTitle.isNotEmpty ? explicitTitle : fallbackTitle;
+    final explicitThemeLabel = json['themeLabel']?.toString().trim() ?? '';
+
     return WebClasseLesson(
       level: json['level']?.toString() ?? 'N1',
       id: (json['id'] as num?)?.toInt() ?? 0,
       page: (json['page'] as num?)?.toInt() ?? 0,
-      title: json['title']?.toString() ?? '',
+      title: title,
       theme: json['theme']?.toString() ?? '',
-      themeLabel: json['themeLabel']?.toString() ?? '',
-      text: json['text']?.toString() ?? '',
+      themeLabel: explicitThemeLabel.isNotEmpty ? explicitThemeLabel : title,
+      text: text,
       imageUrl: json['imageUrl']?.toString() ?? '',
       observe: strings(sections['observe']),
       ecoute: strings(sections['ecoute']),
@@ -82,7 +91,7 @@ class WebClasseContent {
     return rawLessons
         .whereType<Map<String, dynamic>>()
         .map(WebClasseLesson.fromJson)
-        .where((lesson) => lesson.id > 0 && lesson.title.isNotEmpty)
+        .where((lesson) => lesson.id > 0)
         .toList(growable: false);
   }
 }
