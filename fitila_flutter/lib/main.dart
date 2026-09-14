@@ -4296,7 +4296,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                               : 'Tapez un mot français',
                           prefixIcon: const Icon(Icons.search_rounded),
                           suffixIcon: SizedBox(
-                            width: 94,
+                            width: 104,
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
@@ -4328,12 +4328,13 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                       ],
                       if (matches.isNotEmpty && _selectedEntry == null) ...[
                         const SizedBox(height: 10),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: _fitilaSurfaceAlt,
+                        Material(
+                          color: _fitilaSurfaceAlt,
+                          shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: _fitilaBorder),
+                            side: const BorderSide(color: _fitilaBorder),
                           ),
+                          clipBehavior: Clip.antiAlias,
                           child: Column(
                             children: [
                               for (final entry in matches.take(8))
