@@ -6235,644 +6235,1224 @@ class ClasseScreen extends StatefulWidget {
 }
 
 class _ClasseScreenState extends State<ClasseScreen> {
-  String _level = 'Niveau 1';
-  String _section = 'Leçons';
-
-  Widget _sectionChip(String value, IconData icon) {
-    final enabled =
-        _level == 'Niveau 2' ||
-        !['Grammaire N2', 'Production N2', 'Gestion N2'].contains(value);
-    return ChoiceChip(
-      selected: _section == value,
-      avatar: Icon(icon, size: 18),
-      label: Text(value),
-      onSelected: enabled ? (_) => setState(() => _section = value) : null,
-    );
-  }
-
-  Widget _lessonList(List<LessonCardData> lessons) {
-    return ListView.separated(
-      itemCount: lessons.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 10),
-      itemBuilder: (context, index) =>
-          _ClasseLessonTile(lesson: lessons[index]),
-    );
-  }
-
-  Widget _classeBody(List<LessonCardData> lessons) {
-    return switch (_section) {
-      'Accueil' => ListView(
-        children: [
-          _MetricStrip(
-            metrics: [
-              (_level, '${lessons.length}', Icons.school_rounded),
-              ('Progression', '62%', Icons.trending_up_rounded),
-              ('Audio', 'Actif', Icons.record_voice_over_rounded),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const _FeatureGrid(
-            items: [
-              (
-                Icons.menu_book_rounded,
-                'Leçons',
-                'Themes, detail, images, phonétique, écoute et exercices.',
-              ),
-              (
-                Icons.assignment_rounded,
-                'Evaluations',
-                'Questions, réponses, auto-évaluation et correction.',
-              ),
-              (
-                Icons.rate_review_rounded,
-                'Corrections',
-                'Diff de réponse, feedback élève, notes et commentaires.',
-              ),
-              (
-                Icons.mic_rounded,
-                'Réponse vocale',
-                'Enregistrement, transcription, écoute et validation qualité.',
-              ),
-            ],
-          ),
-        ],
-      ),
-      'Apprenant' => ListView(
-        children: const [
-          _MetricStrip(
-            metrics: [
-              ('Parcours', 'N1/N2', Icons.route_rounded),
-              ('Réponses', 'Texte/Voix', Icons.mic_rounded),
-              ('Auto-éval', 'Active', Icons.psychology_rounded),
-            ],
-          ),
-          SizedBox(height: 12),
-          _ClasseStudentBoard(),
-        ],
-      ),
-      'Enseignant' => ListView(
-        children: const [
-          _MetricStrip(
-            metrics: [
-              ('Élèves', '38', Icons.groups_rounded),
-              ('À corriger', '12', Icons.pending_actions_rounded),
-              ('Barèmes', '4', Icons.tune_rounded),
-            ],
-          ),
-          SizedBox(height: 12),
-          _ClasseTeacherBoard(),
-        ],
-      ),
-      'Alphabet' => ListView(
-        children: [
-          const _MetricStrip(
-            metrics: [
-              ('Voyelles', '7', Icons.text_fields_rounded),
-              ('Consonnes', '23', Icons.abc_rounded),
-              ('Tons', '4', Icons.graphic_eq_rounded),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _BaribaKeyboard(onInsert: (_) {}),
-          const SizedBox(height: 12),
-          const _FeatureGrid(
-            items: [
-              (
-                Icons.hearing_rounded,
-                'Ecoute',
-                'Lire son, ton, nasale et syllabe avec audio.',
-              ),
-              (
-                Icons.edit_rounded,
-                'Ecriture',
-                'Tracer, saisir et corriger les caractères Bariba.',
-              ),
-              (
-                Icons.compare_rounded,
-                'Phonétique',
-                'Comparer français, Bariba et variantes de prononciation.',
-              ),
-            ],
-          ),
-        ],
-      ),
-      'Calcul' => const _FeatureGrid(
-        items: [
-          (
-            Icons.calculate_rounded,
-            'Nombres',
-            'Compter, lire, écrire et écouter les nombres.',
-          ),
-          (
-            Icons.storefront_rounded,
-            'Marché',
-            'Prix, monnaie, quantité, dialogue vendeur/client.',
-          ),
-          (
-            Icons.quiz_rounded,
-            'Exercices',
-            'Questions calculées, correction et score.',
-          ),
-        ],
-      ),
-      'Evaluations' => ListView(
-        children: [
-          const _MetricStrip(
-            metrics: [
-              ('Langue', '10', Icons.menu_book_rounded),
-              ('Calcul', '6', Icons.calculate_rounded),
-              ('Score', '84%', Icons.grade_rounded),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const _ClasseEvaluationBoard(),
-          const SizedBox(height: 12),
-          _ActionList(
-            items: [
-              const _ActionItem(
-                Icons.assignment_turned_in_rounded,
-                'Evaluation langue',
-                'Questions, choix, réponse libre et écoute.',
-              ),
-              const _ActionItem(
-                Icons.calculate_rounded,
-                'Evaluation calcul',
-                'Problèmes, marché, nombres et validation.',
-              ),
-              _ActionItem(
-                Icons.fact_check_rounded,
-                'Soumission',
-                'Enregistrer texte, voix et auto-évaluation pour $_level.',
-              ),
-            ],
-          ),
-        ],
-      ),
-      'Corrections' => ListView(
-        children: const [
-          _MetricStrip(
-            metrics: [
-              ('A corriger', '12', Icons.pending_actions_rounded),
-              ('Diff', 'Actif', Icons.compare_rounded),
-              ('Feedback', 'Vocal', Icons.record_voice_over_rounded),
-            ],
-          ),
-          SizedBox(height: 12),
-          _ClasseCorrectionWorkflowBoard(),
-          SizedBox(height: 12),
-          _FeatureGrid(
-            items: [
-              (
-                Icons.difference_rounded,
-                'AnswerDiff',
-                'Comparer réponse élève, corrigé attendu et écarts.',
-              ),
-              (
-                Icons.feedback_rounded,
-                'Feedback',
-                'Commentaire enseignant, conseil et remédiation.',
-              ),
-              (
-                Icons.play_circle_rounded,
-                'VoiceAnswerPlayer',
-                'Ecoute de la réponse vocale et transcription.',
-              ),
-            ],
-          ),
-        ],
-      ),
-      'Notes' => ListView(
-        children: [
-          const _MetricStrip(
-            metrics: [
-              ('Moyenne', '14.8', Icons.grade_rounded),
-              ('Badges', '6', Icons.emoji_events_rounded),
-              ('Export', 'PDF', Icons.picture_as_pdf_rounded),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const _ClasseGradebookBoard(),
-          const SizedBox(height: 12),
-          _ActionList(
-            items: const [
-              _ActionItem(
-                Icons.bar_chart_rounded,
-                'MyGradeReport',
-                'Résumé notes, progression, commentaires et points faibles.',
-              ),
-              _ActionItem(
-                Icons.download_rounded,
-                'Export',
-                'Relevé PDF pour élève, parent et enseignant.',
-              ),
-            ],
-          ),
-        ],
-      ),
-      'Barèmes' => ListView(
-        children: const [
-          _MetricStrip(
-            metrics: [
-              ('Langue', '40%', Icons.menu_book_rounded),
-              ('Oral', '30%', Icons.record_voice_over_rounded),
-              ('Calcul', '30%', Icons.calculate_rounded),
-            ],
-          ),
-          SizedBox(height: 12),
-          _FeatureGrid(
-            items: [
-              (
-                Icons.tune_rounded,
-                'WeightsManager',
-                'Configurer poids par niveau, module, chapitre, leçon et section.',
-              ),
-              (
-                Icons.rule_folder_rounded,
-                'AnswerKeysManager',
-                'Corrigés officiels, variantes acceptées et score automatique.',
-              ),
-              (
-                Icons.checklist_rounded,
-                'Rubriques',
-                'Critères production écrite, lecture vocale, calcul et grammaire.',
-              ),
-            ],
-          ),
-        ],
-      ),
-      'Synchronisation' => ListView(
-        children: const [
-          _MetricStrip(
-            metrics: [
-              ('Sync', 'Queue', Icons.sync_rounded),
-              ('Tables', '7', Icons.storage_rounded),
-              ('Offline', 'Prêt', Icons.offline_bolt_rounded),
-            ],
-          ),
-          SizedBox(height: 12),
-          _ActionList(
-            items: [
-              _ActionItem(
-                Icons.cloud_upload_rounded,
-                'classeSync',
-                'syncAnswer, syncProgress, syncEvaluation et reprise réseau.',
-              ),
-              _ActionItem(
-                Icons.dataset_rounded,
-                'Tables backend',
-                'classe_student_answers, answer_keys, grade_weights, chapters.',
-              ),
-              _ActionItem(
-                Icons.security_rounded,
-                'Rôles',
-                'Apprenant, enseignant, admin audio et accès protégé.',
-              ),
-            ],
-          ),
-        ],
-      ),
-      'Facilitateur' => const _FeatureGrid(
-        items: [
-          (
-            Icons.workspace_premium_rounded,
-            'Guide pédagogique',
-            'Objectifs, déroulé, consignes, pièges et corrections.',
-          ),
-          (
-            Icons.groups_rounded,
-            'Animation classe',
-            'Activités collectives, écoute, répétition et jeux de rôle.',
-          ),
-          (
-            Icons.tune_rounded,
-            'Adaptation',
-            'Difficulté, durée, pondération et accessibilité.',
-          ),
-        ],
-      ),
-      'Grammaire N2' => const _FeatureGrid(
-        items: [
-          (
-            Icons.rule_rounded,
-            'Classes grammaticales',
-            'Noms, verbes, pronoms, tons et constructions.',
-          ),
-          (
-            Icons.account_tree_rounded,
-            'Structure',
-            'Sujet, objet, temps, négation et comparaison.',
-          ),
-          (
-            Icons.spellcheck_rounded,
-            'Correction',
-            'Analyse phrase, erreur et proposition corrigée.',
-          ),
-        ],
-      ),
-      'Production N2' => const _FeatureGrid(
-        items: [
-          (
-            Icons.edit_note_rounded,
-            'Production écrite',
-            'Récit, description, annonce, dialogue, résumé, lettre.',
-          ),
-          (
-            Icons.auto_awesome_rounded,
-            'Assistant IA',
-            'Plan, reformulation, correction et enrichissement Bariba.',
-          ),
-          (
-            Icons.checklist_rounded,
-            'Rubrique',
-            'Critères, score, feedback et version finale.',
-          ),
-        ],
-      ),
-      'Gestion N2' => const _FeatureGrid(
-        items: [
-          (
-            Icons.folder_rounded,
-            'Documents',
-            'Fiche, registre, note, rapport, annonce et inventaire.',
-          ),
-          (
-            Icons.business_center_rounded,
-            'Situation métier',
-            'Gestion locale, marché, association et école.',
-          ),
-          (
-            Icons.picture_as_pdf_rounded,
-            'Export',
-            'Modèles prêts à imprimer ou partager.',
-          ),
-        ],
-      ),
-      'Audio' => const _FeatureGrid(
-        items: [
-          (
-            Icons.mic_rounded,
-            'VoiceAnswerRecorder',
-            'Enregistrer réponse, durée, niveau et consentement.',
-          ),
-          (
-            Icons.graphic_eq_rounded,
-            'Analyse audio',
-            'Bruit, lisibilité, transcription STT et validation.',
-          ),
-          (
-            Icons.admin_panel_settings_rounded,
-            'Audio review',
-            'File admin pour vérifier corpus et réponses classe.',
-          ),
-        ],
-      ),
-      _ => _lessonList(lessons),
-    };
-  }
+  late Future<List<WebClasseLesson>> _webLessons;
+  String _level = 'N1';
+  String _section = 'home';
+  int _selectedLessonId = 1;
+  String _lessonTab = 'text';
+  final Map<String, String> _lessonAnswers = {};
+  final Set<String> _completed = {};
 
   @override
-  Widget build(BuildContext context) {
-    final lessons = _lessons.where((lesson) => lesson.level == _level).toList();
-    return _PageFrame(
-      title: 'Classe',
-      subtitle:
-          'Niveaux, détails, réponses, corrections, notes et suivi enseignant.',
-      action: Wrap(
-        spacing: 8,
-        children: [
-          OutlinedButton.icon(
-            onPressed: () => _showCorrections(context),
-            icon: const Icon(Icons.fact_check_rounded),
-            label: const Text('Corrections'),
+  void initState() {
+    super.initState();
+    _webLessons = WebClasseContent.loadLessons();
+  }
+
+  void _setLevel(String level) {
+    setState(() {
+      _level = level;
+      _section = 'home';
+      _selectedLessonId = 1;
+      _lessonTab = 'text';
+    });
+  }
+
+  List<WebClasseLesson> _forLevel(List<WebClasseLesson> all) =>
+      all.where((lesson) => lesson.level == _level).toList(growable: false);
+
+  Map<String, List<WebClasseLesson>> _grouped(List<WebClasseLesson> lessons) {
+    final groups = <String, List<WebClasseLesson>>{};
+    for (final lesson in lessons) {
+      groups.putIfAbsent(lesson.themeLabel, () => []).add(lesson);
+    }
+    return groups;
+  }
+
+  void _openLesson(WebClasseLesson lesson) {
+    setState(() {
+      _selectedLessonId = lesson.id;
+      _lessonTab = 'text';
+      _section = 'detail';
+    });
+  }
+
+  Future<void> _playApprovedAudio(
+    WebClasseLesson lesson, {
+    String section = 'text',
+    int? itemIndex,
+  }) async {
+    if (!FitilaBackend.configured) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Serveur audio FITILA indisponible.')),
+      );
+      return;
+    }
+    final suffix = itemIndex == null
+        ? section
+        : '$section/$itemIndex';
+    final contentKey = 'classe/${lesson.level}/lang/${lesson.id}/$suffix';
+    try {
+      final row = await FitilaBackend.client
+          .from('classe_content_audios')
+          .select('storage_path')
+          .eq('content_key', contentKey)
+          .eq('is_current', true)
+          .eq('status', 'approved')
+          .maybeSingle();
+      if (row == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Audio validé non disponible pour ce contenu.'),
           ),
-          FilledButton.icon(
-            onPressed: () => _showGrades(context),
-            icon: const Icon(Icons.download_rounded),
-            label: const Text('Notes'),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
+        );
+        return;
+      }
+      final signed = await FitilaBackend.client.storage
+          .from('classe-audio')
+          .createSignedUrl(row['storage_path'].toString(), 3600);
+      final url = signed;
+      final player = audio.AudioPlayer();
+      await player.play(audio.UrlSource(url));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lecture audio impossible.')),
+      );
+    }
+  }
+
+  Widget _levelSelector(List<WebClasseLesson> all) {
+    final n1 = all.where((e) => e.level == 'N1').length;
+    final n2 = all.where((e) => e.level == 'N2').length;
+    Widget levelCard({
+      required String level,
+      required String title,
+      required String emoji,
+      required int count,
+      required Color tone,
+    }) {
+      final selected = _level == level;
+      return Expanded(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => _setLevel(level),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              color: selected ? tone.withValues(alpha: .15) : _fitilaCard,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: selected ? tone : _fitilaBorder,
+                width: selected ? 1.5 : 1,
+              ),
+              boxShadow: selected
+                  ? const [
+                      BoxShadow(
+                        color: Color(0x17241F2E),
+                        blurRadius: 20,
+                        offset: Offset(0, 9),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
               children: [
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(
-                      value: 'Niveau 1',
-                      label: Text('Niveau 1'),
-                      icon: Icon(Icons.looks_one_rounded),
-                    ),
-                    ButtonSegment(
-                      value: 'Niveau 2',
-                      label: Text('Niveau 2'),
-                      icon: Icon(Icons.looks_two_rounded),
-                    ),
-                  ],
-                  selected: {_level},
-                  onSelectionChanged: (values) => setState(() {
-                    _level = values.first;
-                    _section = 'Accueil';
-                  }),
+                Text(
+                  '$emoji $title',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: selected ? tone : _fitilaMuted,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-                _sectionChip('Accueil', Icons.home_rounded),
-                _sectionChip('Apprenant', Icons.person_rounded),
-                _sectionChip('Enseignant', Icons.workspace_premium_rounded),
-                _sectionChip('Leçons', Icons.menu_book_rounded),
-                _sectionChip('Alphabet', Icons.abc_rounded),
-                _sectionChip('Calcul', Icons.calculate_rounded),
-                _sectionChip('Evaluations', Icons.assignment_rounded),
-                _sectionChip('Corrections', Icons.fact_check_rounded),
-                _sectionChip('Notes', Icons.grade_rounded),
-                _sectionChip('Barèmes', Icons.tune_rounded),
-                _sectionChip('Facilitateur', Icons.workspace_premium_rounded),
-                _sectionChip('Audio', Icons.mic_rounded),
-                _sectionChip('Synchronisation', Icons.sync_rounded),
-                _sectionChip('Grammaire N2', Icons.rule_rounded),
-                _sectionChip('Production N2', Icons.edit_note_rounded),
-                _sectionChip('Gestion N2', Icons.folder_rounded),
+                const SizedBox(height: 5),
+                Text(
+                  '$count leçons',
+                  style: const TextStyle(
+                    color: _fitilaMuted,
+                    fontSize: 10.5,
+                  ),
+                ),
+                if (selected) ...[
+                  const SizedBox(height: 9),
+                  LinearProgressIndicator(
+                    value: .0,
+                    minHeight: 6,
+                    borderRadius: BorderRadius.circular(99),
+                    color: tone,
+                  ),
+                ],
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          Expanded(child: _classeBody(lessons)),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        levelCard(
+          level: 'N1',
+          title: 'Niveau 1',
+          emoji: '🔥',
+          count: n1,
+          tone: _fitilaGoldDeep,
+        ),
+        const SizedBox(width: 10),
+        levelCard(
+          level: 'N2',
+          title: 'Niveau 2',
+          emoji: '🚀',
+          count: n2,
+          tone: const Color(0xFF6758C9),
+        ),
+      ],
+    );
+  }
+
+  Widget _home(List<WebClasseLesson> all) {
+    final lessons = _forLevel(all);
+    final completed = lessons
+        .where((lesson) => _completed.contains('${lesson.level}-${lesson.id}'))
+        .length;
+    final isN2 = _level == 'N2';
+
+    final sections = <({String id, String emoji, String title, String subtitle})>[
+      (
+        id: 'lessons',
+        emoji: '📖',
+        title: isN2 ? 'Part 1 — Langue' : 'Leçons',
+        subtitle: '${lessons.length} leçons',
+      ),
+      (
+        id: 'alphabet',
+        emoji: isN2 ? '🔢' : '🔤',
+        title: isN2 ? 'Part 2 — Calcul' : 'Alphabet',
+        subtitle: isN2 ? 'Calcul & problèmes' : 'Voyelles & consonnes',
+      ),
+      (
+        id: 'evaluations',
+        emoji: '📝',
+        title: 'Évaluations',
+        subtitle: 'Questions & scores',
+      ),
+      if (isN2)
+        (
+          id: 'grammaire',
+          emoji: '📐',
+          title: 'Grammaire',
+          subtitle: 'Classes, tons, verbes',
+        ),
+      if (isN2)
+        (
+          id: 'textprod',
+          emoji: '✍️',
+          title: 'Production de textes',
+          subtitle: '6 types de textes',
+        ),
+      if (isN2)
+        (
+          id: 'gestion',
+          emoji: '💼',
+          title: 'Gestion',
+          subtitle: 'Documents pratiques',
+        ),
+      (
+        id: 'facilitateur',
+        emoji: '👨‍🏫',
+        title: 'Facilitateur',
+        subtitle: 'Guide pédagogique',
+      ),
+      (
+        id: 'corrections',
+        emoji: '✅',
+        title: 'Mes corrections',
+        subtitle: 'Notes & commentaires',
+      ),
+    ];
+
+    return ListView(
+      children: [
+        _levelSelector(all),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _WebClassStat(
+                value: '$completed',
+                label: 'Leçons',
+                tone: _fitilaInk,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: _WebClassStat(
+                value: '0',
+                label: 'Évaluations',
+                tone: _fitilaInk,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: _WebClassStat(
+                value: '0%',
+                label: 'Progression',
+                tone: _fitilaGoldDeep,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        GridView.builder(
+          itemCount: sections.length,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisExtent: 152,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+          ),
+          itemBuilder: (context, index) {
+            final section = sections[index];
+            return InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () {
+                if (section.id == 'lessons') {
+                  setState(() => _section = 'lessons');
+                } else {
+                  setState(() => _section = section.id);
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: _fitilaCard,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: _fitilaBorder),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 54,
+                      height: 54,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: index.isEven
+                            ? _fitilaPrimarySoft
+                            : const Color(0xFFDCEAE0),
+                        borderRadius: BorderRadius.circular(17),
+                      ),
+                      child: Text(
+                        section.emoji,
+                        style: const TextStyle(fontSize: 25),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      section.title,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _fitilaInk,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      section.subtitle,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _fitilaMuted,
+                        fontSize: 9.8,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _lessonList(List<WebClasseLesson> all) {
+    final lessons = _forLevel(all);
+    final groups = _grouped(lessons);
+    return ListView(
+      children: [
+        Row(
+          children: [
+            IconButton(
+              tooltip: 'Retour',
+              onPressed: () => setState(() => _section = 'home'),
+              icon: const Icon(Icons.arrow_back_rounded),
+            ),
+            const SizedBox(width: 4),
+            const Expanded(
+              child: Text(
+                '📖 Leçons',
+                style: TextStyle(
+                  color: _fitilaInk,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: _level == 'N1'
+                    ? _fitilaPrimarySoft
+                    : const Color(0xFFE5E1FA),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                _level == 'N1' ? '🔥 N1' : '🚀 N2',
+                style: TextStyle(
+                  color: _level == 'N1'
+                      ? _fitilaGoldDeep
+                      : const Color(0xFF6758C9),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        for (final group in groups.entries) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(6, 12, 6, 8),
+            child: Text(
+              '📖  ${group.key}',
+              style: const TextStyle(
+                color: _fitilaInk,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          for (final lesson in group.value)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 9),
+              child: _WebLessonTile(
+                lesson: lesson,
+                done: _completed.contains(
+                  '${lesson.level}-${lesson.id}',
+                ),
+                onTap: () => _openLesson(lesson),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
+  List<({String id, String label, String emoji})> _tabs(
+    WebClasseLesson lesson,
+  ) {
+    return [
+      (id: 'text', label: 'Texte', emoji: '📖'),
+      if (lesson.observe.isNotEmpty)
+        (id: 'observe', label: 'Mɛɛrio', emoji: '👁️'),
+      if (lesson.ecoute.isNotEmpty)
+        (id: 'ecoute', label: 'Faagi', emoji: '🎧'),
+      if (lesson.reagis.isNotEmpty)
+        (id: 'reagis', label: 'Geruo', emoji: '💬'),
+      if (lesson.retiens.isNotEmpty)
+        (id: 'retiens', label: 'Weenɛ', emoji: '🧠'),
+      if (lesson.reading.isNotEmpty || lesson.writing.isNotEmpty)
+        (id: 'phonetics', label: 'Sɔ̃ɔsiru', emoji: '✍️'),
+    ];
+  }
+
+  Widget _questionList(
+    WebClasseLesson lesson,
+    String section,
+    List<String> questions,
+  ) {
+    return ListView(
+      padding: const EdgeInsets.only(top: 4),
+      children: [
+        for (var i = 0; i < questions.length; i++)
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _fitilaCard,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: _fitilaBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Q${i + 1}',
+                  style: const TextStyle(
+                    color: _fitilaGoldDeep,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  questions[i],
+                  style: const TextStyle(
+                    color: _fitilaInk,
+                    fontSize: 14,
+                    height: 1.4,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  initialValue:
+                      _lessonAnswers['${lesson.level}-${lesson.id}-$section-$i'],
+                  minLines: 2,
+                  maxLines: 5,
+                  onChanged: (value) {
+                    _lessonAnswers[
+                        '${lesson.level}-${lesson.id}-$section-$i'] = value;
+                  },
+                  decoration: const InputDecoration(
+                    hintText: 'Votre réponse...',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Réponse vocale prête à enregistrer.'),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.mic_rounded),
+                      label: const Text('Vocal'),
+                    ),
+                    const Spacer(),
+                    FilledButton.icon(
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Réponse enregistrée localement.'),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.check_rounded),
+                      label: const Text('Soumettre'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _lessonContent(WebClasseLesson lesson) {
+    switch (_lessonTab) {
+      case 'observe':
+        return _questionList(lesson, 'observe', lesson.observe);
+      case 'ecoute':
+        return _questionList(lesson, 'ecoute', lesson.ecoute);
+      case 'reagis':
+        return _questionList(lesson, 'reagis', lesson.reagis);
+      case 'retiens':
+        return _questionList(lesson, 'retiens', lesson.retiens);
+      case 'phonetics':
+        return ListView(
+          children: [
+            if (lesson.phoneticLabel.isNotEmpty)
+              Text(
+                lesson.phoneticLabel,
+                style: const TextStyle(
+                  color: _fitilaGoldDeep,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            if (lesson.phoneticLabel.isNotEmpty)
+              const SizedBox(height: 10),
+            if (lesson.reading.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: _fitilaCard,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: _fitilaBorder),
+                ),
+                child: Column(
+                  children: [
+                    for (var i = 0; i < lesson.reading.length; i++)
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          lesson.reading[i],
+                          style: const TextStyle(
+                            color: _fitilaInk,
+                            fontFamily: 'monospace',
+                            fontSize: 15,
+                          ),
+                        ),
+                        trailing: IconButton(
+                          tooltip: 'Écouter',
+                          onPressed: () => _playApprovedAudio(
+                            lesson,
+                            section: 'phonetics/reading',
+                            itemIndex: i,
+                          ),
+                          icon: const Icon(Icons.volume_up_rounded),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            if (lesson.writing.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: _fitilaCard,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: _fitilaBorder),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '✍️ Exercices d’écriture',
+                      style: TextStyle(
+                        color: _fitilaInk,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    for (var i = 0; i < lesson.writing.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 9),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 84,
+                              child: Text(
+                                lesson.writing[i],
+                                style: const TextStyle(
+                                  color: _fitilaGoldDeep,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: TextFormField(
+                                initialValue: _lessonAnswers[
+                                    '${lesson.level}-${lesson.id}-write-$i'],
+                                onChanged: (value) {
+                                  _lessonAnswers[
+                                          '${lesson.level}-${lesson.id}-write-$i'] =
+                                      value;
+                                },
+                                decoration: const InputDecoration(
+                                  hintText: 'Écris...',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        );
+      default:
+        return ListView(
+          children: [
+            if (lesson.imageUrl.isNotEmpty)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  color: _fitilaCard,
+                  child: Image.network(
+                    'https://fitila.bj${lesson.imageUrl}',
+                    fit: BoxFit.contain,
+                    height: 310,
+                    errorBuilder: (_, _, _) => Container(
+                      height: 180,
+                      alignment: Alignment.center,
+                      color: _fitilaSurfaceAlt,
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.image_not_supported_outlined,
+                            color: _fitilaMuted,
+                            size: 38,
+                          ),
+                          SizedBox(height: 7),
+                          Text(
+                            'Illustration indisponible hors connexion',
+                            style: TextStyle(color: _fitilaMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            if (lesson.imageUrl.isNotEmpty)
+              const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _fitilaCard,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _fitilaBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton(
+                      tooltip: 'Écouter le texte',
+                      onPressed: () => _playApprovedAudio(lesson),
+                      icon: const Icon(Icons.volume_up_rounded),
+                    ),
+                  ),
+                  Text(
+                    lesson.text,
+                    style: const TextStyle(
+                      color: _fitilaInkSoft,
+                      fontSize: 15,
+                      height: 1.55,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: _fitilaSage,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                final tabs = _tabs(lesson);
+                final idx = tabs.indexWhere((tab) => tab.id == _lessonTab);
+                if (idx < tabs.length - 1) {
+                  setState(() => _lessonTab = tabs[idx + 1].id);
+                } else {
+                  setState(() {
+                    _completed.add('${lesson.level}-${lesson.id}');
+                  });
+                }
+              },
+              icon: const Icon(Icons.check_rounded),
+              label: const Text('J’ai lu'),
+            ),
+          ],
+        );
+    }
+  }
+
+  Widget _lessonDetail(List<WebClasseLesson> all) {
+    final lessons = _forLevel(all);
+    final lesson = lessons.firstWhere(
+      (item) => item.id == _selectedLessonId,
+      orElse: () => lessons.first,
+    );
+    final tabs = _tabs(lesson);
+    if (!tabs.any((tab) => tab.id == _lessonTab)) {
+      _lessonTab = 'text';
+    }
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            IconButton(
+              tooltip: 'Leçons',
+              onPressed: () => setState(() => _section = 'lessons'),
+              icon: const Icon(Icons.arrow_back_rounded),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                '🏫 ${lesson.title}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _fitilaInk,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              decoration: BoxDecoration(
+                color: _level == 'N1'
+                    ? _fitilaPrimarySoft
+                    : const Color(0xFFE5E1FA),
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: Text(
+                _level == 'N1' ? '🔥 N1' : '🚀 N2',
+                style: TextStyle(
+                  color: _level == 'N1'
+                      ? _fitilaGoldDeep
+                      : const Color(0xFF6758C9),
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: _level == 'N1'
+                  ? const [Color(0xFFFFF1C7), Color(0xFFFFE4B8)]
+                  : const [Color(0xFFE5E1FA), Color(0xFFD9D0F7)],
+            ),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: _level == 'N1'
+                  ? const Color(0xFFE9C86F)
+                  : const Color(0xFFB7A9EC),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _level == 'N1'
+                          ? const Color(0xFFFFE49A)
+                          : const Color(0xFFD2C7F2),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Text(
+                      'Leçon ${lesson.id}',
+                      style: const TextStyle(
+                        color: _fitilaGoldDeep,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      lesson.themeLabel,
+                      style: const TextStyle(
+                        color: _fitilaMuted,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                  const Text(
+                    '☆ ☆ ☆ ☆ ☆',
+                    style: TextStyle(
+                      color: _fitilaGoldDeep,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                lesson.title,
+                style: const TextStyle(
+                  color: _fitilaInk,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              if (lesson.phoneticLabel.isNotEmpty) ...[
+                const SizedBox(height: 5),
+                Text(
+                  lesson.phoneticLabel,
+                  style: const TextStyle(
+                    color: _fitilaGoldDeep,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 43,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: tabs.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 7),
+            itemBuilder: (context, index) {
+              final tab = tabs[index];
+              final selected = tab.id == _lessonTab;
+              return ChoiceChip(
+                selected: selected,
+                label: Text('${tab.emoji} ${tab.label}'),
+                onSelected: (_) => setState(() => _lessonTab = tab.id),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 10),
+        Expanded(child: _lessonContent(lesson)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            OutlinedButton.icon(
+              onPressed: lesson.id <= 1
+                  ? null
+                  : () {
+                      final previous = lessons
+                          .where((e) => e.id < lesson.id)
+                          .lastOrNull;
+                      if (previous != null) _openLesson(previous);
+                    },
+              icon: const Icon(Icons.chevron_left_rounded),
+              label: const Text('Précédent'),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: () {
+                  final idx = tabs.indexWhere(
+                    (tab) => tab.id == _lessonTab,
+                  );
+                  if (idx < tabs.length - 1) {
+                    setState(() => _lessonTab = tabs[idx + 1].id);
+                    return;
+                  }
+                  setState(() {
+                    _completed.add('${lesson.level}-${lesson.id}');
+                  });
+                  final next = lessons
+                      .where((e) => e.id > lesson.id)
+                      .firstOrNull;
+                  if (next != null) {
+                    _openLesson(next);
+                  } else {
+                    setState(() => _section = 'lessons');
+                  }
+                },
+                icon: const Icon(Icons.check_rounded),
+                label: Text(
+                  tabs.last.id == _lessonTab
+                      ? 'Terminer la leçon'
+                      : 'Suivant',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _secondarySection(String section) {
+    final config = switch (section) {
+      'alphabet' => (
+          icon: Icons.abc_rounded,
+          title: _level == 'N1' ? 'Alphabet' : 'Calcul',
+          text: _level == 'N1'
+              ? 'Voyelles, consonnes, tons, écoute et saisie Bàátɔ̀nú.'
+              : 'Nombres, calculs, problèmes et situations pratiques.',
+        ),
+      'evaluations' => (
+          icon: Icons.assignment_rounded,
+          title: 'Évaluations',
+          text: 'Questions langue/calcul, score et progression.',
+        ),
+      'grammaire' => (
+          icon: Icons.rule_rounded,
+          title: 'Grammaire',
+          text: 'Classes grammaticales, tons, verbes et structures.',
+        ),
+      'textprod' => (
+          icon: Icons.edit_note_rounded,
+          title: 'Production de textes',
+          text: 'Récit, description, dialogue, lettre et résumé.',
+        ),
+      'gestion' => (
+          icon: Icons.business_center_rounded,
+          title: 'Gestion',
+          text: 'Fiches, registres, annonces et documents pratiques.',
+        ),
+      'corrections' => (
+          icon: Icons.fact_check_rounded,
+          title: 'Mes corrections',
+          text: 'Notes, commentaires, corrigés et remédiation.',
+        ),
+      _ => (
+          icon: Icons.workspace_premium_rounded,
+          title: 'Facilitateur',
+          text: 'Guide pédagogique, objectifs et animation de classe.',
+        ),
+    };
+
+    return ListView(
+      children: [
+        Row(
+          children: [
+            IconButton(
+              onPressed: () => setState(() => _section = 'home'),
+              icon: const Icon(Icons.arrow_back_rounded),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              config.title,
+              style: const TextStyle(
+                color: _fitilaInk,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: _fitilaCard,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: _fitilaBorder),
+          ),
+          child: Column(
+            children: [
+              Icon(config.icon, color: _fitilaGoldDeep, size: 44),
+              const SizedBox(height: 12),
+              Text(
+                config.title,
+                style: const TextStyle(
+                  color: _fitilaInk,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                config.text,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: _fitilaMuted,
+                  height: 1.45,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _PageFrame(
+      title: '🏫 Classe',
+      subtitle: _level == 'N1'
+          ? '🔥 N1 — Bàátɔ̀nú'
+          : '🚀 N2 — Bàátɔ̀nú',
+      child: FutureBuilder<List<WebClasseLesson>>(
+        future: _webLessons,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: FilledButton.icon(
+                onPressed: () =>
+                    setState(() => _webLessons = WebClasseContent.loadLessons()),
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Recharger les leçons'),
+              ),
+            );
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final all = snapshot.data!;
+          return switch (_section) {
+            'home' => _home(all),
+            'lessons' => _lessonList(all),
+            'detail' => _lessonDetail(all),
+            _ => _secondarySection(_section),
+          };
+        },
+      ),
+    );
+  }
+}
+
+class _WebClassStat extends StatelessWidget {
+  const _WebClassStat({
+    required this.value,
+    required this.label,
+    required this.tone,
+  });
+
+  final String value;
+  final String label;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      decoration: BoxDecoration(
+        color: _fitilaCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _fitilaBorder),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: tone,
+              fontSize: 19,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            style: const TextStyle(
+              color: _fitilaMuted,
+              fontSize: 9.8,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _ClasseStudentBoard extends StatelessWidget {
-  const _ClasseStudentBoard();
+class _WebLessonTile extends StatelessWidget {
+  const _WebLessonTile({
+    required this.lesson,
+    required this.done,
+    required this.onTap,
+  });
+
+  final WebClasseLesson lesson;
+  final bool done;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return _FeatureGrid(
-      items: const [
-        (
-          Icons.menu_book_rounded,
-          'ClasseLessonView',
-          'Image, audio, texte, détail, consignes, exemples et questions.',
+    final n2 = lesson.level == 'N2';
+    return Material(
+      color: done ? const Color(0xFFE8F5EC) : _fitilaCard,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(
+          color: done ? _fitilaSage.withValues(alpha: .35) : _fitilaBorder,
         ),
-        (
-          Icons.keyboard_alt_rounded,
-          'BaribaSmartInput',
-          'Saisie Bariba, accents, suggestions, normalisation et validation.',
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: done
+                      ? _fitilaSage
+                      : n2
+                      ? const Color(0xFFE5E1FA)
+                      : const Color(0xFFFFF1C7),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: done
+                    ? const Icon(Icons.check_rounded, color: Colors.white)
+                    : Text(
+                        '${lesson.id}',
+                        style: TextStyle(
+                          color: n2
+                              ? const Color(0xFF6758C9)
+                              : _fitilaGoldDeep,
+                          fontSize: 21,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      lesson.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _fitilaInk,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    if (lesson.phoneticLabel.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        lesson.phoneticLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: _fitilaMuted,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (lesson.imageUrl.isNotEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Text('🖼️'),
+                ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: _fitilaMuted,
+              ),
+            ],
+          ),
         ),
-        (
-          Icons.psychology_rounded,
-          'SelfAssessment',
-          'Je comprends, je dois revoir, confiance, difficulté et commentaire.',
-        ),
-        (
-          Icons.mic_rounded,
-          'VoiceAnswerRecorder',
-          'Enregistrement vocal, niveau, durée, consentement et transcription.',
-        ),
-        (
-          Icons.save_rounded,
-          'Progression locale',
-          'Leçon terminée, étoiles, badges, dernier module et cache offline.',
-        ),
-        (
-          Icons.feedback_rounded,
-          'StudentAnswerFeedback',
-          'Retour enseignant, correction, note, audio et remédiation.',
-        ),
-      ],
-    );
-  }
-}
-
-class _ClasseTeacherBoard extends StatelessWidget {
-  const _ClasseTeacherBoard();
-
-  @override
-  Widget build(BuildContext context) {
-    return _ActionList(
-      items: const [
-        _ActionItem(
-          Icons.dashboard_rounded,
-          'TeacherDashboard',
-          'Vue globale: élèves, moyenne, retard, corrections et alertes.',
-        ),
-        _ActionItem(
-          Icons.people_rounded,
-          'StudentList / StudentDetail',
-          'Profil élève, progression, réponses texte/audio et historique.',
-        ),
-        _ActionItem(
-          Icons.rate_review_rounded,
-          'PendingGrading',
-          'File de correction, diff, barème, note sur 20 et commentaire.',
-        ),
-        _ActionItem(
-          Icons.graphic_eq_rounded,
-          'VoiceReadingStudio',
-          'Lecture vocale, qualité, écoute, transcription et validation corpus.',
-        ),
-      ],
-    );
-  }
-}
-
-class _ClasseEvaluationBoard extends StatelessWidget {
-  const _ClasseEvaluationBoard();
-
-  @override
-  Widget build(BuildContext context) {
-    return _FeatureGrid(
-      items: const [
-        (
-          Icons.quiz_rounded,
-          '10 évaluations langue',
-          'QCM, réponse libre, dictée, image, audio et score meilleur.',
-        ),
-        (
-          Icons.calculate_rounded,
-          'Calcul intégré',
-          'Nombres, monnaie, marché, opérations et problèmes contextualisés.',
-        ),
-        (
-          Icons.assignment_turned_in_rounded,
-          'Soumission complète',
-          'Texte, voix, auto-évaluation, brouillon et synchronisation backend.',
-        ),
-        (
-          Icons.fact_check_rounded,
-          'Correction automatique',
-          'Corrigé attendu, variantes, similarité, mots manquants et score.',
-        ),
-      ],
-    );
-  }
-}
-
-class _ClasseCorrectionWorkflowBoard extends StatelessWidget {
-  const _ClasseCorrectionWorkflowBoard();
-
-  @override
-  Widget build(BuildContext context) {
-    return _ActionList(
-      items: const [
-        _ActionItem(
-          Icons.difference_rounded,
-          'AnswerDiff',
-          'Compare réponse élève, corrigé attendu, écarts et variantes acceptées.',
-        ),
-        _ActionItem(
-          Icons.edit_note_rounded,
-          'AnswerReview',
-          'Annotation enseignant, note, statut, commentaire texte et audio.',
-        ),
-        _ActionItem(
-          Icons.record_voice_over_rounded,
-          'VoiceAnswerPlayer',
-          'Écoute, transcription, qualité, vitesse et commentaire vocal.',
-        ),
-        _ActionItem(
-          Icons.auto_awesome_rounded,
-          'Remédiation IA',
-          'Conseil personnalisé, exercice de reprise et prochaine leçon.',
-        ),
-      ],
-    );
-  }
-}
-
-class _ClasseGradebookBoard extends StatelessWidget {
-  const _ClasseGradebookBoard();
-
-  @override
-  Widget build(BuildContext context) {
-    return _FeatureGrid(
-      items: const [
-        (
-          Icons.bar_chart_rounded,
-          'GradeOverview',
-          'Moyenne, distribution, évolution, retard et modules faibles.',
-        ),
-        (
-          Icons.table_chart_rounded,
-          'Carnet de notes',
-          'Notes par élève, module, évaluation, oral, calcul et production.',
-        ),
-        (
-          Icons.picture_as_pdf_rounded,
-          'MyGradeReport',
-          'Relevé PDF élève/parent/enseignant avec commentaires.',
-        ),
-        (
-          Icons.insights_rounded,
-          'ClassStats',
-          'Performance classe, objectifs, assiduité et recommandations.',
-        ),
-      ],
+      ),
     );
   }
 }
