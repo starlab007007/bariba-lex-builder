@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/fitila-web-parity-20260914
+      - release/fitila-flutter-android-v1.8.1-build12-web-parity
   workflow_dispatch:
 
 permissions:
