@@ -588,7 +588,7 @@ class FitilaBackend {
   }
 
   static Future<Map<String, dynamic>> fetchStudentDetail(String userId) async {
-    final results = await Future.wait([
+    final results = await Future.wait<dynamic>([
       client
           .from('tamtam_profiles')
           .select(

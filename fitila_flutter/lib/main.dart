@@ -10747,7 +10747,7 @@ class _TeacherScreenState extends State<TeacherScreen> {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _TeacherTab.values.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
               itemBuilder: (context, i) {
                 final t = _TeacherTab.values[i];
                 final active = t == _tab;
@@ -10824,22 +10824,20 @@ class _TeacherAccessDenied extends StatelessWidget {
 
 /// Petit conteneur "carte" cohérent avec le système de signature FITILA.
 class _TCard extends StatelessWidget {
-  const _TCard({required this.child, this.padding, this.borderColor, this.margin});
+  const _TCard({required this.child, this.margin});
 
   final Widget child;
-  final EdgeInsetsGeometry? padding;
-  final Color? borderColor;
   final EdgeInsetsGeometry? margin;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: margin,
-      padding: padding ?? const EdgeInsets.all(15),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: _fitilaCard,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: borderColor ?? _fitilaBorder),
+        border: Border.all(color: _fitilaBorder),
       ),
       child: child,
     );
@@ -10950,14 +10948,14 @@ class _TeacherOverviewTabState extends State<_TeacherOverviewTab> {
                     icon: Icons.pending_actions_rounded,
                     value: '${data['pendingGrading'] ?? 0}',
                     label: 'À corriger',
-                    tint: _fitilaClay.withOpacity(0.16),
+                    tint: _fitilaClay.withValues(alpha: 0.16),
                     fg: _fitilaClay,
                   ),
                   _TStat(
                     icon: Icons.trending_up_rounded,
                     value: '${data['completedLessons'] ?? 0}',
                     label: 'Leçons terminées',
-                    tint: _fitilaSage.withOpacity(0.16),
+                    tint: _fitilaSage.withValues(alpha: 0.16),
                     fg: _fitilaSage,
                   ),
                   _TStat(
@@ -11154,7 +11152,7 @@ class _TeacherStudentsTabState extends State<_TeacherStudentsTab> {
                       )
                     : ListView.separated(
                         itemCount: filtered.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1, color: _fitilaBorder),
+                        separatorBuilder: (_, _) => const Divider(height: 1, color: _fitilaBorder),
                         itemBuilder: (context, i) {
                           final r = filtered[i];
                           final label = FitilaBackend.readableStudentLabel(
@@ -11596,7 +11594,7 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
           if (graded && !_saving)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(color: _fitilaSage.withOpacity(0.16), borderRadius: BorderRadius.circular(100)),
+              decoration: BoxDecoration(color: _fitilaSage.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(100)),
               child: Text(
                 '✓ Corrigée — ${a['teacher_grade']}/20',
                 style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: _fitilaSage),
@@ -11709,7 +11707,7 @@ class _TeacherGradingTabState extends State<_TeacherGradingTab> {
           children: [
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: _module,
+                initialValue: _module,
                 isExpanded: true,
                 style: const TextStyle(fontSize: 11.5, color: _fitilaInkSoft),
                 decoration: InputDecoration(
@@ -11727,7 +11725,7 @@ class _TeacherGradingTabState extends State<_TeacherGradingTab> {
             const SizedBox(width: 8),
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: _level,
+                initialValue: _level,
                 isExpanded: true,
                 style: const TextStyle(fontSize: 11.5, color: _fitilaInkSoft),
                 decoration: InputDecoration(
@@ -11873,7 +11871,7 @@ class _TeacherAnswerKeysTabState extends State<_TeacherAnswerKeysTab> {
                 color: _fitilaPrimary,
                 child: ListView.separated(
                   itemCount: keys.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, i) {
                     final k = keys[i];
                     final accepted = List<String>.from(k['accepted_answers'] as List? ?? const []);
@@ -11998,7 +11996,7 @@ class _TeacherWeightsTabState extends State<_TeacherWeightsTab> {
           children: [
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: _level,
+                initialValue: _level,
                 decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),
                 items: [for (final l in _levels) DropdownMenuItem(value: l, child: Text(l))],
                 onChanged: (v) => setState(() {
@@ -12010,7 +12008,7 @@ class _TeacherWeightsTabState extends State<_TeacherWeightsTab> {
             const SizedBox(width: 8),
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: _module,
+                initialValue: _module,
                 decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),
                 items: [for (final m in _modules) DropdownMenuItem(value: m, child: Text(m))],
                 onChanged: (v) => setState(() {
@@ -12123,9 +12121,9 @@ class _TeacherGradeOverviewTabState extends State<_TeacherGradeOverviewTab> {
 
   Color _cellColor(double? g) {
     if (g == null) return _fitilaSurfaceAlt;
-    if (g >= 14) return _fitilaSage.withOpacity(0.18);
+    if (g >= 14) return _fitilaSage.withValues(alpha: 0.18);
     if (g >= 10) return _fitilaPrimarySoft;
-    return _fitilaClay.withOpacity(0.16);
+    return _fitilaClay.withValues(alpha: 0.16);
   }
 
   Future<void> _copyCsv(List<Map<String, dynamic>> reports, List<String> columns) async {
