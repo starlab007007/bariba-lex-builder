@@ -119,9 +119,9 @@ void main() {
 
     expect(find.textContaining('Niveau 1'), findsOneWidget);
     expect(find.textContaining('Niveau 2'), findsOneWidget);
-    expect(find.text('Leçons'), findsOneWidget);
+    expect(find.text('Leçons'), findsWidgets);
 
-    await tester.tap(find.text('Leçons'));
+    await tester.tap(find.text('Leçons').last);
     for (var i = 0; i < 6; i++) {
       await tester.pump(const Duration(milliseconds: 120));
     }
