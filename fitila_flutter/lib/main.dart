@@ -8016,6 +8016,15 @@ class _ClasseScreenState extends State<ClasseScreen> {
     );
   }
 
+  Widget _renderLessons(List<WebClasseLesson> all) {
+    return switch (_section) {
+      'home' => _home(all),
+      'lessons' => _lessonList(all),
+      'detail' => _lessonDetail(all),
+      _ => _secondarySection(_section),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return _PageFrame(
@@ -8023,31 +8032,28 @@ class _ClasseScreenState extends State<ClasseScreen> {
       subtitle: _level == 'N1'
           ? '🔥 N1 — Bàátɔ̀nú'
           : '🚀 N2 — Bàátɔ̀nú',
-      child: FutureBuilder<List<WebClasseLesson>>(
-        future: _webLessons,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(
-              child: FilledButton.icon(
-                onPressed: () =>
-                    setState(() => _webLessons = WebClasseContent.loadLessons()),
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Recharger les leçons'),
-              ),
-            );
-          }
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final all = snapshot.data!;
-          return switch (_section) {
-            'home' => _home(all),
-            'lessons' => _lessonList(all),
-            'detail' => _lessonDetail(all),
-            _ => _secondarySection(_section),
-          };
-        },
-      ),
+      child: widget.initialLessons != null
+          ? _renderLessons(widget.initialLessons!)
+          : FutureBuilder<List<WebClasseLesson>>(
+              future: _webLessons,
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: FilledButton.icon(
+                      onPressed: () => setState(
+                        () => _webLessons = WebClasseContent.loadLessons(),
+                      ),
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Recharger les leçons'),
+                    ),
+                  );
+                }
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                return _renderLessons(snapshot.data!);
+              },
+            ),
     );
   }
 }
