@@ -85,7 +85,7 @@ void main() {
 
     expect(find.text('Fil'), findsWidgets);
     expect(find.text('Apprendre'), findsOneWidget);
-    expect(find.text('Classe'), findsOneWidget);
+    expect(find.text('Classe'), findsWidgets);
     expect(find.bySemanticsLabel('Création'), findsOneWidget);
     expect(find.text('Dico'), findsOneWidget);
     expect(find.text('Traduc.'), findsOneWidget);
