@@ -3916,14 +3916,18 @@ class DictionaryScreen extends StatefulWidget {
 class _DictionaryScreenState extends State<DictionaryScreen> {
   late Future<List<DictionaryEntry>> _entries;
   final _query = TextEditingController();
-  String _filter = 'Tout';
-  String _panel = 'Recherche';
+  String _inputMode = 'Clavier';
+  bool _baribaToFrench = true;
+  bool _showChars = false;
+  DictionaryEntry? _selectedEntry;
 
   @override
   void initState() {
     super.initState();
     _entries = (widget.loadEntries ?? FitilaServices.loadDictionary)();
-    _query.addListener(() => setState(() {}));
+    _query.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -3932,243 +3936,598 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     super.dispose();
   }
 
-  List<DictionaryEntry> _filterEntries(List<DictionaryEntry> entries) {
+  List<DictionaryEntry> _matches(List<DictionaryEntry> entries) {
     final q = _query.text.trim().toLowerCase();
-    final filtered = q.isEmpty
-        ? entries.take(60).toList()
-        : entries
-              .where((entry) {
-                final haystack =
-                    '${entry.word} ${entry.definition} ${entry.exampleBariba ?? ''}'
-                        .toLowerCase();
-                return haystack.contains(q);
-              })
-              .take(80)
-              .toList();
-    if (_filter == 'Mots') {
-      return filtered
-          .where((entry) => entry.word.split(' ').length == 1)
-          .toList();
+    if (q.isEmpty) return const [];
+    final exact = <DictionaryEntry>[];
+    final starts = <DictionaryEntry>[];
+    final contains = <DictionaryEntry>[];
+
+    for (final entry in entries) {
+      final word = entry.word.toLowerCase();
+      final definition = entry.definition.toLowerCase();
+      final target = _baribaToFrench ? word : definition;
+      if (target == q) {
+        exact.add(entry);
+      } else if (target.startsWith(q)) {
+        starts.add(entry);
+      } else if (target.contains(q)) {
+        contains.add(entry);
+      }
+      if (exact.length + starts.length + contains.length >= 24) break;
     }
-    if (_filter == 'Expressions') {
-      return filtered
-          .where((entry) => entry.word.split(' ').length > 1)
-          .toList();
-    }
-    return filtered;
+    return [...exact, ...starts, ...contains].take(12).toList(growable: false);
   }
 
-  Widget _panelChip(String value, IconData icon) {
-    return ChoiceChip(
-      selected: _panel == value,
-      avatar: Icon(icon, size: 18),
-      label: Text(value),
-      onSelected: (_) {
-        setState(() => _panel = value);
-        if (value != 'Recherche') {
-          showModalBottomSheet<void>(
-            context: context,
-            isScrollControlled: true,
-            builder: (context) => SafeArea(
-              child: SizedBox(
-                height: MediaQuery.sizeOf(context).height * .65,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: _dictionaryPanel(),
-                ),
-              ),
-            ),
-          );
-        }
-      },
+  void _select(DictionaryEntry entry) {
+    setState(() {
+      _selectedEntry = entry;
+      _query.text = _baribaToFrench ? entry.word : entry.definition;
+      _query.selection = TextSelection.collapsed(offset: _query.text.length);
+    });
+    FocusScope.of(context).unfocus();
+  }
+
+  void _search(List<DictionaryEntry> entries) {
+    final matches = _matches(entries);
+    if (matches.isNotEmpty) {
+      _select(matches.first);
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _query.text.trim().isEmpty
+              ? 'Saisissez un mot à rechercher.'
+              : 'Aucun résultat pour « ${_query.text.trim()} ».',
+        ),
+      ),
     );
   }
 
-  Widget _dictionaryPanel() {
-    return switch (_panel) {
-      'Audio' => const _FeatureGrid(
-        items: [
-          (
-            Icons.volume_up_rounded,
-            'Écoute entrée',
-            'Lecture mot, exemple, variante phonétique et vitesse lente.',
+  void _insertCharacter(String char) {
+    final selection = _query.selection;
+    final text = _query.text;
+    final start = selection.start < 0 ? text.length : selection.start;
+    final end = selection.end < 0 ? text.length : selection.end;
+    _query.value = TextEditingValue(
+      text: text.replaceRange(start, end, char),
+      selection: TextSelection.collapsed(offset: start + char.length),
+    );
+  }
+
+  Widget _modeButton(String label, IconData icon) {
+    final selected = _inputMode == label;
+    return Expanded(
+      child: Material(
+        color: selected ? _fitilaCard : _fitilaCard.withValues(alpha: .62),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: selected ? _fitilaPrimary : _fitilaBorder,
           ),
-          (
-            Icons.mic_rounded,
-            'Recherche vocale',
-            'Dictée Bariba/Français, normalisation et proposition proche.',
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => setState(() => _inputMode = label),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: selected ? _fitilaGoldDeep : _fitilaMuted,
+                ),
+                const SizedBox(width: 7),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? _fitilaInk : _fitilaMuted,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
-          (
-            Icons.graphic_eq_rounded,
-            'Corpus vocal',
-            'Validation qualité et contribution audio communautaire.',
-          ),
-        ],
+        ),
       ),
-      'Contribution' => _ActionList(
-        items: const [
-          _ActionItem(
-            Icons.add_rounded,
-            'Nouvelle entrée',
-            'Mot, traduction, définition, exemple, audio, source et statut.',
-          ),
-          _ActionItem(
-            Icons.rate_review_rounded,
-            'Feedback',
-            'Signaler erreur, variante, doublon ou sens manquant.',
-          ),
-          _ActionItem(
-            Icons.verified_rounded,
-            'Validation',
-            'File de revue lexicographe avant publication publique.',
-          ),
-        ],
-      ),
-      'Admin' => _ActionList(
-        items: const [
-          _ActionItem(
-            Icons.dataset_rounded,
-            'Data viewer',
-            'Explorer JSON, doublons, entrées faibles et enrichissement IA.',
-          ),
-          _ActionItem(
-            Icons.file_download_rounded,
-            'Exporter',
-            'Préparer CSV/JSON, sauvegarde et audit de version.',
-          ),
-          _ActionItem(
-            Icons.health_and_safety_rounded,
-            'Qualité',
-            'Score définition, exemple, audio, source et statut moderation.',
-          ),
-        ],
-      ),
-      _ => const _FeatureGrid(
-        items: [
-          (
-            Icons.saved_search_rounded,
-            'Recherche avancée',
-            'Mot exact, contient, expression, définition, exemple et source.',
-          ),
-          (
-            Icons.filter_alt_rounded,
-            'Filtres React',
-            'Mots, expressions, catégories, favoris, nouveaux et validés.',
-          ),
-          (
-            Icons.lightbulb_rounded,
-            'Suggestions',
-            'Tolérance accents, variantes orthographiques et mots proches.',
-          ),
-        ],
-      ),
+    );
+  }
+
+  Widget _resultCard(DictionaryEntry entry) {
+    final part = switch (entry.partOfSpeech?.trim()) {
+      'n' => 'n:y',
+      'v' => 'verbe',
+      'adj' => 'adjectif',
+      'adv' => 'adverbe',
+      final value when value != null && value.isNotEmpty => value,
+      _ => null,
     };
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _fitilaCard,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _fitilaBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1B241F2E),
+            blurRadius: 26,
+            offset: Offset(0, 12),
+            spreadRadius: -16,
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 20, 16, 20),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [_fitilaPrimary, _fitilaClay],
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('🇧🇯', style: TextStyle(fontSize: 30)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        entry.word,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontFamily: 'serif',
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (entry.phonetic?.trim().isNotEmpty == true) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          '[${entry.phonetic}]',
+                          style: const TextStyle(
+                            color: Color(0xE6FFFFFF),
+                            fontSize: 17,
+                          ),
+                        ),
+                      ],
+                      if (part != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: .20),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            part,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Fermer',
+                  onPressed: () => setState(() => _selectedEntry = null),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.white.withValues(alpha: .18),
+                    foregroundColor: Colors.white,
+                    side: BorderSide.none,
+                  ),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                _WebDictionaryInfo(
+                  icon: Icons.menu_book_rounded,
+                  iconBackground: const Color(0xFFE6F0FF),
+                  iconColor: const Color(0xFF3178D4),
+                  label: '🇫🇷  Définition',
+                  value: entry.definition,
+                  onAudio: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Lecture audio de la définition.'),
+                      ),
+                    );
+                  },
+                ),
+                if (entry.exampleBariba?.trim().isNotEmpty == true) ...[
+                  const SizedBox(height: 12),
+                  _WebDictionaryInfo(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    iconBackground: const Color(0xFFFFF1C7),
+                    iconColor: _fitilaGoldDeep,
+                    label: '🇧🇯  Exemple en Bàátɔ̀nú',
+                    value: entry.exampleBariba!,
+                  ),
+                ],
+                if (entry.exampleFrancais?.trim().isNotEmpty == true) ...[
+                  const SizedBox(height: 12),
+                  _WebDictionaryInfo(
+                    icon: Icons.swap_horiz_rounded,
+                    iconBackground: const Color(0xFFE8F5EC),
+                    iconColor: _fitilaSage,
+                    label: '🇫🇷  Traduction de l’exemple',
+                    value: entry.exampleFrancais!,
+                    onAudio: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Lecture audio de l’exemple.'),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return _PageFrame(
-      title: 'Dictionnaire',
-      subtitle:
-          'Recherche intelligente, détails, exemples, contribution et écoute.',
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _query,
-                  decoration: const InputDecoration(
-                    hintText:
-                        'Chercher un mot, une définition ou une expression',
-                    prefixIcon: Icon(Icons.search_rounded),
-                  ),
-                ),
+      title: '📖 Dictionnaire',
+      subtitle: 'Recherche Bàátɔ̀nú ↔ Français, clavier et recherche vocale.',
+      child: FutureBuilder<List<DictionaryEntry>>(
+        future: _entries,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: FilledButton.icon(
+                onPressed: () => setState(() {
+                  _entries =
+                      (widget.loadEntries ?? FitilaServices.loadDictionary)();
+                }),
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Recharger le dictionnaire'),
               ),
-              const SizedBox(width: 8),
-              IconButton.filledTonal(
-                tooltip: 'Contribution',
-                onPressed: () => _showContribution(context),
-                icon: const Icon(Icons.edit_note_rounded),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(
-                  value: 'Tout',
-                  label: Text('Tout'),
-                  icon: Icon(Icons.all_inclusive_rounded),
-                ),
-                ButtonSegment(
-                  value: 'Mots',
-                  label: Text('Mots'),
-                  icon: Icon(Icons.short_text_rounded),
-                ),
-                ButtonSegment(
-                  value: 'Expressions',
-                  label: Text('Expressions'),
-                  icon: Icon(Icons.notes_rounded),
-                ),
-              ],
-              selected: {_filter},
-              onSelectionChanged: (values) =>
-                  setState(() => _filter = values.first),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _panelChip('Recherche', Icons.saved_search_rounded),
-                _panelChip('Audio', Icons.volume_up_rounded),
-                _panelChip('Contribution', Icons.edit_note_rounded),
-                _panelChip('Admin', Icons.admin_panel_settings_rounded),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
+            );
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-          Expanded(
-            child: FutureBuilder<List<DictionaryEntry>>(
-              future: _entries,
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(child: FilledButton.icon(
-                    onPressed: () => setState(() {
-                      _entries = (widget.loadEntries ?? FitilaServices.loadDictionary)();
-                    }),
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('Recharger le dictionnaire'),
-                  ));
-                }
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final results = _filterEntries(snapshot.data!);
-                if (results.isEmpty) {
-                  return const _EmptyState(
-                    icon: Icons.search_off_rounded,
-                    title: 'Aucun résultat',
-                    text: 'Essayez un autre mot Bariba ou Français.',
-                  );
-                }
-                return ListView.separated(
-                  itemCount: results.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 8),
-                  itemBuilder: (context, index) => _DictionaryTile(
-                    entry: results[index],
-                    onTap: () => _showDictionaryDetail(context, results[index]),
+          final entries = snapshot.data!;
+          final matches = _matches(entries);
+
+          return ListView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            children: [
+              Row(
+                children: [
+                  _modeButton('Clavier', Icons.keyboard_alt_rounded),
+                  const SizedBox(width: 10),
+                  _modeButton('Vocal', Icons.mic_rounded),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '${entries.length.toString().replaceAllMapped(RegExp(r"(?=(\d{3})+(?!\d))"), (m) => " ")} mots',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: _fitilaMuted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (_inputMode == 'Clavier')
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: _fitilaCard,
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: _fitilaBorder),
                   ),
-                );
-              },
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          ChoiceChip(
+                            selected: _baribaToFrench,
+                            label: const Text('🇧🇯 Bàátɔ̀nú'),
+                            onSelected: (_) {
+                              setState(() {
+                                _baribaToFrench = true;
+                                _selectedEntry = null;
+                                _query.clear();
+                              });
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: _fitilaMuted,
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            selected: !_baribaToFrench,
+                            label: const Text('🇫🇷 Français'),
+                            onSelected: (_) {
+                              setState(() {
+                                _baribaToFrench = false;
+                                _selectedEntry = null;
+                                _query.clear();
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _query,
+                        textInputAction: TextInputAction.search,
+                        onSubmitted: (_) => _search(entries),
+                        decoration: InputDecoration(
+                          hintText: _baribaToFrench
+                              ? 'Tapez un mot Bàátɔ̀nú'
+                              : 'Tapez un mot français',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon: SizedBox(
+                            width: 94,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                IconButton(
+                                  tooltip: 'Caractères spéciaux',
+                                  onPressed: () =>
+                                      setState(() => _showChars = !_showChars),
+                                  icon: const Icon(
+                                    Icons.keyboard_alt_rounded,
+                                  ),
+                                ),
+                                if (_query.text.isNotEmpty)
+                                  IconButton(
+                                    tooltip: 'Effacer',
+                                    onPressed: () {
+                                      _query.clear();
+                                      setState(() => _selectedEntry = null);
+                                    },
+                                    icon: const Icon(Icons.close_rounded),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (_showChars) ...[
+                        const SizedBox(height: 10),
+                        _BaribaKeyboard(onInsert: _insertCharacter),
+                      ],
+                      if (matches.isNotEmpty && _selectedEntry == null) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: _fitilaSurfaceAlt,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: _fitilaBorder),
+                          ),
+                          child: Column(
+                            children: [
+                              for (final entry in matches.take(8))
+                                ListTile(
+                                  dense: true,
+                                  onTap: () => _select(entry),
+                                  leading: const Icon(
+                                    Icons.menu_book_rounded,
+                                    color: _fitilaGoldDeep,
+                                  ),
+                                  title: Text(
+                                    _baribaToFrench
+                                        ? entry.word
+                                        : entry.definition,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: Text(
+                                    _baribaToFrench
+                                        ? entry.definition
+                                        : entry.word,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: const Icon(
+                                    Icons.chevron_right_rounded,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    color: _fitilaCard,
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: _fitilaBorder),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: const BoxDecoration(
+                          color: _fitilaPrimarySoft,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.mic_rounded,
+                          color: _fitilaGoldDeep,
+                          size: 30,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Recherche vocale',
+                        style: TextStyle(
+                          color: _fitilaInk,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Prononcez un mot en Bàátɔ̀nú ou en français. Le résultat s’affichera dans la même fiche détaillée.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: _fitilaMuted,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      FilledButton.icon(
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Le moteur STT est disponible dans Voice Lab; intégration directe en cours de parité.',
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.mic_rounded),
+                        label: const Text('Parler maintenant'),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 52,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _fitilaSage,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () => _showContribution(context),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Proposer un mot'),
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (_selectedEntry != null)
+                _resultCard(_selectedEntry!)
+              else if (_query.text.trim().isEmpty)
+                const _EmptyState(
+                  icon: Icons.menu_book_rounded,
+                  title: 'Cherchez un mot',
+                  text:
+                      'Le dictionnaire embarqué reprend le parcours du site FITILA avec recherche et fiche détaillée.',
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _WebDictionaryInfo extends StatelessWidget {
+  const _WebDictionaryInfo({
+    required this.icon,
+    required this.iconBackground,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+    this.onAudio,
+  });
+
+  final IconData icon;
+  final Color iconBackground;
+  final Color iconColor;
+  final String label;
+  final String value;
+  final VoidCallback? onAudio;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _fitilaSurface.withValues(alpha: .70),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _fitilaBorder),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: iconBackground,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: iconColor, size: 21),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          color: iconColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    if (onAudio != null)
+                      IconButton(
+                        tooltip: 'Écouter',
+                        onPressed: onAudio,
+                        icon: const Icon(Icons.volume_up_rounded),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: _fitilaInk,
+                    fontSize: 16,
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
