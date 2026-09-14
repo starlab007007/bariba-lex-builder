@@ -140,4 +140,49 @@ void main() {
     expect(find.textContaining('Geruo'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('web parity domain hubs render on phone without overflow', (
+    tester,
+  ) async {
+    const pages = <FitilaPage>[
+      FitilaPage.services,
+      FitilaPage.market,
+      FitilaPage.agriculture,
+      FitilaPage.finance,
+      FitilaPage.education,
+      FitilaPage.health,
+    ];
+
+    for (final page in pages) {
+      await pumpPhone(
+        tester,
+        WebParityModuleScreen(page: page),
+      );
+      expect(find.text(page.title), findsOneWidget);
+      expect(tester.takeException(), isNull, reason: 'Domain failed: ${page.name}');
+    }
+  });
+
+  testWidgets('utility web routes render on phone without overflow', (
+    tester,
+  ) async {
+    const pages = <FitilaPage>[
+      FitilaPage.sos,
+      FitilaPage.messages,
+      FitilaPage.discover,
+      FitilaPage.install,
+      FitilaPage.drafts,
+      FitilaPage.offline,
+      FitilaPage.wallet,
+      FitilaPage.history,
+      FitilaPage.scan,
+      FitilaPage.shop,
+    ];
+
+    for (final page in pages) {
+      await pumpPhone(tester, UtilityScreen(page: page));
+      expect(find.text(page.title), findsOneWidget);
+      expect(tester.takeException(), isNull, reason: 'Utility failed: ${page.name}');
+    }
+  });
+
 }
