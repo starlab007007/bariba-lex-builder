@@ -7865,6 +7865,7 @@ class _ClasseScreenState extends State<ClasseScreen> {
         SizedBox(
           height: 43,
           child: ListView.separated(
+            key: const ValueKey('classe-lesson-tabs'),
             scrollDirection: Axis.horizontal,
             itemCount: tabs.length,
             separatorBuilder: (_, _) => const SizedBox(width: 7),
