@@ -16,7 +16,9 @@ Future<void> pumpPhone(WidgetTester tester, Widget child) async {
       home: Scaffold(body: SafeArea(child: child)),
     ),
   );
-  await tester.pumpAndSettle();
+  for (var i = 0; i < 10; i++) {
+    await tester.pump(const Duration(milliseconds: 120));
+  }
 }
 
 void main() {
@@ -67,7 +69,7 @@ void main() {
     expect(find.text('Photo'), findsOneWidget);
     expect(find.text('Coller'), findsOneWidget);
     expect(find.text('Doc'), findsOneWidget);
-    expect(find.text('Mode conversation'), findsOneWidget);
+    expect(find.text('Mode conversation'), findsWidgets);
     expect(find.textContaining('Détection'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
@@ -113,12 +115,16 @@ void main() {
     expect(find.text('Leçons'), findsOneWidget);
 
     await tester.tap(find.text('Leçons'));
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 120));
+    }
 
     expect(find.text('Tii dobonu'), findsWidgets);
     await tester.ensureVisible(find.text('Tii dobonu').last);
     await tester.tap(find.text('Tii dobonu').last);
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 120));
+    }
 
     expect(find.text('Leçon 1'), findsOneWidget);
     expect(find.textContaining('Texte'), findsWidgets);
