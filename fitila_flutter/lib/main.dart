@@ -5502,14 +5502,19 @@ class TemIaScreen extends StatefulWidget {
 
 class _TemIaScreenState extends State<TemIaScreen> {
   final _query = TextEditingController();
-  String _section = 'Analyse';
-  String _domain = 'Foncier';
-  bool _humanReview = true;
-  bool _strictSources = true;
   bool _busy = false;
-  String _answer =
-      'Posez une question en Bariba ou indiquez un numéro d’article.';
-  List<FoncierSource> _foncierSources = const [];
+  final List<
+      ({
+        String role,
+        String text,
+        List<FoncierSource> sources,
+      })> _messages = [];
+
+  static const _suggestions = [
+    'Saria gbiika gari mba?',
+    'Saria 14se ya nɛɛ mba?',
+    'Tem bausu mba ba mɔ̀ Benɛ temɔ?',
+  ];
 
   @override
   void dispose() {
@@ -5517,16 +5522,27 @@ class _TemIaScreenState extends State<TemIaScreen> {
     super.dispose();
   }
 
-  Future<void> _analyze() async {
-    final text = _query.text.trim();
+  Future<void> _send([String? preset]) async {
+    final text = (preset ?? _query.text).trim();
     if (text.isEmpty || _busy) return;
-    setState(() => _busy = true);
+
+    setState(() {
+      _busy = true;
+      _messages.add((role: 'user', text: text, sources: const []));
+      _query.clear();
+    });
+
     try {
       final result = await FoncierRag.answer(text);
       if (!mounted) return;
       setState(() {
-        _answer = result.answer;
-        _foncierSources = result.sources;
+        _messages.add(
+          (
+            role: 'assistant',
+            text: result.answer.replaceAll(RegExp(r'\.\s+'), '.\n\n').trim(),
+            sources: result.sources,
+          ),
+        );
       });
     } catch (_) {
       if (!mounted) return;
@@ -5540,238 +5556,458 @@ class _TemIaScreenState extends State<TemIaScreen> {
     }
   }
 
-  Widget _temChip(String value, IconData icon) {
-    return ChoiceChip(
-      selected: _section == value,
-      avatar: Icon(icon, size: 18),
-      label: Text(value),
-      onSelected: (_) => setState(() => _section = value),
+  void _showSources(List<FoncierSource> sources) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: FractionallySizedBox(
+          heightFactor: .72,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+            children: [
+              const Text(
+                'Sources du Code Foncier',
+                style: TextStyle(
+                  color: _fitilaInk,
+                  fontFamily: 'serif',
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 5),
+              const Text(
+                'Références utilisées par la recherche locale.',
+                style: TextStyle(color: _fitilaMuted),
+              ),
+              const SizedBox(height: 14),
+              for (final source in sources)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 9),
+                  child: Material(
+                    color: _fitilaCard,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(color: _fitilaBorder),
+                    ),
+                    child: ListTile(
+                      leading: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFDCEAE0),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.menu_book_rounded,
+                          color: _fitilaSage,
+                        ),
+                      ),
+                      title: Text(
+                        source.number,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      subtitle: Text(
+                        '${source.book ?? 'Code foncier'} · page ${source.page}',
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _temSection() {
-    return switch (_section) {
-      'Recherche' => const _FeatureGrid(
-        items: [
-          (
-            Icons.search_rounded,
-            'Recherche locale',
-            'Cherche dans corpus foncier, dictionnaire et cache offline.',
-          ),
-          (
-            Icons.filter_alt_rounded,
-            'Filtres',
-            'Type document, commune, theme, date et niveau de confiance.',
-          ),
-          (
-            Icons.saved_search_rounded,
-            'Resultats',
-            'Extraits, score, source et lien vers le document.',
-          ),
-        ],
-      ),
-      'Documents' => const _FeatureGrid(
-        items: [
-          (
-            Icons.description_rounded,
-            'Document',
-            'Coller texte, importer PDF/image ou dicter une question.',
-          ),
-          (
-            Icons.summarize_rounded,
-            'Résumé',
-            'Synthèse courte, points de vigilance et version bilingue.',
-          ),
-          (
-            Icons.picture_as_pdf_rounded,
-            'Export',
-            'Fiche partageable pour classe, communauté ou enseignant.',
-          ),
-        ],
-      ),
-      'Citations' => _ActionList(
-        items: const [
-          _ActionItem(
-            Icons.format_quote_rounded,
-            'Citation 1',
-            'Référence au corpus foncier avec extrait court et contexte.',
-          ),
-          _ActionItem(
-            Icons.menu_book_rounded,
-            'Citation dictionnaire',
-            'Termes Bariba importants et explication simple.',
-          ),
-          _ActionItem(
-            Icons.school_rounded,
-            'Citation classe',
-            'Lien pédagogique vers leçon, quiz ou correction.',
-          ),
-        ],
-      ),
-      'Validation' => Card(
+  Widget _emptyState() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
         child: Column(
           children: [
-            SwitchListTile(
-              value: _humanReview,
-              onChanged: (value) => setState(() => _humanReview = value),
-              secondary: const Icon(Icons.verified_user_rounded),
-              title: const Text('Validation humaine'),
-              subtitle: const Text(
-                'Active avertissement, moderation et contrôle avant usage sensible.',
+            Container(
+              width: 86,
+              height: 86,
+              decoration: BoxDecoration(
+                color: const Color(0xFFDCEAE0),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: _fitilaSage.withValues(alpha: .18),
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x173F6E52),
+                    blurRadius: 22,
+                    offset: Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.balance_rounded,
+                color: _fitilaSage,
+                size: 42,
               ),
             ),
-            SwitchListTile(
-              value: _strictSources,
-              onChanged: (value) => setState(() => _strictSources = value),
-              secondary: const Icon(Icons.source_rounded),
-              title: const Text('Sources obligatoires'),
-              subtitle: const Text(
-                'Bloque les réponses sensibles sans citation ou niveau de confiance.',
+            const SizedBox(height: 20),
+            const Text(
+              'Yaa sɔ̃ɔ tem bausu gari Baribarum.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _fitilaInk,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
+            ),
+            const SizedBox(height: 9),
+            const Text(
+              'Posez votre question directement en Bàátɔ̀nú',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _fitilaMuted,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final suggestion in _suggestions)
+                  ActionChip(
+                    label: Text(suggestion),
+                    onPressed: () => _send(suggestion),
+                  ),
+              ],
             ),
           ],
         ),
       ),
-      'Risques' => const _FeatureGrid(
-        items: [
-          (
-            Icons.warning_rounded,
-            'Avertissement sensible',
-            'Foncier, santé, finance ou droit nécessitent prudence et validation.',
-          ),
-          (
-            Icons.rule_rounded,
-            'Garde-fous IA',
-            'Réponse claire, refus contextualisé et invitation à confirmer.',
-          ),
-          (
-            Icons.fact_check_rounded,
-            'Confiance',
-            'Score source, fraîcheur, domaine et niveau pédagogique.',
-          ),
-        ],
-      ),
-      'Historique' => _ActionList(
-        items: const [
-          _ActionItem(
-            Icons.history_rounded,
-            'Analyse article foncier',
-            'Résumé bilingue, 3 citations, prudence activée.',
-          ),
-          _ActionItem(
-            Icons.question_answer_rounded,
-            'Question utilisateur',
-            'Explication simplifiée et points clés.',
-          ),
-        ],
-      ),
-      _ => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _InfoBox(title: 'Résultat', text: _answer),
-          if (_foncierSources.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            for (final source in _foncierSources)
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.menu_book_rounded),
-                  title: Text(source.number),
-                  subtitle: Text(
-                    '${source.book ?? 'Code foncier'} · page ${source.page}',
-                  ),
-                ),
+    );
+  }
+
+  Widget _messageBubble(
+    ({
+      String role,
+      String text,
+      List<FoncierSource> sources,
+    }) message,
+  ) {
+    final mine = message.role == 'user';
+    return Align(
+      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 690),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment:
+              mine ? MainAxisAlignment.end : MainAxisAlignment.start,
+          children: [
+            if (!mine) ...[
+              const CircleAvatar(
+                radius: 15,
+                backgroundColor: _fitilaSage,
+                foregroundColor: Colors.white,
+                child: Icon(Icons.balance_rounded, size: 16),
               ),
+              const SizedBox(width: 7),
+            ],
+            Flexible(
+              child: Column(
+                crossAxisAlignment:
+                    mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 11,
+                    ),
+                    decoration: BoxDecoration(
+                      color: mine ? _fitilaClay : _fitilaCard,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(mine ? 18 : 6),
+                        topRight: Radius.circular(mine ? 6 : 18),
+                        bottomLeft: const Radius.circular(18),
+                        bottomRight: const Radius.circular(18),
+                      ),
+                      border: mine
+                          ? null
+                          : Border.all(color: _fitilaBorder),
+                    ),
+                    child: Text(
+                      message.text,
+                      style: TextStyle(
+                        color: mine ? Colors.white : _fitilaInkSoft,
+                        height: 1.45,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                  ),
+                  if (!mine && message.sources.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    ActionChip(
+                      avatar: const Icon(
+                        Icons.menu_book_rounded,
+                        size: 16,
+                        color: _fitilaSage,
+                      ),
+                      label: Text(
+                        'Sources : ${message.sources.take(3).map((s) => s.number).join(' · ')}'
+                        '${message.sources.length > 3 ? ' +${message.sources.length - 3}' : ''}',
+                      ),
+                      onPressed: () => _showSources(message.sources),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (mine) ...[
+              const SizedBox(width: 7),
+              const CircleAvatar(
+                radius: 15,
+                backgroundColor: _fitilaClay,
+                foregroundColor: Colors.white,
+                child: Icon(Icons.person_rounded, size: 16),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
-    };
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return _PageFrame(
-      title: 'Tem-IA foncier',
-      subtitle: 'Assistant specialise avec sources citees, resume et voix.',
-      child: ListView(
+      title: '⚖️ Fitila Tem IA',
+      subtitle: 'Tem bausu sariaba sɔ̃ɔsiru · 100% local',
+      child: Column(
         children: [
-          const _MetricStrip(
-            metrics: [
-              ('Sources', '128', Icons.source_rounded),
-              ('Langues', 'FR/BA', Icons.translate_rounded),
-              ('Mode', 'Foncier', Icons.gavel_rounded),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _temChip('Analyse', Icons.auto_awesome_rounded),
-              _temChip('Recherche', Icons.search_rounded),
-              _temChip('Documents', Icons.description_rounded),
-              _temChip('Citations', Icons.format_quote_rounded),
-              _temChip('Validation', Icons.verified_user_rounded),
-              _temChip('Risques', Icons.warning_rounded),
-              _temChip('Historique', Icons.history_rounded),
-            ],
-          ),
-          const SizedBox(height: 10),
-          DropdownButtonFormField<String>(
-            initialValue: _domain,
-            decoration: const InputDecoration(
-              labelText: 'Domaine Tem-IA',
-              prefixIcon: Icon(Icons.hub_rounded),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFDCEAE0).withValues(alpha: .70),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: _fitilaSage.withValues(alpha: .28),
+              ),
             ),
-            items: const [
-              DropdownMenuItem(value: 'Foncier', child: Text('Foncier')),
-              DropdownMenuItem(value: 'Culture', child: Text('Culture')),
-              DropdownMenuItem(value: 'Classe', child: Text('Classe')),
-              DropdownMenuItem(value: 'Document', child: Text('Document')),
-              DropdownMenuItem(value: 'Audio', child: Text('Audio')),
-            ],
-            onChanged: (value) => setState(() => _domain = value ?? _domain),
+            child: const Row(
+              children: [
+                Icon(
+                  Icons.shield_outlined,
+                  color: _fitilaSage,
+                  size: 18,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '🔒 Assistant basé uniquement sur le Code Foncier (Bariba) — Loi n° 2013-01',
+                    style: TextStyle(
+                      color: _fitilaSage,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
-          _TextPanel(
-            title: 'Question ou document',
-            controller: _query,
-            hint: 'Coller un article, poser une question ou dicter...',
-            maxLines: 6,
+          const SizedBox(height: 8),
+          Expanded(
+            child: _messages.isEmpty
+                ? _emptyState()
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(2, 8, 2, 10),
+                    itemCount: _messages.length + (_busy ? 1 : 0),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      if (_busy && index == _messages.length) {
+                        return const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircleAvatar(
+                                radius: 15,
+                                backgroundColor: _fitilaSage,
+                                child: Icon(
+                                  Icons.balance_rounded,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              _TemTypingIndicator(),
+                            ],
+                          ),
+                        );
+                      }
+                      return _messageBubble(_messages[index]);
+                    },
+                  ),
           ),
-          const SizedBox(height: 10),
-          FilledButton.icon(
-            onPressed: _busy ? null : _analyze,
-            icon: _busy
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.auto_awesome_rounded),
-            label: const Text('Analyser avec Tem-IA'),
-          ),
-          const SizedBox(height: 12),
-          _temSection(),
-          const SizedBox(height: 12),
-          const _FeatureGrid(
-            items: [
-              (
-                Icons.format_quote_rounded,
-                'Sources citees',
-                'Chaque reponse prepare les references pour affichage backend.',
-              ),
-              (
-                Icons.record_voice_over_rounded,
-                'Lecture vocale',
-                'Restitution audio en Francais et Bariba.',
-              ),
-              (
-                Icons.verified_rounded,
-                'Controle',
-                'Avertissement, moderation et validation humaine.',
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.fromLTRB(0, 9, 0, 2),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: _fitilaBorder)),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      tooltip: 'Clavier Bàátɔ̀nú',
+                      onPressed: () => _showKeyboard(context, _query),
+                      icon: const Icon(Icons.keyboard_alt_rounded),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: TextField(
+                        controller: _query,
+                        minLines: 1,
+                        maxLines: 4,
+                        decoration: const InputDecoration(
+                          hintText:
+                              'Yaa sɔ̃ɔ tem bausu gari Baribarum...',
+                        ),
+                        onSubmitted: (_) => _send(),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    IconButton(
+                      tooltip: 'Voix',
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Dictée vocale disponible via Voice Lab.',
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.mic_rounded),
+                    ),
+                    const SizedBox(width: 6),
+                    IconButton.filled(
+                      tooltip: 'Envoyer',
+                      onPressed: _busy ? null : () => _send(),
+                      style: IconButton.styleFrom(
+                        backgroundColor: _fitilaSage,
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: _busy
+                          ? const SizedBox.square(
+                              dimension: 17,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.send_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.wifi_off_rounded,
+                      color: _fitilaSage,
+                      size: 12,
+                    ),
+                    SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        'Posez votre question en Bàátɔ̀nú — recherche 100% locale, sans Internet',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: _fitilaSage,
+                          fontSize: 9.8,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TemTypingIndicator extends StatefulWidget {
+  const _TemTypingIndicator();
+
+  @override
+  State<_TemTypingIndicator> createState() => _TemTypingIndicatorState();
+}
+
+class _TemTypingIndicatorState extends State<_TemTypingIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 850),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+      decoration: BoxDecoration(
+        color: _fitilaCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _fitilaBorder),
+      ),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          final phase = (_controller.value * 3).floor();
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < 3; i++) ...[
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: i == phase ? _fitilaSage : _fitilaBorder,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                if (i < 2) const SizedBox(width: 4),
+              ],
+              const SizedBox(width: 8),
+              const Text(
+                'Sariaba kasuamɔ...',
+                style: TextStyle(
+                  color: _fitilaMuted,
+                  fontSize: 10.5,
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
