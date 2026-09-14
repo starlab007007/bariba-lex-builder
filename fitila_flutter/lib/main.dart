@@ -20,11 +20,21 @@ Future<void> main() async {
   runApp(const FitilaApp());
 }
 
-const _fitilaPrimary = Color(0xFFFF7A00);
-const _fitilaPrimarySoft = Color(0xFFFFEDD5);
-const _fitilaBorder = Color(0xFFE9E4DC);
-const _fitilaInk = Color(0xFF202320);
-const _fitilaSurface = Color(0xFFFAF7F2);
+const _fitilaPrimary = Color(0xFFC99530);
+const _fitilaGoldDeep = Color(0xFF9C6B1D);
+const _fitilaPrimarySoft = Color(0xFFF3E3B9);
+const _fitilaClay = Color(0xFFB54E33);
+const _fitilaClaySoft = Color(0xFFF4DED2);
+const _fitilaSage = Color(0xFF3F6E52);
+const _fitilaSageSoft = Color(0xFFDCEAE0);
+const _fitilaBorder = Color(0xFFE4DFCC);
+const _fitilaBorderStrong = Color(0xFFD5CEB3);
+const _fitilaInk = Color(0xFF241F2E);
+const _fitilaInkSoft = Color(0xFF3A3448);
+const _fitilaMuted = Color(0xFF8C8571);
+const _fitilaSurface = Color(0xFFF7F5EC);
+const _fitilaSurfaceAlt = Color(0xFFF1EDDF);
+const _fitilaCard = Color(0xFFFFFFFF);
 const _supabaseUrl = FitilaBackend.supabaseUrl;
 const _baribaLetters = [
   'ɛ',
@@ -853,12 +863,12 @@ class _FitilaShellState extends State<FitilaShell> {
   }
 
   int get _destination => switch (_page) {
-    FitilaPage.learn || FitilaPage.classe || FitilaPage.teacher => 1,
     FitilaPage.dictionary ||
     FitilaPage.translator ||
     FitilaPage.keyboard ||
-    FitilaPage.voiceLab => 2,
-    FitilaPage.ia || FitilaPage.temIa => 3,
+    FitilaPage.voiceLab => 1,
+    FitilaPage.ia || FitilaPage.temIa => 2,
+    FitilaPage.learn || FitilaPage.classe || FitilaPage.teacher => 3,
     FitilaPage.profile || FitilaPage.settings => 4,
     _ => 0,
   };
@@ -1216,18 +1226,7 @@ class _FitilaShellState extends State<FitilaShell> {
             }
           },
           child: Scaffold(
-            appBar: wide
-                ? null
-                : AppBar(
-                    title: Text(_page.title),
-                    actions: [
-                      IconButton(
-                        tooltip: 'Profil',
-                        onPressed: () => _navigate(FitilaPage.profile),
-                        icon: const Icon(Icons.account_circle_rounded),
-                      ),
-                    ],
-                  ),
+            appBar: null,
             drawer: wide
                 ? null
                 : Drawer(
@@ -1296,67 +1295,27 @@ class _FitilaShellState extends State<FitilaShell> {
             ),
             bottomNavigationBar: wide
                 ? null
-                : NavigationBar(
+                : _PremiumBottomNav(
                     selectedIndex: _destination,
-                    onDestinationSelected: (index) {
+                    onSelected: (index) {
                       switch (index) {
                         case 0:
                           _navigate(FitilaPage.feed);
                         case 1:
-                          _chooseModule('Apprendre à votre rythme', [
-                            FitilaPage.classe,
-                            FitilaPage.learn,
-                          ]);
+                          _navigate(FitilaPage.dictionary);
                         case 2:
-                          _chooseModule('Votre espace langues', [
-                            FitilaPage.dictionary,
-                            FitilaPage.translator,
-                            FitilaPage.voiceLab,
-                            FitilaPage.keyboard,
-                          ]);
+                          _navigate(FitilaPage.ia);
                         case 3:
-                          _chooseModule('Une aide adaptée à votre question', [
-                            FitilaPage.ia,
-                            FitilaPage.temIa,
-                          ]);
+                          _navigate(FitilaPage.learn);
                         case 4:
-                          _chooseModule('Votre espace personnel', [
-                            FitilaPage.profile,
-                            FitilaPage.settings,
-                          ]);
+                          _navigate(FitilaPage.profile);
                       }
                     },
-                    destinations: const [
-                      NavigationDestination(
-                        icon: Icon(Icons.dynamic_feed_outlined),
-                        selectedIcon: Icon(Icons.dynamic_feed_rounded),
-                        label: 'Fil',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.school_outlined),
-                        selectedIcon: Icon(Icons.school_rounded),
-                        label: 'Apprendre',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.translate_rounded),
-                        label: 'Langues',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.auto_awesome_outlined),
-                        selectedIcon: Icon(Icons.auto_awesome_rounded),
-                        label: 'IA',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.person_outline_rounded),
-                        selectedIcon: Icon(Icons.person_rounded),
-                        label: 'Moi',
-                      ),
-                    ],
                   ),
             floatingActionButton:
                 _page == FitilaPage.feed || _page == FitilaPage.creator
-                ? FloatingActionButton.extended(
-                    backgroundColor: _fitilaPrimary,
+                ? FloatingActionButton(
+                    backgroundColor: _fitilaClay,
                     foregroundColor: Colors.white,
                     onPressed: () => FeedScreen.showComposer(
                       context,
@@ -1367,7 +1326,6 @@ class _FitilaShellState extends State<FitilaShell> {
                           : _persistPost,
                     ),
                     icon: const Icon(Icons.add_rounded),
-                    label: const Text('Créer'),
                   )
                 : null,
           ),
@@ -1390,32 +1348,33 @@ class _NavigationPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = [
+    final explorer = [
       FitilaPage.feed,
-      FitilaPage.creator,
-      FitilaPage.templates,
       FitilaPage.dictionary,
-      FitilaPage.translator,
-      FitilaPage.ia,
-      FitilaPage.temIa,
-      FitilaPage.learn,
       FitilaPage.classe,
+      FitilaPage.ia,
+      FitilaPage.translator,
+      FitilaPage.learn,
+      FitilaPage.templates,
+      FitilaPage.creator,
+    ];
+    final culture = [
+      FitilaPage.voiceLab,
+      FitilaPage.education,
+      FitilaPage.discover,
+      FitilaPage.messages,
     ];
     final services = [
       FitilaPage.services,
       FitilaPage.market,
       FitilaPage.agriculture,
       FitilaPage.finance,
-      FitilaPage.education,
       FitilaPage.health,
       FitilaPage.sos,
-      FitilaPage.messages,
-      FitilaPage.discover,
       FitilaPage.install,
     ];
-    final tools = [
+    final account = [
       FitilaPage.keyboard,
-      FitilaPage.voiceLab,
       FitilaPage.teacher,
       FitilaPage.drafts,
       FitilaPage.offline,
@@ -1426,77 +1385,55 @@ class _NavigationPanel extends StatelessWidget {
       FitilaPage.profile,
       FitilaPage.settings,
     ];
-    return DecoratedBox(
-      decoration: const BoxDecoration(color: _fitilaInk),
+
+    return Material(
+      color: _fitilaCard,
       child: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: _fitilaPrimary,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Text(
-                    'F',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'FITILA',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      Text(
-                        'Bàátɔ̀nú + IA',
-                        style: TextStyle(color: Colors.white60, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            const Text(
+              'FITILA',
+              style: TextStyle(
+                color: _fitilaGoldDeep,
+                fontFamily: 'serif',
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                letterSpacing: .2,
+              ),
+            ),
+            const SizedBox(height: 3),
+            const Text(
+              'Bàátɔ̀nú · Langue, Culture & IA',
+              style: TextStyle(color: _fitilaMuted, fontSize: 11.5),
             ),
             const SizedBox(height: 18),
-            _ProfileTile(session: session),
-            const SizedBox(height: 18),
-            const _SectionLabel('Navigation'),
-            ...primary.map(
-              (item) => _NavItem(
+            const _SectionLabel('Explorer'),
+            for (final item in explorer)
+              _NavItem(
                 page: item,
                 selected: item == page,
                 onTap: () => onSelected(item),
               ),
-            ),
-            const SizedBox(height: 16),
+            const _SectionLabel('Culture'),
+            for (final item in culture)
+              _NavItem(
+                page: item,
+                selected: item == page,
+                onTap: () => onSelected(item),
+              ),
             const _SectionLabel('Services'),
             _NavGrid(pages: services, selected: page, onSelected: onSelected),
-            const SizedBox(height: 16),
-            const _SectionLabel('Outils'),
-            ...tools.map(
-              (item) => _NavItem(
+            const _SectionLabel('Compte'),
+            for (final item in account)
+              _NavItem(
                 page: item,
                 selected: item == page,
                 onTap: () => onSelected(item),
               ),
-            ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
+            _ProfileTile(session: session),
+            const SizedBox(height: 12),
             const _LanguageSwitch(),
           ],
         ),
@@ -4257,7 +4194,7 @@ class _AiScreenState extends State<AiScreen> {
                         child: Text(
                           msg.text,
                           style: TextStyle(
-                            color: mine ? Colors.white : _fitilaInk,
+                            color: mine ? const Color(0xFF2B2110) : _fitilaInkSoft,
                             height: 1.35,
                           ),
                         ),
@@ -6688,46 +6625,295 @@ class _PageFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 12,
-            runSpacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
+    return ColoredBox(
+      color: _fitilaSurface,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 700;
+          final scaffold = Scaffold.maybeOf(context);
+          final canOpenDrawer = scaffold?.hasDrawer ?? false;
+          return Column(
             children: [
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 680),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              Padding(
+                padding: EdgeInsets.fromLTRB(compact ? 18 : 22, 6, compact ? 18 : 22, 14),
+                child: Row(
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0,
+                    _PremiumTopIcon(
+                      icon: canOpenDrawer ? Icons.menu_rounded : Icons.arrow_back_rounded,
+                      tooltip: canOpenDrawer ? 'Menu' : 'Retour',
+                      onPressed: () {
+                        if (canOpenDrawer) {
+                          scaffold!.openDrawer();
+                        } else {
+                          Navigator.maybePop(context);
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: _fitilaInk,
+                              fontFamily: 'serif',
+                              fontSize: compact ? 20 : 25,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: .2,
+                            ),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            subtitle,
+                            maxLines: compact ? 1 : 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: _fitilaMuted,
+                              fontSize: 11.5,
+                              height: 1.25,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        height: 1.3,
-                      ),
-                    ),
+                    if (!compact && action != null) ...[
+                      const SizedBox(width: 12),
+                      action!,
+                    ],
                   ],
                 ),
               ),
-              ?action,
+              const _PremiumStripe(),
+              if (compact && action != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+                  child: Align(alignment: Alignment.centerRight, child: action!),
+                ),
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    compact ? 18 : 22,
+                    compact ? 12 : 16,
+                    compact ? 18 : 22,
+                    16,
+                  ),
+                  child: child,
+                ),
+              ),
             ],
-          ),
-          const SizedBox(height: 14),
-          Expanded(child: child),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PremiumStripe extends StatelessWidget {
+  const _PremiumStripe();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      height: 4,
+      child: Row(
+        children: [
+          Expanded(child: ColoredBox(color: _fitilaPrimary)),
+          Expanded(child: ColoredBox(color: _fitilaClay)),
+          Expanded(child: ColoredBox(color: _fitilaSage)),
+          Expanded(child: ColoredBox(color: Color(0x14241F2E))),
         ],
+      ),
+    );
+  }
+}
+
+class _PremiumTopIcon extends StatelessWidget {
+  const _PremiumTopIcon({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 38,
+      height: 38,
+      child: IconButton(
+        tooltip: tooltip,
+        padding: EdgeInsets.zero,
+        onPressed: onPressed,
+        iconSize: 20,
+        icon: Icon(icon),
+      ),
+    );
+  }
+}
+
+class _PremiumBottomNav extends StatelessWidget {
+  const _PremiumBottomNav({
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+      child: Container(
+        height: 68,
+        decoration: BoxDecoration(
+          color: _fitilaCard.withValues(alpha: .96),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: _fitilaBorder),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x29241F2E),
+              blurRadius: 28,
+              offset: Offset(0, 14),
+              spreadRadius: -16,
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: _PremiumBottomItem(
+                icon: Icons.dynamic_feed_outlined,
+                activeIcon: Icons.dynamic_feed_rounded,
+                label: 'Fil',
+                active: selectedIndex == 0,
+                onTap: () => onSelected(0),
+              ),
+            ),
+            Expanded(
+              child: _PremiumBottomItem(
+                icon: Icons.menu_book_outlined,
+                activeIcon: Icons.menu_book_rounded,
+                label: 'Dico',
+                active: selectedIndex == 1,
+                onTap: () => onSelected(1),
+              ),
+            ),
+            Expanded(
+              child: Transform.translate(
+                offset: const Offset(0, -14),
+                child: Semantics(
+                  button: true,
+                  label: 'IA Fitila',
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () => onSelected(2),
+                    child: Container(
+                      width: 52,
+                      height: 52,
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [_fitilaPrimary, Color(0xFFA6721F)],
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x739C6B1D),
+                            blurRadius: 22,
+                            offset: Offset(0, 12),
+                            spreadRadius: -8,
+                          ),
+                        ],
+                        border: selectedIndex == 2
+                            ? Border.all(color: _fitilaGoldDeep, width: 2)
+                            : null,
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Color(0xFF2B2110),
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: _PremiumBottomItem(
+                icon: Icons.school_outlined,
+                activeIcon: Icons.school_rounded,
+                label: 'Apprendre',
+                active: selectedIndex == 3,
+                onTap: () => onSelected(3),
+              ),
+            ),
+            Expanded(
+              child: _PremiumBottomItem(
+                icon: Icons.person_outline_rounded,
+                activeIcon: Icons.person_rounded,
+                label: 'Profil',
+                active: selectedIndex == 4,
+                onTap: () => onSelected(4),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PremiumBottomItem extends StatelessWidget {
+  const _PremiumBottomItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? _fitilaGoldDeep : _fitilaMuted;
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(active ? activeIcon : icon, color: color, size: 22),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.fade,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -6743,40 +6929,48 @@ class _HeroPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: _fitilaInk,
-        borderRadius: BorderRadius.circular(16),
+        color: _fitilaCard,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _fitilaBorder),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.local_fire_department_rounded,
-            color: _fitilaPrimary,
-            size: 54,
+          Container(
+            width: 46,
+            height: 46,
+            decoration: const BoxDecoration(
+              color: _fitilaPrimarySoft,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.auto_awesome_rounded,
+              color: _fitilaGoldDeep,
+            ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           Text(
             title,
             style: const TextStyle(
-              color: Colors.white,
-              fontSize: 52,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0,
+              color: _fitilaInk,
+              fontFamily: 'serif',
+              fontSize: 30,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             subtitle,
             style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 18,
-              height: 1.35,
+              color: _fitilaMuted,
+              fontSize: 14,
+              height: 1.45,
             ),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 18),
           const Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -7567,23 +7761,51 @@ class _DictionaryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
+    return Material(
+      color: _fitilaCard,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: _fitilaBorder),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
         onTap: onTap,
-        leading: const CircleAvatar(
-          backgroundColor: _fitilaPrimarySoft,
-          child: Icon(Icons.menu_book_rounded, color: _fitilaPrimary),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: RichText(
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  text: TextSpan(
+                    style: const TextStyle(color: _fitilaInk),
+                    children: [
+                      TextSpan(
+                        text: entry.word,
+                        style: const TextStyle(
+                          fontFamily: 'serif',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      TextSpan(
+                        text: '  ${entry.definition}',
+                        style: const TextStyle(
+                          color: _fitilaMuted,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right_rounded, color: _fitilaMuted, size: 18),
+            ],
+          ),
         ),
-        title: Text(
-          entry.word,
-          style: const TextStyle(fontWeight: FontWeight.w900),
-        ),
-        subtitle: Text(
-          entry.definition,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: const Icon(Icons.chevron_right_rounded),
       ),
     );
   }
@@ -7606,27 +7828,47 @@ class _TextPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: controller,
-              readOnly: readOnly,
-              maxLines: maxLines,
-              decoration: InputDecoration(
-                hintText: hint,
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-              ),
-            ),
-          ],
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _fitilaCard,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: readOnly ? _fitilaPrimary : _fitilaBorder,
         ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title.toUpperCase(),
+            style: const TextStyle(
+              color: _fitilaGoldDeep,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: .3,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            controller: controller,
+            readOnly: readOnly,
+            maxLines: maxLines,
+            style: const TextStyle(
+              color: _fitilaInkSoft,
+              fontSize: 14.5,
+              height: 1.5,
+            ),
+            decoration: InputDecoration(
+              hintText: hint,
+              fillColor: Colors.transparent,
+              contentPadding: EdgeInsets.zero,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -7907,46 +8149,53 @@ class _FeatureGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final compact = constraints.maxWidth < 620;
         return GridView.builder(
           itemCount: items.length,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 360,
-            mainAxisExtent: 168,
+            maxCrossAxisExtent: compact ? 180 : 260,
+            mainAxisExtent: compact ? 132 : 142,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
           ),
           itemBuilder: (context, index) {
             final item = items[index];
-            return Card(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(item.$1, color: _fitilaPrimary),
-                    const SizedBox(height: 10),
-                    Text(
-                      item.$2,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w900),
+            return Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: _fitilaCard,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: _fitilaBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(item.$1, color: _fitilaGoldDeep, size: 22),
+                  const Spacer(),
+                  Text(
+                    item.$2,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _fitilaInk,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
                     ),
-                    const SizedBox(height: 6),
-                    Expanded(
-                      child: Text(
-                        item.$3,
-                        maxLines: 4,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          height: 1.3,
-                        ),
-                      ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    item.$3,
+                    maxLines: compact ? 2 : 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _fitilaMuted,
+                      fontSize: 10.5,
+                      height: 1.25,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             );
           },
@@ -7968,18 +8217,38 @@ class _ActionList extends StatelessWidget {
         for (final item in items)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: Card(
+            child: Container(
+              decoration: BoxDecoration(
+                color: _fitilaCard,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: _fitilaBorder),
+              ),
               child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: _fitilaPrimarySoft,
-                  child: Icon(item.icon, color: _fitilaPrimary),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _fitilaSurfaceAlt,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(item.icon, color: _fitilaGoldDeep, size: 19),
                 ),
                 title: Text(
                   item.title,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
+                  style: const TextStyle(
+                    color: _fitilaInk,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                subtitle: Text(item.subtitle),
-                trailing: const Icon(Icons.chevron_right_rounded),
+                subtitle: Text(
+                  item.subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: _fitilaMuted, fontSize: 11),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded, color: _fitilaMuted),
               ),
             ),
           ),
@@ -8005,46 +8274,50 @@ class _MetricStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final compact = constraints.maxWidth < 620;
+        final columns = compact
+            ? (metrics.length > 3 ? 3 : metrics.length)
+            : metrics.length.clamp(1, 4);
         return GridView.builder(
           itemCount: metrics.length,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 300,
-            mainAxisExtent: 110,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisExtent: compact ? 82 : 96,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
           ),
           itemBuilder: (context, index) {
             final metric = metrics[index];
-            return Card(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    Icon(metric.$3, color: _fitilaPrimary, size: 34),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            metric.$2,
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          Text(
-                            metric.$1,
-                            style: TextStyle(color: Colors.grey.shade700),
-                          ),
-                        ],
-                      ),
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              decoration: BoxDecoration(
+                color: _fitilaCard,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _fitilaBorder),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    metric.$2,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: _fitilaInk,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    metric.$1,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: _fitilaMuted, fontSize: 10),
+                  ),
+                ],
               ),
             );
           },
@@ -8068,25 +8341,20 @@ class _DesktopTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 2),
       child: Row(
         children: [
           Expanded(
             child: SearchBar(
               hintText: 'Recherche globale: dictionnaire, classe, posts...',
-              leading: const Icon(Icons.search_rounded),
-              elevation: const WidgetStatePropertyAll(0),
-              backgroundColor: const WidgetStatePropertyAll(Colors.white),
-              shape: WidgetStatePropertyAll(
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
+              leading: const Icon(Icons.search_rounded, color: _fitilaMuted),
             ),
           ),
           const SizedBox(width: 10),
-          IconButton.filledTonal(
-            onPressed: () {},
+          _PremiumTopIcon(
+            icon: Icons.notifications_none_rounded,
             tooltip: 'Notifications',
-            icon: const Icon(Icons.notifications_rounded),
+            onPressed: () {},
           ),
           const SizedBox(width: 8),
           FilledButton.icon(
@@ -8110,16 +8378,18 @@ class _ProfileTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
+        color: _fitilaSurfaceAlt,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _fitilaBorder),
       ),
       child: Row(
         children: [
           CircleAvatar(
             backgroundColor: _fitilaPrimary,
+            foregroundColor: const Color(0xFF2B2110),
             child: Text(
               session.displayName.characters.first,
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(fontWeight: FontWeight.w800),
             ),
           ),
           const SizedBox(width: 10),
@@ -8132,13 +8402,13 @@ class _ProfileTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
+                    color: _fitilaInk,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 Text(
                   session.role,
-                  style: const TextStyle(color: Colors.white60, fontSize: 12),
+                  style: const TextStyle(color: _fitilaMuted, fontSize: 11),
                 ),
               ],
             ),
@@ -8163,29 +8433,35 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 3),
       child: ListTile(
+        dense: true,
+        visualDensity: VisualDensity.compact,
         selected: selected,
         onTap: onTap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        selectedTileColor: _fitilaPrimary.withValues(alpha: 0.18),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        selectedTileColor: _fitilaSurfaceAlt,
         leading: Icon(
           page.icon,
-          color: selected ? _fitilaPrimary : Colors.white70,
+          size: 19,
+          color: _fitilaGoldDeep,
         ),
         title: Text(
           page.title,
           style: TextStyle(
-            color: selected ? Colors.white : Colors.white70,
-            fontWeight: FontWeight.w800,
+            color: _fitilaInk,
+            fontSize: 13.5,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
           ),
         ),
-        subtitle: Text(
-          page.description,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: Colors.white38, fontSize: 11),
-        ),
+        subtitle: selected
+            ? Text(
+                page.description,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: _fitilaMuted, fontSize: 10.5),
+              )
+            : null,
       ),
     );
   }
@@ -8210,7 +8486,7 @@ class _NavGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisExtent: 94,
+        mainAxisExtent: 88,
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
       ),
@@ -8218,19 +8494,15 @@ class _NavGrid extends StatelessWidget {
         final page = pages[index];
         final active = page == selected;
         return InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           onTap: () => onSelected(page),
           child: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: active
-                  ? _fitilaPrimary.withValues(alpha: 0.18)
-                  : Colors.white.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(16),
+              color: active ? _fitilaPrimarySoft : _fitilaSurfaceAlt,
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: active
-                    ? _fitilaPrimary.withValues(alpha: 0.38)
-                    : Colors.white.withValues(alpha: 0.08),
+                color: active ? _fitilaPrimary : _fitilaBorder,
               ),
             ),
             child: Column(
@@ -8238,8 +8510,8 @@ class _NavGrid extends StatelessWidget {
               children: [
                 Icon(
                   page.icon,
-                  size: 20,
-                  color: active ? _fitilaPrimary : Colors.white70,
+                  size: 19,
+                  color: active ? _fitilaGoldDeep : _fitilaMuted,
                 ),
                 const Spacer(),
                 Text(
@@ -8247,16 +8519,16 @@ class _NavGrid extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
+                    color: _fitilaInk,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 Text(
                   page.description,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white38, fontSize: 10),
+                  style: const TextStyle(color: _fitilaMuted, fontSize: 9.5),
                 ),
               ],
             ),
@@ -8275,13 +8547,14 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 8, 6, 8),
+      padding: const EdgeInsets.fromLTRB(6, 16, 6, 5),
       child: Text(
-        text.toUpperCase(),
+        text,
         style: const TextStyle(
-          color: Colors.white38,
-          fontSize: 11,
-          fontWeight: FontWeight.w900,
+          color: _fitilaMuted,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w800,
+          letterSpacing: .4,
         ),
       ),
     );
@@ -8296,8 +8569,9 @@ class _LanguageSwitch extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
+        color: _fitilaSurfaceAlt,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _fitilaBorder),
       ),
       child: const Row(
         children: [
@@ -8325,13 +8599,14 @@ class _DarkChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(16),
+        color: _fitilaSurfaceAlt,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _fitilaBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white, size: 16),
+          Icon(icon, color: _fitilaGoldDeep, size: 16),
           const SizedBox(width: 6),
           Flexible(
             child: Text(
