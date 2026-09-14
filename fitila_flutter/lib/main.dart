@@ -7106,7 +7106,12 @@ class _LearnScreenState extends State<LearnScreen> {
 }
 
 class ClasseScreen extends StatefulWidget {
-  const ClasseScreen({super.key});
+  const ClasseScreen({
+    super.key,
+    this.initialLessons,
+  });
+
+  final List<WebClasseLesson>? initialLessons;
 
   @override
   State<ClasseScreen> createState() => _ClasseScreenState();
@@ -7124,7 +7129,9 @@ class _ClasseScreenState extends State<ClasseScreen> {
   @override
   void initState() {
     super.initState();
-    _webLessons = WebClasseContent.loadLessons();
+    _webLessons = widget.initialLessons == null
+        ? WebClasseContent.loadLessons()
+        : Future.value(widget.initialLessons!);
   }
 
   void _setLevel(String level) {
