@@ -103,10 +103,12 @@ void main() {
     expect(find.text('Fitila IA'), findsWidgets);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.bySemanticsLabel('Création').last);
+    final creationButton = find.widgetWithIcon(InkWell, Icons.add_rounded);
+    expect(creationButton, findsOneWidget);
+    await tester.tap(creationButton);
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
-    expect(find.text('Créateur'), findsWidgets);
+    expect(find.text('Createur de contenu'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
