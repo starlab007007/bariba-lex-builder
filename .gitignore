@@ -37,3 +37,5 @@ android/.kotlin/
 *.keystore
 *.p12
 *.pem
+fitila_flutter/.ci-dart-defines.json
+fitila_flutter/.dart-defines.generated.json
