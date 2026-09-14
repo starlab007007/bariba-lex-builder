@@ -3902,26 +3902,39 @@ class _WebParityModuleScreenState extends State<WebParityModuleScreen> {
                                 size: 22,
                               ),
                             ),
-                            const Spacer(),
+                            const SizedBox(width: 6),
                             if (action.badge != null)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 7,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFDCEAE0),
-                                  borderRadius: BorderRadius.circular(99),
-                                ),
-                                child: Text(
-                                  action.badge!,
-                                  style: const TextStyle(
-                                    color: _fitilaSage,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w900,
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Container(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 72,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFDCEAE0),
+                                      borderRadius: BorderRadius.circular(99),
+                                    ),
+                                    child: Text(
+                                      action.badge!,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: _fitilaSage,
+                                        fontSize: 8.5,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                              )
+                            else
+                              const Spacer(),
                           ],
                         ),
                         const Spacer(),
