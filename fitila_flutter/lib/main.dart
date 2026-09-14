@@ -991,7 +991,7 @@ class _PremiumLandingHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < 760;
     return Container(
-      constraints: BoxConstraints(minHeight: compact ? 220 : 500),
+      constraints: BoxConstraints(minHeight: compact ? 190 : 500),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(compact ? 26 : 32),
         border: Border.all(color: _fitilaBorder),
@@ -1050,8 +1050,8 @@ class _PremiumLandingHero extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        width: compact ? 48 : 58,
-                        height: compact ? 48 : 58,
+                        width: compact ? 44 : 58,
+                        height: compact ? 44 : 58,
                         decoration: const BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: LinearGradient(
@@ -1074,7 +1074,7 @@ class _PremiumLandingHero extends StatelessWidget {
                             style: TextStyle(
                               color: _fitilaGoldDeep,
                               fontFamily: 'serif',
-                              fontSize: 28,
+                              fontSize: 25,
                               fontWeight: FontWeight.w700,
                               letterSpacing: .5,
                             ),
@@ -1091,55 +1091,89 @@ class _PremiumLandingHero extends StatelessWidget {
                       ),
                     ],
                   ),
-                  SizedBox(height: compact ? 18 : 34),
+                  SizedBox(height: compact ? 14 : 34),
                   Text(
                     'La langue vivante,\naugmentée par l’IA.',
                     style: TextStyle(
                       color: _fitilaInk,
                       fontFamily: 'serif',
-                      fontSize: compact ? 27 : 42,
+                      fontSize: compact ? 25 : 42,
                       height: 1.06,
                       fontWeight: FontWeight.w600,
                       letterSpacing: -.5,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: compact ? 8 : 12),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 460),
                     child: Text(
-                      'Traduire, apprendre, partager et préserver le Bàátɔ̀nú dans une expérience mobile élégante et accessible.',
+                      compact
+                          ? 'Traduire, apprendre et transmettre le Bàátɔ̀nú, simplement.'
+                          : 'Traduire, apprendre, partager et préserver le Bàátɔ̀nú dans une expérience mobile élégante et accessible.',
                       style: TextStyle(
                         color: _fitilaInkSoft,
-                        fontSize: compact ? 13 : 15,
+                        fontSize: compact ? 12.5 : 15,
                         height: 1.5,
                       ),
                     ),
                   ),
-                  SizedBox(height: compact ? 16 : 28),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: const [
-                      _LandingFeatureChip(
-                        icon: Icons.translate_rounded,
-                        label: 'Traduction',
-                        tone: _fitilaPrimarySoft,
-                        ink: _fitilaGoldDeep,
-                      ),
-                      _LandingFeatureChip(
-                        icon: Icons.auto_awesome_rounded,
-                        label: 'IA culturelle',
-                        tone: Color(0xFFF4DED2),
-                        ink: _fitilaClay,
-                      ),
-                      _LandingFeatureChip(
-                        icon: Icons.school_rounded,
-                        label: 'Apprentissage',
-                        tone: Color(0xFFDCEAE0),
-                        ink: _fitilaSage,
-                      ),
-                    ],
-                  ),
+                  SizedBox(height: compact ? 12 : 28),
+                  if (compact)
+                    const Row(
+                      children: [
+                        Expanded(
+                          child: _LandingCompactFeature(
+                            icon: Icons.translate_rounded,
+                            label: 'Traduire',
+                            tone: _fitilaPrimarySoft,
+                            ink: _fitilaGoldDeep,
+                          ),
+                        ),
+                        SizedBox(width: 7),
+                        Expanded(
+                          child: _LandingCompactFeature(
+                            icon: Icons.auto_awesome_rounded,
+                            label: 'IA',
+                            tone: Color(0xFFF4DED2),
+                            ink: _fitilaClay,
+                          ),
+                        ),
+                        SizedBox(width: 7),
+                        Expanded(
+                          child: _LandingCompactFeature(
+                            icon: Icons.school_rounded,
+                            label: 'Apprendre',
+                            tone: Color(0xFFDCEAE0),
+                            ink: _fitilaSage,
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    const Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _LandingFeatureChip(
+                          icon: Icons.translate_rounded,
+                          label: 'Traduction',
+                          tone: _fitilaPrimarySoft,
+                          ink: _fitilaGoldDeep,
+                        ),
+                        _LandingFeatureChip(
+                          icon: Icons.auto_awesome_rounded,
+                          label: 'IA culturelle',
+                          tone: Color(0xFFF4DED2),
+                          ink: _fitilaClay,
+                        ),
+                        _LandingFeatureChip(
+                          icon: Icons.school_rounded,
+                          label: 'Apprentissage',
+                          tone: Color(0xFFDCEAE0),
+                          ink: _fitilaSage,
+                        ),
+                      ],
+                    ),
                   if (!compact) ...[
                     const SizedBox(height: 34),
                     const Row(
@@ -1175,6 +1209,51 @@ class _PremiumLandingHero extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _LandingCompactFeature extends StatelessWidget {
+  const _LandingCompactFeature({
+    required this.icon,
+    required this.label,
+    required this.tone,
+    required this.ink,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color tone;
+  final Color ink;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 7),
+      decoration: BoxDecoration(
+        color: tone,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 14, color: ink),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: ink,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
