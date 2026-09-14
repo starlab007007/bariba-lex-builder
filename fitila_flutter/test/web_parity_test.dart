@@ -1,4 +1,5 @@
 import 'package:fitila_native/core/signature_theme.dart';
+import 'package:fitila_native/core/web_parity_models.dart';
 import 'package:fitila_native/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -108,7 +109,13 @@ void main() {
   testWidgets('Classe opens real web lesson Tii dobonu and its tabs', (
     tester,
   ) async {
-    await pumpPhone(tester, const ClasseScreen());
+    final lessons = await tester.runAsync(WebClasseContent.loadLessons);
+    expect(lessons, isNotNull);
+    expect(lessons!.length, 57);
+    expect(lessons.where((lesson) => lesson.level == 'N1').length, 32);
+    expect(lessons.where((lesson) => lesson.level == 'N2').length, 25);
+
+    await pumpPhone(tester, ClasseScreen(initialLessons: lessons));
 
     expect(find.text('Niveau 1'), findsOneWidget);
     expect(find.text('Niveau 2'), findsOneWidget);
