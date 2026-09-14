@@ -1,0 +1,2422 @@
+{
+  "source": "fitila.bj web parity",
+  "generatedFrom": [
+    "src/data/classeContent.ts",
+    "src/data/classeContentN2.ts"
+  ],
+  "lessons": [
+    {
+      "level": "N1",
+      "id": 1,
+      "page": 12,
+      "title": "Tii dobonu",
+      "theme": "tii_dobonu",
+      "themeLabel": "Tii dobonu",
+      "text": "Tii dobonu\nBɛɛrɛ sariru\nSɔ̃ɔ sãreru ta torua. Saka\nka Duwe ba suanamɔ. Koto\nu win yãa buranu doke u\nkurɔ kpaa te da. Ka win\nkpaasibu ba nim bɔkua. Yè\nu tura yɛnuɔ, u wɔruma, u\ntem tɛɛra, u siruka. Wɔɔ\nberan bibu ba nùn yãɛmɔ.",
+      "imageUrl": "/classe/img-p012.png",
+      "sections": {
+        "observe": [
+          "1- A geruo yè a waamɔ",
+          "2- Mban gariya ba koo kpĩ"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye swaa daki, a geruo yèn gari ba mɔ̀ dee dee?",
+          "2- Mba n Koto deema?",
+          "3- Deedeeru mana gari yi yi koora?"
+        ],
+        "reagis": [
+          "1- Amɔna a Koton koma te waasina?",
+          "2- A geruo koma nì nu ra ka nun naawɛ ka nì a ku ra kã wunɛn wuu"
+        ],
+        "retiens": [
+          "1- Kari yerà ya wãa koma ni kpuro sɔɔ?",
+          "2- Bwisi yirà a dɔba faagi ye sɔɔ"
+        ]
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsi gbiikiru : u a k",
+        "reading": [
+          "su tam nɔrubu kam kam deri",
+          "su tam kam kam",
+          "su ta ka",
+          "u a k",
+          "ku ka kaa kuu",
+          "kuku kuuka kua",
+          "u kukua",
+          "u kuuka kua",
+          "u ka kua",
+          "a kua"
+        ],
+        "writing": [
+          "u",
+          "a",
+          "k",
+          "kuuka",
+          "u kua"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 2,
+      "page": 14,
+      "title": "Nim",
+      "theme": "nim",
+      "themeLabel": "Nim",
+      "text": "Nim\nBararun swaa\nNari kurɔ mɔrowa Duniawɔ. Sɔ̃ɔ sãreru, pɔmpin nima u ra take. Wuburu\nsanam, daarɔwa Nari ka win bɔrɔba ba ra nim takabu de. Adama\ngisɔku gè, yè ba daarun nim mɛ nɔra, ben yɛnugibu ba kesukubu\nmwarawa. Ba ka gari yi biti kua.",
+      "imageUrl": "/classe/img-p014.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya a dokee ba mɔ̀ yori yini sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye swaa daki, a geruo yèn gari ba mɔ̀ dee dee?",
+          "2- Mban sɔ̃na Nari ka win bɔrɔba ba ku ra maa nim takabu de pɔmpiɔ?",
+          "3- Mba n sɔ̃ɔsimɔ mɛ̃ daa ten nima mu ka bara te na?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru yiruse : n",
+        "reading": [
+          "su nim buram nɔ",
+          "nim",
+          "n",
+          "na nu naa",
+          "nana nukaa kana",
+          "kaanu kukunu kununu",
+          "na kana",
+          "nana u na",
+          "nana u ka kaanu na",
+          "na kuuka kua",
+          "u naa nukaa kana"
+        ],
+        "writing": [
+          "n",
+          "n",
+          "kaanu",
+          "nukaa",
+          "nana u ka kaanu na"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 3,
+      "page": 16,
+      "title": "Nim",
+      "theme": "nim",
+      "themeLabel": "Nim",
+      "text": "Nim\nBɛsɛn wɔɔ beran bararu\nBɛsɛn wuun dɔkɔ pɔmpi ya ka bɛsɛn wɔɔ bera tondewa. Yen sɔ̃na sa ra\nbwian nim nɔ wɔɔ bera mi. Mɛ̃ wɔɔ pii ya ka na wuuwɔ, bɛsɛn wɔɔ bera\nmiya ya ra dam ko. Gabu ba ra nɛɛ gɔriba ba dim bikiamɔ.",
+      "imageUrl": "/classe/img-p016.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ yori yi sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye swaa daki, a geruo yèn gari ba mɔ̀ dee dee?",
+          "2- Mban sɔ̃na wɔɔ bera miya wɔɔ pii ya ra dam ko?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru itase: i",
+        "reading": [
+          "su nim kam kam nɔrubu deri",
+          "de ri",
+          "ri",
+          "i",
+          "ni nii nia niki",
+          "naki nukaa nuki niku kuni",
+          "kuuka kuuki",
+          "na nia",
+          "i na i nia",
+          "u naa nia kana",
+          "u ka naki na",
+          "kina u niki na ka kuuki"
+        ],
+        "writing": [
+          "i",
+          "i",
+          "niki",
+          "kuuka",
+          "na nia"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 4,
+      "page": 20,
+      "title": "Bii mɛroru",
+      "theme": "bii_meroru",
+      "themeLabel": "Bii mɛroru",
+      "text": "Bii mɛroru\nMarùbu dangaru kãbu\nSaarɛ ka win kurɔ Yãrondo ba ka suana Sakarɔ, bii turowa ba mara.\nWɔ̃ɔ itawa bii wi u mɔ gisɔ. Bii wi u ra n bwãa dowa. Sɔ̃ɔ teeru Saarɛn\nmɛro u nɛɛ: bii turowa i kĩ? Saarɛ u nɛɛ: “Aawo, sa gina wãramɔwa”.",
+      "imageUrl": "/classe/img-p020.png",
+      "sections": {
+        "observe": [
+          "1- A geruo yè a waamɔ foto yeni sɔɔ.",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mban sɔ̃na Yãrondo kùn maa bii goo mara?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru nnɛse : e",
+        "reading": [
+          "su marubu kiri kiri deri",
+          "deri",
+          "de",
+          "e",
+          "ke keu kue kua",
+          "kenu kuke akeke",
+          "a keu kua",
+          "nana u keu kua",
+          "a akeke na ka nana",
+          "i ku kuke"
+        ],
+        "writing": [
+          "e",
+          "e",
+          "kenu",
+          "akeke",
+          "a akeke na"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 5,
+      "page": 22,
+      "title": "Bii mɛroru",
+      "theme": "bii_meroru",
+      "themeLabel": "Bii mɛroru",
+      "text": "Bii mɛroru\nSɔɔdo ka win samaa\nBibu nɔbaa tia Geekpa u ka\nSɔɔdo mara wɔ̃ɔ nɔba nnɛn baa\nsɔɔ. Ben bii turo wì u keu daamɔ,\nkookariwa ba ra ko bù ka win keu\nyãnu dwe. Ben bii be kpuro ba ra\nn gberewa kpa ba n nuku kaabinu\nsãa. Ben yɛnuɔ yè ba wa yera ba\nra di.",
+      "imageUrl": "/classe/img-p022.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mban sɔ̃na tɔn ben bibu ba nuku kaabinu sãa?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru nɔɔbuse : ɛ",
+        "reading": [
+          "bibu ka mɛron bwãa dobun sɔ̃",
+          "mɛro",
+          "mɛ",
+          "ɛ",
+          "nɛ nɛɛ nɛna nɛni",
+          "kɛnɛ naanɛ kɛnia kɛnua",
+          "nɛkɛ nɛkɛ",
+          "nɛna na ka kɛkɛ na",
+          "kɛnu u naanɛ kua",
+          "u kɛkɛ kɛnia"
+        ],
+        "writing": [
+          "ɛ",
+          "ɛ",
+          "kɛnɛ",
+          "naanɛ",
+          "a kɛtɛ nɛni"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 6,
+      "page": 24,
+      "title": "Baa ka mɛron nɔɔsinaa",
+      "theme": "baa_ka_meron",
+      "themeLabel": "Baa ka mɛron",
+      "text": "Baa ka mɛron nɔɔsinaa\nBwãri yɛmbu, komarun diya\nBaadomma Sɔnsaare ka win\nkurɔ ba ra n sannamɔwa. Ben\nwì u yara, ù n wee u ra n\nnandewa. Ben sannɔ gaku sɔɔ,\nben bibu ba swĩwa to sere\nturo u wasi swĩya.Tɔn be ba\nraa bwisika ma baawere u tii\ndaakari kã. Saa min diya\nDaakari kpindu ta dua yɛnu mi.",
+      "imageUrl": "/classe/img-p024.png",
+      "sections": {
+        "observe": [],
+        "ecoute": [],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru nɔbaa tiase : s",
+        "reading": [
+          "baa ka mɛron nɔɔsinaa",
+          "nɔɔsinaa",
+          "nɔɔ si naa",
+          "si",
+          "s",
+          "sa se si su",
+          "saa saasa susu sesu",
+          "sia nisi sisu sika",
+          "kasa saka sinani sininu",
+          "nikisu sukunu sesenu",
+          "seke u siki na ka naasu ka sina sesu sannu",
+          "sinani u nun naanɛ kua"
+        ],
+        "writing": [
+          "s",
+          "s",
+          "sinani",
+          "sesenusina sesu u sinani naanɛ kua"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 7,
+      "page": 26,
+      "title": "Baa ka mɛron nɔɔsinaa",
+      "theme": "baa_ka_meron",
+      "themeLabel": "Baa ka mɛron",
+      "text": "Baa ka mɛron nɔɔsinaa\nDaagiin daa biru kunda\nFaaru tɔn sãsɔgiiwa. Yen sɔ̃na ba\nnùn kurɔ tɔn gìro kã ben wuuwɔ ù\nka daa kɔsi. Tɔn be ba raa suana,\nba bibu mara. Wɔ̃ɔ dabirun biru\nFaaru kùn kɔsa. Ù n wãa yɛnuɔ\ngoo ku ra túɛ. Win kurɔ u den\nnɔni sɔ̃ɔ te kpana ma u nùn yina.",
+      "imageUrl": "/classe/img-p026.png",
+      "sections": {
+        "observe": [
+          "1- A geruo yè a waamɔ foto yeni",
+          "2- Mban gariya ba koo kpĩ ba n"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mba n sɔ̃ɔsimɔ mɛ̃ Faaru u sãwa ?",
+          "3- Faagi ye sɔɔ gari gɛɛ yu sɔ̃ɔsimɔ mɛ̃ Faaru u ra tɛmanɛ? A geruo"
+        ],
+        "reagis": [
+          "1- Kurɔ wi u gem mɔ ù ka durɔ wi yina?",
+          "2- Wunɛn yam waaru sɔɔ, amɔna ba koo ko bù ka durɔ wi daa kɔsisia?"
+        ],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru nɔba yiruse: r",
+        "reading": [
+          "baa ka mɛron ba n da gerunɛ",
+          "mɛ ron",
+          "ron",
+          "r",
+          "ra raa sari siru",
+          "kura suru kari seri",
+          "kera kara saaru naaru",
+          "nɛɛra nɛɛru kĩru",
+          "sikuru sekuru suuru",
+          "suru ka suru sariki u ra sakaru nɛ",
+          "nari u sakaku nɛni",
+          "sina kurɔ u sekuru kua",
+          "sani u tii kara"
+        ],
+        "writing": [
+          "r",
+          "r",
+          "ra",
+          "raa",
+          "nari ka suuru"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 8,
+      "page": 28,
+      "title": "Wãa yeru",
+      "theme": "waa_yeru",
+      "themeLabel": "Wãa yeru",
+      "text": "Wãa yeru\nBwisi dɔbabu\nGbeedɔɔnɛ gbee wukowa\nSɔ̃ɔgãarɔ. Yarusuma baayere,\nbaawere u ra win dii biru\nwukuwa. Gbeedɔɔnɛn u ku ra\nwin yam sɔmɛ wi. Sɔ̃ɔ teeru waa\nya win bii turo dɔma yɛnu\nsuunuɔ. U gobi di to bii wi u sere\nseewa. Tãɛ gè wiya u ra gbii ù\nwin yɛnu sɔmɛ.",
+      "imageUrl": "/classe/img-p028.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni mi?",
+          "2- Mban gariya ba koo kpĩ ba n"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mba n dera Gbeedɔɔnɛ u ku ra yam sɔmɛ?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru nɔba itase: o",
+        "reading": [
+          "sa n ka bwãa do sere bɛsɛn wãa yeru ta n dɛɛre",
+          "bwãa do",
+          "do",
+          "o",
+          "ko so koko soso",
+          "sàro seko kuro kao",
+          "koni kokaa sokuru korokuru",
+          "sokoro kaakaro kàkoru kokuru",
+          "seko u sisu kasu, u sì so",
+          "sisiru u sɛɛkunu kua",
+          "u koori na",
+          "seko u nɛɛ sinani ù sɛɛku ni suo",
+          "sinani u nùn siara"
+        ],
+        "writing": [
+          "o",
+          "o",
+          "o",
+          "o",
+          "seko",
+          "koku",
+          "seko u sokoru kua"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 9,
+      "page": 30,
+      "title": "Wãa yeru",
+      "theme": "waa_yeru",
+      "themeLabel": "Wãa yeru",
+      "text": "Wãa yeru\nWonduguru ga wãawa baru\ntemɔ. Suru baawere, gen\ntɔmbu ba ra ben wuu\nsɔmɛ.Tɔn durɔbu ba n\nwukumɔ, tɔn kurɔbu ba n\nkuramɔ kpa bibu ba n\nguramɔ. Ba ra ben kɔkɔrɔsu\nkɔrewa. Ya dera yam nɛnu\nburabun sina yasakpɔɔ u bè\nkãru kua ginaku.",
+      "imageUrl": "/classe/img-p030.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni",
+          "2- Mban gariya ba koo kpĩ ba"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mba n ka wuu sɔmbun gari na Wonduguruɔ?"
+        ],
+        "reagis": [
+          "1- Wunɛn waabu sɔɔ, mban sɔ̃na ba bè kãɛ te kua ?",
+          "2- Amɔna a Wondugurugibun sɔmbu te waasina ?",
+          "3- Yarufaani yerà ya wãa nɔɔnɛ yen bweseru sɔɔ?"
+        ],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru nɔba nnɛse : ɔ",
+        "reading": [
+          "su bɛsɛn kɔkɔrɔsu kɔre",
+          "kɔkɔrɔsu",
+          "kɔ kɔ rɔ su",
+          "kɔ",
+          "ɔ",
+          "kɔ nɔ sɔɔ",
+          "sɔɔru sɔro nɔri sɔka",
+          "nɔru sunɔ sɔmɔ saaru",
+          "kurɔ kɔɔra sɔ̀sɔru kɔkɔru",
+          "surɔkɔru sinakurɔ sɔkuru",
+          "seko sunɔ u kɔrɔku na kɔ",
+          "u Surɔku kɔkura",
+          "sinakurɔ u sɔɔru kua",
+          "u seko sunɔ sɔkuru kua",
+          "kɔɔra u nɛɛ ka sɔɔ."
+        ],
+        "writing": [
+          "ɔ",
+          "ɔ",
+          "ɔ",
+          "ɔ",
+          "sunɔ",
+          "saaru",
+          "surɔku u sɔrɔkɔru kasuu"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 10,
+      "page": 34,
+      "title": "Gɔɔ yeru",
+      "theme": "goo_yeru",
+      "themeLabel": "Gɔɔ yeru",
+      "text": "Gɔɔ yeru\nGobi kùn sàmbinu\nWɔ̃ɔ gaku Akpan Woru u gɔɔ kpeeru da Daaguruɔ. Wɔ̀ru ge ga yiba.\nDweebugibun dweebun dobu bu tura u ku ra gobi gari ù ka kãru ko. Nɛɛ\nyì u go yu ǹ nɔru mɔ. Woru u gobi bɔkurawa u sere sĩa. Sere ka gisɔ u ǹ\nnaa mwaanɛ.",
+      "imageUrl": "/classe/img-p034.png",
+      "sections": {
+        "observe": [
+          "1- A geruo yè a waamɔ foto yeni sɔɔ.",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ yori yini sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mba sɔ̃na Akpan Woru u gobi di to?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru wɔkuruse: wãrun yĩreru",
+        "reading": [
+          "n weenɛ su kãru ko ka daakari",
+          "kãru",
+          "kã",
+          "ã",
+          "kã sã kɔ̃ sãa",
+          "kɔ̃ɔ sɔ̃ɔ sãɛ kĩ",
+          "kãru sãsɔ sãka kĩru",
+          "sãaru sĩiru sɔ̃ɔsiru sĩisu",
+          "sariki u sɔ̃ɔsiru kua",
+          "u raa sɔɔru sãa",
+          "sãari u nɛɛ sariki u sãsia",
+          "kurɔ ku ra sere sãsɔ kã"
+        ],
+        "writing": []
+      }
+    },
+    {
+      "level": "N1",
+      "id": 11,
+      "page": 36,
+      "title": "Gɔnnaru",
+      "theme": "gonnaru",
+      "themeLabel": "Gɔnnaru",
+      "text": "Gɔnnaru\nYɔ̃ɔ ka Dama ba wɔ̀ru yinna\nSikiɔ. Ben faagi wee:\nYɔ̃ɔ: Bɛɛrɛ, a man nɛn yàba\ngobi wãɔ.\nDama nɛɛ: Buturu! Na ǹ maa\nka dala tie bɔɔrɔ!\n- A wunɛn yãnu potirima n\ndɔra, na ǹ kpã n ka gɔ̃ɔru gbi.\n- A suuru koowo.\nTɔn ba Yɔ̃ɔ suuru kana ma u\nwura.",
+      "imageUrl": "/classe/img-p036.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto ye sɔɔ?",
+          "2- Mban gariya a doke ba mɔ̀"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mban sɔ̃na Yɔ̃ɔ u Dama yàba gobi bikiamɔ?"
+        ],
+        "reagis": [
+          "1- Berà ka berà ba ra gɔnnɛ bɛsɛn deemaa sɔɔ?",
+          "2- Amɔna a gɔnnaru waasina deemaan swaa sɔɔ?",
+          "3- Mban sɔ̃na tɔn durɔ biiwa u ra n bukuro ?"
+        ],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru wɔkura tiase: ? ! h",
+        "reading": [
+          "ãhãɛ ! a ǹ mɛ yã?",
+          "ã hãɛ",
+          "hãɛ",
+          "h",
+          "ten sɔmburu ?",
+          "a gario",
+          "ahã! Sero u kaanu kɔsuka ka kɛkɛ",
+          "sinani u nɛɛ karo ! kaa nira a kɔsuka?",
+          "sero u kaa kãkii kɔ̃",
+          "u kɛkɛ sua u sĩa"
+        ],
+        "writing": [
+          "sinani u nɛɛ karo !",
+          "kaa nira a kɔsuka ?",
+          "sero u kɛkɛ sua u sĩa"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 12,
+      "page": 38,
+      "title": "Tɛtɛ toobu",
+      "theme": "tete_toobu",
+      "themeLabel": "Tɛtɛ toobu",
+      "text": "Tɛtɛ toobu\nTɛtɛ toobun gari\nMìn di demɔkarasi ya na Benɛɔ tɛtɛ dabira ta wãa : tem yãro,\nsɔnkɔrɔba, tem kãa bɔnu ka wuun saawaraban tɛtɛ. Dabira ku ra n tɛtɛ\nben yarufaani yã ma ba ku ra n mam bè dokee gãanu. Tɔn dirobun\nyigbɛru garu ta sĩa wuu ka wuu ta tɔmbu tɛtɛn yasansi kpakianaa. Min\ndiya tɔn dabiru ta tɛtɛ toobu wuswa wã.",
+      "imageUrl": "/classe/img-p038.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ yori yini sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mban sɔ̃na tɛtɛ too bwese bweseka ya wãa bɛsɛn temɔ."
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru wɔkura yiruse : b",
+        "reading": [
+          "tɛtɛ toobun saa su wɛrɛru deri",
+          "toobu",
+          "bu",
+          "b",
+          "ba bi bu be bii bɛɛ buu baa",
+          "bɔrɔ boo baaba bɛɛbɛ bɛɛrɛ bɔɔru",
+          "busuka bekuru bakaru bɛsɛru",
+          "bii be ba busuka barɔ",
+          "ba burura",
+          "baababa ba bè bɛkia",
+          "sia ba koo bè kara"
+        ],
+        "writing": [
+          "b",
+          "b",
+          "bibu",
+          "bekuru",
+          "baababa ba bè bɛkia"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 13,
+      "page": 40,
+      "title": "Tɛtɛ toobu",
+      "theme": "tete_toobu",
+      "themeLabel": "Tɛtɛ toobu",
+      "text": "Tɛtɛ toobu\nSekuru\nWɔ̃ɔ 2008/03/23, ba saawaraban tɛtɛ toba Benɛɔ. Woru Mɔwo Kotaɔ u\ntɔ̃ɔ te tam nɔrawa u sere tɛtɛ toobu da. U gari saarimɔ, u tɔmbu\nwɔmmɔ. Ba ǹ raa màa ka nùn yè yã. Wigii bè ba wãa mi, sekura bè\nmwa ma ba nùn tatira ba ka sĩa.",
+      "imageUrl": "/classe/img-p040.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi yeni sɔɔ."
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mban sɔ̃na Woru Mɔwon tɔmbu ba ka nùn sĩa?"
+        ],
+        "reagis": [
+          "1- Mba n kùn weenɛ bù ko tɛtɛ too yerɔ?",
+          "2- Woru Mɔwo wì u ku ra raa tam nɔ mba n koo kpĩ ǹ de ù tɔ̃ɔ te tam"
+        ],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru wɔkura itase: m",
+        "reading": [
+          "yarusuma buuwa ba ra tɛtɛ to benɛ temɔ",
+          "yarusuma",
+          "ya ru su ma",
+          "ma",
+          "m",
+          "ma mi mɔ mɛ",
+          "mu maa mari masa",
+          "mɛro mɔsa mara maari",
+          "mɔri mɔɔbu mako mɔɔribu",
+          "musuku marubu mɔrɔku makiribu",
+          "manu u masa kua bururu ma u mara sɔ̃sɔ",
+          "maru bi bu maamaaki kua",
+          "mako u manu nim kã",
+          "sa ko raa suuna ko"
+        ],
+        "writing": [
+          "m",
+          "m",
+          "m",
+          "m",
+          "manu u masa mɔ̀."
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 14,
+      "page": 42,
+      "title": "Sɛm",
+      "theme": "sem",
+      "themeLabel": "Sɛm",
+      "text": "Sɛm\nGɔ̃ɔ gà n kɔsa yasibu bù kɔsi\nSika kurɔ mɔrowa Kookiraɔ. U ku ra\ngbãa teye yu dɛɛre mɛna màa boòn\ntii. Tɔ̃ru garu dokotoro bè ba ra sɛm\ngari ko ba ben yɛnu bera. Ba ǹ ben\nsɛm siare. Ba bè dɔra. Saa tɔ̃ɔ ten\ndi Sika u kom kɔsa. Ben yɛnu ga ra\nn den dɛɛrewa.",
+      "imageUrl": "/classe/img-p042.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto ye sɔɔ ?",
+          "2- Mban gariya a dokee ba mɔ̀ faagi"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam wãaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Wara dɔra bi bu koo yarufaani ko?"
+        ],
+        "reagis": [
+          "1- Tiraasiwa nde gɔ̃ru kĩra Sika u ka kom kɔsa?",
+          "2- Sɛm mɔru ta bikia bù gina nun dɔra? Mban sɔ̃?"
+        ],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru wɔkura nnɛse: w",
+        "reading": [
+          "n weenɛ kuro mɔro u n sɛm mɔ",
+          "weenɛ",
+          "wee nɛ",
+          "wee",
+          "w",
+          "wi wa woo waa",
+          "wɛɛ wuu wãɛ wiru",
+          "wãru wiisu wɔru wooru",
+          "wooda weesu wĩiru wãaru",
+          "waaru wɔ̃kuru wɔrumaa wɔkinu",
+          "wurenu baawere wasawasa weenasi",
+          "waasu u wɔruma saa sɔmbun di",
+          "win wĩira wii wiririmɔ",
+          "u wooru nɔɔmɔ",
+          "woru u ka wii dokotoro da domi u wasara mɔ wãsiarun beraa"
+        ],
+        "writing": [
+          "w",
+          "w",
+          "wasawasa",
+          "woru u wooru nɔɔmɔ"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 15,
+      "page": 44,
+      "title": "Sɛm",
+      "theme": "sem",
+      "themeLabel": "Sɛm",
+      "text": "Sɛm\nWãaradon wãa yeru\nWãaradon yɛnuɔ bù ka wa bù\ndi nɔni swãana. Adama\nkookarigiiwa yam sɔmbun\nswaa sɔɔ. U ra win dii biru\nwuku, u koku wãri wukiri.\nWãaradon kurɔ u ra yɛnu\nkure, ù komkom tɔkɔnu sike,\nù boò wukiri. Ka ben sãa te\nkpuro, ben wãa yeru ta ra n\ndɛɛrewa.",
+      "imageUrl": "/classe/img-p044.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto ye",
+          "2- Mban gariya a doke ba mɔ̀"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam wãaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mba n sɔ̃ɔsimɔ mɛ̃ tɔn ben nɔma kùn biru turaa?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru wɔkura nɔɔbuse: t",
+        "reading": [
+          "n weenɛ tɔnun wãa yeru ta n dɛɛrewa",
+          "tɔnu",
+          "tɔ nu",
+          "tɔ",
+          "t",
+          "te to tu ta",
+          "tɛ tã tii",
+          "tĩa tɔ̃ru taraa tɛɛru",
+          "tɛtɛ toobu taaru taata",
+          "tɔkɔ kɛtɛ túuru tatiribu tɔkɔru kɛtɛku",
+          "taasu u kĩ ù win baan wɔru ko",
+          "u kɛtɛ ita tubi tasoɔ",
+          "u tɛkɛgibu tirenu mɔrisia",
+          "mɛna u wuun tɔkɔnu nɔɔsia mɛ̃ tɔ̃ru ta turima"
+        ],
+        "writing": [
+          "t",
+          "t",
+          "tɛtɛ",
+          "taasu u kɛtɛ tubi tasoɔ"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 16,
+      "page": 46,
+      "title": "Wɔɔ pii",
+      "theme": "woo_pii",
+      "themeLabel": "Wɔɔ pii",
+      "text": "Wɔɔ pii\nDom serubu\nGĩa wɔkuru Daado ka win durɔ\nba ǹ doye. Bii wi u kesukumɔwa\nsaa sɔ̃ɔ durun di. Yè ba dibu kpa,\nu den kemɔwa u ka siamɔ. Bii si\nsu sãawa pororo. Win wasi yu\nswĩa ma u wasira. Dokotoroɔwa\nba ka nùn da ba nùn nɔɔri.",
+      "imageUrl": "/classe/img-p046.png",
+      "sections": {
+        "observe": [
+          "1- A geruo yè a waamɔ foto yeni",
+          "2- Mban gariya ba koo kpĩ ba n"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Saa kookoo sin di, a geruo bara tè bii wi u barɔ.",
+          "3- A bara ten kookoosu sio sìn gari ba ǹ kue faagi ye sɔɔ?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "Sɔ̃ɔsiru wɔkura nɔɔbu ka tiase : d",
+        "reading": [
+          "wɔɔ pii disinun barara",
+          "disinu",
+          "di si nu",
+          "di",
+          "d",
+          "da di do du de doo",
+          "diru daaru donnu duura deri durɔ dusi",
+          "daado dobi disinu deburu dɛɛrabu duurubu",
+          "dɔmaru doo-nɔru doo-nuuru",
+          "daado u daaru daa bibu a dua ba diru disinu kua",
+          "bonu nu dua nu dobi di"
+        ],
+        "writing": [
+          "d",
+          "d",
+          "da",
+          "di",
+          "du",
+          "daaru",
+          "a ku duari a diru kura",
+          "disinu barara"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 17,
+      "page": 48,
+      "title": "Wɔɔ pii",
+      "theme": "woo_pii",
+      "themeLabel": "Wɔɔ pii",
+      "text": "Wɔɔ pii\nGari yi yu nɔɔ basa\nBureɔ yɛnusu kùn nnɛ kere. Yen wuburu yiruwa mini Kɔdan yɛnugibu ba\nra kesukubu ka sianu mwarewa sere wuu gù yɔ̃suna. Sari yè tɔkɔnu ku\nra ko ka mɛ gabu ba ra ka wunde biewa. Ka gisɔ ba ǹ tuba mban sɔ̃na\nyɛnu ge tɔnawa bara te ta ra wɔri.",
+      "imageUrl": "/classe/img-p048.png",
+      "sections": {
+        "observe": [
+          "1- A geruo yè a waamɔ foto yeni sɔɔ",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ yori yini sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Bara terà ta wuu ge wɔri?",
+          "3- Mba n koo kpĩ n ka bara te na?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru wɔkura nɔɔbu ka yiruse: p",
+        "reading": [
+          "sa n da pɔmpi nim nɔ",
+          "pɔmpi",
+          "pɔm pi",
+          "p p",
+          "puraa pɛɛtu pota pita piti pura pɔmpi piri piri",
+          "purukaru pɔtɔkɔ pɛrɛku potiri piibu pororo",
+          "gisɔ baken tasu su nim kande",
+          "u pɛrɛku kua ka pɛ̃ɛtu tɔm",
+          "ga sumwa piri piri ba ka dimɔ",
+          "piibu u bibu mɛɛra u maari piti u tamaa ga koo nɔɔ potawa",
+          "dĩa ni nu baawere dorewa"
+        ],
+        "writing": [
+          "p",
+          "p",
+          "pura",
+          "puraa",
+          "pota",
+          "pɔtɔkɔ",
+          "pɛrɛku ga sokura"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 18,
+      "page": 52,
+      "title": "Faara kĩru",
+      "theme": "faara_kiru",
+      "themeLabel": "Faara kĩru",
+      "text": "Faara kĩru\nKɛnun gari\nBaaba mɔri dɔro kpokowa\nTokurawɔ. Bururu garu u\ndeema ba win mɔri saaki\nkilo wɔkuruginu 100 gbɛna.\nF7000wa yin saaki tia. U raa\nnua mɛ̃ kɛnu u gabu mɔri\nsaaki kilo wɔkuruginu dɔre\nKamiarɔ fɔɔtɔ ita ita. Baaba\nu dɛburu gɔnaba sɔ̃ɔwa. Ba\nkɛnu gari bikia ba deema u\nmɔri yi dɔra kpuro. Ba nùn\nmwa. N ǹ ba koo màa mɔri\nyin dweobu mɔɔriwa ?",
+      "imageUrl": "/classe/img-p052.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ yɛnu",
+          "2- Wunɛn yam waaru sɔɔ mban gariya ba mɔ̀ faagi ye sɔɔ ?"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mban sɔ̃na Kɛnu u fɔɔtɔ nɔba yirun mɔri saaki dɔramɔ fɔɔtɔ ita?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru wɔkura nɔɔbu ka itase: f",
+        "reading": [
+          "faara kĩro u ra funɛ wɛndewa",
+          "faara",
+          "faa ra",
+          "faa",
+          "f",
+          "fɔɔ fɔ̃ɔ faara fɛɛri",
+          "fooku foto fãku fanna",
+          "fɔɔtɔ afɔnu fɔrɔnu",
+          "faafaaru farosu fanfankuru",
+          "faaru, fooku arɔwa",
+          "u fãku barɔ",
+          "faaru u fãkunu fãramɔ kiri kiri",
+          "u faafaaru nɛni u ka sɔ̃ɔ",
+          "u fanna mɛɛra u ka afɔnu sarɔ"
+        ],
+        "writing": [
+          "f",
+          "f",
+          "faafaaru",
+          "fɔɔtɔ",
+          "faati u fãku barɔ"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 19,
+      "page": 54,
+      "title": "Faara kĩru",
+      "theme": "faara_kiru",
+      "themeLabel": "Faara kĩru",
+      "text": "Faara kĩru\nTenku naanɛgii\nMako kpookpoo tenkuwa. U\nsãawa naanɛgii. Tɔ̃ru garu,\nKɛnu u ka nùn YAMAHA\nkpaa naawa. Mako nɛɛ\nnyewa. Kãnu nɛɛ fɔɔtɔ\n60wa. Mako kùn gee te\nnaanɛ kue. U nɛɛ Kãnu ù\nwii maruo gina. U da u\ndɛburu gɔnaba sɔ̃ɔwa. Ba\nna ba Kãnu kurua.",
+      "imageUrl": "/classe/img-p054.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto ye",
+          "2- Mban gariya a dokee ba"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2-Mba n dera Mako u kpookpoo ten dwebu sika kua?"
+        ],
+        "reagis": [
+          "1- Amɔna i Kɛnun mwa bi waasina?",
+          "2- Amɔna i Makon koma te waasina?"
+        ],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru wɔkura nɔɔbu ka nnɛse: g",
+        "reading": [
+          "faara kĩro u ku ra gari bie",
+          "gari",
+          "ga ri",
+          "ga",
+          "g",
+          "ga gaa gɔɔ goo",
+          "ge gɛɛ gee gɔ̃ɔ",
+          "gata gobi gabu gari",
+          "gɔri guru gãaru gasaru",
+          "gobigii gãseru dɔ̃ɔ gãsɛru gɔburu",
+          "gannigi gobigiiwa mareguruɔ",
+          "u ku ra gari kã",
+          "baa bii u ra gareewa",
+          "gĩa, u gɔɔbiru garu di",
+          "u gisɔ gãaku gobi kã",
+          "u nɛɛ gãaku ù maregurugibu tɔbiri"
+        ],
+        "writing": [
+          "g",
+          "g",
+          "gɔɔbiru",
+          "gasaru",
+          "doogari u duma gata doke"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 20,
+      "page": 56,
+      "title": "Alaafian yigbɛru",
+      "theme": "alaafian",
+      "themeLabel": "Alaafian yigbɛru",
+      "text": "Alaafian yigbɛru\nÀ n gisɔ yã, a ǹ sia yã\nFaaru kɛkɛ tɛmɔwa\nBúureɔ. Win yɛnugibu ba\nalaafian yigbɛru dua.\nFaarun mi u yigbɛ te dubu\nyina yèn sɔ̃ u yã mɛ̃ u ku ra\nbare kam kam. Tɔ̃ru garu\nFaaru u ka kɛkɛ wɔruma. U\nbosu wa to. Mɛro bisiba\nnɔma dokewa ba ka\ndokotoro gobi dãkura. Yè u\nbɛkura wiya u ka tii yigbɛ\nte wɔri.",
+      "imageUrl": "/classe/img-p056.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto ye sɔɔ ?",
+          "2- Mban gariya a dokee ba mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mban sɔ̃na Faarun yɛnugibu ba kĩ ù alaafian yigbɛru du?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru yɛnduse: l",
+        "reading": [
+          "su alaafian yigbɛru du",
+          "alaafian",
+          "a laa fi an",
+          "laa",
+          "l",
+          "wɔllu dala kilo yellu",
+          "taabulo sɛllabu kpɛllɛ bɔllu",
+          "pɔllu, alaafiarun delege",
+          "u kĩ ù kpɛllɛ da",
+          "u sɔɔru kua yellu",
+          "sɛndaru sɔɔ durɔ wi u sɛlla ma u wɔruma ka bɔllu",
+          "u wiru dobu kua, mɛra ya ka nɛra."
+        ],
+        "writing": [
+          "l",
+          "L",
+          "kilo",
+          "dala",
+          "pɔllu u kpɛllɛ da saa alaafiarun di."
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 21,
+      "page": 58,
+      "title": "Alaafian yigbɛru",
+      "theme": "alaafian",
+      "themeLabel": "Alaafian yigbɛru",
+      "text": "Alaafian yigbɛru\nBa ku ra damaru sanam bɔ̃ɔ sabe\nFaaru u den alaafian yigbɛru dua. Adama u ku ra gobi mɛnabu kã. Tɔ̃ɔ\nte, yè win kurɔ u barɔ, yera u den da u yigbɛrun gobi kɔsia. Dokotoro ba\nyina bù ka ben tireru sɔmburu ko. Faarun tɔmbu ka dokotoroba ba ǹ\nnɔɔsinɛ.",
+      "imageUrl": "/classe/img-p058.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto ye sɔɔ?",
+          "2- Mban gariya a dokee ba mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mba n ka Faaru dokotoro da?",
+          "3- Mban sɔ̃na ba yina bù ka Faarun alaafian yigɛrun tireru sɔmburu ko?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru yɛnda tiase: y",
+        "reading": [
+          "su bɛsɛn yigbɛ dubun gobi kɔsia yellu",
+          "yigbɛru",
+          "yi gbɛ ru",
+          "yi",
+          "y",
+          "yi ya yu ye yɛɛ yoo",
+          "yãnu yeebu yãkɔ yiiru yaayi yooyoo",
+          "yãaru yora yeru yɔɔbu yãɛsu",
+          "yaburu yãɛyãɛru yakasu yɔɔribu yĩirutia yabereku",
+          "yaaru u yeebu wuma",
+          "u sinanden yaburu da ka yamaha",
+          "yè u wee u ka win kurɔ yĩire yiiru",
+          "yãɛku ka yabèru naawa",
+          "u tɔmbu yãɛsu go sere u yĩsiru kere wuu mi"
+        ],
+        "writing": [
+          "y",
+          "yora",
+          "yãɛku",
+          "yaaru u yãaru gawe"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 22,
+      "page": 62,
+      "title": "Bwãɛn bararu",
+      "theme": "bwaen_bararu",
+      "themeLabel": "Bwãɛn bararu",
+      "text": "Bwãɛn bararu\nWorun bararu\nSaarɛ ka win kurɔ Dɛngɛ\nBakurugiba. Sàa sɔ̃ɔ yirun\ndiya ben bii Woru u wasi\nsum, u sirukumɔ, u diirimɔ , u\nku ra di. Ba ye kpuro kua ya ǹ\nsanɔ kue. Dɛngɛ u dokee mɛ̃\nwùukuu (saataburu) gè Gawe\nka dumma yɛnuɔ gera ga bii\nwi mwa. Ben baatɔn mɛɛtiri u\nnɛɛ bù dokotoro do. Ba wura\nadama Dɛngɛ u sika mɔ̀.",
+      "imageUrl": "/classe/img-p062.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto ye",
+          "2- Mban gariya a dokee ba"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mban sɔ̃na Dɛngɛ dokee mɛ̃ wuukuu gera ga dera Woru u barɔ?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru yɛnda yiruse : “n” yè ya wãa goorɔ",
+        "reading": [
+          "biin wasi yì n sum a ka nùn dokotoro da",
+          "biin wasi",
+          "yè ya ka “n” wiru go.",
+          "toron kurɔn tii u kookari mɔ",
+          "u ra win bibu nɔɔri",
+          "u ra yɛnu sɔmbun gari ko",
+          "u ra toron tɔmbu kã",
+          "yen sɔ̃na wi ka tɔn be ba ra n do",
+          "ba ku ra win doke yeru wa",
+          "ben yarumani kpuro u ra ka yãɛriwa"
+        ],
+        "writing": [
+          "win",
+          "win yɛnu",
+          "toron kurɔ u kookari mɔ."
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 23,
+      "page": 64,
+      "title": "Dãa duurubu",
+      "theme": "daa_duurubu",
+      "themeLabel": "Dãa duurubu",
+      "text": "Dãa duurubu\nYèn sɔ̃ n weenɛ bù dãa duure\nYaribori temɔ dãa ya raa yibaawa ma guraa ra nɛ to. Dãa dɔ̃ɔ goobu ka\ndii kpɛɛnu nu dera dãa kpa. Guri ku ra maa nɛ to. Tɔn ba nanda. Wɔ̃ɔ\nbaagere, wuun bukurobu ba ra dãa duurubun yarufaani gere. Ma tɔmbu\nba ka gere ye sɔmburu kua ba koo yen yarufaani di.",
+      "imageUrl": "/classe/img-p064.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ ?",
+          "2- Mban gariya ba ko kpĩ ba n mɔ̀ yori yi sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Yarufaani yerà ya wãa mì dãa ya dabi?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru yɛnda itase: kp",
+        "reading": [
+          "su dãa duure kpa su yè nɔɔri",
+          "kpa",
+          "kp",
+          "kpa kpe kpi kpee",
+          "kpɛɛ kpaa kpai kpao",
+          "kpaaru kpakpa kpasa kpika",
+          "Kpuna kpooru kpere kpere kpire",
+          "Kpookpooru kparuko kpakuro kpakororu",
+          "Kpikire kpereku temakpa sina yasakpɔ",
+          "kpaken durɔ u Kpaari dɔɔ ka kpookpooru",
+          "win kpookpooru ta sankira kpasaɔ",
+          "woru yari u wurama kparakuɔ ka naasu",
+          "kpaayãro u raa sin wuu daa te kpara",
+          "yãakpe u kpaayãro soka u nɛɛ ba ku ra wuu daaru kpare"
+        ],
+        "writing": [
+          "kp",
+          "kp",
+          "kpee",
+          "kpasi",
+          "kpasi ka Wure"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 24,
+      "page": 66,
+      "title": "Tɔn kurɔ bibun keu",
+      "theme": "ton_kuro_keu",
+      "themeLabel": "Tɔn kurɔ bibun keu",
+      "text": "Tɔn kurɔ bibun keu\nBaken keu daarun gari\nBɛɛkɛgi u tele mɛɛra. Miya u\ndokotoroban sinayasakpɔ wa u\ngari mɔ̀. Kurɔ u nɛɛ: tɔn kurɔ koo\nkpĩ ù keu ko sere ù sɔm damgiru\nwa mɛ? ǹ n mɛn na nɛn bake u\nkoo keu kowa domi win maabun\ngoo kùn keu kue na ǹ màa nɛn\nbake derimɔ yɛnun sɔmaan sɔ̃.",
+      "imageUrl": "/classe/img-p066.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto ye sɔɔ?",
+          "2- Mban gariya a dokee ba mɔ̀"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki,",
+          "2- Mba n Bɛɛkɛgi maamaaki kua?"
+        ],
+        "reagis": [],
+        "retiens": [
+          "1- Mban sɔ̃na ba kù ra kã bù tɔn kurɔ bii keu doke?",
+          "2- Wara n weenɛ ù gbãa teya yɛnuɔ?"
+        ]
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru yɛnda nnɛse gb",
+        "reading": [
+          "tɔn kurɔ bii ka tɔn durɔ bii, be kpurowa n weenɛ bù gbãa teya",
+          "gbãa",
+          "gb",
+          "gbĩi gbɛɛ gbãa gbia",
+          "gbiika gbaba gberu gbaka",
+          "gbeba gbara gbãɛru gbɛɛru",
+          "gbaaru gbiribu gbarenu",
+          "gbee dɔɔnɛ u gberu kpaanɛ sĩa",
+          "gbarenu ka gbɛɛya u yeewa gisɔku gè",
+          "win gbare gbaara ta kpãaru kere wuu sɔɔ",
+          "gbirinu ka gbabiya yu yibaa win gberu mi"
+        ],
+        "writing": [
+          "gb",
+          "gb",
+          "gbiribu",
+          "gbaaru",
+          "gbĩa u gbɛɛ duura"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 25,
+      "page": 68,
+      "title": "Tɔn kurɔ bibun bango",
+      "theme": "ton_kuro_bango",
+      "themeLabel": "Tɔn kurɔ bibun bango",
+      "text": "Tɔn kurɔ bibun bango\nBerun gɔɔ\nBeru wɛndia bii burabuuwa u ka wãa Kantiɔ. U kù ra mɔrè. Yè u wɔ̃ɔ\nnɔba ita tura yera win mɔwobu ba nùn bango kua. Yɛm mu yɔ̃rɔ yina.\nYè ba yã kpuro ba kua ya ǹ koore. Dokotoron swaawɔwa Beru u nɔɔ\nmari. Saa ye sɔɔra win mɔwobu ba sumɔ.",
+      "imageUrl": "/classe/img-p068.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mban sɔ̃na Berun mɔwobu ba nùn bango kua?"
+        ],
+        "reagis": [
+          "1- Bangon kari yerà a maa yã?",
+          "2- Swɛɛ yirà ba koo kpĩ bù kpe bù ka tɔn kurɔ bibun bango yinasia?"
+        ],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru yɛnda nɔɔbuse: swɛɛ yì sɔɔ ba ra ka gɔ̃ru tenku sɔmburu ko",
+        "reading": [
+          "- à n dɔɔ",
+          "- a ǹ dɔɔ",
+          "Mba n gari koo ni wunanɛ ?",
+          "Mba gari koru baatere ta sɔ̃ɔsimɔ ?",
+          "biɔ u sɔmburu mɔ",
+          "biɔ u sɔmburu mɔ̀",
+          "a gɔ̃ru tenkun sɔmburu geruo gari koo dãaki te sɔɔ",
+          "- à kun sɔmburu kue a ǹ dimɔ",
+          "- tebo gerà a kĩ ?",
+          "- surɔku u tìm nammɔ"
+        ],
+        "writing": []
+      }
+    },
+    {
+      "level": "N1",
+      "id": 26,
+      "page": 72,
+      "title": "Tem nɛnubun swaa kpaa",
+      "theme": "tem_nenubun",
+      "themeLabel": "Tem nɛnubun swaa kpaa",
+      "text": "Tem nɛnubun swaa kpaa\nYãsaakugibun mɛnnɔ\nYãsaaku wuu piibuuwa. Ba ǹ nim\nburam mɔ wuu mi. Ben delege u\nmɛnnɔ kana bù nɔɔsina bù ka\npɔmpi gbe. Tɔn ba nɛɛ daakari\nburaa. Ba nɔɔsina ba ka sɔ̃ke\nsɔ̃ke yi. Sɔ̃ke sɔ̃ke yen mwabu\nsɔɔra gaba nɛɛ bàn mɛron\nsɔmbura, ma gaba nɛɛ tem\nnɛnubun swaa kpaa yera mi ?",
+      "imageUrl": "/classe/img-p072.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki,",
+          "2- Mba n sãa tem nɛnubun swaa kpaa yen yasansi?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru yɛnda nɔɔbu ka tiase: sw/ dw / tw",
+        "reading": [
+          "Wuugiba tem nɛnubun swaa kpaa ye ya dam kã",
+          "swaa",
+          "sw",
+          "swii swee twee dwa swaa swĩi swãɛ twã swɛɛ",
+          "twea swãaru dwãani dweebu twãɛbu swĩibu dwebu",
+          "swianɔ u gununwa to",
+          "ba ra wii twãɛwa bù sere win wuswaa wa",
+          "yè gãani tɔ̃ru ta tura",
+          "win dwaani u nɛɛ bù dweebu mɛɛribu da nikiɔ",
+          "swianɔ u yãa swãanu doke ma ba swaa wɔri",
+          "swegii u swãɛ dwa u ka bè swĩ"
+        ],
+        "writing": [
+          "sw",
+          "sw",
+          "dw",
+          "dw",
+          "tw",
+          "tw",
+          "swãaru",
+          "twea",
+          "sa swaa wɔri",
+          "swegi u dweebu da"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 27,
+      "page": 74,
+      "title": "Dɔ̃ɔ mɛnaa",
+      "theme": "doo_menaa",
+      "themeLabel": "Dɔ̃ɔ mɛnaa",
+      "text": "Dɔ̃ɔ mɛnaa\nYasarɔ\nWɔ̃ɔ baagere Gawe ku ra win gbaaru dɔ̃ɔ wĩɛ saa yè n weenɛ. Gisɔku\ngè mɛna u maa kua. Dɔ̃ɔ u seewa u dari Gawe kpana ù go. Win\nbènsibun gbaanu nu dɔ̃ɔ mwara. U duka. Ka yen de gberun\nkùmbooroba ba nùn mwa.",
+      "imageUrl": "/classe/img-p074.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto ye sɔɔ?",
+          "2- Mban gariya a doke ba mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mba n sãa dãkurun dɔ̃ɔ wĩabun kɔkɔrɔ?",
+          "3- Sɔɔru yerà n weenɛ tɔnu u ko ù sere gbaaru dɔ̃ɔ wĩa?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru yɛnda nɔɔbu ka yiruse: bw / mw / pw",
+        "reading": [
+          "daa yenin bweseru ya ra de bù tɔnu mwɛ",
+          "bweseru mwɛ",
+          "bwe se ru mwɛ",
+          "bwe mwɛ",
+          "bw mw",
+          "bwãa mwɛ bwia mwia mwa bwãɛ",
+          "bwãru bwĩiru pwɛɛru mwabu bwãɛbwãɛru nɔɔ mwɛɛru",
+          "bwãara u bwãaru bwãɛ dii kɔnnɔwɔ",
+          "win kurɔ u ra koko ko",
+          "win mwia ya dera ba bwãɛbwãɛru yara ma ben bwisikunu nu kaara"
+        ],
+        "writing": [
+          "bw",
+          "bw",
+          "pw",
+          "pw",
+          "bwãaru",
+          "bwãɛbwãɛ",
+          "bwãara u bwãaru bwãɛ"
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 28,
+      "page": 76,
+      "title": "Sida",
+      "theme": "sida",
+      "themeLabel": "Sida",
+      "text": "Sida\nWara u seseru di ?\nSakarugii ka Buyɔ̃ bù ka suana, ba\nben yɛm mɛɛrawa. Ben goo kùn sida\nmɔ. Ben bii yiruse u yarawa barɔbuu.\nBa win yɛm mɛɛra ba deema u sidan\nkɔkɔbuu ge mɔ. Ba win mɔɔ ka win\nmɔwobun yɛm mɛɛra. Ba deema bii\ngbiiko wi tɔnawa kùn sidan kɔkɔbuu\nge mɔ. Mba n da ka ye nɛ?",
+      "imageUrl": "/classe/img-p076.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto ye sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye swaa daki, a geruo yèn gari ba mɔ̀ dee dee?",
+          "2- Mban sɔ̃na Sakarugii ka Buyɔ̃ ba ben yɛm mɛɛra ba sere suana?"
+        ],
+        "reagis": [
+          "1- Amɔna n koosina bii gbiiko kùn ka sidan kɔkɔbuu ge mɔ ma bii yiruse",
+          "2- Amɔna a sidan kɔkɔbuun wãɛribu waasina tɔmbu bù sere suana?"
+        ],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru yɛnda nɔɔbu ka itase : . ka ,",
+        "reading": [
+          "tɔn durɔ, tɔn kurɔ, bii ka bukuro kpuro ba ra sida barewa.",
+          "Nana u niki na. U naanaanu kua, u naa kana u ka na."
+        ],
+        "writing": [
+          "Naa, nia.",
+          "U naanaanu kua.",
+          "U kukua."
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 29,
+      "page": 78,
+      "title": "Swaa sanum sariaba",
+      "theme": "swaa_sanum",
+      "themeLabel": "Swaa sanum sariaba",
+      "text": "Swaa sanum sariaba\nTɔngiin maro daabu\nTɔngii baru kpaa tɔnuwa. U ǹ màro daare ka kpookpooru. Win nɔn\ngbiikira mi yè u ka maro da. Yè u tura swaa kãɛnanɔ, u deema\nkpookpoonugibu ba yɔ̃. U wãɛru kana ma u doona. Baa polisi ba nùn\nmwa. U ǹ tuba yè u kua.",
+      "imageUrl": "/classe/img-p078.png",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mban sɔ̃na baa polisi u Tɔngiin kpookpooru mwa?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "sɔ̃ɔsiru yɛnda nɔɔbu ka nnɛse: mɛ̃ ba ra ka wãrun yĩreru sɔmburu",
+        "reading": [
+          "koosinɛ",
+          "tɔ̃nu kpurowa ba ra ka swaa sanum sariaba sɔmburu ko.",
+          "yĩreru dokeya?",
+          "wãrun yĩrenu mɔ.",
+          "A gario",
+          "Temɛgibu ba bɔ̃sum da ka bɔ̃nu. Tɔ̃ɔ bakarun sɔ̃na ba yam mi da. Nim",
+          "nɔru ga bè go. Yè ba tura sõɔ yãroɔ miya ba wɔnnu wa nu bãnu dimɔ.",
+          "Ba nì gira ba ǹ mwɛ. Dɔ̃ɔ durom mu ben yãnu tĩrasia."
+        ],
+        "writing": [
+          "Temɛgibu ba bɔ̃sunu da ka bɔ̃nu.",
+          "Yè ba tura sõɔ yãroɔ miya ba bãnu di."
+        ]
+      }
+    },
+    {
+      "level": "N1",
+      "id": 30,
+      "page": 82,
+      "title": "Tem bii geo",
+      "theme": "tem_bii_geo",
+      "themeLabel": "Tem bii geo",
+      "text": "Tem bii geo\nSabi Wɔ̃ko\nSabi wɔ̃ko tem bii geowa. U\nkookari mɔ gbee sɔmaan swaa\nsɔɔ.Ya dera u win tirenu kpuro\nmɔwa u ka tii kɔ̃suu. U ra ka tem\nwoodaba sɔmburu kowa. U ku ra\nwɔ̃ɔ gobi bure. Tɛtɛ yè ya na\nkpuro u ra yè toowa. U maru tireru\nmɔ ka foto wii kpiriru. Mɛ̃ u ka\nkpookpooru kɔsa sere ù tè boode\nko. Dokotoro dirɔwa ba win bibu\nkpuro mara. Su ko nde mɛ̃ Sabi\nwɔ̃ko u kua.",
+      "imageUrl": "/classe/img-p082.png",
+      "sections": {
+        "observe": [
+          "1- A geruo yè a waamɔ foto yeni sɔɔ",
+          "2- Mba n gariya ba koo kpĩ ba n mɔ̀ yori yi sɔɔ"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye gara a kpa, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Tire nira Sabi wɔ̃ko u mɔ?",
+          "3- Tire tera n weenɛ a n mɔ a ka nì nu tie ko?"
+        ],
+        "reagis": [
+          "1- Mba n sãa Sabi Wɔ̃kon tire nin yarufaani?",
+          "2- Mba n nun kɔmiɛ a n màa ka sãa tem bii geo?"
+        ],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N1",
+      "id": 31,
+      "page": 83,
+      "title": "",
+      "theme": "autre",
+      "themeLabel": "",
+      "text": "Gbee wukobu ka kparobun nɔsinaa sariru\nSɛɛbɔn nɛɛ yaribu\nYokan kɔbaa nɔɔbun\nsakawa nɛɛ yi Gãakun\ngbaaru wɔri. Win kurɔ\nka win bii Tabe ba\nkpana bù yì yara. Yè\nsɔ̃ɔ u dubu dɔɔ, yera\nGãaku u turuma. U\ndeema nɛɛ yi yi gbere\nbuu ge diwa to. Durɔn\nmɔru ya seewa. U\ngbasukumɔ u ka kɛtɛ\nbe kasukumɔ. Yè ba\nnɛɛ yi yara sàa gbere gbaa ten di, yera Gãaku u mare wi kasu. Yoku\nyam bere bere te sɔɔra u ka wii yinna u màa win kɛtɛba kasuu. Tɔn be\nba gurena. Sɛɛbɔ kùn win toraru wure.",
+      "imageUrl": "/classe/img-p083.png",
+      "sections": {
+        "observe": [
+          "1- A geruo yè a waamɔ foto yeni sɔɔ",
+          "2- Mba n gariya ba koo kpĩ ba n mɔ̀ yori yini sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye swaa daki, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Mba Gãaku u duuraa win gbaarɔ?",
+          "3- Ma gia Sɛɛbɔ u wãa kɛtɛ be ba ka doona?"
+        ],
+        "reagis": [],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N1",
+      "id": 32,
+      "page": 84,
+      "title": "Dim",
+      "theme": "dim",
+      "themeLabel": "Dim",
+      "text": "Dim\nBoro ka win deubuu\nBoro durɔ tɔkɔwa. U win bii berabu da\nmaroɔ. Miya durɔ u ka win deubuu\ngɔnnamɔ. Deubuu ge ga nɛɛ: a wa Boro,\nsa ku ra dĩa teenu di mini. Bururu, sa ra\nkoko nɔ ka swiin kiaru. Gasɔ kpa su tasu\ndi ka sãa su sere keu da. Sɔ̃sɔ bɛsɛn\nyaayi u ra sɔkuru swã ka sɔ̃kin kpee.\nBɛsɛn baaba u ra yaa sãɛra dwe su ka\ndi. Sanam ka sanam sa ra sòru nɔ ka\nbom bèkum. Bɛsɛn tii sa ra ka sosa\ngasaru di. Nɔn dabiru bɛsɛn baa u ra ka\ndãa marum wumɛ. Sà n yoka dimɔ, sa ra mango di ka karaboosi. Na yã\na ku ra tim di; bɛsɛ sa ra màa pãɛ di ka tim. Yèn dɔɔnɛ sa ǹ mɔ yera\ntam. Bɛsɛn baaba ku ra wure su tam nɔ. Tɔkɔ u nɛɛ yen sɔ̃na i ra n\nbɔɔru kpa i n bwãa do, adama dim wãara i wãa.",
+      "imageUrl": "/classe/img-p084.png",
+      "sections": {
+        "observe": [
+          "1- A geruo yè a waamɔ foto yeni sɔɔ.",
+          "2- Mba n gariya ba koo kpi ba n mɔ̀ yori yini sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a faagi ye gara a kpa, wunɛn yam waaru ta kɔsa nde ta ǹ kɔsa?",
+          "2- Tɔn berà ba gari mɔ̀ faagi ye sɔɔ?",
+          "3- Mba yaruwaasi bii wi u durɔ tɔkɔ te sɔ̃ɔmɔ ?"
+        ],
+        "reagis": [
+          "1- Amɔna a biin tam kãru waasina?",
+          "2- Mban sɔ̃na n weenɛ sa n da dĩa bwese bweseka di?"
+        ],
+        "retiens": []
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 1,
+      "page": 12,
+      "title": "Sekura mɔru kɔsa",
+      "theme": "barum_keu",
+      "themeLabel": "Barum keu",
+      "text": "Kɔmmɛn Kpaaru ka Baku Saaru wuu piibuna nu kannɛ Naanaanun tem kãa bɔnu sɔɔ. Baru kpaa ten garu ta ǹ keu diru mɔ. Wì u koo tireru ko kpuro, maroɔwa u ra de. Kɔmmɛn Kpaara ta gbia ta sina ma ta Baku Saaru kpãaru kere piiko. Wusu yiru yera ya barum keu diru wa wɔ̃ tia sɔ. Suru itan biru, Kɔmmɛn Kpaarugibuba barum keu ye kpana, ma Baku Saarugibu ba yè kua ba ka wiru go. Wɔɔ nnɛwa ba yè kua ba sere yè kpa.\n\nTɔ̃ru garu, yigbɛru garu ta tɔn kurɔbu kasuu bè ba barum keu yã, nwa bù bii mɛro dikin sɔmburu ko wusu sɔɔ. Baku Saarɔwa ba tɔn be wa ba sua, ma ba ka bè da maroɔ ba bè yãru sɔɔ yãru sosiya bù ka sɔmbu te ko.\n\nYè ba wuma ma ba sɔmaa torua. Ba ka bii mɛrobu mɛnnɔsu mɔ̀ wuu ka wuu. Ba mɛnnɔ gbiiku kuawa Baku Saarɔ. Tɔmba yibawa siki siki. Tɔ̃ tè bii mɛro diki be ba mɛnnɔ kana Kɔmmɛn Kpaarɔ, sɔmbura kùn yaasi yasansi kue. Wuugibu ba nɛɛ ba ǹ mɛnnɔ ge dɔɔ, yèn sɔ̃ ben wuun tɔnu goo sari kurɔ be sɔɔ.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Mba n Kɔmmɛn Kpaaru ka Baku Saarugibu wunanɛ?",
+          "4- Sɔmbu teràn sɔ̃na ba tɔn kurɔ be sua?"
+        ],
+        "reagis": [
+          "1- Mban sɔ̃na Baku Saarun tɔn kurɔbu tɔnawa ba gɔsa bù sɔmbu te ko?",
+          "2- Amɔna a Kɔmmɛn Kpaarugibun daakari ye waasina?",
+          "3- A gari yini daakari koowo:",
+          "4- «Baku Saaru wuu piibuwa Naanaanun tem kãa bɔnu sɔɔ»\nBàra bwese bweseka nyewa ya wãa gari yi sɔɔ? A nì yoruo doodooka."
+        ],
+        "retiens": [
+          "1- A Baatɔnum bàra bwese bweseka sio, kpaa ten baateren weenasi wã.",
+          "2- Bàra nirà nu ku ra wãru sue Baatɔnum sɔɔ?",
+          "3- A barum keun yarufaani geruo faagi ye sɔɔ."
+        ]
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 2,
+      "page": 14,
+      "title": "Àson gberun dĩanu",
+      "theme": "dia_gonnun",
+      "themeLabel": "Dĩa gɔnnun yiibun yasansi",
+      "text": "Àso gbee wukowa u ka wãa Yësaakuɔ. U ra tasu yewe ka gberenu ka dobi ka sere doogo. Mena u màa yiribo ka mango ka demunu gbaanu mɔ. Dɔrabun sɔ̃na u ra ye kpuro yewe.\n\nGisɔku gè, u ka gbee wukobun bwisi kãɔbun (ɔkɔwe gangiban) gari sɔmburu kua. Yera ya dera win dĩanu nu mara too, sere tɔmba yen gari mɔ̀ yam kpuro. U win tasu ka doogo ye kpuro kanakunu kɛɛrawa. Win gberenu nu kuawa to sere win sasaru ta kpana tù nì mwa. Saa win kanakunu, win gberenu ka win dobi yì yu tie, dii tɔkɔru garu sɔɔra u ye kpuro doke.\n\nSuru itan biru u dweo sokusia. Yè dweo u na, ba deema gberenu ka doogon kanakunu nu buuru kua. Win dobi swãɛ ka tasun kanakunu niya nu tie nu bwãa do. Àso u ka biti sina. U bia mì u koo tii kpã. Baadomma nuku sanku ni sɔɔra u ra n wãa.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Amɔna Àso u deema win dĩanu nu sãa?"
+        ],
+        "reagis": [
+          "1- Mba n dera Àson dĩanu nu sankira?",
+          "2- Amɔna n weenɛ Àso ù raa ko?",
+          "3- A gɔmbi dɛndɛnnu gɔsio faagi ye sɔɔ."
+        ],
+        "retiens": [
+          "1- Gɔmbi dɛndɛnnu nyewa ya wãa baatɔnum sɔɔ?",
+          "2- Amɔna n weenɛ su ko su ka bɛsɛn dĩa gɔnnu yi n n wã?"
+        ]
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 3,
+      "page": 16,
+      "title": "Nim mu ku ra kam mwɛnyɛ",
+      "theme": "daa_kɔ̃si",
+      "themeLabel": "Daa kɔ̃si",
+      "text": "Bòro yaruwaasi biiwa. U wãawa Daa Guruɔ ka win mɔwobu sannu. Win tundo ka win mɛro ba ra win gari kãwa too. Mɛna màa ka wuun tɔmbɔ, domi bii wi u tɔnun bɛ̃rɛ yã. Yè Bòro u wɔ̃ yɛndu tura, Daa Gurun tɔmbu ba ku ra n maa wii tubaa. Sigaari nɔrubu wiya, tam nɔrubu wiya.\n\nBururu garu, wuugibu ba tɔmbu waamɔ ba bosu sãa ben dokotoro dirɔ. Ba ǹ sere bè tuba. Domi ba sãawa sɔbu. A ka gere daabaaru ya wuu pusi mɛ̃ taasobu (wɔdɛɛba) ba swaa bɔɔri gabu go Daa Gurun bɔkuɔ mì ba tenkuba swaa buraa wɔ̃kuru. Tɔn kurɔ, tɔn durɔ, bii, bukuro wì u koo ka sanum kpĩ kpuro ba seewa ba wɔ̀rɔ̀ ye kaabu dawa.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee?",
+          "3- Saa mìn di Bòro u wɔ̃ yɛndu tura, kookoo sirà ba nùn waasi?",
+          "4- Amɔna Bòro u ka win wãaru wiru goosina?"
+        ],
+        "reagis": [
+          "1- Mba n dera Bòro u kɔsa saa yè u wɔ̃ yɛndu tura?",
+          "2- A gari koo teni gario: \"Wuugibu ba tɔmbu waamɔ ba bosu sãa kpuro\". Gari yara yerà sɔɔra gɔmbi sikanɛ ya damu teu mɔ?",
+          "3- A gari yari gɛɛ sio yì sɔɔ gɔmbi sikanɛ damu teun bwesera maa wãa?"
+        ],
+        "retiens": [
+          "1- Mba n gɔmbi sikanɛ damu teu ka gɔmbi diri nì a yãɛ wunanɛ?",
+          "2- Amɔna sa ko ka daa kɔ̃si yin bweseru yanku?"
+        ]
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 4,
+      "page": 18,
+      "title": "Daa kɔ̃saa",
+      "theme": "nim",
+      "themeLabel": "Nim",
+      "text": "Wɔ̃n suru itase sɔɔ, gbee sɔmaa kùn maa dam mɔ Gãakun Kpaarɔ. Suusuure ya torua. Kurɔbu ka durɔbu ba swãɛ mwɔɔribu da Makuruɔ. Wãsun tìm mɛ̃ ba sokumɔ «gama», mɛna ba ka da. Tìm mɛna ba wisi daa te sɔɔ.\n\nKɔbaa tia ka bɔnun baa, swãɛ yu toorirabu seewa: yeni yù bwia gee, yeɔnɔ yù bwia giɔ. Sanam mɛna tɔn be ba swãɛ mwɔribu wɔri ka birenu, ka tàaruba. Ba swãɛ yi mwɔrawa sere sɔ̃ u ka dua.\n\nSɔ̃ yirun biru, nim mɛ mu numia, tɔnu kùn maa kãkɔ ù mɛ̃ nɔ. Yarusuma tia ye sɔɔ, Yaada u kparabu da daa ten beraa gia. Yera win nɛɛ yu nim mɛ nɔra. Dokotoro wa mɛ̃ nim mɛ̃ nɛɛ yi yu nɔra, mɛna mu kua sabaabu nɛɛ yi yu ka gbisuka.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Mba Gãakun Kpaarugibu ba ka swãɛ yi go?",
+          "4- A suusuure yè ba ra ko ka gaman kɔkɔrɔ geruo faagi ye sɔɔ."
+        ],
+        "reagis": [
+          "1- A tìm sio mɛ̃ ka mɛ̃ a maa yã ba ra ka suusuure ko.",
+          "2- Amɔna a suusuure yen bweseru waasina?",
+          "3- A gari yini daakari koowo: Wɔ̃n suru itase, gbee sɔmaa kùn maa dam mɔ Gãakun Kpaarɔ.\nYorin yĩre bwese bweseka yerà ya wãa gari yi sɔɔ wãru ka gõru tenkuginun biru?",
+          "4- A yorin yĩrenu ganu sio nì ka nì a yã. Mba yĩre ten baatere ta sɔ̃simɔ?"
+        ],
+        "retiens": [
+          "1- A yorin yĩreru baateren yasansi geruo.",
+          "2- Swɛɛ yirà ba koo kpe bù ka suusuure karigia yanku?",
+          "3- Amɔna n weenɛ bù susure koosina?"
+        ]
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 5,
+      "page": 20,
+      "title": "Wurènɛn wãaru",
+      "theme": "sida",
+      "themeLabel": "Sida",
+      "text": "Tuko Sarin wɔɔ beraawɔwa Wurènɛ u wãa. Wɔɔ beraa mi sɔbun sɔbia yenu nu yibaawa. Yɛnu gen teu sɔɔra Wurènɛ u ra tam dɔre, suru ù n gu, bù nùn gobi kɔsia. Win sankiraru ta dera ba yinana ka win kurɔ.\n\nWɔɔ nnɛn biru, durɔ wi u bararu gaba. Fãku ka wii sobera bara te ta ka torua. Yè fãku ge ga kpa, wii sobe te ta ku ra de Wurènɛ ù dweya. Win nɔni yu gbera, win tii u kua terere. Wurènɛ u ka gari yi nanda sere u gina sɔmbu te deri u sĩa win tundo kpaarɔ. Ba tìm nɛndu kua gem ka tia u ǹ bɛkure.\n\nYè u wuma yɛnuɔ, bà n nùn bikia yè u barɔ, u ra n maariwa. Goo kùn maa Wurènɛ naanɛ sãa. Saa min di, goo ku ra maa win yãnu babe nì u denda, kaa sere gere dĩa nì u di u tia.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "1- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "2- A bara ten kookoosu sio sì ba gerua faagi ye sɔɔ."
+        ],
+        "reagis": [
+          "1- Mban sɔ̃na dokotoro ba nùn sinasia ba gari kã?",
+          "2- Wurènɛ ù n gbãɛru baba goo ku ra maa tè sue, ù n di u tia, goo ku ra maa di. Amɔna a win tɔmbun koma te waasina?",
+          "3- A yori yini daakari koowo kpaa gere gari yara yèn temɔ ba sĩina bĩa. «Goo ku ra win yãnu babe».",
+          "4- A gari yaraa yen gari nuuru (gari kpaa yãro) ka yen gari soseru wunanɔ. Mba a daakari kua?"
+        ],
+        "retiens": [
+          "1- Saa yerà bàraru tà n /n/ ǹ kun mɛ /m/ gbiiye ta ra wãru sue?",
+          "2- Amɔna sida ya ra ka tianɛ?",
+          "3- Swɛɛ yirà ba ra ka Sida weeri?",
+          "4- Amɔna ba ra Sida barɔ nɛnusina wãasinaa sɔɔ?"
+        ]
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 6,
+      "page": 24,
+      "title": "Dakin yɛnun gɔ̃ɔru",
+      "theme": "agbatɛrɛ",
+      "themeLabel": "Dĩanun sɛkun dɔrabu (Agbatɛrɛ)",
+      "text": "Gaiya ka Dangana durɔ turowa ba ka mɔre. Ba wãawa Gore Bansɔ. Ben durɔwa Daki. Danganawa u sãa win kurɔ gbiiko. U ka Gaiya sua ya ǹ wɔ̃ nɔɔbu kere.\n\nGinakun wuburun tore, Daki nɛɛ sere u maa kurɔ itase sua domi win daakari kpuro ya wãawa kurɔ goo sɔɔ. U nua mɛ̃ Saago tenku u ben wuun gbee wukobu gobi bɔkuramɔ, adama dĩa nɔniya ba koo raa ka dìi bi kɔsia.\n\nBa ka gbere saaki dwemɔwa fɔɔtɔ wɔkuru saa yè Daki u win dìbu kɔsiamɔ. Nɔni swãana Daki u ka gbere saaki wɔkura nɔɔbu kɔsia. Ka kɔkiriba Saago u ka wura Daki ù dìi bì bu tie kɔsia wɔ̃ kpɔɔ.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Mban sɔ̃na Daki u dìbu di?"
+        ],
+        "reagis": [
+          "1- Amɔna a dìi bin bwesru waasina?",
+          "2- A faagi ye sɔɔ gari yari ita gɔsio yì yu ka \"n\" wiru goore."
+        ],
+        "retiens": [
+          "1- Mba «n» yè ya wãa gari yaran wii goberɔ ya ra sɔ̃si?",
+          "2- A agbatɛrɛn kɔkɔrɔba sio bè ka bè a yã."
+        ]
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 7,
+      "page": 26,
+      "title": "Bii wërun seesiabu",
+      "theme": "bii_wãrun",
+      "themeLabel": "Bii wãrun dĩa kobun yasansi",
+      "text": "Fanna kuro mɔrowa u ka wãa Sikan Kpaaro. Yè u kua wõo tia, yera u win bii gbiiko mara. Suru yiruwa bii wi u mɔ ba ka nùn sòru kãbu torua. Suru nɔbaa tian diya u wii bɔm wĩa ma u nùn dĩanu kãbu torua nì bukuro u ra di.\n\nN daa dɔɔ, bii wi u ra n barɔwa kiri kiri. U ra n kesukumɔwa, win nuki yu kua kpokoko, gãsebunu nu wonkira pɔ̃ri pɔ̃ri, win seri yu kokaa. U burura, wiru tɔnawa ta ra n den sɔndii. Win nɔni yu ra n nim sumɔwa wɔnwɔndu tɔna. Fanna u biti soora, u ǹ yã mba n ka gari yi na.\n\nSanam mɛ sɔɔra win kpaasi Daado u wii berabu da. U mɛɛra u deema siin biin wasi yu wã gea, u bwãado, ma win nuki yu do. Fanna u Daado bikia amɔna u kua win bii u ka bwãa do mɛ? Daado u nɛɛ: na ra ka nɛn bii yĩirubu dewa sɔm yee tèn mi ba ra bii mɛrobu bwisi kã yì ba koo ka ben bibu nɛnɛ.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Suru nyewa Fanna u ka win bii dĩa sinumginu kãbu torua?",
+          "4- Amɔna win bii u ra n sãa?"
+        ],
+        "reagis": [
+          "1- Mba n dera Fanna u win bii bɔm kara fuuku?",
+          "2- Mban sɔ̃na Fannan bii u ra n barɔ kiri kiri?",
+          "3- A gari yini daakari koowo:\n« À n wunɛn bii wãru bɔm kara, u koo bara».\nMba gari yin kom mu sɔ̃simɔ?"
+        ],
+        "retiens": [
+          "1- Yĩire terà ta ra sɔ̃si mɛ ba gari dokeewa yĩsi kɔsiren yoraa sɔɔ?",
+          "2- Amɔna n weenɛ bù bii dĩanu kãɛsina?"
+        ]
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 8,
+      "page": 28,
+      "title": "Gùdan garaasan sɔɔru",
+      "theme": "tem_bii",
+      "themeLabel": "Tem bii geon tirenu",
+      "text": "Gesuowa bii goo u waa ba sokumo Guda. Win tundo, Ture u nun keu dokewa saa win woɔ nɔbaa tian di. Me mɛetiri u ka ben somburu sira kpuro wiya u ra n wiru gbiyaa sere u ka keu diru nɔbaa tia tura.\n\nSoo teeru, garaasan soorun swaa soo, ba nɛɛ Gudan keu dirun keu bii baawere ù ka win maru tireru na. Suru nnɛn biru, bii wi u tie u maru tire te somumo win mɔwobun mi. Win kpaasibu kpuro ba ka beginu da.\n\nYè Ture u na, u nɛɛ win bii wi u ǹ maru tireru mo. Yera ba nɛɛ ù doo fuuku mɛɛrun gbankokowo. Ture u seewa u Guda gbiisia ba ka yam mi duka da.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Mban sɔ̃na mɛɛtiri u Gùdan tundo sokusia?",
+          "4- Mban sɔ̃na Gùda kùn garaasa de?"
+        ],
+        "reagis": [
+          "1- A maru tirerun yarufaani geruo?",
+          "2- A tem bii geon tirenu sio nì ka nì a yã kpaa gere mì ba ra ten baatere ko?"
+        ],
+        "retiens": [
+          "1- Sa yerà n weenɛ bù bii maru tireru kua?",
+          "2- Bù ka yore mɛ̃ gari yu koosina mba ka mba ba ra gere?"
+        ]
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 9,
+      "page": 30,
+      "title": "Berun tireru",
+      "theme": "gbee_wukobu",
+      "themeLabel": "Gbee wukobu ka kparobun nɔɔsinaa sariru",
+      "text": "BID Sika\n\nKpakororun damba: 28 Dunia.\n\nNen sesu Beru\n\nNa nun tire té yoruwawa n ka nun sɔ̃ me besen wuu ga ka wãa. Besen dwaani Simɛ ka naa kparobu ba n noosin Asibiti sɔna marebu ba kparabu da Simen gbɛrɔ. Mare ben nee yu Simen doogo di kpuro. Ba Imare be deemawa gbaate so. Be ka mare ben giranad wee sere ton ben gaavo.\n\nGaa mi, tonbe ba gami keena sere tombu ita ya bosu wa kpi dokotoro dirs. Saa min di sanns ge ga koora, gbee beraa min tombu ba ku ra mda gberu de, domi ban yam naane sɔɔ.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde ta ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Wara u tire te yorua?",
+          "4- Wara ba tire te yoruwa?"
+        ],
+        "reagis": [
+          "1- Mba n da ka sannɔsu nɛ gbee wukobu ka naa kparobun baa sɔɔ?",
+          "2- Amɔna a Simɛ ka win bibun koma te waasina?",
+          "3- Amɔna ba koo ka sannɔ sin bweseru kpeesia?",
+          "4- Bɔnu nyewa tire te ta mɔ?"
+        ],
+        "retiens": [
+          "1- Bɔnu nyewa tire tè ba ra tɔnu mɔrisiye ta ra n mɔ?",
+          "2- Mba ba ra yore bɔnu baayere sɔɔ?",
+          "3- Yarufaani yerà ya wãa tire tè ba ra tɔnu mɔrisiyen yora sɔɔ?"
+        ]
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 10,
+      "page": 32,
+      "title": "Sabi Yoon maro daaru",
+      "theme": "swaa_sanum",
+      "themeLabel": "Swaa sanum sariaba",
+      "text": "Wɔ̃ gaku yiribo ya marawa to Bagirin Kpaarɔ. Yè Sabi Yoo u win yiribo bii dɔbura, yera u kpookpooru dwa. Durɔ u tɔ̃ru yi tè u koo maro da ka win kpookpoo kpaaru. Yè tɔ̃ɔ te ta tura, u swaa wɔri.\n\nWin sanum sɔɔ, dukaa u ka swaa baka yɔɔwa, Sabi Yoo u ka win kpookpooru mɔ̀wa mɛ̃ u kĩ, u ǹ mam yã swaa sanum mu saria gaa mɔ ba ra swĩi. Baa ù n baru kpaaru garu sarɔ, u ku ra dwiiye.\n\nMaroɔ, Sabi Yoo kùn win dukaa ye kawe, u ǹ swaan yĩrenu daakari sãa. U dukaa yakeewa sere u ka swaa kãɛnanu tura. Win turumaru swaa kãɛna ten mi, ka màa dɔ̃ swãarun sɔ̃rabu. Ka mɛ u ǹ yɔ̃re. Miya Baa Porisiba ba nùn nɔma doke. Sabi Yoo kùn tuba yèn sɔ̃ ba nùn mwa.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Mban sɔ̃na ba Sabi Yoo mwa?"
+        ],
+        "reagis": [
+          "1- Mban sɔ̃na Sabi Yoo u kpookpooru sɔnii mɛsum?",
+          "2- Swaa sanum saria sɔɔ, beraa ma gia n weenɛ naasugii ù sĩ?",
+          "3- A swaa sanum sarian yĩrenu sio nì ka nì a yã.",
+          "4- A gari yini daakari koowo: \"u ǹ yɔ̃re\".\nmba gari yi yu sɔ̃simɔ?\nyora yerà ya sɔ̃simɔ mɛ̃ gari kùn koore?\namɔna ba gari yara ye yorusina?"
+        ],
+        "retiens": [
+          "1- Mba n sãa gari kùn koorɔn yĩreru?",
+          "2- Swaa kãɛnanu sɔɔ, amɔna n weenɛ tɔnu ù ko?"
+        ]
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 11,
+      "page": 36,
+      "title": "Tamban yɛnun wahalaba",
+      "theme": "kɔrɛ_kɔrɛ",
+      "themeLabel": "Kɔrɛ kɔrɛ",
+      "text": "Tamba ka win kurɔ ka ben bibu ita ba wãawa Yòo kpaarɔ. Mìn di win kurɔ u ka marubu torua, u ǹ dokotoro daare. Yɛnuɔwa u ra maa. Sere bii ù ka kpãa win naasu su kù ra taare dokotoro dirɔ.\n\nKɔrɛ kɔrɛn sanam, wuugibu bà n nɛɛ bù ka ben bibu kɔrɛkɔrɛ do, ba ra nɛɛwa: kɔrɛ kɔrɛ ya ra dewa bii ù wasi swĩa ǹ kun mɛ ù ymɔ ko.\n\nWɔ̃ gaku puru sanam, ben bii tɔn kurɔ turo wì ba mɔ u bararu gaba. Yè ba yã kpuro ba kua ya ǹ koore. Yè tɔmba bè baasi, saa yera ba den dokotoro da. Yè ba wii mɛɛra, ba deema wĩiru tãiwa u barɔ. N' ka sosi bii wi u nɔɔ mari.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Mban sɔ̃na Tamba ka win kurɔ ba ku ra kɔrɛ kɔrɛn gari kã?"
+        ],
+        "reagis": [
+          "1- Amɔna a Tamba ka win kurɔn daakari ye waasina?",
+          "2- A geruo mɛ̃ wĩiru tãi barɔ u ra n sãa.",
+          "3- A baranu ita sio nì nu kɔrɛ kɔrɛ mɔ bù ko."
+        ],
+        "retiens": [
+          "1- Bù ka gere mɛ̃ gãanu nu sãasinɛ, mba ka mba ba ra sɔ̃si?",
+          "2- Bwisi yirà kaa kpĩ a wunɛn kpaasi kã u n da ka kɔrɛ kɔrɛ de?"
+        ]
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 12,
+      "page": 38,
+      "title": "Baatɔn sikurun sɔɔru",
+      "theme": "sikuru",
+      "themeLabel": "Sikuru",
+      "text": "Yarusuma yiruwa Worun Gɔɔbi u ka win wasi yi kpuna dokotoro dirɔ. Wiya u nɔɔ mari buru tè goo swĩru. Yè u kasira mɛ, yera win wɔnɔ tundo turosi u yɛnun durɔ tɔkɔnu ka kurɔ tɔkɔnu soka bù seeda ko kpa bù wa mɛ̃ ba koo ko. Ba wesiana ma ba gɔɔ siko sokusia. Gɔɔ siko win yĩsira Kònde.\n\nYè Kònde u turuma gɔɔ yɛnu mi, ba wii bikia yè ka yè ba ra ko baatɔn sikuru sɔɔ. U nɛɛ : « Beku nu wãa wua yiru ba ra dwe ka goo wɔ̃ka: beku wɔ̃ku teeru ka beku nɔniginu yiru. »",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Beku nɔniginu wua nyewa ba ra dwe sikurun sanam?",
+          "4- Mba ba ra ka beku wɔ̃ku te ko?"
+        ],
+        "reagis": [
+          "1- Berà n weenɛ bù beku ni dwe bweseru sɔɔ?",
+          "2- Wara n weenɛ ù màa goo wɔ̃ka ye dwe?",
+          "3- Sìku wɔrusu wùa nyewa ya wãa Baatɔmbun mi?"
+        ],
+        "retiens": [
+          "1- Mban sɔ̃na tɔn kpuro kù ra siku bekuru ka siku gua dwe?",
+          "2- Bù ka gere mɛ̃ gãanu nu sãasinɛ mba ka mba ba ra gere?"
+        ]
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 13,
+      "page": 40,
+      "title": "Yãrondo",
+      "theme": "yãa_dokebu",
+      "themeLabel": "Yãa dokebu",
+      "text": "Yãrondo kurɔ burɔwa u ka wãa sɔ̃ Gãarɔ. Kurɔ win wasin sèkuru, win wuswaan buram ka win nɔni burosun buraru ta tura garin nɔru. Win dɔkɔ dobu kùn saara mɔ, n ǹ mam kere ù n womu mɔ̀. U ra n sĩimɔwa u n yãkɔ mɔ̀ ka win koo bwãa buranu, adama yãa piibuna u ra kã.\n\nYãrondo ku ra ka goo mɔrè. Baa ka yen de gabu ba ku ra n wii mɛɛra nde tɔn kurɔ. Ka win buram mɛ kpuro u ǹ gina durɔ wa Sõɔ Gãarɔ. Tɔmbu ba ra nɛɛ u ǹ durɔ wasi baa mɛ̃ u ka kurɔ burɔ sãa ma u ra ka tɔmbu yã.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Bɛɛnu nyewa faagi ye ya mɔ? Mban gariya ba kua ten baatere sɔɔ?",
+          "4- Amɔna yãa nì Yãrondo u ra doke nu ra n sãa?"
+        ],
+        "reagis": [
+          "1- Mban sɔ̃na ba ra n Yãrondon gari mɔ̀ ù n sarɔ?",
+          "2- Mban sɔ̃na ba nɛɛ Yãrondo kùn durɔ wasi?",
+          "3- Bwisi yirà a mɔ kaa Yãrondo kã?"
+        ],
+        "retiens": [
+          "1- Amɔna n weenɛ sa n da yãnu dokesinɛ?",
+          "2- Mɛ̃ tɔnu u sãan faagin yora sɔɔ, mba ka mban gariya ba ra gere?",
+          "3- Mba n faagi ye wunanɛ ka mɛ̃ gãanu nu sãan faagin yorubu?"
+        ]
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 14,
+      "page": 42,
+      "title": "Kpàraru",
+      "theme": "bature_keu",
+      "themeLabel": "Bature keu",
+      "text": "Besen tən kuro bibun keun swaa soora, Bonu kon keu bii mowobun yigberun pesidam na sama noosiamə mè mennə ga wāa keu dirə Asibiti, bature wə 2009/9/26, kobaa wokuru dee dee.\n\nMennə gen kpunaa wee:\n- wə gē ga doonan somdan tusiabu,\n- somaa yè ya koaran tusiabu,\n- wasara bè ba wa,\n- gisoku gèn somaan kpunaa,\n- gari gee.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Wara u kparasiamɔ?",
+          "4- Mban sɔ̃na u kparasiamɔ?",
+          "5- Tɔ̃ɔ terà mɛnnɔ ge ga wãa?"
+        ],
+        "reagis": [
+          "1- Wunɛn yam waaru sɔɔ, mba n da tɔn kurɔ bibun keu biru wesie?",
+          "2- Yarufaani yerà ya wãa tɔn kurɔ bibun keu sɔɔ?",
+          "3- Yarufaani yerà ya wãa kpàrarun yorubu sɔɔ?"
+        ],
+        "retiens": [
+          "1- Swaa yerà sɔɔra ba ra kpàrarun tireru yore?",
+          "2- Mba ka mba ba ra doke kpàrarun tireru sɔɔ?",
+          "3- Swaa yerà sa ko kpe tɔn kurɔ bibun keu yù ka nɔni ko?"
+        ]
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 15,
+      "page": 44,
+      "title": "Kpaayëron Gɔɔn kpàraru",
+      "theme": "bweseru",
+      "themeLabel": "Bweseru",
+      "text": "SIME Sekon bweseru saa Günën di,\nSAKA Seron bweseru saa Sɔ̀ɔ̀ Gããrun di,\nTABE Suanon bweseru saa Kookiran di,\nSIME Duen bweseru saa Dunian di,\nSAKA Koton bweseru saa Nim Gurun di,\nBIJ SIKA Sokon Duron bweseru saa Deburun Kpaarun di,\nSAKA Yãkin bweseru saa Guu Saabun di\nGÖRADOn bweseru saa Gãakun Kpaarun di,\nbera ba bee noosiamoka nuku sankiranu.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Waran gɔɔwa ba kparasiamɔ?",
+          "4- Wɔ̃ɔ nyewa u mɔ u sere sariru kua?",
+          "5- Tɔ̃ɔ terà ba koo sikuru ko?"
+        ],
+        "reagis": [
+          "1- Amɔna a radion gɔɔ kpararun kobu waasina?",
+          "2- A tè weenasio ka gɔɔ geru bì ba ra bii seesie ù da ù gere?"
+        ],
+        "retiens": [
+          "Mba ka mba ba ra doke gɔɔ kpararun tireru sɔɔ?"
+        ]
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 16,
+      "page": 48,
+      "title": "Dokotoro dirun garin sannɔ",
+      "theme": "desantaralisasĩɔ",
+      "themeLabel": "Desantaralisasĩɔ",
+      "text": "Konnan Kpaaru baru kpaabuuwa. Dokotoro diru sari wuu mi. Wahara yè barɔbu ka gurigibu ba mɔ̀ yera Konnan Kpaarun keu bii bukurobu ba mɛɛra ba ka bɔru gabo kasu. Naanɛn yigbɛra ta wura tù bè dokotoro diru bania, adama wuugibu ba koo nɔma doke.\n\nMɛnnɔ ge sɔɔra yaruwaasi gabu ba nɛɛ dokotoro dirun banaa ya ǹ wuun gari. Gufɛnɛmawa ya koo gobi yi kɔre. Delegen saawaraba ka yaruwaasi be ba ǹ nɔɔsinɛ.\n\nSaa ye sɔɔra tem kãa bɔnu piibun wirugii wì ba sokumɔ «SEA» ka tuurem u nɛɛ: «gasɔ, gufɛnɛmawa ya ra keu dinu ka dokotoro dinu bani, adama saa mìn di desantaralisasĩɔ ya na, wuugiba ba ra ben wuun banaan gari wunanɛ, woodawa ya mɛ yi».",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Mba sɔɔra yaruwaasiba ka wuun Delege ba ǹ nɔɔsinɛ?",
+          "4- Mba n dera tɔn be ba raa nɔɔsina?"
+        ],
+        "reagis": [
+          "1- Desantaralisasĩɔn swaa sɔɔ, a geruo sɔmbu tè Gufɛnɛma ya ra ko ka tè tem kãa bɔnu piibu ga ra màa ko.",
+          "2- A gari yari yini daakari koowo:\n«A ka barɔ wi na gee gia».\n«Wooda yeni, begia».\nMba n gari yari yìn temɔ ba sĩini bĩɛn yora wunanɛ?",
+          "3- Mba yen baayere ya sɔ̃simɔ?"
+        ],
+        "retiens": [
+          "1- Saa yerà ba ra «gia» yore ye tɔna? Saa yerà ba ra «gia» yore bù mani gari yaraa sɔɔ?",
+          "2- Mba n sãa desantaralisasĩɔn yarufaani?"
+        ]
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 17,
+      "page": 50,
+      "title": "Gansaaren yiribo duurubu",
+      "theme": "dãa_duurubu",
+      "themeLabel": "Dãa duurubun yasansi",
+      "text": "Gansaare gbee wukowa Sina Wuuwɔ. Win gberun batuma yè u mɔ ya kpã too, ya ɛkita nɔbaa tia tura. Batuma ye sɔɔra u dĩa bwese bweseka yeewa. U dobi yeewawa ɛkita yiru, gberenu ɛkita tia ka bɔnu, swii wãɛ yiru ka sere yiribo gbaaru ɛkita yiru.\n\nWin sɔmaa yù ka fuuku ko, u sɔm kowobu sua ba wii yiribo binu duuruwa. Tɔn be ba nì duurawa mɛ̃ ba ka tura. Ba ǹ kpĩi yare nde mɛ̃ n weenɛ, ma ya sãa kpɛtɛ kpɛtɛ, ya ǹ swĩinɛ.\n\nGansaaren dãa binu wuna weeru ka wɔkura ta gu, durɔ kùn tuba yè n sabaabu. U nɛɛ gari yi yu ǹ kam, ba wii dobumɔwa.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Amɔna u dãa bii ni duurusina?",
+          "4- Gansaaren dãa binu nyewa ya gu?"
+        ],
+        "reagis": [
+          "1- Mba n dera Gansaaren dãa binu nu gu ka dabiru?",
+          "2- Gbee wukobun gbankɔkɔn biru, ma gia Gansaare u koo maa kpĩ ù da bù wii bwisi sosiya?",
+          "3- A gari yini daakari koowo:\n«Gansaare u batuma baka mɔ».\n«Gansaare u dukaa mɔ̀».\n«Win dãa binu nu gbimɔ».\nGari dɔka yerà ya gari yin baayere ya ka wiru go?"
+        ],
+        "retiens": [
+          "1- Dãa duurubun swaa sɔɔ mba n weenɛ a n yã?",
+          "2- Saa yerà ba ra /mɔ/, /mɔ̀/ ka /-mɔ/ yore?"
+        ]
+      },
+      "phonetics": {
+        "label": "",
+        "reading": [],
+        "writing": []
+      }
+    },
+    {
+      "level": "N2",
+      "id": 18,
+      "page": 52,
+      "title": "Baakon tem dɔrabu",
+      "theme": "tem_baun",
+      "themeLabel": "Tem baun sannɔsu",
+      "text": "Baako u wãawa Sõɔ Màroɔ. U seewa u deemawa win mɔwobu ba gberu wukumɔ. Tã, ba gbisuka ma ba wãɛsu deri. Win maabu ka sesubu sibu ba keu kua ba bature sɔmaa mɔ̀. Baako kùn sɔmburu garu mɔ̀.\n\nSɔ̃ teeru, ba Baako tireru mɔrisiama ù be na fuuku mɛɛrun gbankɔkɔwɔ. U sɔɔru kua kùru kùru u dukaa da. U deema Bakiri ka Daado ba sɔ̃ yam mi. Ba tubuna, adama ba nùn mɛɛraawa bɛɛ.\n\nBaako kùn kpĩa u yen gaa siki. Wì u bè siriammɛ u nɛɛ: \"Baako, a maa tie wunɛn dàa ye sɔɔ?\" U wii win naanaanu wiru kɔreya.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Mban sɔ̃na ba Baako tireru mɔrisiama?"
+        ],
+        "reagis": [
+          "1- Amɔna a Baakon daakari ye waasina?",
+          "2- Mba n da ka sannɔsu nɛ tem dɔrabun baa sɔɔ?"
+        ],
+        "retiens": [
+          "1- Mba n sãa tem dɔrabu?",
+          "2- Amɔna n weenɛ bù tem dɔrabu yanku?"
+        ]
+      },
+      "phonetics": {
+        "label": "ma, mà, maa, màa, -ma",
+        "reading": [
+          "ma",
+          "mà",
+          "maa",
+          "màa"
+        ],
+        "writing": [
+          "ma",
+          "mà",
+          "maa",
+          "màa",
+          "-ma"
+        ]
+      }
+    },
+    {
+      "level": "N2",
+      "id": 19,
+      "page": 54,
+      "title": "Dãa bɔɔriban girabu",
+      "theme": "yam_wãa_yeru",
+      "themeLabel": "Yam wãa yeru",
+      "text": "Dãa bɔɔriba ba ra giru mɔ̀ dɔ̃ɔ ba ka dãa bìnu gira. Ba ra giru turu mɔ̀ gbee wukobu sɔɔ. Dãa bìnun girabu ya ra yarufaani mɔ̀ too domi yera ya ra dera dĩanu nu mara n koosi wuugibu kpuro bɛɛ.\n\nDãa bɔɔriba ba ra gbee wukobu duurumɔ bù ka dãa bìnu gbe. Ba ra giru kpaamɔ, ba ka dãa bìnu turu, ba ra ye mɛɛramɔ sere ya ka yiɛ. Giru ge sɔɔ ba ra dãa bwese bweseka turu: dobi, gberenu, tasu, ka sere doogo.\n\nDãa bɔɔriban sɔmburu ya ra dam mɔ̀ too, adama ya ra yarufaani mɔ̀ too wuun dĩanun sɔɔ. Yè ba dãa bìnu gira ba ra ye kpuro kanakunu kɛɛra ba ka ye doke dii sɔɔ.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Amɔna dãa bɔɔriba ba ra giru mɔ̀?",
+          "4- Dãa bwese bweseka yerà ba ra turu?"
+        ],
+        "reagis": [
+          "1- Mban sɔ̃na dãa bɔɔriban sɔmburu ya ra dam mɔ̀?",
+          "2- Amɔna a dãa bìnun girabu waasina?",
+          "3- A gari yini daakari koowo:\n«Dãa bɔɔriba ba ra giru mɔ̀».\nMba gari yin yora ya sɔ̃simɔ?"
+        ],
+        "retiens": [
+          "1- Saa yerà ba ra /ra/, /raa/ ka /-ra/ yore?",
+          "2- Mba n sãa dãa bɔɔriban sɔmburu?"
+        ]
+      },
+      "phonetics": {
+        "label": "ra, raa, -ra",
+        "reading": [
+          "ra",
+          "raa"
+        ],
+        "writing": [
+          "ra",
+          "raa",
+          "-ra"
+        ]
+      }
+    },
+    {
+      "level": "N2",
+      "id": 20,
+      "page": 56,
+      "title": "Gɔɔ teɔ",
+      "theme": "gɔɔ_wuroru",
+      "themeLabel": "Gɔɔ wuroru",
+      "text": "Gɔɔ teɔ gɔɔ bakawa u ka wãa tem kãa bɔnu garu sɔɔ. U wãawa yɛndu giraa, adama u ra ǹ dem sĩimɔ ka yobu. Tɔmbu kpuro ba nùn yã too, domi u ra sɔmburu komɔ tɔmbu kpuro bɛɛ.\n\nGɔɔ teɔ u ra gari dɔɔbun kpuro mɛɛramɔ ka bwisi. U ra ǹ gɔsa mɔ̀ u ǹ faagi ya u da gari ye ko. Sɔ̃ teeru u ra tɔmbu soka mɔ bù tii nɔɔria bù kã bù ra ǹ da mɛ̃ gãanu nu sãasinɛ.\n\nTɔmbu ba nùn nɔɔsia too domi u ra gere gariya ba yã ya wãa geera. U ra n tii wisiamɔ gem kpuro sɔɔ.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Mban sɔ̃na tɔmbu ba Gɔɔ teɔ nɔɔsia?"
+        ],
+        "reagis": [
+          "1- Amɔna a Gɔɔ teɔn daakari waasina?",
+          "2- Mban sɔ̃na u ra tɔmbu soka bù tii nɔɔria?",
+          "3- A gari yini daakari koowo:\n«U ra gere gariya ba yã ya wãa geera».\nMba gari yin yora ya sɔ̃simɔ?"
+        ],
+        "retiens": [
+          "1- Mè gãanu nu sãasinɛn gerubu sɔɔ, mba ka mba ba ra gere?",
+          "2- Amɔna n weenɛ bù gɔɔ tɔkɔ sãa?"
+        ]
+      },
+      "phonetics": {
+        "label": "Mè gãanu nu sãasinɛn gerubu",
+        "reading": [
+          "mè",
+          "nu",
+          "sãasinɛ"
+        ],
+        "writing": [
+          "mè",
+          "nu",
+          "sãasinɛ"
+        ]
+      }
+    },
+    {
+      "level": "N2",
+      "id": 21,
+      "page": 60,
+      "title": "Sina wɔnɔ goon mwabu",
+      "theme": "tɛtɛ_toobu",
+      "themeLabel": "Tɛtɛ toobu",
+      "text": "Sina wɔnɔ goo u wãawa wuu garu sɔɔ. U ra sɔmburu komɔ ka dam. Sɔ̃ teeru u ra gɔɔbu mwamɔ u ra bè nɛɛ bù sɔmburu ko. U ra ǹ tɔnu yarumɔ u ǹ wunanɔ.\n\nYè Sina wɔnɔ u gɔɔ goo mwa, u ra gari ge gbiisimɔ, u ra gari ge sɔ̃simɔ tɔmbu bɛɛ. U ra nɛɛmɔ mɛ̃ n weenɛ goo ù ko sɔmburu ye sɔɔ. Tɔmbu ba ra n nùn nɔɔsiamɔ domi u ra gari gembu geremɔ.\n\nAdama gabu ba ra nɛɛ Sina wɔnɔ u ra n tɔmbu baamɔ too. U ra ǹ goo demɔ u ǹ sɔmburu ko. Yè u gɔɔ goo mwa, tɔn kpuro u ra sɔmburu ko.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Mba Sina wɔnɔ u ra ko yè u gɔɔ goo mwa?"
+        ],
+        "reagis": [
+          "1- Amɔna a Sina wɔnɔn daakari waasina?",
+          "2- Mban sɔ̃na gabu ba nɛɛ u ra tɔmbu baamɔ?",
+          "3- A yĩsan wùunu /w/ ka /y/ gɔsio gari yini sɔɔ."
+        ],
+        "retiens": [
+          "1- Yĩsan wùunu /w/ ka /y/ sɔɔ, mba n weenɛ a n yã?",
+          "2- Amɔna n weenɛ gɔɔ tɔkɔ ù sɔmburu ko?"
+        ]
+      },
+      "phonetics": {
+        "label": "Yĩsan wùunu (w, y)",
+        "reading": [
+          "wa",
+          "wã",
+          "ya",
+          "yã"
+        ],
+        "writing": [
+          "wa",
+          "wã",
+          "ya",
+          "yã"
+        ]
+      }
+    },
+    {
+      "level": "N2",
+      "id": 22,
+      "page": 62,
+      "title": "Gannigin bàraru",
+      "theme": "gbiri_wɔ̃koru",
+      "themeLabel": "Gbiri wɔ̃koru",
+      "text": "Gannigin bàraru ya ra wãa tem kpuro sɔɔ. Tɔmbu ba ra bàra mɔ̀ saa gannigi bakaru sɔɔ. Yè gannigin sanam na, tɔmbu ba ra dĩanu duurumɔ bù ka tɔmbu tɔkɔnu sõɔsisi.\n\nGannigin bàrabu ba ra dĩa bwese bweseka kobu torumɔ: ba ra dĩa bwãamu duuru, ba ra nimge ko, ba ra sɔm bwese bweseka ko sere tɔmbu ba ka nɔɔ nɔ.\n\nGannigin bàrabun yigbɛra ya ra dem bakawa too domi ba ra n sɔ̃ɔsimɔ tɔmbu bɛɛ nì n weenɛ bù yã wãarun keu sɔɔ.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Mba ba ra ko gannigin bàrabu sɔɔ?"
+        ],
+        "reagis": [
+          "1- Amɔna a gannigin bàrabun yarufaani waasina?",
+          "2- Mba ba ra sɔ̃ɔsi gannigin bàrabu sɔɔ?",
+          "3- A yĩsan wùunu /t/ ka /n/ gɔsio gari yini sɔɔ."
+        ],
+        "retiens": [
+          "1- Yĩsan wùunu /t/ ka /n/ sɔɔ, mba n weenɛ a n yã?",
+          "2- Gannigin bàrabun yarufaani yerà mba?"
+        ]
+      },
+      "phonetics": {
+        "label": "Yĩsan wùunu (t, n)",
+        "reading": [
+          "ta",
+          "tɔ",
+          "na",
+          "nɔ"
+        ],
+        "writing": [
+          "ta",
+          "tɔ",
+          "na",
+          "nɔ"
+        ]
+      }
+    },
+    {
+      "level": "N2",
+      "id": 23,
+      "page": 64,
+      "title": "Bake Sìka ka sɛm sɔm kowobu",
+      "theme": "yãnu_ka_dĩanun_sɛm",
+      "themeLabel": "Yãnu ka dĩanun sɛm",
+      "text": "Bake Sìka gbee wukowa u ka sɛm sɔmaa ko. Sɔ̃ teeru u ra yãnu kɔsiamɔ u ra dĩanu sɛm bwese bweseka ko. U ra dĩanu ka yãnu duurumɔ u ra ye kpuro doke dii tɔkɔru sɔɔ.\n\nWin sɔmaa sɔɔ u ra kaasibun bwisi kãmɔ: u ra tìm mɛ̃ u koo ka dĩanu gira yãɛ, u ra tìm mɛ̃ u koo ka dĩa gɔnnu gberasia yãɛ. Bake Sìka u ra sɛm sɔm kowobu bè ba sɔmburu ko win mi siramɔ.\n\nYè sɛm sɔmaa ya kaara, u ra gobi gbaaru mɛɛramɔ ù yã mɛ̃ sɔmburu ya kɔsa u ǹ kɔsa.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Mba Bake Sìka u ra ko sɛm sɔmaa sɔɔ?",
+          "4- Mban sɔ̃na u ra sɛm sɔm kowobu sira?"
+        ],
+        "reagis": [
+          "1- Amɔna a sɛm sɔmaan yarufaani waasina?",
+          "2- Mba n da ka sannɔsu nɛ sɛm sɔmaan baa sɔɔ?",
+          "3- A yĩsan wùunu /g/ ka /s/ gɔsio gari yini sɔɔ."
+        ],
+        "retiens": [
+          "1- Yĩsan wùunu /g/ ka /s/ sɔɔ, mba n weenɛ a n yã?",
+          "2- Amɔna n weenɛ bù sɛm sɔmaa ko?"
+        ]
+      },
+      "phonetics": {
+        "label": "Yĩsan wùunu (g, s)",
+        "reading": [
+          "ga",
+          "gɔ",
+          "sa",
+          "sɔ"
+        ],
+        "writing": [
+          "ga",
+          "gɔ",
+          "sa",
+          "sɔ"
+        ]
+      }
+    },
+    {
+      "level": "N2",
+      "id": 24,
+      "page": 66,
+      "title": "À n tii kĩ, a tii nɔɔri",
+      "theme": "alaafian_yigbɛru",
+      "themeLabel": "Alaafian yigbɛru",
+      "text": "Alaafian yigbɛru ya ra dam mɔ̀ too wãarun keu sɔɔ. À n tii kĩ, a tii nɔɔri. Gari yara yèn kɔ̀kɔrɔ ya sɔ̃simɔ mɛ̃ tɔnu u ra tii kĩa, u ra tii nɔɔri, u ra tii mɛɛra sere u ra tii bɔɔri.\n\nTɔnu wì u tii kĩ u ra n barɔwa sere u ka maa. U ra n nɛnumɔwa saa baranu sɔɔ. U ra n kpĩimɔwa u n sɔmburu ko, u n dĩanu di u n nim nɔ.\n\nAdama tɔnu wì u ǹ tii kĩ, u ku ra n barɔ nɛnu. U ra baranu bwese bweseka gabamɔ. Yera n weenɛ tɔn kpuro ù tii kĩa u tii nɔɔri.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Mba n kɔ̀kɔrɔ mɛ̃ «à n tii kĩ, a tii nɔɔri»?"
+        ],
+        "reagis": [
+          "1- Amɔna tɔnu u ra tii kĩasina?",
+          "2- Mba n da de tɔnu ù tii nɔɔri?",
+          "3- A yĩsan wùunu /b/ ka /m/ gɔsio gari yini sɔɔ."
+        ],
+        "retiens": [
+          "1- Yĩsan wùunu /b/ ka /m/ sɔɔ, mba n weenɛ a n yã?",
+          "2- Amɔna n weenɛ bù alaafian yigbɛru yã?"
+        ]
+      },
+      "phonetics": {
+        "label": "Yĩsan wùunu (b, m)",
+        "reading": [
+          "ba",
+          "bɔ",
+          "ma",
+          "mɔ"
+        ],
+        "writing": [
+          "ba",
+          "bɔ",
+          "ma",
+          "mɔ"
+        ]
+      }
+    },
+    {
+      "level": "N2",
+      "id": 25,
+      "page": 68,
+      "title": "Saaton gɔɔ",
+      "theme": "bwãɛn_bararu",
+      "themeLabel": "Bwãɛn bararu",
+      "text": "Saaton gɔɔ gɔɔ bakawa u wãawa saa gisokun di. Tɔmbu ba nùn yã too domi u ra sɔmburu komɔ bwãɛ ba n nùn mara. U ra bwãɛbun bàraru komɔ ka dam.\n\nSaaton gɔɔ u ra gari kpuro gbiisimɔ sere u ra bwãɛbu nɛnumɔ ka bwisi. U ra ǹ gɔsa mɔ̀ u ǹ bwãɛ goo bara. U ra bwãɛ baawere nɛnumɔ ka alaafiya.\n\nYè bwãɛ goo barara, Saaton gɔɔ u ra sɔmburu ko dam too. U ra barɔ nɛnumɔ sere u ka maa. Tɔmbu ba ra nɛɛ Saaton gɔɔ u ra sɔmburu ko mɛ̃ u sãasinɛ.",
+      "imageUrl": "",
+      "sections": {
+        "observe": [
+          "1- Mba a waamɔ foto yeni sɔɔ?",
+          "2- Mban gariya ba koo kpĩ ba n mɔ̀ faagi ye sɔɔ?"
+        ],
+        "ecoute": [
+          "1- Yè a den faagi ye gara, wunɛn wam mu kɔsa nde mu ǹ kɔsa?",
+          "2- Mban gariya ba mɔ̀ dee dee faagi ye sɔɔ?",
+          "3- Mba Saaton gɔɔ u ra ko bwãɛbun bàrabu sɔɔ?"
+        ],
+        "reagis": [
+          "1- Amɔna a Saaton gɔɔn daakari waasina?",
+          "2- Mban sɔ̃na tɔmbu ba nùn yã?",
+          "3- A baatɔn suruba gɔsio gari yini sɔɔ."
+        ],
+        "retiens": [
+          "1- Baatɔn suruba sɔɔ, mba n weenɛ a n yã?",
+          "2- Amɔna n weenɛ bù bwãɛbu nɛnusina?"
+        ]
+      },
+      "phonetics": {
+        "label": "Baatɔn suruba",
+        "reading": [
+          "su",
+          "ba",
+          "u",
+          "a"
+        ],
+        "writing": [
+          "su",
+          "ba",
+          "u",
+          "a"
+        ]
+      }
+    }
+  ]
+}
