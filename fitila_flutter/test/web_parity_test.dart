@@ -137,6 +137,16 @@ void main() {
     expect(find.textContaining('Texte'), findsWidgets);
     expect(find.textContaining('Mɛɛrio'), findsOneWidget);
     expect(find.textContaining('Faagi'), findsOneWidget);
+
+    final firstLesson = lessons.firstWhere(
+      (lesson) => lesson.level == 'N1' && lesson.id == 1,
+    );
+    expect(firstLesson.reagis, isNotEmpty);
+
+    final lessonTabs = find.byKey(const ValueKey('classe-lesson-tabs'));
+    expect(lessonTabs, findsOneWidget);
+    await tester.drag(lessonTabs, const Offset(-260, 0));
+    await tester.pump(const Duration(milliseconds: 250));
     expect(find.textContaining('Geruo'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
