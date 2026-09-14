@@ -569,7 +569,8 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends State<AuthScreen>
+    with SingleTickerProviderStateMixin {
   final _phone = TextEditingController();
   final _password = TextEditingController();
   bool _busy = false;
@@ -577,9 +578,38 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _remember = true;
   bool _biometric = false;
 
+  late final AnimationController _introController;
+  late final Animation<double> _introOpacity;
+  late final Animation<Offset> _heroSlide;
+  late final Animation<Offset> _formSlide;
+
   @override
   void initState() {
     super.initState();
+    _introController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 950),
+    );
+    final curve = CurvedAnimation(
+      parent: _introController,
+      curve: Curves.easeOutCubic,
+    );
+    _introOpacity = Tween<double>(begin: 0, end: 1).animate(curve);
+    _heroSlide = Tween<Offset>(
+      begin: const Offset(0, .06),
+      end: Offset.zero,
+    ).animate(curve);
+    _formSlide = Tween<Offset>(
+      begin: const Offset(0, .09),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _introController,
+        curve: const Interval(.18, 1, curve: Curves.easeOutCubic),
+      ),
+    );
+    _introController.forward();
+
     if (widget.demoMode) {
       _phone.text = '65653468';
       _password.text = '123456';
@@ -588,12 +618,14 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   void dispose() {
+    _introController.dispose();
     _phone.dispose();
     _password.dispose();
     super.dispose();
   }
 
   Future<void> _signIn() async {
+    FocusScope.of(context).unfocus();
     setState(() => _busy = true);
     final phone = _phone.text.trim();
     final pin = _password.text.trim();
@@ -613,7 +645,7 @@ class _AuthScreenState extends State<AuthScreen> {
       }
       if (!FitilaBackend.configured) {
         throw StateError(
-          'Configuration serveur absente de cette version. Réinstallez l’APK officielle FITILA.',
+          'Configuration serveur non intégrée à cette APK. Installez une version FITILA configurée.',
         );
       }
       final backendSession = await FitilaBackend.signInWithPhone(
@@ -629,11 +661,13 @@ class _AuthScreenState extends State<AuthScreen> {
           content: Text('Numéro ou PIN incorrect. Vérifiez vos informations.'),
         ),
       );
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.toString().replaceFirst('Bad state: ', '')),
+        const SnackBar(
+          content: Text(
+            'Connexion au serveur FITILA impossible. Vérifiez votre réseau puis réessayez.',
+          ),
         ),
       );
     } finally {
@@ -644,30 +678,71 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width > 760;
-    final hero = _HeroPanel(
-      title: 'FITILA',
-      subtitle:
-          'Langue Bariba, culture, classe et IA dans une expérience native.',
+
+    final hero = FadeTransition(
+      opacity: _introOpacity,
+      child: SlideTransition(
+        position: _heroSlide,
+        child: const _PremiumLandingHero(),
+      ),
     );
-    final form = _authCard();
+
+    final form = FadeTransition(
+      opacity: _introOpacity,
+      child: SlideTransition(
+        position: _formSlide,
+        child: _authCard(),
+      ),
+    );
+
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1060),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: wide
-                  ? Row(
-                      children: [
-                        Expanded(child: hero),
-                        const SizedBox(width: 22),
-                        Expanded(child: SingleChildScrollView(child: form)),
-                      ],
-                    )
-                  : ListView(
-                      children: [hero, const SizedBox(height: 18), form],
-                    ),
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: _fitilaSurface,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFF9F7F0),
+              Color(0xFFF3F0E5),
+              Color(0xFFF7F5EC),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1080),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  wide ? 24 : 16,
+                  wide ? 22 : 14,
+                  wide ? 24 : 16,
+                  wide ? 22 : 18,
+                ),
+                child: wide
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(flex: 11, child: hero),
+                          const SizedBox(width: 24),
+                          Expanded(
+                            flex: 10,
+                            child: SingleChildScrollView(child: form),
+                          ),
+                        ],
+                      )
+                    : ListView(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        children: [
+                          hero,
+                          const SizedBox(height: 14),
+                          form,
+                          const SizedBox(height: 10),
+                        ],
+                      ),
+              ),
             ),
           ),
         ),
@@ -676,38 +751,117 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _authCard() {
+    final configured = FitilaBackend.configured;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(22),
+        padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Connexion',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Bienvenue',
+                        style: TextStyle(
+                          color: _fitilaInk,
+                          fontFamily: 'serif',
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -.2,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      const Text(
+                        'Connectez-vous pour retrouver votre univers FITILA.',
+                        style: TextStyle(
+                          color: _fitilaMuted,
+                          fontSize: 13.5,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: const BoxDecoration(
+                    color: _fitilaPrimarySoft,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.lock_person_rounded,
+                    color: _fitilaGoldDeep,
+                    size: 20,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              'Accès mobile synchronisé avec le parcours web Fitila.',
-              style: TextStyle(color: Colors.grey.shade700),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: configured
+                    ? const Color(0xFFDCEAE0)
+                    : const Color(0xFFF4DED2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    configured
+                        ? Icons.verified_rounded
+                        : Icons.cloud_off_rounded,
+                    size: 17,
+                    color: configured ? _fitilaSage : _fitilaClay,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      configured
+                          ? 'Serveur FITILA prêt · connexion sécurisée'
+                          : 'Configuration serveur absente de cette APK',
+                      style: TextStyle(
+                        color: configured ? _fitilaSage : _fitilaClay,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 18),
             const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.phone_android_rounded, size: 18),
-                SizedBox(width: 6),
+                Icon(
+                  Icons.phone_android_rounded,
+                  size: 18,
+                  color: _fitilaGoldDeep,
+                ),
+                SizedBox(width: 7),
                 Flexible(
                   child: Text(
                     '+229 · Compte FITILA',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _fitilaInkSoft,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             TextField(
               controller: _phone,
               keyboardType: TextInputType.phone,
@@ -748,84 +902,366 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               onSubmitted: (_) => _signIn(),
             ),
-            const SizedBox(height: 8),
-            FilledButton.icon(
-              onPressed: _busy ? null : _signIn,
-              icon: _busy
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.login_rounded),
-              label: const Text('Se connecter'),
-            ),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              value: _remember,
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              onChanged: (value) => setState(() => _remember = value),
-              secondary: const Icon(Icons.verified_user_rounded),
-              title: const Text('Mémoriser cette session'),
-              subtitle: const Text(
-                'Session locale, reprise offline et refresh token.',
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 52,
+              child: FilledButton.icon(
+                onPressed: _busy ? null : _signIn,
+                icon: _busy
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.login_rounded),
+                label: Text(_busy ? 'Connexion...' : 'Se connecter'),
               ),
             ),
-            SwitchListTile(
-              value: _biometric,
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              onChanged: (value) => setState(() => _biometric = value),
-              secondary: const Icon(Icons.fingerprint_rounded),
-              title: const Text('Activer PIN / biométrie'),
-              subtitle: const Text('Prépare verrouillage rapide mobile.'),
+            const SizedBox(height: 10),
+            Theme(
+              data: Theme.of(context).copyWith(
+                listTileTheme: const ListTileThemeData(
+                  minVerticalPadding: 0,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    value: _remember,
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (value) => setState(() => _remember = value),
+                    secondary: const Icon(
+                      Icons.verified_user_rounded,
+                      color: _fitilaGoldDeep,
+                    ),
+                    title: const Text(
+                      'Mémoriser cette session',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  SwitchListTile(
+                    value: _biometric,
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (value) => setState(() => _biometric = value),
+                    secondary: const Icon(
+                      Icons.fingerprint_rounded,
+                      color: _fitilaGoldDeep,
+                    ),
+                    title: const Text(
+                      'Préparer PIN / biométrie',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            const _FeatureGrid(
-              items: [
-                (
-                  Icons.phone_android_rounded,
-                  'Connexion téléphone',
-                  'Identifiant, mot de passe, validation, erreur et reprise session.',
-                ),
-                (
-                  Icons.security_rounded,
-                  'AuthContext',
-                  'Session, rôle, profil Supabase et déconnexion contrôlée.',
-                ),
-                (
-                  Icons.offline_bolt_rounded,
-                  'Fallback offline',
-                  'Accès recette, cache local et queue de synchronisation.',
-                ),
-                (
-                  Icons.help_rounded,
-                  'Aide accès',
-                  'Mot de passe oublié, support vocal et guide première connexion.',
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             const Wrap(
+              alignment: WrapAlignment.center,
               spacing: 8,
               runSpacing: 8,
               children: [
                 _StatusChip(
                   icon: Icons.shield_rounded,
-                  label: 'Sécurité visuelle',
+                  label: 'Sécurisé',
                 ),
                 _StatusChip(
                   icon: Icons.offline_bolt_rounded,
-                  label: 'Mode offline',
+                  label: 'Offline-ready',
                 ),
                 _StatusChip(
                   icon: Icons.keyboard_alt_rounded,
-                  label: 'Clavier Bariba',
+                  label: 'Clavier Bàátɔ̀nú',
                 ),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PremiumLandingHero extends StatelessWidget {
+  const _PremiumLandingHero();
+
+  @override
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 760;
+    return Container(
+      constraints: BoxConstraints(minHeight: compact ? 220 : 500),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(compact ? 26 : 32),
+        border: Border.all(color: _fitilaBorder),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFFFFFFF),
+            Color(0xFFF7F0DF),
+            Color(0xFFF1EDDF),
+          ],
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1E241F2E),
+            blurRadius: 32,
+            offset: Offset(0, 18),
+            spreadRadius: -18,
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(compact ? 26 : 32),
+        child: Stack(
+          children: [
+            Positioned(
+              right: compact ? -26 : -38,
+              top: compact ? -32 : -44,
+              child: Container(
+                width: compact ? 118 : 178,
+                height: compact ? 118 : 178,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0x33C99530),
+                ),
+              ),
+            ),
+            Positioned(
+              left: compact ? -36 : -62,
+              bottom: compact ? -45 : -70,
+              child: Container(
+                width: compact ? 120 : 210,
+                height: compact ? 120 : 210,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0x263F6E52),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(compact ? 18 : 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: compact ? 48 : 58,
+                        height: compact ? 48 : 58,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [_fitilaPrimary, Color(0xFFA6721F)],
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.auto_awesome_rounded,
+                          color: Color(0xFF2B2110),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'FITILA',
+                            style: TextStyle(
+                              color: _fitilaGoldDeep,
+                              fontFamily: 'serif',
+                              fontSize: 28,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: .5,
+                            ),
+                          ),
+                          Text(
+                            'Bàátɔ̀nú · Culture · IA',
+                            style: TextStyle(
+                              color: _fitilaMuted,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: compact ? 18 : 34),
+                  Text(
+                    'La langue vivante,\naugmentée par l’IA.',
+                    style: TextStyle(
+                      color: _fitilaInk,
+                      fontFamily: 'serif',
+                      fontSize: compact ? 27 : 42,
+                      height: 1.06,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -.5,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 460),
+                    child: Text(
+                      'Traduire, apprendre, partager et préserver le Bàátɔ̀nú dans une expérience mobile élégante et accessible.',
+                      style: TextStyle(
+                        color: _fitilaInkSoft,
+                        fontSize: compact ? 13 : 15,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: compact ? 16 : 28),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: const [
+                      _LandingFeatureChip(
+                        icon: Icons.translate_rounded,
+                        label: 'Traduction',
+                        tone: _fitilaPrimarySoft,
+                        ink: _fitilaGoldDeep,
+                      ),
+                      _LandingFeatureChip(
+                        icon: Icons.auto_awesome_rounded,
+                        label: 'IA culturelle',
+                        tone: Color(0xFFF4DED2),
+                        ink: _fitilaClay,
+                      ),
+                      _LandingFeatureChip(
+                        icon: Icons.school_rounded,
+                        label: 'Apprentissage',
+                        tone: Color(0xFFDCEAE0),
+                        ink: _fitilaSage,
+                      ),
+                    ],
+                  ),
+                  if (!compact) ...[
+                    const SizedBox(height: 34),
+                    const Row(
+                      children: [
+                        Expanded(
+                          child: _LandingMiniCard(
+                            icon: Icons.menu_book_rounded,
+                            title: 'Dictionnaire',
+                            subtitle: 'Bàátɔ̀nú ↔ Français',
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: _LandingMiniCard(
+                            icon: Icons.graphic_eq_rounded,
+                            title: 'Voix',
+                            subtitle: 'Écouter & prononcer',
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: _LandingMiniCard(
+                            icon: Icons.groups_rounded,
+                            title: 'Communauté',
+                            subtitle: 'Partager & transmettre',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LandingFeatureChip extends StatelessWidget {
+  const _LandingFeatureChip({
+    required this.icon,
+    required this.label,
+    required this.tone,
+    required this.ink,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color tone;
+  final Color ink;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+      decoration: BoxDecoration(
+        color: tone,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: ink),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: ink,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LandingMiniCard extends StatelessWidget {
+  const _LandingMiniCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .78),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _fitilaBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: _fitilaGoldDeep, size: 20),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: const TextStyle(
+              color: _fitilaInk,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              color: _fitilaMuted,
+              fontSize: 10.5,
+            ),
+          ),
+        ],
       ),
     );
   }
