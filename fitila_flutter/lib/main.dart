@@ -8657,68 +8657,43 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
   }
 }
 
-class _ClasseCorrectionWorkflowBoard extends StatelessWidget {
-  const _ClasseCorrectionWorkflowBoard();
+// ============================================================================
+// ESPACE ENSEIGNANT — implémentation native complète, branchée sur Supabase
+// via FitilaBackend (voir lib/core/fitila_backend.dart, section "Espace
+// Enseignant"). Réplique fidèle de src/pages/teacher/*.tsx.
+// ============================================================================
 
-  @override
-  Widget build(BuildContext context) {
-    return _ActionList(
-      items: const [
-        _ActionItem(
-          Icons.difference_rounded,
-          'AnswerDiff',
-          'Compare réponse élève, corrigé attendu, écarts et variantes acceptées.',
-        ),
-        _ActionItem(
-          Icons.edit_note_rounded,
-          'AnswerReview',
-          'Annotation enseignant, note, statut, commentaire texte et audio.',
-        ),
-        _ActionItem(
-          Icons.record_voice_over_rounded,
-          'VoiceAnswerPlayer',
-          'Écoute, transcription, qualité, vitesse et commentaire vocal.',
-        ),
-        _ActionItem(
-          Icons.auto_awesome_rounded,
-          'Remédiation IA',
-          'Conseil personnalisé, exercice de reprise et prochaine leçon.',
-        ),
-      ],
-    );
-  }
+enum _TeacherTab { overview, students, grading, keys, weights, grades, stats }
+
+extension on _TeacherTab {
+  String get label => switch (this) {
+    _TeacherTab.overview => "Vue d'ensemble",
+    _TeacherTab.students => 'Apprenants',
+    _TeacherTab.grading => 'À corriger',
+    _TeacherTab.keys => 'Corrigés',
+    _TeacherTab.weights => 'Barèmes',
+    _TeacherTab.grades => 'Relevé',
+    _TeacherTab.stats => 'Stats',
+  };
+
+  IconData get icon => switch (this) {
+    _TeacherTab.overview => Icons.dashboard_rounded,
+    _TeacherTab.students => Icons.groups_rounded,
+    _TeacherTab.grading => Icons.rate_review_rounded,
+    _TeacherTab.keys => Icons.menu_book_rounded,
+    _TeacherTab.weights => Icons.tune_rounded,
+    _TeacherTab.grades => Icons.bar_chart_rounded,
+    _TeacherTab.stats => Icons.insights_rounded,
+  };
 }
 
-class _ClasseGradebookBoard extends StatelessWidget {
-  const _ClasseGradebookBoard();
-
-  @override
-  Widget build(BuildContext context) {
-    return _FeatureGrid(
-      items: const [
-        (
-          Icons.bar_chart_rounded,
-          'GradeOverview',
-          'Moyenne, distribution, évolution, retard et modules faibles.',
-        ),
-        (
-          Icons.table_chart_rounded,
-          'Carnet de notes',
-          'Notes par élève, module, évaluation, oral, calcul et production.',
-        ),
-        (
-          Icons.picture_as_pdf_rounded,
-          'MyGradeReport',
-          'Relevé PDF élève/parent/enseignant avec commentaires.',
-        ),
-        (
-          Icons.insights_rounded,
-          'ClassStats',
-          'Performance classe, objectifs, assiduité et recommandations.',
-        ),
-      ],
-    );
-  }
+String _teacherShortDate(String? iso) {
+  if (iso == null || iso.isEmpty) return '—';
+  final d = DateTime.tryParse(iso);
+  if (d == null) return '—';
+  final local = d.toLocal();
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '${two(local.day)}/${two(local.month)} ${two(local.hour)}:${two(local.minute)}';
 }
 
 class TeacherScreen extends StatefulWidget {
@@ -8729,132 +8704,1694 @@ class TeacherScreen extends StatefulWidget {
 }
 
 class _TeacherScreenState extends State<TeacherScreen> {
-  String _tab = 'Dashboard';
+  bool _loading = true;
+  bool _allowed = false;
+  _TeacherTab _tab = _TeacherTab.overview;
 
-  Widget _teacherChip(String value, IconData icon) {
-    return ChoiceChip(
-      selected: _tab == value,
-      avatar: Icon(icon, size: 18),
-      label: Text(value),
-      onSelected: (_) => setState(() => _tab = value),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _checkAccess();
   }
 
-  Widget _teacherBody() {
-    return switch (_tab) {
-      'Élèves' => _ActionList(
-        items: const [
-          _ActionItem(
-            Icons.people_rounded,
-            'StudentList',
-            'Recherche, filtre niveau, statut, progression et dernier devoir.',
-          ),
-          _ActionItem(
-            Icons.person_search_rounded,
-            'StudentDetail',
-            'Profil, réponses, audio, notes, badges et historique complet.',
-          ),
-          _ActionItem(
-            Icons.notifications_active_rounded,
-            'Alertes',
-            'Retard, faible progression, correction non lue et relance.',
-          ),
-        ],
-      ),
-      'Corrections' => const _ClasseCorrectionWorkflowBoard(),
-      'Barèmes' => const _FeatureGrid(
-        items: [
-          (
-            Icons.tune_rounded,
-            'WeightsManager',
-            'Pondérations par module, niveau, chapitre, leçon et compétence.',
-          ),
-          (
-            Icons.rule_folder_rounded,
-            'AnswerKeysManager',
-            'Corrigés, variantes acceptées, mots clés et barème automatique.',
-          ),
-          (
-            Icons.verified_rounded,
-            'Validation',
-            'Publier corrigé, verrouiller note et historiser modification.',
-          ),
-        ],
-      ),
-      'Notes' => const _ClasseGradebookBoard(),
-      'Lecture vocale' => const _FeatureGrid(
-        items: [
-          (
-            Icons.record_voice_over_rounded,
-            'VoiceReadingHome',
-            'Sélection texte, niveau, modèle audio et consigne de lecture.',
-          ),
-          (
-            Icons.graphic_eq_rounded,
-            'VoiceReadingStudio',
-            'Waveform, bruit, vitesse, transcription et score de fluidité.',
-          ),
-          (
-            Icons.health_and_safety_rounded,
-            'ClasseAudioReview',
-            'Validation admin, consentement, qualité et ajout au corpus.',
-          ),
-        ],
-      ),
-      _ => const _FeatureGrid(
-        items: [
-          (
-            Icons.dashboard_rounded,
-            'TeacherDashboard',
-            'Moyenne, élèves actifs, corrections, tendances et alertes.',
-          ),
-          (
-            Icons.pending_actions_rounded,
-            'Travail en attente',
-            'Réponses texte, audio, évaluations et productions N2 à noter.',
-          ),
-          (
-            Icons.picture_as_pdf_rounded,
-            'Exports',
-            'Relevés PDF, carnet CSV, synthèse parent et rapport classe.',
-          ),
-        ],
-      ),
-    };
+  Future<void> _checkAccess() async {
+    var ok = false;
+    try {
+      ok = await FitilaBackend.isTeacher();
+    } catch (_) {
+      ok = false;
+    }
+    if (!mounted) return;
+    setState(() {
+      _allowed = ok;
+      _loading = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const _PageFrame(
+        title: 'Espace enseignant',
+        subtitle: 'Vérification des accès…',
+        child: Center(child: CircularProgressIndicator(color: _fitilaPrimary)),
+      );
+    }
+    if (!_allowed) {
+      return const _PageFrame(
+        title: 'Espace enseignant',
+        subtitle: 'Accès réservé',
+        child: _TeacherAccessDenied(),
+      );
+    }
     return _PageFrame(
-      title: 'Espace enseignant',
-      subtitle:
-          'Élèves, corrections en attente, pondérations, notes et lecture vocale.',
-      child: ListView(
+      title: 'Espace Enseignant',
+      subtitle: 'Suivi des apprenants · Module Classe',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _MetricStrip(
-            metrics: [
-              ('Élèves', '38', Icons.groups_rounded),
-              ('À corriger', '12', Icons.pending_actions_rounded),
-              ('Moyenne', '14.8/20', Icons.grade_rounded),
-            ],
+          SizedBox(
+            height: 40,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _TeacherTab.values.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              itemBuilder: (context, i) {
+                final t = _TeacherTab.values[i];
+                final active = t == _tab;
+                return ChoiceChip(
+                  selected: active,
+                  onSelected: (_) => setState(() => _tab = t),
+                  avatar: Icon(
+                    t.icon,
+                    size: 15,
+                    color: active ? const Color(0xFF2B2110) : _fitilaMuted,
+                  ),
+                  label: Text(t.label),
+                  labelStyle: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: active ? const Color(0xFF2B2110) : _fitilaMuted,
+                  ),
+                  backgroundColor: _fitilaCard,
+                  selectedColor: _fitilaPrimary,
+                  side: BorderSide(color: active ? _fitilaPrimary : _fitilaBorder),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                );
+              },
+            ),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _teacherChip('Dashboard', Icons.dashboard_rounded),
-              _teacherChip('Élèves', Icons.people_rounded),
-              _teacherChip('Corrections', Icons.rate_review_rounded),
-              _teacherChip('Barèmes', Icons.tune_rounded),
-              _teacherChip('Notes', Icons.grade_rounded),
-              _teacherChip('Lecture vocale', Icons.record_voice_over_rounded),
-            ],
+          const SizedBox(height: 14),
+          Expanded(
+            child: switch (_tab) {
+              _TeacherTab.overview => const _TeacherOverviewTab(),
+              _TeacherTab.students => const _TeacherStudentsTab(),
+              _TeacherTab.grading => const _TeacherGradingTab(),
+              _TeacherTab.keys => const _TeacherAnswerKeysTab(),
+              _TeacherTab.weights => const _TeacherWeightsTab(),
+              _TeacherTab.grades => const _TeacherGradeOverviewTab(),
+              _TeacherTab.stats => const _TeacherStatsTab(),
+            },
           ),
-          const SizedBox(height: 12),
-          _teacherBody(),
         ],
       ),
+    );
+  }
+}
+
+class _TeacherAccessDenied extends StatelessWidget {
+  const _TeacherAccessDenied();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.lock_person_rounded, size: 46, color: _fitilaClay),
+            const SizedBox(height: 14),
+            const Text(
+              'Accès réservé aux enseignants',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _fitilaInk),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Contactez un administrateur pour obtenir le rôle Enseignant.",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12.5, color: _fitilaMuted),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Petit conteneur "carte" cohérent avec le système de signature FITILA.
+class _TCard extends StatelessWidget {
+  const _TCard({required this.child, this.padding, this.borderColor, this.margin});
+
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+  final Color? borderColor;
+  final EdgeInsetsGeometry? margin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: margin,
+      padding: padding ?? const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: _fitilaCard,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor ?? _fitilaBorder),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _TStat extends StatelessWidget {
+  const _TStat({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.tint,
+    required this.fg,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color tint;
+  final Color fg;
+
+  @override
+  Widget build(BuildContext context) {
+    return _TCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(11)),
+            child: Icon(icon, size: 17, color: fg),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: const TextStyle(
+              fontFamily: 'serif',
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: _fitilaInk,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(label, style: const TextStyle(fontSize: 10.5, color: _fitilaMuted)),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeacherOverviewTab extends StatefulWidget {
+  const _TeacherOverviewTab();
+
+  @override
+  State<_TeacherOverviewTab> createState() => _TeacherOverviewTabState();
+}
+
+class _TeacherOverviewTabState extends State<_TeacherOverviewTab> {
+  late Future<Map<String, dynamic>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = FitilaBackend.fetchTeacherDashboard();
+  }
+
+  Future<void> _reload() async {
+    setState(() => _future = FitilaBackend.fetchTeacherDashboard());
+    await _future;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator(color: _fitilaPrimary));
+        }
+        if (snap.hasError) {
+          return _TeacherErrorState(message: '${snap.error}', onRetry: _reload);
+        }
+        final data = snap.data ?? const {};
+        final avg = data['avgGrade'] as num?;
+        final recent = List<Map<String, dynamic>>.from(data['recent'] as List? ?? const []);
+        return RefreshIndicator(
+          onRefresh: _reload,
+          color: _fitilaPrimary,
+          child: ListView(
+            children: [
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 1.35,
+                children: [
+                  _TStat(
+                    icon: Icons.groups_rounded,
+                    value: '${data['totalStudents'] ?? 0}',
+                    label: 'Apprenants',
+                    tint: _fitilaPrimarySoft,
+                    fg: _fitilaGoldDeep,
+                  ),
+                  _TStat(
+                    icon: Icons.pending_actions_rounded,
+                    value: '${data['pendingGrading'] ?? 0}',
+                    label: 'À corriger',
+                    tint: _fitilaClay.withOpacity(0.16),
+                    fg: _fitilaClay,
+                  ),
+                  _TStat(
+                    icon: Icons.trending_up_rounded,
+                    value: '${data['completedLessons'] ?? 0}',
+                    label: 'Leçons terminées',
+                    tint: _fitilaSage.withOpacity(0.16),
+                    fg: _fitilaSage,
+                  ),
+                  _TStat(
+                    icon: Icons.grade_rounded,
+                    value: avg != null ? '${avg.toStringAsFixed(1)}/20' : '—',
+                    label: 'Moyenne classe',
+                    tint: _fitilaPrimarySoft,
+                    fg: _fitilaGoldDeep,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _TCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.history_rounded, size: 16, color: _fitilaGoldDeep),
+                        SizedBox(width: 8),
+                        Text(
+                          'Activité récente',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _fitilaInk),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    if (recent.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Text('Aucune activité pour le moment.', style: TextStyle(color: _fitilaMuted, fontSize: 12)),
+                      )
+                    else
+                      for (final r in recent)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: '${(r['user_id'] as String? ?? '').substring(0, (r['user_id'] as String? ?? '').length < 6 ? (r['user_id'] as String? ?? '').length : 6)}… ',
+                                        style: const TextStyle(color: _fitilaGoldDeep, fontWeight: FontWeight.w800, fontSize: 12),
+                                      ),
+                                      TextSpan(
+                                        text: '${r['module']} · ${r['level']} · L${r['lesson_id']}',
+                                        style: const TextStyle(color: _fitilaMuted, fontSize: 12),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                _teacherShortDate(r['updated_at'] as String?),
+                                style: const TextStyle(color: _fitilaMuted, fontSize: 10.5),
+                              ),
+                            ],
+                          ),
+                        ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TeacherErrorState extends StatelessWidget {
+  const _TeacherErrorState({required this.message, required this.onRetry});
+
+  final String message;
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline_rounded, color: _fitilaClay, size: 32),
+            const SizedBox(height: 10),
+            Text(
+              'Impossible de charger les données.\n$message',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: _fitilaMuted, fontSize: 11.5),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(onPressed: onRetry, child: const Text('Réessayer')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TeacherStudentsTab extends StatefulWidget {
+  const _TeacherStudentsTab();
+
+  @override
+  State<_TeacherStudentsTab> createState() => _TeacherStudentsTabState();
+}
+
+class _TeacherStudentsTabState extends State<_TeacherStudentsTab> {
+  late Future<List<Map<String, dynamic>>> _future;
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+  String? _selectedId;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = FitilaBackend.fetchTeacherStudents();
+  }
+
+  Future<void> _reload() async {
+    setState(() => _future = FitilaBackend.fetchTeacherStudents());
+    await _future;
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_selectedId != null) {
+      return _TeacherStudentDetailPanel(
+        userId: _selectedId!,
+        onBack: () => setState(() => _selectedId = null),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _searchCtrl,
+          onChanged: (v) => setState(() => _query = v.toLowerCase().trim()),
+          decoration: InputDecoration(
+            hintText: 'Rechercher un apprenant…',
+            prefixIcon: const Icon(Icons.search_rounded, size: 19, color: _fitilaMuted),
+            filled: true,
+            fillColor: _fitilaCard,
+            contentPadding: const EdgeInsets.symmetric(vertical: 4),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: _fitilaBorder),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: FutureBuilder<List<Map<String, dynamic>>>(
+            future: _future,
+            builder: (context, snap) {
+              if (snap.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator(color: _fitilaPrimary));
+              }
+              if (snap.hasError) {
+                return _TeacherErrorState(message: '${snap.error}', onRetry: _reload);
+              }
+              final rows = snap.data ?? const [];
+              final filtered = _query.isEmpty
+                  ? rows
+                  : rows.where((r) {
+                      final label = FitilaBackend.readableStudentLabel(
+                        displayName: r['display_name'] as String?,
+                        username: r['username'] as String?,
+                        phoneNumber: r['phone_number'] as String?,
+                        userId: r['user_id'] as String,
+                      ).toLowerCase();
+                      return label.contains(_query);
+                    }).toList();
+              return RefreshIndicator(
+                onRefresh: _reload,
+                color: _fitilaPrimary,
+                child: filtered.isEmpty
+                    ? ListView(
+                        children: const [
+                          SizedBox(height: 60),
+                          Center(
+                            child: Text('Aucun apprenant trouvé.', style: TextStyle(color: _fitilaMuted)),
+                          ),
+                        ],
+                      )
+                    : ListView.separated(
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1, color: _fitilaBorder),
+                        itemBuilder: (context, i) {
+                          final r = filtered[i];
+                          final label = FitilaBackend.readableStudentLabel(
+                            displayName: r['display_name'] as String?,
+                            username: r['username'] as String?,
+                            phoneNumber: r['phone_number'] as String?,
+                            userId: r['user_id'] as String,
+                          );
+                          final pending = (r['pending_count'] as int?) ?? 0;
+                          return Material(
+                            color: _fitilaCard,
+                            child: ListTile(
+                              onTap: () => setState(() => _selectedId = r['user_id'] as String),
+                              leading: CircleAvatar(
+                                backgroundColor: _fitilaPrimary,
+                                child: Text(
+                                  label.replaceAll(RegExp(r'^[@📱\s]+'), '').characters.first.toUpperCase(),
+                                  style: const TextStyle(color: Color(0xFF2B2110), fontWeight: FontWeight.w800),
+                                ),
+                              ),
+                              title: Text(label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: _fitilaInk)),
+                              subtitle: Text(
+                                'N1: ${r['n1_completed']} · N2: ${r['n2_completed']} leçons',
+                                style: const TextStyle(fontSize: 11, color: _fitilaMuted),
+                              ),
+                              trailing: pending > 0
+                                  ? Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                      decoration: BoxDecoration(color: _fitilaPrimary, borderRadius: BorderRadius.circular(100)),
+                                      child: Text(
+                                        '$pending à noter',
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF2B2110)),
+                                      ),
+                                    )
+                                  : const Icon(Icons.chevron_right_rounded, color: _fitilaMuted),
+                            ),
+                          );
+                        },
+                      ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TeacherStudentDetailPanel extends StatefulWidget {
+  const _TeacherStudentDetailPanel({required this.userId, required this.onBack});
+
+  final String userId;
+  final VoidCallback onBack;
+
+  @override
+  State<_TeacherStudentDetailPanel> createState() => _TeacherStudentDetailPanelState();
+}
+
+class _TeacherStudentDetailPanelState extends State<_TeacherStudentDetailPanel> {
+  late Future<Map<String, dynamic>> _future;
+  String _filter = 'all';
+
+  @override
+  void initState() {
+    super.initState();
+    _future = FitilaBackend.fetchStudentDetail(widget.userId);
+  }
+
+  Future<void> _reload() async {
+    setState(() => _future = FitilaBackend.fetchStudentDetail(widget.userId));
+    await _future;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextButton.icon(
+          onPressed: widget.onBack,
+          icon: const Icon(Icons.arrow_back_rounded, size: 16),
+          label: const Text('Tous les apprenants'),
+          style: TextButton.styleFrom(foregroundColor: _fitilaMuted, padding: EdgeInsets.zero),
+        ),
+        Expanded(
+          child: FutureBuilder<Map<String, dynamic>>(
+            future: _future,
+            builder: (context, snap) {
+              if (snap.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator(color: _fitilaPrimary));
+              }
+              if (snap.hasError) {
+                return _TeacherErrorState(message: '${snap.error}', onRetry: _reload);
+              }
+              final data = snap.data ?? const {};
+              final profile = data['profile'] as Map<String, dynamic>?;
+              final progress = List<Map<String, dynamic>>.from(data['progress'] as List? ?? const []);
+              final answers = List<Map<String, dynamic>>.from(data['answers'] as List? ?? const []);
+              final posts = List<Map<String, dynamic>>.from(data['posts'] as List? ?? const []);
+              final contributions = List<Map<String, dynamic>>.from(data['contributions'] as List? ?? const []);
+              final label = FitilaBackend.readableStudentLabel(
+                displayName: profile?['display_name'] as String?,
+                username: profile?['username'] as String?,
+                phoneNumber: profile?['phone_number'] as String?,
+                userId: widget.userId,
+              );
+              final n1 = progress.where((p) => p['level'] == 'N1').isEmpty
+                  ? null
+                  : progress.firstWhere((p) => p['level'] == 'N1');
+              final n2 = progress.where((p) => p['level'] == 'N2').isEmpty
+                  ? null
+                  : progress.firstWhere((p) => p['level'] == 'N2');
+              final visible = answers.where((a) {
+                if (_filter == 'all') return true;
+                final graded = a['teacher_grade'] != null;
+                return _filter == 'pending' ? !graded : graded;
+              }).toList();
+
+              return RefreshIndicator(
+                onRefresh: _reload,
+                color: _fitilaPrimary,
+                child: ListView(
+                  children: [
+                    _TCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 28,
+                                backgroundColor: _fitilaPrimary,
+                                child: Text(
+                                  label.replaceAll(RegExp(r'^[@📱\s]+'), '').characters.first.toUpperCase(),
+                                  style: const TextStyle(color: Color(0xFF2B2110), fontWeight: FontWeight.w800, fontSize: 20),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(label, style: const TextStyle(fontFamily: 'serif', fontSize: 17, fontWeight: FontWeight.w600, color: _fitilaInk)),
+                                    if (profile?['phone_number'] != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 3),
+                                        child: Text('${profile?['phone_number']}', style: const TextStyle(fontSize: 11, color: _fitilaMuted)),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          GridView.count(
+                            crossAxisCount: 2,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                            childAspectRatio: 2.4,
+                            children: [
+                              _miniStat('Inscrit', profile?['created_at'] != null ? _teacherShortDate(profile?['created_at'] as String?) : '—'),
+                              _miniStat('Points', '${profile?['total_points'] ?? 0}'),
+                              _miniStat('Niveau XP', '${profile?['level'] ?? 1}'),
+                              _miniStat('Réponses', '${answers.length}'),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(child: _levelCard('🔥 Niveau 1', n1)),
+                        const SizedBox(width: 10),
+                        Expanded(child: _levelCard('🚀 Niveau 2', n2)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _TCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Posts TamTam', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _fitilaInk)),
+                                const SizedBox(height: 6),
+                                if (posts.isEmpty)
+                                  const Text('Aucun post.', style: TextStyle(fontSize: 10.5, color: _fitilaMuted))
+                                else
+                                  for (final p in posts.take(3))
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 3),
+                                      child: Text(
+                                        p['transcript_fr'] as String? ?? '(audio)',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 10.5, color: _fitilaInkSoft),
+                                      ),
+                                    ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _TCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Dictionnaire', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _fitilaInk)),
+                                const SizedBox(height: 6),
+                                if (contributions.isEmpty)
+                                  const Text('Aucune contribution.', style: TextStyle(fontSize: 10.5, color: _fitilaMuted))
+                                else
+                                  for (final c in contributions.take(3))
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 3),
+                                      child: Text.rich(
+                                        TextSpan(children: [
+                                          TextSpan(text: '${c['word']} ', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 10.5, color: _fitilaInk)),
+                                          TextSpan(text: '${c['definition']}', style: const TextStyle(fontSize: 10.5, color: _fitilaMuted)),
+                                        ]),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Text('Réponses (${visible.length})', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _fitilaInk)),
+                        const Spacer(),
+                        for (final f in const [('all', 'Toutes'), ('pending', 'À corriger'), ('graded', 'Corrigées')])
+                          Padding(
+                            padding: const EdgeInsets.only(left: 5),
+                            child: ChoiceChip(
+                              visualDensity: VisualDensity.compact,
+                              selected: _filter == f.$1,
+                              label: Text(f.$2, style: const TextStyle(fontSize: 10.5)),
+                              selectedColor: _fitilaPrimary,
+                              onSelected: (_) => setState(() => _filter = f.$1),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    if (visible.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: Center(child: Text('Aucune réponse à afficher.', style: TextStyle(color: _fitilaMuted))),
+                      )
+                    else
+                      for (final a in visible)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _AnswerGradeCard(
+                            answer: a,
+                            studentLabel: label,
+                            onGraded: _reload,
+                          ),
+                        ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _miniStat(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(color: _fitilaSurfaceAlt, borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 9.5, color: _fitilaMuted)),
+          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _fitilaInk)),
+        ],
+      ),
+    );
+  }
+
+  Widget _levelCard(String title, Map<String, dynamic>? p) {
+    final completed = (p?['completed_lessons'] as List?)?.length ?? 0;
+    return _TCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: _fitilaInk)),
+          const SizedBox(height: 6),
+          Text.rich(
+            TextSpan(children: [
+              TextSpan(text: '$completed', style: const TextStyle(fontFamily: 'serif', fontSize: 20, fontWeight: FontWeight.w600, color: _fitilaInk)),
+              const TextSpan(text: ' leçons', style: TextStyle(fontSize: 11, color: _fitilaMuted)),
+            ]),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Carte de correction : réponse (texte ou audio) + saisie de note + validation.
+/// Utilisée à la fois dans le détail apprenant et dans la file "À corriger".
+class _AnswerGradeCard extends StatefulWidget {
+  const _AnswerGradeCard({required this.answer, required this.onGraded, this.studentLabel});
+
+  final Map<String, dynamic> answer;
+  final Future<void> Function() onGraded;
+  final String? studentLabel;
+
+  @override
+  State<_AnswerGradeCard> createState() => _AnswerGradeCardState();
+}
+
+class _AnswerGradeCardState extends State<_AnswerGradeCard> {
+  late final TextEditingController _gradeCtrl;
+  late final TextEditingController _commentCtrl;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final grade = widget.answer['teacher_grade'];
+    _gradeCtrl = TextEditingController(text: grade != null ? '$grade' : '');
+    _commentCtrl = TextEditingController(text: widget.answer['teacher_comment'] as String? ?? '');
+  }
+
+  @override
+  void dispose() {
+    _gradeCtrl.dispose();
+    _commentCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final grade = num.tryParse(_gradeCtrl.text.replaceAll(',', '.'));
+    if (grade == null || grade < 0 || grade > 20) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Entrez une note entre 0 et 20.')),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await FitilaBackend.gradeAnswer(
+        answerId: widget.answer['id'] as String,
+        grade: grade,
+        comment: _commentCtrl.text.trim().isEmpty ? null : _commentCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✓ Note enregistrée'), backgroundColor: _fitilaSage),
+      );
+      await widget.onGraded();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final a = widget.answer;
+    final hasAudio = (a['answer_audio_path'] as String?)?.isNotEmpty ?? false;
+    final graded = a['teacher_grade'] != null;
+    return _TCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (widget.studentLabel != null) ...[
+                Expanded(
+                  child: Text(
+                    widget.studentLabel!,
+                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: _fitilaGoldDeep),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ] else
+                Expanded(
+                  child: Text(
+                    '${a['module']} · ${a['level']} · L${a['lesson_id']}',
+                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: _fitilaGoldDeep),
+                  ),
+                ),
+              Text(_teacherShortDate(a['updated_at'] as String?), style: const TextStyle(fontSize: 10, color: _fitilaMuted)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Q${(a['question_idx'] as int? ?? 0) + 1} — ${a['module']} · ${a['level']} · L${a['lesson_id']}',
+            style: const TextStyle(fontSize: 10, color: _fitilaMuted, letterSpacing: .2),
+          ),
+          const SizedBox(height: 6),
+          if (hasAudio)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(color: _fitilaSurfaceAlt, borderRadius: BorderRadius.circular(10)),
+              child: Row(
+                children: [
+                  const Icon(Icons.graphic_eq_rounded, size: 18, color: _fitilaClay),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Réponse audio · ${a['answer_audio_duration'] ?? '—'}s',
+                    style: const TextStyle(fontSize: 11.5, color: _fitilaInkSoft),
+                  ),
+                ],
+              ),
+            )
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: _fitilaSurfaceAlt, borderRadius: BorderRadius.circular(10)),
+              child: Text(
+                (a['answer_text'] as String?)?.isNotEmpty == true ? a['answer_text'] as String : '(sans réponse)',
+                style: const TextStyle(fontSize: 12.5, color: _fitilaInkSoft, height: 1.4),
+              ),
+            ),
+          const SizedBox(height: 10),
+          if (graded && !_saving)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(color: _fitilaSage.withOpacity(0.16), borderRadius: BorderRadius.circular(100)),
+              child: Text(
+                '✓ Corrigée — ${a['teacher_grade']}/20',
+                style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: _fitilaSage),
+              ),
+            ),
+          Row(
+            children: [
+              SizedBox(
+                width: 56,
+                child: TextField(
+                  controller: _gradeCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                    hintText: '—',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: _fitilaBorder)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Text('/ 20', style: TextStyle(fontSize: 11, color: _fitilaMuted)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _commentCtrl,
+                  style: const TextStyle(fontSize: 11.5),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: 'Commentaire (optionnel)',
+                    hintStyle: const TextStyle(fontSize: 11, color: _fitilaMuted),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: _fitilaBorder)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 36,
+                child: ElevatedButton(
+                  onPressed: _saving ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _fitilaSage,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+                  ),
+                  child: _saving
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('Valider', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeacherGradingTab extends StatefulWidget {
+  const _TeacherGradingTab();
+
+  @override
+  State<_TeacherGradingTab> createState() => _TeacherGradingTabState();
+}
+
+class _TeacherGradingTabState extends State<_TeacherGradingTab> {
+  String _module = 'all';
+  String _level = 'all';
+  late Future<List<Map<String, dynamic>>> _future;
+
+  static const _modules = [
+    ('all', 'Tous modules'),
+    ('calcul', 'Calcul'),
+    ('gestion', 'Gestion'),
+    ('lesson', 'Leçon'),
+    ('evaluation', 'Évaluation'),
+    ('grammaire', 'Grammaire'),
+    ('textprod', 'Production'),
+  ];
+  static const _levels = [('all', 'N1 + N2'), ('N1', 'N1 uniquement'), ('N2', 'N2 uniquement')];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _load() {
+    _future = FitilaBackend.fetchPendingGrading(
+      module: _module == 'all' ? null : _module,
+      level: _level == 'all' ? null : _level,
+    );
+  }
+
+  Future<void> _reload() async {
+    setState(_load);
+    await _future;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: _module,
+                isExpanded: true,
+                style: const TextStyle(fontSize: 11.5, color: _fitilaInkSoft),
+                decoration: InputDecoration(
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _fitilaBorder)),
+                ),
+                items: [for (final m in _modules) DropdownMenuItem(value: m.$1, child: Text(m.$2))],
+                onChanged: (v) => setState(() {
+                  _module = v ?? 'all';
+                  _load();
+                }),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: _level,
+                isExpanded: true,
+                style: const TextStyle(fontSize: 11.5, color: _fitilaInkSoft),
+                decoration: InputDecoration(
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _fitilaBorder)),
+                ),
+                items: [for (final l in _levels) DropdownMenuItem(value: l.$1, child: Text(l.$2))],
+                onChanged: (v) => setState(() {
+                  _level = v ?? 'all';
+                  _load();
+                }),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: FutureBuilder<List<Map<String, dynamic>>>(
+            future: _future,
+            builder: (context, snap) {
+              if (snap.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator(color: _fitilaPrimary));
+              }
+              if (snap.hasError) {
+                return _TeacherErrorState(message: '${snap.error}', onRetry: _reload);
+              }
+              final items = snap.data ?? const [];
+              return RefreshIndicator(
+                onRefresh: _reload,
+                color: _fitilaPrimary,
+                child: items.isEmpty
+                    ? ListView(
+                        children: const [
+                          SizedBox(height: 60),
+                          Center(child: Text('🎉 Tout est à jour, aucune copie en attente !', textAlign: TextAlign.center, style: TextStyle(color: _fitilaMuted))),
+                        ],
+                      )
+                    : ListView.builder(
+                        itemCount: items.length,
+                        itemBuilder: (context, i) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _AnswerGradeCard(
+                            answer: items[i],
+                            studentLabel: items[i]['_student_label'] as String?,
+                            onGraded: _reload,
+                          ),
+                        ),
+                      ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TeacherAnswerKeysTab extends StatefulWidget {
+  const _TeacherAnswerKeysTab();
+
+  @override
+  State<_TeacherAnswerKeysTab> createState() => _TeacherAnswerKeysTabState();
+}
+
+class _TeacherAnswerKeysTabState extends State<_TeacherAnswerKeysTab> {
+  String _level = 'N1';
+  late Future<List<Map<String, dynamic>>> _future;
+  final Map<String, TextEditingController> _editing = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _future = FitilaBackend.fetchAnswerKeys(_level);
+  }
+
+  Future<void> _reload() async {
+    setState(() => _future = FitilaBackend.fetchAnswerKeys(_level));
+    await _future;
+  }
+
+  @override
+  void dispose() {
+    for (final c in _editing.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            for (final lvl in const ['N1', 'N2'])
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  selected: _level == lvl,
+                  label: Text(lvl == 'N1' ? '🔥 Niveau 1' : '🚀 Niveau 2'),
+                  selectedColor: _fitilaPrimary,
+                  onSelected: (_) => setState(() {
+                    _level = lvl;
+                    _future = FitilaBackend.fetchAnswerKeys(_level);
+                  }),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          "Les réponses ci-dessous s'affichent automatiquement à l'apprenant après sa soumission.",
+          style: TextStyle(fontSize: 10.5, color: _fitilaMuted),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: FutureBuilder<List<Map<String, dynamic>>>(
+            future: _future,
+            builder: (context, snap) {
+              if (snap.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator(color: _fitilaPrimary));
+              }
+              if (snap.hasError) {
+                return _TeacherErrorState(message: '${snap.error}', onRetry: _reload);
+              }
+              final keys = snap.data ?? const [];
+              if (keys.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Text(
+                      "Aucun corrigé enregistré pour ce niveau pour l'instant.\nUtilisez l'interface web pour ajouter les premiers corrigés — ils apparaîtront ici automatiquement.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: _fitilaMuted, fontSize: 11.5),
+                    ),
+                  ),
+                );
+              }
+              return RefreshIndicator(
+                onRefresh: _reload,
+                color: _fitilaPrimary,
+                child: ListView.separated(
+                  itemCount: keys.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, i) {
+                    final k = keys[i];
+                    final accepted = List<String>.from(k['accepted_answers'] as List? ?? const []);
+                    return _TCard(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.check_circle_rounded, size: 16, color: _fitilaSage),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${k['module']} · L${k['lesson_id']}${(k['section_key'] as String? ?? '').isNotEmpty ? ' · ${k['section_key']}' : ''} · Q${(k['question_idx'] as int? ?? 0) + 1}',
+                                  style: const TextStyle(fontSize: 10, color: _fitilaMuted, fontFamily: 'monospace'),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  accepted.isEmpty ? '(aucune variante)' : accepted.join(' / '),
+                                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _fitilaSage),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TeacherWeightsTab extends StatefulWidget {
+  const _TeacherWeightsTab();
+
+  @override
+  State<_TeacherWeightsTab> createState() => _TeacherWeightsTabState();
+}
+
+class _TeacherWeightsTabState extends State<_TeacherWeightsTab> {
+  String _level = 'N1';
+  String _module = 'lesson';
+  late Future<List<Map<String, dynamic>>> _future;
+  final _lessonCtrl = TextEditingController();
+  final _sectionCtrl = TextEditingController();
+  final _qCtrl = TextEditingController(text: '0');
+  final _weightCtrl = TextEditingController(text: '1');
+  bool _saving = false;
+
+  static const _levels = ['N1', 'N2'];
+  static const _modules = ['lesson', 'calcul', 'gestion', 'grammaire', 'textprod', 'evaluation'];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _load() {
+    _future = FitilaBackend.fetchGradeWeights(level: _level, module: _module);
+  }
+
+  Future<void> _reload() async {
+    setState(_load);
+    await _future;
+  }
+
+  @override
+  void dispose() {
+    _lessonCtrl.dispose();
+    _sectionCtrl.dispose();
+    _qCtrl.dispose();
+    _weightCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _quickAdd() async {
+    if (_lessonCtrl.text.trim().isEmpty) return;
+    setState(() => _saving = true);
+    try {
+      await FitilaBackend.saveGradeWeight({
+        'level': _level,
+        'module': _module,
+        'lesson_id': _lessonCtrl.text.trim(),
+        'section_key': _sectionCtrl.text.trim(),
+        'question_idx': int.tryParse(_qCtrl.text) ?? 0,
+        'weight': double.tryParse(_weightCtrl.text.replaceAll(',', '.')) ?? 1,
+        'section_weight': 1,
+        'lesson_weight': 1,
+      });
+      _lessonCtrl.clear();
+      _sectionCtrl.clear();
+      _qCtrl.text = '0';
+      _weightCtrl.text = '1';
+      await _reload();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Poids de chaque question, section et leçon. Sans configuration, poids = 1 partout.',
+          style: TextStyle(fontSize: 10.5, color: _fitilaMuted),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: _level,
+                decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),
+                items: [for (final l in _levels) DropdownMenuItem(value: l, child: Text(l))],
+                onChanged: (v) => setState(() {
+                  _level = v ?? 'N1';
+                  _load();
+                }),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: _module,
+                decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),
+                items: [for (final m in _modules) DropdownMenuItem(value: m, child: Text(m))],
+                onChanged: (v) => setState(() {
+                  _module = v ?? 'lesson';
+                  _load();
+                }),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _TCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('AJOUTER UN BARÈME', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: _fitilaMuted, letterSpacing: .3)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(child: TextField(controller: _lessonCtrl, decoration: const InputDecoration(isDense: true, hintText: 'Leçon'))),
+                  const SizedBox(width: 6),
+                  Expanded(child: TextField(controller: _sectionCtrl, decoration: const InputDecoration(isDense: true, hintText: 'Section'))),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(child: TextField(controller: _qCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(isDense: true, hintText: 'Q#'))),
+                  const SizedBox(width: 6),
+                  Expanded(child: TextField(controller: _weightCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(isDense: true, hintText: 'Poids'))),
+                  const SizedBox(width: 6),
+                  ElevatedButton(
+                    onPressed: _saving ? null : _quickAdd,
+                    style: ElevatedButton.styleFrom(backgroundColor: _fitilaPrimary, foregroundColor: const Color(0xFF2B2110)),
+                    child: _saving
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.add_rounded, size: 18),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: FutureBuilder<List<Map<String, dynamic>>>(
+            future: _future,
+            builder: (context, snap) {
+              if (snap.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator(color: _fitilaPrimary));
+              }
+              if (snap.hasError) {
+                return _TeacherErrorState(message: '${snap.error}', onRetry: _reload);
+              }
+              final rows = snap.data ?? const [];
+              if (rows.isEmpty) {
+                return const Center(child: Text('Aucun barème pour ce filtre. Poids = 1 pour toutes les questions.', textAlign: TextAlign.center, style: TextStyle(color: _fitilaMuted, fontSize: 11.5)));
+              }
+              return SingleChildScrollView(
+                child: DataTable(
+                  headingRowHeight: 34,
+                  dataRowMinHeight: 36,
+                  dataRowMaxHeight: 40,
+                  columnSpacing: 16,
+                  columns: const [
+                    DataColumn(label: Text('Leçon', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800))),
+                    DataColumn(label: Text('Sect.', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800))),
+                    DataColumn(label: Text('Q#', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800))),
+                    DataColumn(label: Text('Poids', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800))),
+                  ],
+                  rows: [
+                    for (final r in rows)
+                      DataRow(cells: [
+                        DataCell(Text('${r['lesson_id']}', style: const TextStyle(fontSize: 11))),
+                        DataCell(Text('${r['section_key'] ?? '—'}', style: const TextStyle(fontSize: 11))),
+                        DataCell(Text('${(r['question_idx'] as int? ?? 0) + 1}', style: const TextStyle(fontSize: 11))),
+                        DataCell(Text('${r['weight']}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700))),
+                      ]),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TeacherGradeOverviewTab extends StatefulWidget {
+  const _TeacherGradeOverviewTab();
+
+  @override
+  State<_TeacherGradeOverviewTab> createState() => _TeacherGradeOverviewTabState();
+}
+
+class _TeacherGradeOverviewTabState extends State<_TeacherGradeOverviewTab> {
+  late Future<Map<String, dynamic>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = FitilaBackend.fetchGradeOverview();
+  }
+
+  Future<void> _reload() async {
+    setState(() => _future = FitilaBackend.fetchGradeOverview());
+    await _future;
+  }
+
+  Color _cellColor(double? g) {
+    if (g == null) return _fitilaSurfaceAlt;
+    if (g >= 14) return _fitilaSage.withOpacity(0.18);
+    if (g >= 10) return _fitilaPrimarySoft;
+    return _fitilaClay.withOpacity(0.16);
+  }
+
+  Future<void> _copyCsv(List<Map<String, dynamic>> reports, List<String> columns) async {
+    final buffer = StringBuffer('Apprenant,Moyenne /20,Appréciation\n');
+    for (final r in reports) {
+      final avg = r['global_average'] as double?;
+      buffer.writeln('"${r['name']}",${avg?.toStringAsFixed(2) ?? ''},${FitilaBackend.appreciationFor(avg)}');
+    }
+    await Clipboard.setData(ClipboardData(text: buffer.toString()));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('📋 Relevé copié (format CSV) — collez-le dans un tableur.')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator(color: _fitilaPrimary));
+        }
+        if (snap.hasError) {
+          return _TeacherErrorState(message: '${snap.error}', onRetry: _reload);
+        }
+        final data = snap.data ?? const {};
+        final reports = List<Map<String, dynamic>>.from(data['reports'] as List? ?? const []);
+        final columns = List<String>.from(data['moduleColumns'] as List? ?? const []);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${reports.length} apprenant(s) — moyennes pondérées',
+                    style: const TextStyle(fontSize: 11.5, color: _fitilaMuted),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _copyCsv(reports, columns),
+                  icon: const Icon(Icons.ios_share_rounded, size: 15),
+                  label: const Text('CSV', style: TextStyle(fontSize: 11)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: reports.isEmpty
+                  ? const Center(child: Text('Aucune note enregistrée pour le moment.', style: TextStyle(color: _fitilaMuted)))
+                  : RefreshIndicator(
+                      onRefresh: _reload,
+                      color: _fitilaPrimary,
+                      child: SingleChildScrollView(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: DataTable(
+                            headingRowHeight: 34,
+                            dataRowMinHeight: 38,
+                            dataRowMaxHeight: 44,
+                            columnSpacing: 14,
+                            columns: [
+                              const DataColumn(label: Text('Apprenant', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800))),
+                              const DataColumn(label: Text('Moy.', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800))),
+                              for (final c in columns)
+                                DataColumn(label: Text(c.replaceAll('::', ' '), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800))),
+                              const DataColumn(label: Text('Appréciation', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800))),
+                            ],
+                            rows: [
+                              for (final r in reports)
+                                DataRow(cells: [
+                                  DataCell(Text('${r['name']}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700))),
+                                  DataCell(
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      color: _cellColor(r['global_average'] as double?),
+                                      child: Text((r['global_average'] as double?)?.toStringAsFixed(1) ?? '—', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                                    ),
+                                  ),
+                                  for (final c in columns)
+                                    DataCell(
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        color: _cellColor((r['modules'] as Map?)?[c] as double?),
+                                        child: Text(((r['modules'] as Map?)?[c] as double?)?.toStringAsFixed(1) ?? '—', style: const TextStyle(fontSize: 10.5)),
+                                      ),
+                                    ),
+                                  DataCell(Text(FitilaBackend.appreciationFor(r['global_average'] as double?), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700))),
+                                ]),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _TeacherStatsTab extends StatefulWidget {
+  const _TeacherStatsTab();
+
+  @override
+  State<_TeacherStatsTab> createState() => _TeacherStatsTabState();
+}
+
+class _TeacherStatsTabState extends State<_TeacherStatsTab> {
+  late Future<Map<String, dynamic>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = FitilaBackend.fetchClassStats();
+  }
+
+  Future<void> _reload() async {
+    setState(() => _future = FitilaBackend.fetchClassStats());
+    await _future;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator(color: _fitilaPrimary));
+        }
+        if (snap.hasError) {
+          return _TeacherErrorState(message: '${snap.error}', onRetry: _reload);
+        }
+        final data = snap.data ?? const {};
+        final levels = Map<String, int>.from(data['levelDistribution'] as Map? ?? const {});
+        final modules = Map<String, int>.from(data['moduleActivity'] as Map? ?? const {});
+        final grades = Map<String, int>.from(data['gradeDistribution'] as Map? ?? const {});
+        final totalLevels = levels.values.fold<int>(0, (a, b) => a + b);
+        return RefreshIndicator(
+          onRefresh: _reload,
+          color: _fitilaPrimary,
+          child: ListView(
+            children: [
+              _TCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Apprenants par niveau', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _fitilaInk)),
+                    const SizedBox(height: 10),
+                    if (totalLevels == 0)
+                      const Text('Pas encore de données.', style: TextStyle(color: _fitilaMuted, fontSize: 11.5))
+                    else
+                      for (final e in levels.entries)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              SizedBox(width: 28, child: Text(e.key, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800))),
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: LinearProgressIndicator(
+                                    value: e.value / totalLevels,
+                                    minHeight: 10,
+                                    backgroundColor: _fitilaSurfaceAlt,
+                                    color: e.key == 'N1' ? _fitilaPrimary : _fitilaSage,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text('${e.value}', style: const TextStyle(fontSize: 11, color: _fitilaMuted)),
+                            ],
+                          ),
+                        ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              _TCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Activité par module', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _fitilaInk)),
+                    const SizedBox(height: 10),
+                    if (modules.isEmpty)
+                      const Text('Pas encore de données.', style: TextStyle(color: _fitilaMuted, fontSize: 11.5))
+                    else
+                      for (final e in (modules.entries.toList()..sort((a, b) => b.value.compareTo(a.value))))
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              SizedBox(width: 64, child: Text(e.key, style: const TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: LinearProgressIndicator(
+                                    value: e.value / (modules.values.reduce((a, b) => a > b ? a : b)),
+                                    minHeight: 10,
+                                    backgroundColor: _fitilaSurfaceAlt,
+                                    color: _fitilaClay,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text('${e.value}', style: const TextStyle(fontSize: 11, color: _fitilaMuted)),
+                            ],
+                          ),
+                        ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              _TCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Distribution des notes /20', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _fitilaInk)),
+                    const SizedBox(height: 10),
+                    Builder(builder: (context) {
+                      final maxV = grades.values.isEmpty ? 1 : grades.values.reduce((a, b) => a > b ? a : b);
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          for (final e in grades.entries)
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                child: Column(
+                                  children: [
+                                    Text('${e.value}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      height: 12 + (maxV == 0 ? 0 : (e.value / maxV) * 80),
+                                      decoration: BoxDecoration(
+                                        color: e.key == '16-20' || e.key == '13-15' ? _fitilaSage : (e.key == '10-12' ? _fitilaPrimary : _fitilaClay),
+                                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(e.key, style: const TextStyle(fontSize: 9, color: _fitilaMuted)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
     );
   }
 }
