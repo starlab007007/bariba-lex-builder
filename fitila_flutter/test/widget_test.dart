@@ -6,7 +6,7 @@ void main() {
     await tester.pumpWidget(const FitilaApp(demoMode: true));
 
     expect(find.text('FITILA'), findsWidgets);
-    expect(find.text('Connexion'), findsOneWidget);
+    expect(find.text('Bienvenue'), findsOneWidget);
 
     await tester.tap(find.text('Se connecter'));
     await tester.pumpAndSettle();
