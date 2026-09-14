@@ -8277,7 +8277,7 @@ class _MetricStrip extends StatelessWidget {
         final compact = constraints.maxWidth < 620;
         final columns = compact
             ? (metrics.length > 3 ? 3 : metrics.length)
-            : metrics.length.clamp(1, 4);
+            : (metrics.length > 4 ? 4 : metrics.length);
         return GridView.builder(
           itemCount: metrics.length,
           shrinkWrap: true,
@@ -8613,7 +8613,7 @@ class _DarkChip extends StatelessWidget {
               label,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: Colors.white,
+                color: _fitilaInk,
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
               ),
