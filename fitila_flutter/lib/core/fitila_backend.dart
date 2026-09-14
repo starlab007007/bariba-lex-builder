@@ -860,4 +860,227 @@ class FitilaBackend {
       'gradeDistribution': buckets,
     };
   }
+
+  // ---------------------------------------------------------------------
+  // Marché — produits (tamtam_products) et emplois (tamtam_jobs)
+  // ---------------------------------------------------------------------
+
+  static Future<List<Map<String, dynamic>>> fetchProducts({
+    String? category,
+  }) async {
+    var query = client.from('tamtam_products').select().eq(
+      'is_available',
+      true,
+    );
+    if (category != null && category.isNotEmpty) {
+      query = query.eq('category', category);
+    }
+    final data = await query.order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data as List);
+  }
+
+  static Future<List<Map<String, dynamic>>> searchProducts(String q) async {
+    final term = q.trim();
+    if (term.isEmpty) return fetchProducts();
+    final data = await client
+        .from('tamtam_products')
+        .select()
+        .eq('is_available', true)
+        .or(
+          'title_fr.ilike.%$term%,title_ba.ilike.%$term%,'
+          'description_text.ilike.%$term%,category.ilike.%$term%',
+        )
+        .order('created_at', ascending: false)
+        .limit(20);
+    return List<Map<String, dynamic>>.from(data as List);
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchMyProducts() async {
+    final user = client.auth.currentUser;
+    if (user == null) return const [];
+    final data = await client
+        .from('tamtam_products')
+        .select()
+        .eq('seller_id', user.id)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data as List);
+  }
+
+  static Future<Map<String, dynamic>> createProduct({
+    required String titleFr,
+    required double price,
+    required String category,
+    String? descriptionText,
+    String emojiIcon = '🛒',
+    Uint8List? photoBytes,
+    String photoExtension = 'jpg',
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Connexion requise pour publier un produit.');
+    }
+    String? imageUrl;
+    if (photoBytes != null) {
+      final ext = photoExtension.toLowerCase();
+      final path =
+          'products/${user.id}_${DateTime.now().millisecondsSinceEpoch}.$ext';
+      await client.storage
+          .from('tamtam-media')
+          .uploadBinary(
+            path,
+            photoBytes,
+            fileOptions: FileOptions(contentType: 'image/$ext'),
+          );
+      imageUrl = client.storage.from('tamtam-media').getPublicUrl(path);
+    }
+    final data = await client
+        .from('tamtam_products')
+        .insert(<String, dynamic>{
+          'seller_id': user.id,
+          'title': titleFr,
+          'title_fr': titleFr,
+          'description_text': descriptionText,
+          'price': price,
+          'currency': 'XOF',
+          'category': category,
+          'images': imageUrl == null ? <String>[] : <String>[imageUrl],
+          'thumbnail_url': imageUrl,
+          'emoji_icon': emojiIcon,
+          'is_available': true,
+          'status': 'available',
+        })
+        .select()
+        .single();
+    return data;
+  }
+
+  static Future<void> updateProductStatus({
+    required String productId,
+    required String status,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    await client
+        .from('tamtam_products')
+        .update({'status': status, 'is_available': status == 'available'})
+        .eq('id', productId)
+        .eq('seller_id', user.id);
+  }
+
+  static Future<void> deleteProduct(String productId) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    await client
+        .from('tamtam_products')
+        .delete()
+        .eq('id', productId)
+        .eq('seller_id', user.id);
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchJobs({
+    required String jobType,
+  }) async {
+    final data = await client
+        .from('tamtam_jobs')
+        .select()
+        .eq('job_type', jobType)
+        .eq('is_active', true)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data as List);
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchMyJobs() async {
+    final user = client.auth.currentUser;
+    if (user == null) return const [];
+    final data = await client
+        .from('tamtam_jobs')
+        .select()
+        .eq('employer_id', user.id)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data as List);
+  }
+
+  static Future<Map<String, dynamic>> createJob({
+    required String titleFr,
+    required String jobType,
+    required String category,
+    String? location,
+    String? salaryRange,
+    String? descriptionText,
+    String emojiIcon = '💼',
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Connexion requise pour publier une annonce.');
+    }
+    final data = await client
+        .from('tamtam_jobs')
+        .insert(<String, dynamic>{
+          'employer_id': user.id,
+          'title': titleFr,
+          'title_fr': titleFr,
+          'description_text': descriptionText,
+          'job_type': jobType,
+          'category': category,
+          'location': location,
+          'salary_range': salaryRange,
+          'emoji_icon': emojiIcon,
+          'urgency': 'normal',
+          'is_active': true,
+          'availability_status': jobType == 'demand'
+              ? 'searching'
+              : 'available',
+        })
+        .select()
+        .single();
+    return data;
+  }
+
+  static Future<void> applyToJob(String jobId) async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Connexion requise pour postuler.');
+    }
+    try {
+      await client.from('tamtam_job_applications').insert(<String, dynamic>{
+        'job_id': jobId,
+        'applicant_id': user.id,
+        'status': 'pending',
+      });
+    } on PostgrestException catch (e) {
+      if (e.code == '23505') {
+        throw StateError('Vous avez déjà postulé à cette offre.');
+      }
+      rethrow;
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Assistant intelligent partagé — Agriculture / Finance / Santé
+  // ---------------------------------------------------------------------
+
+  static Future<Map<String, String>> askSmartAssistant({
+    required String message,
+    required String context,
+    List<Map<String, String>> history = const [],
+  }) async {
+    final response = await client.functions.invoke(
+      'smart-assistant',
+      body: {
+        'message': message.trim(),
+        'context': context,
+        'conversationHistory': history,
+      },
+    );
+    final data = response.data;
+    if (data is! Map) {
+      throw StateError('Réponse de l’assistant invalide.');
+    }
+    final fr =
+        data['response_fr']?.toString().trim() ??
+        data['response']?.toString().trim() ??
+        '';
+    final ba = data['response_ba']?.toString().trim() ?? '';
+    return {'fr': fr, 'ba': ba};
+  }
 }

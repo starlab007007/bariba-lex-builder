@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:audioplayers/audioplayers.dart' as audio;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import 'core/fitila_backend.dart';
@@ -1514,27 +1515,15 @@ class _FitilaShellState extends State<FitilaShell> {
         page: FitilaPage.services,
         onNavigate: _navigate,
       ),
-      FitilaPage.market => WebParityModuleScreen(
-        page: FitilaPage.market,
-        onNavigate: _navigate,
-      ),
-      FitilaPage.agriculture => WebParityModuleScreen(
-        page: FitilaPage.agriculture,
-        onNavigate: _navigate,
-      ),
-      FitilaPage.finance => WebParityModuleScreen(
-        page: FitilaPage.finance,
-        onNavigate: _navigate,
-      ),
+      FitilaPage.market => const MarketScreen(),
+      FitilaPage.agriculture => const AgricultureScreen(),
+      FitilaPage.finance => const FinanceScreen(),
       FitilaPage.education => WebParityModuleScreen(
         page: FitilaPage.education,
         onNavigate: _navigate,
       ),
-      FitilaPage.health => WebParityModuleScreen(
-        page: FitilaPage.health,
-        onNavigate: _navigate,
-      ),
-      FitilaPage.sos => const UtilityScreen(page: FitilaPage.sos),
+      FitilaPage.health => const HealthScreen(),
+      FitilaPage.sos => const SosScreen(),
       FitilaPage.messages => const UtilityScreen(page: FitilaPage.messages),
       FitilaPage.discover => const UtilityScreen(page: FitilaPage.discover),
       FitilaPage.install => const UtilityScreen(page: FitilaPage.install),
@@ -4020,6 +4009,2009 @@ class _WebParityModuleScreenState extends State<WebParityModuleScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// =====================================================================
+// Assistant intelligent partagé (Agriculture / Finance / Santé)
+// =====================================================================
+
+class _AssistantChatPanel extends StatefulWidget {
+  const _AssistantChatPanel({
+    required this.contextKey,
+    required this.welcomeFr,
+    required this.accent,
+  });
+
+  final String contextKey;
+  final String welcomeFr;
+  final Color accent;
+
+  @override
+  State<_AssistantChatPanel> createState() => _AssistantChatPanelState();
+}
+
+class _AssistantChatPanelState extends State<_AssistantChatPanel> {
+  final _input = TextEditingController();
+  final _scroll = ScrollController();
+  final List<({bool fromUser, String text})> _messages = [];
+  bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _messages.add((fromUser: false, text: widget.welcomeFr));
+  }
+
+  @override
+  void dispose() {
+    _input.dispose();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final text = _input.text.trim();
+    if (text.isEmpty || _sending) return;
+    if (!FitilaBackend.configured) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Serveur FITILA indisponible.')),
+      );
+      return;
+    }
+    _input.clear();
+    setState(() {
+      _messages.add((fromUser: true, text: text));
+      _sending = true;
+    });
+    try {
+      final priorTurns = _messages.sublist(0, _messages.length - 1);
+      final recent = priorTurns.length > 6
+          ? priorTurns.sublist(priorTurns.length - 6)
+          : priorTurns;
+      final history = recent
+          .map(
+            (m) => {
+              'role': m.fromUser ? 'user' : 'assistant',
+              'content': m.text,
+            },
+          )
+          .toList();
+      final reply = await FitilaBackend.askSmartAssistant(
+        message: text,
+        context: widget.contextKey,
+        history: history,
+      );
+      if (!mounted) return;
+      final answer = reply['fr'];
+      setState(() {
+        _messages.add((
+          fromUser: false,
+          text: (answer == null || answer.isEmpty)
+              ? 'Désolé, je n’ai pas de réponse pour le moment.'
+              : answer,
+        ));
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _messages.add((
+          fromUser: false,
+          text: 'Assistant momentanément indisponible. Réessayez plus tard.',
+        ));
+      });
+    } finally {
+      if (mounted) setState(() => _sending = false);
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      if (_scroll.hasClients) {
+        await _scroll.animateTo(
+          _scroll.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(
+          child: ListView.builder(
+            controller: _scroll,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: _messages.length,
+            itemBuilder: (context, index) {
+              final m = _messages[index];
+              return Align(
+                alignment: m.fromUser
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 5),
+                  constraints: const BoxConstraints(maxWidth: 280),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 13,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: m.fromUser ? widget.accent : _fitilaCard,
+                    borderRadius: BorderRadius.circular(16),
+                    border: m.fromUser
+                        ? null
+                        : Border.all(color: _fitilaBorder),
+                  ),
+                  child: Text(
+                    m.text,
+                    style: TextStyle(
+                      color: m.fromUser ? Colors.white : _fitilaInkSoft,
+                      fontSize: 12.5,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        if (_sending)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 6),
+            child: SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _input,
+                minLines: 1,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: 'Écrivez votre question...',
+                ),
+                onSubmitted: (_) => _send(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filled(
+              onPressed: _sending ? null : _send,
+              icon: const Icon(Icons.send_rounded),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+void _openAssistantSheet(
+  BuildContext context, {
+  required String contextKey,
+  required String title,
+  required String welcomeFr,
+  required IconData icon,
+  required Color accent,
+}) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheetContext) => Padding(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 8,
+        bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+      ),
+      child: SizedBox(
+        height: MediaQuery.of(sheetContext).size.height * 0.8,
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: accent),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                      color: _fitilaInk,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: _AssistantChatPanel(
+                contextKey: contextKey,
+                welcomeFr: welcomeFr,
+                accent: accent,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+// =====================================================================
+// Agriculture
+// =====================================================================
+
+class _AgriForecastDay {
+  const _AgriForecastDay(this.day, this.icon, this.rain);
+  final String day;
+  final String icon;
+  final int rain;
+}
+
+const _agriForecast = [
+  _AgriForecastDay('Lun', '☀️', 0),
+  _AgriForecastDay('Mar', '⛅', 20),
+  _AgriForecastDay('Mer', '🌧️', 80),
+  _AgriForecastDay('Jeu', '🌧️', 60),
+  _AgriForecastDay('Ven', '☀️', 10),
+];
+
+class _AgriPrice {
+  const _AgriPrice(this.emoji, this.nameFr, this.price);
+  final String emoji;
+  final String nameFr;
+  final int price;
+}
+
+const _agriPrices = [
+  _AgriPrice('🌽', 'Maïs (sac 100kg)', 15000),
+  _AgriPrice('🌾', 'Riz (sac 50kg)', 22000),
+  _AgriPrice('🥜', 'Arachide (sac)', 18000),
+  _AgriPrice('🫘', 'Haricot (sac)', 25000),
+];
+
+class _AgriSection {
+  const _AgriSection(this.id, this.label, this.icon);
+  final String id;
+  final String label;
+  final IconData icon;
+}
+
+const _agriSections = [
+  _AgriSection('weather', 'Météo', Icons.wb_sunny_rounded),
+  _AgriSection('crops', 'Conseils cultures', Icons.grass_rounded),
+  _AgriSection('livestock', 'Bétail', Icons.pets_rounded),
+  _AgriSection('water', 'Eau & irrigation', Icons.water_drop_rounded),
+  _AgriSection(
+    'technician',
+    'Appeler technicien',
+    Icons.support_agent_rounded,
+  ),
+  _AgriSection('prices', 'Prix du jour', Icons.payments_rounded),
+];
+
+class AgricultureScreen extends StatelessWidget {
+  const AgricultureScreen({super.key});
+
+  void _openSection(BuildContext context, _AgriSection section) {
+    if (section.id == 'technician') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            '📞 Appel en cours... un technicien vous rappellera dans 10 minutes.',
+          ),
+        ),
+      );
+      return;
+    }
+    if (section.id == 'prices') {
+      showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (sheetContext) => Padding(
+          padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Prix du marché (aujourd’hui)',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 15,
+                  color: _fitilaInk,
+                ),
+              ),
+              const SizedBox(height: 10),
+              ..._agriPrices.map(
+                (p) => ListTile(
+                  leading: Text(p.emoji, style: const TextStyle(fontSize: 22)),
+                  title: Text(p.nameFr),
+                  trailing: Text(
+                    '${p.price} FCFA',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: _fitilaGoldDeep,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      return;
+    }
+    _openAssistantSheet(
+      context,
+      contextKey: 'agriculture',
+      title: section.label,
+      welcomeFr: 'Bonjour ! Posez votre question sur : ${section.label}.',
+      icon: section.icon,
+      accent: _fitilaSage,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _PageFrame(
+      title: 'Agriculture',
+      subtitle: 'Conseils agricoles, météo et prix',
+      child: ListView(
+        children: [
+          _TCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.wb_sunny_rounded,
+                      color: _fitilaGoldDeep,
+                      size: 26,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      '28°C · Ensoleillé',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: _fitilaInk,
+                      ),
+                    ),
+                    Spacer(),
+                    Text(
+                      'Humidité 65%',
+                      style: TextStyle(fontSize: 11, color: _fitilaMuted),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: _agriForecast
+                      .map(
+                        (f) => Expanded(
+                          child: Column(
+                            children: [
+                              Text(
+                                f.day,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: _fitilaMuted,
+                                ),
+                              ),
+                              Text(f.icon, style: const TextStyle(fontSize: 18)),
+                              Text(
+                                '${f.rain}%',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: _fitilaSage,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _agriSections.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisExtent: 108,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+            ),
+            itemBuilder: (context, index) {
+              final s = _agriSections[index];
+              return Material(
+                color: _fitilaCard,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  side: const BorderSide(color: _fitilaBorder),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () => _openSection(context, s),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(s.icon, color: _fitilaSage, size: 24),
+                        const Spacer(),
+                        Text(
+                          s.label,
+                          maxLines: 2,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12.5,
+                            color: _fitilaInk,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =====================================================================
+// Finance
+// =====================================================================
+
+class _FinTx {
+  const _FinTx(this.icon, this.label, this.amount, this.date, this.isSale);
+  final String icon;
+  final String label;
+  final int amount;
+  final String date;
+  final bool isSale;
+}
+
+const _financeTransactions = [
+  _FinTx('🌽', 'Vente maïs', 45000, "Aujourd'hui", true),
+  _FinTx('🌱', 'Engrais', 12000, "Aujourd'hui", false),
+  _FinTx('🍅', 'Vente tomates', 30000, 'Hier', true),
+  _FinTx('🌾', 'Semences', 5000, 'Hier', false),
+  _FinTx('🍚', 'Vente riz', 80000, 'Lundi', true),
+];
+
+class _TontineMember {
+  const _TontineMember(this.avatar, this.name, this.hasPaid, this.isTurn);
+  final String avatar;
+  final String name;
+  final bool hasPaid;
+  final bool isTurn;
+}
+
+const _tontineMembers = [
+  _TontineMember('👩🏾', 'Mama Sika', true, true),
+  _TontineMember('👨🏾', 'Papa Koffi', true, false),
+  _TontineMember('👧🏾', 'Aïcha', false, false),
+  _TontineMember('👦🏾', 'Ibrahim', true, false),
+  _TontineMember('🙋🏾', 'Moi', true, false),
+];
+
+class FinanceScreen extends StatefulWidget {
+  const FinanceScreen({super.key});
+
+  @override
+  State<FinanceScreen> createState() => _FinanceScreenState();
+}
+
+class _FinanceScreenState extends State<FinanceScreen> {
+  String _tab = 'accueil';
+
+  int get _balance {
+    var total = 0;
+    for (final t in _financeTransactions) {
+      total += t.isSale ? t.amount : -t.amount;
+    }
+    return total;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _PageFrame(
+      title: 'Finance',
+      subtitle: 'Portefeuille, tontine et mobile money',
+      child: ListView(
+        children: [
+          _TCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Solde actuel',
+                  style: TextStyle(color: _fitilaMuted, fontSize: 11.5),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$_balance FCFA',
+                  style: const TextStyle(
+                    fontFamily: 'serif',
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    color: _fitilaInk,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('Ventes'),
+                selected: _tab == 'ventes',
+                onSelected: (_) => setState(() => _tab = 'ventes'),
+              ),
+              ChoiceChip(
+                label: const Text('Dépenses'),
+                selected: _tab == 'depenses',
+                onSelected: (_) => setState(() => _tab = 'depenses'),
+              ),
+              ChoiceChip(
+                label: const Text('Tontine'),
+                selected: _tab == 'tontine',
+                onSelected: (_) => setState(() => _tab = 'tontine'),
+              ),
+              ChoiceChip(
+                label: const Text('Crédit'),
+                selected: _tab == 'credit',
+                onSelected: (_) => setState(() => _tab = 'credit'),
+              ),
+              ChoiceChip(
+                label: const Text('Épargne'),
+                selected: _tab == 'epargne',
+                onSelected: (_) => setState(() => _tab = 'epargne'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildTabBody(),
+          const SizedBox(height: 14),
+          _TCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.support_agent_rounded, color: _fitilaGoldDeep),
+                    SizedBox(width: 8),
+                    Text(
+                      'Conseiller financier',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: _fitilaInk,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Assistant bilingue pour vos questions d’argent.',
+                  style: TextStyle(fontSize: 11.5, color: _fitilaMuted),
+                ),
+                const SizedBox(height: 10),
+                FilledButton.icon(
+                  onPressed: () => _openAssistantSheet(
+                    context,
+                    contextKey: 'finance',
+                    title: 'Conseiller financier',
+                    welcomeFr:
+                        'Bonjour ! Je peux vous aider sur vos ventes, '
+                        'dépenses, tontine ou épargne.',
+                    icon: Icons.support_agent_rounded,
+                    accent: _fitilaGoldDeep,
+                  ),
+                  icon: const Icon(Icons.chat_rounded),
+                  label: const Text('Parler au conseiller'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBody() {
+    return switch (_tab) {
+      'ventes' => _txList(sale: true),
+      'depenses' => _txList(sale: false),
+      'tontine' => _tontineBody(),
+      'credit' => _creditBody(context),
+      'epargne' => _epargneBody(),
+      _ => _txList(sale: null),
+    };
+  }
+
+  Widget _txList({required bool? sale}) {
+    final items = sale == null
+        ? _financeTransactions
+        : _financeTransactions.where((t) => t.isSale == sale).toList();
+    if (items.isEmpty) {
+      return const _TCard(
+        child: Text('Aucune transaction.', style: TextStyle(color: _fitilaMuted)),
+      );
+    }
+    return Column(
+      children: items
+          .map(
+            (t) => _TCard(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Text(t.icon, style: const TextStyle(fontSize: 22)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          t.label,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: _fitilaInk,
+                          ),
+                        ),
+                        Text(
+                          t.date,
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            color: _fitilaMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '${t.isSale ? '+' : '-'}${t.amount} F',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: t.isSale ? _fitilaSage : _fitilaClay,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _tontineBody() {
+    return Column(
+      children: [
+        const _TCard(
+          child: Text(
+            'Cotisation hebdomadaire : 10 000 F',
+            style: TextStyle(fontWeight: FontWeight.w800, color: _fitilaInk),
+          ),
+        ),
+        const SizedBox(height: 8),
+        ..._tontineMembers.map(
+          (m) => _TCard(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Text(m.avatar, style: const TextStyle(fontSize: 22)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    m.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: _fitilaInk,
+                    ),
+                  ),
+                ),
+                if (m.isTurn)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _fitilaPrimarySoft,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: const Text(
+                      'Son tour',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: _fitilaGoldDeep,
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: 6),
+                Icon(
+                  m.hasPaid
+                      ? Icons.check_circle_rounded
+                      : Icons.hourglass_bottom_rounded,
+                  color: m.hasPaid ? _fitilaSage : _fitilaMuted,
+                  size: 18,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _creditBody(BuildContext context) {
+    return _TCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Micro-crédit disponible',
+            style: TextStyle(fontWeight: FontWeight.w900, color: _fitilaInk),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Jusqu’à 500 000 F à 2% mensuel.',
+            style: TextStyle(fontSize: 12, color: _fitilaMuted),
+          ),
+          const SizedBox(height: 10),
+          FilledButton.icon(
+            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  '📞 Demande de crédit enregistrée. '
+                  'Un conseiller vous contactera.',
+                ),
+              ),
+            ),
+            icon: const Icon(Icons.call_rounded),
+            label: const Text('Demander'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _epargneBody() {
+    const balance = 125000;
+    const goal = 500000;
+    const progress = balance / goal;
+    return _TCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Épargne',
+            style: TextStyle(fontWeight: FontWeight.w900, color: _fitilaInk),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            '$balance F',
+            style: TextStyle(
+              fontFamily: 'serif',
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: _fitilaInk,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Objectif : $goal F',
+            style: TextStyle(fontSize: 11.5, color: _fitilaMuted),
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: const LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: _fitilaSurfaceAlt,
+              color: _fitilaSage,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =====================================================================
+// Santé
+// =====================================================================
+
+class _HealthContact {
+  const _HealthContact(this.icon, this.name, this.phone);
+  final String icon;
+  final String name;
+  final String phone;
+}
+
+const _healthEmergencyContacts = [
+  _HealthContact('🚑', 'SAMU Bénin', '112'),
+  _HealthContact('🏥', 'Centre de Santé', '+22921300000'),
+  _HealthContact('💊', 'Pharmacie de garde', '+22921312233'),
+];
+
+class _HealthSection {
+  const _HealthSection(this.id, this.label, this.icon, {this.isEmergency = false});
+  final String id;
+  final String label;
+  final IconData icon;
+  final bool isEmergency;
+}
+
+const _healthSections = [
+  _HealthSection('first_aid', 'Premiers secours', Icons.emergency_rounded),
+  _HealthSection('medication', 'Médicaments', Icons.medication_rounded),
+  _HealthSection('maternity', 'Maternité', Icons.pregnant_woman_rounded),
+  _HealthSection('diseases', 'Maladies', Icons.coronavirus_rounded),
+  _HealthSection('nutrition', 'Nutrition', Icons.restaurant_rounded),
+  _HealthSection(
+    'emergency',
+    'Appeler médecin',
+    Icons.local_hospital_rounded,
+    isEmergency: true,
+  ),
+];
+
+Future<void> _dialPhone(String phone) async {
+  final uri = Uri(scheme: 'tel', path: phone);
+  await launchUrl(uri);
+}
+
+class HealthScreen extends StatelessWidget {
+  const HealthScreen({super.key});
+
+  void _openSection(BuildContext context, _HealthSection section) {
+    if (section.id == 'emergency') {
+      showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (sheetContext) => Padding(
+          padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'En cas d’urgence grave, appelez le 112',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontWeight: FontWeight.w900, color: _fitilaClay),
+              ),
+              const SizedBox(height: 12),
+              ..._healthEmergencyContacts.map(
+                (c) => ListTile(
+                  leading: Text(c.icon, style: const TextStyle(fontSize: 22)),
+                  title: Text(c.name),
+                  subtitle: Text(c.phone),
+                  trailing: const Icon(Icons.call_rounded, color: _fitilaSage),
+                  onTap: () => _dialPhone(c.phone),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      return;
+    }
+    _openAssistantSheet(
+      context,
+      contextKey: 'health_${section.id}',
+      title: section.label,
+      welcomeFr: 'Bonjour ! Décrivez votre question sur : ${section.label}.',
+      icon: section.icon,
+      accent: _fitilaClay,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _PageFrame(
+      title: 'Santé',
+      subtitle: 'Santé, prévention et assistance',
+      child: ListView(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF6E3DC),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _fitilaClay.withValues(alpha: .35)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.emergency_rounded, color: _fitilaClay),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'En cas d’urgence grave, appelez immédiatement le 112.',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: _fitilaClay,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _healthSections.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisExtent: 108,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+            ),
+            itemBuilder: (context, index) {
+              final s = _healthSections[index];
+              return Material(
+                color: _fitilaCard,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  side: BorderSide(
+                    color: s.isEmergency ? _fitilaClay : _fitilaBorder,
+                    width: s.isEmergency ? 1.4 : 1,
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () => _openSection(context, s),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          s.icon,
+                          color: s.isEmergency ? _fitilaClay : _fitilaSage,
+                          size: 24,
+                        ),
+                        const Spacer(),
+                        Text(
+                          s.label,
+                          maxLines: 2,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12.5,
+                            color: s.isEmergency ? _fitilaClay : _fitilaInk,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =====================================================================
+// SOS
+// =====================================================================
+
+class _SosContact {
+  const _SosContact(this.avatar, this.label);
+  final String avatar;
+  final String label;
+}
+
+const _sosContacts = [
+  _SosContact('👨‍👩‍👧', 'Famille'),
+  _SosContact('🏥', 'Hôpital'),
+  _SosContact('👮', 'Police'),
+];
+
+class SosScreen extends StatefulWidget {
+  const SosScreen({super.key});
+
+  @override
+  State<SosScreen> createState() => _SosScreenState();
+}
+
+class _SosScreenState extends State<SosScreen> {
+  bool _activated = false;
+  int _countdown = 3;
+  Timer? _timer;
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _toggle() {
+    if (_activated) {
+      _timer?.cancel();
+      setState(() {
+        _activated = false;
+        _countdown = 3;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Alerte annulée.')));
+      return;
+    }
+    setState(() {
+      _activated = true;
+      _countdown = 3;
+    });
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_countdown <= 1) {
+        timer.cancel();
+        _sendAlert();
+      } else {
+        setState(() => _countdown -= 1);
+      }
+    });
+  }
+
+  Future<void> _sendAlert() async {
+    if (!mounted) return;
+    setState(() => _countdown = 0);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('🆘 Alerte envoyée. Appel des secours (112)...'),
+      ),
+    );
+    await _dialPhone('112');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _PageFrame(
+      title: 'SOS',
+      subtitle: 'Alerte rapide et contacts de confiance',
+      child: ListView(
+        children: [
+          Center(
+            child: Column(
+              children: [
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: _toggle,
+                  child: Container(
+                    width: 168,
+                    height: 168,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _fitilaClay.withValues(alpha: _activated ? 1 : .92),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _fitilaClay.withValues(alpha: .35),
+                          blurRadius: 30,
+                          spreadRadius: _activated ? 10 : 2,
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      _activated ? '$_countdown' : 'SOS',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _activated
+                      ? 'Touchez à nouveau pour annuler'
+                      : 'Touchez pour déclencher une alerte',
+                  style: const TextStyle(color: _fitilaMuted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Contacts de confiance',
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              color: _fitilaInk,
+              fontSize: 13.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ..._sosContacts.map(
+            (c) => _TCard(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Text(c.avatar, style: const TextStyle(fontSize: 22)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      c.label,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: _fitilaInk,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Ajout de contacts personnalisés bientôt disponible.',
+                ),
+              ),
+            ),
+            icon: const Icon(Icons.person_add_alt_rounded),
+            label: const Text('Ajouter un contact'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =====================================================================
+// Marché
+// =====================================================================
+
+class _MarketCategory {
+  const _MarketCategory(this.emoji, this.label, this.value);
+  final String emoji;
+  final String label;
+  final String value;
+}
+
+const _marketProductCategories = [
+  _MarketCategory('🍅', 'Tomates', 'tomates'),
+  _MarketCategory('🐔', 'Poulet', 'poulet'),
+  _MarketCategory('🌽', 'Maïs', 'mais'),
+  _MarketCategory('🍚', 'Riz', 'riz'),
+  _MarketCategory('👕', 'Vêtements', 'vetements'),
+  _MarketCategory('🎨', 'Artisanat', 'artisanat'),
+];
+
+const _marketJobOfferCategories = [
+  _MarketCategory('🌾', 'Agriculteur', 'farmer'),
+  _MarketCategory('🧱', 'Maçon', 'mason'),
+  _MarketCategory('🏠', 'Domestique', 'domestic'),
+  _MarketCategory('🚗', 'Chauffeur', 'driver'),
+];
+
+const _marketJobDemandCategories = [
+  _MarketCategory('🌾', 'Travail des champs', 'farm_work'),
+  _MarketCategory('🧱', 'Construction', 'construction'),
+  _MarketCategory('🛒', 'Commerce', 'commerce'),
+  _MarketCategory('🙋', 'Tout travail', 'any_work'),
+];
+
+enum _MarketTab { buy, sell, work, hire, mine }
+
+extension on _MarketTab {
+  String get label => switch (this) {
+    _MarketTab.buy => 'Acheter',
+    _MarketTab.sell => 'Vendre',
+    _MarketTab.work => 'Emploi',
+    _MarketTab.hire => 'Recruter',
+    _MarketTab.mine => 'Mon espace',
+  };
+}
+
+class MarketScreen extends StatefulWidget {
+  const MarketScreen({super.key});
+
+  @override
+  State<MarketScreen> createState() => _MarketScreenState();
+}
+
+class _MarketScreenState extends State<MarketScreen> {
+  _MarketTab _tab = _MarketTab.buy;
+
+  @override
+  Widget build(BuildContext context) {
+    return _PageFrame(
+      title: 'Marché',
+      subtitle: 'Produits, jobs et annonces du marché',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 40,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _MarketTab.values.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 7),
+              itemBuilder: (context, index) {
+                final tab = _MarketTab.values[index];
+                return ChoiceChip(
+                  selected: _tab == tab,
+                  label: Text(tab.label),
+                  onSelected: (_) => setState(() => _tab = tab),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: switch (_tab) {
+              _MarketTab.buy => const _MarketBuyTab(),
+              _MarketTab.sell => const _MarketSellTab(),
+              _MarketTab.work => const _MarketJobsTab(jobType: 'offer'),
+              _MarketTab.hire => const _MarketJobsTab(jobType: 'demand'),
+              _MarketTab.mine => const _MarketMineTab(),
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MarketProductCard extends StatelessWidget {
+  const _MarketProductCard({required this.product, required this.onTap});
+
+  final Map<String, dynamic> product;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = (product['title_fr'] ?? product['title'] ?? 'Produit')
+        .toString();
+    final price = product['price'];
+    final emoji = (product['emoji_icon'] ?? '🛒').toString();
+    return Material(
+      color: _fitilaCard,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: _fitilaBorder),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 26)),
+              const Spacer(),
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12.5,
+                  color: _fitilaInk,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                '${price ?? '—'} FCFA',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12,
+                  color: _fitilaGoldDeep,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+void _showProductDetail(BuildContext context, Map<String, dynamic> product) {
+  final phone = product['seller_phone']?.toString();
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (sheetContext) => Padding(
+      padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            (product['title_fr'] ?? product['title'] ?? 'Produit').toString(),
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+              color: _fitilaInk,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${product['price'] ?? '—'} FCFA',
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              color: _fitilaGoldDeep,
+              fontSize: 16,
+            ),
+          ),
+          if ((product['description_text'] ?? '').toString().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              product['description_text'].toString(),
+              style: const TextStyle(color: _fitilaMuted, fontSize: 12.5),
+            ),
+          ],
+          const SizedBox(height: 14),
+          if (phone != null && phone.isNotEmpty)
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => _dialPhone(phone),
+                icon: const Icon(Icons.call_rounded),
+                label: const Text('Contacter le vendeur'),
+              ),
+            )
+          else
+            const Text(
+              'Aucun contact renseigné pour ce produit.',
+              style: TextStyle(color: _fitilaMuted, fontSize: 11.5),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _MarketBuyTab extends StatefulWidget {
+  const _MarketBuyTab();
+
+  @override
+  State<_MarketBuyTab> createState() => _MarketBuyTabState();
+}
+
+class _MarketBuyTabState extends State<_MarketBuyTab> {
+  late Future<List<Map<String, dynamic>>> _future;
+  final _search = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _future = FitilaBackend.fetchProducts();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  void _runSearch() {
+    setState(() => _future = FitilaBackend.searchProducts(_search.text));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _search,
+          decoration: InputDecoration(
+            hintText: 'Rechercher un produit...',
+            prefixIcon: const Icon(Icons.search_rounded),
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.arrow_forward_rounded),
+              onPressed: _runSearch,
+            ),
+          ),
+          onSubmitted: (_) => _runSearch(),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: FutureBuilder<List<Map<String, dynamic>>>(
+            future: _future,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return _TeacherErrorState(
+                  message: snapshot.error.toString(),
+                  onRetry: () async =>
+                      setState(() => _future = FitilaBackend.fetchProducts()),
+                );
+              }
+              final products = snapshot.data ?? const [];
+              if (products.isEmpty) {
+                return const Center(
+                  child: Text(
+                    'Aucun produit disponible pour le moment.',
+                    style: TextStyle(color: _fitilaMuted),
+                  ),
+                );
+              }
+              return GridView.builder(
+                itemCount: products.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisExtent: 128,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                ),
+                itemBuilder: (context, index) {
+                  final product = products[index];
+                  return _MarketProductCard(
+                    product: product,
+                    onTap: () => _showProductDetail(context, product),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MarketSellTab extends StatefulWidget {
+  const _MarketSellTab();
+
+  @override
+  State<_MarketSellTab> createState() => _MarketSellTabState();
+}
+
+class _MarketSellTabState extends State<_MarketSellTab> {
+  final _title = TextEditingController();
+  final _price = TextEditingController();
+  final _description = TextEditingController();
+  _MarketCategory _category = _marketProductCategories.first;
+  XFile? _photo;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _price.dispose();
+    _description.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickPhoto() async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 82,
+      maxWidth: 1400,
+    );
+    if (file != null) setState(() => _photo = file);
+  }
+
+  Future<void> _submit() async {
+    final title = _title.text.trim();
+    final priceValue = double.tryParse(_price.text.trim());
+    if (title.isEmpty || priceValue == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Indiquez un titre et un prix valides.'),
+        ),
+      );
+      return;
+    }
+    if (!FitilaBackend.configured) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Serveur FITILA indisponible.')),
+      );
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      Uint8List? bytes;
+      String ext = 'jpg';
+      if (_photo != null) {
+        bytes = await _photo!.readAsBytes();
+        ext = _photo!.name.contains('.')
+            ? _photo!.name.split('.').last.toLowerCase()
+            : 'jpg';
+      }
+      await FitilaBackend.createProduct(
+        titleFr: title,
+        price: priceValue,
+        category: _category.value,
+        descriptionText: _description.text.trim().isEmpty
+            ? null
+            : _description.text.trim(),
+        emojiIcon: _category.emoji,
+        photoBytes: bytes,
+        photoExtension: ext,
+      );
+      if (!mounted) return;
+      _title.clear();
+      _price.clear();
+      _description.clear();
+      setState(() => _photo = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Produit publié sur le marché.')),
+      );
+    } on AuthException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Connectez-vous pour publier un produit.'),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Publication impossible. Réessayez.')),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      children: [
+        const Text(
+          'Catégorie',
+          style: TextStyle(fontWeight: FontWeight.w800, color: _fitilaInk),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _marketProductCategories
+              .map(
+                (c) => ChoiceChip(
+                  label: Text('${c.emoji} ${c.label}'),
+                  selected: _category.value == c.value,
+                  onSelected: (_) => setState(() => _category = c),
+                ),
+              )
+              .toList(),
+        ),
+        const SizedBox(height: 14),
+        TextField(
+          controller: _title,
+          decoration: const InputDecoration(labelText: 'Titre du produit'),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _price,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(labelText: 'Prix (FCFA)'),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _description,
+          minLines: 2,
+          maxLines: 4,
+          decoration: const InputDecoration(labelText: 'Description (optionnel)'),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          onPressed: _pickPhoto,
+          icon: const Icon(Icons.photo_camera_rounded),
+          label: Text(_photo == null ? 'Ajouter une photo' : 'Photo sélectionnée'),
+        ),
+        const SizedBox(height: 14),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _busy ? null : _submit,
+            icon: _busy
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.storefront_rounded),
+            label: const Text('Publier le produit'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MarketJobsTab extends StatefulWidget {
+  const _MarketJobsTab({required this.jobType});
+
+  final String jobType;
+
+  @override
+  State<_MarketJobsTab> createState() => _MarketJobsTabState();
+}
+
+class _MarketJobsTabState extends State<_MarketJobsTab> {
+  late Future<List<Map<String, dynamic>>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = FitilaBackend.fetchJobs(jobType: widget.jobType);
+  }
+
+  void _refresh() {
+    setState(() => _future = FitilaBackend.fetchJobs(jobType: widget.jobType));
+  }
+
+  Future<void> _createQuick(_MarketCategory category) async {
+    if (!FitilaBackend.configured) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Serveur FITILA indisponible.')),
+      );
+      return;
+    }
+    try {
+      await FitilaBackend.createJob(
+        titleFr: category.label,
+        jobType: widget.jobType,
+        category: category.value,
+        emojiIcon: category.emoji,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('✅ Annonce "${category.label}" publiée.')),
+      );
+      _refresh();
+    } on AuthException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Connectez-vous pour publier une annonce.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Publication impossible. Réessayez.')),
+      );
+    }
+  }
+
+  Future<void> _apply(String jobId) async {
+    try {
+      await FitilaBackend.applyToJob(jobId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Candidature envoyée.')),
+      );
+    } on AuthException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Connectez-vous pour postuler.')),
+      );
+    } on StateError catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Candidature impossible. Réessayez.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isOffer = widget.jobType == 'offer';
+    final quickCategories = isOffer
+        ? _marketJobDemandCategories
+        : _marketJobOfferCategories;
+    return ListView(
+      children: [
+        Text(
+          isOffer
+              ? 'Publier une recherche d’emploi'
+              : 'Publier une offre d’emploi',
+          style: const TextStyle(fontWeight: FontWeight.w800, color: _fitilaInk),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: quickCategories
+              .map(
+                (c) => ActionChip(
+                  avatar: Text(c.emoji),
+                  label: Text(c.label),
+                  onPressed: () => _createQuick(c),
+                ),
+              )
+              .toList(),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          isOffer ? 'Offres disponibles' : 'Personnes disponibles',
+          style: const TextStyle(fontWeight: FontWeight.w800, color: _fitilaInk),
+        ),
+        const SizedBox(height: 8),
+        FutureBuilder<List<Map<String, dynamic>>>(
+          future: _future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (snapshot.hasError) {
+              return _TeacherErrorState(
+                message: snapshot.error.toString(),
+                onRetry: () async => _refresh(),
+              );
+            }
+            final jobs = snapshot.data ?? const [];
+            if (jobs.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Text(
+                  'Aucune annonce pour le moment.',
+                  style: TextStyle(color: _fitilaMuted),
+                ),
+              );
+            }
+            return Column(
+              children: jobs
+                  .map(
+                    (job) => _TCard(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Text(
+                            (job['emoji_icon'] ?? '💼').toString(),
+                            style: const TextStyle(fontSize: 22),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  (job['title_fr'] ?? job['title'] ?? '—')
+                                      .toString(),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: _fitilaInk,
+                                  ),
+                                ),
+                                if ((job['location'] ?? '')
+                                    .toString()
+                                    .isNotEmpty)
+                                  Text(
+                                    job['location'].toString(),
+                                    style: const TextStyle(
+                                      fontSize: 10.5,
+                                      color: _fitilaMuted,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          if (isOffer)
+                            FilledButton(
+                              onPressed: () =>
+                                  _apply(job['id'].toString()),
+                              child: const Text('Postuler'),
+                            )
+                          else
+                            OutlinedButton(
+                              onPressed: () {
+                                final phone = job['contact_phone']
+                                    ?.toString();
+                                if (phone != null && phone.isNotEmpty) {
+                                  _dialPhone(phone);
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Aucun contact renseigné.',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: const Text('Contacter'),
+                            ),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _MarketMineTab extends StatefulWidget {
+  const _MarketMineTab();
+
+  @override
+  State<_MarketMineTab> createState() => _MarketMineTabState();
+}
+
+class _MarketMineTabState extends State<_MarketMineTab> {
+  late Future<List<List<Map<String, dynamic>>>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<List<List<Map<String, dynamic>>>> _load() {
+    return Future.wait([
+      FitilaBackend.fetchMyProducts(),
+      FitilaBackend.fetchMyJobs(),
+    ]);
+  }
+
+  Future<void> _deleteProduct(String id) async {
+    try {
+      await FitilaBackend.deleteProduct(id);
+      if (!mounted) return;
+      setState(() => _future = _load());
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Suppression impossible.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<List<Map<String, dynamic>>>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return _TeacherErrorState(
+            message: snapshot.error.toString(),
+            onRetry: () async => setState(() => _future = _load()),
+          );
+        }
+        final products = snapshot.data?[0] ?? const [];
+        final jobs = snapshot.data?[1] ?? const [];
+        return ListView(
+          children: [
+            const Text(
+              'Mes produits',
+              style: TextStyle(fontWeight: FontWeight.w900, color: _fitilaInk),
+            ),
+            const SizedBox(height: 8),
+            if (products.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: Text(
+                  'Vous n’avez pas encore publié de produit.',
+                  style: TextStyle(color: _fitilaMuted, fontSize: 12),
+                ),
+              )
+            else
+              ...products.map(
+                (p) => _TCard(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        (p['emoji_icon'] ?? '🛒').toString(),
+                        style: const TextStyle(fontSize: 22),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              (p['title_fr'] ?? p['title'] ?? '—').toString(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: _fitilaInk,
+                              ),
+                            ),
+                            Text(
+                              '${p['price'] ?? '—'} FCFA · ${p['status'] ?? 'available'}',
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                color: _fitilaMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => _deleteProduct(p['id'].toString()),
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          color: _fitilaClay,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            const SizedBox(height: 16),
+            const Text(
+              'Mes annonces d’emploi',
+              style: TextStyle(fontWeight: FontWeight.w900, color: _fitilaInk),
+            ),
+            const SizedBox(height: 8),
+            if (jobs.isEmpty)
+              const Text(
+                'Vous n’avez pas encore publié d’annonce.',
+                style: TextStyle(color: _fitilaMuted, fontSize: 12),
+              )
+            else
+              ...jobs.map(
+                (j) => _TCard(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        (j['emoji_icon'] ?? '💼').toString(),
+                        style: const TextStyle(fontSize: 22),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          (j['title_fr'] ?? j['title'] ?? '—').toString(),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: _fitilaInk,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        j['job_type'] == 'offer' ? 'Offre' : 'Recherche',
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          color: _fitilaMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
