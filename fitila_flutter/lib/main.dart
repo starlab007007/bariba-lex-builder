@@ -456,30 +456,12 @@ extension FitilaPageMeta on FitilaPage {
       FitilaPage.feed => 'Fil',
       FitilaPage.creator => 'Createur',
       FitilaPage.templates => 'Templates',
-      FitilaPage.services => WebParityModuleScreen(
-        page: FitilaPage.services,
-        onNavigate: _navigate,
-      ),
-      FitilaPage.market => WebParityModuleScreen(
-        page: FitilaPage.market,
-        onNavigate: _navigate,
-      ),
-      FitilaPage.agriculture => WebParityModuleScreen(
-        page: FitilaPage.agriculture,
-        onNavigate: _navigate,
-      ),
-      FitilaPage.finance => WebParityModuleScreen(
-        page: FitilaPage.finance,
-        onNavigate: _navigate,
-      ),
-      FitilaPage.education => WebParityModuleScreen(
-        page: FitilaPage.education,
-        onNavigate: _navigate,
-      ),
-      FitilaPage.health => WebParityModuleScreen(
-        page: FitilaPage.health,
-        onNavigate: _navigate,
-      ),
+      FitilaPage.services => 'Services',
+      FitilaPage.market => 'Marche',
+      FitilaPage.agriculture => 'Agriculture',
+      FitilaPage.finance => 'Finance',
+      FitilaPage.education => 'Education',
+      FitilaPage.health => 'Sante',
       FitilaPage.sos => 'SOS',
       FitilaPage.messages => 'Messages',
       FitilaPage.discover => 'Decouvrir',
@@ -1526,155 +1508,29 @@ class _FitilaShellState extends State<FitilaShell> {
       FitilaPage.templates => TemplatesScreen(
         onUseTemplate: (_) => setState(() => _page = FitilaPage.creator),
       ),
-      FitilaPage.services => const FitilaModuleScreen(
+      FitilaPage.services => WebParityModuleScreen(
         page: FitilaPage.services,
-        metrics: [
-          ('Services', '18', Icons.apps_rounded),
-          ('Actifs', '12', Icons.verified_rounded),
-          ('Offline', '6', Icons.cloud_done_rounded),
-        ],
-        items: [
-          (
-            Icons.medical_services_rounded,
-            'Assistance locale',
-            'Sante, SOS, documents, signalement et support vocal.',
-          ),
-          (
-            Icons.storefront_rounded,
-            'Marche communautaire',
-            'Produits, emplois, annonces et contacts rapides.',
-          ),
-          (
-            Icons.school_rounded,
-            'Education',
-            'Classe, apprentissage, corrections et suivi enseignant.',
-          ),
-        ],
+        onNavigate: _navigate,
       ),
-      FitilaPage.market => const FitilaModuleScreen(
+      FitilaPage.market => WebParityModuleScreen(
         page: FitilaPage.market,
-        metrics: [
-          ('Produits', '86', Icons.inventory_2_rounded),
-          ('Jobs', '14', Icons.work_rounded),
-          ('Vendeurs', '32', Icons.groups_rounded),
-        ],
-        items: [
-          (
-            Icons.sell_rounded,
-            'Annonces',
-            'Creation produit, prix, image, localisation et contact.',
-          ),
-          (
-            Icons.work_history_rounded,
-            'Jobs',
-            'Offres locales avec filtre metier, commune et urgence.',
-          ),
-          (
-            Icons.chat_bubble_rounded,
-            'Negociation',
-            'Message vocal, traduction et partage dans le fil.',
-          ),
-        ],
+        onNavigate: _navigate,
       ),
-      FitilaPage.agriculture => const FitilaModuleScreen(
+      FitilaPage.agriculture => WebParityModuleScreen(
         page: FitilaPage.agriculture,
-        metrics: [
-          ('Cultures', '9', Icons.grass_rounded),
-          ('Alertes', '3', Icons.warning_rounded),
-          ('Prix', 'Live', Icons.trending_up_rounded),
-        ],
-        items: [
-          (
-            Icons.wb_sunny_rounded,
-            'Meteo agricole',
-            'Conseils par saison, pluie, semis et alerte terrain.',
-          ),
-          (
-            Icons.payments_rounded,
-            'Prix marche',
-            'Suivi mais, igname, coton et produits locaux.',
-          ),
-          (
-            Icons.record_voice_over_rounded,
-            'Conseil vocal',
-            'Question en francais ou Bariba avec reponse audio.',
-          ),
-        ],
+        onNavigate: _navigate,
       ),
-      FitilaPage.finance => const FitilaModuleScreen(
+      FitilaPage.finance => WebParityModuleScreen(
         page: FitilaPage.finance,
-        metrics: [
-          ('Solde', '25k', Icons.account_balance_wallet_rounded),
-          ('Tontines', '4', Icons.savings_rounded),
-          ('Reçus', '28', Icons.receipt_long_rounded),
-        ],
-        items: [
-          (
-            Icons.savings_rounded,
-            'Tontine',
-            'Cotisations, rappels et preuves.',
-          ),
-          (
-            Icons.swap_horiz_rounded,
-            'Transfert',
-            'Mobile money, historique et notifications.',
-          ),
-          (
-            Icons.analytics_rounded,
-            'Rapport',
-            'Depenses, revenus, marche et export PDF.',
-          ),
-        ],
+        onNavigate: _navigate,
       ),
-      FitilaPage.education => const FitilaModuleScreen(
+      FitilaPage.education => WebParityModuleScreen(
         page: FitilaPage.education,
-        metrics: [
-          ('Cours', '42', Icons.menu_book_rounded),
-          ('Quiz', '19', Icons.quiz_rounded),
-          ('Audio', 'Pret', Icons.volume_up_rounded),
-        ],
-        items: [
-          (
-            Icons.school_rounded,
-            'Modules',
-            'Alphabet, conversation, grammaire et culture.',
-          ),
-          (
-            Icons.assignment_turned_in_rounded,
-            'Exercices',
-            'Reponses texte et vocales avec correction.',
-          ),
-          (
-            Icons.emoji_events_rounded,
-            'Progression',
-            'Badges, points et parcours adapte.',
-          ),
-        ],
+        onNavigate: _navigate,
       ),
-      FitilaPage.health => const FitilaModuleScreen(
+      FitilaPage.health => WebParityModuleScreen(
         page: FitilaPage.health,
-        metrics: [
-          ('Guides', '24', Icons.health_and_safety_rounded),
-          ('Contacts', '8', Icons.contact_phone_rounded),
-          ('Alertes', '2', Icons.notifications_active_rounded),
-        ],
-        items: [
-          (
-            Icons.local_hospital_rounded,
-            'Prevention',
-            'Fiches sante simples, traduites et vocales.',
-          ),
-          (
-            Icons.phone_in_talk_rounded,
-            'Contacts utiles',
-            'Centre, urgence, pharmacie et relais local.',
-          ),
-          (
-            Icons.verified_user_rounded,
-            'Securite',
-            'Messages moderes et non diagnostiques.',
-          ),
-        ],
+        onNavigate: _navigate,
       ),
       FitilaPage.sos => const UtilityScreen(page: FitilaPage.sos),
       FitilaPage.messages => const UtilityScreen(page: FitilaPage.messages),
