@@ -4551,14 +4551,11 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
   final _output = TextEditingController();
   TranslationDirection _direction = TranslationDirection.frenchToBariba;
   String _mode = 'Texte';
-  String _model = 'Smart Translator';
-  bool _offline = true;
-  bool _autoSpeak = false;
+  bool _autoDetect = true;
+  bool _conversationMode = true;
   bool _busy = false;
-  final List<String> _history = [
-    'Bonjour -> Wɛɛrɛ',
-    'Je vais au marche -> Bariba: Je vais au marche',
-  ];
+  String? _detectedLanguage;
+  final List<({String source, String result})> _history = [];
 
   @override
   void dispose() {
@@ -4567,11 +4564,58 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
     super.dispose();
   }
 
+  String get _sourceLabel =>
+      _direction == TranslationDirection.frenchToBariba
+      ? '🇫🇷 Français'
+      : '🇧🇯 Bàátɔ̀nú';
+
+  String get _targetLabel =>
+      _direction == TranslationDirection.frenchToBariba
+      ? '🇧🇯 Bàátɔ̀nú'
+      : '🇫🇷 Français';
+
+  void _swapLanguages() {
+    setState(() {
+      _direction = _direction == TranslationDirection.frenchToBariba
+          ? TranslationDirection.baribaToFrench
+          : TranslationDirection.frenchToBariba;
+      final input = _input.text;
+      _input.text = _output.text;
+      _output.text = input;
+      _detectedLanguage = null;
+    });
+  }
+
+  void _detectFromText(String value) {
+    if (!_autoDetect || value.trim().length < 3) return;
+    final lower = value.toLowerCase();
+    final baribaSignals = [
+      'ɔ',
+      'ɛ',
+      'ŋ',
+      'sɔ̃',
+      'gari',
+      'mba',
+      'wɛɛ',
+      'bɛɛ',
+      'tem',
+    ];
+    final likelyBariba = baribaSignals.any(lower.contains);
+    setState(() {
+      _detectedLanguage = likelyBariba ? 'Bàátɔ̀nú' : 'Français';
+      _direction = likelyBariba
+          ? TranslationDirection.baribaToFrench
+          : TranslationDirection.frenchToBariba;
+    });
+  }
+
   Future<void> _translate() async {
+    final source = _input.text.trim();
+    if (source.isEmpty || _busy) return;
     setState(() => _busy = true);
     try {
       final translated = await FitilaServices.translate(
-        _input.text,
+        source,
         _direction,
         accessToken: widget.accessToken,
       );
@@ -4579,12 +4623,12 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
       setState(() {
         _output.text = translated;
         if (translated.isNotEmpty) {
-          _history.insert(0, '${_input.text.trim()} -> $translated');
+          _history.insert(0, (source: source, result: translated));
+          if (_history.length > 20) _history.removeLast();
         }
       });
     } catch (error) {
       if (!mounted) return;
-      _output.clear();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -4599,275 +4643,546 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
     }
   }
 
-  Widget _modeChip(String mode, IconData icon) {
-    return ChoiceChip(
-      selected: _mode == mode,
-      avatar: Icon(icon, size: 18),
-      label: Text(mode),
-      onSelected: (_) => setState(() => _mode = mode),
+  Future<void> _pasteAndTranslate() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text?.trim() ?? '';
+    if (text.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Le presse-papiers est vide.')),
+      );
+      return;
+    }
+    setState(() {
+      _mode = 'Coller';
+      _input.text = text;
+    });
+    _detectFromText(text);
+    await _translate();
+  }
+
+  Future<void> _translateImage() async {
+    if (!FitilaBackend.configured) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Serveur FITILA indisponible.')),
+      );
+      return;
+    }
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 88,
+      maxWidth: 1800,
+    );
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    await _ocrTranslate(bytes, file.name);
+  }
+
+  Future<void> _translateDocument() async {
+    if (!FitilaBackend.configured) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Serveur FITILA indisponible.')),
+      );
+      return;
+    }
+    final selection = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['pdf', 'png', 'jpg', 'jpeg', 'webp'],
+      withData: true,
+    );
+    if (selection == null || selection.files.isEmpty) return;
+    final file = selection.files.first;
+    final bytes = file.bytes;
+    if (bytes == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossible de lire le document.')),
+      );
+      return;
+    }
+    await _ocrTranslate(bytes, file.name);
+  }
+
+  Future<void> _ocrTranslate(List<int> bytes, String fileName) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final target = _direction == TranslationDirection.frenchToBariba
+          ? 'bariba'
+          : 'french';
+      final response = await FitilaBackend.client.functions.invoke(
+        'ocr-translate',
+        body: {
+          'document': base64Encode(bytes),
+          'fileName': fileName,
+          'targetLanguage': target,
+          'translateMode': 'combined',
+        },
+      );
+      final data = response.data;
+      if (data is! Map) {
+        throw StateError('Réponse OCR invalide.');
+      }
+      final extracted = data['extractedText']?.toString().trim() ?? '';
+      final translation = data['translation']?.toString().trim() ?? '';
+      if (!mounted) return;
+      setState(() {
+        _input.text = extracted;
+        _output.text = translation;
+        if (extracted.isNotEmpty || translation.isNotEmpty) {
+          _history.insert(
+            0,
+            (
+              source: extracted.isEmpty ? fileName : extracted,
+              result: translation,
+            ),
+          );
+        }
+      });
+      if (translation.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Texte détecté, mais aucune traduction n’a été produite.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Lecture du document impossible. Vérifiez le réseau puis réessayez.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _selectMode(String mode) {
+    setState(() => _mode = mode);
+    switch (mode) {
+      case 'Coller':
+        _pasteAndTranslate();
+      case 'Photo':
+        _translateImage();
+      case 'Doc':
+        _translateDocument();
+    }
+  }
+
+  Widget _modeButton(String mode, IconData icon, Color tone) {
+    final selected = _mode == mode;
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: _busy ? null : () => _selectMode(mode),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? tone : _fitilaCard,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? tone : _fitilaBorder,
+          ),
+          boxShadow: selected
+              ? const [
+                  BoxShadow(
+                    color: Color(0x18241F2E),
+                    blurRadius: 14,
+                    offset: Offset(0, 7),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 21,
+              color: selected ? Colors.white : _fitilaMuted,
+            ),
+            const SizedBox(height: 5),
+            Text(
+              mode,
+              style: TextStyle(
+                color: selected ? Colors.white : _fitilaMuted,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _translatorSubmodule() {
-    return switch (_mode) {
-      'Voix' => const _FeatureGrid(
-        items: [
-          (
-            Icons.mic_rounded,
-            'Voice Translator',
-            'Dictée FR/BA, detection langue, transcription et correction.',
+  Widget _welcomeState() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
+      child: Column(
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: _fitilaPrimarySoft,
+            ),
+            child: const Icon(
+              Icons.language_rounded,
+              size: 43,
+              color: _fitilaGoldDeep,
+            ),
           ),
-          (
-            Icons.volume_up_rounded,
-            'Lecture TTS',
-            'Lecture audio du resultat avec voix Bariba et Francais.',
+          const SizedBox(height: 14),
+          const Text(
+            'Bienvenue ! 👋',
+            style: TextStyle(
+              color: _fitilaInk,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
           ),
-          (
-            Icons.record_voice_over_rounded,
-            'Voice Only',
-            'Mode conversation mains libres avec reponse vocale.',
+          const SizedBox(height: 7),
+          const Text(
+            'Je traduis entre Français et Bàátɔ̀nú',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _fitilaMuted,
+              fontSize: 14,
+            ),
           ),
-        ],
-      ),
-      'Photo' => const _FeatureGrid(
-        items: [
-          (
-            Icons.photo_camera_rounded,
-            'Photo traducteur',
-            'Capture image, OCR, selection zone et traduction.',
-          ),
-          (
-            Icons.document_scanner_rounded,
-            'Document',
-            'Lecture affiche, fiche, ordonnance ou note de classe.',
-          ),
-          (
-            Icons.crop_rounded,
-            'Recadrage',
-            'Nettoyage visuel avant envoi au backend OCR.',
-          ),
-        ],
-      ),
-      'Offline' => _ActionList(
-        items: [
-          _ActionItem(
-            Icons.offline_bolt_rounded,
-            'OfflineTranslationService',
-            _offline
-                ? 'Cache actif: dictionnaire et phrases utiles disponibles.'
-                : 'Cache desactive pour test reseau.',
-          ),
-          const _ActionItem(
-            Icons.storage_rounded,
-            'TranslationCache',
-            'Historique local, favoris, reprise et synchronisation differee.',
-          ),
-          const _ActionItem(
-            Icons.sync_problem_rounded,
-            'Fallback',
-            'Si Supabase/HuggingFace echoue, le module garde une reponse locale.',
+          const SizedBox(height: 12),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (_autoDetect)
+                const _StatusChip(
+                  icon: Icons.auto_awesome_rounded,
+                  label: 'Détection automatique',
+                ),
+              if (_conversationMode)
+                const _StatusChip(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  label: 'Mode conversation',
+                ),
+            ],
           ),
         ],
       ),
-      'Historique' => _ActionList(
-        items: [
-          for (final item in _history.take(6))
-            _ActionItem(Icons.history_rounded, 'Historique', item),
-        ],
-      ),
-      'Suggestions' => const _FeatureGrid(
-        items: [
-          (
-            Icons.tips_and_updates_rounded,
-            'Suggestions',
-            'Corrections phonétiques, variantes et expressions proches.',
-          ),
-          (
-            Icons.spellcheck_rounded,
-            'Feedback',
-            'Evaluation utilisateur, signalement et amélioration corpus.',
-          ),
-          (
-            Icons.compare_arrows_rounded,
-            'Model switcher',
-            'Basculer entre modele simple, Smart Translator et ByT5.',
-          ),
-        ],
-      ),
-      _ => Card(
-        child: SwitchListTile(
-          value: _autoSpeak,
-          onChanged: (value) => setState(() => _autoSpeak = value),
-          secondary: const Icon(Icons.hearing_rounded),
-          title: Text('Mode $_model'),
-          subtitle: const Text(
-            'Traduction texte avec clavier Bariba, suggestions et sortie vocale.',
-          ),
-        ),
-      ),
-    };
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final wide = MediaQuery.sizeOf(context).width > 860;
     return _PageFrame(
-      title: 'Traducteur',
-      subtitle:
-          'Traduction Français-Bariba avec voix, suggestions et clavier natif.',
-      child: ListView(
+      title: '🌐 Traducteur IA',
+      subtitle: 'Voix, texte, photo, presse-papiers et documents.',
+      child: Column(
         children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _modeChip('Texte', Icons.translate_rounded),
-              _modeChip('Voix', Icons.mic_rounded),
-              _modeChip('Photo', Icons.photo_camera_rounded),
-              _modeChip('Offline', Icons.offline_bolt_rounded),
-              _modeChip('Historique', Icons.history_rounded),
-              _modeChip('Suggestions', Icons.tips_and_updates_rounded),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  isExpanded: true,
-                  initialValue: _model,
-                  decoration: const InputDecoration(
-                    labelText: 'Moteur',
-                    prefixIcon: Icon(Icons.memory_rounded),
-                  ),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'Smart Translator',
-                      child: Text('Smart Translator'),
+          Container(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            decoration: BoxDecoration(
+              color: _fitilaCard,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: _fitilaBorder),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.wifi_rounded,
+                      color: _fitilaSage,
+                      size: 18,
                     ),
-                    DropdownMenuItem(value: 'ByT5', child: Text('ByT5')),
-                    DropdownMenuItem(
-                      value: 'Offline simple',
-                      child: Text('Offline simple'),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'Auto',
+                      style: TextStyle(
+                        color: _fitilaSage,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const Spacer(),
+                    ChoiceChip(
+                      selected: _direction ==
+                          TranslationDirection.frenchToBariba,
+                      label: const Text('🇫🇷 Français'),
+                      onSelected: (_) => setState(() {
+                        _direction = TranslationDirection.frenchToBariba;
+                      }),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                      child: IconButton.filled(
+                        tooltip: 'Inverser',
+                        onPressed: _swapLanguages,
+                        icon: const Icon(Icons.swap_horiz_rounded),
+                      ),
+                    ),
+                    ChoiceChip(
+                      selected: _direction ==
+                          TranslationDirection.baribaToFrench,
+                      label: const Text('🇧🇯 Bariba'),
+                      onSelected: (_) => setState(() {
+                        _direction = TranslationDirection.baribaToFrench;
+                      }),
                     ),
                   ],
-                  onChanged: (value) => setState(() => _model = value!),
                 ),
-              ),
-              const SizedBox(width: 8),
-              FilterChip(
-                selected: _offline,
-                avatar: const Icon(Icons.cloud_off_rounded),
-                label: const Text('Offline'),
-                onSelected: (value) => setState(() => _offline = value),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.spaceBetween,
-            children: [
-              SegmentedButton<TranslationDirection>(
-                segments: const [
-                  ButtonSegment(
-                    value: TranslationDirection.frenchToBariba,
-                    label: Text('FR -> BA'),
-                    icon: Icon(Icons.arrow_forward_rounded),
-                  ),
-                  ButtonSegment(
-                    value: TranslationDirection.baribaToFrench,
-                    label: Text('BA -> FR'),
-                    icon: Icon(Icons.arrow_back_rounded),
-                  ),
-                ],
-                selected: {_direction},
-                onSelectionChanged: (values) =>
-                    setState(() => _direction = values.first),
-              ),
-              Wrap(
-                spacing: 8,
-                children: [
-                  ActionChip(
-                    avatar: const Icon(Icons.mic_rounded, size: 18),
-                    label: const Text('Dicter'),
-                    onPressed: () => _input.text = 'Bonjour, comment vas-tu ?',
-                  ),
-                  ActionChip(
-                    avatar: const Icon(Icons.keyboard_alt_rounded, size: 18),
-                    label: const Text('Clavier'),
-                    onPressed: () => _showKeyboard(context, _input),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Flex(
-            mainAxisSize: MainAxisSize.min,
-            direction: wide ? Axis.horizontal : Axis.vertical,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Flexible(
-                child: _TextPanel(
-                  title: _direction == TranslationDirection.frenchToBariba
-                      ? 'Français'
-                      : 'Bariba',
-                  controller: _input,
-                  hint: 'Saisir le texte à traduire',
-                  maxLines: 10,
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 14,
+                  runSpacing: 6,
+                  children: [
+                    FilterChip(
+                      selected: _autoDetect,
+                      avatar: const Icon(Icons.auto_awesome_rounded, size: 16),
+                      label: Text(
+                        _detectedLanguage == null
+                            ? 'Détection auto'
+                            : 'Détecté : $_detectedLanguage',
+                      ),
+                      onSelected: (value) =>
+                          setState(() => _autoDetect = value),
+                    ),
+                    FilterChip(
+                      selected: _conversationMode,
+                      avatar: const Icon(
+                        Icons.chat_bubble_outline_rounded,
+                        size: 16,
+                      ),
+                      label: const Text('Mode conversation'),
+                      onSelected: (value) =>
+                          setState(() => _conversationMode = value),
+                    ),
+                  ],
                 ),
-              ),
-              SizedBox(width: wide ? 12 : 0, height: wide ? 0 : 12),
-              IconButton.filled(
-                tooltip: 'Inverser',
-                onPressed: () => setState(() {
-                  _direction = _direction == TranslationDirection.frenchToBariba
-                      ? TranslationDirection.baribaToFrench
-                      : TranslationDirection.frenchToBariba;
-                  final temp = _input.text;
-                  _input.text = _output.text;
-                  _output.text = temp;
-                }),
-                icon: const Icon(Icons.swap_horiz_rounded),
-              ),
-              SizedBox(width: wide ? 12 : 0, height: wide ? 0 : 12),
-              Flexible(
-                child: _TextPanel(
-                  title: _direction == TranslationDirection.frenchToBariba
-                      ? 'Bariba'
-                      : 'Français',
-                  controller: _output,
-                  hint: 'Résultat',
-                  readOnly: true,
-                  maxLines: 10,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: _busy ? null : _translate,
-            icon: _busy
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+          const SizedBox(height: 10),
+          Expanded(
+            child: ListView(
+              keyboardDismissBehavior:
+                  ScrollViewKeyboardDismissBehavior.onDrag,
+              children: [
+                if (_input.text.isEmpty && _output.text.isEmpty)
+                  _welcomeState(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _modeButton(
+                      'Voix',
+                      Icons.mic_rounded,
+                      _fitilaClay,
+                    ),
+                    _modeButton(
+                      'Texte',
+                      Icons.keyboard_alt_rounded,
+                      const Color(0xFF4D73E6),
+                    ),
+                    _modeButton(
+                      'Photo',
+                      Icons.photo_camera_rounded,
+                      const Color(0xFF9A62D6),
+                    ),
+                    _modeButton(
+                      'Coller',
+                      Icons.content_paste_rounded,
+                      _fitilaSage,
+                    ),
+                    _modeButton(
+                      'Doc',
+                      Icons.description_rounded,
+                      _fitilaGoldDeep,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (_mode == 'Voix')
+                  Container(
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      color: _fitilaCard,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: _fitilaBorder),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.mic_rounded,
+                          color: _fitilaClay,
+                          size: 42,
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Mode vocal',
+                          style: TextStyle(
+                            color: _fitilaInk,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Parlez en $_sourceLabel. La transcription Bariba STT reste disponible via Voice Lab.',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: _fitilaMuted,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        FilledButton.icon(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Ouvrez Voice Lab pour une dictée audio complète.',
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.graphic_eq_rounded),
+                          label: const Text('Démarrer la voix'),
+                        ),
+                      ],
+                    ),
                   )
-                : const Icon(Icons.auto_awesome_rounded),
-            label: const Text('Traduire'),
-          ),
-          const SizedBox(height: 14),
-          _translatorSubmodule(),
-          const SizedBox(height: 14),
-          const Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _StatusChip(icon: Icons.hearing_rounded, label: 'TTS Bariba'),
-              _StatusChip(icon: Icons.record_voice_over_rounded, label: 'STT'),
-              _StatusChip(icon: Icons.history_rounded, label: 'Cache local'),
-            ],
+                else ...[
+                  _TextPanel(
+                    title: _sourceLabel,
+                    controller: _input,
+                    hint: 'Tapez dans n’importe quelle langue...',
+                    maxLines: 5,
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _input,
+                    maxLines: 1,
+                    onChanged: _detectFromText,
+                    decoration: InputDecoration(
+                      hintText: 'Saisie rapide',
+                      prefixIcon: const Icon(Icons.keyboard_alt_rounded),
+                      suffixIcon: IconButton(
+                        tooltip: 'Clavier Bàátɔ̀nú',
+                        onPressed: () => _showKeyboard(context, _input),
+                        icon: const Icon(Icons.keyboard_rounded),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 50,
+                    child: FilledButton.icon(
+                      onPressed: _busy ? null : _translate,
+                      icon: _busy
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Icon(Icons.send_rounded),
+                      label: const Text('Traduire'),
+                    ),
+                  ),
+                  if (_output.text.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _TextPanel(
+                      title: _targetLabel,
+                      controller: _output,
+                      hint: 'Résultat',
+                      readOnly: true,
+                      maxLines: 7,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            await Clipboard.setData(
+                              ClipboardData(text: _output.text),
+                            );
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Traduction copiée.'),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.copy_rounded),
+                          label: const Text('Copier'),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _input.clear();
+                              _output.clear();
+                              _detectedLanguage = null;
+                            });
+                          },
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          label: const Text('Effacer'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+                if (_history.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Historique récent',
+                    style: TextStyle(
+                      color: _fitilaMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  for (final item in _history.take(5))
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 7),
+                      child: Material(
+                        color: _fitilaCard,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          side: const BorderSide(color: _fitilaBorder),
+                        ),
+                        child: ListTile(
+                          dense: true,
+                          onTap: () => setState(() {
+                            _input.text = item.source;
+                            _output.text = item.result;
+                          }),
+                          leading: const Icon(Icons.history_rounded),
+                          title: Text(
+                            item.source,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            item.result,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ],
+            ),
           ),
         ],
       ),
