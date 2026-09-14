@@ -129,9 +129,10 @@ void main() {
     await tester.ensureVisible(field);
     await tester.enterText(field, 'Bonjour FITILA');
 
-    await tester.tap(find.text('Fil').last);
+    await tester.binding.handlePopRoute();
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
+    expect(find.text('Fil Fitila'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Menu').first);
     await tester.pumpAndSettle();
