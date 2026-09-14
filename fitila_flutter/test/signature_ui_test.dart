@@ -68,6 +68,7 @@ void main() {
       expect(find.byType(Scaffold), findsWidgets);
 
       if (entry.key == 'classe') {
+        await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('Niveau 2'));
         await tester.tap(find.text('Niveau 2'));
         await tester.pump(const Duration(milliseconds: 350));
