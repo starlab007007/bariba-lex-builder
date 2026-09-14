@@ -8384,14 +8384,20 @@ class _ActionList extends StatelessWidget {
         for (final item in items)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: Container(
-              decoration: BoxDecoration(
-                color: _fitilaCard,
+            child: Material(
+              color: _fitilaCard,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: _fitilaBorder),
+                side: const BorderSide(color: _fitilaBorder),
               ),
               child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 5,
+                ),
                 leading: Container(
                   width: 40,
                   height: 40,
@@ -8413,9 +8419,15 @@ class _ActionList extends StatelessWidget {
                   item.subtitle,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: _fitilaMuted, fontSize: 11),
+                  style: const TextStyle(
+                    color: _fitilaMuted,
+                    fontSize: 11,
+                  ),
                 ),
-                trailing: const Icon(Icons.chevron_right_rounded, color: _fitilaMuted),
+                trailing: const Icon(
+                  Icons.chevron_right_rounded,
+                  color: _fitilaMuted,
+                ),
               ),
             ),
           ),
@@ -8423,7 +8435,6 @@ class _ActionList extends StatelessWidget {
     );
   }
 }
-
 class _ActionItem {
   const _ActionItem(this.icon, this.title, this.subtitle);
 
@@ -8850,24 +8861,30 @@ class _SwitchTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: _fitilaBorder)),
-      ),
-      child: SwitchListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        value: value,
-        onChanged: onChanged,
-        secondary: Icon(icon, color: _fitilaGoldDeep, size: 19),
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: _fitilaInk,
-            fontSize: 13.5,
-            fontWeight: FontWeight.w600,
+    return Column(
+      children: [
+        Material(
+          color: Colors.transparent,
+          child: SwitchListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 4,
+              vertical: 2,
+            ),
+            value: value,
+            onChanged: onChanged,
+            secondary: Icon(icon, color: _fitilaGoldDeep, size: 19),
+            title: Text(
+              title,
+              style: const TextStyle(
+                color: _fitilaInk,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ),
-      ),
+        const Divider(),
+      ],
     );
   }
 }
