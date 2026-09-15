@@ -81,7 +81,7 @@ jobs:
           s = s.replace('(_, __) =>', '(_, _) =>')
           s = re.sub(r'\.withOpacity\(([^()\n]+)\)', r'.withValues(alpha: \1)', s)
           s = re.sub(
-              r'(DropdownButtonFormField(?:<[^>]+>)?\(\s*\n\s*)value:',
+              r'(DropdownButtonFormField(?:<[^>]+>)?\([\s\S]{0,500}?)\bvalue:',
               r'\1initialValue:',
               s,
           )
