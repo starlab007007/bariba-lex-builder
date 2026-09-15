@@ -1552,4 +1552,157 @@ class FitilaBackend {
     }
     return {'unlocked': unlocked, 'locked': locked};
   }
+
+  // ───────────────────────────────────────────────────────────────
+  // Sagesse Battle — défi proverbe quotidien (réponse texte réelle,
+  // scoring local côté client, fil communautaire des réponses).
+  // Le XP/série/badges passent par recordLearningSession (thème
+  // 'proverbes'), déjà utilisé par le module Apprendre.
+  // ───────────────────────────────────────────────────────────────
+  static Future<Map<String, dynamic>> submitBattleResponse({
+    required String challengeId,
+    required String promptBariba,
+    required String promptFrancais,
+    required String answerText,
+    required int score,
+    required int xpAwarded,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    final profile = await client
+        .from('tamtam_profiles')
+        .select('display_name, username, avatar_url')
+        .eq('user_id', user.id)
+        .maybeSingle();
+    final data = await client
+        .from('battle_responses')
+        .insert({
+          'user_id': user.id,
+          'challenge_id': challengeId,
+          'prompt_bariba': promptBariba,
+          'prompt_francais': promptFrancais,
+          'answer_text': answerText.trim(),
+          'score': score,
+          'xp_awarded': xpAwarded,
+        })
+        .select()
+        .single();
+    return {
+      ...data,
+      'display_name':
+          profile?['display_name'] ?? profile?['username'] ?? 'Griot Fitila',
+      'avatar_url': profile?['avatar_url'],
+    };
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchBattleChain({
+    String? challengeId,
+    int limit = 30,
+  }) async {
+    final rows = challengeId == null
+        ? await client
+              .from('battle_responses')
+              .select()
+              .order('created_at', ascending: false)
+              .limit(limit)
+        : await client
+              .from('battle_responses')
+              .select()
+              .eq('challenge_id', challengeId)
+              .order('created_at', ascending: false)
+              .limit(limit);
+    final responses = List<Map<String, dynamic>>.from(rows as List);
+    final userIds = responses.map((r) => r['user_id'] as String).toSet().toList();
+    if (userIds.isEmpty) return responses;
+    final profiles = await client
+        .from('tamtam_profiles')
+        .select('user_id, username, display_name, avatar_url')
+        .filter('user_id', 'in', '(${userIds.join(",")})');
+    final profileMap = <String, Map<String, dynamic>>{
+      for (final p in List<Map<String, dynamic>>.from(profiles as List))
+        p['user_id'] as String: p,
+    };
+    return responses.map((row) {
+      final profile = profileMap[row['user_id']];
+      return {
+        ...row,
+        'display_name': profile?['display_name']?.toString().trim().isNotEmpty ==
+                true
+            ? profile!['display_name']
+            : (profile?['username'] ?? 'Griot Fitila'),
+        'avatar_url': profile?['avatar_url'],
+      };
+    }).toList(growable: false);
+  }
+
+  static Future<Map<String, dynamic>> fetchMyBattleStats() async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      return const {'attempts': 0, 'total_xp': 0, 'wins': 0, 'history': []};
+    }
+    final rows = await client
+        .from('battle_responses')
+        .select('score, xp_awarded, challenge_id, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', ascending: false);
+    final list = List<Map<String, dynamic>>.from(rows as List);
+    final totalXp = list.fold<int>(
+      0,
+      (sum, r) => sum + ((r['xp_awarded'] as num?)?.toInt() ?? 0),
+    );
+    final wins = list.where((r) => ((r['score'] as num?)?.toInt() ?? 0) >= 80).length;
+    return {
+      'attempts': list.length,
+      'total_xp': totalXp,
+      'wins': wins,
+      'history': list,
+    };
+  }
+
+  // ───────────────────────────────────────────────────────────────
+  // Sasara IA — traduction bilingue (réutilise FitilaServices.translate
+  // / ai-translate) + corpus communautaire strictement opt-in.
+  // ───────────────────────────────────────────────────────────────
+  static Future<Map<String, dynamic>> saveCorpusContribution({
+    required String sourceLang,
+    required String targetLang,
+    required String sourceText,
+    required String translatedText,
+    String? audioUrl,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    final data = await client
+        .from('corpus_contributions')
+        .insert({
+          'user_id': user.id,
+          'source_lang': sourceLang,
+          'target_lang': targetLang,
+          'source_text': sourceText.trim(),
+          'translated_text': translatedText.trim(),
+          'audio_url': audioUrl,
+        })
+        .select()
+        .single();
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<int> fetchCorpusContributionCount() async {
+    final user = client.auth.currentUser;
+    if (user == null) return 0;
+    final rows = await client
+        .from('corpus_contributions')
+        .select('id')
+        .eq('user_id', user.id);
+    return List.from(rows as List).length;
+  }
+
+  // ───────────────────────────────────────────────────────────────
+  // Handunia Wasa — vision 10-15 ans, non fonctionnelle aujourd'hui.
+  // Seul geste réel : enregistrer l'intérêt de l'utilisateur dans ses
+  // préférences déjà existantes, pour une future priorisation produit.
+  // ───────────────────────────────────────────────────────────────
+  static Future<void> registerHanduniaWasaInterest(bool interested) async {
+    await updatePreferences({'handunia_wasa_interested': interested});
+  }
 }

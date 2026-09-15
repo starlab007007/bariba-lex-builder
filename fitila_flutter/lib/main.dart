@@ -2397,7 +2397,111 @@ class _ContentCreatorScreenState extends State<ContentCreatorScreen> {
               ('IA', 'Active', Icons.auto_awesome_rounded),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
+          const Text(
+            'Studio IA nouvelle génération',
+            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Six formats validés, visibles dans le fil actualité.',
+            style: TextStyle(color: _fitilaMuted, fontSize: 12),
+          ),
+          const SizedBox(height: 10),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth < 420
+                  ? 2
+                  : constraints.maxWidth < 760
+                      ? 3
+                      : 6;
+              return GridView.count(
+                crossAxisCount: columns,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 0.92,
+                children: [
+                  _CreationIaTile(
+                    emoji: '📡',
+                    title: 'Echo Sɔ̃ɔ',
+                    subtitle: 'Voix, texte, traduction, visuel signature.',
+                    colorA: const Color(0xFFC99530),
+                    colorB: const Color(0xFF9C6B1D),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EchoSonScreen(onPostCreated: widget.onPostCreated),
+                      ),
+                    ),
+                  ),
+                  _CreationIaTile(
+                    emoji: '🎙️',
+                    title: 'Live Griot IA',
+                    subtitle: 'Direct commenté par une IA griot.',
+                    colorA: const Color(0xFF6758C9),
+                    colorB: const Color(0xFF4A3B96),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => LiveGriotScreen(onPostCreated: widget.onPostCreated),
+                      ),
+                    ),
+                  ),
+                  _CreationIaTile(
+                    emoji: '⚔️',
+                    title: 'Sagesse Battle',
+                    subtitle: 'Défi proverbe quotidien, XP et badges.',
+                    colorA: const Color(0xFF9C6B1D),
+                    colorB: const Color(0xFFB54E33),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SagesseBattleScreen()),
+                    ),
+                  ),
+                  _CreationIaTile(
+                    emoji: '🛍️',
+                    title: 'Aburu Fim IA',
+                    subtitle: 'Produit + template + publication instantanée.',
+                    colorA: const Color(0xFF3F6E52),
+                    colorB: const Color(0xFF2C4E3A),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AburuFimScreen(onPostCreated: widget.onPostCreated),
+                      ),
+                    ),
+                  ),
+                  _CreationIaTile(
+                    emoji: '🌉',
+                    title: 'Sasara IA',
+                    subtitle: 'Le pont bilingue Bariba ⇄ Français.',
+                    colorA: const Color(0xFF241F2E),
+                    colorB: const Color(0xFF3A3448),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SasaraIaScreen(onPostCreated: widget.onPostCreated),
+                      ),
+                    ),
+                  ),
+                  _CreationIaTile(
+                    emoji: '🌌',
+                    title: 'Handunia Wasa',
+                    subtitle: 'Vision 10-15 ans — non fonctionnel.',
+                    colorA: const Color(0xFF4A3B78),
+                    colorB: const Color(0xFF14111C),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const HanduniaWasaScreen()),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 16),
           _CreatorPhaseBar(phase: _phase),
           const SizedBox(height: 12),
           _CreatorWorkflowPanel(
@@ -18912,3 +19016,1635 @@ const _fitilaTemplates = [
     tags: ['tem-ia', 'foncier'],
   ),
 ];
+
+// ═══════════════════════════════════════════════════════════════════
+// Création de contenu — 6 fonctionnalités IA validées le 15/09/2026 :
+// Echo Sɔ̃ɔ, Live Griot IA, Sagesse Battle, Aburu Fim IA, Sasara IA,
+// Handunia Wasa. Périmètre honnête : Echo Sɔ̃ɔ / Sasara IA / Aburu Fim
+// IA sont pleinement réels avec des simplifications assumées (pas de
+// dictée vocale, pas de génération visuelle IA, pas de détection
+// produit par vision) ; Sagesse Battle est entièrement réel (thème
+// « proverbes » + XP/badges du module Apprendre) ; Live Griot IA et
+// Handunia Wasa sont honnêtement non fonctionnels (aucune infra live,
+// vision 10-15 ans) et le disent clairement à l'écran.
+// ═══════════════════════════════════════════════════════════════════
+
+int _dayOfYear(DateTime date) {
+  return date.difference(DateTime(date.year, 1, 1)).inDays + 1;
+}
+
+String _initialLetter(String? value) {
+  final trimmed = (value ?? '').trim();
+  return trimmed.isEmpty ? 'G' : trimmed.substring(0, 1).toUpperCase();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 1. Echo Sɔ̃ɔ — voix/texte + traduction instantanée + visuel signature
+// ─────────────────────────────────────────────────────────────────
+class _EchoVisualPreset {
+  const _EchoVisualPreset(this.name, this.colorA, this.colorB, this.icon);
+  final String name;
+  final Color colorA;
+  final Color colorB;
+  final IconData icon;
+}
+
+class EchoSonScreen extends StatefulWidget {
+  const EchoSonScreen({super.key, required this.onPostCreated});
+
+  final ValueChanged<FeedPost> onPostCreated;
+
+  @override
+  State<EchoSonScreen> createState() => _EchoSonScreenState();
+}
+
+class _EchoSonScreenState extends State<EchoSonScreen> {
+  final _mediaController = FitilaMediaController();
+  final _textController = TextEditingController();
+  static const _presets = [
+    _EchoVisualPreset('Aube dorée', Color(0xFFC99530), Color(0xFF9C6B1D), Icons.wb_sunny_rounded),
+    _EchoVisualPreset('Nuit Sahel', Color(0xFF241F2E), Color(0xFF3A3448), Icons.nightlight_round),
+    _EchoVisualPreset("Terre d'argile", Color(0xFFB54E33), Color(0xFF8C3D28), Icons.terrain_rounded),
+    _EchoVisualPreset('Feuille de sauge', Color(0xFF3F6E52), Color(0xFF2C4E3A), Icons.eco_rounded),
+    _EchoVisualPreset('Griot pourpre', Color(0xFF6758C9), Color(0xFF4A3B96), Icons.auto_awesome_rounded),
+  ];
+  int _presetIndex = 0;
+  TranslationDirection _direction = TranslationDirection.frenchToBariba;
+  String _translated = '';
+  bool _translating = false;
+  bool _recording = false;
+  FitilaMediaAsset? _audio;
+  bool _publishing = false;
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    _mediaController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggleRecording() async {
+    try {
+      if (_recording) {
+        final asset = await _mediaController.stopAudio();
+        if (!mounted) return;
+        setState(() {
+          _recording = false;
+          _audio = asset;
+        });
+      } else {
+        await _mediaController.startAudio();
+        if (mounted) setState(() => _recording = true);
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _recording = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceFirst('Bad state: ', ''))),
+      );
+    }
+  }
+
+  Future<void> _translate() async {
+    final text = _textController.text.trim();
+    if (text.isEmpty || _translating) return;
+    setState(() => _translating = true);
+    try {
+      final session = FitilaBackend.client.auth.currentSession;
+      final result = await FitilaServices.translate(
+        text,
+        _direction,
+        accessToken: session?.accessToken,
+      );
+      if (!mounted) return;
+      setState(() => _translated = result);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Traduction indisponible pour le moment.')),
+      );
+    } finally {
+      if (mounted) setState(() => _translating = false);
+    }
+  }
+
+  Future<void> _publish() async {
+    final text = _textController.text.trim();
+    if (text.isEmpty && _audio == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ajoutez un texte ou un enregistrement audio.')),
+      );
+      return;
+    }
+    setState(() => _publishing = true);
+    final preset = _presets[_presetIndex];
+    final caption = [
+      text,
+      if (_translated.trim().isNotEmpty) _translated.trim(),
+    ].join('\n\n');
+    try {
+      final row = _audio != null
+          ? await FitilaBackend.createMediaPost(
+              bytes: await _audio!.readBytes(),
+              originalName: _audio!.name,
+              contentType: _audio!.contentType,
+              mediaType: _audio!.mediaType,
+              text: caption,
+              hashtags: const ['echo-sonn', 'fitila-ia'],
+              templateId: preset.name,
+            )
+          : await FitilaBackend.createTextPost(
+              text: caption,
+              hashtags: const ['echo-sonn', 'fitila-ia'],
+              templateId: preset.name,
+            );
+      if (!mounted) return;
+      widget.onPostCreated(FeedPost.fromBackend(row));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Echo Sɔ̃ɔ publié dans le fil.')),
+      );
+      setState(() {
+        _textController.clear();
+        _translated = '';
+        _audio = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Publication impossible. Réessayez.')),
+      );
+    } finally {
+      if (mounted) setState(() => _publishing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final preset = _presets[_presetIndex];
+    return _PageFrame(
+      title: 'Echo Sɔ̃ɔ',
+      subtitle: "Voix, texte et traduction instantanée habillés d'un visuel signature.",
+      child: ListView(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [preset.colorA, preset.colorB],
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(preset.icon, color: Colors.white, size: 22),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        preset.name,
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(_recording ? Icons.stop_circle_rounded : Icons.mic_rounded, color: Colors.white),
+                      tooltip: _recording ? 'Arrêter' : 'Enregistrer une voix',
+                      onPressed: _toggleRecording,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  _audio != null
+                      ? 'Voix enregistrée : ${_audio!.name}'
+                      : 'Aucun enregistrement — le texte ci-dessous sera publié.',
+                  style: const TextStyle(color: Colors.white70, fontSize: 12.5),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Visuel signature', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 64,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _presets.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        final p = _presets[index];
+                        final selected = index == _presetIndex;
+                        return GestureDetector(
+                          onTap: () => setState(() => _presetIndex = index),
+                          child: Container(
+                            width: 64,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: [p.colorA, p.colorB]),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: selected ? _fitilaInk : Colors.transparent,
+                                width: 2,
+                              ),
+                            ),
+                            child: Icon(p.icon, color: Colors.white),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Texte à publier', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _fitilaSurfaceAlt,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded, size: 15, color: _fitilaMuted),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            "La dictée vocale automatique n'est pas encore disponible : rédigez votre texte, Fitila IA le traduit.",
+                            style: TextStyle(fontSize: 11, color: _fitilaMuted),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _textController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      hintText: 'Ecrivez votre message…',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Français → Bariba'),
+                        selected: _direction == TranslationDirection.frenchToBariba,
+                        onSelected: (_) => setState(() => _direction = TranslationDirection.frenchToBariba),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Bariba → Français'),
+                        selected: _direction == TranslationDirection.baribaToFrench,
+                        onSelected: (_) => setState(() => _direction = TranslationDirection.baribaToFrench),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _translating ? null : _translate,
+                        icon: _translating
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.translate_rounded, size: 16),
+                        label: const Text('Traduire'),
+                      ),
+                    ],
+                  ),
+                  if (_translated.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: _fitilaPrimarySoft,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(_translated, style: const TextStyle(fontSize: 13.5)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: _publishing ? null : _publish,
+            icon: _publishing
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.send_rounded),
+            label: const Text('Publier dans le fil'),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 2. Live Griot IA — configuration honnête (pas de live réel encore)
+// ─────────────────────────────────────────────────────────────────
+class LiveGriotScreen extends StatefulWidget {
+  const LiveGriotScreen({super.key, required this.onPostCreated});
+
+  final ValueChanged<FeedPost> onPostCreated;
+
+  @override
+  State<LiveGriotScreen> createState() => _LiveGriotScreenState();
+}
+
+class _LiveGriotScreenState extends State<LiveGriotScreen> {
+  final _title = TextEditingController();
+  final _description = TextEditingController();
+  String _language = 'Bariba + Français';
+  bool _allowGuests = true;
+  bool _scheduling = false;
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _description.dispose();
+    super.dispose();
+  }
+
+  void _startNow() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Direct pas encore disponible'),
+        content: const Text(
+          "La diffusion en direct (streaming temps réel) n'est pas encore intégrée à Fitila. "
+          'Cette fonctionnalité nécessite une infrastructure de live dédiée, actuellement à l\'étude. '
+          'En attendant, vous pouvez programmer une annonce pour prévenir votre communauté dès que ce sera actif.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Compris')),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _scheduleAnnouncement() async {
+    final title = _title.text.trim();
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Donnez un titre à votre direct.')),
+      );
+      return;
+    }
+    setState(() => _scheduling = true);
+    final content = [
+      '📡 Live Griot IA à venir : $title',
+      if (_description.text.trim().isNotEmpty) _description.text.trim(),
+      'Langue : $_language • Invités ${_allowGuests ? "autorisés" : "non autorisés"}',
+    ].join('\n\n');
+    try {
+      final row = await FitilaBackend.createTextPost(
+        text: content,
+        hashtags: const ['live-a-venir', 'live-griot-ia'],
+        templateId: 'live-griot-ia',
+      );
+      if (!mounted) return;
+      widget.onPostCreated(FeedPost.fromBackend(row));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Annonce publiée dans le fil.')),
+      );
+      setState(() {
+        _title.clear();
+        _description.clear();
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Publication impossible. Réessayez.')),
+      );
+    } finally {
+      if (mounted) setState(() => _scheduling = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _PageFrame(
+      title: 'Live Griot IA',
+      subtitle: 'Direct commenté par une IA griot — configuration et annonce.',
+      child: ListView(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _fitilaSurfaceAlt,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _fitilaBorder),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline_rounded, color: _fitilaClay),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    "La diffusion en direct n'est pas encore active dans Fitila. Vous pouvez préparer la configuration et prévenir votre communauté par une annonce.",
+                    style: TextStyle(fontSize: 12.5, color: _fitilaInkSoft),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Configuration du direct', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _title,
+                    decoration: const InputDecoration(labelText: 'Titre du direct', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _description,
+                    maxLines: 2,
+                    decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final lang in const ['Bariba + Français', 'Bariba', 'Français'])
+                        ChoiceChip(
+                          label: Text(lang),
+                          selected: _language == lang,
+                          onSelected: (_) => setState(() => _language = lang),
+                        ),
+                    ],
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _allowGuests,
+                    onChanged: (v) => setState(() => _allowGuests = v),
+                    title: const Text('Autoriser les invités sur scène'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _startNow,
+                  icon: const Icon(Icons.podcasts_rounded),
+                  label: const Text('Démarrer maintenant'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _scheduling ? null : _scheduleAnnouncement,
+                  icon: _scheduling
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.campaign_rounded),
+                  label: const Text('Programmer une annonce'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 3. Sagesse Battle — défi proverbe quotidien, entièrement réel
+// ─────────────────────────────────────────────────────────────────
+class SagesseBattleScreen extends StatefulWidget {
+  const SagesseBattleScreen({super.key});
+
+  @override
+  State<SagesseBattleScreen> createState() => _SagesseBattleScreenState();
+}
+
+class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
+  bool _loading = true;
+  String? _error;
+  LearningExerciseItem? _challenge;
+  String _challengeId = '';
+  final _answerController = TextEditingController();
+  final Stopwatch _stopwatch = Stopwatch();
+  Timer? _ticker;
+  bool _submitted = false;
+  bool _submitting = false;
+  int _score = 0;
+  int _xpEarned = 0;
+  List<Map<String, dynamic>> _chain = const [];
+  Map<String, dynamic> _stats = const {'attempts': 0, 'total_xp': 0, 'wins': 0};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _answerController.dispose();
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final bank = await FitilaServices.loadLearningBank();
+      final proverbs = bank.exercises['proverbes'] ?? const <LearningExerciseItem>[];
+      if (proverbs.isEmpty) {
+        throw StateError('Aucun proverbe disponible.');
+      }
+      final now = DateTime.now();
+      final index = _dayOfYear(now) % proverbs.length;
+      final challenge = proverbs[index];
+      final challengeId =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final results = await Future.wait([
+        FitilaBackend.fetchBattleChain(challengeId: challengeId),
+        FitilaBackend.fetchMyBattleStats(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _challenge = challenge;
+        _challengeId = challengeId;
+        _chain = results[0] as List<Map<String, dynamic>>;
+        _stats = results[1] as Map<String, dynamic>;
+        _loading = false;
+      });
+      _stopwatch
+        ..reset()
+        ..start();
+      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Impossible de charger le défi du jour.';
+        _loading = false;
+      });
+    }
+  }
+
+  int _computeScore(String answer, String reference) {
+    String normalize(String s) {
+      var out = s.toLowerCase();
+      for (final ch in const ['.', ',', '!', '?', ';', ':', '"', "'", '(', ')', '-', '—', '«', '»']) {
+        out = out.replaceAll(ch, ' ');
+      }
+      return out.replaceAll(RegExp(r'\s+'), ' ').trim();
+    }
+
+    final a = normalize(answer);
+    final b = normalize(reference);
+    if (a.isEmpty || b.isEmpty) return 0;
+    if (a == b) return 100;
+    final aWords = a.split(' ').toSet();
+    final bWords = b.split(' ').toSet();
+    if (aWords.isEmpty || bWords.isEmpty) return 0;
+    final overlap = aWords.intersection(bWords).length;
+    final union = aWords.union(bWords).length;
+    double score = union == 0 ? 0 : overlap / union;
+    if (a.contains(b) || b.contains(a)) score = (score + 0.3).clamp(0.0, 1.0);
+    return (score * 100).round();
+  }
+
+  Future<void> _submit() async {
+    final challenge = _challenge;
+    if (challenge == null || _submitting || _submitted) return;
+    final answer = _answerController.text.trim();
+    if (answer.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Proposez une réponse avant de valider.')),
+      );
+      return;
+    }
+    setState(() => _submitting = true);
+    _stopwatch.stop();
+    _ticker?.cancel();
+    final score = _computeScore(answer, challenge.french);
+    final fallbackXp = 10 + (score / 100 * 40).round();
+    try {
+      await FitilaBackend.submitBattleResponse(
+        challengeId: _challengeId,
+        promptBariba: challenge.bariba,
+        promptFrancais: challenge.french,
+        answerText: answer,
+        score: score,
+        xpAwarded: fallbackXp,
+      );
+      final result = await FitilaBackend.recordLearningSession(
+        sessionType: 'battle',
+        themeKey: 'proverbes',
+        direction: 'bariba_to_fr',
+        correctCount: score >= 60 ? 1 : 0,
+        totalCount: 1,
+      );
+      final chain = await FitilaBackend.fetchBattleChain(challengeId: _challengeId);
+      final stats = await FitilaBackend.fetchMyBattleStats();
+      if (!mounted) return;
+      setState(() {
+        _submitted = true;
+        _score = score;
+        _xpEarned = (result['xpEarned'] as num?)?.toInt() ?? fallbackXp;
+        _chain = chain;
+        _stats = stats;
+      });
+      final unlocked = (result['unlockedBadges'] as List?) ?? const [];
+      if (unlocked.isNotEmpty && mounted) {
+        final badge = unlocked.first as Map;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Badge débloqué : ${badge['name'] ?? badge['id']} !')),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Envoi impossible. Réessayez.')),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  String _elapsed() {
+    final d = _stopwatch.elapsed;
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _PageFrame(
+      title: 'Sagesse Battle',
+      subtitle: 'Défi proverbe quotidien — traduisez, marquez des points, grimpez au fil.',
+      child: _loading
+          ? const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
+          : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_error!),
+                        const SizedBox(height: 12),
+                        FilledButton(onPressed: _load, child: const Text('Réessayer')),
+                      ],
+                    ),
+                  ),
+                )
+              : ListView(
+                  children: [
+                    _MetricStrip(
+                      metrics: [
+                        ('Tentatives', '${_stats['attempts'] ?? 0}', Icons.bolt_rounded),
+                        ('XP Battle', '${_stats['total_xp'] ?? 0}', Icons.military_tech_rounded),
+                        ('Victoires', '${_stats['wins'] ?? 0}', Icons.emoji_events_rounded),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [_fitilaGoldDeep, _fitilaClay],
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.shield_rounded, color: Colors.white),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text('Défi du jour', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(.18),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(_elapsed(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            _challenge!.bariba,
+                            style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w800),
+                          ),
+                          if (_challenge!.context != null && _challenge!.context!.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              _challenge!.context!,
+                              style: const TextStyle(color: Colors.white70, fontSize: 12.5, fontStyle: FontStyle.italic),
+                            ),
+                          ],
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Que signifie ce proverbe en français ?',
+                            style: TextStyle(color: Colors.white70, fontSize: 12.5),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    if (!_submitted) ...[
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              TextField(
+                                controller: _answerController,
+                                maxLines: 2,
+                                decoration: const InputDecoration(
+                                  hintText: 'Votre traduction ou interprétation…',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              FilledButton.icon(
+                                onPressed: _submitting ? null : _submit,
+                                icon: _submitting
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      )
+                                    : const Icon(Icons.send_rounded),
+                                label: const Text('Valider ma réponse'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      Card(
+                        color: _fitilaPrimarySoft,
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.check_circle_rounded, color: _fitilaSage),
+                                  const SizedBox(width: 8),
+                                  Text('Score : $_score/100', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                                  const Spacer(),
+                                  Text('+$_xpEarned XP', style: const TextStyle(fontWeight: FontWeight.w800, color: _fitilaGoldDeep)),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              const Text('Réponse de référence :', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+                              const SizedBox(height: 4),
+                              Text(_challenge!.french),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 18),
+                    const Text('Fil des griots du jour', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                    const SizedBox(height: 8),
+                    if (_chain.isEmpty)
+                      Text(
+                        "Personne n'a encore répondu aujourd'hui — soyez le premier !",
+                        style: TextStyle(color: _fitilaMuted),
+                      ),
+                    for (final entry in _chain)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: _fitilaCard,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: _fitilaBorder),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CircleAvatar(
+                              radius: 16,
+                              backgroundColor: _fitilaPrimarySoft,
+                              child: Text(
+                                _initialLetter(entry['display_name']?.toString()),
+                                style: const TextStyle(color: _fitilaGoldDeep, fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    entry['display_name']?.toString() ?? 'Griot Fitila',
+                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(entry['answer_text']?.toString() ?? '', style: const TextStyle(fontSize: 12.5)),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(color: _fitilaSurfaceAlt, borderRadius: BorderRadius.circular(10)),
+                              child: Text(
+                                '${entry['score'] ?? 0}',
+                                style: const TextStyle(fontWeight: FontWeight.w800, color: _fitilaClay, fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 4. Aburu Fim IA — template connecté aux vrais produits du Marché
+// ─────────────────────────────────────────────────────────────────
+class _AburuTemplate {
+  const _AburuTemplate(this.id, this.label, this.colorA, this.colorB, this.captionSuffix);
+  final String id;
+  final String label;
+  final Color colorA;
+  final Color colorB;
+  final String captionSuffix;
+}
+
+class AburuFimScreen extends StatefulWidget {
+  const AburuFimScreen({super.key, required this.onPostCreated});
+
+  final ValueChanged<FeedPost> onPostCreated;
+
+  @override
+  State<AburuFimScreen> createState() => _AburuFimScreenState();
+}
+
+class _AburuFimScreenState extends State<AburuFimScreen> {
+  final _mediaController = FitilaMediaController();
+  bool _loadingProducts = true;
+  List<Map<String, dynamic>> _products = const [];
+  Map<String, dynamic>? _selectedProduct;
+  final _manualName = TextEditingController();
+  final _manualPrice = TextEditingController();
+  int _templateIndex = 0;
+  FitilaMediaAsset? _photo;
+  bool _publishing = false;
+
+  static const _templates = [
+    _AburuTemplate('flash', 'Vente flash', Color(0xFFDC2626), Color(0xFF9C1C1C), '🔥 Offre du jour, ne ratez pas ça !'),
+    _AburuTemplate('nouveau', 'Nouveauté', Color(0xFFC99530), Color(0xFF9C6B1D), '✨ Tout juste arrivé au marché.'),
+    _AburuTemplate('artisanal', 'Artisanal', Color(0xFFB54E33), Color(0xFF8C3D28), '🧺 Fait main, qualité garantie.'),
+    _AburuTemplate('fraicheur', 'Fraîcheur', Color(0xFF3F6E52), Color(0xFF2C4E3A), '🌿 Produit frais du jour.'),
+    _AburuTemplate('premium', 'Premium', Color(0xFF241F2E), Color(0xFF4A3B96), '💎 Sélection premium Fitila.'),
+    _AburuTemplate('promo', 'Petit prix', Color(0xFF0F766E), Color(0xFF115E59), '💰 Le meilleur prix du marché.'),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  @override
+  void dispose() {
+    _manualName.dispose();
+    _manualPrice.dispose();
+    _mediaController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadProducts() async {
+    try {
+      final products = await FitilaBackend.fetchMyProducts();
+      if (!mounted) return;
+      setState(() {
+        _products = products;
+        _selectedProduct = products.isNotEmpty ? products.first : null;
+        _loadingProducts = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingProducts = false);
+    }
+  }
+
+  Future<void> _pickPhoto(ImageSource source) async {
+    try {
+      final asset = await _mediaController.pickImage(source);
+      if (asset != null && mounted) setState(() => _photo = asset);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossible de charger la photo.')),
+      );
+    }
+  }
+
+  String get _productName => _selectedProduct != null
+      ? (_selectedProduct!['title_fr'] ?? _selectedProduct!['title'] ?? 'Produit').toString()
+      : (_manualName.text.trim().isEmpty ? 'Mon produit' : _manualName.text.trim());
+
+  String get _productPrice => _selectedProduct != null
+      ? (_selectedProduct!['price'] != null ? '${_selectedProduct!['price']} FCFA' : '')
+      : (_manualPrice.text.trim().isEmpty ? '' : '${_manualPrice.text.trim()} FCFA');
+
+  Future<void> _publish() async {
+    if (_photo == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ajoutez une photo du produit.')),
+      );
+      return;
+    }
+    final template = _templates[_templateIndex];
+    final price = _productPrice;
+    final caption = [
+      template.captionSuffix,
+      price.isNotEmpty ? '$_productName — $price' : _productName,
+    ].join('\n');
+    setState(() => _publishing = true);
+    try {
+      final category = _selectedProduct?['category']?.toString();
+      final row = await FitilaBackend.createMediaPost(
+        bytes: await _photo!.readBytes(),
+        originalName: _photo!.name,
+        contentType: _photo!.contentType,
+        mediaType: 'photo',
+        text: caption,
+        hashtags: ['aburu-fim', template.id, if (category != null && category.isNotEmpty) category],
+        templateId: 'aburu-fim-${template.id}',
+      );
+      if (!mounted) return;
+      widget.onPostCreated(FeedPost.fromBackend(row));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Publication Aburu Fim IA envoyée au fil.')),
+      );
+      setState(() => _photo = null);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Publication impossible. Réessayez.')),
+      );
+    } finally {
+      if (mounted) setState(() => _publishing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final template = _templates[_templateIndex];
+    return _PageFrame(
+      title: 'Aburu Fim IA',
+      subtitle: 'Choisissez un produit, un template, une photo — publication instantanée.',
+      child: _loadingProducts
+          ? const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
+          : ListView(
+              children: [
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('1. Produit', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                        const SizedBox(height: 10),
+                        if (_products.isNotEmpty)
+                          DropdownButtonFormField<Map<String, dynamic>?>(
+                            value: _selectedProduct,
+                            isExpanded: true,
+                            decoration: const InputDecoration(border: OutlineInputBorder()),
+                            items: [
+                              for (final p in _products)
+                                DropdownMenuItem(
+                                  value: p,
+                                  child: Text('${p['title_fr'] ?? p['title'] ?? 'Produit'} — ${p['price'] ?? ''} FCFA'),
+                                ),
+                              const DropdownMenuItem(value: null, child: Text('Info libre (sans produit enregistré)')),
+                            ],
+                            onChanged: (value) => setState(() => _selectedProduct = value),
+                          )
+                        else
+                          Text(
+                            "Aucun produit enregistré dans le Marché — remplissez les champs libres ci-dessous.",
+                            style: TextStyle(color: _fitilaMuted, fontSize: 12),
+                          ),
+                        if (_selectedProduct == null) ...[
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: _manualName,
+                            onChanged: (_) => setState(() {}),
+                            decoration: const InputDecoration(labelText: 'Nom du produit', border: OutlineInputBorder()),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: _manualPrice,
+                            onChanged: (_) => setState(() {}),
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: 'Prix (FCFA)', border: OutlineInputBorder()),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('2. Template', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (int i = 0; i < _templates.length; i++)
+                              ChoiceChip(
+                                label: Text(_templates[i].label),
+                                selected: _templateIndex == i,
+                                onSelected: (_) => setState(() => _templateIndex = i),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('3. Photo & aperçu', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                        const SizedBox(height: 10),
+                        AspectRatio(
+                          aspectRatio: 1,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                _photo != null
+                                    ? Image.file(File(_photo!.path), fit: BoxFit.cover)
+                                    : Container(
+                                        color: _fitilaSurfaceAlt,
+                                        child: Icon(Icons.image_rounded, size: 48, color: _fitilaMuted),
+                                      ),
+                                Positioned(
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [Colors.transparent, template.colorA.withOpacity(.92)],
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          template.captionSuffix,
+                                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                                        ),
+                                        Text(
+                                          _productPrice.isNotEmpty ? '$_productName — $_productPrice' : _productName,
+                                          style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _pickPhoto(ImageSource.camera),
+                                icon: const Icon(Icons.photo_camera_rounded),
+                                label: const Text('Prendre une photo'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _pickPhoto(ImageSource.gallery),
+                                icon: const Icon(Icons.photo_library_rounded),
+                                label: const Text('Galerie'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: _publishing ? null : _publish,
+                  icon: _publishing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.storefront_rounded),
+                  label: const Text('Publier dans le fil'),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 5. Sasara IA — pont bilingue + corpus communautaire opt-in
+// ─────────────────────────────────────────────────────────────────
+class SasaraIaScreen extends StatefulWidget {
+  const SasaraIaScreen({super.key, required this.onPostCreated});
+
+  final ValueChanged<FeedPost> onPostCreated;
+
+  @override
+  State<SasaraIaScreen> createState() => _SasaraIaScreenState();
+}
+
+class _SasaraIaScreenState extends State<SasaraIaScreen> {
+  final _input = TextEditingController();
+  TranslationDirection _direction = TranslationDirection.frenchToBariba;
+  String _translated = '';
+  bool _translating = false;
+  bool _consent = false;
+  bool _publishing = false;
+  int _contributions = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadContributions();
+  }
+
+  @override
+  void dispose() {
+    _input.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadContributions() async {
+    try {
+      final count = await FitilaBackend.fetchCorpusContributionCount();
+      if (mounted) setState(() => _contributions = count);
+    } catch (_) {
+      // Best-effort — le compteur reste à 0 si la lecture échoue.
+    }
+  }
+
+  Future<void> _translate() async {
+    final text = _input.text.trim();
+    if (text.isEmpty || _translating) return;
+    setState(() => _translating = true);
+    try {
+      final session = FitilaBackend.client.auth.currentSession;
+      final result = await FitilaServices.translate(text, _direction, accessToken: session?.accessToken);
+      if (!mounted) return;
+      setState(() => _translated = result);
+      if (result.isNotEmpty && FitilaBackend.configured) {
+        FitilaBackend.saveTranslationHistory(
+          sourceLang: _direction == TranslationDirection.frenchToBariba ? 'fr' : 'ba',
+          targetLang: _direction == TranslationDirection.frenchToBariba ? 'ba' : 'fr',
+          sourceText: text,
+          translatedText: result,
+          mode: 'Sasara IA',
+        ).catchError((_) => <String, dynamic>{});
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Traduction indisponible pour le moment.')),
+      );
+    } finally {
+      if (mounted) setState(() => _translating = false);
+    }
+  }
+
+  Future<void> _publish() async {
+    final source = _input.text.trim();
+    if (source.isEmpty || _translated.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Traduisez votre phrase avant de publier.')),
+      );
+      return;
+    }
+    setState(() => _publishing = true);
+    final sourceLang = _direction == TranslationDirection.frenchToBariba ? 'fr' : 'ba';
+    final targetLang = _direction == TranslationDirection.frenchToBariba ? 'ba' : 'fr';
+    final content = _direction == TranslationDirection.frenchToBariba
+        ? '$source\n\n🌉 $_translated'
+        : '$_translated\n\n🌉 $source';
+    try {
+      final row = await FitilaBackend.createTextPost(
+        text: content,
+        hashtags: const ['sasara-ia', 'bilingue'],
+        templateId: 'sasara-ia',
+      );
+      if (_consent) {
+        await FitilaBackend.saveCorpusContribution(
+          sourceLang: sourceLang,
+          targetLang: targetLang,
+          sourceText: source,
+          translatedText: _translated,
+        ).catchError((_) => <String, dynamic>{});
+        _loadContributions();
+      }
+      if (!mounted) return;
+      widget.onPostCreated(FeedPost.fromBackend(row));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Publication bilingue envoyée au fil.')),
+      );
+      setState(() {
+        _input.clear();
+        _translated = '';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Publication impossible. Réessayez.')),
+      );
+    } finally {
+      if (mounted) setState(() => _publishing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _PageFrame(
+      title: 'Sasara IA',
+      subtitle: 'Le pont bilingue — publiez en Bariba et en Français, ensemble.',
+      child: ListView(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _fitilaSurfaceAlt,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _fitilaBorder),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline_rounded, color: _fitilaSage),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    "Doublage vocal automatique : en développement, pas encore actif. Aujourd'hui, Sasara IA traduit votre texte et le publie dans les deux langues.",
+                    style: TextStyle(fontSize: 12, color: _fitilaInkSoft),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Français → Bariba'),
+                        selected: _direction == TranslationDirection.frenchToBariba,
+                        onSelected: (_) => setState(() => _direction = TranslationDirection.frenchToBariba),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Bariba → Français'),
+                        selected: _direction == TranslationDirection.baribaToFrench,
+                        onSelected: (_) => setState(() => _direction = TranslationDirection.baribaToFrench),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _input,
+                    maxLines: 3,
+                    decoration: const InputDecoration(hintText: 'Votre phrase…', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: _translating ? null : _translate,
+                    icon: _translating
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.translate_rounded, size: 16),
+                    label: const Text('Traduire'),
+                  ),
+                  if (_translated.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: _fitilaPrimarySoft, borderRadius: BorderRadius.circular(10)),
+                      child: Text(_translated, style: const TextStyle(fontSize: 13.5)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _consent,
+                    onChanged: (v) => setState(() => _consent = v),
+                    title: const Text('Contribuer cette phrase à la mémoire vocale Bariba'),
+                    subtitle: const Text('Désactivé par défaut. Aide à construire un corpus bilingue communautaire.'),
+                  ),
+                  Text('Vos contributions : $_contributions', style: TextStyle(color: _fitilaMuted, fontSize: 12)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: _publishing ? null : _publish,
+            icon: _publishing
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.send_rounded),
+            label: const Text('Publier en bilingue'),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 6. Handunia Wasa — écran vision 10-15 ans, non fonctionnel
+// ─────────────────────────────────────────────────────────────────
+class HanduniaWasaScreen extends StatefulWidget {
+  const HanduniaWasaScreen({super.key});
+
+  @override
+  State<HanduniaWasaScreen> createState() => _HanduniaWasaScreenState();
+}
+
+class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
+  bool _interested = false;
+  bool _saving = false;
+
+  Future<void> _toggleInterest(bool value) async {
+    setState(() {
+      _interested = value;
+      _saving = true;
+    });
+    try {
+      await FitilaBackend.registerHanduniaWasaInterest(value);
+    } catch (_) {
+      // Best-effort : l'intérêt reste affiché localement même si l'enregistrement échoue.
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _PageFrame(
+      title: 'Handunia Wasa',
+      subtitle: 'Un monde vivant, généré en continu — vision exploratoire 10-15 ans.',
+      child: ListView(
+        children: [
+          Container(
+            height: 260,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: const RadialGradient(
+                center: Alignment(0, -0.2),
+                radius: 1.1,
+                colors: [Color(0xFF4A3B78), Color(0xFF241F2E), Color(0xFF14111C)],
+                stops: [0.0, 0.6, 1.0],
+              ),
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                for (final ring in [70.0, 110.0, 150.0, 190.0])
+                  Container(
+                    width: ring,
+                    height: ring,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFF8FE3CF).withOpacity(.28), width: 1),
+                    ),
+                  ),
+                const Icon(Icons.auto_awesome_rounded, color: Color(0xFF8FE3CF), size: 40),
+                const Positioned(
+                  bottom: 18,
+                  child: Text(
+                    'HANDUNIA WASA',
+                    style: TextStyle(
+                      color: Color(0xFF8FE3CF),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      letterSpacing: 3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _fitilaSurfaceAlt,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _fitilaBorder),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.science_rounded, color: _fitilaClay),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    "Vision exploratoire, non disponible aujourd'hui : aucune capacité de génération de monde vivant n'existe encore dans l'IA actuelle. Cet écran présente l'ambition à 10-15 ans, pas une fonctionnalité active.",
+                    style: TextStyle(fontSize: 12, color: _fitilaInkSoft),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('Le principe', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          const SizedBox(height: 8),
+          const Text(
+            "Plutôt qu'un fil de vidéos que l'on consomme, Handunia Wasa imagine un monde bariba persistant et généré en continu : "
+            "des lieux, des personnages et des histoires qui existent en dehors de toute vidéo, que l'on visite et façonne avec d'autres, "
+            'porté par une IA qui tisse en temps réel la langue, la musique et les récits de la communauté.',
+            style: TextStyle(fontSize: 13.5, height: 1.5),
+          ),
+          const SizedBox(height: 16),
+          const _FeatureGrid(
+            items: [
+              (Icons.map_rounded, 'Monde persistant', "Des lieux qui continuent d'exister et d'évoluer entre les visites."),
+              (Icons.groups_rounded, 'Présence partagée', "S'y retrouver à plusieurs, en direct, sans passer par une vidéo."),
+              (Icons.auto_stories_rounded, 'Récits tissés par l\'IA', 'Histoires et dialogues générés en continu à partir du patrimoine bariba.'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: SwitchListTile(
+              value: _interested,
+              onChanged: _saving ? null : _toggleInterest,
+              title: const Text('Me prévenir si cette vision avance un jour'),
+              subtitle: const Text('Le seul geste réel de cet écran : enregistrer votre intérêt dans vos préférences.'),
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Tuile de sélection utilisée dans le Studio IA du Créateur de contenu
+// ─────────────────────────────────────────────────────────────────
+class _CreationIaTile extends StatelessWidget {
+  const _CreationIaTile({
+    required this.emoji,
+    required this.title,
+    required this.subtitle,
+    required this.colorA,
+    required this.colorB,
+    required this.onTap,
+  });
+
+  final String emoji;
+  final String title;
+  final String subtitle;
+  final Color colorA;
+  final Color colorB;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [colorA, colorB],
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 24)),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13.5),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white70, fontSize: 10.5, height: 1.2),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
