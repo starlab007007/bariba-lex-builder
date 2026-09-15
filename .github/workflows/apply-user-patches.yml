@@ -58,6 +58,40 @@ jobs:
           git add -A
           git commit -m "feat(fil): apply 6 creation IA features"
 
+      - name: Apply Flutter 3.47 compatibility fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          backend = Path('fitila_flutter/lib/core/fitila_backend.dart')
+          b = backend.read_text(encoding='utf-8')
+          b = b.replace('Future.wait([', 'Future.wait<dynamic>([')
+          needle = "      if (direction != null) 'current_direction': direction,"
+          if needle in b and '// ignore: use_null_aware_elements' not in b[b.find(needle)-80:b.find(needle)]:
+              b = b.replace(needle, '      // ignore: use_null_aware_elements\n' + needle, 1)
+          backend.write_text(b, encoding='utf-8')
+
+          main = Path('fitila_flutter/lib/main.dart')
+          s = main.read_text(encoding='utf-8')
+          s = s.replace("import 'package:record/record.dart';\n", '')
+          s = s.replace("import 'package:shared_preferences/shared_preferences.dart';\n", '')
+          s = s.replace('(_, __) =>', '(_, _) =>')
+          s = re.sub(r'\.withOpacity\(([^()\n]+)\)', r'.withValues(alpha: \1)', s)
+          s = re.sub(
+              r'(DropdownButtonFormField(?:<[^>]+>)?\(\s*\n\s*)value:',
+              r'\1initialValue:',
+              s,
+          )
+          if not s.startswith('// ignore_for_file: unused_element'):
+              s = '// ignore_for_file: unused_element\n\n' + s
+          main.write_text(s, encoding='utf-8')
+          PY
+          git add fitila_flutter/lib/core/fitila_backend.dart fitila_flutter/lib/main.dart
+          git commit -m "fix(flutter): align new patches with Flutter 3.47 analyzer"
+
       - name: Setup Java 17
         uses: actions/setup-java@v5
         with:
