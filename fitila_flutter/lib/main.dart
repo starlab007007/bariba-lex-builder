@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -9,8 +11,6 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:audioplayers/audioplayers.dart' as audio;
 import 'package:path_provider/path_provider.dart';
-import 'package:record/record.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
@@ -8045,7 +8045,7 @@ class _TranslationHistoryScreenState extends State<TranslationHistoryScreen> {
                   color: _fitilaPrimary,
                   child: ListView.separated(
                     itemCount: items.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (context, i) {
                       final item = items[i];
                       final isFav = item['is_favorite'] as bool? ?? false;
@@ -12615,7 +12615,7 @@ class _KeyboardStepCard extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: done ? _fitilaSage.withOpacity(.16) : _fitilaGoldDeep.withOpacity(.14),
+              color: done ? _fitilaSage.withValues(alpha: .16) : _fitilaGoldDeep.withValues(alpha: .14),
             ),
             child: Text(number, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: done ? _fitilaSage : _fitilaGoldDeep)),
           ),
@@ -14075,7 +14075,7 @@ class _TeacherAudioRecorderChip extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border.all(color: disabled ? _fitilaBorder : color, style: BorderStyle.solid),
           borderRadius: BorderRadius.circular(12),
-          color: hasAsset ? _fitilaSage.withOpacity(.08) : null,
+          color: hasAsset ? _fitilaSage.withValues(alpha: .08) : null,
         ),
         child: Column(
           children: [
@@ -14497,7 +14497,7 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: _module,
+                          initialValue: _module,
                           decoration: const InputDecoration(labelText: 'Module', isDense: true),
                           items: [for (final m in _modules) DropdownMenuItem(value: m, child: Text(m))],
                           onChanged: (v) => setState(() => _module = v ?? _module),
@@ -14550,7 +14550,7 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
                       for (final v in _accepted)
                         Chip(
                           label: Text(v, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
-                          backgroundColor: _fitilaSage.withOpacity(.14),
+                          backgroundColor: _fitilaSage.withValues(alpha: .14),
                           deleteIcon: const Icon(Icons.close_rounded, size: 14),
                           onDeleted: () => setState(() => _accepted = _accepted.where((x) => x != v).toList()),
                         ),
@@ -19240,7 +19240,7 @@ class _EchoSonScreenState extends State<EchoSonScreen> {
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: _presets.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
                       itemBuilder: (context, index) {
                         final p = _presets[index];
                         final selected = index == _presetIndex;
@@ -19772,7 +19772,7 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(.18),
+                                  color: Colors.white.withValues(alpha: .18),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(_elapsed(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
@@ -20068,7 +20068,7 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
                         const SizedBox(height: 10),
                         if (_products.isNotEmpty)
                           DropdownButtonFormField<Map<String, dynamic>?>(
-                            value: _selectedProduct,
+                            initialValue: _selectedProduct,
                             isExpanded: true,
                             decoration: const InputDecoration(border: OutlineInputBorder()),
                             items: [
@@ -20162,7 +20162,7 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
                                       gradient: LinearGradient(
                                         begin: Alignment.topCenter,
                                         end: Alignment.bottomCenter,
-                                        colors: [Colors.transparent, template.colorA.withOpacity(.92)],
+                                        colors: [Colors.transparent, template.colorA.withValues(alpha: .92)],
                                       ),
                                     ),
                                     child: Column(
@@ -20515,7 +20515,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                     height: ring,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFF8FE3CF).withOpacity(.28), width: 1),
+                      border: Border.all(color: const Color(0xFF8FE3CF).withValues(alpha: .28), width: 1),
                     ),
                   ),
                 const Icon(Icons.auto_awesome_rounded, color: Color(0xFF8FE3CF), size: 40),

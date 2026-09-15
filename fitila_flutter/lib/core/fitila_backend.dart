@@ -181,7 +181,7 @@ class FitilaBackend {
   static Future<List<Map<String, dynamic>>> fetchPublicFeed({
     int limit = 40,
   }) async {
-    final results = await Future.wait([
+    final results = await Future.wait<dynamic>([
       client
           .from('tamtam_posts')
           .select(
@@ -358,7 +358,7 @@ class FitilaBackend {
   static Future<Map<String, dynamic>> fetchVoiceLab() async {
     final user = client.auth.currentUser;
     if (user == null) throw const AuthException('Connexion requise.');
-    final results = await Future.wait([
+    final results = await Future.wait<dynamic>([
       client
           .from('bariba_corpus_phrases')
           .select(
@@ -490,7 +490,7 @@ class FitilaBackend {
   }
 
   static Future<Map<String, dynamic>> fetchTeacherDashboard() async {
-    final results = await Future.wait([
+    final results = await Future.wait<dynamic>([
       client.from('classe_student_progress').select('user_id, completed_lessons'),
       client
           .from('classe_student_answers')
@@ -540,7 +540,7 @@ class FitilaBackend {
     final userIds = progressRows.map((r) => r['user_id'] as String).toSet().toList();
     if (userIds.isEmpty) return [];
 
-    final results = await Future.wait([
+    final results = await Future.wait<dynamic>([
       client
           .from('tamtam_profiles')
           .select('user_id, username, display_name, avatar_url, phone_number')
@@ -725,7 +725,7 @@ class FitilaBackend {
   }
 
   static Future<Map<String, dynamic>> fetchGradeOverview() async {
-    final results = await Future.wait([
+    final results = await Future.wait<dynamic>([
       client.from('tamtam_profiles').select('user_id, display_name, username').limit(500),
       client
           .from('classe_student_answers')
@@ -818,7 +818,7 @@ class FitilaBackend {
   }
 
   static Future<Map<String, dynamic>> fetchClassStats() async {
-    final results = await Future.wait([
+    final results = await Future.wait<dynamic>([
       client.from('classe_student_progress').select('level'),
       client.from('classe_student_answers').select('module'),
       client
@@ -1195,7 +1195,7 @@ class FitilaBackend {
   static Future<Map<String, dynamic>> exportMyData() async {
     final user = client.auth.currentUser;
     if (user == null) throw const AuthException('Connexion requise.');
-    final results = await Future.wait([
+    final results = await Future.wait<dynamic>([
       client.from('tamtam_profiles').select().eq('user_id', user.id).maybeSingle(),
       client.from('translation_history').select().eq('user_id', user.id),
       client.from('learning_progress').select().eq('user_id', user.id).maybeSingle(),
@@ -1415,6 +1415,7 @@ class FitilaBackend {
       'xp': newXp,
       'streak_days': newStreak,
       'last_active_date': todayKey.toIso8601String().split('T').first,
+      // ignore: use_null_aware_elements
       if (direction != null) 'current_direction': direction,
       'perfect_scores': newPerfectScores,
     });
@@ -1500,7 +1501,7 @@ class FitilaBackend {
       'perfect_scores',
       'themes_completed',
     ];
-    final results = await Future.wait([
+    final results = await Future.wait<dynamic>([
       client.from('user_achievements').select().eq('user_id', user.id).maybeSingle(),
       client.from('badges').select().filter('requirement_type', 'in', '(${learningRequirementTypes.join(',')})'),
       client.from('user_badges').select('badge_id').eq('user_id', user.id),
@@ -1534,7 +1535,7 @@ class FitilaBackend {
   static Future<Map<String, dynamic>> fetchLearnerBadges() async {
     final user = client.auth.currentUser;
     if (user == null) return const {'unlocked': [], 'locked': []};
-    final results = await Future.wait([
+    final results = await Future.wait<dynamic>([
       client.from('badges').select(),
       client.from('user_badges').select('badge_id, earned_at').eq('user_id', user.id),
     ]);
