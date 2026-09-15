@@ -1083,4 +1083,473 @@ class FitilaBackend {
     final ba = data['response_ba']?.toString().trim() ?? '';
     return {'fr': fr, 'ba': ba};
   }
+
+  // ---------------------------------------------------------------------
+  // Paramètres & Profil — préférences, confidentialité, avatar, bio audio
+  // ---------------------------------------------------------------------
+
+  static Future<Map<String, dynamic>> fetchPreferences() async {
+    final user = client.auth.currentUser;
+    if (user == null) return const {};
+    final row = await client
+        .from('tamtam_profiles')
+        .select('preferences')
+        .eq('user_id', user.id)
+        .maybeSingle();
+    final prefs = row?['preferences'];
+    return prefs is Map ? Map<String, dynamic>.from(prefs) : <String, dynamic>{};
+  }
+
+  static Future<Map<String, dynamic>> updatePreferences(
+    Map<String, dynamic> partial,
+  ) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    final current = await fetchPreferences();
+    final merged = {...current, ...partial};
+    await client
+        .from('tamtam_profiles')
+        .update({
+          'preferences': merged,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('user_id', user.id);
+    return merged;
+  }
+
+  static Future<Map<String, dynamic>> fetchPrivacy() async {
+    final user = client.auth.currentUser;
+    if (user == null) return const {};
+    final row = await client
+        .from('tamtam_profiles')
+        .select('privacy')
+        .eq('user_id', user.id)
+        .maybeSingle();
+    final privacy = row?['privacy'];
+    return privacy is Map ? Map<String, dynamic>.from(privacy) : <String, dynamic>{};
+  }
+
+  static Future<Map<String, dynamic>> updatePrivacy(
+    Map<String, dynamic> partial,
+  ) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    final current = await fetchPrivacy();
+    final merged = {...current, ...partial};
+    await client
+        .from('tamtam_profiles')
+        .update({
+          'privacy': merged,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('user_id', user.id);
+    return merged;
+  }
+
+  static Future<String> uploadAvatar({
+    required Uint8List bytes,
+    required String extension,
+    required String contentType,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    final path = 'avatars/${user.id}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+    await client.storage
+        .from('tamtam-media')
+        .uploadBinary(path, bytes, fileOptions: FileOptions(contentType: contentType, upsert: true));
+    final url = client.storage.from('tamtam-media').getPublicUrl(path);
+    await client
+        .from('tamtam_profiles')
+        .update({'avatar_url': url, 'updated_at': DateTime.now().toIso8601String()})
+        .eq('user_id', user.id);
+    return url;
+  }
+
+  static Future<String> uploadBioAudio({
+    required Uint8List bytes,
+    required String contentType,
+    required int durationSeconds,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    final extension = contentType.contains('mp4') ? 'm4a' : 'wav';
+    final path = 'bio/${user.id}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+    await client.storage
+        .from('tamtam-audio')
+        .uploadBinary(path, bytes, fileOptions: FileOptions(contentType: contentType, upsert: true));
+    final url = client.storage.from('tamtam-audio').getPublicUrl(path);
+    await client
+        .from('tamtam_profiles')
+        .update({'bio_audio_url': url, 'updated_at': DateTime.now().toIso8601String()})
+        .eq('user_id', user.id);
+    return url;
+  }
+
+  static Future<void> updatePassword(String newPassword) async {
+    await client.auth.updateUser(UserAttributes(password: newPassword));
+  }
+
+  /// Exporte les données personnelles de l'utilisateur (RGPD) sous forme de
+  /// Map prête à être sérialisée en JSON côté UI (FitilaBackend n'écrit
+  /// aucun fichier lui-même — c'est à l'appelant de le sauvegarder/partager).
+  static Future<Map<String, dynamic>> exportMyData() async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    final results = await Future.wait([
+      client.from('tamtam_profiles').select().eq('user_id', user.id).maybeSingle(),
+      client.from('translation_history').select().eq('user_id', user.id),
+      client.from('learning_progress').select().eq('user_id', user.id).maybeSingle(),
+      client.from('learning_session_log').select().eq('user_id', user.id),
+    ]);
+    return {
+      'exported_at': DateTime.now().toIso8601String(),
+      'profile': results[0],
+      'translation_history': results[1],
+      'learning_progress': results[2],
+      'learning_sessions': results[3],
+    };
+  }
+
+  static Future<void> requestAccountDeletion({String? reason}) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    await client.from('account_deletion_requests').insert({
+      'user_id': user.id,
+      'reason': reason,
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Traducteur IA — historique & favoris
+  // ---------------------------------------------------------------------
+
+  static Future<Map<String, dynamic>> saveTranslationHistory({
+    required String sourceLang,
+    required String targetLang,
+    required String sourceText,
+    required String translatedText,
+    String mode = 'texte',
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    final data = await client
+        .from('translation_history')
+        .insert({
+          'user_id': user.id,
+          'source_lang': sourceLang,
+          'target_lang': targetLang,
+          'source_text': sourceText,
+          'translated_text': translatedText,
+          'mode': mode,
+        })
+        .select()
+        .single();
+    return data;
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchTranslationHistory({
+    bool favoritesOnly = false,
+    String? search,
+    int limit = 100,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) return const [];
+    var query = client.from('translation_history').select().eq('user_id', user.id);
+    if (favoritesOnly) query = query.eq('is_favorite', true);
+    if (search != null && search.trim().isNotEmpty) {
+      query = query.or(
+        'source_text.ilike.%${search.trim()}%,translated_text.ilike.%${search.trim()}%',
+      );
+    }
+    final rows = await query.order('created_at', ascending: false).limit(limit);
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  static Future<void> toggleTranslationFavorite(String id, bool value) async {
+    await client.from('translation_history').update({'is_favorite': value}).eq('id', id);
+  }
+
+  static Future<void> deleteTranslationHistoryEntry(String id) async {
+    await client.from('translation_history').delete().eq('id', id);
+  }
+
+  // ---------------------------------------------------------------------
+  // Espace Enseignant — correction avec audio (personnalisé / générique)
+  // ---------------------------------------------------------------------
+
+  static Future<void> gradeAnswerWithAudio({
+    required String answerId,
+    required num grade,
+    String? comment,
+    Uint8List? personalAudioBytes,
+    Uint8List? genericAudioBytes,
+    String contentType = 'audio/m4a',
+    int? personalDurationSeconds,
+    int? genericDurationSeconds,
+  }) async {
+    final updates = <String, dynamic>{
+      'teacher_grade': grade,
+      'teacher_comment': comment,
+      'graded_at': DateTime.now().toIso8601String(),
+    };
+    final extension = contentType.contains('mp4') || contentType.contains('m4a') ? 'm4a' : 'wav';
+    if (personalAudioBytes != null) {
+      final path = 'corrections/personal_${answerId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+      await client.storage
+          .from('tamtam-audio')
+          .uploadBinary(path, personalAudioBytes, fileOptions: FileOptions(contentType: contentType, upsert: true));
+      updates['teacher_audio_personal_path'] = path;
+      updates['teacher_audio_personal_duration'] = personalDurationSeconds;
+    }
+    if (genericAudioBytes != null) {
+      final path = 'corrections/generic_${answerId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+      await client.storage
+          .from('tamtam-audio')
+          .uploadBinary(path, genericAudioBytes, fileOptions: FileOptions(contentType: contentType, upsert: true));
+      updates['teacher_audio_generic_path'] = path;
+      updates['teacher_audio_generic_duration'] = genericDurationSeconds;
+    }
+    await client.from('classe_student_answers').update(updates).eq('id', answerId);
+  }
+
+  // ---------------------------------------------------------------------
+  // Module Apprendre — progression, maîtrise, historique, badges
+  // ---------------------------------------------------------------------
+
+  static Future<Map<String, dynamic>> fetchLearningProgress() async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      return {
+        'xp': 0,
+        'streak_days': 0,
+        'current_direction': 'fr_to_bariba',
+        'words_mastered': 0,
+        'perfect_scores': 0,
+      };
+    }
+    final row = await client
+        .from('learning_progress')
+        .select()
+        .eq('user_id', user.id)
+        .maybeSingle();
+    if (row != null) return row;
+    return {
+      'user_id': user.id,
+      'xp': 0,
+      'streak_days': 0,
+      'current_direction': 'fr_to_bariba',
+      'words_mastered': 0,
+      'perfect_scores': 0,
+    };
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchThemeMastery() async {
+    final user = client.auth.currentUser;
+    if (user == null) return const [];
+    final rows = await client
+        .from('learning_theme_mastery')
+        .select()
+        .eq('user_id', user.id);
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchLearningHistory({int limit = 30}) async {
+    final user = client.auth.currentUser;
+    if (user == null) return const [];
+    final rows = await client
+        .from('learning_session_log')
+        .select()
+        .eq('user_id', user.id)
+        .order('created_at', ascending: false)
+        .limit(limit);
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  /// Enregistre le résultat d'une session d'exercices (QCM ou prononciation),
+  /// met à jour XP/série/maîtrise par thème, journalise l'historique, et
+  /// tente de débloquer les badges correspondants. Retourne un résumé
+  /// {xpEarned, newStreak, unlockedBadges} pour l'écran de résultat.
+  static Future<Map<String, dynamic>> recordLearningSession({
+    required String sessionType, // 'exercise' | 'classe_lesson' | 'pronunciation'
+    String? themeKey,
+    String? lessonRef,
+    String? direction,
+    required int correctCount,
+    required int totalCount,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    final isPerfect = totalCount > 0 && correctCount == totalCount;
+    final xpEarned = (correctCount * 8) + (isPerfect ? 20 : 0);
+
+    // 1. Progression XP + série
+    final existing = await client
+        .from('learning_progress')
+        .select()
+        .eq('user_id', user.id)
+        .maybeSingle();
+    final today = DateTime.now();
+    final todayKey = DateTime(today.year, today.month, today.day);
+    int newStreak = 1;
+    if (existing != null) {
+      final lastActive = existing['last_active_date'] as String?;
+      if (lastActive != null) {
+        final last = DateTime.tryParse(lastActive);
+        if (last != null) {
+          final lastKey = DateTime(last.year, last.month, last.day);
+          final diffDays = todayKey.difference(lastKey).inDays;
+          if (diffDays == 0) {
+            newStreak = (existing['streak_days'] as int? ?? 1);
+          } else if (diffDays == 1) {
+            newStreak = (existing['streak_days'] as int? ?? 0) + 1;
+          } else {
+            newStreak = 1;
+          }
+        }
+      }
+    }
+    final newXp = (existing?['xp'] as int? ?? 0) + xpEarned;
+    final newPerfectScores = (existing?['perfect_scores'] as int? ?? 0) + (isPerfect ? 1 : 0);
+    await client.from('learning_progress').upsert({
+      'user_id': user.id,
+      'xp': newXp,
+      'streak_days': newStreak,
+      'last_active_date': todayKey.toIso8601String().split('T').first,
+      if (direction != null) 'current_direction': direction,
+      'perfect_scores': newPerfectScores,
+    });
+
+    // 2. Maîtrise du thème
+    if (themeKey != null) {
+      final themeRow = await client
+          .from('learning_theme_mastery')
+          .select()
+          .eq('user_id', user.id)
+          .eq('theme_key', themeKey)
+          .maybeSingle();
+      final newCorrect = (themeRow?['correct_count'] as int? ?? 0) + correctCount;
+      final newTotal = (themeRow?['total_count'] as int? ?? 0) + totalCount;
+      await client.from('learning_theme_mastery').upsert({
+        'user_id': user.id,
+        'theme_key': themeKey,
+        'correct_count': newCorrect,
+        'total_count': newTotal,
+      }, onConflict: 'user_id,theme_key');
+    }
+
+    // 3. Historique
+    await client.from('learning_session_log').insert({
+      'user_id': user.id,
+      'session_type': sessionType,
+      'theme_or_lesson_ref': themeKey ?? lessonRef,
+      'direction': direction,
+      'correct_count': correctCount,
+      'total_count': totalCount,
+      'xp_earned': xpEarned,
+    });
+
+    // 4. Compteurs unifiés (profil apprenant) + badges
+    final unlocked = await _bumpAchievementsAndCheckBadges(
+      lessonsCompletedDelta: sessionType == 'classe_lesson' ? 1 : 0,
+      streakDays: newStreak,
+      perfectScoresDelta: isPerfect ? 1 : 0,
+    );
+
+    return {
+      'xpEarned': xpEarned,
+      'newStreak': newStreak,
+      'newXp': newXp,
+      'unlockedBadges': unlocked,
+    };
+  }
+
+  static Future<List<Map<String, dynamic>>> _bumpAchievementsAndCheckBadges({
+    int lessonsCompletedDelta = 0,
+    int? streakDays,
+    int perfectScoresDelta = 0,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) return const [];
+    final existing = await client
+        .from('user_achievements')
+        .select()
+        .eq('user_id', user.id)
+        .maybeSingle();
+    final lessonsCompleted = (existing?['lessons_completed'] as int? ?? 0) + lessonsCompletedDelta;
+    final perfectScores = (existing?['perfect_scores'] as int? ?? 0) + perfectScoresDelta;
+    final streak = streakDays ?? (existing?['learning_streak_days'] as int? ?? 0);
+    await client.from('user_achievements').upsert({
+      'user_id': user.id,
+      'lessons_completed': lessonsCompleted,
+      'learning_streak_days': streak,
+      'perfect_scores': perfectScores,
+    });
+    return checkAndUnlockLearningBadges();
+  }
+
+  /// Compare les compteurs d'apprentissage de l'utilisateur aux exigences
+  /// des badges définis en base, et débloque automatiquement ceux atteints.
+  /// Retourne la liste des badges nouvellement débloqués.
+  static Future<List<Map<String, dynamic>>> checkAndUnlockLearningBadges() async {
+    final user = client.auth.currentUser;
+    if (user == null) return const [];
+    const learningRequirementTypes = [
+      'lessons_completed',
+      'learning_streak_days',
+      'words_mastered',
+      'perfect_scores',
+      'themes_completed',
+    ];
+    final results = await Future.wait([
+      client.from('user_achievements').select().eq('user_id', user.id).maybeSingle(),
+      client.from('badges').select().filter('requirement_type', 'in', '(${learningRequirementTypes.join(',')})'),
+      client.from('user_badges').select('badge_id').eq('user_id', user.id),
+    ]);
+    final achievements = results[0] as Map<String, dynamic>?;
+    if (achievements == null) return const [];
+    final badges = List<Map<String, dynamic>>.from(results[1] as List);
+    final alreadyUnlocked = (results[2] as List).map((r) => r['badge_id']).toSet();
+
+    final newlyUnlocked = <Map<String, dynamic>>[];
+    for (final badge in badges) {
+      if (alreadyUnlocked.contains(badge['id'])) continue;
+      final reqType = badge['requirement_type'] as String;
+      final reqValue = badge['requirement_value'] as int? ?? 0;
+      final current = achievements[reqType] as int? ?? 0;
+      if (current >= reqValue) {
+        try {
+          await client.from('user_badges').insert({
+            'user_id': user.id,
+            'badge_id': badge['id'],
+          });
+          newlyUnlocked.add(badge);
+        } on PostgrestException catch (e) {
+          if (e.code != '23505') rethrow;
+        }
+      }
+    }
+    return newlyUnlocked;
+  }
+
+  static Future<Map<String, dynamic>> fetchLearnerBadges() async {
+    final user = client.auth.currentUser;
+    if (user == null) return const {'unlocked': [], 'locked': []};
+    final results = await Future.wait([
+      client.from('badges').select(),
+      client.from('user_badges').select('badge_id, earned_at').eq('user_id', user.id),
+    ]);
+    final allBadges = List<Map<String, dynamic>>.from(results[0] as List);
+    final userBadges = List<Map<String, dynamic>>.from(results[1] as List);
+    final unlockedIds = {for (final b in userBadges) b['badge_id']: b['earned_at']};
+    final unlocked = <Map<String, dynamic>>[];
+    final locked = <Map<String, dynamic>>[];
+    for (final badge in allBadges) {
+      if (unlockedIds.containsKey(badge['id'])) {
+        unlocked.add({...badge, 'earned_at': unlockedIds[badge['id']]});
+      } else {
+        locked.add(badge);
+      }
+    }
+    return {'unlocked': unlocked, 'locked': locked};
+  }
 }
