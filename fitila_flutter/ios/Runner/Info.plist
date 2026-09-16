@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Fitila a besoin du microphone pour enregistrer vos messages audio, vos réponses de prononciation et diffuser vos directs Live Griot IA.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Fitila a besoin de l'appareil photo pour prendre des photos de vos produits et publications.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

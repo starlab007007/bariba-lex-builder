@@ -1706,4 +1706,176 @@ class FitilaBackend {
   static Future<void> registerHanduniaWasaInterest(bool interested) async {
     await updatePreferences({'handunia_wasa_interested': interested});
   }
+
+  // ───────────────────────────────────────────────────────────────
+  // Live Griot IA — diffusion en direct multi-spectateurs réelle.
+  // Architecture : maillage WebRTC (flutter_webrtc) signalé par de
+  // simples lignes Postgres (tamtam_live_signals) livrées en temps
+  // réel via Realtime — aucun service tiers, aucune clé API. Réutilise
+  // tamtam_lives / tamtam_live_viewers déjà créées pour le web.
+  // ───────────────────────────────────────────────────────────────
+  static Future<Map<String, dynamic>> createLiveSession({
+    required String title,
+    String? description,
+    String language = 'Bariba + Français',
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    final roomName =
+        'griot-${user.id.substring(0, 8)}-${DateTime.now().millisecondsSinceEpoch}';
+    final data = await client
+        .from('tamtam_lives')
+        .insert({
+          'host_id': user.id,
+          'title': title,
+          'description': description,
+          'language': language,
+          'room_name': roomName,
+          'source_module': 'griot_ia',
+          'status': 'live',
+          'viewer_count': 0,
+        })
+        .select()
+        .single();
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<void> endLiveSession(String liveId) async {
+    await client
+        .from('tamtam_lives')
+        .update({
+          'status': 'ended',
+          'ended_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', liveId);
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchActiveLiveSessions() async {
+    final rows = await client
+        .from('tamtam_lives')
+        .select()
+        .eq('status', 'live')
+        .eq('source_module', 'griot_ia')
+        .order('started_at', ascending: false);
+    final lives = List<Map<String, dynamic>>.from(rows as List);
+    final hostIds = lives.map((r) => r['host_id'] as String).toSet().toList();
+    if (hostIds.isEmpty) return lives;
+    final profiles = await client
+        .from('tamtam_profiles')
+        .select('user_id, username, display_name, avatar_url')
+        .filter('user_id', 'in', '(${hostIds.join(",")})');
+    final profileMap = <String, Map<String, dynamic>>{
+      for (final p in List<Map<String, dynamic>>.from(profiles as List))
+        p['user_id'] as String: p,
+    };
+    return lives.map((row) {
+      final profile = profileMap[row['host_id']];
+      return {
+        ...row,
+        'host_display_name':
+            profile?['display_name']?.toString().trim().isNotEmpty == true
+            ? profile!['display_name']
+            : (profile?['username'] ?? 'Griot Fitila'),
+        'host_avatar_url': profile?['avatar_url'],
+      };
+    }).toList(growable: false);
+  }
+
+  static Future<void> adjustLiveViewerCount(String liveId, int delta) async {
+    await client.rpc(
+      'adjust_live_viewer_count',
+      params: {'p_live_id': liveId, 'p_delta': delta},
+    );
+  }
+
+  static Future<void> joinLiveAsViewer(String liveId) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    await client.from('tamtam_live_viewers').insert({
+      'live_id': liveId,
+      'user_id': user.id,
+    });
+    await adjustLiveViewerCount(liveId, 1);
+  }
+
+  static Future<void> leaveLiveAsViewer(String liveId) async {
+    final user = client.auth.currentUser;
+    if (user == null) return;
+    await client
+        .from('tamtam_live_viewers')
+        .delete()
+        .eq('live_id', liveId)
+        .eq('user_id', user.id);
+    await adjustLiveViewerCount(liveId, -1);
+  }
+
+  static Stream<List<Map<String, dynamic>>> streamLiveViewers(String liveId) {
+    return client
+        .from('tamtam_live_viewers')
+        .stream(primaryKey: ['id'])
+        .eq('live_id', liveId);
+  }
+
+  static Future<void> sendLiveChatMessage({
+    required String liveId,
+    required String message,
+  }) async {
+    final user = client.auth.currentUser;
+    final trimmed = message.trim();
+    if (user == null || trimmed.isEmpty) return;
+    final profile = await client
+        .from('tamtam_profiles')
+        .select('display_name, username')
+        .eq('user_id', user.id)
+        .maybeSingle();
+    await client.from('tamtam_live_chat_messages').insert({
+      'live_id': liveId,
+      'user_id': user.id,
+      'display_name':
+          profile?['display_name'] ?? profile?['username'] ?? 'Griot Fitila',
+      'message': trimmed,
+    });
+  }
+
+  static Stream<List<Map<String, dynamic>>> streamLiveChat(String liveId) {
+    return client
+        .from('tamtam_live_chat_messages')
+        .stream(primaryKey: ['id'])
+        .eq('live_id', liveId)
+        .order('created_at');
+  }
+
+  /// Envoie un signal WebRTC (offre/réponse SDP ou candidat ICE) à un
+  /// pair précis. Le contenu du signal (SDP, candidat) est encodé par
+  /// l'appelant dans [payload] ; cette méthode ne fait qu'acheminer.
+  static Future<void> sendLiveSignal({
+    required String liveId,
+    required String toUser,
+    required String signalType,
+    required Map<String, dynamic> payload,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    await client.from('tamtam_live_signals').insert({
+      'live_id': liveId,
+      'from_user': user.id,
+      'to_user': toUser,
+      'signal_type': signalType,
+      'payload': payload,
+    });
+  }
+
+  /// Flux temps réel des signaux WebRTC adressés à l'utilisateur
+  /// courant pour un direct donné (offres/réponses/ICE des pairs).
+  static Stream<List<Map<String, dynamic>>> streamLiveSignalsForMe(
+    String liveId,
+  ) {
+    final user = client.auth.currentUser;
+    if (user == null) return const Stream.empty();
+    return client
+        .from('tamtam_live_signals')
+        .stream(primaryKey: ['id'])
+        .eq('live_id', liveId)
+        .order('created_at');
+  }
 }

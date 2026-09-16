@@ -16,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import 'core/fitila_backend.dart';
+import 'core/fitila_live.dart';
 import 'core/fitila_media.dart';
 import 'core/foncier_rag.dart';
 import 'core/signature_theme.dart';
@@ -19384,6 +19385,15 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
   String _language = 'Bariba + Français';
   bool _allowGuests = true;
   bool _scheduling = false;
+List<Map<String, dynamic>> _activeLives = const [];
+bool _loadingLives = true;
+bool _startingLive = false;
+
+@override
+void initState() {
+super.initState();
+_loadActiveLives();
+}
 
   @override
   void dispose() {
@@ -19392,22 +19402,76 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
     super.dispose();
   }
 
-  void _startNow() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Direct pas encore disponible'),
-        content: const Text(
-          "La diffusion en direct (streaming temps réel) n'est pas encore intégrée à Fitila. "
-          'Cette fonctionnalité nécessite une infrastructure de live dédiée, actuellement à l\'étude. '
-          'En attendant, vous pouvez programmer une annonce pour prévenir votre communauté dès que ce sera actif.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Compris')),
-        ],
-      ),
-    );
-  }
+  Future<void> _loadActiveLives() async {
+setState(() => _loadingLives = true);
+try {
+final lives = await FitilaBackend.fetchActiveLiveSessions();
+if (!mounted) return;
+setState(() {
+_activeLives = lives;
+_loadingLives = false;
+});
+} catch (_) {
+if (!mounted) return;
+setState(() => _loadingLives = false);
+}
+}
+
+Future<void> _startLiveNow() async {
+final title = _title.text.trim();
+if (title.isEmpty) {
+ScaffoldMessenger.of(context).showSnackBar(
+const SnackBar(content: Text('Donnez un titre à votre direct avant de démarrer.')),
+);
+return;
+}
+setState(() => _startingLive = true);
+try {
+final live = await FitilaBackend.createLiveSession(
+title: title,
+description: _description.text.trim().isEmpty ? null : _description.text.trim(),
+language: _language,
+);
+if (!mounted) return;
+await Navigator.push(
+context,
+MaterialPageRoute(
+builder: (_) => LiveRoomScreen(
+  liveId: live['id'].toString(),
+  title: title,
+  role: FitilaLiveRole.host,
+),
+),
+);
+if (mounted) _loadActiveLives();
+} catch (error) {
+if (!mounted) return;
+ScaffoldMessenger.of(context).showSnackBar(
+SnackBar(
+content: Text(
+  'Impossible de démarrer le direct : ${error.toString().replaceFirst("Bad state: ", "")}',
+),
+),
+);
+} finally {
+if (mounted) setState(() => _startingLive = false);
+}
+}
+
+void _joinLive(Map<String, dynamic> live) {
+Navigator.push(
+context,
+MaterialPageRoute(
+builder: (_) => LiveRoomScreen(
+liveId: live['id'].toString(),
+title: live['title']?.toString() ?? 'Live Griot IA',
+role: FitilaLiveRole.viewer,
+),
+),
+).then((_) {
+if (mounted) _loadActiveLives();
+});
+}
 
   Future<void> _scheduleAnnouncement() async {
     final title = _title.text.trim();
@@ -19468,7 +19532,7 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    "La diffusion en direct n'est pas encore active dans Fitila. Vous pouvez préparer la configuration et prévenir votre communauté par une annonce.",
+                    "La diffusion en direct multi-spectateurs fonctionne réellement (connexion audio directe entre appareils). Elle est dimensionnée pour un public restreint (une dizaine d'auditeurs) et peut échouer sur certains réseaux très restrictifs faute de serveur relais dédié.",
                     style: TextStyle(fontSize: 12.5, color: _fitilaInkSoft),
                   ),
                 ),
@@ -19476,6 +19540,74 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          Row(
+  children: [
+    const Expanded(
+      child: Text('Lives en cours', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+    ),
+    IconButton(
+      onPressed: _loadingLives ? null : _loadActiveLives,
+      icon: const Icon(Icons.refresh_rounded),
+      tooltip: 'Actualiser',
+    ),
+  ],
+),
+if (_loadingLives)
+  const Padding(
+    padding: EdgeInsets.symmetric(vertical: 12),
+    child: Center(child: CircularProgressIndicator()),
+  )
+else if (_activeLives.isEmpty)
+  Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: Text(
+      'Aucun direct en cours pour le moment.',
+      style: TextStyle(color: _fitilaMuted, fontSize: 12.5),
+    ),
+  )
+else
+  for (final live in _activeLives)
+    Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _fitilaCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _fitilaBorder),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  live['title']?.toString() ?? 'Live Griot IA',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                ),
+                Text(
+                  "${live['host_display_name'] ?? 'Griot Fitila'} • ${live['viewer_count'] ?? 0} auditeur(s)",
+                  style: TextStyle(fontSize: 11.5, color: _fitilaMuted),
+                ),
+              ],
+            ),
+          ),
+          FilledButton(
+            onPressed: () => _joinLive(live),
+            child: const Text('Rejoindre'),
+          ),
+        ],
+      ),
+    ),
+const SizedBox(height: 16),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(14),
@@ -19483,6 +19615,11 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('Configuration du direct', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Utilisée pour démarrer un direct maintenant, ou pour programmer une simple annonce.',
+                    style: TextStyle(fontSize: 11, color: _fitilaMuted),
+                  ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: _title,
@@ -19518,32 +19655,320 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
           ),
           const SizedBox(height: 16),
           Row(
+  children: [
+    Expanded(
+      child: FilledButton.icon(
+        onPressed: _startingLive ? null : _startLiveNow,
+        icon: _startingLive
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : const Icon(Icons.podcasts_rounded),
+        label: const Text('Démarrer le direct'),
+      ),
+    ),
+    const SizedBox(width: 10),
+    Expanded(
+      child: OutlinedButton.icon(
+        onPressed: _scheduling ? null : _scheduleAnnouncement,
+        icon: _scheduling
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.campaign_rounded),
+        label: const Text('Programmer une annonce'),
+      ),
+    ),
+  ],
+),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}
+
+/// Salle de direct réelle (host ou spectateur) — connexion audio
+/// WebRTC pair-à-pair via [FitilaLiveEngine], chat texte en direct et
+/// compteur d'auditeurs réels.
+class LiveRoomScreen extends StatefulWidget {
+  const LiveRoomScreen({
+    super.key,
+    required this.liveId,
+    required this.title,
+    required this.role,
+  });
+
+  final String liveId;
+  final String title;
+  final FitilaLiveRole role;
+
+  @override
+  State<LiveRoomScreen> createState() => _LiveRoomScreenState();
+}
+
+class _LiveRoomScreenState extends State<LiveRoomScreen> {
+  FitilaLiveEngine? _engine;
+  StreamSubscription<int>? _peerCountSub;
+  StreamSubscription<List<Map<String, dynamic>>>? _chatSub;
+  final _chatController = TextEditingController();
+  final List<Map<String, dynamic>> _chatMessages = [];
+  int _peerCount = 0;
+  bool _connecting = true;
+  String? _error;
+  bool _muted = false;
+  bool _ending = false;
+  bool _cleanedUp = false;
+
+  bool get _isHost => widget.role == FitilaLiveRole.host;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      if (!_isHost) {
+        await FitilaBackend.joinLiveAsViewer(widget.liveId);
+      }
+      final engine = FitilaLiveEngine(liveId: widget.liveId, role: widget.role);
+      await engine.start();
+      if (!mounted) {
+        await engine.dispose();
+        return;
+      }
+      _engine = engine;
+      _peerCountSub = engine.peerCount.listen((count) {
+        if (mounted) setState(() => _peerCount = count);
+      });
+      _chatSub = FitilaBackend.streamLiveChat(widget.liveId).listen((rows) {
+        if (!mounted) return;
+        setState(() {
+          _chatMessages
+            ..clear()
+            ..addAll(rows);
+        });
+      });
+      setState(() => _connecting = false);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _connecting = false;
+        _error = 'Connexion impossible : ${error.toString().replaceFirst("Bad state: ", "")}';
+      });
+    }
+  }
+
+  void _toggleMute() {
+    final stream = _engine?.localStream;
+    if (stream == null) return;
+    setState(() => _muted = !_muted);
+    for (final track in stream.getAudioTracks()) {
+      track.enabled = !_muted;
+    }
+  }
+
+  Future<void> _sendChat() async {
+    final text = _chatController.text.trim();
+    if (text.isEmpty) return;
+    _chatController.clear();
+    try {
+      await FitilaBackend.sendLiveChatMessage(liveId: widget.liveId, message: text);
+    } catch (_) {
+      // Un message perdu ne doit pas interrompre le direct.
+    }
+  }
+
+  Future<void> _cleanup() async {
+    if (_cleanedUp) return;
+    _cleanedUp = true;
+    final engine = _engine;
+    _engine = null;
+    try {
+      await engine?.notifyBye();
+    } catch (_) {}
+    try {
+      await engine?.dispose();
+    } catch (_) {}
+    if (_isHost) {
+      try {
+        await FitilaBackend.endLiveSession(widget.liveId);
+      } catch (_) {}
+    } else {
+      try {
+        await FitilaBackend.leaveLiveAsViewer(widget.liveId);
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _endOrLeave() async {
+    if (_ending) return;
+    setState(() => _ending = true);
+    await _cleanup();
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  void dispose() {
+    _peerCountSub?.cancel();
+    _chatSub?.cancel();
+    _chatController.dispose();
+    _cleanup();
+    super.dispose();
+  }
+
+  String _initials(dynamic name) => _initialLetter(name?.toString());
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _endOrLeave();
+      },
+      child: Scaffold(
+        backgroundColor: _fitilaInk,
+        body: SafeArea(
+          child: Column(
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _startNow,
-                  icon: const Icon(Icons.podcasts_rounded),
-                  label: const Text('Démarrer maintenant'),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(6)),
+                      child: const Text(
+                        'DIRECT',
+                        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        widget.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
+                      ),
+                    ),
+                    const Icon(Icons.headphones_rounded, color: Colors.white70, size: 16),
+                    const SizedBox(width: 4),
+                    Text('$_peerCount', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
+                  ],
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: _scheduling ? null : _scheduleAnnouncement,
-                  icon: _scheduling
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              if (_connecting)
+                const Expanded(child: Center(child: CircularProgressIndicator(color: Colors.white)))
+              else if (_error != null)
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(_error!, style: const TextStyle(color: Colors.white70), textAlign: TextAlign.center),
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: _chatMessages.isEmpty
+                      ? Center(
+                          child: Text(
+                            _isHost ? 'Vous êtes en direct. Le chat apparaîtra ici.' : 'Connecté au direct. Le chat apparaîtra ici.',
+                            style: const TextStyle(color: Colors.white38, fontSize: 12.5),
+                            textAlign: TextAlign.center,
+                          ),
                         )
-                      : const Icon(Icons.campaign_rounded),
-                  label: const Text('Programmer une annonce'),
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          reverse: true,
+                          itemCount: _chatMessages.length,
+                          itemBuilder: (context, index) {
+                            final message = _chatMessages[_chatMessages.length - 1 - index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 13,
+                                    backgroundColor: Colors.white12,
+                                    child: Text(
+                                      _initials(message['display_name']),
+                                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: RichText(
+                                      text: TextSpan(
+                                        children: [
+                                          TextSpan(
+                                            text: '${message['display_name'] ?? 'Griot Fitila'}  ',
+                                            style: const TextStyle(color: Color(0xFFC99530), fontWeight: FontWeight.w800, fontSize: 13),
+                                          ),
+                                          TextSpan(
+                                            text: message['message']?.toString() ?? '',
+                                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Row(
+                  children: [
+                    if (_isHost) ...[
+                      IconButton.filledTonal(
+                        onPressed: _toggleMute,
+                        icon: Icon(_muted ? Icons.mic_off_rounded : Icons.mic_rounded),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Expanded(
+                      child: TextField(
+                        controller: _chatController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Écrire un message…',
+                          hintStyle: const TextStyle(color: Colors.white38),
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(.08),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        ),
+                        onSubmitted: (_) => _sendChat(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filled(onPressed: _sendChat, icon: const Icon(Icons.send_rounded)),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                      onPressed: _ending ? null : _endOrLeave,
+                      icon: const Icon(Icons.call_end_rounded),
+                      label: Text(_isHost ? 'Terminer' : 'Quitter'),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-        ],
+        ),
       ),
     );
   }
@@ -20473,6 +20898,41 @@ class HanduniaWasaScreen extends StatefulWidget {
 class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   bool _interested = false;
   bool _saving = false;
+final _fragmentController = TextEditingController();
+bool _publishingFragment = false;
+bool _generating = false;
+bool _aiAssisted = false;
+
+@override
+void dispose() {
+_fragmentController.dispose();
+super.dispose();
+}
+
+
+  Future<void> _generateFragment() async {
+setState(() => _generating = true);
+try {
+const prompt =
+'Imagine en 3 à 4 phrases un fragment du monde Handunia Wasa : un lieu, '
+'un personnage ou un petit récit inspiré de la culture et de la langue bariba, '
+"comme s'il faisait partie d'un monde vivant et persistant. "
+'Réponds uniquement par le fragment, sans introduction ni explication.';
+final result = await FitilaBackend.askFitilaIa(prompt);
+if (!mounted) return;
+setState(() {
+_fragmentController.text = result;
+_aiAssisted = true;
+});
+} catch (_) {
+if (!mounted) return;
+ScaffoldMessenger.of(context).showSnackBar(
+const SnackBar(content: Text('Génération IA indisponible pour le moment.')),
+);
+} finally {
+if (mounted) setState(() => _generating = false);
+}
+}
 
   Future<void> _toggleInterest(bool value) async {
     setState(() {
@@ -20487,6 +20947,47 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       if (mounted) setState(() => _saving = false);
     }
   }
+
+  Future<void> _publishFragment() async {
+final text = _fragmentController.text.trim();
+if (text.isEmpty) {
+ScaffoldMessenger.of(context).showSnackBar(
+const SnackBar(content: Text('Écrivez ou générez un fragment avant de publier.')),
+);
+return;
+}
+setState(() => _publishingFragment = true);
+final content = _aiAssisted
+? '🌌 Fragment généré par Fitila IA pour Handunia Wasa\n\n$text\n\n'
+    '(Texte réellement généré par l'IA Fitila à partir d'un thème bariba — vision exploratoire 10-15 ans, pas un monde vivant fonctionnel aujourd'hui.)'
+: '🌌 Fragment imaginé pour Handunia Wasa\n\n$text\n\n'
+    '(Contribution communautaire à une vision exploratoire 10-15 ans — pas un contenu généré par une IA.)';
+try {
+await FitilaBackend.createTextPost(
+text: content,
+hashtags: [
+'handunia-wasa',
+if (_aiAssisted) 'ia-generatif' else 'vision-communautaire',
+],
+templateId: 'handunia-wasa',
+);
+if (!mounted) return;
+ScaffoldMessenger.of(context).showSnackBar(
+const SnackBar(content: Text('Fragment publié dans le fil.')),
+);
+setState(() {
+_fragmentController.clear();
+_aiAssisted = false;
+});
+} catch (_) {
+if (!mounted) return;
+ScaffoldMessenger.of(context).showSnackBar(
+const SnackBar(content: Text('Publication impossible. Réessayez.')),
+);
+} finally {
+if (mounted) setState(() => _publishingFragment = false);
+}
+}
 
   @override
   Widget build(BuildContext context) {
@@ -20548,7 +21049,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                 const SizedBox(width: 10),
                 const Expanded(
                   child: Text(
-                    "Vision exploratoire, non disponible aujourd'hui : aucune capacité de génération de monde vivant n'existe encore dans l'IA actuelle. Cet écran présente l'ambition à 10-15 ans, pas une fonctionnalité active.",
+                    "Vision exploratoire 10-15 ans : aucun monde vivant persistant n'existe aujourd'hui. Ce qui est réel dès maintenant : la génération de fragments texte par l'IA Fitila et leur publication dans le fil, ci-dessous.",
                     style: TextStyle(fontSize: 12, color: _fitilaInkSoft),
                   ),
                 ),
@@ -20581,6 +21082,89 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
               subtitle: const Text('Le seul geste réel de cet écran : enregistrer votre intérêt dans vos préférences.'),
             ),
           ),
+          const SizedBox(height: 16),
+Card(
+  child: Padding(
+    padding: const EdgeInsets.all(14),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Imaginer un fragment',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          "Décrivez-le vous-même, ou laissez Fitila IA en générer un vraiment — relisez et modifiez avant de publier. Le fil indique toujours l'origine réelle : IA ou communauté.",
+          style: TextStyle(fontSize: 11.5, color: _fitilaMuted),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _fragmentController,
+          maxLines: 3,
+          onChanged: (value) {
+            if (value.trim().isEmpty && _aiAssisted) {
+              setState(() => _aiAssisted = false);
+            }
+          },
+          decoration: const InputDecoration(
+            hintText: 'Ex : Un marché nocturne où les proverbes prennent vie…',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        if (_aiAssisted) ...[
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(Icons.auto_awesome_rounded, size: 14, color: _fitilaGoldDeep),
+              const SizedBox(width: 4),
+              Text(
+                'Généré par Fitila IA — modifiable avant publication',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: _fitilaGoldDeep,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ],
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _generating ? null : _generateFragment,
+                icon: _generating
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome_rounded, size: 16),
+                label: const Text('Générer avec Fitila IA'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: _publishingFragment ? null : _publishFragment,
+                icon: _publishingFragment
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.auto_stories_rounded),
+                label: const Text('Publier'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  ),
+),
           const SizedBox(height: 24),
         ],
       ),
