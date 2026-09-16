@@ -140,6 +140,17 @@ jobs:
           rm -f fitila_flutter/lib/main.dart.rej
           test -f /tmp/live-still.rej
 
+          echo "===== HANDUNIA AFTER SAFE LIVE PATCH ====="
+          python - <<'PY'
+          from pathlib import Path
+          s = Path('fitila_flutter/lib/main.dart').read_text(encoding='utf-8')
+          a = s.index('class _HanduniaWasaScreenState')
+          b = s.index('class _CreationIaTile', a)
+          print(s[a:b])
+          PY
+          echo "===== END HANDUNIA AFTER SAFE LIVE PATCH ====="
+          exit 1
+
           python - <<'PY'
           from pathlib import Path
           from difflib import SequenceMatcher
