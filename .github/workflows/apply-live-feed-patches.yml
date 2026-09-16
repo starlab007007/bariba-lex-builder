@@ -37,18 +37,20 @@ jobs:
           git config user.name "OpenAI"
           git config user.email "noreply@openai.com"
 
-      - name: Apply updated six creation IA features patch
+      - name: Diagnose updated creation IA patch against current branch
         shell: bash
         run: |
           set -euo pipefail
-          git apply --3way /tmp/creation.patch
-          if git ls-files -u | grep -q .; then
-            echo "Creation IA patch produced merge conflicts:"
-            git status --short
-            exit 1
-          fi
-          git add -A
-          git commit -m "feat(creation-ia): apply updated six creation IA features"
+          git apply --reject --whitespace=nowarn /tmp/creation.patch || true
+          echo "===== STATUS AFTER PARTIAL APPLY ====="
+          git status --short
+          echo "===== REJECTED HUNKS ====="
+          find . -name '*.rej' -type f -print | sort | while read f; do
+            echo "----- $f -----"
+            cat "$f"
+          done
+          echo "===== END REJECTS ====="
+          exit 1
 
       - name: Apply Live Griot and Handunia Wasa patch
         shell: bash
