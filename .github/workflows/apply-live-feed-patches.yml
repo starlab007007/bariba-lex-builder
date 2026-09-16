@@ -741,9 +741,22 @@ jobs:
           p.write_text(s, encoding='utf-8')
           PY
 
-          git add fitila_flutter/lib/main.dart
+          # flutter_webrtc 0.14.1 compiles its Android module against API 31.
+          # 1.6.2+hotfix.3 supports current Android/AGP 9 and compileSdk 36.
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('fitila_flutter/pubspec.yaml')
+          s = p.read_text(encoding='utf-8')
+          old = 'flutter_webrtc: ^0.14.1'
+          new = 'flutter_webrtc: ^1.6.2+hotfix.3'
+          if old not in s and new not in s:
+              raise SystemExit('flutter_webrtc dependency from live patch not found')
+          p.write_text(s.replace(old, new), encoding='utf-8')
+          PY
+
+          git add fitila_flutter/lib/main.dart fitila_flutter/pubspec.yaml
           if ! git diff --cached --quiet; then
-            git commit -m "fix(flutter): normalize patch code for Flutter 3.47"
+            git commit -m "fix(flutter): normalize patch code and WebRTC dependency"
           fi
 
       - name: Setup Java 17
