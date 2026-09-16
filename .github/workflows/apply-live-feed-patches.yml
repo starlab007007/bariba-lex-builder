@@ -666,18 +666,39 @@ jobs:
           git add -A
           git commit -m "feat(live): integrate Live Griot and Handunia on supplied IA baseline"
 
-      - name: Diagnose immersive premium feed patch
+      - name: Apply immersive premium feed patch
         shell: bash
         run: |
           set -euo pipefail
           git apply --reject --whitespace=nowarn /tmp/feed.patch || true
-          echo "===== FEED REJECTS ====="
-          find . -name '*.rej' -type f -print | sort | while read f; do
-            echo "----- $f -----"
-            grep '^@@ ' "$f" || true
-          done
-          echo "===== END FEED REJECTS ====="
-          exit 1
+
+          # Only the import hunk conflicts because main.dart already gained
+          # fitila_live.dart during the previous patch.
+          test -f fitila_flutter/lib/main.dart.rej
+          test "$(grep -c '^@@ ' fitila_flutter/lib/main.dart.rej)" -eq 1
+          grep -q '^@@ -1,6 +1,7 @@' fitila_flutter/lib/main.dart.rej
+
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('fitila_flutter/lib/main.dart')
+          s = p.read_text(encoding='utf-8')
+          imp = "import 'dart:math' as math;\n"
+          if imp not in s:
+              anchor = "import 'dart:io';\n"
+              if anchor not in s:
+                  raise SystemExit('dart:io import anchor not found')
+              s = s.replace(anchor, anchor + imp, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+
+          rm -f fitila_flutter/lib/main.dart.rej
+          test -f supabase/migrations/20260916110000_feed_social_interactions.sql
+          grep -q "import 'dart:math' as math;" fitila_flutter/lib/main.dart
+          grep -q 'Immersion' fitila_flutter/lib/main.dart
+          grep -q 'fetchLikedPostIds' fitila_flutter/lib/main.dart
+
+          git add -A
+          git commit -m "feat(fil): apply immersive premium feed patch"
 
       - name: Normalize Flutter 3.47 compatibility
         shell: bash
