@@ -126,16 +126,104 @@ jobs:
             echo "Updated creation IA revision is already fully represented."
           fi
 
-      - name: Inspect Live Griot and Handunia Wasa rejects
+      - name: Apply Live Griot and Handunia Wasa patch
         shell: bash
         run: |
           set -euo pipefail
           git apply --reject --whitespace=nowarn /tmp/live.patch || true
           test -f fitila_flutter/lib/main.dart.rej
-          echo "===== FULL LIVE REJECT CONTENT ====="
-          cat fitila_flutter/lib/main.dart.rej
-          echo "===== END FULL LIVE REJECT CONTENT ====="
-          exit 1
+
+          python - <<'PY'
+          from pathlib import Path
+          from difflib import SequenceMatcher
+          import re
+
+          target_path = Path('fitila_flutter/lib/main.dart')
+          reject_path = Path('fitila_flutter/lib/main.dart.rej')
+          target = target_path.read_text(encoding='utf-8').splitlines()
+          rej = reject_path.read_text(encoding='utf-8').splitlines()
+
+          hunks = []
+          i = 0
+          while i < len(rej):
+              if not rej[i].startswith('@@ '):
+                  i += 1
+                  continue
+              m = re.match(r'@@ -(\d+),(\d+) \+(\d+),(\d+) @@', rej[i])
+              if not m:
+                  raise SystemExit(f'Cannot parse reject hunk header: {rej[i]}')
+              old_start, old_count, new_start, new_count = map(int, m.groups())
+              i += 1
+              old_lines, new_lines = [], []
+              while i < len(rej) and not rej[i].startswith('@@ '):
+                  line = rej[i]
+                  if line.startswith(' '):
+                      old_lines.append(line[1:])
+                      new_lines.append(line[1:])
+                  elif line.startswith('-'):
+                      old_lines.append(line[1:])
+                  elif line.startswith('+'):
+                      new_lines.append(line[1:])
+                  elif line.startswith('\\'):
+                      pass
+                  i += 1
+              hunks.append((old_start, old_lines, new_lines))
+
+          def norm(line):
+              return ' '.join(line.strip().split())
+
+          cumulative = 0
+          for idx, (old_start, old_lines, new_lines) in enumerate(hunks, 1):
+              n = len(old_lines)
+              expected = max(0, old_start - 1 + cumulative)
+              lo = max(0, expected - 1200)
+              hi = min(len(target) - n, expected + 1200)
+              old_norm = [norm(x) for x in old_lines]
+
+              best_ratio = -1.0
+              best_pos = None
+              for pos in range(lo, hi + 1):
+                  cand = [norm(x) for x in target[pos:pos+n]]
+                  ratio = SequenceMatcher(None, old_norm, cand, autojunk=False).ratio()
+                  if ratio > best_ratio:
+                      best_ratio, best_pos = ratio, pos
+
+              if best_pos is None or best_ratio < 0.58:
+                  raise SystemExit(
+                      f'Unsafe fuzzy merge for live hunk {idx}: '
+                      f'best ratio={best_ratio:.3f}, expected line={old_start}'
+                  )
+
+              print(
+                  f'Live hunk {idx}/{len(hunks)}: ratio={best_ratio:.3f}, '
+                  f'line={best_pos+1}, old={len(old_lines)}, new={len(new_lines)}'
+              )
+              target[best_pos:best_pos+n] = new_lines
+              cumulative += len(new_lines) - n
+
+          merged = '\n'.join(target) + '\n'
+          target_path.write_text(merged, encoding='utf-8')
+          reject_path.unlink()
+
+          required = [
+              '_loadActiveLives',
+              '_startLiveNow',
+              '_joinLive',
+              '_generateFragment',
+              'FitilaLiveRole.host',
+              'FitilaLiveRole.viewer',
+          ]
+          for symbol in required:
+              if symbol not in merged:
+                  raise SystemExit(f'Missing merged live symbol: {symbol}')
+          PY
+
+          grep -q 'flutter_webrtc' fitila_flutter/pubspec.yaml
+          test -f fitila_flutter/lib/core/fitila_live.dart
+          test -f supabase/migrations/20260916090000_live_griot_ia_streaming.sql
+
+          git add -A
+          git commit -m "feat(live): merge Live Griot IA and Handunia Wasa"
 
       - name: Apply immersive premium feed patch
         shell: bash
