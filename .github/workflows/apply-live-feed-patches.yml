@@ -728,8 +728,12 @@ jobs:
           )
 
           # Flutter 3.47: DropdownButtonFormField.value is deprecated in favor of initialValue.
+          s = s.replace(
+              'DropdownButtonFormField<Map<String, dynamic>?>(\n                            value: _selectedProduct,',
+              'DropdownButtonFormField<Map<String, dynamic>?>(\n                            initialValue: _selectedProduct,',
+          )
           s = re.sub(
-              r'(DropdownButtonFormField<[^>]+>\([\s\S]{0,1200}?\n\s*)value:',
+              r'(DropdownButtonFormField<[^\n]+>\(\n\s*)value:',
               r'\1initialValue:',
               s,
           )
