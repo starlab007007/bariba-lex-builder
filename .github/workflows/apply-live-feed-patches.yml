@@ -37,20 +37,39 @@ jobs:
           git config user.name "OpenAI"
           git config user.email "noreply@openai.com"
 
-      - name: Diagnose updated creation IA patch against current branch
+      - name: Apply updated six creation IA features patch
         shell: bash
         run: |
           set -euo pipefail
           git apply --reject --whitespace=nowarn /tmp/creation.patch || true
-          echo "===== STATUS AFTER PARTIAL APPLY ====="
-          git status --short
-          echo "===== REJECTED HUNKS ====="
-          find . -name '*.rej' -type f -print | sort | while read f; do
-            echo "----- $f -----"
-            cat "$f"
-          done
-          echo "===== END REJECTS ====="
-          exit 1
+
+          # The current release already contains three older IA blocks.
+          # The updated patch legitimately rejects exactly those already-present blocks:
+          # 1 backend hunk + 2 main.dart hunks. Verify them explicitly before ignoring.
+          test -f fitila_flutter/lib/core/fitila_backend.dart.rej
+          test -f fitila_flutter/lib/main.dart.rej
+          test "$(grep -c '^@@ ' fitila_flutter/lib/core/fitila_backend.dart.rej)" -eq 1
+          test "$(grep -c '^@@ ' fitila_flutter/lib/main.dart.rej)" -eq 2
+
+          grep -q 'submitBattleResponse' fitila_flutter/lib/core/fitila_backend.dart
+          grep -q 'fetchBattleChain' fitila_flutter/lib/core/fitila_backend.dart
+          grep -q 'fetchMyBattleStats' fitila_flutter/lib/core/fitila_backend.dart
+          grep -q 'saveCorpusContribution' fitila_flutter/lib/core/fitila_backend.dart
+          grep -q 'fetchCorpusContributionCount' fitila_flutter/lib/core/fitila_backend.dart
+          grep -q 'registerHanduniaWasaInterest' fitila_flutter/lib/core/fitila_backend.dart
+
+          grep -q 'Studio IA nouvelle génération' fitila_flutter/lib/main.dart
+          grep -q 'class EchoSonScreen' fitila_flutter/lib/main.dart
+          grep -q 'class LiveGriotScreen' fitila_flutter/lib/main.dart
+          grep -q 'class SagesseBattleScreen' fitila_flutter/lib/main.dart
+          grep -q 'class AburuFimScreen' fitila_flutter/lib/main.dart
+          grep -q 'class SasaraIaScreen' fitila_flutter/lib/main.dart
+          grep -q 'class HanduniaWasaScreen' fitila_flutter/lib/main.dart
+          grep -q 'class _CreationIaTile' fitila_flutter/lib/main.dart
+
+          rm -f fitila_flutter/lib/core/fitila_backend.dart.rej fitila_flutter/lib/main.dart.rej
+          git add -A
+          git commit -m "feat(creation-ia): merge updated six creation IA features"
 
       - name: Apply Live Griot and Handunia Wasa patch
         shell: bash
