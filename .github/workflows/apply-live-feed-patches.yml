@@ -1,4 +1,4 @@
-name: Apply FITILA Creation Live and Immersive Feed Patches 
+name: Apply FITILA Creation Live and Immersive Feed Patches
 
 on:
   push:
