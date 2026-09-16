@@ -436,9 +436,11 @@ jobs:
             ],
           ),
           """
-          if old_buttons not in live:
-              raise SystemExit('Live action buttons baseline not found')
-          live = live.replace(old_buttons, new_buttons, 1)
+          actions_tail = live.rfind('          const SizedBox(height: 24),')
+          actions_start = live.rfind('          Row(', 0, actions_tail)
+          if actions_start < 0 or actions_tail < 0:
+              raise SystemExit('Live action buttons structural bounds not found')
+          live = live[:actions_start] + new_buttons + live[actions_tail:]
 
           # Replace current LiveGriot state but keep LiveRoomScreen inserted by live.patch.
           cur_live_a = main.index('class _LiveGriotScreenState extends State<LiveGriotScreen> {')
