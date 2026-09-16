@@ -43,33 +43,88 @@ jobs:
           set -euo pipefail
           git apply --reject --whitespace=nowarn /tmp/creation.patch || true
 
-          # The current release already contains three older IA blocks.
-          # The updated patch legitimately rejects exactly those already-present blocks:
-          # 1 backend hunk + 2 main.dart hunks. Verify them explicitly before ignoring.
+          # Exactly three hunks overlap with the older IA implementation already online.
           test -f fitila_flutter/lib/core/fitila_backend.dart.rej
           test -f fitila_flutter/lib/main.dart.rej
           test "$(grep -c '^@@ ' fitila_flutter/lib/core/fitila_backend.dart.rej)" -eq 1
           test "$(grep -c '^@@ ' fitila_flutter/lib/main.dart.rej)" -eq 2
 
-          grep -q 'submitBattleResponse' fitila_flutter/lib/core/fitila_backend.dart
-          grep -q 'fetchBattleChain' fitila_flutter/lib/core/fitila_backend.dart
-          grep -q 'fetchMyBattleStats' fitila_flutter/lib/core/fitila_backend.dart
-          grep -q 'saveCorpusContribution' fitila_flutter/lib/core/fitila_backend.dart
-          grep -q 'fetchCorpusContributionCount' fitila_flutter/lib/core/fitila_backend.dart
-          grep -q 'registerHanduniaWasaInterest' fitila_flutter/lib/core/fitila_backend.dart
+          # Backend block is already present. Verify all methods before discarding its reject.
+          for symbol in submitBattleResponse fetchBattleChain fetchMyBattleStats saveCorpusContribution fetchCorpusContributionCount registerHanduniaWasaInterest; do
+            grep -q "$symbol" fitila_flutter/lib/core/fitila_backend.dart
+          done
 
-          grep -q 'Studio IA nouvelle génération' fitila_flutter/lib/main.dart
-          grep -q 'class EchoSonScreen' fitila_flutter/lib/main.dart
-          grep -q 'class LiveGriotScreen' fitila_flutter/lib/main.dart
-          grep -q 'class SagesseBattleScreen' fitila_flutter/lib/main.dart
-          grep -q 'class AburuFimScreen' fitila_flutter/lib/main.dart
-          grep -q 'class SasaraIaScreen' fitila_flutter/lib/main.dart
-          grep -q 'class HanduniaWasaScreen' fitila_flutter/lib/main.dart
-          grep -q 'class _CreationIaTile' fitila_flutter/lib/main.dart
+          # The large rejected main.dart hunk is the previous generation of the six IA screens.
+          # Replace that whole terminal block with the updated block carried by this patch.
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          patch = Path('/tmp/creation.patch').read_text(encoding='utf-8')
+          main_path = Path('fitila_flutter/lib/main.dart')
+          main = main_path.read_text(encoding='utf-8')
+
+          mdiff = re.search(
+              r'diff --git a/fitila_flutter/lib/main\.dart b/fitila_flutter/lib/main\.dart\n(.*?)(?=\ndiff --git |\Z)',
+              patch,
+              re.S,
+          )
+          if not mdiff:
+              raise SystemExit('main.dart diff not found in creation patch')
+
+          h = re.search(
+              r'@@ -18914,3 \+19018,1635 @@ const _fitilaTemplates = \[\n(.*)',
+              mdiff.group(1),
+              re.S,
+          )
+          if not h:
+              raise SystemExit('updated IA screens hunk not found')
+
+          old_count = new_count = 0
+          added = []
+          for line in h.group(1).splitlines():
+              if line.startswith('@@ '):
+                  break
+              if line.startswith(' '):
+                  old_count += 1
+                  new_count += 1
+              elif line.startswith('-'):
+                  old_count += 1
+              elif line.startswith('+'):
+                  new_count += 1
+                  added.append(line[1:])
+              elif line.startswith('\\'):
+                  pass
+              else:
+                  if old_count >= 3 and new_count >= 1635:
+                      break
+              if old_count >= 3 and new_count >= 1635:
+                  break
+
+          if old_count != 3 or new_count != 1635:
+              raise SystemExit(f'unexpected IA hunk counts: old={old_count}, new={new_count}')
+
+          block = '\n'.join(added)
+          creation_marker = '// Création de contenu — 6 fonctionnalités IA validées le 15/09/2026 :'
+          marker_pos = main.find(creation_marker)
+          if marker_pos < 0:
+              raise SystemExit('existing IA creation block marker not found')
+          block_start = main.rfind('// ═════════', 0, marker_pos)
+          if block_start < 0:
+              raise SystemExit('existing IA creation block start not found')
+
+          replacement = block.lstrip('\n') + '\n'
+          main_path.write_text(main[:block_start] + replacement, encoding='utf-8')
+          PY
 
           rm -f fitila_flutter/lib/core/fitila_backend.dart.rej fitila_flutter/lib/main.dart.rej
+
           git add -A
-          git commit -m "feat(creation-ia): merge updated six creation IA features"
+          if ! git diff --cached --quiet; then
+            git commit -m "feat(creation-ia): merge updated six creation IA features"
+          else
+            echo "Updated creation IA revision is already fully represented."
+          fi
 
       - name: Apply Live Griot and Handunia Wasa patch
         shell: bash
@@ -96,6 +151,41 @@ jobs:
           fi
           git add -A
           git commit -m "feat(fil): apply immersive premium feed patch"
+
+      - name: Normalize Flutter 3.47 compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('fitila_flutter/lib/main.dart')
+          s = p.read_text(encoding='utf-8')
+
+          s = s.replace('separatorBuilder: (_, __) =>', 'separatorBuilder: (_, _) =>')
+
+          # Flutter 3.47: Color.withOpacity is deprecated.
+          s = re.sub(
+              r'([A-Za-z0-9_\.\)\]]+)\.withOpacity\(([^\)]+)\)',
+              r'\1.withValues(alpha: \2)',
+              s,
+          )
+
+          # Flutter 3.47: DropdownButtonFormField.value is deprecated in favor of initialValue.
+          s = re.sub(
+              r'(DropdownButtonFormField<[^>]+>\(\n\s*)value:',
+              r'\1initialValue:',
+              s,
+          )
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+          git add fitila_flutter/lib/main.dart
+          if ! git diff --cached --quiet; then
+            git commit -m "fix(flutter): normalize patch code for Flutter 3.47"
+          fi
 
       - name: Setup Java 17
         uses: actions/setup-java@v5
