@@ -126,18 +126,18 @@ jobs:
             echo "Updated creation IA revision is already fully represented."
           fi
 
-      - name: Apply Live Griot and Handunia Wasa patch
+      - name: Diagnose Live Griot and Handunia Wasa patch
         shell: bash
         run: |
           set -euo pipefail
-          git apply --3way /tmp/live.patch
-          if git ls-files -u | grep -q .; then
-            echo "Live patch produced merge conflicts:"
-            git status --short
-            exit 1
-          fi
-          git add -A
-          git commit -m "feat(live): apply Live Griot IA and Handunia Wasa patch"
+          git apply --reject --whitespace=nowarn /tmp/live.patch || true
+          echo "===== LIVE REJECTS ====="
+          find . -name '*.rej' -type f -print | sort | while read f; do
+            echo "----- $f -----"
+            grep '^@@ ' "$f" || true
+          done
+          echo "===== END LIVE REJECTS ====="
+          exit 1
 
       - name: Apply immersive premium feed patch
         shell: bash
