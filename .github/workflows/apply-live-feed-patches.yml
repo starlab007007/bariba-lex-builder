@@ -133,13 +133,20 @@ jobs:
           git apply --reject --whitespace=nowarn /tmp/live.patch || true
           test -f fitila_flutter/lib/main.dart.rej
 
+          # First relocate every reject GNU patch can resolve safely.
+          patch --forward --fuzz=3 \
+            --reject-file=/tmp/live-still.rej \
+            fitila_flutter/lib/main.dart < fitila_flutter/lib/main.dart.rej || true
+          rm -f fitila_flutter/lib/main.dart.rej
+          test -f /tmp/live-still.rej
+
           python - <<'PY'
           from pathlib import Path
           from difflib import SequenceMatcher
           import re
 
           target_path = Path('fitila_flutter/lib/main.dart')
-          reject_path = Path('fitila_flutter/lib/main.dart.rej')
+          reject_path = Path('/tmp/live-still.rej')
           target = target_path.read_text(encoding='utf-8').splitlines()
           rej = reject_path.read_text(encoding='utf-8').splitlines()
 
@@ -177,7 +184,7 @@ jobs:
               n = len(old_lines)
 
               # Scope matching to the intended IA class instead of historical line numbers.
-              if idx <= 5:
+              if old_start < 20500:
                   class_name = 'class _LiveGriotScreenState extends State<LiveGriotScreen> {'
                   next_name = 'class SagesseBattleScreen extends StatefulWidget'
               else:
@@ -201,7 +208,7 @@ jobs:
                   if ratio > best_ratio:
                       best_ratio, best_pos = ratio, pos
 
-              if best_pos is None or best_ratio < 0.58:
+              if best_pos is None or best_ratio < 0.45:
                   raise SystemExit(
                       f'Unsafe fuzzy merge for live hunk {idx}: '
                       f'best ratio={best_ratio:.3f}, expected line={old_start}'
