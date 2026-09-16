@@ -20674,7 +20674,7 @@ class _EchoSonScreenState extends State<EchoSonScreen> {
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: _presets.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
                       itemBuilder: (context, index) {
                         final p = _presets[index];
                         final selected = index == _presetIndex;
@@ -21380,7 +21380,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                           hintText: 'Écrire un message…',
                           hintStyle: const TextStyle(color: Colors.white38),
                           filled: true,
-                          fillColor: Colors.white.withOpacity(.08),
+                          fillColor: Colors.white.withValues(alpha: .08),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         ),
@@ -21630,7 +21630,7 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(.18),
+                                  color: Colors.white.withValues(alpha: .18),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(_elapsed(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
@@ -21926,7 +21926,7 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
                         const SizedBox(height: 10),
                         if (_products.isNotEmpty)
                           DropdownButtonFormField<Map<String, dynamic>?>(
-                            value: _selectedProduct,
+                            initialValue: _selectedProduct,
                             isExpanded: true,
                             decoration: const InputDecoration(border: OutlineInputBorder()),
                             items: [
@@ -22020,7 +22020,7 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
                                       gradient: LinearGradient(
                                         begin: Alignment.topCenter,
                                         end: Alignment.bottomCenter,
-                                        colors: [Colors.transparent, template.colorA.withOpacity(.92)],
+                                        colors: [Colors.transparent, template.colorA.withValues(alpha: .92)],
                                       ),
                                     ),
                                     child: Column(
@@ -22392,7 +22392,7 @@ return;
 setState(() => _publishingFragment = true);
 final content = _aiAssisted
 ? '🌌 Fragment généré par Fitila IA pour Handunia Wasa\n\n$text\n\n'
-    '(Texte réellement généré par l'IA Fitila à partir d'un thème bariba — vision exploratoire 10-15 ans, pas un monde vivant fonctionnel aujourd'hui.)'
+    "(Texte réellement généré par l'IA Fitila à partir d'un thème bariba — vision exploratoire 10-15 ans, pas un monde vivant fonctionnel aujourd'hui.)"
 : '🌌 Fragment imaginé pour Handunia Wasa\n\n$text\n\n'
     '(Contribution communautaire à une vision exploratoire 10-15 ans — pas un contenu généré par une IA.)';
 try {
@@ -22449,7 +22449,7 @@ if (mounted) setState(() => _publishingFragment = false);
                     height: ring,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFF8FE3CF).withOpacity(.28), width: 1),
+                      border: Border.all(color: const Color(0xFF8FE3CF).withValues(alpha: .28), width: 1),
                     ),
                   ),
                 const Icon(Icons.auto_awesome_rounded, color: Color(0xFF8FE3CF), size: 40),
