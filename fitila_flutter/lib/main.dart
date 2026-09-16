@@ -19240,7 +19240,7 @@ class _EchoSonScreenState extends State<EchoSonScreen> {
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: _presets.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 8),
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
                       itemBuilder: (context, index) {
                         final p = _presets[index];
                         final selected = index == _presetIndex;
@@ -19772,7 +19772,7 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: .18),
+                                  color: Colors.white.withOpacity(.18),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(_elapsed(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
@@ -20068,7 +20068,7 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
                         const SizedBox(height: 10),
                         if (_products.isNotEmpty)
                           DropdownButtonFormField<Map<String, dynamic>?>(
-                            initialValue: _selectedProduct,
+                            value: _selectedProduct,
                             isExpanded: true,
                             decoration: const InputDecoration(border: OutlineInputBorder()),
                             items: [
@@ -20162,7 +20162,7 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
                                       gradient: LinearGradient(
                                         begin: Alignment.topCenter,
                                         end: Alignment.bottomCenter,
-                                        colors: [Colors.transparent, template.colorA.withValues(alpha: .92)],
+                                        colors: [Colors.transparent, template.colorA.withOpacity(.92)],
                                       ),
                                     ),
                                     child: Column(
@@ -20515,7 +20515,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                     height: ring,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFF8FE3CF).withValues(alpha: .28), width: 1),
+                      border: Border.all(color: const Color(0xFF8FE3CF).withOpacity(.28), width: 1),
                     ),
                   ),
                 const Icon(Icons.auto_awesome_rounded, color: Color(0xFF8FE3CF), size: 40),
