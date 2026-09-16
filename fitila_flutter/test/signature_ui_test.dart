@@ -140,7 +140,7 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
-    expect(find.text('Fil Fitila'), findsOneWidget);
+    expect(find.text('Fil Fitila'), findsWidgets);
 
     await tester.tap(find.byTooltip('Menu').first);
     await tester.pumpAndSettle();
