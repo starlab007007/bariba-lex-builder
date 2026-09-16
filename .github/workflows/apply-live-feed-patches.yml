@@ -126,18 +126,31 @@ jobs:
             echo "Updated creation IA revision is already fully represented."
           fi
 
-      - name: Diagnose Live Griot and Handunia Wasa patch
+      - name: Apply Live Griot and Handunia Wasa patch
         shell: bash
         run: |
           set -euo pipefail
           git apply --reject --whitespace=nowarn /tmp/live.patch || true
-          echo "===== LIVE REJECTS ====="
-          find . -name '*.rej' -type f -print | sort | while read f; do
-            echo "----- $f -----"
-            grep '^@@ ' "$f" || true
-          done
-          echo "===== END LIVE REJECTS ====="
-          exit 1
+
+          # On the updated IA base, only main.dart contains contextual rejects.
+          rejects="$(find fitila_flutter -name '*.rej' -type f -print)"
+          test "$rejects" = "fitila_flutter/lib/main.dart.rej"
+          test "$(grep -c '^@@ ' fitila_flutter/lib/main.dart.rej)" -eq 10
+
+          # GNU patch can relocate these hunks inside the same two IA classes.
+          patch --dry-run --forward --fuzz=3 fitila_flutter/lib/main.dart < fitila_flutter/lib/main.dart.rej
+          patch --forward --fuzz=3 fitila_flutter/lib/main.dart < fitila_flutter/lib/main.dart.rej
+          rm -f fitila_flutter/lib/main.dart.rej
+
+          # Assert core Live/Handunia symbols introduced by the patch.
+          grep -q 'class _LiveGriotScreenState' fitila_flutter/lib/main.dart
+          grep -q 'class _HanduniaWasaScreenState' fitila_flutter/lib/main.dart
+          grep -q 'flutter_webrtc' fitila_flutter/pubspec.yaml
+          test -f fitila_flutter/lib/core/fitila_live.dart
+          test -f supabase/migrations/20260916090000_live_griot_ia_streaming.sql
+
+          git add -A
+          git commit -m "feat(live): merge Live Griot IA and Handunia Wasa"
 
       - name: Apply immersive premium feed patch
         shell: bash
