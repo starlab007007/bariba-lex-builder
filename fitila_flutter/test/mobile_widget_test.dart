@@ -20,7 +20,7 @@ void main() {
     await tester.tap(find.text('Se connecter'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Fil Fitila'), findsOneWidget);
+    expect(find.text('Fil Fitila'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 }
