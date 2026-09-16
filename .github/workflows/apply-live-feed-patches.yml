@@ -131,130 +131,538 @@ jobs:
         run: |
           set -euo pipefail
           git apply --reject --whitespace=nowarn /tmp/live.patch || true
-          test -f fitila_flutter/lib/main.dart.rej
 
-          # First relocate every reject GNU patch can resolve safely.
-          patch --forward --fuzz=3 \
-            --reject-file=/tmp/live-still.rej \
-            fitila_flutter/lib/main.dart < fitila_flutter/lib/main.dart.rej || true
-          rm -f fitila_flutter/lib/main.dart.rej
-          test -f /tmp/live-still.rej
-
-          echo "===== HANDUNIA AFTER SAFE LIVE PATCH ====="
+          # The supplied live patch was authored on an intermediate local state
+          # that is not included in the three supplied patches (audio capsule +
+          # community Handunia fragment editor). Rebuild the two affected IA
+          # classes deterministically from the Creation IA patch baseline, then
+          # add only the Live patch's intended functional changes.
           python - <<'PY'
           from pathlib import Path
-          s = Path('fitila_flutter/lib/main.dart').read_text(encoding='utf-8')
-          a = s.index('class _HanduniaWasaScreenState')
-          b = s.index('class _CreationIaTile', a)
-          print(s[a:b])
-          PY
-          echo "===== END HANDUNIA AFTER SAFE LIVE PATCH ====="
-          exit 1
-
-          python - <<'PY'
-          from pathlib import Path
-          from difflib import SequenceMatcher
           import re
 
-          target_path = Path('fitila_flutter/lib/main.dart')
-          reject_path = Path('/tmp/live-still.rej')
-          target = target_path.read_text(encoding='utf-8').splitlines()
-          rej = reject_path.read_text(encoding='utf-8').splitlines()
+          main_path = Path('fitila_flutter/lib/main.dart')
+          main = main_path.read_text(encoding='utf-8')
+          creation_patch = Path('/tmp/creation.patch').read_text(encoding='utf-8')
 
-          hunks = []
-          i = 0
-          while i < len(rej):
-              if not rej[i].startswith('@@ '):
-                  i += 1
-                  continue
-              m = re.match(r'@@ -(\d+),(\d+) \+(\d+),(\d+) @@', rej[i])
-              if not m:
-                  raise SystemExit(f'Cannot parse reject hunk header: {rej[i]}')
-              old_start, old_count, new_start, new_count = map(int, m.groups())
-              i += 1
-              old_lines, new_lines = [], []
-              while i < len(rej) and not rej[i].startswith('@@ '):
-                  line = rej[i]
-                  if line.startswith(' '):
-                      old_lines.append(line[1:])
-                      new_lines.append(line[1:])
-                  elif line.startswith('-'):
-                      old_lines.append(line[1:])
-                  elif line.startswith('+'):
-                      new_lines.append(line[1:])
-                  elif line.startswith('\\'):
-                      pass
-                  i += 1
-              hunks.append((old_start, old_lines, new_lines))
+          # Extract the full IA block added by the creation patch.
+          mdiff = re.search(
+              r'diff --git a/fitila_flutter/lib/main\.dart b/fitila_flutter/lib/main\.dart\n(.*?)(?=\ndiff --git |\Z)',
+              creation_patch,
+              re.S,
+          )
+          if not mdiff:
+              raise SystemExit('Creation IA main.dart diff not found')
+          h = re.search(
+              r'@@ -18914,3 \+19018,1635 @@ const _fitilaTemplates = \[\n(.*)',
+              mdiff.group(1),
+              re.S,
+          )
+          if not h:
+              raise SystemExit('Creation IA block hunk not found')
 
-          def norm(line):
-              return ' '.join(line.strip().split())
+          old_count = new_count = 0
+          added = []
+          for line in h.group(1).splitlines():
+              if line.startswith('@@ '):
+                  break
+              if line.startswith(' '):
+                  old_count += 1
+                  new_count += 1
+              elif line.startswith('-'):
+                  old_count += 1
+              elif line.startswith('+'):
+                  new_count += 1
+                  added.append(line[1:])
+              elif line.startswith('\\'):
+                  pass
+              if old_count >= 3 and new_count >= 1635:
+                  break
+          ia = '\n'.join(added) + '\n'
 
-          cumulative = 0
-          for idx, (old_start, old_lines, new_lines) in enumerate(hunks, 1):
-              n = len(old_lines)
+          def between(text, start_marker, end_marker):
+              a = text.index(start_marker)
+              b = text.index(end_marker, a)
+              return text[a:b]
 
-              # Scope matching to the intended IA class instead of historical line numbers.
-              if old_start < 20500:
-                  class_name = 'class _LiveGriotScreenState extends State<LiveGriotScreen> {'
-                  next_name = 'class SagesseBattleScreen extends StatefulWidget'
-              else:
-                  class_name = 'class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {'
-                  next_name = 'class _CreationIaTile extends StatelessWidget'
+          # ---------- Live Griot: base from Creation IA ----------
+          live = between(
+              ia,
+              'class _LiveGriotScreenState extends State<LiveGriotScreen> {',
+              '// ─────────────────────────────────────────────────────────────────\n// 3. Sagesse Battle',
+          )
 
-              class_start = next((j for j, line in enumerate(target) if class_name in line), None)
-              if class_start is None:
-                  raise SystemExit(f'Class scope not found for live hunk {idx}: {class_name}')
-              class_end = next((j for j in range(class_start + 1, len(target)) if next_name in target[j]), len(target))
+          live = live.replace(
+              "  bool _scheduling = false;\n",
+              """  bool _scheduling = false;
+  List<Map<String, dynamic>> _activeLives = const [];
+  bool _loadingLives = true;
+  bool _startingLive = false;
 
-              lo = class_start
-              hi = max(lo, class_end - n)
-              old_norm = [norm(x) for x in old_lines]
+  @override
+  void initState() {
+    super.initState();
+    _loadActiveLives();
+  }
+""",
+              1,
+          )
 
-              best_ratio = -1.0
-              best_pos = None
-              for pos in range(lo, hi + 1):
-                  cand = [norm(x) for x in target[pos:pos+n]]
-                  ratio = SequenceMatcher(None, old_norm, cand, autojunk=False).ratio()
-                  if ratio > best_ratio:
-                      best_ratio, best_pos = ratio, pos
+          start_now = live.index('  void _startNow() {')
+          schedule = live.index('  Future<void> _scheduleAnnouncement() async {', start_now)
+          live_methods = """  Future<void> _loadActiveLives() async {
+    setState(() => _loadingLives = true);
+    try {
+      final lives = await FitilaBackend.fetchActiveLiveSessions();
+      if (!mounted) return;
+      setState(() {
+        _activeLives = lives;
+        _loadingLives = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingLives = false);
+    }
+  }
 
-              if best_pos is None or best_ratio < 0.45:
-                  raise SystemExit(
-                      f'Unsafe fuzzy merge for live hunk {idx}: '
-                      f'best ratio={best_ratio:.3f}, expected line={old_start}'
-                  )
+  Future<void> _startLiveNow() async {
+    final title = _title.text.trim();
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Donnez un titre à votre direct avant de démarrer.')),
+      );
+      return;
+    }
+    setState(() => _startingLive = true);
+    try {
+      final live = await FitilaBackend.createLiveSession(
+        title: title,
+        description: _description.text.trim().isEmpty ? null : _description.text.trim(),
+        language: _language,
+      );
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => LiveRoomScreen(
+            liveId: live['id'].toString(),
+            title: title,
+            role: FitilaLiveRole.host,
+          ),
+        ),
+      );
+      if (mounted) _loadActiveLives();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Impossible de démarrer le direct : ${error.toString().replaceFirst("Bad state: ", "")}',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _startingLive = false);
+    }
+  }
 
-              print(
-                  f'Live hunk {idx}/{len(hunks)}: ratio={best_ratio:.3f}, '
-                  f'line={best_pos+1}, old={len(old_lines)}, new={len(new_lines)}'
-              )
-              target[best_pos:best_pos+n] = new_lines
-              cumulative += len(new_lines) - n
+  void _joinLive(Map<String, dynamic> live) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LiveRoomScreen(
+          liveId: live['id'].toString(),
+          title: live['title']?.toString() ?? 'Live Griot IA',
+          role: FitilaLiveRole.viewer,
+        ),
+      ),
+    ).then((_) {
+      if (mounted) _loadActiveLives();
+    });
+  }
 
-          merged = '\n'.join(target) + '\n'
-          target_path.write_text(merged, encoding='utf-8')
-          reject_path.unlink()
+"""
+          live = live[:start_now] + live_methods + live[schedule:]
 
-          required = [
-              '_loadActiveLives',
-              '_startLiveNow',
-              '_joinLive',
-              '_generateFragment',
-              'FitilaLiveRole.host',
-              'FitilaLiveRole.viewer',
-          ]
-          for symbol in required:
-              if symbol not in merged:
-                  raise SystemExit(f'Missing merged live symbol: {symbol}')
+          live = live.replace(
+              "La diffusion en direct n'est pas encore active dans Fitila. Vous pouvez préparer la configuration et prévenir votre communauté par une annonce.",
+              "La diffusion en direct multi-spectateurs fonctionne réellement (connexion audio directe entre appareils). Elle est dimensionnée pour un public restreint (une dizaine d'auditeurs) et peut échouer sur certains réseaux très restrictifs faute de serveur relais dédié.",
+              1,
+          )
+
+          active_block = """          Row(
+            children: [
+              const Expanded(
+                child: Text('Lives en cours', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+              ),
+              IconButton(
+                onPressed: _loadingLives ? null : _loadActiveLives,
+                icon: const Icon(Icons.refresh_rounded),
+                tooltip: 'Actualiser',
+              ),
+            ],
+          ),
+          if (_loadingLives)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_activeLives.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'Aucun direct en cours pour le moment.',
+                style: TextStyle(color: _fitilaMuted, fontSize: 12.5),
+              ),
+            )
+          else
+            for (final live in _activeLives)
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _fitilaCard,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: _fitilaBorder),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            live['title']?.toString() ?? 'Live Griot IA',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                          ),
+                          Text(
+                            "${live['host_display_name'] ?? 'Griot Fitila'} • ${live['viewer_count'] ?? 0} auditeur(s)",
+                            style: TextStyle(fontSize: 11.5, color: _fitilaMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    FilledButton(
+                      onPressed: () => _joinLive(live),
+                      child: const Text('Rejoindre'),
+                    ),
+                  ],
+                ),
+              ),
+          const SizedBox(height: 16),
+"""
+          needle = "          const SizedBox(height: 16),\n          Card(\n"
+          if needle not in live:
+              raise SystemExit('Live card insertion point not found')
+          live = live.replace(needle, "          const SizedBox(height: 16),\n" + active_block + "          Card(\n", 1)
+
+          config_line = "                  const Text('Configuration du direct', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),\n"
+          if config_line not in live:
+              raise SystemExit('Live configuration title not found')
+          live = live.replace(
+              config_line,
+              config_line
+              + "                  const SizedBox(height: 2),\n"
+              + "                  Text(\n"
+              + "                    'Utilisée pour démarrer un direct maintenant, ou pour programmer une simple annonce.',\n"
+              + "                    style: TextStyle(fontSize: 11, color: _fitilaMuted),\n"
+              + "                  ),\n",
+              1,
+          )
+
+          old_buttons = """          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _startNow,
+                  icon: const Icon(Icons.podcasts_rounded),
+                  label: const Text('Démarrer maintenant'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _scheduling ? null : _scheduleAnnouncement,
+                  icon: _scheduling
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.campaign_rounded),
+                  label: const Text('Programmer une annonce'),
+                ),
+              ),
+            ],
+          ),
+"""
+          new_buttons = """          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _startingLive ? null : _startLiveNow,
+                  icon: _startingLive
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.podcasts_rounded),
+                  label: const Text('Démarrer le direct'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _scheduling ? null : _scheduleAnnouncement,
+                  icon: _scheduling
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.campaign_rounded),
+                  label: const Text('Programmer une annonce'),
+                ),
+              ),
+            ],
+          ),
+"""
+          if old_buttons not in live:
+              raise SystemExit('Live action buttons baseline not found')
+          live = live.replace(old_buttons, new_buttons, 1)
+
+          # Replace current LiveGriot state but keep LiveRoomScreen inserted by live.patch.
+          cur_live_a = main.index('class _LiveGriotScreenState extends State<LiveGriotScreen> {')
+          room_marker = '/// Salle de direct réelle'
+          if room_marker in main[cur_live_a:]:
+              cur_live_b = main.index(room_marker, cur_live_a)
+          else:
+              cur_live_b = main.index('// ─────────────────────────────────────────────────────────────────\n// 3. Sagesse Battle', cur_live_a)
+          main = main[:cur_live_a] + live.rstrip() + '\n\n' + main[cur_live_b:]
+
+          # ---------- Handunia: coherent target from Creation IA baseline ----------
+          hand = between(
+              ia,
+              'class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {',
+              '// ─────────────────────────────────────────────────────────────────\n// Tuile de sélection',
+          )
+
+          hand = hand.replace(
+              "  bool _saving = false;\n",
+              """  bool _saving = false;
+  final _fragmentController = TextEditingController();
+  bool _publishingFragment = false;
+  bool _generating = false;
+  bool _aiAssisted = false;
+
+  @override
+  void dispose() {
+    _fragmentController.dispose();
+    super.dispose();
+  }
+
+""",
+              1,
+          )
+
+          generate = """  Future<void> _generateFragment() async {
+    setState(() => _generating = true);
+    try {
+      const prompt =
+          'Imagine en 3 à 4 phrases un fragment du monde Handunia Wasa : un lieu, '
+          'un personnage ou un petit récit inspiré de la culture et de la langue bariba, '
+          "comme s'il faisait partie d'un monde vivant et persistant. "
+          'Réponds uniquement par le fragment, sans introduction ni explication.';
+      final result = await FitilaBackend.askFitilaIa(prompt);
+      if (!mounted) return;
+      setState(() {
+        _fragmentController.text = result;
+        _aiAssisted = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Génération IA indisponible pour le moment.')),
+      );
+    } finally {
+      if (mounted) setState(() => _generating = false);
+    }
+  }
+
+"""
+          toggle_pos = hand.index('  Future<void> _toggleInterest(bool value) async {')
+          hand = hand[:toggle_pos] + generate + hand[toggle_pos:]
+
+          build_pos = hand.index('  @override\n  Widget build(BuildContext context)')
+          publish = """  Future<void> _publishFragment() async {
+    final text = _fragmentController.text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Écrivez ou générez un fragment avant de publier.')),
+      );
+      return;
+    }
+    setState(() => _publishingFragment = true);
+    final content = _aiAssisted
+        ? '🌌 Fragment généré par Fitila IA pour Handunia Wasa\\n\\n$text\\n\\n'
+              '(Texte réellement généré par l\'IA Fitila à partir d\'un thème bariba — vision exploratoire 10-15 ans, pas un monde vivant fonctionnel aujourd\'hui.)'
+        : '🌌 Fragment imaginé pour Handunia Wasa\\n\\n$text\\n\\n'
+              '(Contribution communautaire à une vision exploratoire 10-15 ans — pas un contenu généré par une IA.)';
+    try {
+      await FitilaBackend.createTextPost(
+        text: content,
+        hashtags: [
+          'handunia-wasa',
+          if (_aiAssisted) 'ia-generatif' else 'vision-communautaire',
+        ],
+        templateId: 'handunia-wasa',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Fragment publié dans le fil.')),
+      );
+      setState(() {
+        _fragmentController.clear();
+        _aiAssisted = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Publication impossible. Réessayez.')),
+      );
+    } finally {
+      if (mounted) setState(() => _publishingFragment = false);
+    }
+  }
+
+"""
+          hand = hand[:build_pos] + publish + hand[build_pos:]
+
+          hand = hand.replace(
+              "Vision exploratoire, non disponible aujourd'hui : aucune capacité de génération de monde vivant n'existe encore dans l'IA actuelle. Cet écran présente l'ambition à 10-15 ans, pas une fonctionnalité active.",
+              "Vision exploratoire 10-15 ans : aucun monde vivant persistant n'existe aujourd'hui. Ce qui est réel dès maintenant : la génération de fragments texte par l'IA Fitila et leur publication dans le fil, ci-dessous.",
+              1,
+          )
+
+          fragment_card = """          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Imaginer un fragment',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Décrivez-le vous-même, ou laissez Fitila IA en générer un vraiment — relisez et modifiez avant de publier. Le fil indique toujours l'origine réelle : IA ou communauté.",
+                    style: TextStyle(fontSize: 11.5, color: _fitilaMuted),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _fragmentController,
+                    maxLines: 3,
+                    onChanged: (value) {
+                      if (value.trim().isEmpty && _aiAssisted) {
+                        setState(() => _aiAssisted = false);
+                      }
+                    },
+                    decoration: const InputDecoration(
+                      hintText: 'Ex : Un marché nocturne où les proverbes prennent vie…',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (_aiAssisted) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.auto_awesome_rounded, size: 14, color: _fitilaGoldDeep),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Généré par Fitila IA — modifiable avant publication',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: _fitilaGoldDeep,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _generating ? null : _generateFragment,
+                          icon: _generating
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.auto_awesome_rounded, size: 16),
+                          label: const Text('Générer avec Fitila IA'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: _publishingFragment ? null : _publishFragment,
+                          icon: _publishingFragment
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : const Icon(Icons.auto_stories_rounded),
+                          label: const Text('Publier'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+"""
+          tail = "          const SizedBox(height: 24),\n"
+          if tail not in hand:
+              raise SystemExit('Handunia UI insertion point not found')
+          hand = hand.replace(tail, fragment_card + tail, 1)
+
+          cur_hand_a = main.index('class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {')
+          cur_hand_b = main.index('// ─────────────────────────────────────────────────────────────────\n// Tuile de sélection', cur_hand_a)
+          main = main[:cur_hand_a] + hand.rstrip() + '\n\n' + main[cur_hand_b:]
+
+          main_path.write_text(main, encoding='utf-8')
           PY
 
+          rm -f fitila_flutter/lib/main.dart.rej
+
+          grep -q "import 'core/fitila_live.dart';" fitila_flutter/lib/main.dart
+          grep -q '_loadActiveLives' fitila_flutter/lib/main.dart
+          grep -q '_startLiveNow' fitila_flutter/lib/main.dart
+          grep -q 'class LiveRoomScreen' fitila_flutter/lib/main.dart
+          grep -q '_generateFragment' fitila_flutter/lib/main.dart
+          grep -q '_publishFragment' fitila_flutter/lib/main.dart
           grep -q 'flutter_webrtc' fitila_flutter/pubspec.yaml
           test -f fitila_flutter/lib/core/fitila_live.dart
           test -f supabase/migrations/20260916090000_live_griot_ia_streaming.sql
 
           git add -A
-          git commit -m "feat(live): merge Live Griot IA and Handunia Wasa"
+          git commit -m "feat(live): integrate Live Griot and Handunia on supplied IA baseline"
 
       - name: Apply immersive premium feed patch
         shell: bash
