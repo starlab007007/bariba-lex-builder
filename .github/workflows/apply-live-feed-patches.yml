@@ -783,7 +783,12 @@ jobs:
         run: cd fitila_flutter && flutter pub get
 
       - name: Static analysis
-        run: cd fitila_flutter && flutter analyze
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd fitila_flutter
+          nl -ba lib/main.dart | sed -n '22386,22405p'
+          flutter analyze
 
       - name: Full Flutter tests
         run: cd fitila_flutter && flutter test --dart-define-from-file=.ci-dart-defines.json --reporter compact
