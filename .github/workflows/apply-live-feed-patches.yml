@@ -175,9 +175,22 @@ jobs:
           cumulative = 0
           for idx, (old_start, old_lines, new_lines) in enumerate(hunks, 1):
               n = len(old_lines)
-              expected = max(0, old_start - 1 + cumulative)
-              lo = max(0, expected - 1200)
-              hi = min(len(target) - n, expected + 1200)
+
+              # Scope matching to the intended IA class instead of historical line numbers.
+              if idx <= 5:
+                  class_name = 'class _LiveGriotScreenState extends State<LiveGriotScreen> {'
+                  next_name = 'class SagesseBattleScreen extends StatefulWidget'
+              else:
+                  class_name = 'class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {'
+                  next_name = 'class _CreationIaTile extends StatelessWidget'
+
+              class_start = next((j for j, line in enumerate(target) if class_name in line), None)
+              if class_start is None:
+                  raise SystemExit(f'Class scope not found for live hunk {idx}: {class_name}')
+              class_end = next((j for j in range(class_start + 1, len(target)) if next_name in target[j]), len(target))
+
+              lo = class_start
+              hi = max(lo, class_end - n)
               old_norm = [norm(x) for x in old_lines]
 
               best_ratio = -1.0
