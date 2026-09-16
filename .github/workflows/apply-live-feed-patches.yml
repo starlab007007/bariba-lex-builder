@@ -1,0 +1,154 @@
+name: Apply FITILA Live and Immersive Feed Patches
+
+on:
+  push:
+    branches:
+      - release/fitila-flutter-android-v1.8.1-build12-web-parity
+    paths:
+      - .github/workflows/apply-live-feed-patches.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-validate-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct and verify patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .patches/live_*.b64 | tr -d '\n\r' | base64 -d | gunzip > /tmp/live.patch
+          cat .patches/feed_*.b64 | tr -d '\n\r' | base64 -d | gunzip > /tmp/feed.patch
+          echo "1e541d8d95ed3fa34a1297102878e6ccb1be08e791b88fd9b9d4130e6fc7f70d  /tmp/live.patch" | sha256sum -c -
+          echo "a13fe3c16e2ac046a60f683277e0d8bdf6b993250e2735e5bbbcecd5e65f66fa  /tmp/feed.patch" | sha256sum -c -
+          git status --short
+
+      - name: Apply Live Griot and Handunia Wasa patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "OpenAI"
+          git config user.email "noreply@openai.com"
+          git apply --3way /tmp/live.patch
+          if git ls-files -u | grep -q .; then
+            echo "Live patch produced merge conflicts:"
+            git status --short
+            exit 1
+          fi
+          git add -A
+          git commit -m "feat(live): apply Live Griot IA and Handunia Wasa patch"
+
+      - name: Apply immersive premium feed patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git apply --3way /tmp/feed.patch
+          if git ls-files -u | grep -q .; then
+            echo "Immersive feed patch produced merge conflicts:"
+            git status --short
+            exit 1
+          fi
+          git add -A
+          git commit -m "feat(fil): apply immersive premium feed patch"
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          channel: stable
+          cache: true
+
+      - name: Verify metadata and prepare server configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd fitila_flutter
+          flutter --version
+          grep -q '^version: 1.8.1+12$' pubspec.yaml
+          grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          env_path = Path('../.env')
+          if not env_path.exists():
+              raise SystemExit('FITILA server configuration file ../.env is missing')
+          env = {}
+          for raw in env_path.read_text(encoding='utf-8').splitlines():
+              line = raw.strip()
+              if not line or line.startswith('#') or '=' not in line:
+                  continue
+              key, value = line.split('=', 1)
+              env[key.strip()] = value.strip().strip('"').strip("'")
+          url = env.get('SUPABASE_URL') or env.get('VITE_SUPABASE_URL') or ''
+          key = env.get('SUPABASE_ANON_KEY') or env.get('SUPABASE_PUBLISHABLE_KEY') or env.get('VITE_SUPABASE_PUBLISHABLE_KEY') or ''
+          if not url or not key:
+              raise SystemExit('FITILA server URL or publishable key is missing')
+          Path('.ci-dart-defines.json').write_text(
+              json.dumps({'SUPABASE_URL': url, 'SUPABASE_ANON_KEY': key}),
+              encoding='utf-8',
+          )
+          PY
+
+      - name: Resolve dependencies
+        run: cd fitila_flutter && flutter pub get
+
+      - name: Static analysis
+        run: cd fitila_flutter && flutter analyze
+
+      - name: Full Flutter tests
+        run: cd fitila_flutter && flutter test --dart-define-from-file=.ci-dart-defines.json --reporter compact
+
+      - name: Build optimized release APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd fitila_flutter
+          flutter build apk --release \
+            --dart-define-from-file=.ci-dart-defines.json \
+            --obfuscate \
+            --split-debug-info=build/symbols
+          test -s build/app/outputs/flutter-apk/app-release.apk
+          unzip -t build/app/outputs/flutter-apk/app-release.apk
+          mkdir -p build/release-output
+          cp build/app/outputs/flutter-apk/app-release.apk \
+            build/release-output/FITILA-Android-v1.8.1-build12-live-immersive-release.apk
+          cp -R build/symbols build/release-output/symbols
+          cd build/release-output
+          sha256sum FITILA-Android-v1.8.1-build12-live-immersive-release.apk | tee SHA256SUMS.txt
+          ls -lh FITILA-Android-v1.8.1-build12-live-immersive-release.apk
+
+      - name: Remove temporary patch staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .patches
+          rm -f .github/workflows/apply-live-feed-patches.yml
+          git add -A
+          git commit -m "chore(ci): remove temporary live/feed patch staging"
+
+      - name: Push validated patch commits
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin HEAD:${GITHUB_REF_NAME}
+
+      - name: Upload validated APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FITILA-Android-v1.8.1-build12-live-immersive-release
+          path: fitila_flutter/build/release-output/
+          if-no-files-found: error
+          retention-days: 14
