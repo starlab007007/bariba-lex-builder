@@ -1,4 +1,4 @@
-name: Apply FITILA Live and Immersive Feed Patches
+name: Apply FITILA Creation Live and Immersive Feed Patches
 
 on:
   push:
@@ -24,18 +24,36 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          cat .patches/creation_*.b64 | tr -d '\n\r' | base64 -d | gunzip > /tmp/creation.patch
           cat .patches/live_*.b64 | tr -d '\n\r' | base64 -d | gunzip > /tmp/live.patch
           cat .patches/feed_*.b64 | tr -d '\n\r' | base64 -d | gunzip > /tmp/feed.patch
+          echo "41d9e706b6cce4b6f720841b786e7c8684bb6bc3bc1a9adc601395515cf5f2bc  /tmp/creation.patch" | sha256sum -c -
           echo "1e541d8d95ed3fa34a1297102878e6ccb1be08e791b88fd9b9d4130e6fc7f70d  /tmp/live.patch" | sha256sum -c -
           echo "a13fe3c16e2ac046a60f683277e0d8bdf6b993250e2735e5bbbcecd5e65f66fa  /tmp/feed.patch" | sha256sum -c -
           git status --short
+
+      - name: Configure Git
+        run: |
+          git config user.name "OpenAI"
+          git config user.email "noreply@openai.com"
+
+      - name: Apply updated six creation IA features patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git apply --3way /tmp/creation.patch
+          if git ls-files -u | grep -q .; then
+            echo "Creation IA patch produced merge conflicts:"
+            git status --short
+            exit 1
+          fi
+          git add -A
+          git commit -m "feat(creation-ia): apply updated six creation IA features"
 
       - name: Apply Live Griot and Handunia Wasa patch
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name "OpenAI"
-          git config user.email "noreply@openai.com"
           git apply --3way /tmp/live.patch
           if git ls-files -u | grep -q .; then
             echo "Live patch produced merge conflicts:"
@@ -124,11 +142,11 @@ jobs:
           unzip -t build/app/outputs/flutter-apk/app-release.apk
           mkdir -p build/release-output
           cp build/app/outputs/flutter-apk/app-release.apk \
-            build/release-output/FITILA-Android-v1.8.1-build12-live-immersive-release.apk
+            build/release-output/FITILA-Android-v1.8.1-build12-creation-live-immersive-release.apk
           cp -R build/symbols build/release-output/symbols
           cd build/release-output
-          sha256sum FITILA-Android-v1.8.1-build12-live-immersive-release.apk | tee SHA256SUMS.txt
-          ls -lh FITILA-Android-v1.8.1-build12-live-immersive-release.apk
+          sha256sum FITILA-Android-v1.8.1-build12-creation-live-immersive-release.apk | tee SHA256SUMS.txt
+          ls -lh FITILA-Android-v1.8.1-build12-creation-live-immersive-release.apk
 
       - name: Remove temporary patch staging
         shell: bash
@@ -137,7 +155,7 @@ jobs:
           rm -rf .patches
           rm -f .github/workflows/apply-live-feed-patches.yml
           git add -A
-          git commit -m "chore(ci): remove temporary live/feed patch staging"
+          git commit -m "chore(ci): remove temporary patch staging"
 
       - name: Push validated patch commits
         shell: bash
@@ -148,7 +166,7 @@ jobs:
       - name: Upload validated APK
         uses: actions/upload-artifact@v4
         with:
-          name: FITILA-Android-v1.8.1-build12-live-immersive-release
+          name: FITILA-Android-v1.8.1-build12-creation-live-immersive-release
           path: fitila_flutter/build/release-output/
           if-no-files-found: error
           retention-days: 14
