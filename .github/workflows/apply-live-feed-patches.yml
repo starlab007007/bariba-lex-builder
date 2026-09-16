@@ -720,9 +720,16 @@ jobs:
               s,
           )
 
+          # Fix the reconstructed Handunia explanatory string: use double quotes
+          # because the French text legitimately contains several apostrophes.
+          s = s.replace(
+              "'(Texte réellement généré par l'IA Fitila à partir d'un thème bariba — vision exploratoire 10-15 ans, pas un monde vivant fonctionnel aujourd'hui.)'",
+              "\"(Texte réellement généré par l'IA Fitila à partir d'un thème bariba — vision exploratoire 10-15 ans, pas un monde vivant fonctionnel aujourd'hui.)\"",
+          )
+
           # Flutter 3.47: DropdownButtonFormField.value is deprecated in favor of initialValue.
           s = re.sub(
-              r'(DropdownButtonFormField<[^>]+>\(\n\s*)value:',
+              r'(DropdownButtonFormField<[^>]+>\([\s\S]{0,1200}?\n\s*)value:',
               r'\1initialValue:',
               s,
           )
