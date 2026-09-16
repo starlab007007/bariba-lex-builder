@@ -1878,4 +1878,207 @@ class FitilaBackend {
         .eq('live_id', liveId)
         .order('created_at');
   }
+
+  // ───────────────────────────────────────────────────────────────
+  // Interactions sociales du fil — suivre, republier, sauvegarder,
+  // commenter. Toutes réelles : elles réutilisent tamtam_follows,
+  // tamtam_shares, tamtam_bookmarks et tamtam_comments, déjà créées
+  // pour le web (et jusqu'ici inutilisées côté Flutter) plutôt que de
+  // dupliquer un nouveau schéma.
+  // ───────────────────────────────────────────────────────────────
+
+  static Future<Set<String>> fetchLikedPostIds() async {
+    final user = client.auth.currentUser;
+    if (user == null) return <String>{};
+    final rows = await client
+        .from('tamtam_reactions')
+        .select('post_id')
+        .eq('user_id', user.id)
+        .eq('reaction_type', 'like');
+    return List<Map<String, dynamic>>.from(
+      rows as List,
+    ).map((row) => row['post_id'].toString()).toSet();
+  }
+
+  static Future<void> toggleFollow({
+    required String authorId,
+    required bool follow,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    if (user.id == authorId) return;
+    if (follow) {
+      final existing = await client
+          .from('tamtam_follows')
+          .select('id')
+          .eq('follower_id', user.id)
+          .eq('following_id', authorId)
+          .maybeSingle();
+      if (existing == null) {
+        await client.from('tamtam_follows').insert({
+          'follower_id': user.id,
+          'following_id': authorId,
+        });
+      }
+    } else {
+      await client
+          .from('tamtam_follows')
+          .delete()
+          .eq('follower_id', user.id)
+          .eq('following_id', authorId);
+    }
+  }
+
+  static Future<Set<String>> fetchFollowingIds() async {
+    final user = client.auth.currentUser;
+    if (user == null) return <String>{};
+    final rows = await client
+        .from('tamtam_follows')
+        .select('following_id')
+        .eq('follower_id', user.id);
+    return List<Map<String, dynamic>>.from(
+      rows as List,
+    ).map((row) => row['following_id'].toString()).toSet();
+  }
+
+  static Future<void> toggleBookmark({
+    required String postId,
+    required bool saved,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    if (saved) {
+      final existing = await client
+          .from('tamtam_bookmarks')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('post_id', postId)
+          .maybeSingle();
+      if (existing == null) {
+        await client.from('tamtam_bookmarks').insert({
+          'user_id': user.id,
+          'post_id': postId,
+        });
+      }
+    } else {
+      await client
+          .from('tamtam_bookmarks')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('post_id', postId);
+    }
+  }
+
+  static Future<Set<String>> fetchBookmarkedPostIds() async {
+    final user = client.auth.currentUser;
+    if (user == null) return <String>{};
+    final rows = await client
+        .from('tamtam_bookmarks')
+        .select('post_id')
+        .eq('user_id', user.id);
+    return List<Map<String, dynamic>>.from(
+      rows as List,
+    ).map((row) => row['post_id'].toString()).toSet();
+  }
+
+  static Future<void> toggleRepost({
+    required String postId,
+    required bool reposted,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Connexion requise.');
+    if (reposted) {
+      final existing = await client
+          .from('tamtam_shares')
+          .select('id')
+          .eq('post_id', postId)
+          .eq('user_id', user.id)
+          .eq('shared_to', 'timeline')
+          .maybeSingle();
+      if (existing == null) {
+        await client.from('tamtam_shares').insert({
+          'post_id': postId,
+          'user_id': user.id,
+          'shared_to': 'timeline',
+        });
+      }
+    } else {
+      await client
+          .from('tamtam_shares')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', user.id)
+          .eq('shared_to', 'timeline');
+    }
+  }
+
+  static Future<Set<String>> fetchRepostedPostIds() async {
+    final user = client.auth.currentUser;
+    if (user == null) return <String>{};
+    final rows = await client
+        .from('tamtam_shares')
+        .select('post_id')
+        .eq('user_id', user.id)
+        .eq('shared_to', 'timeline');
+    return List<Map<String, dynamic>>.from(
+      rows as List,
+    ).map((row) => row['post_id'].toString()).toSet();
+  }
+
+  static Future<void> addTextComment({
+    required String postId,
+    required String text,
+  }) async {
+    final user = client.auth.currentUser;
+    final trimmed = text.trim();
+    if (user == null) throw const AuthException('Connexion requise.');
+    if (trimmed.isEmpty) return;
+    await client.from('tamtam_comments').insert({
+      'post_id': postId,
+      'user_id': user.id,
+      'text_content': trimmed,
+    });
+  }
+
+  /// Flux temps réel des commentaires texte d'un post, avec le profil
+  /// de l'auteur rattaché (tamtam_comments.user_id n'a pas de clé
+  /// étrangère PostgREST exploitable pour un embed direct : le profil
+  /// est donc rattaché manuellement à chaque émission, comme pour
+  /// fetchActiveLiveSessions).
+  static Stream<List<Map<String, dynamic>>> streamComments(String postId) {
+    return client
+        .from('tamtam_comments')
+        .stream(primaryKey: ['id'])
+        .eq('post_id', postId)
+        .order('created_at')
+        .asyncMap((rows) async {
+          final list = List<Map<String, dynamic>>.from(rows);
+          final ids = list
+              .map((row) => row['user_id']?.toString())
+              .whereType<String>()
+              .toSet()
+              .toList();
+          if (ids.isEmpty) return list;
+          final profiles = await client
+              .from('tamtam_profiles')
+              .select('user_id, username, display_name, avatar_url')
+              .filter('user_id', 'in', '(${ids.join(",")})');
+          final profileMap = <String, Map<String, dynamic>>{
+            for (final p in List<Map<String, dynamic>>.from(profiles as List))
+              p['user_id'] as String: p,
+          };
+          return list.map((row) {
+            final profile = profileMap[row['user_id']?.toString()];
+            return {
+              ...row,
+              'display_name':
+                  profile?['display_name']?.toString().trim().isNotEmpty ==
+                      true
+                  ? profile!['display_name']
+                  : (profile?['username'] ?? 'Voix Fitila'),
+              'avatar_url': profile?['avatar_url'],
+            };
+          }).toList(growable: false);
+        });
+  }
 }

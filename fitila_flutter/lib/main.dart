@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -224,6 +225,8 @@ class FeedPost {
     this.persisted = false,
     this.localMedia,
     this.backendSource = 'local',
+    this.authorId,
+    this.authorAvatarUrl,
   });
 
   final String? id;
@@ -247,6 +250,13 @@ class FeedPost {
   final bool persisted;
   final FitilaMediaAsset? localMedia;
   final String backendSource;
+  final String? authorId;
+  final String? authorAvatarUrl;
+
+  /// Fonctionnalité de création dont ce post est issu (déduite des
+  /// hashtags réels apposés à la publication), pour l'habillage visuel
+  /// du fil immersif — jamais stockée, toujours recalculée.
+  FitilaFeedCategory get category => _categoryFromTags(tags);
 
   factory FeedPost.fromBackend(Map<String, dynamic> row) {
     final profileValue = row['profile'];
@@ -292,8 +302,112 @@ class FeedPost {
       createdAt: DateTime.tryParse(row['created_at']?.toString() ?? ''),
       persisted: true,
       backendSource: row['_source']?.toString() ?? 'post',
+      authorId: row['user_id']?.toString(),
+      authorAvatarUrl: profile?['avatar_url']?.toString(),
     );
   }
+}
+
+/// Les six fonctionnalités de création IA, telles qu'exposées dans le
+/// fil (identité visuelle reprise à l'identique de la grille de
+/// création : mêmes émoji et dégradés que _CreationIaTile).
+enum FitilaFeedCategory {
+  echoSonn,
+  liveGriotIa,
+  sagesseBattle,
+  aburuFimIa,
+  sasaraIa,
+  handuniaWasa,
+  general,
+}
+
+class _FeedCategoryStyle {
+  const _FeedCategoryStyle({
+    required this.label,
+    required this.emoji,
+    required this.colorA,
+    required this.colorB,
+  });
+
+  final String label;
+  final String emoji;
+  final Color colorA;
+  final Color colorB;
+
+  Gradient get gradient => LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [colorA, colorB],
+  );
+}
+
+const Map<FitilaFeedCategory, _FeedCategoryStyle> _feedCategoryStyles = {
+  FitilaFeedCategory.echoSonn: _FeedCategoryStyle(
+    label: 'Echo Sɔ̃ɔ',
+    emoji: '📡',
+    colorA: Color(0xFFC99530),
+    colorB: Color(0xFF9C6B1D),
+  ),
+  FitilaFeedCategory.liveGriotIa: _FeedCategoryStyle(
+    label: 'Live Griot IA',
+    emoji: '🎙️',
+    colorA: Color(0xFF6758C9),
+    colorB: Color(0xFF4A3B96),
+  ),
+  FitilaFeedCategory.sagesseBattle: _FeedCategoryStyle(
+    label: 'Sagesse Battle',
+    emoji: '⚔️',
+    colorA: Color(0xFF9C6B1D),
+    colorB: Color(0xFFB54E33),
+  ),
+  FitilaFeedCategory.aburuFimIa: _FeedCategoryStyle(
+    label: 'Aburu Fim IA',
+    emoji: '🛍️',
+    colorA: Color(0xFF3F6E52),
+    colorB: Color(0xFF2C4E3A),
+  ),
+  FitilaFeedCategory.sasaraIa: _FeedCategoryStyle(
+    label: 'Sasara IA',
+    emoji: '🌉',
+    colorA: Color(0xFF241F2E),
+    colorB: Color(0xFF3A3448),
+  ),
+  FitilaFeedCategory.handuniaWasa: _FeedCategoryStyle(
+    label: 'Handunia Wasa',
+    emoji: '🌌',
+    colorA: Color(0xFF4A3B78),
+    colorB: Color(0xFF14111C),
+  ),
+  FitilaFeedCategory.general: _FeedCategoryStyle(
+    label: 'Fil Fitila',
+    emoji: '✨',
+    colorA: Color(0xFFC99530),
+    colorB: Color(0xFF241F2E),
+  ),
+};
+
+FitilaFeedCategory _categoryFromTags(List<String> tags) {
+  final lower = tags.map((tag) => tag.toLowerCase()).toList(growable: false);
+  bool has(String needle) => lower.any((tag) => tag.contains(needle));
+  if (has('echo-sonn')) return FitilaFeedCategory.echoSonn;
+  if (has('live-griot-ia')) return FitilaFeedCategory.liveGriotIa;
+  if (has('sagesse-battle')) return FitilaFeedCategory.sagesseBattle;
+  if (has('aburu-fim')) return FitilaFeedCategory.aburuFimIa;
+  if (has('sasara-ia')) return FitilaFeedCategory.sasaraIa;
+  if (has('handunia-wasa')) return FitilaFeedCategory.handuniaWasa;
+  return FitilaFeedCategory.general;
+}
+
+/// Formate un compteur pour l'affichage compact du rail d'actions
+/// (1 234 → "1,2 k", 15 000 000 → "15 M").
+String _formatFeedCount(int value) {
+  if (value < 1000) return '$value';
+  if (value < 1000000) {
+    final k = value / 1000;
+    return '${k.toStringAsFixed(k < 10 ? 1 : 0)} k';
+  }
+  final m = value / 1000000;
+  return '${m.toStringAsFixed(m < 10 ? 1 : 0)} M';
 }
 
 class LessonCardData {
@@ -1928,6 +2042,7 @@ class FeedScreen extends StatefulWidget {
 
 class _FeedScreenState extends State<FeedScreen> {
   String _mode = 'Pour toi';
+  bool _immersive = true;
 
   Widget _modeChip(String value, IconData icon) {
     return ChoiceChip(
@@ -2052,9 +2167,32 @@ class _FeedScreenState extends State<FeedScreen> {
         icon: const Icon(Icons.add_rounded),
         label: const Text('Nouveau post'),
       ),
-      child: ListView(
+      child: Column(
         children: [
-          const _PremiumStoryRow(),
+          _FeedViewToggle(
+            immersive: _immersive,
+            onChanged: (value) => setState(() => _immersive = value),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: _immersive
+                ? _ImmersiveFeedDeck(
+                    posts: widget.posts,
+                    loading: widget.loading,
+                    error: widget.error,
+                    onRetry: widget.onRetry,
+                  )
+                : _classicFeed(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _classicFeed() {
+    return ListView(
+      children: [
+        const _PremiumStoryRow(),
           const SizedBox(height: 14),
           if (widget.loading) const LinearProgressIndicator(),
           if (widget.error != null)
@@ -2131,7 +2269,1302 @@ class _FeedScreenState extends State<FeedScreen> {
             },
           ),
         ],
+      );
+  }
+}
+
+class _FeedViewToggle extends StatelessWidget {
+  const _FeedViewToggle({required this.immersive, required this.onChanged});
+
+  final bool immersive;
+  final ValueChanged<bool> onChanged;
+
+  Widget _segment({
+    required bool selected,
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            gradient: selected
+                ? const LinearGradient(
+                    colors: [_fitilaPrimary, _fitilaGoldDeep],
+                  )
+                : null,
+            color: selected ? null : Colors.transparent,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? Colors.white : _fitilaMuted,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  color: selected ? Colors.white : _fitilaMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: _fitilaSurfaceAlt,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: _fitilaBorder),
+      ),
+      child: Row(
+        children: [
+          _segment(
+            selected: immersive,
+            icon: Icons.auto_awesome_rounded,
+            label: 'Immersion',
+            onTap: () => onChanged(true),
+          ),
+          _segment(
+            selected: !immersive,
+            icon: Icons.grid_view_rounded,
+            label: 'Classique',
+            onTap: () => onChanged(false),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Fil immersif — une carte "vivante" par publication, plein cadre,
+/// dans un défilement vertical à la fois inspiré de TikTok/Kwai et
+/// délibérément distinct : cartes flottantes (jamais bord-à-bord),
+/// profondeur de pile visible sur la carte suivante, et un rail de
+/// progression qui indique où l'on se trouve dans le fil — deux
+/// repères que ces applications n'offrent pas.
+class _ImmersiveFeedDeck extends StatefulWidget {
+  const _ImmersiveFeedDeck({
+    required this.posts,
+    required this.loading,
+    required this.error,
+    required this.onRetry,
+  });
+
+  final List<FeedPost> posts;
+  final bool loading;
+  final String? error;
+  final VoidCallback? onRetry;
+
+  @override
+  State<_ImmersiveFeedDeck> createState() => _ImmersiveFeedDeckState();
+}
+
+class _ImmersiveFeedDeckState extends State<_ImmersiveFeedDeck> {
+  final _pageController = PageController(viewportFraction: 0.94);
+  FitilaFeedCategory? _filter;
+  double _page = 0;
+
+  Set<String> _likedIds = const {};
+  Set<String> _followingIds = const {};
+  Set<String> _bookmarkedIds = const {};
+  Set<String> _repostedIds = const {};
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController.addListener(() {
+      if (!mounted || !_pageController.hasClients) return;
+      setState(() => _page = _pageController.page ?? 0);
+    });
+    _loadInteractionState();
+  }
+
+  Future<void> _loadInteractionState() async {
+    try {
+      final results = await Future.wait([
+        FitilaBackend.fetchLikedPostIds(),
+        FitilaBackend.fetchFollowingIds(),
+        FitilaBackend.fetchBookmarkedPostIds(),
+        FitilaBackend.fetchRepostedPostIds(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _likedIds = results[0];
+        _followingIds = results[1];
+        _bookmarkedIds = results[2];
+        _repostedIds = results[3];
+      });
+    } catch (_) {
+      // Sans session (ou hors-ligne), le fil reste consultable ; les
+      // états initiaux resteront simplement "non actif".
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  List<FeedPost> get _filtered {
+    if (_filter == null) return widget.posts;
+    return widget.posts.where((post) => post.category == _filter).toList(growable: false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final posts = _filtered;
+    return Column(
+      children: [
+        SizedBox(
+          height: 34,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              _CategoryFilterChip(
+                emoji: '✨',
+                label: 'Pour toi',
+                selected: _filter == null,
+                colorA: _fitilaPrimary,
+                colorB: _fitilaGoldDeep,
+                onTap: () => setState(() => _filter = null),
+              ),
+              for (final category in FitilaFeedCategory.values)
+                if (category != FitilaFeedCategory.general)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: _CategoryFilterChip(
+                      emoji: _feedCategoryStyles[category]!.emoji,
+                      label: _feedCategoryStyles[category]!.label,
+                      selected: _filter == category,
+                      colorA: _feedCategoryStyles[category]!.colorA,
+                      colorB: _feedCategoryStyles[category]!.colorB,
+                      onTap: () => setState(() => _filter = category),
+                    ),
+                  ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: widget.loading && posts.isEmpty
+              ? const Center(child: CircularProgressIndicator())
+              : widget.error != null && posts.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.cloud_off_rounded, color: _fitilaMuted, size: 32),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Le fil ne peut pas être chargé',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: widget.onRetry,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Réessayer'),
+                      ),
+                    ],
+                  ),
+                )
+              : posts.isEmpty
+              ? const _EmptyState(
+                  icon: Icons.dynamic_feed_rounded,
+                  title: 'Aucune publication',
+                  text: 'Rien à afficher pour cette catégorie pour le moment.',
+                )
+              : Stack(
+                  children: [
+                    PageView.builder(
+                      controller: _pageController,
+                      scrollDirection: Axis.vertical,
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: posts.length,
+                      itemBuilder: (context, index) {
+                        final post = posts[index];
+                        final distance = (_page - index).abs().clamp(0.0, 1.0).toDouble();
+                        final scale = 1.0 - (distance * 0.08);
+                        final opacity = 1.0 - (distance * 0.45);
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Transform.scale(
+                            scale: scale,
+                            child: Opacity(
+                              opacity: opacity.clamp(0.35, 1.0).toDouble(),
+                              child: _LivingPostCard(
+                                key: ValueKey(post.id ?? 'local-$index'),
+                                post: post,
+                                isActive: index == _page.round(),
+                                initiallyLiked: post.id != null && _likedIds.contains(post.id),
+                                initiallyFollowing:
+                                    post.authorId != null && _followingIds.contains(post.authorId),
+                                initiallySaved: post.id != null && _bookmarkedIds.contains(post.id),
+                                initiallyReposted: post.id != null && _repostedIds.contains(post.id),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    Positioned(
+                      left: 4,
+                      top: 12,
+                      bottom: 12,
+                      child: _FeedProgressRail(
+                        total: posts.length,
+                        position: _page,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CategoryFilterChip extends StatelessWidget {
+  const _CategoryFilterChip({
+    required this.emoji,
+    required this.label,
+    required this.selected,
+    required this.colorA,
+    required this.colorB,
+    required this.onTap,
+  });
+
+  final String emoji;
+  final String label;
+  final bool selected;
+  final Color colorA;
+  final Color colorB;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          gradient: selected ? LinearGradient(colors: [colorA, colorB]) : null,
+          color: selected ? null : _fitilaSurfaceAlt,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: selected ? Colors.transparent : _fitilaBorder),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 12)),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                color: selected ? Colors.white : _fitilaInkSoft,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Rail vertical indiquant la position dans le fil — un repère
+/// d'orientation que TikTok/Kwai n'offrent pas dans leur défilement.
+class _FeedProgressRail extends StatelessWidget {
+  const _FeedProgressRail({required this.total, required this.position});
+
+  final int total;
+  final double position;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final trackHeight = constraints.maxHeight;
+        final double ratio = total <= 1
+            ? 0.0
+            : (position / (total - 1)).clamp(0.0, 1.0).toDouble();
+        final double thumbHeight = (trackHeight / total).clamp(18.0, trackHeight).toDouble();
+        final double top = (trackHeight - thumbHeight) * ratio;
+        return SizedBox(
+          width: 3,
+          height: trackHeight,
+          child: Stack(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 120),
+                top: top,
+                child: Container(
+                  width: 3,
+                  height: thumbHeight,
+                  decoration: BoxDecoration(
+                    color: _fitilaPrimary,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Une publication du fil immersif, plein cadre : média (vidéo, photo,
+/// audio) ou traitement typographique "tablette du griot" pour un
+/// texte pur, rail d'actions réel (aimer, commenter, republier,
+/// sauvegarder, suivre) et double-tap pour aimer.
+class _LivingPostCard extends StatefulWidget {
+  const _LivingPostCard({
+    super.key,
+    required this.post,
+    required this.isActive,
+    required this.initiallyLiked,
+    required this.initiallyFollowing,
+    required this.initiallySaved,
+    required this.initiallyReposted,
+  });
+
+  final FeedPost post;
+  final bool isActive;
+  final bool initiallyLiked;
+  final bool initiallyFollowing;
+  final bool initiallySaved;
+  final bool initiallyReposted;
+
+  @override
+  State<_LivingPostCard> createState() => _LivingPostCardState();
+}
+
+class _LivingPostCardState extends State<_LivingPostCard>
+    with SingleTickerProviderStateMixin {
+  bool? _likedOverride;
+  bool? _followingOverride;
+  bool? _savedOverride;
+  bool? _repostedOverride;
+  bool _likeBusy = false;
+  bool _followBusy = false;
+  bool _saveBusy = false;
+  bool _repostBusy = false;
+  bool _expanded = false;
+
+  late final AnimationController _heartBurstController;
+  VideoPlayerController? _videoController;
+  Future<void>? _videoReady;
+  late final audio.AudioPlayer _audioPlayer;
+  bool _audioPlaying = false;
+
+  bool get _liked => _likedOverride ?? widget.initiallyLiked;
+  bool get _following => _followingOverride ?? widget.initiallyFollowing;
+  bool get _saved => _savedOverride ?? widget.initiallySaved;
+  bool get _reposted => _repostedOverride ?? widget.initiallyReposted;
+
+  bool get _isVideo =>
+      widget.post.backendSource == 'video' ||
+      widget.post.kind == 'vidéo' ||
+      widget.post.kind == 'video';
+  bool get _isPhoto =>
+      widget.post.kind == 'photo' && (widget.post.mediaUrl?.isNotEmpty ?? false);
+  bool get _isAudio =>
+      !_isVideo && widget.post.kind == 'audio' && (widget.post.mediaUrl?.isNotEmpty ?? false);
+  bool get _isTextQuote => !_isVideo && !_isPhoto && !_isAudio;
+
+  @override
+  void initState() {
+    super.initState();
+    _heartBurstController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
+    _audioPlayer = audio.AudioPlayer();
+    _audioPlayer.onPlayerComplete.listen((_) {
+      if (mounted) setState(() => _audioPlaying = false);
+    });
+    final url = widget.post.mediaUrl;
+    if (_isVideo && url != null && url.isNotEmpty) {
+      _videoController = VideoPlayerController.networkUrl(Uri.parse(url));
+      _videoReady = _videoController!.initialize().then((_) {
+        if (!mounted) return;
+        _videoController!.setLooping(true);
+        if (widget.isActive) _videoController!.play();
+        setState(() {});
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _LivingPostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive != oldWidget.isActive) {
+      if (widget.isActive) {
+        _videoController?.play();
+      } else {
+        _videoController?.pause();
+        if (_audioPlaying) {
+          _audioPlayer.pause();
+          _audioPlaying = false;
+        }
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _heartBurstController.dispose();
+    _videoController?.dispose();
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggleAudio() async {
+    final url = widget.post.mediaUrl;
+    if (url == null || url.isEmpty) return;
+    if (_audioPlaying) {
+      await _audioPlayer.pause();
+    } else {
+      await _audioPlayer.play(audio.UrlSource(url));
+    }
+    if (mounted) setState(() => _audioPlaying = !_audioPlaying);
+  }
+
+  Future<void> _toggleLike({bool? forceLike}) async {
+    if (_likeBusy) return;
+    final next = forceLike ?? !_liked;
+    if (next == _liked) return;
+    setState(() {
+      _likeBusy = true;
+      _likedOverride = next;
+      widget.post.likes += next ? 1 : -1;
+    });
+    try {
+      if (widget.post.id != null) {
+        await FitilaBackend.togglePostLike(postId: widget.post.id!, liked: next);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _likedOverride = !next;
+        widget.post.likes += next ? -1 : 1;
+      });
+    } finally {
+      if (mounted) setState(() => _likeBusy = false);
+    }
+  }
+
+  void _handleDoubleTap() {
+    _heartBurstController.forward(from: 0);
+    if (!_liked) _toggleLike(forceLike: true);
+  }
+
+  Future<void> _toggleFollow() async {
+    if (_followBusy || widget.post.authorId == null) return;
+    final next = !_following;
+    setState(() {
+      _followBusy = true;
+      _followingOverride = next;
+    });
+    try {
+      await FitilaBackend.toggleFollow(authorId: widget.post.authorId!, follow: next);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _followingOverride = !next);
+    } finally {
+      if (mounted) setState(() => _followBusy = false);
+    }
+  }
+
+  Future<void> _toggleSave() async {
+    if (_saveBusy || widget.post.id == null) return;
+    final next = !_saved;
+    setState(() {
+      _saveBusy = true;
+      _savedOverride = next;
+    });
+    try {
+      await FitilaBackend.toggleBookmark(postId: widget.post.id!, saved: next);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next ? 'Ajouté à vos favoris.' : 'Retiré de vos favoris.'),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _savedOverride = !next);
+    } finally {
+      if (mounted) setState(() => _saveBusy = false);
+    }
+  }
+
+  Future<void> _toggleRepost() async {
+    if (_repostBusy || widget.post.id == null) return;
+    final next = !_reposted;
+    setState(() {
+      _repostBusy = true;
+      _repostedOverride = next;
+      widget.post.shares += next ? 1 : -1;
+    });
+    try {
+      await FitilaBackend.toggleRepost(postId: widget.post.id!, reposted: next);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next ? 'Republié dans votre fil.' : 'Republication annulée.'),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _repostedOverride = !next;
+        widget.post.shares += next ? -1 : 1;
+      });
+    } finally {
+      if (mounted) setState(() => _repostBusy = false);
+    }
+  }
+
+  void _openComments() {
+    if (widget.post.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Les commentaires ne sont disponibles que pour les publications enregistrées.'),
+        ),
+      );
+      return;
+    }
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: _fitilaCard,
+      builder: (_) => _CommentsSheet(post: widget.post),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final post = widget.post;
+    final style = _feedCategoryStyles[post.category]!;
+    final isMe = post.authorId != null &&
+        post.authorId == FitilaBackend.client.auth.currentUser?.id;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: GestureDetector(
+        onDoubleTap: _handleDoubleTap,
+        onTap: _isVideo
+            ? () => setState(() {
+                final controller = _videoController;
+                if (controller == null) return;
+                controller.value.isPlaying ? controller.pause() : controller.play();
+              })
+            : null,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: style.gradient,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              const CustomPaint(painter: _SignatureWeavePainter()),
+              _mediaLayer(post),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  height: 90,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.black.withValues(alpha: 0.35), Colors.transparent],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  height: 230,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [Colors.black.withValues(alpha: 0.6), Colors.transparent],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 14,
+                left: 14,
+                right: 74,
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(style.emoji, style: const TextStyle(fontSize: 12)),
+                          const SizedBox(width: 5),
+                          Text(
+                            style.label,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (post.aiAssisted) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.auto_awesome_rounded, size: 11, color: Colors.white),
+                            SizedBox(width: 3),
+                            Text(
+                              'IA',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              IgnorePointer(
+                child: Center(
+                  child: AnimatedBuilder(
+                    animation: _heartBurstController,
+                    builder: (context, child) {
+                      final t = _heartBurstController.value;
+                      if (t == 0) return const SizedBox.shrink();
+                      final double scale = t < 0.5 ? (t / 0.5) : (1 - (t - 0.5) / 0.5 * 0.2);
+                      final double opacity = t < 0.7 ? 1.0 : (1 - (t - 0.7) / 0.3);
+                      return Opacity(
+                        opacity: opacity.clamp(0.0, 1.0).toDouble(),
+                        child: Transform.scale(
+                          scale: scale.clamp(0.0, 1.2).toDouble(),
+                          child: const Icon(
+                            Icons.favorite_rounded,
+                            color: Colors.white,
+                            size: 96,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 16,
+                right: 74,
+                bottom: 16,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        _AuthorAvatar(post: post, style: style),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            post.author,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13.5,
+                            ),
+                          ),
+                        ),
+                        if (post.authorId != null && !isMe) ...[
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: _followBusy ? null : _toggleFollow,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: _following ? Colors.white.withValues(alpha: 0.16) : Colors.white,
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(color: Colors.white),
+                              ),
+                              child: Text(
+                                _following ? 'Abonné(e)' : 'Suivre',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: _following ? Colors.white : style.colorB,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (!_isTextQuote) ...[
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () => setState(() => _expanded = !_expanded),
+                        child: Text(
+                          post.content,
+                          maxLines: _expanded ? 8 : 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13.5,
+                            height: 1.35,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (post.tags.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final tag in post.tags.take(3))
+                            Text(
+                              '#$tag',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Positioned(
+                right: 12,
+                bottom: 16,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _RailAction(
+                      icon: _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                      activeColor: Colors.redAccent,
+                      active: _liked,
+                      label: _formatFeedCount(post.likes),
+                      onTap: _likeBusy ? null : () => _toggleLike(),
+                    ),
+                    const SizedBox(height: 16),
+                    _RailAction(
+                      icon: Icons.mode_comment_rounded,
+                      active: false,
+                      label: _formatFeedCount(post.comments),
+                      onTap: _openComments,
+                    ),
+                    const SizedBox(height: 16),
+                    _RailAction(
+                      icon: Icons.repeat_rounded,
+                      activeColor: _fitilaSage,
+                      active: _reposted,
+                      label: _formatFeedCount(post.shares),
+                      onTap: _repostBusy ? null : _toggleRepost,
+                    ),
+                    const SizedBox(height: 16),
+                    _RailAction(
+                      icon: _saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                      activeColor: _fitilaPrimary,
+                      active: _saved,
+                      onTap: _saveBusy ? null : _toggleSave,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _mediaLayer(FeedPost post) {
+    if (_isVideo) {
+      final controller = _videoController;
+      if (controller == null) return const SizedBox.shrink();
+      return FutureBuilder<void>(
+        future: _videoReady,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done ||
+              !controller.value.isInitialized) {
+            return const Center(child: CircularProgressIndicator(color: Colors.white));
+          }
+          return SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: controller.value.size.width,
+                height: controller.value.size.height,
+                child: VideoPlayer(controller),
+              ),
+            ),
+          );
+        },
+      );
+    }
+    if (_isPhoto) {
+      return Image.network(
+        post.mediaUrl!,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+      );
+    }
+    if (_isAudio) {
+      return Center(child: _AudioPulse(playing: _audioPlaying, onTap: _toggleAudio));
+    }
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 30),
+        child: Text(
+          post.content,
+          textAlign: TextAlign.center,
+          maxLines: 6,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white,
+            fontFamily: 'serif',
+            fontSize: 21,
+            height: 1.4,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AuthorAvatar extends StatelessWidget {
+  const _AuthorAvatar({required this.post, required this.style});
+
+  final FeedPost post;
+  final _FeedCategoryStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = post.authorAvatarUrl;
+    return Container(
+      width: 34,
+      height: 34,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: style.gradient,
+        border: Border.all(color: Colors.white, width: 1.5),
+      ),
+      alignment: Alignment.center,
+      child: url != null && url.isNotEmpty
+          ? Image.network(
+              url,
+              fit: BoxFit.cover,
+              width: 34,
+              height: 34,
+              errorBuilder: (_, _, _) => _initials(),
+            )
+          : _initials(),
+    );
+  }
+
+  Widget _initials() {
+    return Text(
+      _initialLetter(post.author),
+      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800),
+    );
+  }
+}
+
+class _RailAction extends StatelessWidget {
+  const _RailAction({
+    required this.icon,
+    required this.active,
+    this.activeColor = Colors.white,
+    this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool active;
+  final Color activeColor;
+  final String? label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.28),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: active ? activeColor : Colors.white, size: 22),
+          ),
+          if (label != null) ...[
+            const SizedBox(height: 3),
+            Text(
+              label!,
+              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Motif de fond statique en croisillon diagonal — évoque une trame
+/// tissée sans dépendre d'aucune image, et coûte un seul paint.
+class _SignatureWeavePainter extends CustomPainter {
+  const _SignatureWeavePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final up = Paint()
+      ..color = Colors.white.withValues(alpha: 0.07)
+      ..strokeWidth = 1.4
+      ..style = PaintingStyle.stroke;
+    final down = Paint()
+      ..color = Colors.black.withValues(alpha: 0.07)
+      ..strokeWidth = 1.4
+      ..style = PaintingStyle.stroke;
+    const spacing = 26.0;
+    for (double x = -size.height; x < size.width + size.height; x += spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x + size.height, size.height), up);
+      canvas.drawLine(Offset(x, size.height), Offset(x + size.height, 0), down);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SignatureWeavePainter oldDelegate) => false;
+}
+
+/// Visualiseur audio "vivant" : cinq barres pulsent au rythme d'une
+/// animation continue, plus amples pendant la lecture.
+class _AudioPulse extends StatefulWidget {
+  const _AudioPulse({required this.playing, required this.onTap});
+
+  final bool playing;
+  final VoidCallback onTap;
+
+  @override
+  State<_AudioPulse> createState() => _AudioPulseState();
+}
+
+class _AudioPulseState extends State<_AudioPulse> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
+      ..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Container(
+        width: 128,
+        height: 128,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: 0.14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: List.generate(5, (i) {
+                    final phase = _controller.value * 2 * math.pi + i * 0.8;
+                    final amplitude = widget.playing ? 0.5 : 0.08;
+                    final height = 10 + (math.sin(phase).abs() * 26 * amplitude) + 6;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2.5),
+                      child: Container(
+                        width: 5,
+                        height: height,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    );
+                  }),
+                );
+              },
+            ),
+            Positioned(
+              bottom: 14,
+              child: Icon(
+                widget.playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Feuille de commentaires réels — lecture en direct (Realtime) et
+/// écriture (tamtam_comments) via FitilaBackend.
+class _CommentsSheet extends StatefulWidget {
+  const _CommentsSheet({required this.post});
+
+  final FeedPost post;
+
+  @override
+  State<_CommentsSheet> createState() => _CommentsSheetState();
+}
+
+class _CommentsSheetState extends State<_CommentsSheet> {
+  final _controller = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty || widget.post.id == null) return;
+    setState(() => _sending = true);
+    try {
+      await FitilaBackend.addTextComment(postId: widget.post.id!, text: text);
+      _controller.clear();
+      widget.post.comments += 1;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Commentaire non envoyé. Réessayez.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.72,
+      minChildSize: 0.45,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (context, scrollController) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 4, 16, 10),
+                child: Row(
+                  children: [
+                    Icon(Icons.mode_comment_rounded, color: _fitilaPrimary, size: 18),
+                    SizedBox(width: 8),
+                    Text('Commentaires', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: _fitilaBorder),
+              Expanded(
+                child: StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: FitilaBackend.streamComments(widget.post.id!),
+                  builder: (context, snapshot) {
+                    final comments = snapshot.data ?? const [];
+                    if (snapshot.connectionState == ConnectionState.waiting && comments.isEmpty) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (comments.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'Aucun commentaire pour le moment. Soyez le premier.',
+                          style: TextStyle(color: _fitilaMuted, fontSize: 12.5),
+                        ),
+                      );
+                    }
+                    return ListView.separated(
+                      controller: scrollController,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: comments.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 14),
+                      itemBuilder: (context, index) {
+                        final comment = comments[index];
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CircleAvatar(
+                              radius: 15,
+                              backgroundColor: _fitilaPrimarySoft,
+                              child: Text(
+                                _initialLetter(comment['display_name']?.toString()),
+                                style: const TextStyle(
+                                  color: _fitilaGoldDeep,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    comment['display_name']?.toString() ?? 'Voix Fitila',
+                                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    comment['text_content']?.toString() ?? '',
+                                    style: const TextStyle(fontSize: 13, height: 1.3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              const Divider(height: 1, color: _fitilaBorder),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        decoration: const InputDecoration(
+                          hintText: 'Ajouter un commentaire…',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(24)),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        ),
+                        onSubmitted: (_) => _send(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filled(
+                      onPressed: _sending ? null : _send,
+                      icon: _sending
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.send_rounded),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
