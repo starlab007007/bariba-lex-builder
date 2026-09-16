@@ -666,18 +666,18 @@ jobs:
           git add -A
           git commit -m "feat(live): integrate Live Griot and Handunia on supplied IA baseline"
 
-      - name: Apply immersive premium feed patch
+      - name: Diagnose immersive premium feed patch
         shell: bash
         run: |
           set -euo pipefail
-          git apply --3way /tmp/feed.patch
-          if git ls-files -u | grep -q .; then
-            echo "Immersive feed patch produced merge conflicts:"
-            git status --short
-            exit 1
-          fi
-          git add -A
-          git commit -m "feat(fil): apply immersive premium feed patch"
+          git apply --reject --whitespace=nowarn /tmp/feed.patch || true
+          echo "===== FEED REJECTS ====="
+          find . -name '*.rej' -type f -print | sort | while read f; do
+            echo "----- $f -----"
+            grep '^@@ ' "$f" || true
+          done
+          echo "===== END FEED REJECTS ====="
+          exit 1
 
       - name: Normalize Flutter 3.47 compatibility
         shell: bash
