@@ -195,93 +195,93 @@ jobs:
           live = live.replace(
               "  bool _scheduling = false;\n",
               """  bool _scheduling = false;
-  List<Map<String, dynamic>> _activeLives = const [];
-  bool _loadingLives = true;
-  bool _startingLive = false;
+          List<Map<String, dynamic>> _activeLives = const [];
+          bool _loadingLives = true;
+          bool _startingLive = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadActiveLives();
-  }
-""",
+          @override
+          void initState() {
+          super.initState();
+          _loadActiveLives();
+          }
+          """,
               1,
           )
 
           start_now = live.index('  void _startNow() {')
           schedule = live.index('  Future<void> _scheduleAnnouncement() async {', start_now)
           live_methods = """  Future<void> _loadActiveLives() async {
-    setState(() => _loadingLives = true);
-    try {
-      final lives = await FitilaBackend.fetchActiveLiveSessions();
-      if (!mounted) return;
-      setState(() {
-        _activeLives = lives;
-        _loadingLives = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _loadingLives = false);
-    }
-  }
+          setState(() => _loadingLives = true);
+          try {
+          final lives = await FitilaBackend.fetchActiveLiveSessions();
+          if (!mounted) return;
+          setState(() {
+          _activeLives = lives;
+          _loadingLives = false;
+          });
+          } catch (_) {
+          if (!mounted) return;
+          setState(() => _loadingLives = false);
+          }
+          }
 
-  Future<void> _startLiveNow() async {
-    final title = _title.text.trim();
-    if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Donnez un titre à votre direct avant de démarrer.')),
-      );
-      return;
-    }
-    setState(() => _startingLive = true);
-    try {
-      final live = await FitilaBackend.createLiveSession(
-        title: title,
-        description: _description.text.trim().isEmpty ? null : _description.text.trim(),
-        language: _language,
-      );
-      if (!mounted) return;
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
+          Future<void> _startLiveNow() async {
+          final title = _title.text.trim();
+          if (title.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Donnez un titre à votre direct avant de démarrer.')),
+          );
+          return;
+          }
+          setState(() => _startingLive = true);
+          try {
+          final live = await FitilaBackend.createLiveSession(
+          title: title,
+          description: _description.text.trim().isEmpty ? null : _description.text.trim(),
+          language: _language,
+          );
+          if (!mounted) return;
+          await Navigator.push(
+          context,
+          MaterialPageRoute(
           builder: (_) => LiveRoomScreen(
             liveId: live['id'].toString(),
             title: title,
             role: FitilaLiveRole.host,
           ),
-        ),
-      );
-      if (mounted) _loadActiveLives();
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+          ),
+          );
+          if (mounted) _loadActiveLives();
+          } catch (error) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
           content: Text(
             'Impossible de démarrer le direct : ${error.toString().replaceFirst("Bad state: ", "")}',
           ),
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _startingLive = false);
-    }
-  }
+          ),
+          );
+          } finally {
+          if (mounted) setState(() => _startingLive = false);
+          }
+          }
 
-  void _joinLive(Map<String, dynamic> live) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => LiveRoomScreen(
+          void _joinLive(Map<String, dynamic> live) {
+          Navigator.push(
+          context,
+          MaterialPageRoute(
+          builder: (_) => LiveRoomScreen(
           liveId: live['id'].toString(),
           title: live['title']?.toString() ?? 'Live Griot IA',
           role: FitilaLiveRole.viewer,
-        ),
-      ),
-    ).then((_) {
-      if (mounted) _loadActiveLives();
-    });
-  }
+          ),
+          ),
+          ).then((_) {
+          if (mounted) _loadActiveLives();
+          });
+          }
 
-"""
+          """
           live = live[:start_now] + live_methods + live[schedule:]
 
           live = live.replace(
@@ -358,7 +358,7 @@ jobs:
                 ),
               ),
           const SizedBox(height: 16),
-"""
+          """
           needle = "          const SizedBox(height: 16),\n          Card(\n"
           if needle not in live:
               raise SystemExit('Live card insertion point not found')
@@ -403,7 +403,7 @@ jobs:
               ),
             ],
           ),
-"""
+          """
           new_buttons = """          Row(
             children: [
               Expanded(
@@ -435,7 +435,7 @@ jobs:
               ),
             ],
           ),
-"""
+          """
           if old_buttons not in live:
               raise SystemExit('Live action buttons baseline not found')
           live = live.replace(old_buttons, new_buttons, 1)
@@ -459,92 +459,92 @@ jobs:
           hand = hand.replace(
               "  bool _saving = false;\n",
               """  bool _saving = false;
-  final _fragmentController = TextEditingController();
-  bool _publishingFragment = false;
-  bool _generating = false;
-  bool _aiAssisted = false;
+          final _fragmentController = TextEditingController();
+          bool _publishingFragment = false;
+          bool _generating = false;
+          bool _aiAssisted = false;
 
-  @override
-  void dispose() {
-    _fragmentController.dispose();
-    super.dispose();
-  }
+          @override
+          void dispose() {
+          _fragmentController.dispose();
+          super.dispose();
+          }
 
-""",
+          """,
               1,
           )
 
           generate = """  Future<void> _generateFragment() async {
-    setState(() => _generating = true);
-    try {
-      const prompt =
+          setState(() => _generating = true);
+          try {
+          const prompt =
           'Imagine en 3 à 4 phrases un fragment du monde Handunia Wasa : un lieu, '
           'un personnage ou un petit récit inspiré de la culture et de la langue bariba, '
           "comme s'il faisait partie d'un monde vivant et persistant. "
           'Réponds uniquement par le fragment, sans introduction ni explication.';
-      final result = await FitilaBackend.askFitilaIa(prompt);
-      if (!mounted) return;
-      setState(() {
-        _fragmentController.text = result;
-        _aiAssisted = true;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Génération IA indisponible pour le moment.')),
-      );
-    } finally {
-      if (mounted) setState(() => _generating = false);
-    }
-  }
+          final result = await FitilaBackend.askFitilaIa(prompt);
+          if (!mounted) return;
+          setState(() {
+          _fragmentController.text = result;
+          _aiAssisted = true;
+          });
+          } catch (_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Génération IA indisponible pour le moment.')),
+          );
+          } finally {
+          if (mounted) setState(() => _generating = false);
+          }
+          }
 
-"""
+          """
           toggle_pos = hand.index('  Future<void> _toggleInterest(bool value) async {')
           hand = hand[:toggle_pos] + generate + hand[toggle_pos:]
 
           build_pos = hand.index('  @override\n  Widget build(BuildContext context)')
           publish = """  Future<void> _publishFragment() async {
-    final text = _fragmentController.text.trim();
-    if (text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Écrivez ou générez un fragment avant de publier.')),
-      );
-      return;
-    }
-    setState(() => _publishingFragment = true);
-    final content = _aiAssisted
-        ? '🌌 Fragment généré par Fitila IA pour Handunia Wasa\\n\\n$text\\n\\n'
+          final text = _fragmentController.text.trim();
+          if (text.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Écrivez ou générez un fragment avant de publier.')),
+          );
+          return;
+          }
+          setState(() => _publishingFragment = true);
+          final content = _aiAssisted
+          ? '🌌 Fragment généré par Fitila IA pour Handunia Wasa\\n\\n$text\\n\\n'
               '(Texte réellement généré par l\'IA Fitila à partir d\'un thème bariba — vision exploratoire 10-15 ans, pas un monde vivant fonctionnel aujourd\'hui.)'
-        : '🌌 Fragment imaginé pour Handunia Wasa\\n\\n$text\\n\\n'
+          : '🌌 Fragment imaginé pour Handunia Wasa\\n\\n$text\\n\\n'
               '(Contribution communautaire à une vision exploratoire 10-15 ans — pas un contenu généré par une IA.)';
-    try {
-      await FitilaBackend.createTextPost(
-        text: content,
-        hashtags: [
+          try {
+          await FitilaBackend.createTextPost(
+          text: content,
+          hashtags: [
           'handunia-wasa',
           if (_aiAssisted) 'ia-generatif' else 'vision-communautaire',
-        ],
-        templateId: 'handunia-wasa',
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Fragment publié dans le fil.')),
-      );
-      setState(() {
-        _fragmentController.clear();
-        _aiAssisted = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Publication impossible. Réessayez.')),
-      );
-    } finally {
-      if (mounted) setState(() => _publishingFragment = false);
-    }
-  }
+          ],
+          templateId: 'handunia-wasa',
+          );
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Fragment publié dans le fil.')),
+          );
+          setState(() {
+          _fragmentController.clear();
+          _aiAssisted = false;
+          });
+          } catch (_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Publication impossible. Réessayez.')),
+          );
+          } finally {
+          if (mounted) setState(() => _publishingFragment = false);
+          }
+          }
 
-"""
+          """
           hand = hand[:build_pos] + publish + hand[build_pos:]
 
           hand = hand.replace(
@@ -636,7 +636,7 @@ jobs:
               ),
             ),
           ),
-"""
+          """
           tail = "          const SizedBox(height: 24),\n"
           if tail not in hand:
               raise SystemExit('Handunia UI insertion point not found')
