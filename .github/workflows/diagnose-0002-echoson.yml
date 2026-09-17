@@ -125,38 +125,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cp .github/scripts/apply_fitila_patch_chain.py /tmp/apply.py
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('/tmp/apply.py')
-          s=p.read_text(encoding='utf-8')
-          # Keep relocation state per semantic class/section instead of one
-          # global line shift across a 20k+ line main.dart.
-          old = '    current = target.read_text(encoding="utf-8").splitlines(keepends=True)\\n    line_shift = 0\\n    for idx, h in enumerate(fp.hunks, 1):\\n        old, new = hunk_sequences(h)\\n'
-          new = '    current = target.read_text(encoding="utf-8").splitlines(keepends=True)\\n    section_shift: dict[str, int] = {}\\n    for idx, h in enumerate(fp.hunks, 1):\\n        old, new = hunk_sequences(h)\\n        line_shift = section_shift.get(h.section, 0)\\n'
-          assert old in s
-          s=s.replace(old,new,1)
-          old2 = '        line_shift += len(new) - old_span\\n        print(\\n'
-          new2 = '        line_shift += len(new) - old_span\\n        section_shift[h.section] = line_shift\\n        print(\\n'
-          assert old2 in s
-          s=s.replace(old2,new2,1)
-          # Insert hunks also update their own section shift.
-          old3 = '            line_shift += len(new)\\n            print(f"{patch_name}: {target_rel} hunk {idx}/{len(fp.hunks)} inserted at {pos+1}")\\n'
-          new3 = '            line_shift += len(new)\\n            section_shift[h.section] = line_shift\\n            print(f"{patch_name}: {target_rel} hunk {idx}/{len(fp.hunks)} inserted at {pos+1}")\\n'
-          assert old3 in s
-          s=s.replace(old3,new3,1)
-          p.write_text(s,encoding='utf-8')
-          PY
-
-          python /tmp/apply.py             /tmp/fitila-patches/0002-design-premium-6-modules.patch             /tmp/fitila-patches/0003-handunia-wasa-socle-technique.patch             /tmp/fitila-patches/0004-handunia-wasa-dynamique-social.patch             /tmp/fitila-patches/0005-sagesse-battle-proverbe-a-trou-ia.patch             /tmp/fitila-patches/0006-aburu-fim-galerie-live-video.patch             /tmp/fitila-patches/0007-sasara-ia-edition-ligne-par-ligne.patch             /tmp/fitila-patches/0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch
+          python .github/scripts/apply_fitila_patch_chain.py \
+            /tmp/fitila-patches/0002-design-premium-6-modules.patch \
+            /tmp/fitila-patches/0003-handunia-wasa-socle-technique.patch \
+            /tmp/fitila-patches/0004-handunia-wasa-dynamique-social.patch \
+            /tmp/fitila-patches/0005-sagesse-battle-proverbe-a-trou-ia.patch \
+            /tmp/fitila-patches/0006-aburu-fim-galerie-live-video.patch \
+            /tmp/fitila-patches/0007-sasara-ia-edition-ligne-par-ligne.patch \
+            /tmp/fitila-patches/0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch
 
           test -z "$(grep -R -l -E '^(<<<<<<<|=======|>>>>>>>)' fitila_flutter/lib || true)"
           cmp -s /tmp/fitila-patches/handunia_wasa_dynamique_social_migration.sql supabase/migrations/20260916222617_handunia_wasa_dynamique_social.sql
           cmp -s /tmp/fitila-patches/20260916225824_sagesse_battle_votes_communaute.sql supabase/migrations/20260916225824_sagesse_battle_votes_communaute.sql
           git diff --check
-
-          for symbol in             '_FitilaDarkStage'             '_FitilaOrbMic'             'fetchHanduniaLieux'             'fetchHanduniaWorldFeed'             'toggleHanduniaFragmentLike'             '_scoreWithAi'             'toggleBattleResponseVote'             '_AburuGalleryCard'             'fetchCorpusCommunityCountThisMonth'             '_ImmersiveFeedDeckState'
-          do
+          for symbol in '_FitilaDarkStage' '_FitilaOrbMic' 'fetchHanduniaLieux' 'fetchHanduniaWorldFeed' 'toggleHanduniaFragmentLike' '_scoreWithAi' 'toggleBattleResponseVote' '_AburuGalleryCard' 'fetchCorpusCommunityCountThisMonth' '_ImmersiveFeedDeckState'; do
             grep -R -q "$symbol" fitila_flutter/lib || { echo "MISSING_SYMBOL=$symbol"; exit 1; }
           done
           echo "SEMANTIC_CHAIN_APPLIED=YES"
