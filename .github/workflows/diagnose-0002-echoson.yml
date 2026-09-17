@@ -732,6 +732,88 @@ jobs:
           p.write_text(s,encoding='utf-8')
           PY
 
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          single_if = re.compile(r'^(\s*)if\s*\((.*)\)\s+([^\s{].*;)\s*"$(grep -R -l -E '^(<<<<<<<|=======|>>>>>>>)' fitila_flutter/lib || true)"
+          if [ -n "$conflict_files" ]; then
+            echo "=== CONFLICT MARKERS ==="
+            grep -R -n -E '^(<<<<<<<|=======|>>>>>>>)' fitila_flutter/lib || true
+            exit 1
+          fi
+          cmp -s /tmp/fitila-patches/handunia_wasa_dynamique_social_migration.sql supabase/migrations/20260916222617_handunia_wasa_dynamique_social.sql
+          cmp -s /tmp/fitila-patches/20260916225824_sagesse_battle_votes_communaute.sql supabase/migrations/20260916225824_sagesse_battle_votes_communaute.sql
+          git diff --check
+          for symbol in '_FitilaDarkStage' '_FitilaOrbMic' 'fetchHanduniaLieux' 'fetchHanduniaWorldFeed' 'toggleHanduniaFragmentLike' '_scoreWithAi' 'toggleBattleResponseVote' '_AburuGalleryCard' 'fetchCorpusCommunityCountThisMonth' '_ImmersiveFeedDeckState'; do
+            grep -R -q "$symbol" fitila_flutter/lib || { echo "MISSING_SYMBOL=$symbol"; exit 1; }
+          done
+          echo "SEMANTIC_CHAIN_APPLIED=YES"
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          channel: stable
+          cache: true
+
+      - name: Format, resolve, analyze and test
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd fitila_flutter
+          flutter pub get
+          dart fix --apply --code=unnecessary_underscores
+          dart fix --apply --code=prefer_interpolation_to_compose_strings
+          dart fix --apply --code=deprecated_member_use
+          dart format lib/main.dart lib/core/fitila_backend.dart
+          flutter analyze
+          flutter test --reporter compact
+
+      - name: Commit validated application integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git config user.name "FITILA CI"
+          git config user.email "zimesongbian007@gmail.com"
+          git add             fitila_flutter/lib/main.dart             fitila_flutter/lib/core/fitila_backend.dart             supabase/migrations/20260916221308_handunia_wasa_monde_vivant.sql             supabase/migrations/20260916222617_handunia_wasa_dynamique_social.sql             supabase/migrations/20260916225824_sagesse_battle_votes_communaute.sql
+          git diff --cached --stat
+          git diff --cached --quiet && { echo "No application changes to commit"; exit 0; }
+          git commit -m "feat(fitila): integrate patches 0002-0008 and migrations"
+          git push origin HEAD:release/fitila-flutter-android-v1.8.1-build12-web-parity
+)
+          for rel in (
+              'fitila_flutter/lib/main.dart',
+              'fitila_flutter/lib/core/fitila_backend.dart',
+          ):
+              p=Path(rel)
+              out=[]
+              changed=0
+              for line in p.read_text(encoding='utf-8').splitlines():
+                  m=single_if.match(line)
+                  if not m:
+                      out.append(line)
+                      continue
+                  indent, condition, statement=m.groups()
+                  # Only transform true statement-form one-line ifs; collection-if
+                  # elements do not end with a semicolon and therefore never match.
+                  out.extend([
+                      f'{indent}if ({condition}) {{',
+                      f'{indent}  {statement}',
+                      f'{indent}}}',
+                  ])
+                  changed += 1
+              p.write_text('\n'.join(out)+'\n',encoding='utf-8')
+              print(f'BRACED_SINGLE_LINE_IFS {rel}: {changed}')
+          PY
+
           conflict_files="$(grep -R -l -E '^(<<<<<<<|=======|>>>>>>>)' fitila_flutter/lib || true)"
           if [ -n "$conflict_files" ]; then
             echo "=== CONFLICT MARKERS ==="
@@ -745,17 +827,6 @@ jobs:
             grep -R -q "$symbol" fitila_flutter/lib || { echo "MISSING_SYMBOL=$symbol"; exit 1; }
           done
           echo "SEMANTIC_CHAIN_APPLIED=YES"
-          echo "=== BACKEND 1748-1766 ==="
-          nl -ba fitila_flutter/lib/core/fitila_backend.dart | sed -n '1748,1766p'
-          echo "=== BACKEND 2098-2116 ==="
-          nl -ba fitila_flutter/lib/core/fitila_backend.dart | sed -n '2098,2116p'
-          echo "=== MAIN 16630-16650 ==="
-          nl -ba fitila_flutter/lib/main.dart | sed -n '16630,16650p'
-          echo "=== MAIN 25438-25458 ==="
-          nl -ba fitila_flutter/lib/main.dart | sed -n '25438,25458p'
-          echo "=== MAIN 26204-26224 ==="
-          nl -ba fitila_flutter/lib/main.dart | sed -n '26204,26224p'
-          exit 2
 
       - name: Setup Java 17
         uses: actions/setup-java@v5
