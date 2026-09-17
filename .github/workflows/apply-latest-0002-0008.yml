@@ -33,10 +33,13 @@ jobs:
             2: '7cf2bfbd1cce97ae8924ce27531bc8c775623c51fdd9536c730c9f2756a6b6c7',
             3: '6dfa19e216ccf2de200f075025eac9ccfe7bec1e6b85a28c0a51133d397b1443',
             4: '7103da843675c1f434e6e195948cd9d19c401fc9175fb81d012e2dfb85cfb756',
-            5: 'f58488a36f32ab405bfae4fdf5db3dc3acbd661bb42c64caa675f763eb08d6e8',
             6: '1220f8b3f56bf686d27e00dbe0109afbe4d77184b1f3633376d29d3f34a03119',
             7: 'ca2af2540f5472eb6aee577cd288c6253706b3dc0e0504e62a115a6a8bcff8de',
             8: '0f11c4fa49c380a41a58553c4741ee164e33ce597d327739cbe3e7376d1a09d2',
+          }
+          half5_expected = {
+            'a': 'b94d9a44f1384e4cd97154ea6146ef0aea14fadd188ea177ea1f3f601063f9e9',
+            'b': 'eafa55a2f6af6ed046016d7be6dabf6e8d4ca8498d4e293abdc1c4a15760951d',
           }
           tail_expected = {
             3: (8000, '737f977dcc86f930a14b2d3087b4193de678899b73139316107a3da040971af2'),
@@ -52,7 +55,7 @@ jobs:
           }
 
           prefix = []
-          for i in range(1, 9):
+          for i in (1,2,3,4):
               p = Path(f'.patches/step1_fix_{i:02d}.b64')
               text = ''.join(p.read_text(encoding='utf-8').split())
               got = hashlib.sha256(text.encode()).hexdigest()
@@ -60,7 +63,33 @@ jobs:
               if len(text) != 2000 or got != prefix_expected[i]:
                   raise SystemExit(f'Bad replacement block {i}: len={len(text)} sha={got}')
               prefix.append(text)
+
+          block5 = []
+          for suffix in ('a','b'):
+              p = Path(f'.patches/step1_fix_05{suffix}.b64')
+              text = ''.join(p.read_text(encoding='utf-8').split())
+              got = hashlib.sha256(text.encode()).hexdigest()
+              print(f'FIX 05{suffix}: len={len(text)} sha256={got}')
+              if len(text) != 1000 or got != half5_expected[suffix]:
+                  raise SystemExit(f'Bad replacement block 05{suffix}: len={len(text)} sha={got}')
+              block5.append(text)
+          joined5 = ''.join(block5)
+          if len(joined5) != 2000 or hashlib.sha256(joined5.encode()).hexdigest() != 'f58488a36f32ab405bfae4fdf5db3dc3acbd661bb42c64caa675f763eb08d6e8':
+              raise SystemExit('Reconstructed replacement block 05 mismatch')
+          prefix.append(joined5)
+
+          for i in (6,7,8):
+              p = Path(f'.patches/step1_fix_{i:02d}.b64')
+              text = ''.join(p.read_text(encoding='utf-8').split())
+              got = hashlib.sha256(text.encode()).hexdigest()
+              print(f'FIX {i:02d}: len={len(text)} sha256={got}')
+              if len(text) != 2000 or got != prefix_expected[i]:
+                  raise SystemExit(f'Bad replacement block {i}: len={len(text)} sha={got}')
+              prefix.append(text)
+
           prefix_text = ''.join(prefix)
+          if len(prefix_text) != 16000:
+              raise SystemExit(f'Prefix length mismatch: {len(prefix_text)}')
           p1 = prefix_text[:8000]
           p2 = prefix_text[8000:16000]
           if hashlib.sha256(p1.encode()).hexdigest() != '4fd14aa80528599cc03e3665385c0a95aac7351bb8cd301dcc1780079fb57e82':
