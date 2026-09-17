@@ -1,4 +1,4 @@
-name: FITILA recover historical prerequisite bundles
+name: FITILA diagnose patch baseline 0002-0008
 
 on:
   push:
@@ -11,49 +11,121 @@ permissions:
   contents: read
 
 jobs:
-  recover:
+  diagnose:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Locate and verify historical p4 and pia fragments
+
+      - name: Reconstruct verified patches
         shell: bash
         run: |
           set -euo pipefail
-          echo '=== historical prerequisite paths ==='
-          git log --all --name-only --format= -- .patches \
-            | sed '/^$/d' | sort -u \
-            | grep -E '^\.patches/(p4_|pia_)' || true
-
-          recover_family() {
-            local family="$1"
-            local out="$2"
-            local expected="$3"
-            local tmpdir="/tmp/recover-${family}"
-            mkdir -p "$tmpdir"
-            mapfile -t paths < <(git log --all --name-only --format= -- .patches | sed '/^$/d' | sort -u | grep -E "^\\.patches/${family}" || true)
-            echo "family=$family paths=${#paths[@]}"
-            if [ "${#paths[@]}" -eq 0 ]; then
-              return 2
-            fi
-            for path in "${paths[@]}"; do
-              last=$(git log --all -1 --format=%H -- "$path")
-              echo "$path last-change=$last"
-              src="$last:$path"
-              if ! git cat-file -e "$src" 2>/dev/null; then
-                src="$last^:$path"
-              fi
-              git cat-file -e "$src"
-              git show "$src" > "$tmpdir/$(basename "$path")"
-              echo "  source=$src bytes=$(wc -c < "$tmpdir/$(basename "$path")")"
-            done
-            cat "$tmpdir"/* | tr -d '\n\r' | base64 -d | gunzip > "$out"
-            sha=$(sha256sum "$out" | awk '{print $1}')
-            echo "$family reconstructed-sha=$sha bytes=$(wc -c < "$out")"
-            test "$sha" = "$expected"
-            grep -E '^(diff --git|index )' "$out" | head -120 || true
+          python - <<'PY'
+          from pathlib import Path
+          import base64,gzip,hashlib
+          expected={
+            '0002-design-premium-6-modules.patch':'7976eea171984ac5289905a485404990db0418e524ad03f5cbfbd17057a3d051',
+            '0003-handunia-wasa-socle-technique.patch':'be30d8fd605993973aee182139b08b75e7fc0cc849035a8b8fe43d17cb04056a',
+            '0004-handunia-wasa-dynamique-social.patch':'63336234fdc3b7bca061acc375f23df74287b5d50aa834659ea2b02bf6d5c55b',
+            '0005-sagesse-battle-proverbe-a-trou-ia.patch':'9c38477c2396be6ad6b1bcf0fdfc2cc9f50082e13b0e82aa902ae8386bfd1b1a',
+            '0006-aburu-fim-galerie-live-video.patch':'52ae14abe5b53a7d0d557f6bde720840d9e72b17fa43ce5bbc1be4964fa30ed3',
+            '0007-sasara-ia-edition-ligne-par-ligne.patch':'cb0a531b10c25b090f0a26b8677d09224c16171cd3323bd6910804c5599dd701',
+            '0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch':'0de7dcf4672f1c9ac52f45ec5fcb7a7cf30303d32cc771c3eb352a8b9247993c',
+            '20260916225824_sagesse_battle_votes_communaute.sql':'87995d36e227a19b488c99d7bd43c8d87224d5c565ce83ccfe0a0807da16a1ee',
           }
+          out=Path('/tmp/fitila-patches'); out.mkdir(parents=True,exist_ok=True)
+          def unpack(encoded,bundle_sha):
+              packed=base64.b64decode(encoded,validate=True)
+              assert hashlib.sha256(packed).hexdigest()==bundle_sha
+              raw=gzip.decompress(packed); pos=0
+              while pos<len(raw):
+                  assert raw.startswith(b'###FILE ',pos)
+                  eol=raw.find(b'\n',pos); name,size_s=raw[pos+8:eol].decode().rsplit(' ',1)
+                  size=int(size_s); start=eol+1; end=start+size
+                  data=raw[start:end]
+                  assert raw[end:end+8]==b'\n###END\n'
+                  if name in expected:
+                      got=hashlib.sha256(data).hexdigest(); print(name,got)
+                      assert got==expected[name]
+                      (out/name).write_bytes(data)
+                  pos=end+8
+          prefix=[]
+          for i in (1,2,3,4):
+              prefix.append(''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()))
+          prefix.append(''.join(Path('.patches/step1_fix_05a.b64').read_text().split()) + ''.join(Path('.patches/step1_fix_05b.b64').read_text().split()))
+          for i in (6,7,8):
+              prefix.append(''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()))
+          tail=[''.join(Path(f'.patches/step1_upload_{i:02d}.b64').read_text().split()) for i in range(3,7)]
+          unpack(''.join(prefix)+''.join(tail),'b9edeff2d51255d2d509e0337baaa7113bf3e5a530a1914acfc287195eb2d3e9')
+          current=''.join(''.join(Path(f'.patches/step2_upload_{i:02d}.b64').read_text().split()) for i in range(1,5))
+          unpack(current,'183a0681e102509e3ad58077a88538e703ea797903f9678ad48214fbb2bd89c4')
+          PY
 
-          recover_family 'p4_' /tmp/patch4.diff b25f139dfbf9b5bc611abcf280ddbab7d2a17a24e71a77547a54aec6e6b2788d
-          recover_family 'pia_' /tmp/patchIA.diff ca5224436fa6a83930c9a927e36b08d254955d784767a1d1d04cfbd327f5a03f
+      - name: Test candidate baselines
+        shell: bash
+        run: |
+          set -euo pipefail
+          patches=(
+            /tmp/fitila-patches/0002-design-premium-6-modules.patch
+            /tmp/fitila-patches/0003-handunia-wasa-socle-technique.patch
+            /tmp/fitila-patches/0004-handunia-wasa-dynamique-social.patch
+            /tmp/fitila-patches/0005-sagesse-battle-proverbe-a-trou-ia.patch
+            /tmp/fitila-patches/0006-aburu-fim-galerie-live-video.patch
+            /tmp/fitila-patches/0007-sasara-ia-edition-ligne-par-ligne.patch
+            /tmp/fitila-patches/0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch
+          )
+          refs=(
+            82669a951f2cff23067e01510aa0fd00c4e99ee7
+            27d6b7d194e2ba21a34859e2c3030efdd1b0ec05
+            d37c35760569e5f6f44b573686463b7a30edf804
+            51c628c6033f6514f7d02779e24e4357cfcbcadf
+            72ef906a524cf1582310a4711765af2471c1f3b9
+            18daf7c0e721bc4f744795238522d0ead24e145a
+            f56577164be7fac2c71e8213e380b2d6385bbccf
+            HEAD
+          )
+          for ref in "${refs[@]}"; do
+            short=$(git rev-parse --short "$ref")
+            dir="/tmp/candidate-$short"
+            rm -rf "$dir"
+            git worktree add --detach "$dir" "$ref" >/dev/null
+            echo
+            echo "===== CANDIDATE $ref ($short) ====="
+            echo "main=$(git -C "$dir" hash-object fitila_flutter/lib/main.dart)"
+            echo "backend=$(git -C "$dir" hash-object fitila_flutter/lib/core/fitila_backend.dart)"
+            ok=1
+            n=2
+            for patch in "${patches[@]}"; do
+              if git -C "$dir" apply --check "$patch" >/tmp/check.log 2>&1; then
+                echo "000$n exact=YES"
+                git -C "$dir" apply "$patch"
+              elif git -C "$dir" apply --3way --check "$patch" >/tmp/check3.log 2>&1; then
+                echo "000$n threeway=YES"
+                git -C "$dir" apply --3way "$patch"
+                if [ -n "$(git -C "$dir" ls-files -u)" ]; then
+                  echo "000$n conflicts=YES"
+                  ok=0
+                  break
+                fi
+              else
+                echo "000$n exact=NO threeway=NO"
+                echo "--- exact error ---"
+                sed -n '1,40p' /tmp/check.log || true
+                echo "--- 3way error ---"
+                sed -n '1,60p' /tmp/check3.log || true
+                ok=0
+                break
+              fi
+              n=$((n+1))
+            done
+            if [ "$ok" -eq 1 ]; then
+              echo "FULL_CHAIN=YES"
+              echo "final-main=$(git -C "$dir" hash-object fitila_flutter/lib/main.dart)"
+              echo "final-backend=$(git -C "$dir" hash-object fitila_flutter/lib/core/fitila_backend.dart)"
+            else
+              echo "FULL_CHAIN=NO"
+            fi
+            git worktree remove --force "$dir" >/dev/null
+          done
