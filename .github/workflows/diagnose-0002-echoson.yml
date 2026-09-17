@@ -719,6 +719,16 @@ jobs:
               'HanduniaWasaScreen(onPostCreated: widget.onPostCreated)',
               'const HanduniaWasaScreen()',
           )
+          s=s.replace(
+              'const _FitilaWaveformBars(active: true, height: 52),',
+              'const _FitilaWaveformBars(active: true, height: 52, color: _fitilaPrimary),',
+              1,
+          )
+          s=s.replace(
+              "_FitilaScoreRing(score: _score, label: 'de justesse'),",
+              "_FitilaScoreRing(score: _score, size: 148, label: 'de justesse', light: true),",
+              1,
+          )
           p.write_text(s,encoding='utf-8')
           PY
 
@@ -755,7 +765,10 @@ jobs:
           set -euo pipefail
           cd fitila_flutter
           flutter pub get
-          dart fix --apply
+          dart fix --apply --code=curly_braces_in_flow_control_structures
+          dart fix --apply --code=unnecessary_underscores
+          dart fix --apply --code=prefer_interpolation_to_compose_strings
+          dart fix --apply --code=deprecated_member_use
           dart format lib/main.dart lib/core/fitila_backend.dart
           flutter analyze
           flutter test --reporter compact
