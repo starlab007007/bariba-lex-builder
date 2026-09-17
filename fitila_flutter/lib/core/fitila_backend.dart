@@ -30,7 +30,9 @@ class FitilaBackend {
   static bool get configured => supabaseAnonKey.isNotEmpty;
 
   static Future<void> initialize() async {
-    if (!configured) return;
+    if (!configured) {
+      return;
+    }
     await Supabase.initialize(
       url: supabaseUrl,
       publishableKey: supabaseAnonKey,
@@ -140,9 +142,13 @@ class FitilaBackend {
   }
 
   static Future<FitilaBackendSession?> restoreSession() async {
-    if (!configured) return null;
+    if (!configured) {
+      return null;
+    }
     final session = client.auth.currentSession;
-    if (session == null) return null;
+    if (session == null) {
+      return null;
+    }
     try {
       return await sessionFromSupabase(session);
     } on AuthException {
@@ -152,7 +158,9 @@ class FitilaBackend {
   }
 
   static Future<void> signOut() async {
-    if (configured) await client.auth.signOut();
+    if (configured) {
+      await client.auth.signOut();
+    }
   }
 
   static Future<String> askFitilaIa(String message) async {
@@ -174,7 +182,9 @@ class FitilaBackend {
     final bariba = data['response_ba']?.toString().trim() ?? '';
     final french = data['response_fr']?.toString().trim() ?? '';
     final answer = bariba.isNotEmpty && !fallback ? bariba : french;
-    if (answer.isEmpty) throw StateError('Fitila IA n’a retourné aucun texte.');
+    if (answer.isEmpty) {
+      throw StateError('Fitila IA n’a retourné aucun texte.');
+    }
     return answer.replaceAll(RegExp(r'\.\s+'), '.\n\n').trim();
   }
 
@@ -225,7 +235,9 @@ class FitilaBackend {
     required bool liked,
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     final existing = await client
         .from('tamtam_reactions')
         .select('id, reaction_type')
@@ -258,7 +270,9 @@ class FitilaBackend {
     bool isPublic = true,
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     final payload = {
       'user_id': user.id,
       'audio_url': null,
@@ -294,7 +308,9 @@ class FitilaBackend {
     bool isPublic = true,
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     final extension = originalName.contains('.')
         ? originalName.split('.').last.toLowerCase()
         : switch (mediaType) {
@@ -357,7 +373,9 @@ class FitilaBackend {
 
   static Future<Map<String, dynamic>> fetchVoiceLab() async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     final results = await Future.wait<dynamic>([
       client
           .from('bariba_corpus_phrases')
@@ -407,7 +425,9 @@ class FitilaBackend {
     required int durationSeconds,
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     final extension = contentType.contains('mp4') ? 'm4a' : 'wav';
     final safeCategory = category
         .toLowerCase()
@@ -457,7 +477,9 @@ class FitilaBackend {
 
   static Future<bool> isTeacher() async {
     final user = client.auth.currentUser;
-    if (user == null) return false;
+    if (user == null) {
+      return false;
+    }
     try {
       final rows = await client
           .from('user_roles')
@@ -477,21 +499,31 @@ class FitilaBackend {
     required String userId,
   }) {
     final dn = displayName?.trim();
-    if (dn != null && dn.isNotEmpty && dn != 'Nouvel utilisateur') return dn;
+    if (dn != null && dn.isNotEmpty && dn != 'Nouvel utilisateur') {
+      return dn;
+    }
     final un = username?.trim();
-    if (un != null && un.isNotEmpty && !un.startsWith('user_')) return '@$un';
+    if (un != null && un.isNotEmpty && !un.startsWith('user_')) {
+      return '@$un';
+    }
     if (phoneNumber != null && phoneNumber.trim().isNotEmpty) {
       final digits = phoneNumber.replaceAll(RegExp(r'\D'), '');
-      final tail = digits.length > 8 ? digits.substring(digits.length - 8) : digits;
+      final tail = digits.length > 8
+          ? digits.substring(digits.length - 8)
+          : digits;
       return '📱 $tail';
     }
-    final short = userId.length >= 4 ? userId.substring(0, 4).toUpperCase() : userId.toUpperCase();
+    final short = userId.length >= 4
+        ? userId.substring(0, 4).toUpperCase()
+        : userId.toUpperCase();
     return 'Apprenant $short';
   }
 
   static Future<Map<String, dynamic>> fetchTeacherDashboard() async {
     final results = await Future.wait<dynamic>([
-      client.from('classe_student_progress').select('user_id, completed_lessons'),
+      client
+          .from('classe_student_progress')
+          .select('user_id, completed_lessons'),
       client
           .from('classe_student_answers')
           .select('id')
@@ -537,8 +569,13 @@ class FitilaBackend {
         .from('classe_student_progress')
         .select('user_id, level, completed_lessons, updated_at');
     final progressRows = List<Map<String, dynamic>>.from(progress as List);
-    final userIds = progressRows.map((r) => r['user_id'] as String).toSet().toList();
-    if (userIds.isEmpty) return [];
+    final userIds = progressRows
+        .map((r) => r['user_id'] as String)
+        .toSet()
+        .toList();
+    if (userIds.isEmpty) {
+      return [];
+    }
 
     final results = await Future.wait<dynamic>([
       client
@@ -560,30 +597,34 @@ class FitilaBackend {
       pendingCount[uid] = (pendingCount[uid] ?? 0) + 1;
     }
 
-    final merged = userIds.map((uid) {
-      final userRows = progressRows.where((p) => p['user_id'] == uid);
-      final n1 = _firstOrNull(userRows.where((p) => p['level'] == 'N1'));
-      final n2 = _firstOrNull(userRows.where((p) => p['level'] == 'N2'));
-      final profile = profileMap[uid];
-      final n1Completed = (n1?['completed_lessons'] as List?)?.length ?? 0;
-      final n2Completed = (n2?['completed_lessons'] as List?)?.length ?? 0;
-      final lastUpdated = [n1?['updated_at'], n2?['updated_at']]
-          .whereType<String>()
-          .toList()
-        ..sort();
-      return <String, dynamic>{
-        'user_id': uid,
-        'username': profile?['username'],
-        'display_name': profile?['display_name'],
-        'phone_number': profile?['phone_number'],
-        'avatar_url': profile?['avatar_url'],
-        'n1_completed': n1Completed,
-        'n2_completed': n2Completed,
-        'last_updated': lastUpdated.isEmpty ? '' : lastUpdated.last,
-        'pending_count': pendingCount[uid] ?? 0,
-      };
-    }).toList()
-      ..sort((a, b) => (b['last_updated'] as String).compareTo(a['last_updated'] as String));
+    final merged =
+        userIds.map((uid) {
+          final userRows = progressRows.where((p) => p['user_id'] == uid);
+          final n1 = _firstOrNull(userRows.where((p) => p['level'] == 'N1'));
+          final n2 = _firstOrNull(userRows.where((p) => p['level'] == 'N2'));
+          final profile = profileMap[uid];
+          final n1Completed = (n1?['completed_lessons'] as List?)?.length ?? 0;
+          final n2Completed = (n2?['completed_lessons'] as List?)?.length ?? 0;
+          final lastUpdated = [
+            n1?['updated_at'],
+            n2?['updated_at'],
+          ].whereType<String>().toList()..sort();
+          return <String, dynamic>{
+            'user_id': uid,
+            'username': profile?['username'],
+            'display_name': profile?['display_name'],
+            'phone_number': profile?['phone_number'],
+            'avatar_url': profile?['avatar_url'],
+            'n1_completed': n1Completed,
+            'n2_completed': n2Completed,
+            'last_updated': lastUpdated.isEmpty ? '' : lastUpdated.last,
+            'pending_count': pendingCount[uid] ?? 0,
+          };
+        }).toList()..sort(
+          (a, b) => (b['last_updated'] as String).compareTo(
+            a['last_updated'] as String,
+          ),
+        );
     return merged;
   }
 
@@ -628,10 +669,14 @@ class FitilaBackend {
     return {
       'profile': results[0],
       'progress': List<Map<String, dynamic>>.from((results[1] as List?) ?? []),
-      'evaluations': List<Map<String, dynamic>>.from((results[2] as List?) ?? []),
+      'evaluations': List<Map<String, dynamic>>.from(
+        (results[2] as List?) ?? [],
+      ),
       'answers': List<Map<String, dynamic>>.from((results[3] as List?) ?? []),
       'posts': List<Map<String, dynamic>>.from((results[4] as List?) ?? []),
-      'contributions': List<Map<String, dynamic>>.from((results[5] as List?) ?? []),
+      'contributions': List<Map<String, dynamic>>.from(
+        (results[5] as List?) ?? [],
+      ),
     };
   }
 
@@ -645,12 +690,18 @@ class FitilaBackend {
           'id, user_id, level, module, lesson_id, section_key, question_idx, answer_text, answer_audio_path, answer_audio_duration, score, max_score, teacher_grade, teacher_comment, updated_at',
         )
         .filter('graded_at', 'is', null);
-    if (module != null && module != 'all') query = query.eq('module', module);
-    if (level != null && level != 'all') query = query.eq('level', level);
+    if (module != null && module != 'all') {
+      query = query.eq('module', module);
+    }
+    if (level != null && level != 'all') {
+      query = query.eq('level', level);
+    }
     final rows = await query.order('updated_at', ascending: false).limit(100);
     final list = List<Map<String, dynamic>>.from(rows as List);
     final ids = list.map((r) => r['user_id'] as String).toSet().toList();
-    if (ids.isEmpty) return list;
+    if (ids.isEmpty) {
+      return list;
+    }
     final profiles = await client
         .from('tamtam_profiles')
         .select('user_id, display_name, username, phone_number')
@@ -665,7 +716,9 @@ class FitilaBackend {
         ),
     };
     for (final row in list) {
-      row['_student_label'] = labelMap[row['user_id']] ?? (row['user_id'] as String).substring(0, 8);
+      row['_student_label'] =
+          labelMap[row['user_id']] ??
+          (row['user_id'] as String).substring(0, 8);
     }
     return list;
   }
@@ -685,7 +738,9 @@ class FitilaBackend {
         .eq('id', answerId);
   }
 
-  static Future<List<Map<String, dynamic>>> fetchAnswerKeys(String level) async {
+  static Future<List<Map<String, dynamic>>> fetchAnswerKeys(
+    String level,
+  ) async {
     final rows = await client
         .from('classe_answer_keys')
         .select()
@@ -696,7 +751,10 @@ class FitilaBackend {
   static Future<void> saveAnswerKey(Map<String, dynamic> key) async {
     await client
         .from('classe_answer_keys')
-        .upsert(key, onConflict: 'level,module,lesson_id,section_key,question_idx');
+        .upsert(
+          key,
+          onConflict: 'level,module,lesson_id,section_key,question_idx',
+        );
   }
 
   static Future<List<Map<String, dynamic>>> fetchGradeWeights({
@@ -704,8 +762,12 @@ class FitilaBackend {
     String? module,
   }) async {
     var query = client.from('classe_grade_weights').select();
-    if (level != null) query = query.eq('level', level);
-    if (module != null) query = query.eq('module', module);
+    if (level != null) {
+      query = query.eq('level', level);
+    }
+    if (module != null) {
+      query = query.eq('module', module);
+    }
     final rows = await query
         .order('level')
         .order('module')
@@ -726,10 +788,15 @@ class FitilaBackend {
 
   static Future<Map<String, dynamic>> fetchGradeOverview() async {
     final results = await Future.wait<dynamic>([
-      client.from('tamtam_profiles').select('user_id, display_name, username').limit(500),
+      client
+          .from('tamtam_profiles')
+          .select('user_id, display_name, username')
+          .limit(500),
       client
           .from('classe_student_answers')
-          .select('user_id, level, module, lesson_id, section_key, question_idx, teacher_grade')
+          .select(
+            'user_id, level, module, lesson_id, section_key, question_idx, teacher_grade',
+          )
           .not('teacher_grade', 'is', null)
           .limit(5000),
       client.from('classe_grade_weights').select(),
@@ -756,64 +823,84 @@ class FitilaBackend {
       byStudent.putIfAbsent(a['user_id'] as String, () => []).add(a);
     }
 
-    final reports = byStudent.entries.map((entry) {
-      final uid = entry.key;
-      final rows = entry.value;
-      final profile = _firstOrNull(students.where((s) => s['user_id'] == uid));
-      final byModule = <String, List<Map<String, dynamic>>>{};
-      for (final r in rows) {
-        final key = '${r['level']}::${r['module']}';
-        byModule.putIfAbsent(key, () => []).add(r);
-      }
-      final moduleAverages = <String, double>{};
-      for (final entryMod in byModule.entries) {
-        final rs = entryMod.value;
-        num sumW = 0, sumWG = 0;
-        for (final r in rs) {
-          final g = (r['teacher_grade'] as num?);
-          if (g == null) continue;
-          final w = weightFor(r);
-          sumW += w;
-          sumWG += g * w;
-        }
-        if (sumW > 0) moduleAverages[entryMod.key] = sumWG / sumW;
-      }
-      final globalAvg = moduleAverages.isEmpty
-          ? null
-          : moduleAverages.values.reduce((a, b) => a + b) / moduleAverages.length;
-      return <String, dynamic>{
-        'user_id': uid,
-        'name': profile?['display_name'] ??
-            profile?['username'] ??
-            (uid.length >= 8 ? uid.substring(0, 8) : uid),
-        'global_average': globalAvg,
-        'modules': moduleAverages,
-        'total_graded': rows.length,
-      };
-    }).toList()
-      ..sort((a, b) {
-        final ga = a['global_average'] as double?;
-        final gb = b['global_average'] as double?;
-        return (gb ?? 0).compareTo(ga ?? 0);
-      });
+    final reports =
+        byStudent.entries.map((entry) {
+          final uid = entry.key;
+          final rows = entry.value;
+          final profile = _firstOrNull(
+            students.where((s) => s['user_id'] == uid),
+          );
+          final byModule = <String, List<Map<String, dynamic>>>{};
+          for (final r in rows) {
+            final key = '${r['level']}::${r['module']}';
+            byModule.putIfAbsent(key, () => []).add(r);
+          }
+          final moduleAverages = <String, double>{};
+          for (final entryMod in byModule.entries) {
+            final rs = entryMod.value;
+            num sumW = 0, sumWG = 0;
+            for (final r in rs) {
+              final g = (r['teacher_grade'] as num?);
+              if (g == null) {
+                continue;
+              }
+              final w = weightFor(r);
+              sumW += w;
+              sumWG += g * w;
+            }
+            if (sumW > 0) {
+              moduleAverages[entryMod.key] = sumWG / sumW;
+            }
+          }
+          final globalAvg = moduleAverages.isEmpty
+              ? null
+              : moduleAverages.values.reduce((a, b) => a + b) /
+                    moduleAverages.length;
+          return <String, dynamic>{
+            'user_id': uid,
+            'name':
+                profile?['display_name'] ??
+                profile?['username'] ??
+                (uid.length >= 8 ? uid.substring(0, 8) : uid),
+            'global_average': globalAvg,
+            'modules': moduleAverages,
+            'total_graded': rows.length,
+          };
+        }).toList()..sort((a, b) {
+          final ga = a['global_average'] as double?;
+          final gb = b['global_average'] as double?;
+          return (gb ?? 0).compareTo(ga ?? 0);
+        });
 
-    final moduleColumns = answers
-        .map((a) => '${a['level']}::${a['module']}')
-        .toSet()
-        .toList()
-      ..sort();
+    final moduleColumns =
+        answers.map((a) => '${a['level']}::${a['module']}').toSet().toList()
+          ..sort();
 
     return {'reports': reports, 'moduleColumns': moduleColumns};
   }
 
   static String appreciationFor(double? grade) {
-    if (grade == null) return 'À revoir';
-    if (grade >= 18) return 'Excellent';
-    if (grade >= 16) return 'Très bien';
-    if (grade >= 14) return 'Bien';
-    if (grade >= 12) return 'Assez bien';
-    if (grade >= 10) return 'Passable';
-    if (grade >= 8) return 'Insuffisant';
+    if (grade == null) {
+      return 'À revoir';
+    }
+    if (grade >= 18) {
+      return 'Excellent';
+    }
+    if (grade >= 16) {
+      return 'Très bien';
+    }
+    if (grade >= 14) {
+      return 'Bien';
+    }
+    if (grade >= 12) {
+      return 'Assez bien';
+    }
+    if (grade >= 10) {
+      return 'Passable';
+    }
+    if (grade >= 8) {
+      return 'Insuffisant';
+    }
     return 'À revoir';
   }
 
@@ -836,11 +923,16 @@ class FitilaBackend {
       final mod = r['module'] as String? ?? '?';
       moduleCounts[mod] = (moduleCounts[mod] ?? 0) + 1;
     }
-    final grades = List<Map<String, dynamic>>.from(results[2] as List)
-        .map((r) => r['teacher_grade'] as num?)
-        .whereType<num>()
-        .toList();
-    final buckets = <String, int>{'0-5': 0, '6-9': 0, '10-12': 0, '13-15': 0, '16-20': 0};
+    final grades = List<Map<String, dynamic>>.from(
+      results[2] as List,
+    ).map((r) => r['teacher_grade'] as num?).whereType<num>().toList();
+    final buckets = <String, int>{
+      '0-5': 0,
+      '6-9': 0,
+      '10-12': 0,
+      '13-15': 0,
+      '16-20': 0,
+    };
     for (final g in grades) {
       if (g <= 5) {
         buckets['0-5'] = buckets['0-5']! + 1;
@@ -868,10 +960,10 @@ class FitilaBackend {
   static Future<List<Map<String, dynamic>>> fetchProducts({
     String? category,
   }) async {
-    var query = client.from('tamtam_products').select().eq(
-      'is_available',
-      true,
-    );
+    var query = client
+        .from('tamtam_products')
+        .select()
+        .eq('is_available', true);
     if (category != null && category.isNotEmpty) {
       query = query.eq('category', category);
     }
@@ -881,7 +973,9 @@ class FitilaBackend {
 
   static Future<List<Map<String, dynamic>>> searchProducts(String q) async {
     final term = q.trim();
-    if (term.isEmpty) return fetchProducts();
+    if (term.isEmpty) {
+      return fetchProducts();
+    }
     final data = await client
         .from('tamtam_products')
         .select()
@@ -897,7 +991,9 @@ class FitilaBackend {
 
   static Future<List<Map<String, dynamic>>> fetchMyProducts() async {
     final user = client.auth.currentUser;
-    if (user == null) return const [];
+    if (user == null) {
+      return const [];
+    }
     final data = await client
         .from('tamtam_products')
         .select()
@@ -959,7 +1055,9 @@ class FitilaBackend {
     required String status,
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     await client
         .from('tamtam_products')
         .update({'status': status, 'is_available': status == 'available'})
@@ -969,7 +1067,9 @@ class FitilaBackend {
 
   static Future<void> deleteProduct(String productId) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     await client
         .from('tamtam_products')
         .delete()
@@ -991,7 +1091,9 @@ class FitilaBackend {
 
   static Future<List<Map<String, dynamic>>> fetchMyJobs() async {
     final user = client.auth.currentUser;
-    if (user == null) return const [];
+    if (user == null) {
+      return const [];
+    }
     final data = await client
         .from('tamtam_jobs')
         .select()
@@ -1090,21 +1192,27 @@ class FitilaBackend {
 
   static Future<Map<String, dynamic>> fetchPreferences() async {
     final user = client.auth.currentUser;
-    if (user == null) return const {};
+    if (user == null) {
+      return const {};
+    }
     final row = await client
         .from('tamtam_profiles')
         .select('preferences')
         .eq('user_id', user.id)
         .maybeSingle();
     final prefs = row?['preferences'];
-    return prefs is Map ? Map<String, dynamic>.from(prefs) : <String, dynamic>{};
+    return prefs is Map
+        ? Map<String, dynamic>.from(prefs)
+        : <String, dynamic>{};
   }
 
   static Future<Map<String, dynamic>> updatePreferences(
     Map<String, dynamic> partial,
   ) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     final current = await fetchPreferences();
     final merged = {...current, ...partial};
     await client
@@ -1119,21 +1227,27 @@ class FitilaBackend {
 
   static Future<Map<String, dynamic>> fetchPrivacy() async {
     final user = client.auth.currentUser;
-    if (user == null) return const {};
+    if (user == null) {
+      return const {};
+    }
     final row = await client
         .from('tamtam_profiles')
         .select('privacy')
         .eq('user_id', user.id)
         .maybeSingle();
     final privacy = row?['privacy'];
-    return privacy is Map ? Map<String, dynamic>.from(privacy) : <String, dynamic>{};
+    return privacy is Map
+        ? Map<String, dynamic>.from(privacy)
+        : <String, dynamic>{};
   }
 
   static Future<Map<String, dynamic>> updatePrivacy(
     Map<String, dynamic> partial,
   ) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     final current = await fetchPrivacy();
     final merged = {...current, ...partial};
     await client
@@ -1152,15 +1266,25 @@ class FitilaBackend {
     required String contentType,
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
-    final path = 'avatars/${user.id}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
+    final path =
+        'avatars/${user.id}_${DateTime.now().millisecondsSinceEpoch}.$extension';
     await client.storage
         .from('tamtam-media')
-        .uploadBinary(path, bytes, fileOptions: FileOptions(contentType: contentType, upsert: true));
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: contentType, upsert: true),
+        );
     final url = client.storage.from('tamtam-media').getPublicUrl(path);
     await client
         .from('tamtam_profiles')
-        .update({'avatar_url': url, 'updated_at': DateTime.now().toIso8601String()})
+        .update({
+          'avatar_url': url,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
         .eq('user_id', user.id);
     return url;
   }
@@ -1171,16 +1295,26 @@ class FitilaBackend {
     required int durationSeconds,
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     final extension = contentType.contains('mp4') ? 'm4a' : 'wav';
-    final path = 'bio/${user.id}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+    final path =
+        'bio/${user.id}_${DateTime.now().millisecondsSinceEpoch}.$extension';
     await client.storage
         .from('tamtam-audio')
-        .uploadBinary(path, bytes, fileOptions: FileOptions(contentType: contentType, upsert: true));
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: contentType, upsert: true),
+        );
     final url = client.storage.from('tamtam-audio').getPublicUrl(path);
     await client
         .from('tamtam_profiles')
-        .update({'bio_audio_url': url, 'updated_at': DateTime.now().toIso8601String()})
+        .update({
+          'bio_audio_url': url,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
         .eq('user_id', user.id);
     return url;
   }
@@ -1194,11 +1328,21 @@ class FitilaBackend {
   /// aucun fichier lui-même — c'est à l'appelant de le sauvegarder/partager).
   static Future<Map<String, dynamic>> exportMyData() async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     final results = await Future.wait<dynamic>([
-      client.from('tamtam_profiles').select().eq('user_id', user.id).maybeSingle(),
+      client
+          .from('tamtam_profiles')
+          .select()
+          .eq('user_id', user.id)
+          .maybeSingle(),
       client.from('translation_history').select().eq('user_id', user.id),
-      client.from('learning_progress').select().eq('user_id', user.id).maybeSingle(),
+      client
+          .from('learning_progress')
+          .select()
+          .eq('user_id', user.id)
+          .maybeSingle(),
       client.from('learning_session_log').select().eq('user_id', user.id),
     ]);
     return {
@@ -1212,7 +1356,9 @@ class FitilaBackend {
 
   static Future<void> requestAccountDeletion({String? reason}) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     await client.from('account_deletion_requests').insert({
       'user_id': user.id,
       'reason': reason,
@@ -1231,7 +1377,9 @@ class FitilaBackend {
     String mode = 'texte',
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     final data = await client
         .from('translation_history')
         .insert({
@@ -1253,9 +1401,16 @@ class FitilaBackend {
     int limit = 100,
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) return const [];
-    var query = client.from('translation_history').select().eq('user_id', user.id);
-    if (favoritesOnly) query = query.eq('is_favorite', true);
+    if (user == null) {
+      return const [];
+    }
+    var query = client
+        .from('translation_history')
+        .select()
+        .eq('user_id', user.id);
+    if (favoritesOnly) {
+      query = query.eq('is_favorite', true);
+    }
     if (search != null && search.trim().isNotEmpty) {
       query = query.or(
         'source_text.ilike.%${search.trim()}%,translated_text.ilike.%${search.trim()}%',
@@ -1266,7 +1421,10 @@ class FitilaBackend {
   }
 
   static Future<void> toggleTranslationFavorite(String id, bool value) async {
-    await client.from('translation_history').update({'is_favorite': value}).eq('id', id);
+    await client
+        .from('translation_history')
+        .update({'is_favorite': value})
+        .eq('id', id);
   }
 
   static Future<void> deleteTranslationHistoryEntry(String id) async {
@@ -1292,24 +1450,39 @@ class FitilaBackend {
       'teacher_comment': comment,
       'graded_at': DateTime.now().toIso8601String(),
     };
-    final extension = contentType.contains('mp4') || contentType.contains('m4a') ? 'm4a' : 'wav';
+    final extension = contentType.contains('mp4') || contentType.contains('m4a')
+        ? 'm4a'
+        : 'wav';
     if (personalAudioBytes != null) {
-      final path = 'corrections/personal_${answerId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+      final path =
+          'corrections/personal_${answerId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
       await client.storage
           .from('tamtam-audio')
-          .uploadBinary(path, personalAudioBytes, fileOptions: FileOptions(contentType: contentType, upsert: true));
+          .uploadBinary(
+            path,
+            personalAudioBytes,
+            fileOptions: FileOptions(contentType: contentType, upsert: true),
+          );
       updates['teacher_audio_personal_path'] = path;
       updates['teacher_audio_personal_duration'] = personalDurationSeconds;
     }
     if (genericAudioBytes != null) {
-      final path = 'corrections/generic_${answerId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+      final path =
+          'corrections/generic_${answerId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
       await client.storage
           .from('tamtam-audio')
-          .uploadBinary(path, genericAudioBytes, fileOptions: FileOptions(contentType: contentType, upsert: true));
+          .uploadBinary(
+            path,
+            genericAudioBytes,
+            fileOptions: FileOptions(contentType: contentType, upsert: true),
+          );
       updates['teacher_audio_generic_path'] = path;
       updates['teacher_audio_generic_duration'] = genericDurationSeconds;
     }
-    await client.from('classe_student_answers').update(updates).eq('id', answerId);
+    await client
+        .from('classe_student_answers')
+        .update(updates)
+        .eq('id', answerId);
   }
 
   // ---------------------------------------------------------------------
@@ -1332,7 +1505,9 @@ class FitilaBackend {
         .select()
         .eq('user_id', user.id)
         .maybeSingle();
-    if (row != null) return row;
+    if (row != null) {
+      return row;
+    }
     return {
       'user_id': user.id,
       'xp': 0,
@@ -1345,7 +1520,9 @@ class FitilaBackend {
 
   static Future<List<Map<String, dynamic>>> fetchThemeMastery() async {
     final user = client.auth.currentUser;
-    if (user == null) return const [];
+    if (user == null) {
+      return const [];
+    }
     final rows = await client
         .from('learning_theme_mastery')
         .select()
@@ -1353,9 +1530,13 @@ class FitilaBackend {
     return List<Map<String, dynamic>>.from(rows as List);
   }
 
-  static Future<List<Map<String, dynamic>>> fetchLearningHistory({int limit = 30}) async {
+  static Future<List<Map<String, dynamic>>> fetchLearningHistory({
+    int limit = 30,
+  }) async {
     final user = client.auth.currentUser;
-    if (user == null) return const [];
+    if (user == null) {
+      return const [];
+    }
     final rows = await client
         .from('learning_session_log')
         .select()
@@ -1370,7 +1551,8 @@ class FitilaBackend {
   /// tente de débloquer les badges correspondants. Retourne un résumé
   /// {xpEarned, newStreak, unlockedBadges} pour l'écran de résultat.
   static Future<Map<String, dynamic>> recordLearningSession({
-    required String sessionType, // 'exercise' | 'classe_lesson' | 'pronunciation'
+    required String
+    sessionType, // 'exercise' | 'classe_lesson' | 'pronunciation'
     String? themeKey,
     String? lessonRef,
     String? direction,
@@ -1378,7 +1560,9 @@ class FitilaBackend {
     required int totalCount,
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     final isPerfect = totalCount > 0 && correctCount == totalCount;
     final xpEarned = (correctCount * 8) + (isPerfect ? 20 : 0);
 
@@ -1409,7 +1593,8 @@ class FitilaBackend {
       }
     }
     final newXp = (existing?['xp'] as int? ?? 0) + xpEarned;
-    final newPerfectScores = (existing?['perfect_scores'] as int? ?? 0) + (isPerfect ? 1 : 0);
+    final newPerfectScores =
+        (existing?['perfect_scores'] as int? ?? 0) + (isPerfect ? 1 : 0);
     await client.from('learning_progress').upsert({
       'user_id': user.id,
       'xp': newXp,
@@ -1428,7 +1613,8 @@ class FitilaBackend {
           .eq('user_id', user.id)
           .eq('theme_key', themeKey)
           .maybeSingle();
-      final newCorrect = (themeRow?['correct_count'] as int? ?? 0) + correctCount;
+      final newCorrect =
+          (themeRow?['correct_count'] as int? ?? 0) + correctCount;
       final newTotal = (themeRow?['total_count'] as int? ?? 0) + totalCount;
       await client.from('learning_theme_mastery').upsert({
         'user_id': user.id,
@@ -1470,15 +1656,20 @@ class FitilaBackend {
     int perfectScoresDelta = 0,
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) return const [];
+    if (user == null) {
+      return const [];
+    }
     final existing = await client
         .from('user_achievements')
         .select()
         .eq('user_id', user.id)
         .maybeSingle();
-    final lessonsCompleted = (existing?['lessons_completed'] as int? ?? 0) + lessonsCompletedDelta;
-    final perfectScores = (existing?['perfect_scores'] as int? ?? 0) + perfectScoresDelta;
-    final streak = streakDays ?? (existing?['learning_streak_days'] as int? ?? 0);
+    final lessonsCompleted =
+        (existing?['lessons_completed'] as int? ?? 0) + lessonsCompletedDelta;
+    final perfectScores =
+        (existing?['perfect_scores'] as int? ?? 0) + perfectScoresDelta;
+    final streak =
+        streakDays ?? (existing?['learning_streak_days'] as int? ?? 0);
     await client.from('user_achievements').upsert({
       'user_id': user.id,
       'lessons_completed': lessonsCompleted,
@@ -1491,9 +1682,12 @@ class FitilaBackend {
   /// Compare les compteurs d'apprentissage de l'utilisateur aux exigences
   /// des badges définis en base, et débloque automatiquement ceux atteints.
   /// Retourne la liste des badges nouvellement débloqués.
-  static Future<List<Map<String, dynamic>>> checkAndUnlockLearningBadges() async {
+  static Future<List<Map<String, dynamic>>>
+  checkAndUnlockLearningBadges() async {
     final user = client.auth.currentUser;
-    if (user == null) return const [];
+    if (user == null) {
+      return const [];
+    }
     const learningRequirementTypes = [
       'lessons_completed',
       'learning_streak_days',
@@ -1502,18 +1696,35 @@ class FitilaBackend {
       'themes_completed',
     ];
     final results = await Future.wait<dynamic>([
-      client.from('user_achievements').select().eq('user_id', user.id).maybeSingle(),
-      client.from('badges').select().filter('requirement_type', 'in', '(${learningRequirementTypes.join(',')})'),
+      client
+          .from('user_achievements')
+          .select()
+          .eq('user_id', user.id)
+          .maybeSingle(),
+      client
+          .from('badges')
+          .select()
+          .filter(
+            'requirement_type',
+            'in',
+            '(${learningRequirementTypes.join(',')})',
+          ),
       client.from('user_badges').select('badge_id').eq('user_id', user.id),
     ]);
     final achievements = results[0] as Map<String, dynamic>?;
-    if (achievements == null) return const [];
+    if (achievements == null) {
+      return const [];
+    }
     final badges = List<Map<String, dynamic>>.from(results[1] as List);
-    final alreadyUnlocked = (results[2] as List).map((r) => r['badge_id']).toSet();
+    final alreadyUnlocked = (results[2] as List)
+        .map((r) => r['badge_id'])
+        .toSet();
 
     final newlyUnlocked = <Map<String, dynamic>>[];
     for (final badge in badges) {
-      if (alreadyUnlocked.contains(badge['id'])) continue;
+      if (alreadyUnlocked.contains(badge['id'])) {
+        continue;
+      }
       final reqType = badge['requirement_type'] as String;
       final reqValue = badge['requirement_value'] as int? ?? 0;
       final current = achievements[reqType] as int? ?? 0;
@@ -1525,7 +1736,9 @@ class FitilaBackend {
           });
           newlyUnlocked.add(badge);
         } on PostgrestException catch (e) {
-          if (e.code != '23505') rethrow;
+          if (e.code != '23505') {
+            rethrow;
+          }
         }
       }
     }
@@ -1534,14 +1747,21 @@ class FitilaBackend {
 
   static Future<Map<String, dynamic>> fetchLearnerBadges() async {
     final user = client.auth.currentUser;
-    if (user == null) return const {'unlocked': [], 'locked': []};
+    if (user == null) {
+      return const {'unlocked': [], 'locked': []};
+    }
     final results = await Future.wait<dynamic>([
       client.from('badges').select(),
-      client.from('user_badges').select('badge_id, earned_at').eq('user_id', user.id),
+      client
+          .from('user_badges')
+          .select('badge_id, earned_at')
+          .eq('user_id', user.id),
     ]);
     final allBadges = List<Map<String, dynamic>>.from(results[0] as List);
     final userBadges = List<Map<String, dynamic>>.from(results[1] as List);
-    final unlockedIds = {for (final b in userBadges) b['badge_id']: b['earned_at']};
+    final unlockedIds = {
+      for (final b in userBadges) b['badge_id']: b['earned_at'],
+    };
     final unlocked = <Map<String, dynamic>>[];
     final locked = <Map<String, dynamic>>[];
     for (final badge in allBadges) {
@@ -1569,7 +1789,9 @@ class FitilaBackend {
     required int xpAwarded,
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     final profile = await client
         .from('tamtam_profiles')
         .select('display_name, username, avatar_url')
@@ -1613,27 +1835,106 @@ class FitilaBackend {
               .order('created_at', ascending: false)
               .limit(limit);
     final responses = List<Map<String, dynamic>>.from(rows as List);
-    final userIds = responses.map((r) => r['user_id'] as String).toSet().toList();
-    if (userIds.isEmpty) return responses;
-    final profiles = await client
-        .from('tamtam_profiles')
-        .select('user_id, username, display_name, avatar_url')
-        .filter('user_id', 'in', '(${userIds.join(",")})');
+    if (responses.isEmpty) {
+      return responses;
+    }
+    final userIds = responses
+        .map((r) => r['user_id'] as String)
+        .toSet()
+        .toList();
+    final responseIds = responses
+        .map((r) => r['id'] as String)
+        .toSet()
+        .toList();
+    final results = await Future.wait([
+      client
+          .from('tamtam_profiles')
+          .select('user_id, username, display_name, avatar_url')
+          .filter('user_id', 'in', '(${userIds.join(",")})'),
+      client
+          .from('battle_response_votes')
+          .select('response_id, user_id')
+          .filter('response_id', 'in', '(${responseIds.join(",")})'),
+    ]);
     final profileMap = <String, Map<String, dynamic>>{
-      for (final p in List<Map<String, dynamic>>.from(profiles as List))
+      for (final p in List<Map<String, dynamic>>.from(results[0] as List))
         p['user_id'] as String: p,
     };
-    return responses.map((row) {
-      final profile = profileMap[row['user_id']];
-      return {
-        ...row,
-        'display_name': profile?['display_name']?.toString().trim().isNotEmpty ==
-                true
-            ? profile!['display_name']
-            : (profile?['username'] ?? 'Griot Fitila'),
-        'avatar_url': profile?['avatar_url'],
-      };
-    }).toList(growable: false);
+    final voteRows = List<Map<String, dynamic>>.from(results[1] as List);
+    final voteCounts = <String, int>{};
+    final votedByMe = <String>{};
+    final currentUserId = client.auth.currentUser?.id;
+    for (final vote in voteRows) {
+      final rid = vote['response_id'] as String;
+      voteCounts[rid] = (voteCounts[rid] ?? 0) + 1;
+      if (currentUserId != null && vote['user_id'] == currentUserId) {
+        votedByMe.add(rid);
+      }
+    }
+    return responses
+        .map((row) {
+          final profile = profileMap[row['user_id']];
+          final id = row['id'] as String;
+          return {
+            ...row,
+            'display_name':
+                profile?['display_name']?.toString().trim().isNotEmpty == true
+                ? profile!['display_name']
+                : (profile?['username'] ?? 'Griot Fitila'),
+            'avatar_url': profile?['avatar_url'],
+            'vote_count': voteCounts[id] ?? 0,
+            'voted_by_me': votedByMe.contains(id),
+          };
+        })
+        .toList(growable: false);
+  }
+
+  // Statistiques réelles du défi du jour — dérivées des réponses déjà
+  // déposées (jamais un chiffre fabriqué) : nombre de participants
+  // distincts et meilleure réponse actuelle, pour la bannière affichée
+  // avant que l'utilisateur ne réponde.
+  static Future<Map<String, dynamic>> fetchBattleChallengeStats(
+    String challengeId,
+  ) async {
+    final chain = await fetchBattleChain(challengeId: challengeId, limit: 200);
+    final participantIds = chain.map((r) => r['user_id'] as String).toSet();
+    Map<String, dynamic>? best;
+    for (final r in chain) {
+      final s = (r['score'] as num?)?.toInt() ?? 0;
+      final bestScore = (best?['score'] as num?)?.toInt() ?? -1;
+      if (best == null || s > bestScore) {
+        best = r;
+      }
+    }
+    return {'participant_count': participantIds.length, 'best_response': best};
+  }
+
+  static Future<void> toggleBattleResponseVote({
+    required String responseId,
+    required bool like,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
+    if (like) {
+      try {
+        await client.from('battle_response_votes').insert({
+          'response_id': responseId,
+          'user_id': user.id,
+        });
+      } on PostgrestException catch (e) {
+        if (e.code != '23505') {
+          rethrow;
+        }
+      }
+    } else {
+      await client
+          .from('battle_response_votes')
+          .delete()
+          .eq('response_id', responseId)
+          .eq('user_id', user.id);
+    }
   }
 
   static Future<Map<String, dynamic>> fetchMyBattleStats() async {
@@ -1651,7 +1952,9 @@ class FitilaBackend {
       0,
       (sum, r) => sum + ((r['xp_awarded'] as num?)?.toInt() ?? 0),
     );
-    final wins = list.where((r) => ((r['score'] as num?)?.toInt() ?? 0) >= 80).length;
+    final wins = list
+        .where((r) => ((r['score'] as num?)?.toInt() ?? 0) >= 80)
+        .length;
     return {
       'attempts': list.length,
       'total_xp': totalXp,
@@ -1672,7 +1975,9 @@ class FitilaBackend {
     String? audioUrl,
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     final data = await client
         .from('corpus_contributions')
         .insert({
@@ -1690,11 +1995,28 @@ class FitilaBackend {
 
   static Future<int> fetchCorpusContributionCount() async {
     final user = client.auth.currentUser;
-    if (user == null) return 0;
+    if (user == null) {
+      return 0;
+    }
     final rows = await client
         .from('corpus_contributions')
         .select('id')
         .eq('user_id', user.id);
+    return List.from(rows as List).length;
+  }
+
+  // Statistique RÉELLE de la communauté entière (tous utilisateurs
+  // confondus), contrairement à fetchCorpusContributionCount ci-dessus
+  // qui ne compte que les contributions de l'utilisateur courant.
+  // Filtrée sur le mois en cours pour rester un chiffre vivant plutôt
+  // qu'un total qui ne fait que croître indéfiniment.
+  static Future<int> fetchCorpusCommunityCountThisMonth() async {
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1).toIso8601String();
+    final rows = await client
+        .from('corpus_contributions')
+        .select('id')
+        .gte('created_at', startOfMonth);
     return List.from(rows as List).length;
   }
 
@@ -1705,6 +2027,289 @@ class FitilaBackend {
   // ───────────────────────────────────────────────────────────────
   static Future<void> registerHanduniaWasaInterest(bool interested) async {
     await updatePreferences({'handunia_wasa_interested': interested});
+  }
+
+  // ───────────────────────────────────────────────────────────────
+  // Handunia Wasa — « le monde vivant », socle technique réel et
+  // dynamique. Les lieux ne sont plus une liste fermée : les 7 lieux
+  // de départ ne sont qu'un point de départ éditorial, et n'importe
+  // quel utilisateur connecté peut en tisser de nouveaux
+  // (createHanduniaLieu). La densité de chaque lieu et la scène
+  // reconstituée viennent des souvenirs RÉELLEMENT tissés par la
+  // communauté (handunia_fragments) — jamais un chiffre ou un texte
+  // fabriqué. Chaque souvenir porte son auteur réel et peut être aimé
+  // (handunia_fragment_likes), pour un fonctionnement de réseau social
+  // à part entière. « Tisser un souvenir » n'est volontairement pas
+  // une publication dans le fil : il rejoint uniquement la mémoire du
+  // lieu choisi.
+  // ───────────────────────────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> fetchHanduniaLieux() async {
+    final rows = await client
+        .from('handunia_lieux')
+        .select()
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  /// Nombre réel de souvenirs par lieu — c'est ce chiffre, normalisé
+  /// côté écran, qui devient la « densité » affichée sur la carte, et
+  /// qui sert aussi à trier les lieux par popularité réelle.
+  static Future<Map<String, int>> fetchHanduniaDensity() async {
+    final rows = await client.from('handunia_fragments').select('lieu_id');
+    final counts = <String, int>{};
+    for (final row in List<Map<String, dynamic>>.from(rows as List)) {
+      final id = row['lieu_id']?.toString();
+      if (id == null || id.isEmpty) {
+        continue;
+      }
+      counts[id] = (counts[id] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  /// Tisse un nouveau lieu, ouvert à tous. Un même nom (insensible à la
+  /// casse) ne peut exister qu'une fois : l'app vérifie déjà côté
+  /// client avant d'appeler cette méthode, mais la contrainte en base
+  /// est la garantie ultime — elle remonte alors une erreur claire
+  /// plutôt qu'un doublon silencieux.
+  static Future<Map<String, dynamic>> createHanduniaLieu({
+    required String name,
+    required String icon,
+    required String description,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
+    final cleanName = name.trim();
+    if (cleanName.isEmpty) {
+      throw StateError('Le nom du lieu est requis.');
+    }
+    final id = _slugifyHanduniaLieu(cleanName, user.id);
+    try {
+      final data = await client
+          .from('handunia_lieux')
+          .insert({
+            'id': id,
+            'name': cleanName,
+            'icon': icon.trim().isEmpty ? '📍' : icon.trim(),
+            'description': description.trim(),
+            'created_by': user.id,
+          })
+          .select()
+          .single();
+      return Map<String, dynamic>.from(data);
+    } on PostgrestException catch (e) {
+      if (e.code == '23505') {
+        throw StateError('Un lieu portant ce nom existe déjà.');
+      }
+      rethrow;
+    }
+  }
+
+  static String _slugifyHanduniaLieu(String name, String userId) {
+    var s = name.toLowerCase().trim();
+    const accents = {
+      'à': 'a',
+      'â': 'a',
+      'ä': 'a',
+      'á': 'a',
+      'ã': 'a',
+      'å': 'a',
+      'ç': 'c',
+      'è': 'e',
+      'é': 'e',
+      'ê': 'e',
+      'ë': 'e',
+      'ì': 'i',
+      'î': 'i',
+      'ï': 'i',
+      'í': 'i',
+      'ò': 'o',
+      'ô': 'o',
+      'ö': 'o',
+      'ó': 'o',
+      'õ': 'o',
+      'ɔ': 'o',
+      'ù': 'u',
+      'û': 'u',
+      'ü': 'u',
+      'ú': 'u',
+      'ñ': 'n',
+      'ɛ': 'e',
+    };
+    accents.forEach((k, v) => s = s.replaceAll(k, v));
+    s = s
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    if (s.isEmpty) {
+      s = 'lieu';
+    }
+    final suffix = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
+    return '$s-${userId.substring(0, 4)}$suffix';
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchHanduniaFragments(
+    String lieuId, {
+    int limit = 20,
+  }) async {
+    final rows = await client
+        .from('handunia_fragments')
+        .select('id, text, ai_generated, created_at, user_id')
+        .eq('lieu_id', lieuId)
+        .order('created_at', ascending: false)
+        .limit(limit);
+    return _attachHanduniaAuthorsAndLikes(
+      List<Map<String, dynamic>>.from(rows as List),
+    );
+  }
+
+  /// Fil du monde vivant : les souvenirs les plus récents, tous lieux
+  /// confondus — la brique qui fait de Handunia Wasa un vrai réseau
+  /// social plutôt qu'une simple collection de lieux isolés.
+  static Future<List<Map<String, dynamic>>> fetchHanduniaWorldFeed({
+    int limit = 25,
+  }) async {
+    final rows = await client
+        .from('handunia_fragments')
+        .select('id, text, ai_generated, created_at, user_id, lieu_id')
+        .order('created_at', ascending: false)
+        .limit(limit);
+    final fragments = List<Map<String, dynamic>>.from(rows as List);
+    if (fragments.isEmpty) {
+      return fragments;
+    }
+    final withAuthors = await _attachHanduniaAuthorsAndLikes(fragments);
+    final lieuIds = withAuthors
+        .map((f) => f['lieu_id'] as String)
+        .toSet()
+        .toList();
+    final lieux = await client
+        .from('handunia_lieux')
+        .select('id, name, icon')
+        .filter('id', 'in', '(${lieuIds.join(",")})');
+    final lieuMap = <String, Map<String, dynamic>>{
+      for (final l in List<Map<String, dynamic>>.from(lieux as List))
+        l['id'] as String: l,
+    };
+    return withAuthors
+        .map((f) {
+          final lieu = lieuMap[f['lieu_id']];
+          return {
+            ...f,
+            'lieu_name': lieu?['name'] ?? '',
+            'lieu_icon': lieu?['icon'] ?? '📍',
+          };
+        })
+        .toList(growable: false);
+  }
+
+  static Future<List<Map<String, dynamic>>> _attachHanduniaAuthorsAndLikes(
+    List<Map<String, dynamic>> fragments,
+  ) async {
+    if (fragments.isEmpty) {
+      return fragments;
+    }
+    final userIds = fragments
+        .map((f) => f['user_id'] as String)
+        .toSet()
+        .toList();
+    final fragmentIds = fragments
+        .map((f) => f['id'] as String)
+        .toSet()
+        .toList();
+    final results = await Future.wait([
+      client
+          .from('tamtam_profiles')
+          .select('user_id, username, display_name, avatar_url')
+          .filter('user_id', 'in', '(${userIds.join(",")})'),
+      client
+          .from('handunia_fragment_likes')
+          .select('fragment_id, user_id')
+          .filter('fragment_id', 'in', '(${fragmentIds.join(",")})'),
+    ]);
+    final profileMap = <String, Map<String, dynamic>>{
+      for (final p in List<Map<String, dynamic>>.from(results[0] as List))
+        p['user_id'] as String: p,
+    };
+    final likeRows = List<Map<String, dynamic>>.from(results[1] as List);
+    final likeCounts = <String, int>{};
+    final likedByMe = <String>{};
+    final currentUserId = client.auth.currentUser?.id;
+    for (final like in likeRows) {
+      final fid = like['fragment_id'] as String;
+      likeCounts[fid] = (likeCounts[fid] ?? 0) + 1;
+      if (currentUserId != null && like['user_id'] == currentUserId) {
+        likedByMe.add(fid);
+      }
+    }
+    return fragments
+        .map((f) {
+          final profile = profileMap[f['user_id']];
+          final id = f['id'] as String;
+          return {
+            ...f,
+            'display_name':
+                profile?['display_name']?.toString().trim().isNotEmpty == true
+                ? profile!['display_name']
+                : (profile?['username'] ?? 'Griot Fitila'),
+            'avatar_url': profile?['avatar_url'],
+            'like_count': likeCounts[id] ?? 0,
+            'liked_by_me': likedByMe.contains(id),
+          };
+        })
+        .toList(growable: false);
+  }
+
+  static Future<Map<String, dynamic>> weaveHanduniaFragment({
+    required String lieuId,
+    required String text,
+    required bool aiGenerated,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
+    final data = await client
+        .from('handunia_fragments')
+        .insert({
+          'user_id': user.id,
+          'lieu_id': lieuId,
+          'text': text.trim(),
+          'ai_generated': aiGenerated,
+        })
+        .select()
+        .single();
+    return Map<String, dynamic>.from(data);
+  }
+
+  /// Bascule le "j'aime" de l'utilisateur courant sur un souvenir —
+  /// brique sociale de base, réellement écrite en base (jamais un
+  /// compteur local uniquement côté app).
+  static Future<void> toggleHanduniaFragmentLike({
+    required String fragmentId,
+    required bool like,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
+    if (like) {
+      try {
+        await client.from('handunia_fragment_likes').insert({
+          'fragment_id': fragmentId,
+          'user_id': user.id,
+        });
+      } on PostgrestException catch (e) {
+        if (e.code != '23505') rethrow; // déjà aimé : rien à faire.
+      }
+    } else {
+      await client
+          .from('handunia_fragment_likes')
+          .delete()
+          .eq('fragment_id', fragmentId)
+          .eq('user_id', user.id);
+    }
   }
 
   // ───────────────────────────────────────────────────────────────
@@ -1720,7 +2325,9 @@ class FitilaBackend {
     String language = 'Bariba + Français',
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     final roomName =
         'griot-${user.id.substring(0, 8)}-${DateTime.now().millisecondsSinceEpoch}';
     final data = await client
@@ -1759,7 +2366,9 @@ class FitilaBackend {
         .order('started_at', ascending: false);
     final lives = List<Map<String, dynamic>>.from(rows as List);
     final hostIds = lives.map((r) => r['host_id'] as String).toSet().toList();
-    if (hostIds.isEmpty) return lives;
+    if (hostIds.isEmpty) {
+      return lives;
+    }
     final profiles = await client
         .from('tamtam_profiles')
         .select('user_id, username, display_name, avatar_url')
@@ -1768,17 +2377,19 @@ class FitilaBackend {
       for (final p in List<Map<String, dynamic>>.from(profiles as List))
         p['user_id'] as String: p,
     };
-    return lives.map((row) {
-      final profile = profileMap[row['host_id']];
-      return {
-        ...row,
-        'host_display_name':
-            profile?['display_name']?.toString().trim().isNotEmpty == true
-            ? profile!['display_name']
-            : (profile?['username'] ?? 'Griot Fitila'),
-        'host_avatar_url': profile?['avatar_url'],
-      };
-    }).toList(growable: false);
+    return lives
+        .map((row) {
+          final profile = profileMap[row['host_id']];
+          return {
+            ...row,
+            'host_display_name':
+                profile?['display_name']?.toString().trim().isNotEmpty == true
+                ? profile!['display_name']
+                : (profile?['username'] ?? 'Griot Fitila'),
+            'host_avatar_url': profile?['avatar_url'],
+          };
+        })
+        .toList(growable: false);
   }
 
   static Future<void> adjustLiveViewerCount(String liveId, int delta) async {
@@ -1790,7 +2401,9 @@ class FitilaBackend {
 
   static Future<void> joinLiveAsViewer(String liveId) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     await client.from('tamtam_live_viewers').insert({
       'live_id': liveId,
       'user_id': user.id,
@@ -1800,7 +2413,9 @@ class FitilaBackend {
 
   static Future<void> leaveLiveAsViewer(String liveId) async {
     final user = client.auth.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      return;
+    }
     await client
         .from('tamtam_live_viewers')
         .delete()
@@ -1822,7 +2437,9 @@ class FitilaBackend {
   }) async {
     final user = client.auth.currentUser;
     final trimmed = message.trim();
-    if (user == null || trimmed.isEmpty) return;
+    if (user == null || trimmed.isEmpty) {
+      return;
+    }
     final profile = await client
         .from('tamtam_profiles')
         .select('display_name, username')
@@ -1855,7 +2472,9 @@ class FitilaBackend {
     required Map<String, dynamic> payload,
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     await client.from('tamtam_live_signals').insert({
       'live_id': liveId,
       'from_user': user.id,
@@ -1871,7 +2490,9 @@ class FitilaBackend {
     String liveId,
   ) {
     final user = client.auth.currentUser;
-    if (user == null) return const Stream.empty();
+    if (user == null) {
+      return const Stream.empty();
+    }
     return client
         .from('tamtam_live_signals')
         .stream(primaryKey: ['id'])
@@ -1889,7 +2510,9 @@ class FitilaBackend {
 
   static Future<Set<String>> fetchLikedPostIds() async {
     final user = client.auth.currentUser;
-    if (user == null) return <String>{};
+    if (user == null) {
+      return <String>{};
+    }
     final rows = await client
         .from('tamtam_reactions')
         .select('post_id')
@@ -1905,8 +2528,12 @@ class FitilaBackend {
     required bool follow,
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
-    if (user.id == authorId) return;
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
+    if (user.id == authorId) {
+      return;
+    }
     if (follow) {
       final existing = await client
           .from('tamtam_follows')
@@ -1931,7 +2558,9 @@ class FitilaBackend {
 
   static Future<Set<String>> fetchFollowingIds() async {
     final user = client.auth.currentUser;
-    if (user == null) return <String>{};
+    if (user == null) {
+      return <String>{};
+    }
     final rows = await client
         .from('tamtam_follows')
         .select('following_id')
@@ -1946,7 +2575,9 @@ class FitilaBackend {
     required bool saved,
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     if (saved) {
       final existing = await client
           .from('tamtam_bookmarks')
@@ -1971,7 +2602,9 @@ class FitilaBackend {
 
   static Future<Set<String>> fetchBookmarkedPostIds() async {
     final user = client.auth.currentUser;
-    if (user == null) return <String>{};
+    if (user == null) {
+      return <String>{};
+    }
     final rows = await client
         .from('tamtam_bookmarks')
         .select('post_id')
@@ -1986,7 +2619,9 @@ class FitilaBackend {
     required bool reposted,
   }) async {
     final user = client.auth.currentUser;
-    if (user == null) throw const AuthException('Connexion requise.');
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
     if (reposted) {
       final existing = await client
           .from('tamtam_shares')
@@ -2014,7 +2649,9 @@ class FitilaBackend {
 
   static Future<Set<String>> fetchRepostedPostIds() async {
     final user = client.auth.currentUser;
-    if (user == null) return <String>{};
+    if (user == null) {
+      return <String>{};
+    }
     final rows = await client
         .from('tamtam_shares')
         .select('post_id')
@@ -2031,8 +2668,12 @@ class FitilaBackend {
   }) async {
     final user = client.auth.currentUser;
     final trimmed = text.trim();
-    if (user == null) throw const AuthException('Connexion requise.');
-    if (trimmed.isEmpty) return;
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
+    if (trimmed.isEmpty) {
+      return;
+    }
     await client.from('tamtam_comments').insert({
       'post_id': postId,
       'user_id': user.id,
@@ -2058,7 +2699,9 @@ class FitilaBackend {
               .whereType<String>()
               .toSet()
               .toList();
-          if (ids.isEmpty) return list;
+          if (ids.isEmpty) {
+            return list;
+          }
           final profiles = await client
               .from('tamtam_profiles')
               .select('user_id, username, display_name, avatar_url')
@@ -2067,18 +2710,20 @@ class FitilaBackend {
             for (final p in List<Map<String, dynamic>>.from(profiles as List))
               p['user_id'] as String: p,
           };
-          return list.map((row) {
-            final profile = profileMap[row['user_id']?.toString()];
-            return {
-              ...row,
-              'display_name':
-                  profile?['display_name']?.toString().trim().isNotEmpty ==
-                      true
-                  ? profile!['display_name']
-                  : (profile?['username'] ?? 'Voix Fitila'),
-              'avatar_url': profile?['avatar_url'],
-            };
-          }).toList(growable: false);
+          return list
+              .map((row) {
+                final profile = profileMap[row['user_id']?.toString()];
+                return {
+                  ...row,
+                  'display_name':
+                      profile?['display_name']?.toString().trim().isNotEmpty ==
+                          true
+                      ? profile!['display_name']
+                      : (profile?['username'] ?? 'Voix Fitila'),
+                  'avatar_url': profile?['avatar_url'],
+                };
+              })
+              .toList(growable: false);
         });
   }
 }

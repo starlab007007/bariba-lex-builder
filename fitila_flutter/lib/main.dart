@@ -6,6 +6,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
@@ -41,6 +42,11 @@ const _fitilaMuted = Color(0xFF8C8571);
 const _fitilaSurface = Color(0xFFF7F5EC);
 const _fitilaSurfaceAlt = Color(0xFFF1EDDF);
 const _fitilaCard = Color(0xFFFFFFFF);
+// Écrans sombres "IA" (orbe micro, ondes, anneaux de score) — mêmes teintes
+// que la maquette premium jointe, pour une continuité visuelle exacte.
+const _fitilaDark1 = Color(0xFF1B1730);
+const _fitilaDark2 = Color(0xFF241F2E);
+const _fitilaDark3 = Color(0xFF332A4D);
 const _supabaseUrl = FitilaBackend.supabaseUrl;
 const _baribaLetters = [
   'ɛ',
@@ -106,12 +112,16 @@ class _AuthGateState extends State<AuthGate> {
 
   Future<void> _restore() async {
     if (widget.demoMode || !FitilaBackend.configured) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
       return;
     }
     try {
       final restored = await FitilaBackend.restoreSession();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _session = restored == null
             ? null
@@ -119,13 +129,17 @@ class _AuthGateState extends State<AuthGate> {
         _loading = false;
       });
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
   Future<void> _signOut() async {
     await FitilaBackend.signOut();
-    if (mounted) setState(() => _session = null);
+    if (mounted) {
+      setState(() => _session = null);
+    }
   }
 
   @override
@@ -389,19 +403,33 @@ const Map<FitilaFeedCategory, _FeedCategoryStyle> _feedCategoryStyles = {
 FitilaFeedCategory _categoryFromTags(List<String> tags) {
   final lower = tags.map((tag) => tag.toLowerCase()).toList(growable: false);
   bool has(String needle) => lower.any((tag) => tag.contains(needle));
-  if (has('echo-sonn')) return FitilaFeedCategory.echoSonn;
-  if (has('live-griot-ia')) return FitilaFeedCategory.liveGriotIa;
-  if (has('sagesse-battle')) return FitilaFeedCategory.sagesseBattle;
-  if (has('aburu-fim')) return FitilaFeedCategory.aburuFimIa;
-  if (has('sasara-ia')) return FitilaFeedCategory.sasaraIa;
-  if (has('handunia-wasa')) return FitilaFeedCategory.handuniaWasa;
+  if (has('echo-sonn')) {
+    return FitilaFeedCategory.echoSonn;
+  }
+  if (has('live-griot-ia')) {
+    return FitilaFeedCategory.liveGriotIa;
+  }
+  if (has('sagesse-battle')) {
+    return FitilaFeedCategory.sagesseBattle;
+  }
+  if (has('aburu-fim')) {
+    return FitilaFeedCategory.aburuFimIa;
+  }
+  if (has('sasara-ia')) {
+    return FitilaFeedCategory.sasaraIa;
+  }
+  if (has('handunia-wasa')) {
+    return FitilaFeedCategory.handuniaWasa;
+  }
   return FitilaFeedCategory.general;
 }
 
 /// Formate un compteur pour l'affichage compact du rail d'actions
 /// (1 234 → "1,2 k", 15 000 000 → "15 M").
 String _formatFeedCount(int value) {
-  if (value < 1000) return '$value';
+  if (value < 1000) {
+    return '$value';
+  }
   if (value < 1000000) {
     final k = value / 1000;
     return '${k.toStringAsFixed(k < 10 ? 1 : 0)} k';
@@ -478,7 +506,9 @@ class FitilaServices {
     Future<List<DictionaryEntry>> Function()? dictionaryLoader,
   }) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return '';
+    if (trimmed.isEmpty) {
+      return '';
+    }
     // The existing API requires an authenticated user. Demo sessions do not
     // manufacture a token or bypass the backend's access rules.
     if (accessToken != null && accessToken.isNotEmpty) {
@@ -506,13 +536,17 @@ class FitilaServices {
           final decoded = jsonDecode(response.body);
           if (decoded is Map && decoded['translation'] is String) {
             final translated = (decoded['translation'] as String).trim();
-            if (translated.isNotEmpty) return translated;
+            if (translated.isNotEmpty) {
+              return translated;
+            }
           }
         }
       } catch (_) {
         // A failed remote request can still use a real dictionary match.
       } finally {
-        if (client == null) transport.close();
+        if (client == null) {
+          transport.close();
+        }
       }
     }
     final entries = await (dictionaryLoader ?? loadDictionary)();
@@ -533,7 +567,9 @@ class FitilaServices {
   }
 
   static Future<LearningBank> loadLearningBank() async {
-    final raw = await rootBundle.loadString('assets/data/learning_exercises.json');
+    final raw = await rootBundle.loadString(
+      'assets/data/learning_exercises.json',
+    );
     final data = jsonDecode(raw) as Map<String, dynamic>;
     final themes = (data['themes'] as List)
         .cast<Map<String, dynamic>>()
@@ -629,7 +665,9 @@ class LearningBank {
 
   LearningTheme? themeById(String id) {
     for (final theme in themes) {
-      if (theme.id == id) return theme;
+      if (theme.id == id) {
+        return theme;
+      }
     }
     return null;
   }
@@ -823,15 +861,13 @@ class _AuthScreenState extends State<AuthScreen>
       begin: const Offset(0, .06),
       end: Offset.zero,
     ).animate(curve);
-    _formSlide = Tween<Offset>(
-      begin: const Offset(0, .09),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _introController,
-        curve: const Interval(.18, 1, curve: Curves.easeOutCubic),
-      ),
-    );
+    _formSlide = Tween<Offset>(begin: const Offset(0, .09), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _introController,
+            curve: const Interval(.18, 1, curve: Curves.easeOutCubic),
+          ),
+        );
     _introController.forward();
 
     if (widget.demoMode) {
@@ -876,17 +912,23 @@ class _AuthScreenState extends State<AuthScreen>
         phone: phone,
         pin: pin,
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       widget.onSignedIn(FitilaSession.fromBackend(backendSession));
     } on AuthException catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Numéro ou PIN incorrect. Vérifiez vos informations.'),
         ),
       );
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -895,7 +937,9 @@ class _AuthScreenState extends State<AuthScreen>
         ),
       );
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -913,10 +957,7 @@ class _AuthScreenState extends State<AuthScreen>
 
     final form = FadeTransition(
       opacity: _introOpacity,
-      child: SlideTransition(
-        position: _formSlide,
-        child: _authCard(),
-      ),
+      child: SlideTransition(position: _formSlide, child: _authCard()),
     );
 
     return Scaffold(
@@ -926,11 +967,7 @@ class _AuthScreenState extends State<AuthScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFF9F7F0),
-              Color(0xFFF3F0E5),
-              Color(0xFFF7F5EC),
-            ],
+            colors: [Color(0xFFF9F7F0), Color(0xFFF3F0E5), Color(0xFFF7F5EC)],
           ),
         ),
         child: SafeArea(
@@ -1187,10 +1224,7 @@ class _AuthScreenState extends State<AuthScreen>
               spacing: 8,
               runSpacing: 8,
               children: [
-                _StatusChip(
-                  icon: Icons.shield_rounded,
-                  label: 'Sécurisé',
-                ),
+                _StatusChip(icon: Icons.shield_rounded, label: 'Sécurisé'),
                 _StatusChip(
                   icon: Icons.offline_bolt_rounded,
                   label: 'Offline-ready',
@@ -1222,11 +1256,7 @@ class _PremiumLandingHero extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFFFFFFF),
-            Color(0xFFF7F0DF),
-            Color(0xFFF1EDDF),
-          ],
+          colors: [Color(0xFFFFFFFF), Color(0xFFF7F0DF), Color(0xFFF1EDDF)],
         ),
         boxShadow: const [
           BoxShadow(
@@ -1559,10 +1589,7 @@ class _LandingMiniCard extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             subtitle,
-            style: const TextStyle(
-              color: _fitilaMuted,
-              fontSize: 10.5,
-            ),
+            style: const TextStyle(color: _fitilaMuted, fontSize: 10.5),
           ),
         ],
       ),
@@ -1590,7 +1617,9 @@ class _FitilaShellState extends State<FitilaShell> {
   final List<FitilaPage> _history = [];
 
   void _navigate(FitilaPage page) {
-    if (page == _page) return;
+    if (page == _page) {
+      return;
+    }
     setState(() {
       _history.add(_page);
       _page = page;
@@ -1672,17 +1701,23 @@ class _FitilaShellState extends State<FitilaShell> {
     });
     try {
       final rows = await FitilaBackend.fetchPublicFeed();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _posts
           ..clear()
           ..addAll(rows.map(FeedPost.fromBackend));
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _feedError = error.toString());
     } finally {
-      if (mounted) setState(() => _feedLoading = false);
+      if (mounted) {
+        setState(() => _feedLoading = false);
+      }
     }
   }
 
@@ -1872,22 +1907,11 @@ class _FitilaShellState extends State<FitilaShell> {
                     },
                     onCreate: () => _navigate(FitilaPage.creator),
                   ),
-            floatingActionButton:
-                _page == FitilaPage.feed || _page == FitilaPage.creator
-                ? FloatingActionButton(
-                    backgroundColor: _fitilaClay,
-                    foregroundColor: Colors.white,
-                    onPressed: () => FeedScreen.showComposer(
-                      context,
-                      onPostCreated: (post) =>
-                          setState(() => _posts.insert(0, post)),
-                      onPersistPost: widget.session.accessToken.isEmpty
-                          ? null
-                          : _persistPost,
-                    ),
-                    child: const Icon(Icons.add_rounded),
-                  )
-                : null,
+            // Le bouton "+" flottant a été retiré : le fil et le studio de
+            // création sont volontairement épurés (style Kuaishou plein
+            // écran) et la création reste accessible via l'onglet dédié
+            // de la barre de navigation basse.
+            floatingActionButton: null,
           ),
         );
       },
@@ -2041,315 +2065,23 @@ class FeedScreen extends StatefulWidget {
 }
 
 class _FeedScreenState extends State<FeedScreen> {
-  String _mode = 'Pour toi';
-  bool _immersive = true;
-
-  Widget _modeChip(String value, IconData icon) {
-    return ChoiceChip(
-      selected: _mode == value,
-      avatar: Icon(icon, size: 18),
-      label: Text(value),
-      onSelected: (_) => setState(() => _mode = value),
-    );
-  }
-
-  Widget _feedSubmodule() {
-    return switch (_mode) {
-      'Ma voix' => const _FeatureGrid(
-        items: [
-          (
-            Icons.mic_rounded,
-            'Radio courte',
-            'Flux audio, transcription, onde, écoute et arrêt automatique.',
-          ),
-          (
-            Icons.graphic_eq_rounded,
-            'Qualité audio',
-            'Volume, bruit, durée, consentement et statut de modération.',
-          ),
-          (
-            Icons.subtitles_rounded,
-            'Sous-titres',
-            'Transcription FR/BA synchronisée avec le lecteur.',
-          ),
-        ],
-      ),
-      'Vidéos' => const _FeatureGrid(
-        items: [
-          (
-            Icons.play_circle_rounded,
-            'Lecteur vertical',
-            'Lecture vidéo 9:16, pause, replay, miniature et progression.',
-          ),
-          (
-            Icons.movie_filter_rounded,
-            'Effets',
-            'Template appliqué, stickers, légende et piste musicale.',
-          ),
-          (
-            Icons.fullscreen_rounded,
-            'Preview plein écran',
-            'Ouverture immersive avec actions like/commentaire/partage.',
-          ),
-        ],
-      ),
-      'Communauté' => _ActionList(
-        items: const [
-          _ActionItem(
-            Icons.groups_rounded,
-            'Villages et cercles',
-            'Flux par communauté, langue, sujet et proximité culturelle.',
-          ),
-          _ActionItem(
-            Icons.forum_rounded,
-            'Commentaires',
-            'Réponses, mentions, signalement et modération visuelle.',
-          ),
-          _ActionItem(
-            Icons.notifications_active_rounded,
-            'Temps réel',
-            'Nouveaux posts, messages et interactions à synchroniser.',
-          ),
-        ],
-      ),
-      'Création' => _ActionList(
-        items: const [
-          _ActionItem(
-            Icons.add_circle_rounded,
-            'Bouton plus',
-            'Créer texte, audio, vidéo, leçon, annonce ou template.',
-          ),
-          _ActionItem(
-            Icons.drafts_rounded,
-            'Brouillons',
-            'Reprendre les captures non publiées et posts programmés.',
-          ),
-          _ActionItem(
-            Icons.publish_rounded,
-            'Publication',
-            'Audience, hashtags, modération, offline queue et succès.',
-          ),
-        ],
-      ),
-      _ => const _FeatureGrid(
-        items: [
-          (
-            Icons.auto_awesome_rounded,
-            'Algorithme adaptatif',
-            'Mélange posts, audio, vidéos, templates et contenus locaux.',
-          ),
-          (
-            Icons.tune_rounded,
-            'Filtres de fil',
-            'Pour toi, suivis, village, classe, templates et populaire.',
-          ),
-          (
-            Icons.bookmark_rounded,
-            'Sauvegarde',
-            'Favoris, historique, partage et reprise hors connexion.',
-          ),
-        ],
-      ),
-    };
-  }
-
+  // Le fil est désormais volontairement mono-mode : plein écran,
+  // immersif, style Kuaishou/TikTok — plus de bascule Immersion/Classique
+  // ni de sous-modules à choisir, conformément à la demande de
+  // désencombrement de l'écran.
   @override
   Widget build(BuildContext context) {
-    return _PageFrame(
-      title: 'Fil Fitila',
-      subtitle: 'Posts, audio, vidéos, modèles et publication rapide.',
-      action: FilledButton.icon(
-        onPressed: () => FeedScreen.showComposer(
-          context,
-          onPostCreated: widget.onPostCreated,
-          onPersistPost: widget.onPersistPost,
+    return ColoredBox(
+      color: Colors.black,
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: _ImmersiveFeedDeck(
+          posts: widget.posts,
+          loading: widget.loading,
+          error: widget.error,
+          onRetry: widget.onRetry,
         ),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Nouveau post'),
-      ),
-      child: Column(
-        children: [
-          _FeedViewToggle(
-            immersive: _immersive,
-            onChanged: (value) => setState(() => _immersive = value),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: _immersive
-                ? _ImmersiveFeedDeck(
-                    posts: widget.posts,
-                    loading: widget.loading,
-                    error: widget.error,
-                    onRetry: widget.onRetry,
-                  )
-                : _classicFeed(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _classicFeed() {
-    return ListView(
-      children: [
-        const _PremiumStoryRow(),
-          const SizedBox(height: 14),
-          if (widget.loading) const LinearProgressIndicator(),
-          if (widget.error != null)
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.cloud_off_rounded),
-                title: const Text('Le fil ne peut pas être chargé'),
-                subtitle: const Text('Vérifiez la connexion puis réessayez.'),
-                trailing: IconButton(
-                  tooltip: 'Réessayer',
-                  onPressed: widget.onRetry,
-                  icon: const Icon(Icons.refresh_rounded),
-                ),
-              ),
-            ),
-          if (widget.loading || widget.error != null)
-            const SizedBox(height: 12),
-          const _MetricStrip(
-            metrics: [
-              ('Posts', '128', Icons.dynamic_feed_rounded),
-              ('Vidéos', '36', Icons.play_circle_rounded),
-              ('Audio', '54', Icons.mic_rounded),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _modeChip('Pour toi', Icons.auto_awesome_rounded),
-              _modeChip('Ma voix', Icons.mic_rounded),
-              _modeChip('Vidéos', Icons.ondemand_video_rounded),
-              _modeChip('Communauté', Icons.groups_rounded),
-              _modeChip('Création', Icons.add_circle_rounded),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _feedSubmodule(),
-          const SizedBox(height: 12),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final grid = constraints.maxWidth > 860;
-              if (grid) {
-                return GridView.builder(
-                  itemCount: widget.posts.length,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 420,
-                    mainAxisExtent: 372,
-                    crossAxisSpacing: 14,
-                    mainAxisSpacing: 14,
-                  ),
-                  itemBuilder: (context, index) =>
-                      _PostCard(post: widget.posts[index]),
-                );
-              }
-              if (widget.posts.isEmpty && !widget.loading) {
-                return const _EmptyState(
-                  icon: Icons.dynamic_feed_rounded,
-                  title: 'Aucune publication',
-                  text: 'Le fil public ne contient encore aucun contenu.',
-                );
-              }
-              return ListView.separated(
-                itemCount: widget.posts.length,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: 12),
-                itemBuilder: (context, index) =>
-                    _PostCard(post: widget.posts[index]),
-              );
-            },
-          ),
-        ],
-      );
-  }
-}
-
-class _FeedViewToggle extends StatelessWidget {
-  const _FeedViewToggle({required this.immersive, required this.onChanged});
-
-  final bool immersive;
-  final ValueChanged<bool> onChanged;
-
-  Widget _segment({
-    required bool selected,
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            gradient: selected
-                ? const LinearGradient(
-                    colors: [_fitilaPrimary, _fitilaGoldDeep],
-                  )
-                : null,
-            color: selected ? null : Colors.transparent,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: selected ? Colors.white : _fitilaMuted,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
-                  color: selected ? Colors.white : _fitilaMuted,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: _fitilaSurfaceAlt,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: _fitilaBorder),
-      ),
-      child: Row(
-        children: [
-          _segment(
-            selected: immersive,
-            icon: Icons.auto_awesome_rounded,
-            label: 'Immersion',
-            onTap: () => onChanged(true),
-          ),
-          _segment(
-            selected: !immersive,
-            icon: Icons.grid_view_rounded,
-            label: 'Classique',
-            onTap: () => onChanged(false),
-          ),
-        ],
       ),
     );
   }
@@ -2392,7 +2124,9 @@ class _ImmersiveFeedDeckState extends State<_ImmersiveFeedDeck> {
   void initState() {
     super.initState();
     _pageController.addListener(() {
-      if (!mounted || !_pageController.hasClients) return;
+      if (!mounted || !_pageController.hasClients) {
+        return;
+      }
       setState(() => _page = _pageController.page ?? 0);
     });
     _loadInteractionState();
@@ -2406,7 +2140,9 @@ class _ImmersiveFeedDeckState extends State<_ImmersiveFeedDeck> {
         FitilaBackend.fetchBookmarkedPostIds(),
         FitilaBackend.fetchRepostedPostIds(),
       ]);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _likedIds = results[0];
         _followingIds = results[1];
@@ -2426,118 +2162,142 @@ class _ImmersiveFeedDeckState extends State<_ImmersiveFeedDeck> {
   }
 
   List<FeedPost> get _filtered {
-    if (_filter == null) return widget.posts;
-    return widget.posts.where((post) => post.category == _filter).toList(growable: false);
+    if (_filter == null) {
+      return widget.posts;
+    }
+    return widget.posts
+        .where((post) => post.category == _filter)
+        .toList(growable: false);
   }
 
   @override
   Widget build(BuildContext context) {
     final posts = _filtered;
-    return Column(
+    return Stack(
+      fit: StackFit.expand,
       children: [
-        SizedBox(
-          height: 34,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              _CategoryFilterChip(
-                emoji: '✨',
-                label: 'Pour toi',
-                selected: _filter == null,
-                colorA: _fitilaPrimary,
-                colorB: _fitilaGoldDeep,
-                onTap: () => setState(() => _filter = null),
-              ),
-              for (final category in FitilaFeedCategory.values)
-                if (category != FitilaFeedCategory.general)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: _CategoryFilterChip(
-                      emoji: _feedCategoryStyles[category]!.emoji,
-                      label: _feedCategoryStyles[category]!.label,
-                      selected: _filter == category,
-                      colorA: _feedCategoryStyles[category]!.colorA,
-                      colorB: _feedCategoryStyles[category]!.colorB,
-                      onTap: () => setState(() => _filter = category),
-                    ),
-                  ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        Expanded(
-          child: widget.loading && posts.isEmpty
-              ? const Center(child: CircularProgressIndicator())
-              : widget.error != null && posts.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.cloud_off_rounded, color: _fitilaMuted, size: 32),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Le fil ne peut pas être chargé',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 10),
-                      OutlinedButton.icon(
-                        onPressed: widget.onRetry,
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('Réessayer'),
-                      ),
-                    ],
-                  ),
-                )
-              : posts.isEmpty
-              ? const _EmptyState(
-                  icon: Icons.dynamic_feed_rounded,
-                  title: 'Aucune publication',
-                  text: 'Rien à afficher pour cette catégorie pour le moment.',
-                )
-              : Stack(
-                  children: [
-                    PageView.builder(
-                      controller: _pageController,
-                      scrollDirection: Axis.vertical,
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: posts.length,
-                      itemBuilder: (context, index) {
-                        final post = posts[index];
-                        final distance = (_page - index).abs().clamp(0.0, 1.0).toDouble();
-                        final scale = 1.0 - (distance * 0.08);
-                        final opacity = 1.0 - (distance * 0.45);
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
-                          child: Transform.scale(
-                            scale: scale,
-                            child: Opacity(
-                              opacity: opacity.clamp(0.35, 1.0).toDouble(),
-                              child: _LivingPostCard(
-                                key: ValueKey(post.id ?? 'local-$index'),
-                                post: post,
-                                isActive: index == _page.round(),
-                                initiallyLiked: post.id != null && _likedIds.contains(post.id),
-                                initiallyFollowing:
-                                    post.authorId != null && _followingIds.contains(post.authorId),
-                                initiallySaved: post.id != null && _bookmarkedIds.contains(post.id),
-                                initiallyReposted: post.id != null && _repostedIds.contains(post.id),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    Positioned(
-                      left: 4,
-                      top: 12,
-                      bottom: 12,
-                      child: _FeedProgressRail(
-                        total: posts.length,
-                        position: _page,
-                      ),
-                    ),
-                  ],
+        if (widget.loading && posts.isEmpty)
+          const Center(child: CircularProgressIndicator(color: Colors.white))
+        else if (widget.error != null && posts.isEmpty)
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.cloud_off_rounded,
+                  color: Colors.white70,
+                  size: 32,
                 ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Le fil ne peut pas être chargé',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white54),
+                  ),
+                  onPressed: widget.onRetry,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Réessayer'),
+                ),
+              ],
+            ),
+          )
+        else if (posts.isEmpty)
+          const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.dynamic_feed_rounded,
+                  color: Colors.white38,
+                  size: 48,
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Aucune publication',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Rien à afficher pour cette catégorie pour le moment.',
+                  style: TextStyle(color: Colors.white60),
+                ),
+              ],
+            ),
+          )
+        else
+          PageView.builder(
+            controller: _pageController,
+            scrollDirection: Axis.vertical,
+            physics: const BouncingScrollPhysics(),
+            itemCount: posts.length,
+            itemBuilder: (context, index) {
+              final post = posts[index];
+              return _LivingPostCard(
+                key: ValueKey(post.id ?? 'local-$index'),
+                post: post,
+                isActive: index == _page.round(),
+                initiallyLiked: post.id != null && _likedIds.contains(post.id),
+                initiallyFollowing:
+                    post.authorId != null &&
+                    _followingIds.contains(post.authorId),
+                initiallySaved:
+                    post.id != null && _bookmarkedIds.contains(post.id),
+                initiallyReposted:
+                    post.id != null && _repostedIds.contains(post.id),
+              );
+            },
+          ),
+        // Filtres de catégorie flottants, fond transparent — un calque
+        // léger au-dessus du plein écran plutôt qu'une barre opaque.
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: SafeArea(
+            bottom: false,
+            child: SizedBox(
+              height: 40,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _CategoryFilterChip(
+                    emoji: '✨',
+                    label: 'Pour toi',
+                    selected: _filter == null,
+                    colorA: _fitilaPrimary,
+                    colorB: _fitilaGoldDeep,
+                    onTap: () => setState(() => _filter = null),
+                  ),
+                  for (final category in FitilaFeedCategory.values)
+                    if (category != FitilaFeedCategory.general)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: _CategoryFilterChip(
+                          emoji: _feedCategoryStyles[category]!.emoji,
+                          label: _feedCategoryStyles[category]!.label,
+                          selected: _filter == category,
+                          colorA: _feedCategoryStyles[category]!.colorA,
+                          colorB: _feedCategoryStyles[category]!.colorB,
+                          onTap: () => setState(() => _filter = category),
+                        ),
+                      ),
+                ],
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -2570,9 +2330,13 @@ class _CategoryFilterChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           gradient: selected ? LinearGradient(colors: [colorA, colorB]) : null,
-          color: selected ? null : _fitilaSurfaceAlt,
+          color: selected ? null : Colors.black.withValues(alpha: 0.28),
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: selected ? Colors.transparent : _fitilaBorder),
+          border: Border.all(
+            color: selected
+                ? Colors.transparent
+                : Colors.white.withValues(alpha: 0.28),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -2581,64 +2345,15 @@ class _CategoryFilterChip extends StatelessWidget {
             const SizedBox(width: 5),
             Text(
               label,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w800,
-                color: selected ? Colors.white : _fitilaInkSoft,
+                color: Colors.white,
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Rail vertical indiquant la position dans le fil — un repère
-/// d'orientation que TikTok/Kwai n'offrent pas dans leur défilement.
-class _FeedProgressRail extends StatelessWidget {
-  const _FeedProgressRail({required this.total, required this.position});
-
-  final int total;
-  final double position;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final trackHeight = constraints.maxHeight;
-        final double ratio = total <= 1
-            ? 0.0
-            : (position / (total - 1)).clamp(0.0, 1.0).toDouble();
-        final double thumbHeight = (trackHeight / total).clamp(18.0, trackHeight).toDouble();
-        final double top = (trackHeight - thumbHeight) * ratio;
-        return SizedBox(
-          width: 3,
-          height: trackHeight,
-          child: Stack(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 120),
-                top: top,
-                child: Container(
-                  width: 3,
-                  height: thumbHeight,
-                  decoration: BoxDecoration(
-                    color: _fitilaPrimary,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
@@ -2679,8 +2394,6 @@ class _LivingPostCardState extends State<_LivingPostCard>
   bool _followBusy = false;
   bool _saveBusy = false;
   bool _repostBusy = false;
-  bool _expanded = false;
-
   late final AnimationController _heartBurstController;
   VideoPlayerController? _videoController;
   Future<void>? _videoReady;
@@ -2697,9 +2410,12 @@ class _LivingPostCardState extends State<_LivingPostCard>
       widget.post.kind == 'vidéo' ||
       widget.post.kind == 'video';
   bool get _isPhoto =>
-      widget.post.kind == 'photo' && (widget.post.mediaUrl?.isNotEmpty ?? false);
+      widget.post.kind == 'photo' &&
+      (widget.post.mediaUrl?.isNotEmpty ?? false);
   bool get _isAudio =>
-      !_isVideo && widget.post.kind == 'audio' && (widget.post.mediaUrl?.isNotEmpty ?? false);
+      !_isVideo &&
+      widget.post.kind == 'audio' &&
+      (widget.post.mediaUrl?.isNotEmpty ?? false);
   bool get _isTextQuote => !_isVideo && !_isPhoto && !_isAudio;
 
   @override
@@ -2711,15 +2427,21 @@ class _LivingPostCardState extends State<_LivingPostCard>
     );
     _audioPlayer = audio.AudioPlayer();
     _audioPlayer.onPlayerComplete.listen((_) {
-      if (mounted) setState(() => _audioPlaying = false);
+      if (mounted) {
+        setState(() => _audioPlaying = false);
+      }
     });
     final url = widget.post.mediaUrl;
     if (_isVideo && url != null && url.isNotEmpty) {
       _videoController = VideoPlayerController.networkUrl(Uri.parse(url));
       _videoReady = _videoController!.initialize().then((_) {
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         _videoController!.setLooping(true);
-        if (widget.isActive) _videoController!.play();
+        if (widget.isActive) {
+          _videoController!.play();
+        }
         setState(() {});
       });
     }
@@ -2751,19 +2473,27 @@ class _LivingPostCardState extends State<_LivingPostCard>
 
   Future<void> _toggleAudio() async {
     final url = widget.post.mediaUrl;
-    if (url == null || url.isEmpty) return;
+    if (url == null || url.isEmpty) {
+      return;
+    }
     if (_audioPlaying) {
       await _audioPlayer.pause();
     } else {
       await _audioPlayer.play(audio.UrlSource(url));
     }
-    if (mounted) setState(() => _audioPlaying = !_audioPlaying);
+    if (mounted) {
+      setState(() => _audioPlaying = !_audioPlaying);
+    }
   }
 
   Future<void> _toggleLike({bool? forceLike}) async {
-    if (_likeBusy) return;
+    if (_likeBusy) {
+      return;
+    }
     final next = forceLike ?? !_liked;
-    if (next == _liked) return;
+    if (next == _liked) {
+      return;
+    }
     setState(() {
       _likeBusy = true;
       _likedOverride = next;
@@ -2771,43 +2501,63 @@ class _LivingPostCardState extends State<_LivingPostCard>
     });
     try {
       if (widget.post.id != null) {
-        await FitilaBackend.togglePostLike(postId: widget.post.id!, liked: next);
+        await FitilaBackend.togglePostLike(
+          postId: widget.post.id!,
+          liked: next,
+        );
       }
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _likedOverride = !next;
         widget.post.likes += next ? -1 : 1;
       });
     } finally {
-      if (mounted) setState(() => _likeBusy = false);
+      if (mounted) {
+        setState(() => _likeBusy = false);
+      }
     }
   }
 
   void _handleDoubleTap() {
     _heartBurstController.forward(from: 0);
-    if (!_liked) _toggleLike(forceLike: true);
+    if (!_liked) {
+      _toggleLike(forceLike: true);
+    }
   }
 
   Future<void> _toggleFollow() async {
-    if (_followBusy || widget.post.authorId == null) return;
+    if (_followBusy || widget.post.authorId == null) {
+      return;
+    }
     final next = !_following;
     setState(() {
       _followBusy = true;
       _followingOverride = next;
     });
     try {
-      await FitilaBackend.toggleFollow(authorId: widget.post.authorId!, follow: next);
+      await FitilaBackend.toggleFollow(
+        authorId: widget.post.authorId!,
+        follow: next,
+      );
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _followingOverride = !next);
     } finally {
-      if (mounted) setState(() => _followBusy = false);
+      if (mounted) {
+        setState(() => _followBusy = false);
+      }
     }
   }
 
   Future<void> _toggleSave() async {
-    if (_saveBusy || widget.post.id == null) return;
+    if (_saveBusy || widget.post.id == null) {
+      return;
+    }
     final next = !_saved;
     setState(() {
       _saveBusy = true;
@@ -2818,21 +2568,29 @@ class _LivingPostCardState extends State<_LivingPostCard>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(next ? 'Ajouté à vos favoris.' : 'Retiré de vos favoris.'),
+            content: Text(
+              next ? 'Ajouté à vos favoris.' : 'Retiré de vos favoris.',
+            ),
             duration: const Duration(seconds: 1),
           ),
         );
       }
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _savedOverride = !next);
     } finally {
-      if (mounted) setState(() => _saveBusy = false);
+      if (mounted) {
+        setState(() => _saveBusy = false);
+      }
     }
   }
 
   Future<void> _toggleRepost() async {
-    if (_repostBusy || widget.post.id == null) return;
+    if (_repostBusy || widget.post.id == null) {
+      return;
+    }
     final next = !_reposted;
     setState(() {
       _repostBusy = true;
@@ -2844,19 +2602,25 @@ class _LivingPostCardState extends State<_LivingPostCard>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(next ? 'Republié dans votre fil.' : 'Republication annulée.'),
+            content: Text(
+              next ? 'Republié dans votre fil.' : 'Republication annulée.',
+            ),
             duration: const Duration(seconds: 1),
           ),
         );
       }
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _repostedOverride = !next;
         widget.post.shares += next ? -1 : 1;
       });
     } finally {
-      if (mounted) setState(() => _repostBusy = false);
+      if (mounted) {
+        setState(() => _repostBusy = false);
+      }
     }
   }
 
@@ -2864,7 +2628,9 @@ class _LivingPostCardState extends State<_LivingPostCard>
     if (widget.post.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Les commentaires ne sont disponibles que pour les publications enregistrées.'),
+          content: Text(
+            'Les commentaires ne sont disponibles que pour les publications enregistrées.',
+          ),
         ),
       );
       return;
@@ -2878,277 +2644,127 @@ class _LivingPostCardState extends State<_LivingPostCard>
     );
   }
 
+  // Carte plein écran, style Kuaishou/TikTok : uniquement le média et
+  // les quatre actions demandées (aimer, commenter, sauvegarder,
+  // republier) — plus aucun badge, nom d'auteur, légende ou hashtag
+  // à l'écran, conformément à la demande de désencombrement.
   @override
   Widget build(BuildContext context) {
     final post = widget.post;
     final style = _feedCategoryStyles[post.category]!;
-    final isMe = post.authorId != null &&
-        post.authorId == FitilaBackend.client.auth.currentUser?.id;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(28),
-      child: GestureDetector(
-        onDoubleTap: _handleDoubleTap,
-        onTap: _isVideo
-            ? () => setState(() {
-                final controller = _videoController;
-                if (controller == null) return;
-                controller.value.isPlaying ? controller.pause() : controller.play();
-              })
-            : null,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: style.gradient,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.18),
-                blurRadius: 24,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              const CustomPaint(painter: _SignatureWeavePainter()),
-              _mediaLayer(post),
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  height: 90,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.black.withValues(alpha: 0.35), Colors.transparent],
-                    ),
+    return GestureDetector(
+      onDoubleTap: _handleDoubleTap,
+      onTap: _isVideo
+          ? () => setState(() {
+              final controller = _videoController;
+              if (controller == null) {
+                return;
+              }
+              controller.value.isPlaying
+                  ? controller.pause()
+                  : controller.play();
+            })
+          : null,
+      child: Container(
+        decoration: BoxDecoration(gradient: style.gradient),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            const CustomPaint(painter: _SignatureWeavePainter()),
+            _mediaLayer(post),
+            // Léger voile bas pour garder les icônes d'action lisibles
+            // au-dessus de n'importe quel média, sans texte superposé.
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 160,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.45),
+                      Colors.transparent,
+                    ],
                   ),
                 ),
               ),
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  height: 230,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [Colors.black.withValues(alpha: 0.6), Colors.transparent],
-                    ),
+            ),
+            IgnorePointer(
+              child: Center(
+                child: AnimatedBuilder(
+                  animation: _heartBurstController,
+                  builder: (context, child) {
+                    final t = _heartBurstController.value;
+                    if (t == 0) {
+                      return const SizedBox.shrink();
+                    }
+                    final double scale = t < 0.5
+                        ? (t / 0.5)
+                        : (1 - (t - 0.5) / 0.5 * 0.2);
+                    final double opacity = t < 0.7
+                        ? 1.0
+                        : (1 - (t - 0.7) / 0.3);
+                    return Opacity(
+                      opacity: opacity.clamp(0.0, 1.0).toDouble(),
+                      child: Transform.scale(
+                        scale: scale.clamp(0.0, 1.2).toDouble(),
+                        child: const Icon(
+                          Icons.favorite_rounded,
+                          color: Colors.white,
+                          size: 96,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Positioned(
+              right: 12,
+              bottom: 24,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _RailAction(
+                    icon: _liked
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    activeColor: Colors.redAccent,
+                    active: _liked,
+                    label: _formatFeedCount(post.likes),
+                    onTap: _likeBusy ? null : () => _toggleLike(),
                   ),
-                ),
-              ),
-              Positioned(
-                top: 14,
-                left: 14,
-                right: 74,
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(style.emoji, style: const TextStyle(fontSize: 12)),
-                          const SizedBox(width: 5),
-                          Text(
-                            style.label,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (post.aiAssisted) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.auto_awesome_rounded, size: 11, color: Colors.white),
-                            SizedBox(width: 3),
-                            Text(
-                              'IA',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              IgnorePointer(
-                child: Center(
-                  child: AnimatedBuilder(
-                    animation: _heartBurstController,
-                    builder: (context, child) {
-                      final t = _heartBurstController.value;
-                      if (t == 0) return const SizedBox.shrink();
-                      final double scale = t < 0.5 ? (t / 0.5) : (1 - (t - 0.5) / 0.5 * 0.2);
-                      final double opacity = t < 0.7 ? 1.0 : (1 - (t - 0.7) / 0.3);
-                      return Opacity(
-                        opacity: opacity.clamp(0.0, 1.0).toDouble(),
-                        child: Transform.scale(
-                          scale: scale.clamp(0.0, 1.2).toDouble(),
-                          child: const Icon(
-                            Icons.favorite_rounded,
-                            color: Colors.white,
-                            size: 96,
-                          ),
-                        ),
-                      );
-                    },
+                  const SizedBox(height: 16),
+                  _RailAction(
+                    icon: Icons.mode_comment_rounded,
+                    active: false,
+                    label: _formatFeedCount(post.comments),
+                    onTap: _openComments,
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  _RailAction(
+                    icon: _saved
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_border_rounded,
+                    activeColor: _fitilaPrimary,
+                    active: _saved,
+                    onTap: _saveBusy ? null : _toggleSave,
+                  ),
+                  const SizedBox(height: 16),
+                  _RailAction(
+                    icon: Icons.repeat_rounded,
+                    activeColor: _fitilaSage,
+                    active: _reposted,
+                    label: _formatFeedCount(post.shares),
+                    onTap: _repostBusy ? null : _toggleRepost,
+                  ),
+                ],
               ),
-              Positioned(
-                left: 16,
-                right: 74,
-                bottom: 16,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        _AuthorAvatar(post: post, style: style),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            post.author,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 13.5,
-                            ),
-                          ),
-                        ),
-                        if (post.authorId != null && !isMe) ...[
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: _followBusy ? null : _toggleFollow,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: _following ? Colors.white.withValues(alpha: 0.16) : Colors.white,
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(color: Colors.white),
-                              ),
-                              child: Text(
-                                _following ? 'Abonné(e)' : 'Suivre',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: _following ? Colors.white : style.colorB,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    if (!_isTextQuote) ...[
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () => setState(() => _expanded = !_expanded),
-                        child: Text(
-                          post.content,
-                          maxLines: _expanded ? 8 : 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13.5,
-                            height: 1.35,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (post.tags.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          for (final tag in post.tags.take(3))
-                            Text(
-                              '#$tag',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Positioned(
-                right: 12,
-                bottom: 16,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _RailAction(
-                      icon: _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                      activeColor: Colors.redAccent,
-                      active: _liked,
-                      label: _formatFeedCount(post.likes),
-                      onTap: _likeBusy ? null : () => _toggleLike(),
-                    ),
-                    const SizedBox(height: 16),
-                    _RailAction(
-                      icon: Icons.mode_comment_rounded,
-                      active: false,
-                      label: _formatFeedCount(post.comments),
-                      onTap: _openComments,
-                    ),
-                    const SizedBox(height: 16),
-                    _RailAction(
-                      icon: Icons.repeat_rounded,
-                      activeColor: _fitilaSage,
-                      active: _reposted,
-                      label: _formatFeedCount(post.shares),
-                      onTap: _repostBusy ? null : _toggleRepost,
-                    ),
-                    const SizedBox(height: 16),
-                    _RailAction(
-                      icon: _saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                      activeColor: _fitilaPrimary,
-                      active: _saved,
-                      onTap: _saveBusy ? null : _toggleSave,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -3157,13 +2773,17 @@ class _LivingPostCardState extends State<_LivingPostCard>
   Widget _mediaLayer(FeedPost post) {
     if (_isVideo) {
       final controller = _videoController;
-      if (controller == null) return const SizedBox.shrink();
+      if (controller == null) {
+        return const SizedBox.shrink();
+      }
       return FutureBuilder<void>(
         future: _videoReady,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done ||
               !controller.value.isInitialized) {
-            return const Center(child: CircularProgressIndicator(color: Colors.white));
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            );
           }
           return SizedBox.expand(
             child: FittedBox(
@@ -3188,7 +2808,9 @@ class _LivingPostCardState extends State<_LivingPostCard>
       );
     }
     if (_isAudio) {
-      return Center(child: _AudioPulse(playing: _audioPlaying, onTap: _toggleAudio));
+      return Center(
+        child: _AudioPulse(playing: _audioPlaying, onTap: _toggleAudio),
+      );
     }
     return Center(
       child: Padding(
@@ -3245,7 +2867,11 @@ class _AuthorAvatar extends StatelessWidget {
   Widget _initials() {
     return Text(
       _initialLetter(post.author),
-      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800),
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 13,
+        fontWeight: FontWeight.w800,
+      ),
     );
   }
 }
@@ -3280,13 +2906,21 @@ class _RailAction extends StatelessWidget {
               color: Colors.black.withValues(alpha: 0.28),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: active ? activeColor : Colors.white, size: 22),
+            child: Icon(
+              icon,
+              color: active ? activeColor : Colors.white,
+              size: 22,
+            ),
           ),
           if (label != null) ...[
             const SizedBox(height: 3),
             Text(
               label!,
-              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ],
         ],
@@ -3333,14 +2967,17 @@ class _AudioPulse extends StatefulWidget {
   State<_AudioPulse> createState() => _AudioPulseState();
 }
 
-class _AudioPulseState extends State<_AudioPulse> with SingleTickerProviderStateMixin {
+class _AudioPulseState extends State<_AudioPulse>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
-      ..repeat();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
   }
 
   @override
@@ -3359,7 +2996,10 @@ class _AudioPulseState extends State<_AudioPulse> with SingleTickerProviderState
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: Colors.white.withValues(alpha: 0.14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.5),
+            width: 1.5,
+          ),
         ),
         child: Stack(
           alignment: Alignment.center,
@@ -3373,7 +3013,8 @@ class _AudioPulseState extends State<_AudioPulse> with SingleTickerProviderState
                   children: List.generate(5, (i) {
                     final phase = _controller.value * 2 * math.pi + i * 0.8;
                     final amplitude = widget.playing ? 0.5 : 0.08;
-                    final height = 10 + (math.sin(phase).abs() * 26 * amplitude) + 6;
+                    final height =
+                        10 + (math.sin(phase).abs() * 26 * amplitude) + 6;
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 2.5),
                       child: Container(
@@ -3427,7 +3068,9 @@ class _CommentsSheetState extends State<_CommentsSheet> {
 
   Future<void> _send() async {
     final text = _controller.text.trim();
-    if (text.isEmpty || widget.post.id == null) return;
+    if (text.isEmpty || widget.post.id == null) {
+      return;
+    }
     setState(() => _sending = true);
     try {
       await FitilaBackend.addTextComment(postId: widget.post.id!, text: text);
@@ -3440,7 +3083,9 @@ class _CommentsSheetState extends State<_CommentsSheet> {
         );
       }
     } finally {
-      if (mounted) setState(() => _sending = false);
+      if (mounted) {
+        setState(() => _sending = false);
+      }
     }
   }
 
@@ -3453,16 +3098,28 @@ class _CommentsSheetState extends State<_CommentsSheet> {
       expand: false,
       builder: (context, scrollController) {
         return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
           child: Column(
             children: [
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 4, 16, 10),
                 child: Row(
                   children: [
-                    Icon(Icons.mode_comment_rounded, color: _fitilaPrimary, size: 18),
+                    Icon(
+                      Icons.mode_comment_rounded,
+                      color: _fitilaPrimary,
+                      size: 18,
+                    ),
                     SizedBox(width: 8),
-                    Text('Commentaires', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                    Text(
+                      'Commentaires',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -3472,7 +3129,8 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                   stream: FitilaBackend.streamComments(widget.post.id!),
                   builder: (context, snapshot) {
                     final comments = snapshot.data ?? const [];
-                    if (snapshot.connectionState == ConnectionState.waiting && comments.isEmpty) {
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        comments.isEmpty) {
                       return const Center(child: CircularProgressIndicator());
                     }
                     if (comments.isEmpty) {
@@ -3497,7 +3155,9 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                               radius: 15,
                               backgroundColor: _fitilaPrimarySoft,
                               child: Text(
-                                _initialLetter(comment['display_name']?.toString()),
+                                _initialLetter(
+                                  comment['display_name']?.toString(),
+                                ),
                                 style: const TextStyle(
                                   color: _fitilaGoldDeep,
                                   fontSize: 11,
@@ -3511,13 +3171,20 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    comment['display_name']?.toString() ?? 'Voix Fitila',
-                                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+                                    comment['display_name']?.toString() ??
+                                        'Voix Fitila',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 12.5,
+                                    ),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
                                     comment['text_content']?.toString() ?? '',
-                                    style: const TextStyle(fontSize: 13, height: 1.3),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      height: 1.3,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -3542,7 +3209,10 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.all(Radius.circular(24)),
                           ),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                         ),
                         onSubmitted: (_) => _send(),
                       ),
@@ -3554,7 +3224,10 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                           ? const SizedBox(
                               width: 16,
                               height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : const Icon(Icons.send_rounded),
                     ),
@@ -3631,10 +3304,7 @@ class _PremiumStoryRow extends StatelessWidget {
                   item.$2,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _fitilaMuted,
-                    fontSize: 10.5,
-                  ),
+                  style: const TextStyle(color: _fitilaMuted, fontSize: 10.5),
                 ),
               ],
             ),
@@ -3655,519 +3325,124 @@ class ContentCreatorScreen extends StatefulWidget {
 }
 
 class _ContentCreatorScreenState extends State<ContentCreatorScreen> {
-  CreatorPhase _phase = CreatorPhase.discover;
-  FitilaTemplateData _template = _fitilaTemplates.first;
-  String _captureMode = 'Vidéo';
-  String _enginePanel = 'Moteur';
-  bool _autoDraft = true;
-  bool _captions = true;
-  bool _music = false;
-  bool _debugPanel = false;
-
-  void _nextPhase() {
-    setState(() {
-      _phase = switch (_phase) {
-        CreatorPhase.discover => CreatorPhase.capturing,
-        CreatorPhase.capturing => CreatorPhase.reviewing,
-        CreatorPhase.reviewing => CreatorPhase.finalizing,
-        CreatorPhase.finalizing => CreatorPhase.success,
-        CreatorPhase.success => CreatorPhase.discover,
-      };
-    });
-  }
-
-  void _publishFromWorkflow() {
-    widget.onPostCreated(
-      FeedPost(
-        author: 'Utilisateur Fitila',
-        kind: 'vidéo',
-        content:
-            '${_template.name}\n\nPublication creee depuis le workflow natif: template, capture, preview, finalisation et publication.',
-        accent: _template.accent,
-        visibility: 'Public',
-        tags: ['template', _template.category.toLowerCase(), 'fitila'],
-        template: _template.name,
-        mediaStatus: 'Video publiee',
-        aiAssisted: true,
-      ),
-    );
-    setState(() => _phase = CreatorPhase.success);
-  }
-
-  Widget _engineChip(String value, IconData icon) {
-    return ChoiceChip(
-      selected: _enginePanel == value,
-      avatar: Icon(icon, size: 18),
-      label: Text(value),
-      onSelected: (_) => setState(() => _enginePanel = value),
-    );
-  }
-
-  Widget _creatorEngineBody() {
-    return switch (_enginePanel) {
-      'Timeline' => const _FeatureGrid(
-        items: [
-          (
-            Icons.timeline_rounded,
-            'MiniTimeline',
-            'Segments vidéo/audio, cuts, scènes, transitions et marqueurs.',
-          ),
-          (
-            Icons.text_fields_rounded,
-            'TextOverlayEditor',
-            'Texte draggable, styles, inline edit, stickers et sous-titres.',
-          ),
-          (
-            Icons.animation_rounded,
-            'TemplateEffectsTimeline',
-            'Effets synchronisés, keyframes, intensité et aperçu temps réel.',
-          ),
-        ],
-      ),
-      'Assets' => const _FeatureGrid(
-        items: [
-          (
-            Icons.folder_rounded,
-            'AssetManager',
-            'Images, vidéos, sons, cache local, progression et reprise.',
-          ),
-          (
-            Icons.cloud_download_rounded,
-            'TemplateAssetLoader',
-            'Téléchargement assets, IndexedDB web, fallback offline Flutter.',
-          ),
-          (
-            Icons.perm_media_rounded,
-            'Media slots',
-            'TemplateSlotPicker, remplacement média et validation format.',
-          ),
-        ],
-      ),
-      'Drawers' => const _FeatureGrid(
-        items: [
-          (
-            Icons.music_note_rounded,
-            'MusicDrawer',
-            'Bibliothèque audio, trim, mix, volume et droits.',
-          ),
-          (
-            Icons.closed_caption_rounded,
-            'CaptionsDrawer',
-            'Transcription, traduction, karaoke, timing et correction.',
-          ),
-          (
-            Icons.auto_fix_high_rounded,
-            'MagicDrawer',
-            'IA créative: hook, reformulation, b-roll, voice clone et style.',
-          ),
-          (
-            Icons.brush_rounded,
-            'GraphicsDrawer',
-            'Stickers, formes, AR effects, overlays et charte FITILA.',
-          ),
-        ],
-      ),
-      'Export' => _ActionList(
-        items: const [
-          _ActionItem(
-            Icons.high_quality_rounded,
-            'OptimizedExportScreen',
-            'Rendu 9:16, qualité, watermark, preview finale et progression.',
-          ),
-          _ActionItem(
-            Icons.publish_rounded,
-            'PublishScreen',
-            'Caption, hashtags, audience, commentaires, brouillon et planning.',
-          ),
-          _ActionItem(
-            Icons.check_circle_rounded,
-            'SuccessScreen',
-            'Confirmation, ajout au fil, partage et retour au studio.',
-          ),
-        ],
-      ),
-      _ => const _FeatureGrid(
-        items: [
-          (
-            Icons.hub_rounded,
-            'TemplateRegistry',
-            'Catalogue, catégories, recherche, premium, nouveau et populaire.',
-          ),
-          (
-            Icons.precision_manufacturing_rounded,
-            'TemplateEngine',
-            'Slots, overrides, rendu, effets, audio et composition finale.',
-          ),
-          (
-            Icons.view_in_ar_rounded,
-            'Preview 2D/3D',
-            'StudioRenderer2D, ThreeJSPreview, overlays et rendu live.',
-          ),
-        ],
-      ),
-    };
-  }
-
+  // Page volontairement réduite à l'essentiel : uniquement les 6 modules
+  // de création. Studio de composition, statistiques, moteur créateur,
+  // pipeline et sélection de templates ont été retirés — désencombrement
+  // demandé, style Kuaishou plein écran.
   @override
   Widget build(BuildContext context) {
-    return _PageFrame(
-      title: 'Createur de contenu',
-      subtitle:
-          'Studio bleu ciel pour texte, audio, video, templates, IA et publication.',
-      action: FilledButton.icon(
-        onPressed: () => FeedScreen.showComposer(
-          context,
-          onPostCreated: widget.onPostCreated,
-        ),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Composer'),
-      ),
-      child: ListView(
-        children: [
-          const _MetricStrip(
-            metrics: [
-              ('Brouillons', '12', Icons.drafts_rounded),
-              ('Publies', '48', Icons.cloud_done_rounded),
-              ('IA', 'Active', Icons.auto_awesome_rounded),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Studio IA nouvelle génération',
-            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Six formats validés, visibles dans le fil actualité.',
-            style: TextStyle(color: _fitilaMuted, fontSize: 12),
-          ),
-          const SizedBox(height: 10),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final columns = constraints.maxWidth < 420
-                  ? 2
-                  : constraints.maxWidth < 760
-                      ? 3
-                      : 6;
-              return GridView.count(
-                crossAxisCount: columns,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 0.92,
-                children: [
-                  _CreationIaTile(
-                    emoji: '📡',
-                    title: 'Echo Sɔ̃ɔ',
-                    subtitle: 'Voix, texte, traduction, visuel signature.',
-                    colorA: const Color(0xFFC99530),
-                    colorB: const Color(0xFF9C6B1D),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => EchoSonScreen(onPostCreated: widget.onPostCreated),
-                      ),
-                    ),
-                  ),
-                  _CreationIaTile(
-                    emoji: '🎙️',
-                    title: 'Live Griot IA',
-                    subtitle: 'Direct commenté par une IA griot.',
-                    colorA: const Color(0xFF6758C9),
-                    colorB: const Color(0xFF4A3B96),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => LiveGriotScreen(onPostCreated: widget.onPostCreated),
-                      ),
-                    ),
-                  ),
-                  _CreationIaTile(
-                    emoji: '⚔️',
-                    title: 'Sagesse Battle',
-                    subtitle: 'Défi proverbe quotidien, XP et badges.',
-                    colorA: const Color(0xFF9C6B1D),
-                    colorB: const Color(0xFFB54E33),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SagesseBattleScreen()),
-                    ),
-                  ),
-                  _CreationIaTile(
-                    emoji: '🛍️',
-                    title: 'Aburu Fim IA',
-                    subtitle: 'Produit + template + publication instantanée.',
-                    colorA: const Color(0xFF3F6E52),
-                    colorB: const Color(0xFF2C4E3A),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AburuFimScreen(onPostCreated: widget.onPostCreated),
-                      ),
-                    ),
-                  ),
-                  _CreationIaTile(
-                    emoji: '🌉',
-                    title: 'Sasara IA',
-                    subtitle: 'Le pont bilingue Bariba ⇄ Français.',
-                    colorA: const Color(0xFF241F2E),
-                    colorB: const Color(0xFF3A3448),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => SasaraIaScreen(onPostCreated: widget.onPostCreated),
-                      ),
-                    ),
-                  ),
-                  _CreationIaTile(
-                    emoji: '🌌',
-                    title: 'Handunia Wasa',
-                    subtitle: 'Vision 10-15 ans — non fonctionnel.',
-                    colorA: const Color(0xFF4A3B78),
-                    colorB: const Color(0xFF14111C),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const HanduniaWasaScreen()),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-          _CreatorPhaseBar(phase: _phase),
-          const SizedBox(height: 12),
-          _CreatorWorkflowPanel(
-            phase: _phase,
-            template: _template,
-            onNext: _phase == CreatorPhase.finalizing
-                ? _publishFromWorkflow
-                : _nextPhase,
-            onReset: () => setState(() => _phase = CreatorPhase.discover),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Console de production React parity',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final mode in const [
-                        'Texte',
-                        'Audio',
-                        'Vidéo',
-                        'Template',
-                      ])
-                        ChoiceChip(
-                          selected: _captureMode == mode,
-                          avatar: Icon(switch (mode) {
-                            'Texte' => Icons.text_fields_rounded,
-                            'Audio' => Icons.mic_rounded,
-                            'Vidéo' => Icons.videocam_rounded,
-                            _ => Icons.movie_filter_rounded,
-                          }, size: 18),
-                          label: Text(mode),
-                          onSelected: (_) =>
-                              setState(() => _captureMode = mode),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  SwitchListTile(
-                    value: _autoDraft,
-                    onChanged: (value) => setState(() => _autoDraft = value),
-                    secondary: const Icon(Icons.drafts_rounded),
-                    title: const Text('Brouillon automatique'),
-                    subtitle: const Text(
-                      'Sauvegarde locale, reprise offline et synchronisation future.',
-                    ),
-                  ),
-                  SwitchListTile(
-                    value: _captions,
-                    onChanged: (value) => setState(() => _captions = value),
-                    secondary: const Icon(Icons.subtitles_rounded),
-                    title: const Text('Sous-titres et traduction'),
-                    subtitle: const Text(
-                      'Génère caption, hashtags, traduction Bariba et accessibilité.',
-                    ),
-                  ),
-                  SwitchListTile(
-                    value: _music,
-                    onChanged: (value) => setState(() => _music = value),
-                    secondary: const Icon(Icons.music_note_rounded),
-                    title: const Text('Piste musicale / ambiance'),
-                    subtitle: const Text(
-                      'Prépare sélection audio, volume, droits et mix final.',
-                    ),
-                  ),
-                  SwitchListTile(
-                    value: _debugPanel,
-                    onChanged: (value) => setState(() => _debugPanel = value),
-                    secondary: const Icon(Icons.bug_report_rounded),
-                    title: const Text('Panneau debug publication'),
-                    subtitle: const Text(
-                      'Expose metadata media, template, queue offline et payload backend.',
-                    ),
-                  ),
-                  if (_debugPanel) ...[
-                    const SizedBox(height: 8),
-                    const _InfoBox(
-                      title: 'Payload prêt',
-                      text:
-                          'content_type, template_id, media_url, audio_url, slots, overrides, effects, captions, visibility, hashtags, ai_metadata, moderation_status, scheduled_at.',
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Grand moteur créateur',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _engineChip(
-                        'Moteur',
-                        Icons.precision_manufacturing_rounded,
-                      ),
-                      _engineChip('Timeline', Icons.timeline_rounded),
-                      _engineChip('Assets', Icons.perm_media_rounded),
-                      _engineChip('Drawers', Icons.dashboard_customize_rounded),
-                      _engineChip('Export', Icons.high_quality_rounded),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _creatorEngineBody(),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final wide = constraints.maxWidth > 860;
-              final pipeline = _CreatorPipeline(
-                onCompose: () => FeedScreen.showComposer(
-                  context,
-                  onPostCreated: widget.onPostCreated,
-                ),
-              );
-              if (!wide) {
-                return Column(
+    return ColoredBox(
+      color: _fitilaSurface,
+      child: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = constraints.maxWidth < 420
+                    ? 2
+                    : constraints.maxWidth < 760
+                    ? 3
+                    : 6;
+                return GridView.count(
+                  crossAxisCount: columns,
+                  shrinkWrap: true,
+                  mainAxisSpacing: 14,
+                  crossAxisSpacing: 14,
+                  childAspectRatio: 0.92,
                   children: [
-                    pipeline,
-                    const SizedBox(height: 12),
-                    const _CreatorTemplateBoard(),
+                    _CreationIaTile(
+                      emoji: '📡',
+                      title: 'Echo Sɔ̃ɔ',
+                      subtitle: 'Voix, texte, traduction, visuel signature.',
+                      colorA: const Color(0xFFC99530),
+                      colorB: const Color(0xFF9C6B1D),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => EchoSonScreen(
+                            onPostCreated: widget.onPostCreated,
+                          ),
+                        ),
+                      ),
+                    ),
+                    _CreationIaTile(
+                      emoji: '🎙️',
+                      title: 'Live Griot IA',
+                      subtitle: 'Direct commenté par une IA griot.',
+                      colorA: const Color(0xFF6758C9),
+                      colorB: const Color(0xFF4A3B96),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LiveGriotScreen(
+                            onPostCreated: widget.onPostCreated,
+                          ),
+                        ),
+                      ),
+                    ),
+                    _CreationIaTile(
+                      emoji: '⚔️',
+                      title: 'Sagesse Battle',
+                      subtitle: 'Défi proverbe quotidien, XP et badges.',
+                      colorA: const Color(0xFF9C6B1D),
+                      colorB: const Color(0xFFB54E33),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SagesseBattleScreen(),
+                        ),
+                      ),
+                    ),
+                    _CreationIaTile(
+                      emoji: '🛍️',
+                      title: 'Aburu Fim IA',
+                      subtitle: 'Produit + template + publication instantanée.',
+                      colorA: const Color(0xFF3F6E52),
+                      colorB: const Color(0xFF2C4E3A),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AburuFimScreen(
+                            onPostCreated: widget.onPostCreated,
+                          ),
+                        ),
+                      ),
+                    ),
+                    _CreationIaTile(
+                      emoji: '🌉',
+                      title: 'Sasara IA',
+                      subtitle: 'Le pont bilingue Bariba ⇄ Français.',
+                      colorA: const Color(0xFF241F2E),
+                      colorB: const Color(0xFF3A3448),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => SasaraIaScreen(
+                            onPostCreated: widget.onPostCreated,
+                          ),
+                        ),
+                      ),
+                    ),
+                    _CreationIaTile(
+                      emoji: '🌌',
+                      title: 'Handunia Wasa',
+                      subtitle: 'Vision 10-15 ans — non fonctionnel.',
+                      colorA: const Color(0xFF4A3B78),
+                      colorB: const Color(0xFF14111C),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const HanduniaWasaScreen(),
+                        ),
+                      ),
+                    ),
                   ],
                 );
-              }
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 3, child: pipeline),
-                  const SizedBox(width: 12),
-                  const Expanded(flex: 2, child: _CreatorTemplateBoard()),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Selection template',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final template in _fitilaTemplates.take(18))
-                        ChoiceChip(
-                          selected: template.id == _template.id,
-                          avatar: Icon(template.icon, size: 18),
-                          label: Text(template.name),
-                          onSelected: (_) => setState(() {
-                            _template = template;
-                            _phase = CreatorPhase.capturing;
-                          }),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
+              },
             ),
           ),
-          const SizedBox(height: 12),
-          _CreatorTemplateCoverageBoard(
-            selected: _template,
-            onSelected: (template) => setState(() {
-              _template = template;
-              _phase = CreatorPhase.capturing;
-            }),
-          ),
-          const SizedBox(height: 12),
-          const _FeatureGrid(
-            items: [
-              (
-                Icons.notes_rounded,
-                'Texte intelligent',
-                'Titre, corps, hashtags, traduction et correction IA.',
-              ),
-              (
-                Icons.mic_rounded,
-                'Audio natif',
-                'Import, enregistrement, transcription et validation qualite.',
-              ),
-              (
-                Icons.videocam_rounded,
-                'Video courte',
-                'Script, miniature, sous-titres et publication sociale.',
-              ),
-              (
-                Icons.movie_filter_rounded,
-                'Templates',
-                'Annonce, lecon, culture, Tem-IA et campagne communaute.',
-              ),
-              (
-                Icons.visibility_rounded,
-                'Audience',
-                'Public, classe, brouillon prive ou publication programmee.',
-              ),
-              (
-                Icons.verified_rounded,
-                'Moderation',
-                'Checklist langue, source, media, accessibilite et securite.',
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -5051,7 +4326,6 @@ class FitilaModuleScreen extends StatelessWidget {
   }
 }
 
-
 class _WebParityAction {
   const _WebParityAction({
     required this.icon,
@@ -5069,11 +4343,7 @@ class _WebParityAction {
 }
 
 class WebParityModuleScreen extends StatefulWidget {
-  const WebParityModuleScreen({
-    super.key,
-    required this.page,
-    this.onNavigate,
-  });
+  const WebParityModuleScreen({super.key, required this.page, this.onNavigate});
 
   final FitilaPage page;
   final ValueChanged<FitilaPage>? onNavigate;
@@ -5095,85 +4365,85 @@ class _WebParityModuleScreenState extends State<WebParityModuleScreen> {
   List<(String, String, IconData)> get _metrics {
     return switch (widget.page) {
       FitilaPage.services => const [
-          ('Services', '8', Icons.apps_rounded),
-          ('Langues', '2', Icons.translate_rounded),
-          ('Assistant', 'Vocal', Icons.mic_rounded),
-        ],
+        ('Services', '8', Icons.apps_rounded),
+        ('Langues', '2', Icons.translate_rounded),
+        ('Assistant', 'Vocal', Icons.mic_rounded),
+      ],
       FitilaPage.market => const [
-          ('Produits', '86', Icons.inventory_2_rounded),
-          ('Emplois', '14', Icons.work_rounded),
-          ('Espace', 'Vendeur', Icons.storefront_rounded),
-        ],
+        ('Produits', '86', Icons.inventory_2_rounded),
+        ('Emplois', '14', Icons.work_rounded),
+        ('Espace', 'Vendeur', Icons.storefront_rounded),
+      ],
       FitilaPage.agriculture => const [
-          ('Météo', 'Live', Icons.wb_sunny_rounded),
-          ('Marchés', '4', Icons.store_rounded),
-          ('Conseil', 'Terrain', Icons.agriculture_rounded),
-        ],
+        ('Météo', 'Live', Icons.wb_sunny_rounded),
+        ('Marchés', '4', Icons.store_rounded),
+        ('Conseil', 'Terrain', Icons.agriculture_rounded),
+      ],
       FitilaPage.finance => const [
-          ('Ventes', '45k', Icons.trending_up_rounded),
-          ('Dépenses', '12k', Icons.trending_down_rounded),
-          ('Épargne', 'Active', Icons.savings_rounded),
-        ],
+        ('Ventes', '45k', Icons.trending_up_rounded),
+        ('Dépenses', '12k', Icons.trending_down_rounded),
+        ('Épargne', 'Active', Icons.savings_rounded),
+      ],
       FitilaPage.education => const [
-          ('Modules', '6', Icons.menu_book_rounded),
-          ('Leçons', '57', Icons.school_rounded),
-          ('Audio', 'Actif', Icons.volume_up_rounded),
-        ],
+        ('Modules', '6', Icons.menu_book_rounded),
+        ('Leçons', '57', Icons.school_rounded),
+        ('Audio', 'Actif', Icons.volume_up_rounded),
+      ],
       FitilaPage.health => const [
-          ('Guides', '5', Icons.health_and_safety_rounded),
-          ('Urgence', '112', Icons.emergency_rounded),
-          ('Assistant', 'Santé', Icons.chat_rounded),
-        ],
+        ('Guides', '5', Icons.health_and_safety_rounded),
+        ('Urgence', '112', Icons.emergency_rounded),
+        ('Assistant', 'Santé', Icons.chat_rounded),
+      ],
       _ => const [
-          ('Modules', '3', Icons.dashboard_rounded),
-          ('Actions', 'Actives', Icons.touch_app_rounded),
-          ('Offline', 'Oui', Icons.cloud_done_rounded),
-        ],
+        ('Modules', '3', Icons.dashboard_rounded),
+        ('Actions', 'Actives', Icons.touch_app_rounded),
+        ('Offline', 'Oui', Icons.cloud_done_rounded),
+      ],
     };
   }
 
   List<String> get _tabs {
     return switch (widget.page) {
       FitilaPage.market => const [
-          'Accueil',
-          'Acheter',
-          'Vendre',
-          'Emploi',
-          'Recruter',
-          'Mon espace',
-        ],
+        'Accueil',
+        'Acheter',
+        'Vendre',
+        'Emploi',
+        'Recruter',
+        'Mon espace',
+      ],
       FitilaPage.finance => const [
-          'Accueil',
-          'Ventes',
-          'Dépenses',
-          'Tontine',
-          'Crédit',
-          'Épargne',
-        ],
+        'Accueil',
+        'Ventes',
+        'Dépenses',
+        'Tontine',
+        'Crédit',
+        'Épargne',
+      ],
       FitilaPage.education => const [
-          'Accueil',
-          'Cultures',
-          'Élevage',
-          'Commerce',
-          'Santé',
-          'Histoires',
-        ],
+        'Accueil',
+        'Cultures',
+        'Élevage',
+        'Commerce',
+        'Santé',
+        'Histoires',
+      ],
       FitilaPage.health => const [
-          'Accueil',
-          'Secours',
-          'Médicaments',
-          'Maternité',
-          'Maladies',
-          'Nutrition',
-        ],
+        'Accueil',
+        'Secours',
+        'Médicaments',
+        'Maternité',
+        'Maladies',
+        'Nutrition',
+      ],
       FitilaPage.agriculture => const [
-          'Accueil',
-          'Météo',
-          'Cultures',
-          'Élevage',
-          'Eau',
-          'Prix',
-        ],
+        'Accueil',
+        'Météo',
+        'Cultures',
+        'Élevage',
+        'Eau',
+        'Prix',
+      ],
       _ => const ['Services'],
     };
   }
@@ -5181,225 +4451,226 @@ class _WebParityModuleScreenState extends State<WebParityModuleScreen> {
   List<_WebParityAction> get _actions {
     return switch (widget.page) {
       FitilaPage.services => const [
-          _WebParityAction(
-            icon: Icons.translate_rounded,
-            title: 'Traducteur',
-            subtitle: 'Texte, voix, photo, document et conversation.',
-            target: FitilaPage.translator,
-          ),
-          _WebParityAction(
-            icon: Icons.health_and_safety_rounded,
-            title: 'Santé',
-            subtitle: 'Premiers secours, médicaments et contacts utiles.',
-            target: FitilaPage.health,
-          ),
-          _WebParityAction(
-            icon: Icons.school_rounded,
-            title: 'Éducation',
-            subtitle: 'Cours, exercices, classe et apprentissage.',
-            target: FitilaPage.education,
-          ),
-          _WebParityAction(
-            icon: Icons.account_balance_wallet_rounded,
-            title: 'Finance',
-            subtitle: 'Ventes, dépenses, tontine, crédit et épargne.',
-            target: FitilaPage.finance,
-          ),
-          _WebParityAction(
-            icon: Icons.agriculture_rounded,
-            title: 'Agriculture',
-            subtitle: 'Météo, cultures, élevage, eau et prix.',
-            target: FitilaPage.agriculture,
-          ),
-          _WebParityAction(
-            icon: Icons.menu_book_rounded,
-            title: 'Dictionnaire',
-            subtitle: 'Recherche Bàátɔ̀nú ↔ Français.',
-            target: FitilaPage.dictionary,
-          ),
-          _WebParityAction(
-            icon: Icons.sos_rounded,
-            title: 'Sécurité / SOS',
-            subtitle: 'Alerte, contacts et message vocal.',
-            target: FitilaPage.sos,
-          ),
-          _WebParityAction(
-            icon: Icons.storefront_rounded,
-            title: 'Marché',
-            subtitle: 'Acheter, vendre, emploi et espace vendeur.',
-            target: FitilaPage.market,
-          ),
-        ],
+        _WebParityAction(
+          icon: Icons.translate_rounded,
+          title: 'Traducteur',
+          subtitle: 'Texte, voix, photo, document et conversation.',
+          target: FitilaPage.translator,
+        ),
+        _WebParityAction(
+          icon: Icons.health_and_safety_rounded,
+          title: 'Santé',
+          subtitle: 'Premiers secours, médicaments et contacts utiles.',
+          target: FitilaPage.health,
+        ),
+        _WebParityAction(
+          icon: Icons.school_rounded,
+          title: 'Éducation',
+          subtitle: 'Cours, exercices, classe et apprentissage.',
+          target: FitilaPage.education,
+        ),
+        _WebParityAction(
+          icon: Icons.account_balance_wallet_rounded,
+          title: 'Finance',
+          subtitle: 'Ventes, dépenses, tontine, crédit et épargne.',
+          target: FitilaPage.finance,
+        ),
+        _WebParityAction(
+          icon: Icons.agriculture_rounded,
+          title: 'Agriculture',
+          subtitle: 'Météo, cultures, élevage, eau et prix.',
+          target: FitilaPage.agriculture,
+        ),
+        _WebParityAction(
+          icon: Icons.menu_book_rounded,
+          title: 'Dictionnaire',
+          subtitle: 'Recherche Bàátɔ̀nú ↔ Français.',
+          target: FitilaPage.dictionary,
+        ),
+        _WebParityAction(
+          icon: Icons.sos_rounded,
+          title: 'Sécurité / SOS',
+          subtitle: 'Alerte, contacts et message vocal.',
+          target: FitilaPage.sos,
+        ),
+        _WebParityAction(
+          icon: Icons.storefront_rounded,
+          title: 'Marché',
+          subtitle: 'Acheter, vendre, emploi et espace vendeur.',
+          target: FitilaPage.market,
+        ),
+      ],
       FitilaPage.market => const [
-          _WebParityAction(
-            icon: Icons.shopping_bag_rounded,
-            title: 'Acheter',
-            subtitle: 'Parcourir les produits, filtrer et contacter un vendeur.',
-            badge: 'Produits',
-          ),
-          _WebParityAction(
-            icon: Icons.add_business_rounded,
-            title: 'Vendre',
-            subtitle: 'Créer une annonce produit avec photo, prix et localisation.',
-            badge: 'Annonce',
-          ),
-          _WebParityAction(
-            icon: Icons.work_outline_rounded,
-            title: 'Chercher un emploi',
-            subtitle: 'Offres locales par métier et commune.',
-            badge: 'Jobs',
-          ),
-          _WebParityAction(
-            icon: Icons.person_search_rounded,
-            title: 'Recruter',
-            subtitle: 'Publier une offre et recevoir des candidatures.',
-            badge: 'Emploi',
-          ),
-          _WebParityAction(
-            icon: Icons.store_mall_directory_rounded,
-            title: 'Mon espace vendeur',
-            subtitle: 'Produits, commandes et statistiques.',
-          ),
-          _WebParityAction(
-            icon: Icons.campaign_rounded,
-            title: 'Mes annonces',
-            subtitle: 'Gérer produits et offres publiés.',
-          ),
-        ],
+        _WebParityAction(
+          icon: Icons.shopping_bag_rounded,
+          title: 'Acheter',
+          subtitle: 'Parcourir les produits, filtrer et contacter un vendeur.',
+          badge: 'Produits',
+        ),
+        _WebParityAction(
+          icon: Icons.add_business_rounded,
+          title: 'Vendre',
+          subtitle:
+              'Créer une annonce produit avec photo, prix et localisation.',
+          badge: 'Annonce',
+        ),
+        _WebParityAction(
+          icon: Icons.work_outline_rounded,
+          title: 'Chercher un emploi',
+          subtitle: 'Offres locales par métier et commune.',
+          badge: 'Jobs',
+        ),
+        _WebParityAction(
+          icon: Icons.person_search_rounded,
+          title: 'Recruter',
+          subtitle: 'Publier une offre et recevoir des candidatures.',
+          badge: 'Emploi',
+        ),
+        _WebParityAction(
+          icon: Icons.store_mall_directory_rounded,
+          title: 'Mon espace vendeur',
+          subtitle: 'Produits, commandes et statistiques.',
+        ),
+        _WebParityAction(
+          icon: Icons.campaign_rounded,
+          title: 'Mes annonces',
+          subtitle: 'Gérer produits et offres publiés.',
+        ),
+      ],
       FitilaPage.agriculture => const [
-          _WebParityAction(
-            icon: Icons.wb_sunny_rounded,
-            title: 'Météo',
-            subtitle: 'Prévisions agricoles et conditions du jour.',
-            badge: 'Aujourd’hui',
-          ),
-          _WebParityAction(
-            icon: Icons.grass_rounded,
-            title: 'Cultures',
-            subtitle: 'Conseils de semis, entretien et récolte.',
-          ),
-          _WebParityAction(
-            icon: Icons.pets_rounded,
-            title: 'Élevage',
-            subtitle: 'Santé animale, alimentation et suivi.',
-          ),
-          _WebParityAction(
-            icon: Icons.water_drop_rounded,
-            title: 'Eau',
-            subtitle: 'Irrigation, disponibilité et bonnes pratiques.',
-          ),
-          _WebParityAction(
-            icon: Icons.engineering_rounded,
-            title: 'Technicien agricole',
-            subtitle: 'Demander l’appui d’un technicien.',
-            badge: 'Rappel',
-          ),
-          _WebParityAction(
-            icon: Icons.payments_rounded,
-            title: 'Prix du marché',
-            subtitle: 'Maïs, igname, coton et produits locaux.',
-            badge: 'FCFA',
-          ),
-        ],
+        _WebParityAction(
+          icon: Icons.wb_sunny_rounded,
+          title: 'Météo',
+          subtitle: 'Prévisions agricoles et conditions du jour.',
+          badge: 'Aujourd’hui',
+        ),
+        _WebParityAction(
+          icon: Icons.grass_rounded,
+          title: 'Cultures',
+          subtitle: 'Conseils de semis, entretien et récolte.',
+        ),
+        _WebParityAction(
+          icon: Icons.pets_rounded,
+          title: 'Élevage',
+          subtitle: 'Santé animale, alimentation et suivi.',
+        ),
+        _WebParityAction(
+          icon: Icons.water_drop_rounded,
+          title: 'Eau',
+          subtitle: 'Irrigation, disponibilité et bonnes pratiques.',
+        ),
+        _WebParityAction(
+          icon: Icons.engineering_rounded,
+          title: 'Technicien agricole',
+          subtitle: 'Demander l’appui d’un technicien.',
+          badge: 'Rappel',
+        ),
+        _WebParityAction(
+          icon: Icons.payments_rounded,
+          title: 'Prix du marché',
+          subtitle: 'Maïs, igname, coton et produits locaux.',
+          badge: 'FCFA',
+        ),
+      ],
       FitilaPage.finance => const [
-          _WebParityAction(
-            icon: Icons.point_of_sale_rounded,
-            title: 'Ventes',
-            subtitle: 'Enregistrer et suivre les recettes.',
-          ),
-          _WebParityAction(
-            icon: Icons.receipt_long_rounded,
-            title: 'Dépenses',
-            subtitle: 'Saisir les dépenses et leur motif.',
-          ),
-          _WebParityAction(
-            icon: Icons.groups_rounded,
-            title: 'Tontine',
-            subtitle: 'Membres, cotisations, tours et rappels.',
-          ),
-          _WebParityAction(
-            icon: Icons.credit_score_rounded,
-            title: 'Crédit',
-            subtitle: 'Suivi des prêts, échéances et remboursements.',
-          ),
-          _WebParityAction(
-            icon: Icons.savings_rounded,
-            title: 'Épargne',
-            subtitle: 'Objectif, progression et historique.',
-          ),
-          _WebParityAction(
-            icon: Icons.support_agent_rounded,
-            title: 'Conseiller',
-            subtitle: 'Assistant financier bilingue.',
-          ),
-        ],
+        _WebParityAction(
+          icon: Icons.point_of_sale_rounded,
+          title: 'Ventes',
+          subtitle: 'Enregistrer et suivre les recettes.',
+        ),
+        _WebParityAction(
+          icon: Icons.receipt_long_rounded,
+          title: 'Dépenses',
+          subtitle: 'Saisir les dépenses et leur motif.',
+        ),
+        _WebParityAction(
+          icon: Icons.groups_rounded,
+          title: 'Tontine',
+          subtitle: 'Membres, cotisations, tours et rappels.',
+        ),
+        _WebParityAction(
+          icon: Icons.credit_score_rounded,
+          title: 'Crédit',
+          subtitle: 'Suivi des prêts, échéances et remboursements.',
+        ),
+        _WebParityAction(
+          icon: Icons.savings_rounded,
+          title: 'Épargne',
+          subtitle: 'Objectif, progression et historique.',
+        ),
+        _WebParityAction(
+          icon: Icons.support_agent_rounded,
+          title: 'Conseiller',
+          subtitle: 'Assistant financier bilingue.',
+        ),
+      ],
       FitilaPage.education => const [
-          _WebParityAction(
-            icon: Icons.grass_rounded,
-            title: 'Agriculture',
-            subtitle: 'Cours pratiques sur les cultures.',
-          ),
-          _WebParityAction(
-            icon: Icons.pets_rounded,
-            title: 'Élevage',
-            subtitle: 'Modules pratiques et vocabulaire.',
-          ),
-          _WebParityAction(
-            icon: Icons.storefront_rounded,
-            title: 'Commerce',
-            subtitle: 'Vente, calcul et gestion quotidienne.',
-          ),
-          _WebParityAction(
-            icon: Icons.health_and_safety_rounded,
-            title: 'Santé',
-            subtitle: 'Prévention et vocabulaire utile.',
-          ),
-          _WebParityAction(
-            icon: Icons.school_rounded,
-            title: 'Classe FITILA',
-            subtitle: 'N1/N2, 57 leçons et exercices.',
-            target: FitilaPage.classe,
-          ),
-          _WebParityAction(
-            icon: Icons.auto_stories_rounded,
-            title: 'Témoignages',
-            subtitle: 'Histoires et contenus culturels.',
-          ),
-        ],
+        _WebParityAction(
+          icon: Icons.grass_rounded,
+          title: 'Agriculture',
+          subtitle: 'Cours pratiques sur les cultures.',
+        ),
+        _WebParityAction(
+          icon: Icons.pets_rounded,
+          title: 'Élevage',
+          subtitle: 'Modules pratiques et vocabulaire.',
+        ),
+        _WebParityAction(
+          icon: Icons.storefront_rounded,
+          title: 'Commerce',
+          subtitle: 'Vente, calcul et gestion quotidienne.',
+        ),
+        _WebParityAction(
+          icon: Icons.health_and_safety_rounded,
+          title: 'Santé',
+          subtitle: 'Prévention et vocabulaire utile.',
+        ),
+        _WebParityAction(
+          icon: Icons.school_rounded,
+          title: 'Classe FITILA',
+          subtitle: 'N1/N2, 57 leçons et exercices.',
+          target: FitilaPage.classe,
+        ),
+        _WebParityAction(
+          icon: Icons.auto_stories_rounded,
+          title: 'Témoignages',
+          subtitle: 'Histoires et contenus culturels.',
+        ),
+      ],
       FitilaPage.health => const [
-          _WebParityAction(
-            icon: Icons.emergency_rounded,
-            title: 'Premiers secours',
-            subtitle: 'Décrire une urgence et obtenir les gestes prioritaires.',
-            badge: 'Urgence',
-          ),
-          _WebParityAction(
-            icon: Icons.medication_rounded,
-            title: 'Médicaments',
-            subtitle: 'Questions générales sur l’utilisation des médicaments.',
-          ),
-          _WebParityAction(
-            icon: Icons.pregnant_woman_rounded,
-            title: 'Maternité',
-            subtitle: 'Informations grossesse, mère et bébé.',
-          ),
-          _WebParityAction(
-            icon: Icons.coronavirus_rounded,
-            title: 'Maladies',
-            subtitle: 'Informations sur les maladies courantes.',
-          ),
-          _WebParityAction(
-            icon: Icons.restaurant_rounded,
-            title: 'Nutrition',
-            subtitle: 'Conseils alimentation et bien-être.',
-          ),
-          _WebParityAction(
-            icon: Icons.local_hospital_rounded,
-            title: 'Contacts d’urgence',
-            subtitle: 'SAMU Bénin, centre de santé et pharmacie.',
-            badge: '112',
-          ),
-        ],
+        _WebParityAction(
+          icon: Icons.emergency_rounded,
+          title: 'Premiers secours',
+          subtitle: 'Décrire une urgence et obtenir les gestes prioritaires.',
+          badge: 'Urgence',
+        ),
+        _WebParityAction(
+          icon: Icons.medication_rounded,
+          title: 'Médicaments',
+          subtitle: 'Questions générales sur l’utilisation des médicaments.',
+        ),
+        _WebParityAction(
+          icon: Icons.pregnant_woman_rounded,
+          title: 'Maternité',
+          subtitle: 'Informations grossesse, mère et bébé.',
+        ),
+        _WebParityAction(
+          icon: Icons.coronavirus_rounded,
+          title: 'Maladies',
+          subtitle: 'Informations sur les maladies courantes.',
+        ),
+        _WebParityAction(
+          icon: Icons.restaurant_rounded,
+          title: 'Nutrition',
+          subtitle: 'Conseils alimentation et bien-être.',
+        ),
+        _WebParityAction(
+          icon: Icons.local_hospital_rounded,
+          title: 'Contacts d’urgence',
+          subtitle: 'SAMU Bénin, centre de santé et pharmacie.',
+          badge: '112',
+        ),
+      ],
       _ => const [],
     };
   }
@@ -5442,10 +4713,7 @@ class _WebParityModuleScreenState extends State<WebParityModuleScreen> {
               Text(
                 action.subtitle,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: _fitilaMuted,
-                  height: 1.45,
-                ),
+                style: const TextStyle(color: _fitilaMuted, height: 1.45),
               ),
               const SizedBox(height: 16),
               SizedBox(
@@ -5634,13 +4902,13 @@ class _WebParityModuleScreenState extends State<WebParityModuleScreen> {
                       tooltip: 'Envoyer',
                       onPressed: () {
                         final text = _assistant.text.trim();
-                        if (text.isEmpty) return;
+                        if (text.isEmpty) {
+                          return;
+                        }
                         _assistant.clear();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(
-                              'Demande prise en compte : $text',
-                            ),
+                            content: Text('Demande prise en compte : $text'),
                           ),
                         );
                       },
@@ -5697,7 +4965,9 @@ class _AssistantChatPanelState extends State<_AssistantChatPanel> {
 
   Future<void> _send() async {
     final text = _input.text.trim();
-    if (text.isEmpty || _sending) return;
+    if (text.isEmpty || _sending) {
+      return;
+    }
     if (!FitilaBackend.configured) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Serveur FITILA indisponible.')),
@@ -5727,7 +4997,9 @@ class _AssistantChatPanelState extends State<_AssistantChatPanel> {
         context: widget.contextKey,
         history: history,
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       final answer = reply['fr'];
       setState(() {
         _messages.add((
@@ -5738,7 +5010,9 @@ class _AssistantChatPanelState extends State<_AssistantChatPanel> {
         ));
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _messages.add((
           fromUser: false,
@@ -5746,7 +5020,9 @@ class _AssistantChatPanelState extends State<_AssistantChatPanel> {
         ));
       });
     } finally {
-      if (mounted) setState(() => _sending = false);
+      if (mounted) {
+        setState(() => _sending = false);
+      }
       await Future<void>.delayed(const Duration(milliseconds: 80));
       if (_scroll.hasClients) {
         await _scroll.animateTo(
@@ -5933,11 +5209,7 @@ const _agriSections = [
   _AgriSection('crops', 'Conseils cultures', Icons.grass_rounded),
   _AgriSection('livestock', 'Bétail', Icons.pets_rounded),
   _AgriSection('water', 'Eau & irrigation', Icons.water_drop_rounded),
-  _AgriSection(
-    'technician',
-    'Appeler technicien',
-    Icons.support_agent_rounded,
-  ),
+  _AgriSection('technician', 'Appeler technicien', Icons.support_agent_rounded),
   _AgriSection('prices', 'Prix du jour', Icons.payments_rounded),
 ];
 
@@ -6050,7 +5322,10 @@ class AgricultureScreen extends StatelessWidget {
                                   color: _fitilaMuted,
                                 ),
                               ),
-                              Text(f.icon, style: const TextStyle(fontSize: 18)),
+                              Text(
+                                f.icon,
+                                style: const TextStyle(fontSize: 18),
+                              ),
                               Text(
                                 '${f.rain}%',
                                 style: const TextStyle(
@@ -6298,7 +5573,10 @@ class _FinanceScreenState extends State<FinanceScreen> {
         : _financeTransactions.where((t) => t.isSale == sale).toList();
     if (items.isEmpty) {
       return const _TCard(
-        child: Text('Aucune transaction.', style: TextStyle(color: _fitilaMuted)),
+        child: Text(
+          'Aucune transaction.',
+          style: TextStyle(color: _fitilaMuted),
+        ),
       );
     }
     return Column(
@@ -6500,7 +5778,12 @@ const _healthEmergencyContacts = [
 ];
 
 class _HealthSection {
-  const _HealthSection(this.id, this.label, this.icon, {this.isEmergency = false});
+  const _HealthSection(
+    this.id,
+    this.label,
+    this.icon, {
+    this.isEmergency = false,
+  });
   final String id;
   final String label;
   final IconData icon;
@@ -6542,7 +5825,10 @@ class HealthScreen extends StatelessWidget {
               const Text(
                 'En cas d’urgence grave, appelez le 112',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontWeight: FontWeight.w900, color: _fitilaClay),
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: _fitilaClay,
+                ),
               ),
               const SizedBox(height: 12),
               ..._healthEmergencyContacts.map(
@@ -6720,7 +6006,9 @@ class _SosScreenState extends State<SosScreen> {
   }
 
   Future<void> _sendAlert() async {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     setState(() => _countdown = 0);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -6748,7 +6036,9 @@ class _SosScreenState extends State<SosScreen> {
                     height: 168,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _fitilaClay.withValues(alpha: _activated ? 1 : .92),
+                      color: _fitilaClay.withValues(
+                        alpha: _activated ? 1 : .92,
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: _fitilaClay.withValues(alpha: .35),
@@ -7153,7 +6443,9 @@ class _MarketSellTabState extends State<_MarketSellTab> {
       imageQuality: 82,
       maxWidth: 1400,
     );
-    if (file != null) setState(() => _photo = file);
+    if (file != null) {
+      setState(() => _photo = file);
+    }
   }
 
   Future<void> _submit() async {
@@ -7161,9 +6453,7 @@ class _MarketSellTabState extends State<_MarketSellTab> {
     final priceValue = double.tryParse(_price.text.trim());
     if (title.isEmpty || priceValue == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Indiquez un titre et un prix valides.'),
-        ),
+        const SnackBar(content: Text('Indiquez un titre et un prix valides.')),
       );
       return;
     }
@@ -7194,7 +6484,9 @@ class _MarketSellTabState extends State<_MarketSellTab> {
         photoBytes: bytes,
         photoExtension: ext,
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       _title.clear();
       _price.clear();
       _description.clear();
@@ -7203,19 +6495,25 @@ class _MarketSellTabState extends State<_MarketSellTab> {
         const SnackBar(content: Text('✅ Produit publié sur le marché.')),
       );
     } on AuthException {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Connectez-vous pour publier un produit.'),
         ),
       );
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Publication impossible. Réessayez.')),
       );
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -7257,13 +6555,17 @@ class _MarketSellTabState extends State<_MarketSellTab> {
           controller: _description,
           minLines: 2,
           maxLines: 4,
-          decoration: const InputDecoration(labelText: 'Description (optionnel)'),
+          decoration: const InputDecoration(
+            labelText: 'Description (optionnel)',
+          ),
         ),
         const SizedBox(height: 10),
         OutlinedButton.icon(
           onPressed: _pickPhoto,
           icon: const Icon(Icons.photo_camera_rounded),
-          label: Text(_photo == null ? 'Ajouter une photo' : 'Photo sélectionnée'),
+          label: Text(
+            _photo == null ? 'Ajouter une photo' : 'Photo sélectionnée',
+          ),
         ),
         const SizedBox(height: 14),
         SizedBox(
@@ -7324,18 +6626,26 @@ class _MarketJobsTabState extends State<_MarketJobsTab> {
         category: category.value,
         emojiIcon: category.emoji,
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('✅ Annonce "${category.label}" publiée.')),
       );
       _refresh();
     } on AuthException {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Connectez-vous pour publier une annonce.')),
+        const SnackBar(
+          content: Text('Connectez-vous pour publier une annonce.'),
+        ),
       );
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Publication impossible. Réessayez.')),
       );
@@ -7345,22 +6655,30 @@ class _MarketJobsTabState extends State<_MarketJobsTab> {
   Future<void> _apply(String jobId) async {
     try {
       await FitilaBackend.applyToJob(jobId);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Candidature envoyée.')),
-      );
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('✅ Candidature envoyée.')));
     } on AuthException {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Connectez-vous pour postuler.')),
       );
     } on StateError catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Candidature impossible. Réessayez.')),
       );
@@ -7379,7 +6697,10 @@ class _MarketJobsTabState extends State<_MarketJobsTab> {
           isOffer
               ? 'Publier une recherche d’emploi'
               : 'Publier une offre d’emploi',
-          style: const TextStyle(fontWeight: FontWeight.w800, color: _fitilaInk),
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            color: _fitilaInk,
+          ),
         ),
         const SizedBox(height: 8),
         Wrap(
@@ -7398,7 +6719,10 @@ class _MarketJobsTabState extends State<_MarketJobsTab> {
         const SizedBox(height: 14),
         Text(
           isOffer ? 'Offres disponibles' : 'Personnes disponibles',
-          style: const TextStyle(fontWeight: FontWeight.w800, color: _fitilaInk),
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            color: _fitilaInk,
+          ),
         ),
         const SizedBox(height: 8),
         FutureBuilder<List<Map<String, dynamic>>>(
@@ -7465,23 +6789,19 @@ class _MarketJobsTabState extends State<_MarketJobsTab> {
                           ),
                           if (isOffer)
                             FilledButton(
-                              onPressed: () =>
-                                  _apply(job['id'].toString()),
+                              onPressed: () => _apply(job['id'].toString()),
                               child: const Text('Postuler'),
                             )
                           else
                             OutlinedButton(
                               onPressed: () {
-                                final phone = job['contact_phone']
-                                    ?.toString();
+                                final phone = job['contact_phone']?.toString();
                                 if (phone != null && phone.isNotEmpty) {
                                   _dialPhone(phone);
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text(
-                                        'Aucun contact renseigné.',
-                                      ),
+                                      content: Text('Aucun contact renseigné.'),
                                     ),
                                   );
                                 }
@@ -7527,13 +6847,17 @@ class _MarketMineTabState extends State<_MarketMineTab> {
   Future<void> _deleteProduct(String id) async {
     try {
       await FitilaBackend.deleteProduct(id);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _future = _load());
     } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Suppression impossible.')),
-      );
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Suppression impossible.')));
     }
   }
 
@@ -8048,7 +7372,9 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     super.initState();
     _entries = (widget.loadEntries ?? FitilaServices.loadDictionary)();
     _query.addListener(() {
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     });
   }
 
@@ -8060,7 +7386,9 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
 
   List<DictionaryEntry> _matches(List<DictionaryEntry> entries) {
     final q = _query.text.trim().toLowerCase();
-    if (q.isEmpty) return const [];
+    if (q.isEmpty) {
+      return const [];
+    }
     final exact = <DictionaryEntry>[];
     final starts = <DictionaryEntry>[];
     final contains = <DictionaryEntry>[];
@@ -8076,7 +7404,9 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
       } else if (target.contains(q)) {
         contains.add(entry);
       }
-      if (exact.length + starts.length + contains.length >= 24) break;
+      if (exact.length + starts.length + contains.length >= 24) {
+        break;
+      }
     }
     return [...exact, ...starts, ...contains].take(12).toList(growable: false);
   }
@@ -8125,9 +7455,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
         color: selected ? _fitilaCard : _fitilaCard.withValues(alpha: .62),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: selected ? _fitilaPrimary : _fitilaBorder,
-          ),
+          side: BorderSide(color: selected ? _fitilaPrimary : _fitilaBorder),
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
@@ -8425,9 +7753,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                                   tooltip: 'Caractères spéciaux',
                                   onPressed: () =>
                                       setState(() => _showChars = !_showChars),
-                                  icon: const Icon(
-                                    Icons.keyboard_alt_rounded,
-                                  ),
+                                  icon: const Icon(Icons.keyboard_alt_rounded),
                                 ),
                                 if (_query.text.isNotEmpty)
                                   IconButton(
@@ -8527,10 +7853,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                       const Text(
                         'Prononcez un mot en Bàátɔ̀nú ou en français. Le résultat s’affichera dans la même fiche détaillée.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _fitilaMuted,
-                          height: 1.4,
-                        ),
+                        style: TextStyle(color: _fitilaMuted, height: 1.4),
                       ),
                       const SizedBox(height: 14),
                       FilledButton.icon(
@@ -8689,13 +8012,11 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
     super.dispose();
   }
 
-  String get _sourceLabel =>
-      _direction == TranslationDirection.frenchToBariba
+  String get _sourceLabel => _direction == TranslationDirection.frenchToBariba
       ? '🇫🇷 Français'
       : '🇧🇯 Bàátɔ̀nú';
 
-  String get _targetLabel =>
-      _direction == TranslationDirection.frenchToBariba
+  String get _targetLabel => _direction == TranslationDirection.frenchToBariba
       ? '🇧🇯 Bàátɔ̀nú'
       : '🇫🇷 Français';
 
@@ -8712,7 +8033,9 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
   }
 
   void _detectFromText(String value) {
-    if (!_autoDetect || value.trim().length < 3) return;
+    if (!_autoDetect || value.trim().length < 3) {
+      return;
+    }
     final lower = value.toLowerCase();
     final baribaSignals = [
       'ɔ',
@@ -8736,7 +8059,9 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
 
   Future<void> _translate() async {
     final source = _input.text.trim();
-    if (source.isEmpty || _busy) return;
+    if (source.isEmpty || _busy) {
+      return;
+    }
     setState(() => _busy = true);
     try {
       final translated = await FitilaServices.translate(
@@ -8744,25 +8069,35 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
         _direction,
         accessToken: widget.accessToken,
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _output.text = translated;
         if (translated.isNotEmpty) {
           _history.insert(0, (source: source, result: translated));
-          if (_history.length > 20) _history.removeLast();
+          if (_history.length > 20) {
+            _history.removeLast();
+          }
         }
       });
       if (translated.isNotEmpty && FitilaBackend.configured) {
         FitilaBackend.saveTranslationHistory(
-          sourceLang: _direction == TranslationDirection.frenchToBariba ? 'fr' : 'ba',
-          targetLang: _direction == TranslationDirection.frenchToBariba ? 'ba' : 'fr',
+          sourceLang: _direction == TranslationDirection.frenchToBariba
+              ? 'fr'
+              : 'ba',
+          targetLang: _direction == TranslationDirection.frenchToBariba
+              ? 'ba'
+              : 'fr',
           sourceText: source,
           translatedText: translated,
           mode: _mode,
         ).catchError((_) => <String, dynamic>{});
       }
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -8773,7 +8108,9 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
         ),
       );
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -8781,7 +8118,9 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     final text = data?.text?.trim() ?? '';
     if (text.isEmpty) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Le presse-papiers est vide.')),
       );
@@ -8807,7 +8146,9 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
       imageQuality: 88,
       maxWidth: 1800,
     );
-    if (file == null) return;
+    if (file == null) {
+      return;
+    }
     final bytes = await file.readAsBytes();
     await _ocrTranslate(bytes, file.name);
   }
@@ -8824,11 +8165,15 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
       allowedExtensions: const ['pdf', 'png', 'jpg', 'jpeg', 'webp'],
       withData: true,
     );
-    if (selection == null || selection.files.isEmpty) return;
+    if (selection == null || selection.files.isEmpty) {
+      return;
+    }
     final file = selection.files.first;
     final bytes = file.bytes;
     if (bytes == null) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Impossible de lire le document.')),
       );
@@ -8838,7 +8183,9 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
   }
 
   Future<void> _ocrTranslate(List<int> bytes, String fileName) async {
-    if (_busy) return;
+    if (_busy) {
+      return;
+    }
     setState(() => _busy = true);
     try {
       final target = _direction == TranslationDirection.frenchToBariba
@@ -8859,18 +8206,17 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
       }
       final extracted = data['extractedText']?.toString().trim() ?? '';
       final translation = data['translation']?.toString().trim() ?? '';
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _input.text = extracted;
         _output.text = translation;
         if (extracted.isNotEmpty || translation.isNotEmpty) {
-          _history.insert(
-            0,
-            (
-              source: extracted.isEmpty ? fileName : extracted,
-              result: translation,
-            ),
-          );
+          _history.insert(0, (
+            source: extracted.isEmpty ? fileName : extracted,
+            result: translation,
+          ));
         }
       });
       if (translation.isEmpty) {
@@ -8883,7 +8229,9 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
         );
       }
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -8892,7 +8240,9 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
         ),
       );
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -8919,9 +8269,7 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
         decoration: BoxDecoration(
           color: selected ? tone : _fitilaCard,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected ? tone : _fitilaBorder,
-          ),
+          border: Border.all(color: selected ? tone : _fitilaBorder),
           boxShadow: selected
               ? const [
                   BoxShadow(
@@ -8935,11 +8283,7 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 21,
-              color: selected ? Colors.white : _fitilaMuted,
-            ),
+            Icon(icon, size: 21, color: selected ? Colors.white : _fitilaMuted),
             const SizedBox(height: 5),
             Text(
               mode,
@@ -8986,10 +8330,7 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
           const Text(
             'Je traduis entre Français et Bàátɔ̀nú',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: _fitilaMuted,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: _fitilaMuted, fontSize: 14),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -9071,8 +8412,8 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
                   child: Row(
                     children: [
                       ChoiceChip(
-                        selected: _direction ==
-                            TranslationDirection.frenchToBariba,
+                        selected:
+                            _direction == TranslationDirection.frenchToBariba,
                         label: const Text('🇫🇷 Français'),
                         onSelected: (_) => setState(() {
                           _direction = TranslationDirection.frenchToBariba;
@@ -9087,8 +8428,8 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
                         ),
                       ),
                       ChoiceChip(
-                        selected: _direction ==
-                            TranslationDirection.baribaToFrench,
+                        selected:
+                            _direction == TranslationDirection.baribaToFrench,
                         label: const Text('🇧🇯 Bariba'),
                         onSelected: (_) => setState(() {
                           _direction = TranslationDirection.baribaToFrench;
@@ -9131,8 +8472,7 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
           const SizedBox(height: 10),
           Expanded(
             child: ListView(
-              keyboardDismissBehavior:
-                  ScrollViewKeyboardDismissBehavior.onDrag,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               children: [
                 if (_input.text.isEmpty && _output.text.isEmpty)
                   _welcomeState(),
@@ -9270,9 +8610,7 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
                       icon: _busy
                           ? const SizedBox.square(
                               dimension: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                              ),
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.send_rounded),
                       label: const Text('Traduire'),
@@ -9296,7 +8634,9 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
                             await Clipboard.setData(
                               ClipboardData(text: _output.text),
                             );
-                            if (!mounted) return;
+                            if (!mounted) {
+                              return;
+                            }
                             messenger.showSnackBar(
                               const SnackBar(
                                 content: Text('Traduction copiée.'),
@@ -9337,9 +8677,14 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
                       ),
                       TextButton(
                         onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const TranslationHistoryScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const TranslationHistoryScreen(),
+                          ),
                         ),
-                        child: const Text('Tout voir', style: TextStyle(fontSize: 11.5)),
+                        child: const Text(
+                          'Tout voir',
+                          style: TextStyle(fontSize: 11.5),
+                        ),
                       ),
                     ],
                   ),
@@ -9387,7 +8732,8 @@ class TranslationHistoryScreen extends StatefulWidget {
   const TranslationHistoryScreen({super.key});
 
   @override
-  State<TranslationHistoryScreen> createState() => _TranslationHistoryScreenState();
+  State<TranslationHistoryScreen> createState() =>
+      _TranslationHistoryScreenState();
 }
 
 class _TranslationHistoryScreenState extends State<TranslationHistoryScreen> {
@@ -9457,10 +8803,17 @@ class _TranslationHistoryScreenState extends State<TranslationHistoryScreen> {
               future: _future,
               builder: (context, snap) {
                 if (snap.connectionState != ConnectionState.done) {
-                  return const Center(child: CircularProgressIndicator(color: _fitilaPrimary));
+                  return const Center(
+                    child: CircularProgressIndicator(color: _fitilaPrimary),
+                  );
                 }
                 if (snap.hasError) {
-                  return Center(child: Text('Erreur : ${snap.error}', style: const TextStyle(color: _fitilaMuted)));
+                  return Center(
+                    child: Text(
+                      'Erreur : ${snap.error}',
+                      style: const TextStyle(color: _fitilaMuted),
+                    ),
+                  );
                 }
                 final items = snap.data ?? const [];
                 if (items.isEmpty) {
@@ -9500,26 +8853,56 @@ class _TranslationHistoryScreenState extends State<TranslationHistoryScreen> {
                                   children: [
                                     Text(
                                       '${item['source_lang']} → ${item['target_lang']}',
-                                      style: const TextStyle(fontSize: 9.5, color: _fitilaMuted, fontWeight: FontWeight.w800),
+                                      style: const TextStyle(
+                                        fontSize: 9.5,
+                                        color: _fitilaMuted,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
                                     const SizedBox(height: 4),
-                                    Text(item['source_text']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                                    Text(
+                                      item['source_text']?.toString() ?? '',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                      ),
+                                    ),
                                     const SizedBox(height: 3),
-                                    Text(item['translated_text']?.toString() ?? '', style: const TextStyle(color: _fitilaInkSoft, fontSize: 12.5)),
+                                    Text(
+                                      item['translated_text']?.toString() ?? '',
+                                      style: const TextStyle(
+                                        color: _fitilaInkSoft,
+                                        fontSize: 12.5,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
                               IconButton(
-                                icon: Icon(isFav ? Icons.star_rounded : Icons.star_border_rounded, color: isFav ? _fitilaGoldDeep : _fitilaMuted),
+                                icon: Icon(
+                                  isFav
+                                      ? Icons.star_rounded
+                                      : Icons.star_border_rounded,
+                                  color: isFav ? _fitilaGoldDeep : _fitilaMuted,
+                                ),
                                 onPressed: () async {
-                                  await FitilaBackend.toggleTranslationFavorite(item['id'] as String, !isFav);
+                                  await FitilaBackend.toggleTranslationFavorite(
+                                    item['id'] as String,
+                                    !isFav,
+                                  );
                                   _reload();
                                 },
                               ),
                               IconButton(
-                                icon: const Icon(Icons.delete_outline_rounded, size: 19, color: _fitilaMuted),
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 19,
+                                  color: _fitilaMuted,
+                                ),
                                 onPressed: () async {
-                                  await FitilaBackend.deleteTranslationHistoryEntry(item['id'] as String);
+                                  await FitilaBackend.deleteTranslationHistoryEntry(
+                                    item['id'] as String,
+                                  );
                                   _reload();
                                 },
                               ),
@@ -9547,10 +8930,7 @@ class AiScreen extends StatefulWidget {
 }
 
 class _AiChatMessage {
-  _AiChatMessage({
-    required this.role,
-    required this.text,
-  });
+  _AiChatMessage({required this.role, required this.text});
 
   final String role;
   final String text;
@@ -9568,11 +8948,17 @@ class _AiScreenState extends State<AiScreen> {
   @override
   void initState() {
     super.initState();
-    FitilaServices.loadDictionary().then((value) {
-      if (mounted) setState(() => _dictionary = value);
-    }).catchError((_) {});
+    FitilaServices.loadDictionary()
+        .then((value) {
+          if (mounted) {
+            setState(() => _dictionary = value);
+          }
+        })
+        .catchError((_) {});
     _message.addListener(() {
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     });
   }
 
@@ -9584,7 +8970,9 @@ class _AiScreenState extends State<AiScreen> {
 
   List<DictionaryEntry> get _suggestions {
     final current = _message.text.trim().split(RegExp(r'\s+')).lastOrNull ?? '';
-    if (current.isEmpty) return const [];
+    if (current.isEmpty) {
+      return const [];
+    }
     final q = current.toLowerCase();
     return _dictionary
         .where((entry) => entry.word.toLowerCase().startsWith(q))
@@ -9605,18 +8993,24 @@ class _AiScreenState extends State<AiScreen> {
   }
 
   List<DictionaryEntry> _phoneticMatches(String text) {
-    if (_dictionary.isEmpty) return const [];
+    if (_dictionary.isEmpty) {
+      return const [];
+    }
     final tokens = text
         .toLowerCase()
         .split(RegExp(r'[^\wɛɔŋɲãẽĩũǹáàéèíìóòúù]+'))
         .where((t) => t.length > 1)
         .toSet();
-    if (tokens.isEmpty) return const [];
+    if (tokens.isEmpty) {
+      return const [];
+    }
     final matches = <DictionaryEntry>[];
     for (final entry in _dictionary) {
       if (tokens.contains(entry.word.toLowerCase())) {
         matches.add(entry);
-        if (matches.length >= 4) break;
+        if (matches.length >= 4) {
+          break;
+        }
       }
     }
     return matches;
@@ -9635,7 +9029,9 @@ class _AiScreenState extends State<AiScreen> {
 
   Future<void> _send([String? preset]) async {
     final text = (preset ?? _message.text).trim();
-    if (text.isEmpty || _busy) return;
+    if (text.isEmpty || _busy) {
+      return;
+    }
     setState(() {
       _busy = true;
       _messages.add(_AiChatMessage(role: 'user', text: text));
@@ -9645,26 +9041,36 @@ class _AiScreenState extends State<AiScreen> {
 
     try {
       final answer = await FitilaBackend.askFitilaIa(text);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _messages.add(_AiChatMessage(role: 'assistant', text: answer));
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(error.toString().replaceFirst('Bad state: ', '')),
         ),
       );
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
   Future<void> _translateToFrench(int index) async {
-    if (index < 0 || index >= _messages.length) return;
+    if (index < 0 || index >= _messages.length) {
+      return;
+    }
     final message = _messages[index];
-    if (message.role != 'assistant' || message.translating) return;
+    if (message.role != 'assistant' || message.translating) {
+      return;
+    }
     setState(() => message.translating = true);
     try {
       final response = await FitilaBackend.client.functions.invoke(
@@ -9679,18 +9085,25 @@ class _AiScreenState extends State<AiScreen> {
       final translation = data is Map
           ? (data['translatedText'] ?? data['translation'])?.toString().trim()
           : null;
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
-        message.translationFr =
-            translation?.isNotEmpty == true ? translation : 'Traduction indisponible';
+        message.translationFr = translation?.isNotEmpty == true
+            ? translation
+            : 'Traduction indisponible';
       });
     } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erreur de traduction.')),
-      );
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Erreur de traduction.')));
     } finally {
-      if (mounted) setState(() => message.translating = false);
+      if (mounted) {
+        setState(() => message.translating = false);
+      }
     }
   }
 
@@ -9768,8 +9181,9 @@ class _AiScreenState extends State<AiScreen> {
         constraints: const BoxConstraints(maxWidth: 690),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment:
-              mine ? MainAxisAlignment.end : MainAxisAlignment.start,
+          mainAxisAlignment: mine
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start,
           children: [
             if (!mine) ...[
               const CircleAvatar(
@@ -9782,8 +9196,9 @@ class _AiScreenState extends State<AiScreen> {
             ],
             Flexible(
               child: Column(
-                crossAxisAlignment:
-                    mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                crossAxisAlignment: mine
+                    ? CrossAxisAlignment.end
+                    : CrossAxisAlignment.start,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -9798,8 +9213,7 @@ class _AiScreenState extends State<AiScreen> {
                         bottomLeft: const Radius.circular(18),
                         bottomRight: const Radius.circular(18),
                       ),
-                      border:
-                          mine ? null : Border.all(color: _fitilaBorder),
+                      border: mine ? null : Border.all(color: _fitilaBorder),
                     ),
                     child: Text(
                       message.text,
@@ -9838,9 +9252,7 @@ class _AiScreenState extends State<AiScreen> {
                         decoration: BoxDecoration(
                           color: const Color(0xFFEDEAFF),
                           borderRadius: BorderRadius.circular(13),
-                          border: Border.all(
-                            color: const Color(0xFFD8D2F1),
-                          ),
+                          border: Border.all(color: const Color(0xFFD8D2F1)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -9983,9 +9395,7 @@ class _AiScreenState extends State<AiScreen> {
                     controller: _message,
                     minLines: 1,
                     maxLines: 4,
-                    decoration: const InputDecoration(
-                      hintText: 'Yaa sɔ̃ɔ...',
-                    ),
+                    decoration: const InputDecoration(hintText: 'Yaa sɔ̃ɔ...'),
                     onSubmitted: (_) => _send(),
                   ),
                 ),
@@ -10114,9 +9524,7 @@ class _AiThinkingIndicatorState extends State<_AiThinkingIndicator>
                   width: 7,
                   height: 7,
                   decoration: BoxDecoration(
-                    color: i == phase
-                        ? const Color(0xFF6758C9)
-                        : _fitilaBorder,
+                    color: i == phase ? const Color(0xFF6758C9) : _fitilaBorder,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -10125,10 +9533,7 @@ class _AiThinkingIndicatorState extends State<_AiThinkingIndicator>
               const SizedBox(width: 8),
               const Text(
                 'Ǹ nɛ́ɛ̀ dɔɔ bírú...',
-                style: TextStyle(
-                  color: _fitilaMuted,
-                  fontSize: 10.5,
-                ),
+                style: TextStyle(color: _fitilaMuted, fontSize: 10.5),
               ),
             ],
           );
@@ -10148,12 +9553,8 @@ class TemIaScreen extends StatefulWidget {
 class _TemIaScreenState extends State<TemIaScreen> {
   final _query = TextEditingController();
   bool _busy = false;
-  final List<
-      ({
-        String role,
-        String text,
-        List<FoncierSource> sources,
-      })> _messages = [];
+  final List<({String role, String text, List<FoncierSource> sources})>
+  _messages = [];
 
   static const _suggestions = [
     'Saria gbiika gari mba?',
@@ -10169,7 +9570,9 @@ class _TemIaScreenState extends State<TemIaScreen> {
 
   Future<void> _send([String? preset]) async {
     final text = (preset ?? _query.text).trim();
-    if (text.isEmpty || _busy) return;
+    if (text.isEmpty || _busy) {
+      return;
+    }
 
     setState(() {
       _busy = true;
@@ -10179,25 +9582,29 @@ class _TemIaScreenState extends State<TemIaScreen> {
 
     try {
       final result = await FoncierRag.answer(text);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
-        _messages.add(
-          (
-            role: 'assistant',
-            text: result.answer.replaceAll(RegExp(r'\.\s+'), '.\n\n').trim(),
-            sources: result.sources,
-          ),
-        );
+        _messages.add((
+          role: 'assistant',
+          text: result.answer.replaceAll(RegExp(r'\.\s+'), '.\n\n').trim(),
+          sources: result.sources,
+        ));
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Le corpus foncier local est indisponible.'),
         ),
       );
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -10278,9 +9685,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFFDCEAE0),
                 borderRadius: BorderRadius.circular(28),
-                border: Border.all(
-                  color: _fitilaSage.withValues(alpha: .18),
-                ),
+                border: Border.all(color: _fitilaSage.withValues(alpha: .18)),
                 boxShadow: const [
                   BoxShadow(
                     color: Color(0x173F6E52),
@@ -10309,10 +9714,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
             const Text(
               'Posez votre question directement en Bàátɔ̀nú',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _fitilaMuted,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: _fitilaMuted, fontSize: 13),
             ),
             const SizedBox(height: 16),
             Wrap(
@@ -10334,11 +9736,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
   }
 
   Widget _messageBubble(
-    ({
-      String role,
-      String text,
-      List<FoncierSource> sources,
-    }) message,
+    ({String role, String text, List<FoncierSource> sources}) message,
   ) {
     final mine = message.role == 'user';
     return Align(
@@ -10347,8 +9745,9 @@ class _TemIaScreenState extends State<TemIaScreen> {
         constraints: const BoxConstraints(maxWidth: 690),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment:
-              mine ? MainAxisAlignment.end : MainAxisAlignment.start,
+          mainAxisAlignment: mine
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start,
           children: [
             if (!mine) ...[
               const CircleAvatar(
@@ -10361,8 +9760,9 @@ class _TemIaScreenState extends State<TemIaScreen> {
             ],
             Flexible(
               child: Column(
-                crossAxisAlignment:
-                    mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                crossAxisAlignment: mine
+                    ? CrossAxisAlignment.end
+                    : CrossAxisAlignment.start,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -10377,9 +9777,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
                         bottomLeft: const Radius.circular(18),
                         bottomRight: const Radius.circular(18),
                       ),
-                      border: mine
-                          ? null
-                          : Border.all(color: _fitilaBorder),
+                      border: mine ? null : Border.all(color: _fitilaBorder),
                     ),
                     child: Text(
                       message.text,
@@ -10436,17 +9834,11 @@ class _TemIaScreenState extends State<TemIaScreen> {
             decoration: BoxDecoration(
               color: const Color(0xFFDCEAE0).withValues(alpha: .70),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: _fitilaSage.withValues(alpha: .28),
-              ),
+              border: Border.all(color: _fitilaSage.withValues(alpha: .28)),
             ),
             child: const Row(
               children: [
-                Icon(
-                  Icons.shield_outlined,
-                  color: _fitilaSage,
-                  size: 18,
-                ),
+                Icon(Icons.shield_outlined, color: _fitilaSage, size: 18),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -10518,8 +9910,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
                         minLines: 1,
                         maxLines: 4,
                         decoration: const InputDecoration(
-                          hintText:
-                              'Yaa sɔ̃ɔ tem bausu gari Baribarum...',
+                          hintText: 'Yaa sɔ̃ɔ tem bausu gari Baribarum...',
                         ),
                         onSubmitted: (_) => _send(),
                       ),
@@ -10562,20 +9953,13 @@ class _TemIaScreenState extends State<TemIaScreen> {
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.wifi_off_rounded,
-                      color: _fitilaSage,
-                      size: 12,
-                    ),
+                    Icon(Icons.wifi_off_rounded, color: _fitilaSage, size: 12),
                     SizedBox(width: 5),
                     Flexible(
                       child: Text(
                         'Posez votre question en Bàátɔ̀nú — recherche 100% locale, sans Internet',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _fitilaSage,
-                          fontSize: 9.8,
-                        ),
+                        style: TextStyle(color: _fitilaSage, fontSize: 9.8),
                       ),
                     ),
                   ],
@@ -10645,10 +10029,7 @@ class _TemTypingIndicatorState extends State<_TemTypingIndicator>
               const SizedBox(width: 8),
               const Text(
                 'Sariaba kasuamɔ...',
-                style: TextStyle(
-                  color: _fitilaMuted,
-                  fontSize: 10.5,
-                ),
+                style: TextStyle(color: _fitilaMuted, fontSize: 10.5),
               ),
             ],
           );
@@ -10687,20 +10068,26 @@ class _LearnScreenState extends State<LearnScreen> {
   Future<void> _load() async {
     try {
       final bank = await FitilaServices.loadLearningBank();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _bank = bank;
         _loading = false;
       });
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
     try {
       final results = await Future.wait([
         FitilaBackend.fetchLearningProgress(),
         FitilaBackend.fetchThemeMastery(),
       ]);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       final progress = results[0] as Map<String, dynamic>;
       final masteryRows = results[1] as List<Map<String, dynamic>>;
       setState(() {
@@ -10727,7 +10114,9 @@ class _LearnScreenState extends State<LearnScreen> {
   void _openTheme(LearningTheme theme) {
     final exercises =
         _bank?.exercises[theme.id] ?? const <LearningExerciseItem>[];
-    if (exercises.isEmpty) return;
+    if (exercises.isEmpty) {
+      return;
+    }
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -10845,9 +10234,7 @@ class _LearnScreenState extends State<LearnScreen> {
       action: IconButton(
         tooltip: 'Profil apprenant',
         onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => const LearnerProfileScreen(),
-          ),
+          MaterialPageRoute<void>(builder: (_) => const LearnerProfileScreen()),
         ),
         icon: const Icon(Icons.badge_rounded),
       ),
@@ -11146,10 +10533,7 @@ class _ThemeMasteryCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(11),
                   ),
                   alignment: Alignment.center,
-                  child: Text(
-                    theme.icon,
-                    style: const TextStyle(fontSize: 17),
-                  ),
+                  child: Text(theme.icon, style: const TextStyle(fontSize: 17)),
                 ),
                 const Spacer(),
                 Text(
@@ -11342,8 +10726,7 @@ class LearningExerciseScreen extends StatefulWidget {
   final String mode; // 'qcm' | 'pronunciation'
 
   @override
-  State<LearningExerciseScreen> createState() =>
-      _LearningExerciseScreenState();
+  State<LearningExerciseScreen> createState() => _LearningExerciseScreenState();
 }
 
 class _LearningExerciseScreenState extends State<LearningExerciseScreen> {
@@ -11382,11 +10765,8 @@ class _LearningExerciseScreenState extends State<LearningExerciseScreen> {
     final item = _items[_index];
     if (widget.mode == 'qcm') {
       final correct = _frToBariba ? item.bariba : item.french;
-      final distractors = _frToBariba
-          ? item.distractorsBa
-          : item.distractorsFr;
-      _options = <String>{correct, ...distractors.take(3)}.toList()
-        ..shuffle();
+      final distractors = _frToBariba ? item.distractorsBa : item.distractorsFr;
+      _options = <String>{correct, ...distractors.take(3)}.toList()..shuffle();
     }
     _selected = null;
     _answered = false;
@@ -11395,20 +10775,26 @@ class _LearningExerciseScreenState extends State<LearningExerciseScreen> {
   }
 
   void _choose(String option) {
-    if (_answered) return;
+    if (_answered) {
+      return;
+    }
     final item = _items[_index];
     final correct = _frToBariba ? item.bariba : item.french;
     setState(() {
       _selected = option;
       _answered = true;
-      if (option == correct) _correct++;
+      if (option == correct) {
+        _correct++;
+      }
     });
   }
 
   Future<void> _toggleRecording() async {
     if (_recording) {
       final asset = await _media.stopAudio();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _recording = false;
         _recordedAsset = asset;
@@ -11416,7 +10802,9 @@ class _LearningExerciseScreenState extends State<LearningExerciseScreen> {
     } else {
       try {
         await _media.startAudio();
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         setState(() => _recording = true);
       } catch (_) {
         if (mounted) {
@@ -11430,7 +10818,9 @@ class _LearningExerciseScreenState extends State<LearningExerciseScreen> {
 
   Future<void> _playRecording() async {
     final asset = _recordedAsset;
-    if (asset == null) return;
+    if (asset == null) {
+      return;
+    }
     await _player.play(audio.DeviceFileSource(asset.path));
   }
 
@@ -11438,7 +10828,9 @@ class _LearningExerciseScreenState extends State<LearningExerciseScreen> {
     setState(() {
       _selfRating = rating;
       _answered = true;
-      if (rating >= 70) _correct++;
+      if (rating >= 70) {
+        _correct++;
+      }
     });
   }
 
@@ -11473,7 +10865,9 @@ class _LearningExerciseScreenState extends State<LearningExerciseScreen> {
     } catch (_) {
       // Hors-ligne : le résultat reste affiché sans mise à jour serveur.
     }
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (_) => LearningResultScreen(
@@ -11507,9 +10901,7 @@ class _LearningExerciseScreenState extends State<LearningExerciseScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _frToBariba
-                    ? 'Traduis en Bàátɔ̀nú'
-                    : 'Traduis en français',
+                _frToBariba ? 'Traduis en Bàátɔ̀nú' : 'Traduis en français',
                 style: const TextStyle(
                   color: _fitilaMuted,
                   fontSize: 11.5,
@@ -11832,11 +11224,7 @@ class LearningResultScreen extends StatelessWidget {
           _MetricStrip(
             metrics: [
               ('Gagné', '+$xpEarned XP', Icons.bolt_rounded),
-              (
-                'Série',
-                '$newStreak j',
-                Icons.local_fire_department_rounded,
-              ),
+              ('Série', '$newStreak j', Icons.local_fire_department_rounded),
               ('Score', '$pct%', Icons.emoji_events_rounded),
             ],
           ),
@@ -11925,7 +11313,9 @@ class _LearningBadgesScreenState extends State<LearningBadgesScreen> {
   Future<void> _load() async {
     try {
       final result = await FitilaBackend.fetchLearnerBadges();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _unlocked = List<Map<String, dynamic>>.from(
           result['unlocked'] as List? ?? const [],
@@ -11936,7 +11326,9 @@ class _LearningBadgesScreenState extends State<LearningBadgesScreen> {
         _loading = false;
       });
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -12075,7 +11467,9 @@ class _LearningHistoryScreenState extends State<LearningHistoryScreen> {
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -12083,7 +11477,9 @@ class _LearningHistoryScreenState extends State<LearningHistoryScreen> {
     final map = <DateTime, int>{};
     for (final s in _sessions) {
       final created = DateTime.tryParse((s['created_at'] ?? '').toString());
-      if (created == null) continue;
+      if (created == null) {
+        continue;
+      }
       final key = DateTime(created.year, created.month, created.day);
       map[key] = (map[key] ?? 0) + 1;
     }
@@ -12103,8 +11499,7 @@ class _LearningHistoryScreenState extends State<LearningHistoryScreen> {
       children: [
         for (final day in days)
           Tooltip(
-            message:
-                '${day.day}/${day.month} · ${byDay[day] ?? 0} session(s)',
+            message: '${day.day}/${day.month} · ${byDay[day] ?? 0} session(s)',
             child: Container(
               width: 14,
               height: 14,
@@ -12132,7 +11527,9 @@ class _LearningHistoryScreenState extends State<LearningHistoryScreen> {
 
   String _formatDate(String iso) {
     final date = DateTime.tryParse(iso);
-    if (date == null) return '';
+    if (date == null) {
+      return '';
+    }
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
   }
 
@@ -12207,8 +11604,7 @@ class _LearningHistoryScreenState extends State<LearningHistoryScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  (session['theme_or_lesson_ref'] ??
-                                          'Session')
+                                  (session['theme_or_lesson_ref'] ?? 'Session')
                                       .toString(),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w800,
@@ -12320,10 +11716,7 @@ class LearningOfflineScreen extends StatelessWidget {
           for (final theme in themes)
             Container(
               margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: _fitilaCard,
                 borderRadius: BorderRadius.circular(14),
@@ -12395,7 +11788,9 @@ class _LearnerProfileScreenState extends State<LearnerProfileScreen> {
         FitilaBackend.fetchLearnerBadges(),
         FitilaBackend.fetchThemeMastery(),
       ]);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       final badges = results[1] as Map<String, dynamic>;
       final unlocked = List.from(badges['unlocked'] as List? ?? const []);
       final locked = List.from(badges['locked'] as List? ?? const []);
@@ -12410,7 +11805,9 @@ class _LearnerProfileScreenState extends State<LearnerProfileScreen> {
         _loading = false;
       });
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -12557,10 +11954,7 @@ class _LearnerProfileScreenState extends State<LearnerProfileScreen> {
 }
 
 class ClasseScreen extends StatefulWidget {
-  const ClasseScreen({
-    super.key,
-    this.initialLessons,
-  });
+  const ClasseScreen({super.key, this.initialLessons});
 
   final List<WebClasseLesson>? initialLessons;
 
@@ -12624,9 +12018,7 @@ class _ClasseScreenState extends State<ClasseScreen> {
       );
       return;
     }
-    final suffix = itemIndex == null
-        ? section
-        : '$section/$itemIndex';
+    final suffix = itemIndex == null ? section : '$section/$itemIndex';
     final contentKey = 'classe/${lesson.level}/lang/${lesson.id}/$suffix';
     try {
       final row = await FitilaBackend.client
@@ -12637,7 +12029,9 @@ class _ClasseScreenState extends State<ClasseScreen> {
           .eq('status', 'approved')
           .maybeSingle();
       if (row == null) {
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Audio validé non disponible pour ce contenu.'),
@@ -12652,7 +12046,9 @@ class _ClasseScreenState extends State<ClasseScreen> {
       final player = audio.AudioPlayer();
       await player.play(audio.UrlSource(url));
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Lecture audio impossible.')),
       );
@@ -12708,10 +12104,7 @@ class _ClasseScreenState extends State<ClasseScreen> {
                 const SizedBox(height: 5),
                 Text(
                   '$count leçons',
-                  style: const TextStyle(
-                    color: _fitilaMuted,
-                    fontSize: 10.5,
-                  ),
+                  style: const TextStyle(color: _fitilaMuted, fontSize: 10.5),
                 ),
                 if (selected) ...[
                   const SizedBox(height: 9),
@@ -12757,59 +12150,60 @@ class _ClasseScreenState extends State<ClasseScreen> {
         .length;
     final isN2 = _level == 'N2';
 
-    final sections = <({String id, String emoji, String title, String subtitle})>[
-      (
-        id: 'lessons',
-        emoji: '📖',
-        title: isN2 ? 'Part 1 — Langue' : 'Leçons',
-        subtitle: '${lessons.length} leçons',
-      ),
-      (
-        id: 'alphabet',
-        emoji: isN2 ? '🔢' : '🔤',
-        title: isN2 ? 'Part 2 — Calcul' : 'Alphabet',
-        subtitle: isN2 ? 'Calcul & problèmes' : 'Voyelles & consonnes',
-      ),
-      (
-        id: 'evaluations',
-        emoji: '📝',
-        title: 'Évaluations',
-        subtitle: 'Questions & scores',
-      ),
-      if (isN2)
-        (
-          id: 'grammaire',
-          emoji: '📐',
-          title: 'Grammaire',
-          subtitle: 'Classes, tons, verbes',
-        ),
-      if (isN2)
-        (
-          id: 'textprod',
-          emoji: '✍️',
-          title: 'Production de textes',
-          subtitle: '6 types de textes',
-        ),
-      if (isN2)
-        (
-          id: 'gestion',
-          emoji: '💼',
-          title: 'Gestion',
-          subtitle: 'Documents pratiques',
-        ),
-      (
-        id: 'facilitateur',
-        emoji: '👨‍🏫',
-        title: 'Facilitateur',
-        subtitle: 'Guide pédagogique',
-      ),
-      (
-        id: 'corrections',
-        emoji: '✅',
-        title: 'Mes corrections',
-        subtitle: 'Notes & commentaires',
-      ),
-    ];
+    final sections =
+        <({String id, String emoji, String title, String subtitle})>[
+          (
+            id: 'lessons',
+            emoji: '📖',
+            title: isN2 ? 'Part 1 — Langue' : 'Leçons',
+            subtitle: '${lessons.length} leçons',
+          ),
+          (
+            id: 'alphabet',
+            emoji: isN2 ? '🔢' : '🔤',
+            title: isN2 ? 'Part 2 — Calcul' : 'Alphabet',
+            subtitle: isN2 ? 'Calcul & problèmes' : 'Voyelles & consonnes',
+          ),
+          (
+            id: 'evaluations',
+            emoji: '📝',
+            title: 'Évaluations',
+            subtitle: 'Questions & scores',
+          ),
+          if (isN2)
+            (
+              id: 'grammaire',
+              emoji: '📐',
+              title: 'Grammaire',
+              subtitle: 'Classes, tons, verbes',
+            ),
+          if (isN2)
+            (
+              id: 'textprod',
+              emoji: '✍️',
+              title: 'Production de textes',
+              subtitle: '6 types de textes',
+            ),
+          if (isN2)
+            (
+              id: 'gestion',
+              emoji: '💼',
+              title: 'Gestion',
+              subtitle: 'Documents pratiques',
+            ),
+          (
+            id: 'facilitateur',
+            emoji: '👨‍🏫',
+            title: 'Facilitateur',
+            subtitle: 'Guide pédagogique',
+          ),
+          (
+            id: 'corrections',
+            emoji: '✅',
+            title: 'Mes corrections',
+            subtitle: 'Notes & commentaires',
+          ),
+        ];
 
     return ListView(
       children: [
@@ -12983,9 +12377,7 @@ class _ClasseScreenState extends State<ClasseScreen> {
               padding: const EdgeInsets.only(bottom: 9),
               child: _WebLessonTile(
                 lesson: lesson,
-                done: _completed.contains(
-                  '${lesson.level}-${lesson.id}',
-                ),
+                done: _completed.contains('${lesson.level}-${lesson.id}'),
                 onTap: () => _openLesson(lesson),
               ),
             ),
@@ -13001,10 +12393,8 @@ class _ClasseScreenState extends State<ClasseScreen> {
       (id: 'text', label: 'Texte', emoji: '📖'),
       if (lesson.observe.isNotEmpty)
         (id: 'observe', label: 'Mɛɛrio', emoji: '👁️'),
-      if (lesson.ecoute.isNotEmpty)
-        (id: 'ecoute', label: 'Faagi', emoji: '🎧'),
-      if (lesson.reagis.isNotEmpty)
-        (id: 'reagis', label: 'Geruo', emoji: '💬'),
+      if (lesson.ecoute.isNotEmpty) (id: 'ecoute', label: 'Faagi', emoji: '🎧'),
+      if (lesson.reagis.isNotEmpty) (id: 'reagis', label: 'Geruo', emoji: '💬'),
       if (lesson.retiens.isNotEmpty)
         (id: 'retiens', label: 'Weenɛ', emoji: '🧠'),
       if (lesson.reading.isNotEmpty || lesson.writing.isNotEmpty)
@@ -13057,8 +12447,8 @@ class _ClasseScreenState extends State<ClasseScreen> {
                   minLines: 2,
                   maxLines: 5,
                   onChanged: (value) {
-                    _lessonAnswers[
-                        '${lesson.level}-${lesson.id}-$section-$i'] = value;
+                    _lessonAnswers['${lesson.level}-${lesson.id}-$section-$i'] =
+                        value;
                   },
                   decoration: const InputDecoration(
                     hintText: 'Votre réponse...',
@@ -13071,7 +12461,9 @@ class _ClasseScreenState extends State<ClasseScreen> {
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Réponse vocale prête à enregistrer.'),
+                            content: Text(
+                              'Réponse vocale prête à enregistrer.',
+                            ),
                           ),
                         );
                       },
@@ -13120,8 +12512,7 @@ class _ClasseScreenState extends State<ClasseScreen> {
                   fontWeight: FontWeight.w900,
                 ),
               ),
-            if (lesson.phoneticLabel.isNotEmpty)
-              const SizedBox(height: 10),
+            if (lesson.phoneticLabel.isNotEmpty) const SizedBox(height: 10),
             if (lesson.reading.isNotEmpty)
               Container(
                 padding: const EdgeInsets.all(14),
@@ -13194,11 +12585,10 @@ class _ClasseScreenState extends State<ClasseScreen> {
                             ),
                             Expanded(
                               child: TextFormField(
-                                initialValue: _lessonAnswers[
-                                    '${lesson.level}-${lesson.id}-write-$i'],
+                                initialValue:
+                                    _lessonAnswers['${lesson.level}-${lesson.id}-write-$i'],
                                 onChanged: (value) {
-                                  _lessonAnswers[
-                                          '${lesson.level}-${lesson.id}-write-$i'] =
+                                  _lessonAnswers['${lesson.level}-${lesson.id}-write-$i'] =
                                       value;
                                 },
                                 decoration: const InputDecoration(
@@ -13250,8 +12640,7 @@ class _ClasseScreenState extends State<ClasseScreen> {
                   ),
                 ),
               ),
-            if (lesson.imageUrl.isNotEmpty)
-              const SizedBox(height: 12),
+            if (lesson.imageUrl.isNotEmpty) const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -13406,18 +12795,12 @@ class _ClasseScreenState extends State<ClasseScreen> {
                   Expanded(
                     child: Text(
                       lesson.themeLabel,
-                      style: const TextStyle(
-                        color: _fitilaMuted,
-                        fontSize: 11,
-                      ),
+                      style: const TextStyle(color: _fitilaMuted, fontSize: 11),
                     ),
                   ),
                   const Text(
                     '☆ ☆ ☆ ☆ ☆',
-                    style: TextStyle(
-                      color: _fitilaGoldDeep,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: _fitilaGoldDeep, fontSize: 13),
                   ),
                 ],
               ),
@@ -13434,10 +12817,7 @@ class _ClasseScreenState extends State<ClasseScreen> {
                 const SizedBox(height: 5),
                 Text(
                   lesson.phoneticLabel,
-                  style: const TextStyle(
-                    color: _fitilaGoldDeep,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: _fitilaGoldDeep, fontSize: 12),
                 ),
               ],
             ],
@@ -13474,7 +12854,9 @@ class _ClasseScreenState extends State<ClasseScreen> {
                       final previous = lessons
                           .where((e) => e.id < lesson.id)
                           .lastOrNull;
-                      if (previous != null) _openLesson(previous);
+                      if (previous != null) {
+                        _openLesson(previous);
+                      }
                     },
               icon: const Icon(Icons.chevron_left_rounded),
               label: const Text('Précédent'),
@@ -13483,9 +12865,7 @@ class _ClasseScreenState extends State<ClasseScreen> {
             Expanded(
               child: FilledButton.icon(
                 onPressed: () {
-                  final idx = tabs.indexWhere(
-                    (tab) => tab.id == _lessonTab,
-                  );
+                  final idx = tabs.indexWhere((tab) => tab.id == _lessonTab);
                   if (idx < tabs.length - 1) {
                     setState(() => _lessonTab = tabs[idx + 1].id);
                     return;
@@ -13504,9 +12884,7 @@ class _ClasseScreenState extends State<ClasseScreen> {
                 },
                 icon: const Icon(Icons.check_rounded),
                 label: Text(
-                  tabs.last.id == _lessonTab
-                      ? 'Terminer la leçon'
-                      : 'Suivant',
+                  tabs.last.id == _lessonTab ? 'Terminer la leçon' : 'Suivant',
                 ),
               ),
             ),
@@ -13519,42 +12897,42 @@ class _ClasseScreenState extends State<ClasseScreen> {
   Widget _secondarySection(String section) {
     final config = switch (section) {
       'alphabet' => (
-          icon: Icons.abc_rounded,
-          title: _level == 'N1' ? 'Alphabet' : 'Calcul',
-          text: _level == 'N1'
-              ? 'Voyelles, consonnes, tons, écoute et saisie Bàátɔ̀nú.'
-              : 'Nombres, calculs, problèmes et situations pratiques.',
-        ),
+        icon: Icons.abc_rounded,
+        title: _level == 'N1' ? 'Alphabet' : 'Calcul',
+        text: _level == 'N1'
+            ? 'Voyelles, consonnes, tons, écoute et saisie Bàátɔ̀nú.'
+            : 'Nombres, calculs, problèmes et situations pratiques.',
+      ),
       'evaluations' => (
-          icon: Icons.assignment_rounded,
-          title: 'Évaluations',
-          text: 'Questions langue/calcul, score et progression.',
-        ),
+        icon: Icons.assignment_rounded,
+        title: 'Évaluations',
+        text: 'Questions langue/calcul, score et progression.',
+      ),
       'grammaire' => (
-          icon: Icons.rule_rounded,
-          title: 'Grammaire',
-          text: 'Classes grammaticales, tons, verbes et structures.',
-        ),
+        icon: Icons.rule_rounded,
+        title: 'Grammaire',
+        text: 'Classes grammaticales, tons, verbes et structures.',
+      ),
       'textprod' => (
-          icon: Icons.edit_note_rounded,
-          title: 'Production de textes',
-          text: 'Récit, description, dialogue, lettre et résumé.',
-        ),
+        icon: Icons.edit_note_rounded,
+        title: 'Production de textes',
+        text: 'Récit, description, dialogue, lettre et résumé.',
+      ),
       'gestion' => (
-          icon: Icons.business_center_rounded,
-          title: 'Gestion',
-          text: 'Fiches, registres, annonces et documents pratiques.',
-        ),
+        icon: Icons.business_center_rounded,
+        title: 'Gestion',
+        text: 'Fiches, registres, annonces et documents pratiques.',
+      ),
       'corrections' => (
-          icon: Icons.fact_check_rounded,
-          title: 'Mes corrections',
-          text: 'Notes, commentaires, corrigés et remédiation.',
-        ),
+        icon: Icons.fact_check_rounded,
+        title: 'Mes corrections',
+        text: 'Notes, commentaires, corrigés et remédiation.',
+      ),
       _ => (
-          icon: Icons.workspace_premium_rounded,
-          title: 'Facilitateur',
-          text: 'Guide pédagogique, objectifs et animation de classe.',
-        ),
+        icon: Icons.workspace_premium_rounded,
+        title: 'Facilitateur',
+        text: 'Guide pédagogique, objectifs et animation de classe.',
+      ),
     };
 
     return ListView(
@@ -13600,10 +12978,7 @@ class _ClasseScreenState extends State<ClasseScreen> {
               Text(
                 config.text,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: _fitilaMuted,
-                  height: 1.45,
-                ),
+                style: const TextStyle(color: _fitilaMuted, height: 1.45),
               ),
             ],
           ),
@@ -13625,9 +13000,7 @@ class _ClasseScreenState extends State<ClasseScreen> {
   Widget build(BuildContext context) {
     return _PageFrame(
       title: 'Classe',
-      subtitle: _level == 'N1'
-          ? '🔥 N1 — Bàátɔ̀nú'
-          : '🚀 N2 — Bàátɔ̀nú',
+      subtitle: _level == 'N1' ? '🔥 N1 — Bàátɔ̀nú' : '🚀 N2 — Bàátɔ̀nú',
       child: widget.initialLessons != null
           ? _renderLessons(widget.initialLessons!)
           : FutureBuilder<List<WebClasseLesson>>(
@@ -13688,10 +13061,7 @@ class _WebClassStat extends StatelessWidget {
           Text(
             label,
             maxLines: 1,
-            style: const TextStyle(
-              color: _fitilaMuted,
-              fontSize: 9.8,
-            ),
+            style: const TextStyle(color: _fitilaMuted, fontSize: 9.8),
           ),
         ],
       ),
@@ -13745,9 +13115,7 @@ class _WebLessonTile extends StatelessWidget {
                     : Text(
                         '${lesson.id}',
                         style: TextStyle(
-                          color: n2
-                              ? const Color(0xFF6758C9)
-                              : _fitilaGoldDeep,
+                          color: n2 ? const Color(0xFF6758C9) : _fitilaGoldDeep,
                           fontSize: 21,
                           fontWeight: FontWeight.w900,
                         ),
@@ -13788,10 +13156,7 @@ class _WebLessonTile extends StatelessWidget {
                   padding: EdgeInsets.symmetric(horizontal: 8),
                   child: Text('🖼️'),
                 ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: _fitilaMuted,
-              ),
+              const Icon(Icons.chevron_right_rounded, color: _fitilaMuted),
             ],
           ),
         ),
@@ -13832,13 +13197,17 @@ class _KeyboardScreenState extends State<KeyboardScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Re-vérifie le statut quand l'utilisateur revient des réglages Android.
-    if (state == AppLifecycleState.resumed) _refreshStatus();
+    if (state == AppLifecycleState.resumed) {
+      _refreshStatus();
+    }
   }
 
   Future<void> _refreshStatus() async {
     setState(() => _checking = true);
     try {
-      final result = await _channel.invokeMapMethod<String, dynamic>('getKeyboardStatus');
+      final result = await _channel.invokeMapMethod<String, dynamic>(
+        'getKeyboardStatus',
+      );
       setState(() {
         _enabled = result?['enabled'] as bool? ?? false;
         _selected = result?['selected'] as bool? ?? false;
@@ -13864,9 +13233,15 @@ class _KeyboardScreenState extends State<KeyboardScreen>
     try {
       await _channel.invokeMethod('openInputMethodSettings');
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Impossible d'ouvrir les réglages Android depuis cet appareil.")),
+        const SnackBar(
+          content: Text(
+            "Impossible d'ouvrir les réglages Android depuis cet appareil.",
+          ),
+        ),
       );
     }
   }
@@ -13877,9 +13252,13 @@ class _KeyboardScreenState extends State<KeyboardScreen>
       await Future.delayed(const Duration(milliseconds: 500));
       await _refreshStatus();
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sélecteur de clavier indisponible sur cet appareil.')),
+        const SnackBar(
+          content: Text('Sélecteur de clavier indisponible sur cet appareil.'),
+        ),
       );
     }
   }
@@ -13901,7 +13280,8 @@ class _KeyboardScreenState extends State<KeyboardScreen>
     final isActive = _enabled == true && _selected == true;
     return _PageFrame(
       title: 'Clavier Bariba',
-      subtitle: 'Clavier système natif — activable dans toutes vos applications.',
+      subtitle:
+          'Clavier système natif — activable dans toutes vos applications.',
       child: RefreshIndicator(
         onRefresh: _refreshStatus,
         color: _fitilaPrimary,
@@ -13925,15 +13305,27 @@ class _KeyboardScreenState extends State<KeyboardScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Statut', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      const Text(
+                        'Statut',
+                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
                       if (_checking)
                         const SizedBox(
                           width: 14,
                           height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       else
-                        Icon(isActive ? Icons.check_circle_rounded : Icons.circle_outlined, color: Colors.white, size: 16),
+                        Icon(
+                          isActive
+                              ? Icons.check_circle_rounded
+                              : Icons.circle_outlined,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -13941,16 +13333,27 @@ class _KeyboardScreenState extends State<KeyboardScreen>
                     _checking
                         ? 'Vérification…'
                         : isActive
-                            ? 'Actif ✓'
-                            : (_enabled ?? false) ? 'Activé, non sélectionné' : 'Non activé',
-                    style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700, fontFamily: 'Fraunces'),
+                        ? 'Actif ✓'
+                        : (_enabled ?? false)
+                        ? 'Activé, non sélectionné'
+                        : 'Non activé',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Fraunces',
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     isActive
                         ? 'Le clavier Bariba est activé et sélectionné comme méthode de saisie par défaut.'
                         : "Le clavier est installé avec FITILA mais doit être activé puis sélectionné pour fonctionner dans vos applications.",
-                    style: const TextStyle(color: Colors.white70, fontSize: 11.5, height: 1.4),
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11.5,
+                      height: 1.4,
+                    ),
                   ),
                 ],
               ),
@@ -13960,13 +13363,15 @@ class _KeyboardScreenState extends State<KeyboardScreen>
               done: true,
               number: '✓',
               title: 'Clavier installé',
-              subtitle: 'Installé automatiquement avec FITILA — aucune action requise.',
+              subtitle:
+                  'Installé automatiquement avec FITILA — aucune action requise.',
             ),
             _KeyboardStepCard(
               done: _enabled == true,
               number: '1',
               title: 'Activer dans les réglages Android',
-              subtitle: 'Réglages → Langues et saisie → Claviers, puis active « Clavier Bariba Fitila ».',
+              subtitle:
+                  'Réglages → Langues et saisie → Claviers, puis active « Clavier Bariba Fitila ».',
               actionLabel: 'Ouvrir les réglages',
               onAction: _openSettings,
             ),
@@ -13974,7 +13379,8 @@ class _KeyboardScreenState extends State<KeyboardScreen>
               done: _selected == true,
               number: '2',
               title: 'Sélectionner comme clavier actif',
-              subtitle: 'Choisis « Clavier Bariba Fitila » dans le sélecteur de clavier.',
+              subtitle:
+                  'Choisis « Clavier Bariba Fitila » dans le sélecteur de clavier.',
               actionLabel: 'Choisir le clavier',
               onAction: _showPicker,
             ),
@@ -14049,18 +13455,40 @@ class _KeyboardStepCard extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: done ? _fitilaSage.withValues(alpha: .16) : _fitilaGoldDeep.withValues(alpha: .14),
+              color: done
+                  ? _fitilaSage.withValues(alpha: .16)
+                  : _fitilaGoldDeep.withValues(alpha: .14),
             ),
-            child: Text(number, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: done ? _fitilaSage : _fitilaGoldDeep)),
+            child: Text(
+              number,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 12.5,
+                color: done ? _fitilaSage : _fitilaGoldDeep,
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(fontSize: 11, color: _fitilaMuted, height: 1.4)),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: _fitilaMuted,
+                    height: 1.4,
+                  ),
+                ),
                 if (actionLabel != null && !done) ...[
                   const SizedBox(height: 8),
                   SizedBox(
@@ -14071,9 +13499,17 @@ class _KeyboardStepCard extends StatelessWidget {
                         backgroundColor: _fitilaInk,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(9),
+                        ),
                       ),
-                      child: Text(actionLabel!, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                      child: Text(
+                        actionLabel!,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -14127,7 +13563,9 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
     setState(() => _loading = true);
     try {
       final data = await FitilaBackend.fetchVoiceLab();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _queue = (data['queue'] as List).cast<Map<String, dynamic>>().toList(
           growable: false,
@@ -14137,12 +13575,16 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
         _recorded = data['recorded'] as int;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Impossible de charger le corpus vocal.')),
       );
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -14151,7 +13593,9 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
       if (_recordingNow) {
         final asset = await _recorder.stopAudio();
         final elapsed = DateTime.now().difference(_startedAt ?? DateTime.now());
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         setState(() {
           _recordingNow = false;
           _recording = asset;
@@ -14161,7 +13605,9 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
         });
       } else {
         await _recorder.startAudio();
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         setState(() {
           _recordingNow = true;
           _recording = null;
@@ -14169,7 +13615,9 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
         });
       }
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _recordingNow = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -14181,12 +13629,16 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
 
   Future<void> _listen() async {
     final recording = _recording;
-    if (recording == null) return;
+    if (recording == null) {
+      return;
+    }
     await _player.play(audio.DeviceFileSource(recording.path));
   }
 
   void _skip() {
-    if (_queue.isEmpty) return;
+    if (_queue.isEmpty) {
+      return;
+    }
     setState(() {
       _queue = [..._queue.skip(1), _queue.first];
       _recording = null;
@@ -14198,7 +13650,9 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
   Future<void> _submit() async {
     final phrase = _current;
     final recording = _recording;
-    if (phrase == null || recording == null || _submitting) return;
+    if (phrase == null || recording == null || _submitting) {
+      return;
+    }
     setState(() => _submitting = true);
     try {
       await FitilaBackend.submitVoiceRecording(
@@ -14209,7 +13663,9 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
         contentType: recording.contentType,
         durationSeconds: _recordedDurationSeconds,
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _queue = _queue.skip(1).toList(growable: false);
         _recording = null;
@@ -14223,12 +13679,16 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
         ),
       );
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('L’envoi vocal a échoué. Réessayez.')),
       );
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
     }
   }
 
@@ -14407,9 +13867,13 @@ extension on _TeacherTab {
 }
 
 String _teacherShortDate(String? iso) {
-  if (iso == null || iso.isEmpty) return '—';
+  if (iso == null || iso.isEmpty) {
+    return '—';
+  }
   final d = DateTime.tryParse(iso);
-  if (d == null) return '—';
+  if (d == null) {
+    return '—';
+  }
   final local = d.toLocal();
   String two(int v) => v.toString().padLeft(2, '0');
   return '${two(local.day)}/${two(local.month)} ${two(local.hour)}:${two(local.minute)}';
@@ -14440,7 +13904,9 @@ class _TeacherScreenState extends State<TeacherScreen> {
     } catch (_) {
       ok = false;
     }
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     setState(() {
       _allowed = ok;
       _loading = false;
@@ -14494,8 +13960,12 @@ class _TeacherScreenState extends State<TeacherScreen> {
                   ),
                   backgroundColor: _fitilaCard,
                   selectedColor: _fitilaPrimary,
-                  side: BorderSide(color: active ? _fitilaPrimary : _fitilaBorder),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                  side: BorderSide(
+                    color: active ? _fitilaPrimary : _fitilaBorder,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(100),
+                  ),
                 );
               },
             ),
@@ -14534,7 +14004,11 @@ class _TeacherAccessDenied extends StatelessWidget {
             const Text(
               'Accès réservé aux enseignants',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _fitilaInk),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: _fitilaInk,
+              ),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -14595,7 +14069,10 @@ class _TStat extends StatelessWidget {
           Container(
             width: 36,
             height: 36,
-            decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(11)),
+            decoration: BoxDecoration(
+              color: tint,
+              borderRadius: BorderRadius.circular(11),
+            ),
             child: Icon(icon, size: 17, color: fg),
           ),
           const SizedBox(height: 10),
@@ -14609,7 +14086,10 @@ class _TStat extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 3),
-          Text(label, style: const TextStyle(fontSize: 10.5, color: _fitilaMuted)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10.5, color: _fitilaMuted),
+          ),
         ],
       ),
     );
@@ -14643,14 +14123,18 @@ class _TeacherOverviewTabState extends State<_TeacherOverviewTab> {
       future: _future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator(color: _fitilaPrimary));
+          return const Center(
+            child: CircularProgressIndicator(color: _fitilaPrimary),
+          );
         }
         if (snap.hasError) {
           return _TeacherErrorState(message: '${snap.error}', onRetry: _reload);
         }
         final data = snap.data ?? const {};
         final avg = data['avgGrade'] as num?;
-        final recent = List<Map<String, dynamic>>.from(data['recent'] as List? ?? const []);
+        final recent = List<Map<String, dynamic>>.from(
+          data['recent'] as List? ?? const [],
+        );
         return RefreshIndicator(
           onRefresh: _reload,
           color: _fitilaPrimary,
@@ -14701,11 +14185,19 @@ class _TeacherOverviewTabState extends State<_TeacherOverviewTab> {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.history_rounded, size: 16, color: _fitilaGoldDeep),
+                        Icon(
+                          Icons.history_rounded,
+                          size: 16,
+                          color: _fitilaGoldDeep,
+                        ),
                         SizedBox(width: 8),
                         Text(
                           'Activité récente',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _fitilaInk),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: _fitilaInk,
+                          ),
                         ),
                       ],
                     ),
@@ -14713,7 +14205,10 @@ class _TeacherOverviewTabState extends State<_TeacherOverviewTab> {
                     if (recent.isEmpty)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 8),
-                        child: Text('Aucune activité pour le moment.', style: TextStyle(color: _fitilaMuted, fontSize: 12)),
+                        child: Text(
+                          'Aucune activité pour le moment.',
+                          style: TextStyle(color: _fitilaMuted, fontSize: 12),
+                        ),
                       )
                     else
                       for (final r in recent)
@@ -14726,12 +14221,21 @@ class _TeacherOverviewTabState extends State<_TeacherOverviewTab> {
                                   TextSpan(
                                     children: [
                                       TextSpan(
-                                        text: '${(r['user_id'] as String? ?? '').substring(0, (r['user_id'] as String? ?? '').length < 6 ? (r['user_id'] as String? ?? '').length : 6)}… ',
-                                        style: const TextStyle(color: _fitilaGoldDeep, fontWeight: FontWeight.w800, fontSize: 12),
+                                        text:
+                                            '${(r['user_id'] as String? ?? '').substring(0, (r['user_id'] as String? ?? '').length < 6 ? (r['user_id'] as String? ?? '').length : 6)}… ',
+                                        style: const TextStyle(
+                                          color: _fitilaGoldDeep,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 12,
+                                        ),
                                       ),
                                       TextSpan(
-                                        text: '${r['module']} · ${r['level']} · L${r['lesson_id']}',
-                                        style: const TextStyle(color: _fitilaMuted, fontSize: 12),
+                                        text:
+                                            '${r['module']} · ${r['level']} · L${r['lesson_id']}',
+                                        style: const TextStyle(
+                                          color: _fitilaMuted,
+                                          fontSize: 12,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -14739,7 +14243,10 @@ class _TeacherOverviewTabState extends State<_TeacherOverviewTab> {
                               ),
                               Text(
                                 _teacherShortDate(r['updated_at'] as String?),
-                                style: const TextStyle(color: _fitilaMuted, fontSize: 10.5),
+                                style: const TextStyle(
+                                  color: _fitilaMuted,
+                                  fontSize: 10.5,
+                                ),
                               ),
                             ],
                           ),
@@ -14770,7 +14277,11 @@ class _TeacherErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline_rounded, color: _fitilaClay, size: 32),
+            const Icon(
+              Icons.error_outline_rounded,
+              color: _fitilaClay,
+              size: 32,
+            ),
             const SizedBox(height: 10),
             Text(
               'Impossible de charger les données.\n$message',
@@ -14832,7 +14343,11 @@ class _TeacherStudentsTabState extends State<_TeacherStudentsTab> {
           onChanged: (v) => setState(() => _query = v.toLowerCase().trim()),
           decoration: InputDecoration(
             hintText: 'Rechercher un apprenant…',
-            prefixIcon: const Icon(Icons.search_rounded, size: 19, color: _fitilaMuted),
+            prefixIcon: const Icon(
+              Icons.search_rounded,
+              size: 19,
+              color: _fitilaMuted,
+            ),
             filled: true,
             fillColor: _fitilaCard,
             contentPadding: const EdgeInsets.symmetric(vertical: 4),
@@ -14848,10 +14363,15 @@ class _TeacherStudentsTabState extends State<_TeacherStudentsTab> {
             future: _future,
             builder: (context, snap) {
               if (snap.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator(color: _fitilaPrimary));
+                return const Center(
+                  child: CircularProgressIndicator(color: _fitilaPrimary),
+                );
               }
               if (snap.hasError) {
-                return _TeacherErrorState(message: '${snap.error}', onRetry: _reload);
+                return _TeacherErrorState(
+                  message: '${snap.error}',
+                  onRetry: _reload,
+                );
               }
               final rows = snap.data ?? const [];
               final filtered = _query.isEmpty
@@ -14873,13 +14393,17 @@ class _TeacherStudentsTabState extends State<_TeacherStudentsTab> {
                         children: const [
                           SizedBox(height: 60),
                           Center(
-                            child: Text('Aucun apprenant trouvé.', style: TextStyle(color: _fitilaMuted)),
+                            child: Text(
+                              'Aucun apprenant trouvé.',
+                              style: TextStyle(color: _fitilaMuted),
+                            ),
                           ),
                         ],
                       )
                     : ListView.separated(
                         itemCount: filtered.length,
-                        separatorBuilder: (_, _) => const Divider(height: 1, color: _fitilaBorder),
+                        separatorBuilder: (_, _) =>
+                            const Divider(height: 1, color: _fitilaBorder),
                         itemBuilder: (context, i) {
                           final r = filtered[i];
                           final label = FitilaBackend.readableStudentLabel(
@@ -14892,29 +14416,63 @@ class _TeacherStudentsTabState extends State<_TeacherStudentsTab> {
                           return Material(
                             color: _fitilaCard,
                             child: ListTile(
-                              onTap: () => setState(() => _selectedId = r['user_id'] as String),
+                              onTap: () => setState(
+                                () => _selectedId = r['user_id'] as String,
+                              ),
                               leading: CircleAvatar(
                                 backgroundColor: _fitilaPrimary,
                                 child: Text(
-                                  label.replaceAll(RegExp(r'^[@📱\s]+'), '').characters.first.toUpperCase(),
-                                  style: const TextStyle(color: Color(0xFF2B2110), fontWeight: FontWeight.w800),
+                                  label
+                                      .replaceAll(RegExp(r'^[@📱\s]+'), '')
+                                      .characters
+                                      .first
+                                      .toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Color(0xFF2B2110),
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
-                              title: Text(label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: _fitilaInk)),
+                              title: Text(
+                                label,
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: _fitilaInk,
+                                ),
+                              ),
                               subtitle: Text(
                                 'N1: ${r['n1_completed']} · N2: ${r['n2_completed']} leçons',
-                                style: const TextStyle(fontSize: 11, color: _fitilaMuted),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: _fitilaMuted,
+                                ),
                               ),
                               trailing: pending > 0
                                   ? Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                                      decoration: BoxDecoration(color: _fitilaPrimary, borderRadius: BorderRadius.circular(100)),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 9,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: _fitilaPrimary,
+                                        borderRadius: BorderRadius.circular(
+                                          100,
+                                        ),
+                                      ),
                                       child: Text(
                                         '$pending à noter',
-                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF2B2110)),
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF2B2110),
+                                        ),
                                       ),
                                     )
-                                  : const Icon(Icons.chevron_right_rounded, color: _fitilaMuted),
+                                  : const Icon(
+                                      Icons.chevron_right_rounded,
+                                      color: _fitilaMuted,
+                                    ),
                             ),
                           );
                         },
@@ -14929,16 +14487,21 @@ class _TeacherStudentsTabState extends State<_TeacherStudentsTab> {
 }
 
 class _TeacherStudentDetailPanel extends StatefulWidget {
-  const _TeacherStudentDetailPanel({required this.userId, required this.onBack});
+  const _TeacherStudentDetailPanel({
+    required this.userId,
+    required this.onBack,
+  });
 
   final String userId;
   final VoidCallback onBack;
 
   @override
-  State<_TeacherStudentDetailPanel> createState() => _TeacherStudentDetailPanelState();
+  State<_TeacherStudentDetailPanel> createState() =>
+      _TeacherStudentDetailPanelState();
 }
 
-class _TeacherStudentDetailPanelState extends State<_TeacherStudentDetailPanel> {
+class _TeacherStudentDetailPanelState
+    extends State<_TeacherStudentDetailPanel> {
   late Future<Map<String, dynamic>> _future;
   String _filter = 'all';
 
@@ -14962,24 +14525,40 @@ class _TeacherStudentDetailPanelState extends State<_TeacherStudentDetailPanel> 
           onPressed: widget.onBack,
           icon: const Icon(Icons.arrow_back_rounded, size: 16),
           label: const Text('Tous les apprenants'),
-          style: TextButton.styleFrom(foregroundColor: _fitilaMuted, padding: EdgeInsets.zero),
+          style: TextButton.styleFrom(
+            foregroundColor: _fitilaMuted,
+            padding: EdgeInsets.zero,
+          ),
         ),
         Expanded(
           child: FutureBuilder<Map<String, dynamic>>(
             future: _future,
             builder: (context, snap) {
               if (snap.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator(color: _fitilaPrimary));
+                return const Center(
+                  child: CircularProgressIndicator(color: _fitilaPrimary),
+                );
               }
               if (snap.hasError) {
-                return _TeacherErrorState(message: '${snap.error}', onRetry: _reload);
+                return _TeacherErrorState(
+                  message: '${snap.error}',
+                  onRetry: _reload,
+                );
               }
               final data = snap.data ?? const {};
               final profile = data['profile'] as Map<String, dynamic>?;
-              final progress = List<Map<String, dynamic>>.from(data['progress'] as List? ?? const []);
-              final answers = List<Map<String, dynamic>>.from(data['answers'] as List? ?? const []);
-              final posts = List<Map<String, dynamic>>.from(data['posts'] as List? ?? const []);
-              final contributions = List<Map<String, dynamic>>.from(data['contributions'] as List? ?? const []);
+              final progress = List<Map<String, dynamic>>.from(
+                data['progress'] as List? ?? const [],
+              );
+              final answers = List<Map<String, dynamic>>.from(
+                data['answers'] as List? ?? const [],
+              );
+              final posts = List<Map<String, dynamic>>.from(
+                data['posts'] as List? ?? const [],
+              );
+              final contributions = List<Map<String, dynamic>>.from(
+                data['contributions'] as List? ?? const [],
+              );
               final label = FitilaBackend.readableStudentLabel(
                 displayName: profile?['display_name'] as String?,
                 username: profile?['username'] as String?,
@@ -14993,7 +14572,9 @@ class _TeacherStudentDetailPanelState extends State<_TeacherStudentDetailPanel> 
                   ? null
                   : progress.firstWhere((p) => p['level'] == 'N2');
               final visible = answers.where((a) {
-                if (_filter == 'all') return true;
+                if (_filter == 'all') {
+                  return true;
+                }
                 final graded = a['teacher_grade'] != null;
                 return _filter == 'pending' ? !graded : graded;
               }).toList();
@@ -15013,8 +14594,16 @@ class _TeacherStudentDetailPanelState extends State<_TeacherStudentDetailPanel> 
                                 radius: 28,
                                 backgroundColor: _fitilaPrimary,
                                 child: Text(
-                                  label.replaceAll(RegExp(r'^[@📱\s]+'), '').characters.first.toUpperCase(),
-                                  style: const TextStyle(color: Color(0xFF2B2110), fontWeight: FontWeight.w800, fontSize: 20),
+                                  label
+                                      .replaceAll(RegExp(r'^[@📱\s]+'), '')
+                                      .characters
+                                      .first
+                                      .toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Color(0xFF2B2110),
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 20,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 14),
@@ -15022,11 +14611,25 @@ class _TeacherStudentDetailPanelState extends State<_TeacherStudentDetailPanel> 
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(label, style: const TextStyle(fontFamily: 'serif', fontSize: 17, fontWeight: FontWeight.w600, color: _fitilaInk)),
+                                    Text(
+                                      label,
+                                      style: const TextStyle(
+                                        fontFamily: 'serif',
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w600,
+                                        color: _fitilaInk,
+                                      ),
+                                    ),
                                     if (profile?['phone_number'] != null)
                                       Padding(
                                         padding: const EdgeInsets.only(top: 3),
-                                        child: Text('${profile?['phone_number']}', style: const TextStyle(fontSize: 11, color: _fitilaMuted)),
+                                        child: Text(
+                                          '${profile?['phone_number']}',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: _fitilaMuted,
+                                          ),
+                                        ),
                                       ),
                                   ],
                                 ),
@@ -15042,9 +14645,22 @@ class _TeacherStudentDetailPanelState extends State<_TeacherStudentDetailPanel> 
                             crossAxisSpacing: 8,
                             childAspectRatio: 2.4,
                             children: [
-                              _miniStat('Inscrit', profile?['created_at'] != null ? _teacherShortDate(profile?['created_at'] as String?) : '—'),
-                              _miniStat('Points', '${profile?['total_points'] ?? 0}'),
-                              _miniStat('Niveau XP', '${profile?['level'] ?? 1}'),
+                              _miniStat(
+                                'Inscrit',
+                                profile?['created_at'] != null
+                                    ? _teacherShortDate(
+                                        profile?['created_at'] as String?,
+                                      )
+                                    : '—',
+                              ),
+                              _miniStat(
+                                'Points',
+                                '${profile?['total_points'] ?? 0}',
+                              ),
+                              _miniStat(
+                                'Niveau XP',
+                                '${profile?['level'] ?? 1}',
+                              ),
                               _miniStat('Réponses', '${answers.length}'),
                             ],
                           ),
@@ -15068,19 +14684,36 @@ class _TeacherStudentDetailPanelState extends State<_TeacherStudentDetailPanel> 
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Posts TamTam', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _fitilaInk)),
+                                const Text(
+                                  'Posts TamTam',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: _fitilaInk,
+                                  ),
+                                ),
                                 const SizedBox(height: 6),
                                 if (posts.isEmpty)
-                                  const Text('Aucun post.', style: TextStyle(fontSize: 10.5, color: _fitilaMuted))
+                                  const Text(
+                                    'Aucun post.',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      color: _fitilaMuted,
+                                    ),
+                                  )
                                 else
                                   for (final p in posts.take(3))
                                     Padding(
                                       padding: const EdgeInsets.only(bottom: 3),
                                       child: Text(
-                                        p['transcript_fr'] as String? ?? '(audio)',
+                                        p['transcript_fr'] as String? ??
+                                            '(audio)',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 10.5, color: _fitilaInkSoft),
+                                        style: const TextStyle(
+                                          fontSize: 10.5,
+                                          color: _fitilaInkSoft,
+                                        ),
                                       ),
                                     ),
                               ],
@@ -15093,19 +14726,47 @@ class _TeacherStudentDetailPanelState extends State<_TeacherStudentDetailPanel> 
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Dictionnaire', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _fitilaInk)),
+                                const Text(
+                                  'Dictionnaire',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: _fitilaInk,
+                                  ),
+                                ),
                                 const SizedBox(height: 6),
                                 if (contributions.isEmpty)
-                                  const Text('Aucune contribution.', style: TextStyle(fontSize: 10.5, color: _fitilaMuted))
+                                  const Text(
+                                    'Aucune contribution.',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      color: _fitilaMuted,
+                                    ),
+                                  )
                                 else
                                   for (final c in contributions.take(3))
                                     Padding(
                                       padding: const EdgeInsets.only(bottom: 3),
                                       child: Text.rich(
-                                        TextSpan(children: [
-                                          TextSpan(text: '${c['word']} ', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 10.5, color: _fitilaInk)),
-                                          TextSpan(text: '${c['definition']}', style: const TextStyle(fontSize: 10.5, color: _fitilaMuted)),
-                                        ]),
+                                        TextSpan(
+                                          children: [
+                                            TextSpan(
+                                              text: '${c['word']} ',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 10.5,
+                                                color: _fitilaInk,
+                                              ),
+                                            ),
+                                            TextSpan(
+                                              text: '${c['definition']}',
+                                              style: const TextStyle(
+                                                fontSize: 10.5,
+                                                color: _fitilaMuted,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -15119,15 +14780,29 @@ class _TeacherStudentDetailPanelState extends State<_TeacherStudentDetailPanel> 
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        Text('Réponses (${visible.length})', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _fitilaInk)),
+                        Text(
+                          'Réponses (${visible.length})',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: _fitilaInk,
+                          ),
+                        ),
                         const Spacer(),
-                        for (final f in const [('all', 'Toutes'), ('pending', 'À corriger'), ('graded', 'Corrigées')])
+                        for (final f in const [
+                          ('all', 'Toutes'),
+                          ('pending', 'À corriger'),
+                          ('graded', 'Corrigées'),
+                        ])
                           Padding(
                             padding: const EdgeInsets.only(left: 5),
                             child: ChoiceChip(
                               visualDensity: VisualDensity.compact,
                               selected: _filter == f.$1,
-                              label: Text(f.$2, style: const TextStyle(fontSize: 10.5)),
+                              label: Text(
+                                f.$2,
+                                style: const TextStyle(fontSize: 10.5),
+                              ),
                               selectedColor: _fitilaPrimary,
                               onSelected: (_) => setState(() => _filter = f.$1),
                             ),
@@ -15138,7 +14813,12 @@ class _TeacherStudentDetailPanelState extends State<_TeacherStudentDetailPanel> 
                     if (visible.isEmpty)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 20),
-                        child: Center(child: Text('Aucune réponse à afficher.', style: TextStyle(color: _fitilaMuted))),
+                        child: Center(
+                          child: Text(
+                            'Aucune réponse à afficher.',
+                            style: TextStyle(color: _fitilaMuted),
+                          ),
+                        ),
                       )
                     else
                       for (final a in visible)
@@ -15164,13 +14844,26 @@ class _TeacherStudentDetailPanelState extends State<_TeacherStudentDetailPanel> 
   Widget _miniStat(String label, String value) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(color: _fitilaSurfaceAlt, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: _fitilaSurfaceAlt,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(label, style: const TextStyle(fontSize: 9.5, color: _fitilaMuted)),
-          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _fitilaInk)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 9.5, color: _fitilaMuted),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: _fitilaInk,
+            ),
+          ),
         ],
       ),
     );
@@ -15182,13 +14875,33 @@ class _TeacherStudentDetailPanelState extends State<_TeacherStudentDetailPanel> 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: _fitilaInk)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+              color: _fitilaInk,
+            ),
+          ),
           const SizedBox(height: 6),
           Text.rich(
-            TextSpan(children: [
-              TextSpan(text: '$completed', style: const TextStyle(fontFamily: 'serif', fontSize: 20, fontWeight: FontWeight.w600, color: _fitilaInk)),
-              const TextSpan(text: ' leçons', style: TextStyle(fontSize: 11, color: _fitilaMuted)),
-            ]),
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: '$completed',
+                  style: const TextStyle(
+                    fontFamily: 'serif',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: _fitilaInk,
+                  ),
+                ),
+                const TextSpan(
+                  text: ' leçons',
+                  style: TextStyle(fontSize: 11, color: _fitilaMuted),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -15199,7 +14912,11 @@ class _TeacherStudentDetailPanelState extends State<_TeacherStudentDetailPanel> 
 /// Carte de correction : réponse (texte ou audio) + saisie de note + validation.
 /// Utilisée à la fois dans le détail apprenant et dans la file "À corriger".
 class _AnswerGradeCard extends StatefulWidget {
-  const _AnswerGradeCard({required this.answer, required this.onGraded, this.studentLabel});
+  const _AnswerGradeCard({
+    required this.answer,
+    required this.onGraded,
+    this.studentLabel,
+  });
 
   final Map<String, dynamic> answer;
   final Future<void> Function() onGraded;
@@ -15224,7 +14941,9 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
     super.initState();
     final grade = widget.answer['teacher_grade'];
     _gradeCtrl = TextEditingController(text: grade != null ? '$grade' : '');
-    _commentCtrl = TextEditingController(text: widget.answer['teacher_comment'] as String? ?? '');
+    _commentCtrl = TextEditingController(
+      text: widget.answer['teacher_comment'] as String? ?? '',
+    );
   }
 
   @override
@@ -15241,7 +14960,10 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
     final start = sel.start < 0 ? text.length : sel.start;
     final end = sel.end < 0 ? text.length : sel.end;
     final next = text.replaceRange(start, end, letter);
-    _commentCtrl.value = TextEditingValue(text: next, selection: TextSelection.collapsed(offset: start + letter.length));
+    _commentCtrl.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: start + letter.length),
+    );
   }
 
   Future<void> _toggleRecording(String which) async {
@@ -15262,8 +14984,12 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
       await _media.startAudio();
       setState(() => _recording = which);
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Micro indisponible : $e')));
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Micro indisponible : $e')));
     }
   }
 
@@ -15277,25 +15003,42 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
     }
     setState(() => _saving = true);
     try {
-      final personalBytes = _personalAsset != null ? await _personalAsset!.readBytes() : null;
-      final genericBytes = _genericAsset != null ? await _genericAsset!.readBytes() : null;
+      final personalBytes = _personalAsset != null
+          ? await _personalAsset!.readBytes()
+          : null;
+      final genericBytes = _genericAsset != null
+          ? await _genericAsset!.readBytes()
+          : null;
       await FitilaBackend.gradeAnswerWithAudio(
         answerId: widget.answer['id'] as String,
         grade: grade,
-        comment: _commentCtrl.text.trim().isEmpty ? null : _commentCtrl.text.trim(),
+        comment: _commentCtrl.text.trim().isEmpty
+            ? null
+            : _commentCtrl.text.trim(),
         personalAudioBytes: personalBytes,
         genericAudioBytes: genericBytes,
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✓ Note enregistrée'), backgroundColor: _fitilaSage),
+        const SnackBar(
+          content: Text('✓ Note enregistrée'),
+          backgroundColor: _fitilaSage,
+        ),
       );
       await widget.onGraded();
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
@@ -15314,7 +15057,11 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
                 Expanded(
                   child: Text(
                     widget.studentLabel!,
-                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: _fitilaGoldDeep),
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      color: _fitilaGoldDeep,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -15322,29 +15069,50 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
                 Expanded(
                   child: Text(
                     '${a['module']} · ${a['level']} · L${a['lesson_id']}',
-                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: _fitilaGoldDeep),
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      color: _fitilaGoldDeep,
+                    ),
                   ),
                 ),
-              Text(_teacherShortDate(a['updated_at'] as String?), style: const TextStyle(fontSize: 10, color: _fitilaMuted)),
+              Text(
+                _teacherShortDate(a['updated_at'] as String?),
+                style: const TextStyle(fontSize: 10, color: _fitilaMuted),
+              ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
             'Q${(a['question_idx'] as int? ?? 0) + 1} — ${a['module']} · ${a['level']} · L${a['lesson_id']}',
-            style: const TextStyle(fontSize: 10, color: _fitilaMuted, letterSpacing: .2),
+            style: const TextStyle(
+              fontSize: 10,
+              color: _fitilaMuted,
+              letterSpacing: .2,
+            ),
           ),
           const SizedBox(height: 6),
           if (hasAudio)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(color: _fitilaSurfaceAlt, borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(
+                color: _fitilaSurfaceAlt,
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: Row(
                 children: [
-                  const Icon(Icons.graphic_eq_rounded, size: 18, color: _fitilaClay),
+                  const Icon(
+                    Icons.graphic_eq_rounded,
+                    size: 18,
+                    color: _fitilaClay,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'Réponse audio · ${a['answer_audio_duration'] ?? '—'}s',
-                    style: const TextStyle(fontSize: 11.5, color: _fitilaInkSoft),
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: _fitilaInkSoft,
+                    ),
                   ),
                 ],
               ),
@@ -15353,20 +15121,36 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: _fitilaSurfaceAlt, borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(
+                color: _fitilaSurfaceAlt,
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: Text(
-                (a['answer_text'] as String?)?.isNotEmpty == true ? a['answer_text'] as String : '(sans réponse)',
-                style: const TextStyle(fontSize: 12.5, color: _fitilaInkSoft, height: 1.4),
+                (a['answer_text'] as String?)?.isNotEmpty == true
+                    ? a['answer_text'] as String
+                    : '(sans réponse)',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: _fitilaInkSoft,
+                  height: 1.4,
+                ),
               ),
             ),
           const SizedBox(height: 10),
           if (graded && !_saving)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(color: _fitilaSage.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(100)),
+              decoration: BoxDecoration(
+                color: _fitilaSage.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(100),
+              ),
               child: Text(
                 '✓ Corrigée — ${a['teacher_grade']}/20',
-                style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: _fitilaSage),
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  color: _fitilaSage,
+                ),
               ),
             ),
           Row(
@@ -15375,19 +15159,30 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
                 width: 56,
                 child: TextField(
                   controller: _gradeCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
                   decoration: InputDecoration(
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(vertical: 8),
                     hintText: '—',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: _fitilaBorder)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(9),
+                      borderSide: const BorderSide(color: _fitilaBorder),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 6),
-              const Text('/ 20', style: TextStyle(fontSize: 11, color: _fitilaMuted)),
+              const Text(
+                '/ 20',
+                style: TextStyle(fontSize: 11, color: _fitilaMuted),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: TextField(
@@ -15396,13 +15191,29 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
                   decoration: InputDecoration(
                     isDense: true,
                     hintText: 'Commentaire (optionnel)',
-                    hintStyle: const TextStyle(fontSize: 11, color: _fitilaMuted),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: _fitilaBorder)),
+                    hintStyle: const TextStyle(
+                      fontSize: 11,
+                      color: _fitilaMuted,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(9),
+                      borderSide: const BorderSide(color: _fitilaBorder),
+                    ),
                     suffixIcon: IconButton(
                       iconSize: 16,
-                      icon: Text('ɔɛŋ', style: TextStyle(color: _showPalette ? _fitilaGoldDeep : _fitilaMuted, fontWeight: FontWeight.w800)),
-                      onPressed: () => setState(() => _showPalette = !_showPalette),
+                      icon: Text(
+                        'ɔɛŋ',
+                        style: TextStyle(
+                          color: _showPalette ? _fitilaGoldDeep : _fitilaMuted,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      onPressed: () =>
+                          setState(() => _showPalette = !_showPalette),
                     ),
                   ),
                 ),
@@ -15416,11 +15227,26 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
                     backgroundColor: _fitilaSage,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(9),
+                    ),
                   ),
                   child: _saving
-                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Valider', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Valider',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                 ),
               ),
             ],
@@ -15440,15 +15266,31 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
                         width: 26,
                         height: 26,
                         alignment: Alignment.center,
-                        decoration: BoxDecoration(color: _fitilaSurfaceAlt, borderRadius: BorderRadius.circular(7)),
-                        child: Text(letter, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+                        decoration: BoxDecoration(
+                          color: _fitilaSurfaceAlt,
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: Text(
+                          letter,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ),
                 ],
               ),
             ),
           const SizedBox(height: 10),
-          Text('Correction vocale', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: _fitilaMuted)),
+          Text(
+            'Correction vocale',
+            style: const TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w800,
+              color: _fitilaMuted,
+            ),
+          ),
           const SizedBox(height: 6),
           Row(
             children: [
@@ -15500,24 +15342,39 @@ class _TeacherAudioRecorderChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = recording ? Colors.red : (hasAsset ? _fitilaSage : _fitilaMuted);
+    final color = recording
+        ? Colors.red
+        : (hasAsset ? _fitilaSage : _fitilaMuted);
     return InkWell(
       onTap: disabled ? null : onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
-          border: Border.all(color: disabled ? _fitilaBorder : color, style: BorderStyle.solid),
+          border: Border.all(
+            color: disabled ? _fitilaBorder : color,
+            style: BorderStyle.solid,
+          ),
           borderRadius: BorderRadius.circular(12),
           color: hasAsset ? _fitilaSage.withValues(alpha: .08) : null,
         ),
         child: Column(
           children: [
-            Icon(recording ? Icons.stop_circle_rounded : (hasAsset ? Icons.check_circle_rounded : icon), size: 18, color: disabled ? _fitilaMuted : color),
+            Icon(
+              recording
+                  ? Icons.stop_circle_rounded
+                  : (hasAsset ? Icons.check_circle_rounded : icon),
+              size: 18,
+              color: disabled ? _fitilaMuted : color,
+            ),
             const SizedBox(height: 3),
             Text(
               recording ? 'Arrêter…' : (hasAsset ? '$label ✓' : label),
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: disabled ? _fitilaMuted : color),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: disabled ? _fitilaMuted : color,
+              ),
             ),
           ],
         ),
@@ -15547,7 +15404,11 @@ class _TeacherGradingTabState extends State<_TeacherGradingTab> {
     ('grammaire', 'Grammaire'),
     ('textprod', 'Production'),
   ];
-  static const _levels = [('all', 'N1 + N2'), ('N1', 'N1 uniquement'), ('N2', 'N2 uniquement')];
+  static const _levels = [
+    ('all', 'N1 + N2'),
+    ('N1', 'N1 uniquement'),
+    ('N2', 'N2 uniquement'),
+  ];
 
   @override
   void initState() {
@@ -15581,10 +15442,19 @@ class _TeacherGradingTabState extends State<_TeacherGradingTab> {
                 style: const TextStyle(fontSize: 11.5, color: _fitilaInkSoft),
                 decoration: InputDecoration(
                   isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _fitilaBorder)),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: _fitilaBorder),
+                  ),
                 ),
-                items: [for (final m in _modules) DropdownMenuItem(value: m.$1, child: Text(m.$2))],
+                items: [
+                  for (final m in _modules)
+                    DropdownMenuItem(value: m.$1, child: Text(m.$2)),
+                ],
                 onChanged: (v) => setState(() {
                   _module = v ?? 'all';
                   _load();
@@ -15599,10 +15469,19 @@ class _TeacherGradingTabState extends State<_TeacherGradingTab> {
                 style: const TextStyle(fontSize: 11.5, color: _fitilaInkSoft),
                 decoration: InputDecoration(
                   isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _fitilaBorder)),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: _fitilaBorder),
+                  ),
                 ),
-                items: [for (final l in _levels) DropdownMenuItem(value: l.$1, child: Text(l.$2))],
+                items: [
+                  for (final l in _levels)
+                    DropdownMenuItem(value: l.$1, child: Text(l.$2)),
+                ],
                 onChanged: (v) => setState(() {
                   _level = v ?? 'all';
                   _load();
@@ -15617,10 +15496,15 @@ class _TeacherGradingTabState extends State<_TeacherGradingTab> {
             future: _future,
             builder: (context, snap) {
               if (snap.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator(color: _fitilaPrimary));
+                return const Center(
+                  child: CircularProgressIndicator(color: _fitilaPrimary),
+                );
               }
               if (snap.hasError) {
-                return _TeacherErrorState(message: '${snap.error}', onRetry: _reload);
+                return _TeacherErrorState(
+                  message: '${snap.error}',
+                  onRetry: _reload,
+                );
               }
               final items = snap.data ?? const [];
               return RefreshIndicator(
@@ -15630,7 +15514,13 @@ class _TeacherGradingTabState extends State<_TeacherGradingTab> {
                     ? ListView(
                         children: const [
                           SizedBox(height: 60),
-                          Center(child: Text('🎉 Tout est à jour, aucune copie en attente !', textAlign: TextAlign.center, style: TextStyle(color: _fitilaMuted))),
+                          Center(
+                            child: Text(
+                              '🎉 Tout est à jour, aucune copie en attente !',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: _fitilaMuted),
+                            ),
+                          ),
                         ],
                       )
                     : ListView.builder(
@@ -15689,9 +15579,12 @@ class _TeacherAnswerKeysTabState extends State<_TeacherAnswerKeysTab> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _AnswerKeyEditorSheet(level: _level, existing: existing),
+      builder: (ctx) =>
+          _AnswerKeyEditorSheet(level: _level, existing: existing),
     );
-    if (saved == true) await _reload();
+    if (saved == true) {
+      await _reload();
+    }
   }
 
   @override
@@ -15733,10 +15626,15 @@ class _TeacherAnswerKeysTabState extends State<_TeacherAnswerKeysTab> {
             future: _future,
             builder: (context, snap) {
               if (snap.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator(color: _fitilaPrimary));
+                return const Center(
+                  child: CircularProgressIndicator(color: _fitilaPrimary),
+                );
               }
               if (snap.hasError) {
-                return _TeacherErrorState(message: '${snap.error}', onRetry: _reload);
+                return _TeacherErrorState(
+                  message: '${snap.error}',
+                  onRetry: _reload,
+                );
               }
               final keys = snap.data ?? const [];
               if (keys.isEmpty) {
@@ -15770,7 +15668,9 @@ class _TeacherAnswerKeysTabState extends State<_TeacherAnswerKeysTab> {
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, i) {
                     final k = keys[i];
-                    final accepted = List<String>.from(k['accepted_answers'] as List? ?? const []);
+                    final accepted = List<String>.from(
+                      k['accepted_answers'] as List? ?? const [],
+                    );
                     return InkWell(
                       onTap: () => _openEditor(k),
                       borderRadius: BorderRadius.circular(14),
@@ -15778,7 +15678,11 @@ class _TeacherAnswerKeysTabState extends State<_TeacherAnswerKeysTab> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.check_circle_rounded, size: 16, color: _fitilaSage),
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              size: 16,
+                              color: _fitilaSage,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Column(
@@ -15786,17 +15690,31 @@ class _TeacherAnswerKeysTabState extends State<_TeacherAnswerKeysTab> {
                                 children: [
                                   Text(
                                     '${k['module']} · L${k['lesson_id']}${(k['section_key'] as String? ?? '').isNotEmpty ? ' · ${k['section_key']}' : ''} · Q${(k['question_idx'] as int? ?? 0) + 1}',
-                                    style: const TextStyle(fontSize: 10, color: _fitilaMuted, fontFamily: 'monospace'),
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: _fitilaMuted,
+                                      fontFamily: 'monospace',
+                                    ),
                                   ),
                                   const SizedBox(height: 3),
                                   Text(
-                                    accepted.isEmpty ? '(aucune variante)' : accepted.join(' / '),
-                                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _fitilaSage),
+                                    accepted.isEmpty
+                                        ? '(aucune variante)'
+                                        : accepted.join(' / '),
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: _fitilaSage,
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                            const Icon(Icons.edit_rounded, size: 15, color: _fitilaMuted),
+                            const Icon(
+                              Icons.edit_rounded,
+                              size: 15,
+                              color: _fitilaMuted,
+                            ),
                           ],
                         ),
                       ),
@@ -15823,7 +15741,14 @@ class _AnswerKeyEditorSheet extends StatefulWidget {
 }
 
 class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
-  static const _modules = ['lesson', 'calcul', 'evaluation', 'gestion', 'grammaire', 'textprod'];
+  static const _modules = [
+    'lesson',
+    'calcul',
+    'evaluation',
+    'gestion',
+    'grammaire',
+    'textprod',
+  ];
   late String _module;
   late final TextEditingController _lessonId;
   late final TextEditingController _sectionKey;
@@ -15840,10 +15765,18 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
     final e = widget.existing;
     _module = e?['module'] as String? ?? _modules.first;
     _lessonId = TextEditingController(text: e?['lesson_id']?.toString() ?? '');
-    _sectionKey = TextEditingController(text: e?['section_key']?.toString() ?? '');
-    _questionIdx = TextEditingController(text: e?['question_idx']?.toString() ?? '0');
-    _questionText = TextEditingController(text: e?['question_text']?.toString() ?? '');
-    _explanation = TextEditingController(text: e?['explanation']?.toString() ?? '');
+    _sectionKey = TextEditingController(
+      text: e?['section_key']?.toString() ?? '',
+    );
+    _questionIdx = TextEditingController(
+      text: e?['question_idx']?.toString() ?? '0',
+    );
+    _questionText = TextEditingController(
+      text: e?['question_text']?.toString() ?? '',
+    );
+    _explanation = TextEditingController(
+      text: e?['explanation']?.toString() ?? '',
+    );
     _newVariant = TextEditingController();
     _accepted = List<String>.from(e?['accepted_answers'] as List? ?? const []);
   }
@@ -15861,7 +15794,9 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
 
   void _addVariant() {
     final value = _newVariant.text.trim();
-    if (value.isEmpty) return;
+    if (value.isEmpty) {
+      return;
+    }
     setState(() {
       _accepted = [..._accepted, value];
       _newVariant.clear();
@@ -15873,7 +15808,11 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
     final questionIdx = int.tryParse(_questionIdx.text.trim());
     if (lessonId == null || questionIdx == null || _accepted.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Leçon, question et au moins une réponse acceptée sont requis.')),
+        const SnackBar(
+          content: Text(
+            'Leçon, question et au moins une réponse acceptée sont requis.',
+          ),
+        ),
       );
       return;
     }
@@ -15885,17 +15824,29 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
         'lesson_id': lessonId,
         'section_key': _sectionKey.text.trim(),
         'question_idx': questionIdx,
-        'question_text': _questionText.text.trim().isEmpty ? null : _questionText.text.trim(),
+        'question_text': _questionText.text.trim().isEmpty
+            ? null
+            : _questionText.text.trim(),
         'accepted_answers': _accepted,
-        'explanation': _explanation.text.trim().isEmpty ? null : _explanation.text.trim(),
+        'explanation': _explanation.text.trim().isEmpty
+            ? null
+            : _explanation.text.trim(),
       });
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       Navigator.pop(context, true);
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
@@ -15915,12 +15866,25 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
-              child: Container(width: 40, height: 4, decoration: BoxDecoration(color: _fitilaBorder, borderRadius: BorderRadius.circular(100))),
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: _fitilaBorder,
+                  borderRadius: BorderRadius.circular(100),
+                ),
+              ),
             ),
             const SizedBox(height: 12),
             Text(
-              widget.existing == null ? 'Nouveau corrigé — ${widget.level}' : 'Modifier le corrigé — ${widget.level}',
-              style: const TextStyle(fontFamily: 'serif', fontSize: 18, fontWeight: FontWeight.w700),
+              widget.existing == null
+                  ? 'Nouveau corrigé — ${widget.level}'
+                  : 'Modifier le corrigé — ${widget.level}',
+              style: const TextStyle(
+                fontFamily: 'serif',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 14),
             Expanded(
@@ -15932,9 +15896,16 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
                       Expanded(
                         child: DropdownButtonFormField<String>(
                           initialValue: _module,
-                          decoration: const InputDecoration(labelText: 'Module', isDense: true),
-                          items: [for (final m in _modules) DropdownMenuItem(value: m, child: Text(m))],
-                          onChanged: (v) => setState(() => _module = v ?? _module),
+                          decoration: const InputDecoration(
+                            labelText: 'Module',
+                            isDense: true,
+                          ),
+                          items: [
+                            for (final m in _modules)
+                              DropdownMenuItem(value: m, child: Text(m)),
+                          ],
+                          onChanged: (v) =>
+                              setState(() => _module = v ?? _module),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -15943,7 +15914,10 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
                         child: TextField(
                           controller: _lessonId,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Leçon #', isDense: true),
+                          decoration: const InputDecoration(
+                            labelText: 'Leçon #',
+                            isDense: true,
+                          ),
                         ),
                       ),
                     ],
@@ -15954,7 +15928,10 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
                       Expanded(
                         child: TextField(
                           controller: _sectionKey,
-                          decoration: const InputDecoration(labelText: 'Section (ex: observe)', isDense: true),
+                          decoration: const InputDecoration(
+                            labelText: 'Section (ex: observe)',
+                            isDense: true,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -15963,7 +15940,10 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
                         child: TextField(
                           controller: _questionIdx,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Question #', isDense: true),
+                          decoration: const InputDecoration(
+                            labelText: 'Question #',
+                            isDense: true,
+                          ),
                         ),
                       ),
                     ],
@@ -15972,10 +15952,19 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
                   TextField(
                     controller: _questionText,
                     maxLines: 2,
-                    decoration: const InputDecoration(labelText: 'Question (optionnel)', isDense: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Question (optionnel)',
+                      isDense: true,
+                    ),
                   ),
                   const SizedBox(height: 14),
-                  const Text('Réponses acceptées', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5)),
+                  const Text(
+                    'Réponses acceptées',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12.5,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 6,
@@ -15983,10 +15972,20 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
                     children: [
                       for (final v in _accepted)
                         Chip(
-                          label: Text(v, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                          label: Text(
+                            v,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                           backgroundColor: _fitilaSage.withValues(alpha: .14),
                           deleteIcon: const Icon(Icons.close_rounded, size: 14),
-                          onDeleted: () => setState(() => _accepted = _accepted.where((x) => x != v).toList()),
+                          onDeleted: () => setState(
+                            () => _accepted = _accepted
+                                .where((x) => x != v)
+                                .toList(),
+                          ),
                         ),
                     ],
                   ),
@@ -15996,18 +15995,27 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
                       Expanded(
                         child: TextField(
                           controller: _newVariant,
-                          decoration: const InputDecoration(hintText: 'Ajouter une variante…', isDense: true),
+                          decoration: const InputDecoration(
+                            hintText: 'Ajouter une variante…',
+                            isDense: true,
+                          ),
                           onSubmitted: (_) => _addVariant(),
                         ),
                       ),
-                      IconButton(onPressed: _addVariant, icon: const Icon(Icons.add_circle_rounded)),
+                      IconButton(
+                        onPressed: _addVariant,
+                        icon: const Icon(Icons.add_circle_rounded),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
                   TextField(
                     controller: _explanation,
                     maxLines: 3,
-                    decoration: const InputDecoration(labelText: 'Explication (optionnel)', isDense: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Explication (optionnel)',
+                      isDense: true,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -16019,11 +16027,15 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
                           onTap: () {
                             final sel = _explanation.selection;
                             final text = _explanation.text;
-                            final start = sel.start < 0 ? text.length : sel.start;
+                            final start = sel.start < 0
+                                ? text.length
+                                : sel.start;
                             final end = sel.end < 0 ? text.length : sel.end;
                             _explanation.value = TextEditingValue(
                               text: text.replaceRange(start, end, letter),
-                              selection: TextSelection.collapsed(offset: start + letter.length),
+                              selection: TextSelection.collapsed(
+                                offset: start + letter.length,
+                              ),
                             );
                           },
                           borderRadius: BorderRadius.circular(7),
@@ -16031,8 +16043,17 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
                             width: 26,
                             height: 26,
                             alignment: Alignment.center,
-                            decoration: BoxDecoration(color: _fitilaSurfaceAlt, borderRadius: BorderRadius.circular(7)),
-                            child: Text(letter, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+                            decoration: BoxDecoration(
+                              color: _fitilaSurfaceAlt,
+                              borderRadius: BorderRadius.circular(7),
+                            ),
+                            child: Text(
+                              letter,
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
                         ),
                     ],
@@ -16046,7 +16067,14 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
               child: FilledButton(
                 onPressed: _saving ? null : _save,
                 child: _saving
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : const Text('Publier le corrigé'),
               ),
             ),
@@ -16075,7 +16103,14 @@ class _TeacherWeightsTabState extends State<_TeacherWeightsTab> {
   bool _saving = false;
 
   static const _levels = ['N1', 'N2'];
-  static const _modules = ['lesson', 'calcul', 'gestion', 'grammaire', 'textprod', 'evaluation'];
+  static const _modules = [
+    'lesson',
+    'calcul',
+    'gestion',
+    'grammaire',
+    'textprod',
+    'evaluation',
+  ];
 
   @override
   void initState() {
@@ -16102,7 +16137,9 @@ class _TeacherWeightsTabState extends State<_TeacherWeightsTab> {
   }
 
   Future<void> _quickAdd() async {
-    if (_lessonCtrl.text.trim().isEmpty) return;
+    if (_lessonCtrl.text.trim().isEmpty) {
+      return;
+    }
     setState(() => _saving = true);
     try {
       await FitilaBackend.saveGradeWeight({
@@ -16121,10 +16158,16 @@ class _TeacherWeightsTabState extends State<_TeacherWeightsTab> {
       _weightCtrl.text = '1';
       await _reload();
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
@@ -16143,8 +16186,14 @@ class _TeacherWeightsTabState extends State<_TeacherWeightsTab> {
             Expanded(
               child: DropdownButtonFormField<String>(
                 initialValue: _level,
-                decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),
-                items: [for (final l in _levels) DropdownMenuItem(value: l, child: Text(l))],
+                decoration: const InputDecoration(
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final l in _levels)
+                    DropdownMenuItem(value: l, child: Text(l)),
+                ],
                 onChanged: (v) => setState(() {
                   _level = v ?? 'N1';
                   _load();
@@ -16155,8 +16204,14 @@ class _TeacherWeightsTabState extends State<_TeacherWeightsTab> {
             Expanded(
               child: DropdownButtonFormField<String>(
                 initialValue: _module,
-                decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),
-                items: [for (final m in _modules) DropdownMenuItem(value: m, child: Text(m))],
+                decoration: const InputDecoration(
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final m in _modules)
+                    DropdownMenuItem(value: m, child: Text(m)),
+                ],
                 onChanged: (v) => setState(() {
                   _module = v ?? 'lesson';
                   _load();
@@ -16170,27 +16225,78 @@ class _TeacherWeightsTabState extends State<_TeacherWeightsTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('AJOUTER UN BARÈME', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: _fitilaMuted, letterSpacing: .3)),
+              const Text(
+                'AJOUTER UN BARÈME',
+                style: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w800,
+                  color: _fitilaMuted,
+                  letterSpacing: .3,
+                ),
+              ),
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Expanded(child: TextField(controller: _lessonCtrl, decoration: const InputDecoration(isDense: true, hintText: 'Leçon'))),
+                  Expanded(
+                    child: TextField(
+                      controller: _lessonCtrl,
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        hintText: 'Leçon',
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 6),
-                  Expanded(child: TextField(controller: _sectionCtrl, decoration: const InputDecoration(isDense: true, hintText: 'Section'))),
+                  Expanded(
+                    child: TextField(
+                      controller: _sectionCtrl,
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        hintText: 'Section',
+                      ),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 6),
               Row(
                 children: [
-                  Expanded(child: TextField(controller: _qCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(isDense: true, hintText: 'Q#'))),
+                  Expanded(
+                    child: TextField(
+                      controller: _qCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        hintText: 'Q#',
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 6),
-                  Expanded(child: TextField(controller: _weightCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(isDense: true, hintText: 'Poids'))),
+                  Expanded(
+                    child: TextField(
+                      controller: _weightCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        hintText: 'Poids',
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 6),
                   ElevatedButton(
                     onPressed: _saving ? null : _quickAdd,
-                    style: ElevatedButton.styleFrom(backgroundColor: _fitilaPrimary, foregroundColor: const Color(0xFF2B2110)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _fitilaPrimary,
+                      foregroundColor: const Color(0xFF2B2110),
+                    ),
                     child: _saving
-                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : const Icon(Icons.add_rounded, size: 18),
                   ),
                 ],
@@ -16204,14 +16310,25 @@ class _TeacherWeightsTabState extends State<_TeacherWeightsTab> {
             future: _future,
             builder: (context, snap) {
               if (snap.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator(color: _fitilaPrimary));
+                return const Center(
+                  child: CircularProgressIndicator(color: _fitilaPrimary),
+                );
               }
               if (snap.hasError) {
-                return _TeacherErrorState(message: '${snap.error}', onRetry: _reload);
+                return _TeacherErrorState(
+                  message: '${snap.error}',
+                  onRetry: _reload,
+                );
               }
               final rows = snap.data ?? const [];
               if (rows.isEmpty) {
-                return const Center(child: Text('Aucun barème pour ce filtre. Poids = 1 pour toutes les questions.', textAlign: TextAlign.center, style: TextStyle(color: _fitilaMuted, fontSize: 11.5)));
+                return const Center(
+                  child: Text(
+                    'Aucun barème pour ce filtre. Poids = 1 pour toutes les questions.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: _fitilaMuted, fontSize: 11.5),
+                  ),
+                );
               }
               return SingleChildScrollView(
                 child: DataTable(
@@ -16220,19 +16337,76 @@ class _TeacherWeightsTabState extends State<_TeacherWeightsTab> {
                   dataRowMaxHeight: 40,
                   columnSpacing: 16,
                   columns: const [
-                    DataColumn(label: Text('Leçon', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800))),
-                    DataColumn(label: Text('Sect.', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800))),
-                    DataColumn(label: Text('Q#', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800))),
-                    DataColumn(label: Text('Poids', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800))),
+                    DataColumn(
+                      label: Text(
+                        'Leçon',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Sect.',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Q#',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Poids',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
                   ],
                   rows: [
                     for (final r in rows)
-                      DataRow(cells: [
-                        DataCell(Text('${r['lesson_id']}', style: const TextStyle(fontSize: 11))),
-                        DataCell(Text('${r['section_key'] ?? '—'}', style: const TextStyle(fontSize: 11))),
-                        DataCell(Text('${(r['question_idx'] as int? ?? 0) + 1}', style: const TextStyle(fontSize: 11))),
-                        DataCell(Text('${r['weight']}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700))),
-                      ]),
+                      DataRow(
+                        cells: [
+                          DataCell(
+                            Text(
+                              '${r['lesson_id']}',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              '${r['section_key'] ?? '—'}',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              '${(r['question_idx'] as int? ?? 0) + 1}',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              '${r['weight']}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               );
@@ -16248,7 +16422,8 @@ class _TeacherGradeOverviewTab extends StatefulWidget {
   const _TeacherGradeOverviewTab();
 
   @override
-  State<_TeacherGradeOverviewTab> createState() => _TeacherGradeOverviewTabState();
+  State<_TeacherGradeOverviewTab> createState() =>
+      _TeacherGradeOverviewTabState();
 }
 
 class _TeacherGradeOverviewTabState extends State<_TeacherGradeOverviewTab> {
@@ -16266,22 +16441,39 @@ class _TeacherGradeOverviewTabState extends State<_TeacherGradeOverviewTab> {
   }
 
   Color _cellColor(double? g) {
-    if (g == null) return _fitilaSurfaceAlt;
-    if (g >= 14) return _fitilaSage.withValues(alpha: 0.18);
-    if (g >= 10) return _fitilaPrimarySoft;
+    if (g == null) {
+      return _fitilaSurfaceAlt;
+    }
+    if (g >= 14) {
+      return _fitilaSage.withValues(alpha: 0.18);
+    }
+    if (g >= 10) {
+      return _fitilaPrimarySoft;
+    }
     return _fitilaClay.withValues(alpha: 0.16);
   }
 
-  Future<void> _copyCsv(List<Map<String, dynamic>> reports, List<String> columns) async {
+  Future<void> _copyCsv(
+    List<Map<String, dynamic>> reports,
+    List<String> columns,
+  ) async {
     final buffer = StringBuffer('Apprenant,Moyenne /20,Appréciation\n');
     for (final r in reports) {
       final avg = r['global_average'] as double?;
-      buffer.writeln('"${r['name']}",${avg?.toStringAsFixed(2) ?? ''},${FitilaBackend.appreciationFor(avg)}');
+      buffer.writeln(
+        '"${r['name']}",${avg?.toStringAsFixed(2) ?? ''},${FitilaBackend.appreciationFor(avg)}',
+      );
     }
     await Clipboard.setData(ClipboardData(text: buffer.toString()));
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('📋 Relevé copié (format CSV) — collez-le dans un tableur.')),
+      const SnackBar(
+        content: Text(
+          '📋 Relevé copié (format CSV) — collez-le dans un tableur.',
+        ),
+      ),
     );
   }
 
@@ -16291,14 +16483,20 @@ class _TeacherGradeOverviewTabState extends State<_TeacherGradeOverviewTab> {
       future: _future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator(color: _fitilaPrimary));
+          return const Center(
+            child: CircularProgressIndicator(color: _fitilaPrimary),
+          );
         }
         if (snap.hasError) {
           return _TeacherErrorState(message: '${snap.error}', onRetry: _reload);
         }
         final data = snap.data ?? const {};
-        final reports = List<Map<String, dynamic>>.from(data['reports'] as List? ?? const []);
-        final columns = List<String>.from(data['moduleColumns'] as List? ?? const []);
+        final reports = List<Map<String, dynamic>>.from(
+          data['reports'] as List? ?? const [],
+        );
+        final columns = List<String>.from(
+          data['moduleColumns'] as List? ?? const [],
+        );
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -16320,7 +16518,12 @@ class _TeacherGradeOverviewTabState extends State<_TeacherGradeOverviewTab> {
             const SizedBox(height: 10),
             Expanded(
               child: reports.isEmpty
-                  ? const Center(child: Text('Aucune note enregistrée pour le moment.', style: TextStyle(color: _fitilaMuted)))
+                  ? const Center(
+                      child: Text(
+                        'Aucune note enregistrée pour le moment.',
+                        style: TextStyle(color: _fitilaMuted),
+                      ),
+                    )
                   : RefreshIndicator(
                       onRefresh: _reload,
                       color: _fitilaPrimary,
@@ -16333,33 +16536,112 @@ class _TeacherGradeOverviewTabState extends State<_TeacherGradeOverviewTab> {
                             dataRowMaxHeight: 44,
                             columnSpacing: 14,
                             columns: [
-                              const DataColumn(label: Text('Apprenant', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800))),
-                              const DataColumn(label: Text('Moy.', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800))),
+                              const DataColumn(
+                                label: Text(
+                                  'Apprenant',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              const DataColumn(
+                                label: Text(
+                                  'Moy.',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
                               for (final c in columns)
-                                DataColumn(label: Text(c.replaceAll('::', ' '), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800))),
-                              const DataColumn(label: Text('Appréciation', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800))),
+                                DataColumn(
+                                  label: Text(
+                                    c.replaceAll('::', ' '),
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              const DataColumn(
+                                label: Text(
+                                  'Appréciation',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
                             ],
                             rows: [
                               for (final r in reports)
-                                DataRow(cells: [
-                                  DataCell(Text('${r['name']}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700))),
-                                  DataCell(
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      color: _cellColor(r['global_average'] as double?),
-                                      child: Text((r['global_average'] as double?)?.toStringAsFixed(1) ?? '—', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
-                                    ),
-                                  ),
-                                  for (final c in columns)
+                                DataRow(
+                                  cells: [
                                     DataCell(
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        color: _cellColor((r['modules'] as Map?)?[c] as double?),
-                                        child: Text(((r['modules'] as Map?)?[c] as double?)?.toStringAsFixed(1) ?? '—', style: const TextStyle(fontSize: 10.5)),
+                                      Text(
+                                        '${r['name']}',
+                                        style: const TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                                     ),
-                                  DataCell(Text(FitilaBackend.appreciationFor(r['global_average'] as double?), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700))),
-                                ]),
+                                    DataCell(
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        color: _cellColor(
+                                          r['global_average'] as double?,
+                                        ),
+                                        child: Text(
+                                          (r['global_average'] as double?)
+                                                  ?.toStringAsFixed(1) ??
+                                              '—',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    for (final c in columns)
+                                      DataCell(
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          color: _cellColor(
+                                            (r['modules'] as Map?)?[c]
+                                                as double?,
+                                          ),
+                                          child: Text(
+                                            ((r['modules'] as Map?)?[c]
+                                                        as double?)
+                                                    ?.toStringAsFixed(1) ??
+                                                '—',
+                                            style: const TextStyle(
+                                              fontSize: 10.5,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    DataCell(
+                                      Text(
+                                        FitilaBackend.appreciationFor(
+                                          r['global_average'] as double?,
+                                        ),
+                                        style: const TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                             ],
                           ),
                         ),
@@ -16400,15 +16682,23 @@ class _TeacherStatsTabState extends State<_TeacherStatsTab> {
       future: _future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator(color: _fitilaPrimary));
+          return const Center(
+            child: CircularProgressIndicator(color: _fitilaPrimary),
+          );
         }
         if (snap.hasError) {
           return _TeacherErrorState(message: '${snap.error}', onRetry: _reload);
         }
         final data = snap.data ?? const {};
-        final levels = Map<String, int>.from(data['levelDistribution'] as Map? ?? const {});
-        final modules = Map<String, int>.from(data['moduleActivity'] as Map? ?? const {});
-        final grades = Map<String, int>.from(data['gradeDistribution'] as Map? ?? const {});
+        final levels = Map<String, int>.from(
+          data['levelDistribution'] as Map? ?? const {},
+        );
+        final modules = Map<String, int>.from(
+          data['moduleActivity'] as Map? ?? const {},
+        );
+        final grades = Map<String, int>.from(
+          data['gradeDistribution'] as Map? ?? const {},
+        );
         final totalLevels = levels.values.fold<int>(0, (a, b) => a + b);
         return RefreshIndicator(
           onRefresh: _reload,
@@ -16419,17 +16709,36 @@ class _TeacherStatsTabState extends State<_TeacherStatsTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Apprenants par niveau', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _fitilaInk)),
+                    const Text(
+                      'Apprenants par niveau',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: _fitilaInk,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     if (totalLevels == 0)
-                      const Text('Pas encore de données.', style: TextStyle(color: _fitilaMuted, fontSize: 11.5))
+                      const Text(
+                        'Pas encore de données.',
+                        style: TextStyle(color: _fitilaMuted, fontSize: 11.5),
+                      )
                     else
                       for (final e in levels.entries)
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Row(
                             children: [
-                              SizedBox(width: 28, child: Text(e.key, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800))),
+                              SizedBox(
+                                width: 28,
+                                child: Text(
+                                  e.key,
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
                               Expanded(
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(6),
@@ -16437,12 +16746,20 @@ class _TeacherStatsTabState extends State<_TeacherStatsTab> {
                                     value: e.value / totalLevels,
                                     minHeight: 10,
                                     backgroundColor: _fitilaSurfaceAlt,
-                                    color: e.key == 'N1' ? _fitilaPrimary : _fitilaSage,
+                                    color: e.key == 'N1'
+                                        ? _fitilaPrimary
+                                        : _fitilaSage,
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Text('${e.value}', style: const TextStyle(fontSize: 11, color: _fitilaMuted)),
+                              Text(
+                                '${e.value}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: _fitilaMuted,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -16454,22 +16771,45 @@ class _TeacherStatsTabState extends State<_TeacherStatsTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Activité par module', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _fitilaInk)),
+                    const Text(
+                      'Activité par module',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: _fitilaInk,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     if (modules.isEmpty)
-                      const Text('Pas encore de données.', style: TextStyle(color: _fitilaMuted, fontSize: 11.5))
+                      const Text(
+                        'Pas encore de données.',
+                        style: TextStyle(color: _fitilaMuted, fontSize: 11.5),
+                      )
                     else
-                      for (final e in (modules.entries.toList()..sort((a, b) => b.value.compareTo(a.value))))
+                      for (final e
+                          in (modules.entries.toList()
+                            ..sort((a, b) => b.value.compareTo(a.value))))
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Row(
                             children: [
-                              SizedBox(width: 64, child: Text(e.key, style: const TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis)),
+                              SizedBox(
+                                width: 64,
+                                child: Text(
+                                  e.key,
+                                  style: const TextStyle(fontSize: 11),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                               Expanded(
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(6),
                                   child: LinearProgressIndicator(
-                                    value: e.value / (modules.values.reduce((a, b) => a > b ? a : b)),
+                                    value:
+                                        e.value /
+                                        (modules.values.reduce(
+                                          (a, b) => a > b ? a : b,
+                                        )),
                                     minHeight: 10,
                                     backgroundColor: _fitilaSurfaceAlt,
                                     color: _fitilaClay,
@@ -16477,7 +16817,13 @@ class _TeacherStatsTabState extends State<_TeacherStatsTab> {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Text('${e.value}', style: const TextStyle(fontSize: 11, color: _fitilaMuted)),
+                              Text(
+                                '${e.value}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: _fitilaMuted,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -16489,37 +16835,75 @@ class _TeacherStatsTabState extends State<_TeacherStatsTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Distribution des notes /20', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _fitilaInk)),
+                    const Text(
+                      'Distribution des notes /20',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: _fitilaInk,
+                      ),
+                    ),
                     const SizedBox(height: 10),
-                    Builder(builder: (context) {
-                      final maxV = grades.values.isEmpty ? 1 : grades.values.reduce((a, b) => a > b ? a : b);
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          for (final e in grades.entries)
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
-                                child: Column(
-                                  children: [
-                                    Text('${e.value}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
-                                    const SizedBox(height: 4),
-                                    Container(
-                                      height: 12 + (maxV == 0 ? 0 : (e.value / maxV) * 80),
-                                      decoration: BoxDecoration(
-                                        color: e.key == '16-20' || e.key == '13-15' ? _fitilaSage : (e.key == '10-12' ? _fitilaPrimary : _fitilaClay),
-                                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                    Builder(
+                      builder: (context) {
+                        final maxV = grades.values.isEmpty
+                            ? 1
+                            : grades.values.reduce((a, b) => a > b ? a : b);
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            for (final e in grades.entries)
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        '${e.value}',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(e.key, style: const TextStyle(fontSize: 9, color: _fitilaMuted)),
-                                  ],
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        height:
+                                            12 +
+                                            (maxV == 0
+                                                ? 0
+                                                : (e.value / maxV) * 80),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              e.key == '16-20' ||
+                                                  e.key == '13-15'
+                                              ? _fitilaSage
+                                              : (e.key == '10-12'
+                                                    ? _fitilaPrimary
+                                                    : _fitilaClay),
+                                          borderRadius:
+                                              const BorderRadius.vertical(
+                                                top: Radius.circular(6),
+                                              ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        e.key,
+                                        style: const TextStyle(
+                                          fontSize: 9,
+                                          color: _fitilaMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
-                      );
-                    }),
+                          ],
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -16578,9 +16962,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadPrivacy() async {
     try {
       final privacy = await FitilaBackend.fetchPrivacy();
-      if (mounted) setState(() { _privacy = privacy; _loadingPrivacy = false; });
+      if (mounted) {
+        setState(() {
+          _privacy = privacy;
+          _loadingPrivacy = false;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() => _loadingPrivacy = false);
+      if (mounted) {
+        setState(() => _loadingPrivacy = false);
+      }
     }
   }
 
@@ -16589,31 +16980,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await FitilaBackend.updatePrivacy({key: value});
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
     }
   }
 
   Future<void> _pickAndUploadAvatar() async {
     final picker = ImagePicker();
-    final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85, maxWidth: 1080);
-    if (file == null) return;
+    final file = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 1080,
+    );
+    if (file == null) {
+      return;
+    }
     setState(() => _uploadingAvatar = true);
     try {
       final bytes = await file.readAsBytes();
-      final ext = file.name.contains('.') ? file.name.split('.').last.toLowerCase() : 'jpg';
+      final ext = file.name.contains('.')
+          ? file.name.split('.').last.toLowerCase()
+          : 'jpg';
       final contentType = ext == 'png' ? 'image/png' : 'image/jpeg';
-      await FitilaBackend.uploadAvatar(bytes: bytes, extension: ext, contentType: contentType);
+      await FitilaBackend.uploadAvatar(
+        bytes: bytes,
+        extension: ext,
+        contentType: contentType,
+      );
       await _loadProfile();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✓ Photo de profil mise à jour'), backgroundColor: _fitilaSage),
+        const SnackBar(
+          content: Text('✓ Photo de profil mise à jour'),
+          backgroundColor: _fitilaSage,
+        ),
       );
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
     } finally {
-      if (mounted) setState(() => _uploadingAvatar = false);
+      if (mounted) {
+        setState(() => _uploadingAvatar = false);
+      }
     }
   }
 
@@ -16621,29 +17039,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_recordingBio) {
       final asset = await _mediaController.stopAudio();
       setState(() => _recordingBio = false);
-      if (asset == null) return;
+      if (asset == null) {
+        return;
+      }
       setState(() => _uploadingBio = true);
       try {
         final bytes = await asset.readBytes();
-        await FitilaBackend.uploadBioAudio(bytes: bytes, contentType: asset.contentType, durationSeconds: 0);
+        await FitilaBackend.uploadBioAudio(
+          bytes: bytes,
+          contentType: asset.contentType,
+          durationSeconds: 0,
+        );
         await _loadProfile();
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✓ Bio audio enregistrée'), backgroundColor: _fitilaSage),
+          const SnackBar(
+            content: Text('✓ Bio audio enregistrée'),
+            backgroundColor: _fitilaSage,
+          ),
         );
       } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
       } finally {
-        if (mounted) setState(() => _uploadingBio = false);
+        if (mounted) {
+          setState(() => _uploadingBio = false);
+        }
       }
     } else {
       try {
         await _mediaController.startAudio();
         setState(() => _recordingBio = true);
       } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Micro indisponible : $e')));
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Micro indisponible : $e')));
       }
     }
   }
@@ -16654,10 +17093,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await _bioPlayer!.play(audio.UrlSource(url));
       _bioPlayer!.onPlayerComplete.first.then((_) {
-        if (mounted) setState(() => _bioPlaying = false);
+        if (mounted) {
+          setState(() => _bioPlaying = false);
+        }
       });
     } catch (_) {
-      if (mounted) setState(() => _bioPlaying = false);
+      if (mounted) {
+        setState(() => _bioPlaying = false);
+      }
     }
   }
 
@@ -16671,17 +17114,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: pass1, obscureText: true, decoration: const InputDecoration(labelText: 'Nouveau mot de passe')),
+            TextField(
+              controller: pass1,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Nouveau mot de passe',
+              ),
+            ),
             const SizedBox(height: 10),
-            TextField(controller: pass2, obscureText: true, decoration: const InputDecoration(labelText: 'Confirmer')),
+            TextField(
+              controller: pass2,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Confirmer'),
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
           FilledButton(
             onPressed: () {
-              if (pass1.text.length < 6) return;
-              if (pass1.text != pass2.text) return;
+              if (pass1.text.length < 6) {
+                return;
+              }
+              if (pass1.text != pass2.text) {
+                return;
+              }
               Navigator.pop(ctx, pass1.text);
             },
             child: const Text('Enregistrer'),
@@ -16691,16 +17151,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     pass1.dispose();
     pass2.dispose();
-    if (result == null) return;
+    if (result == null) {
+      return;
+    }
     try {
       await FitilaBackend.updatePassword(result);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✓ Mot de passe mis à jour'), backgroundColor: _fitilaSage),
+        const SnackBar(
+          content: Text('✓ Mot de passe mis à jour'),
+          backgroundColor: _fitilaSage,
+        ),
       );
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
     }
   }
 
@@ -16708,7 +17179,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _loading = true);
     try {
       final profile = await FitilaBackend.fetchProfile(widget.session.userId);
-      if (mounted) setState(() => _profile = profile);
+      if (mounted) {
+        setState(() => _profile = profile);
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -16721,7 +17194,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -16733,9 +17208,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final phone = TextEditingController(
       text: _profile?['phone_number']?.toString() ?? '',
     );
-    final bio = TextEditingController(
-      text: _profile?['bio']?.toString() ?? '',
-    );
+    final bio = TextEditingController(text: _profile?['bio']?.toString() ?? '');
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => AlertDialog(
@@ -16775,7 +17248,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           FilledButton(
             onPressed: () {
               final value = name.text.trim();
-              if (value.isEmpty) return;
+              if (value.isEmpty) {
+                return;
+              }
               Navigator.pop(context, {
                 'display_name': value,
                 'location': location.text.trim().isEmpty
@@ -16796,16 +17271,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     location.dispose();
     phone.dispose();
     bio.dispose();
-    if (result == null || !mounted) return;
+    if (result == null || !mounted) {
+      return;
+    }
     try {
       await FitilaBackend.updateProfile(widget.session.userId, result);
       await _loadProfile();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Profil mis à jour.')));
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('La mise à jour du profil a échoué.')),
       );
@@ -16887,16 +17368,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: ListTile(
               leading: const Icon(Icons.lock_rounded),
               title: const Text('Changer le mot de passe'),
-              subtitle: const Text('Met à jour votre mot de passe de connexion.'),
+              subtitle: const Text(
+                'Met à jour votre mot de passe de connexion.',
+              ),
               trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: widget.session.accessToken.isEmpty ? null : _changePassword,
+              onTap: widget.session.accessToken.isEmpty
+                  ? null
+                  : _changePassword,
             ),
           ),
           Card(
             child: ListTile(
               leading: const Icon(Icons.manage_accounts_rounded),
               title: const Text('Modifier profil'),
-              subtitle: const Text('Photo, nom, téléphone, localisation et bio.'),
+              subtitle: const Text(
+                'Photo, nom, téléphone, localisation et bio.',
+              ),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: widget.session.accessToken.isEmpty ? null : _editProfile,
             ),
@@ -16912,7 +17399,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Bio audio', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                  const Text(
+                    'Bio audio',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                  ),
                   const SizedBox(height: 4),
                   const Text(
                     "Présente-toi en Bariba ou en français — visible sur ton profil public.",
@@ -16921,19 +17411,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      if ((_profile?['bio_audio_url'] as String?)?.isNotEmpty == true)
+                      if ((_profile?['bio_audio_url'] as String?)?.isNotEmpty ==
+                          true)
                         IconButton.filled(
-                          onPressed: _bioPlaying ? null : () => _playBioAudio(_profile!['bio_audio_url'] as String),
-                          icon: Icon(_bioPlaying ? Icons.graphic_eq_rounded : Icons.play_arrow_rounded),
+                          onPressed: _bioPlaying
+                              ? null
+                              : () => _playBioAudio(
+                                  _profile!['bio_audio_url'] as String,
+                                ),
+                          icon: Icon(
+                            _bioPlaying
+                                ? Icons.graphic_eq_rounded
+                                : Icons.play_arrow_rounded,
+                          ),
                         ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: _uploadingBio ? null : _toggleBioRecording,
                           icon: _uploadingBio
-                              ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                              : Icon(_recordingBio ? Icons.stop_circle_rounded : Icons.mic_rounded, color: _recordingBio ? Colors.red : null),
-                          label: Text(_recordingBio ? 'Arrêter l\'enregistrement' : 'Enregistrer ma bio audio'),
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Icon(
+                                  _recordingBio
+                                      ? Icons.stop_circle_rounded
+                                      : Icons.mic_rounded,
+                                  color: _recordingBio ? Colors.red : null,
+                                ),
+                          label: Text(
+                            _recordingBio
+                                ? 'Arrêter l\'enregistrement'
+                                : 'Enregistrer ma bio audio',
+                          ),
                         ),
                       ),
                     ],
@@ -16980,7 +17494,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           if (_loadingPrivacy) const LinearProgressIndicator(),
           const SizedBox(height: 8),
-          const Text('Visibilité du profil', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5)),
+          const Text(
+            'Visibilité du profil',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -16991,14 +17508,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ('private', 'Privé'),
               ])
                 ChoiceChip(
-                  selected: (_privacy['profile_visibility'] as String? ?? 'public') == option.$1,
+                  selected:
+                      (_privacy['profile_visibility'] as String? ?? 'public') ==
+                      option.$1,
                   label: Text(option.$2),
-                  onSelected: (_) => _setPrivacy('profile_visibility', option.$1),
+                  onSelected: (_) =>
+                      _setPrivacy('profile_visibility', option.$1),
                 ),
             ],
           ),
           const SizedBox(height: 16),
-          const Text('Historique de traduction', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5)),
+          const Text(
+            'Historique de traduction',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -17008,9 +17531,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ('shared_teacher', 'Visible enseignant'),
               ])
                 ChoiceChip(
-                  selected: (_privacy['translation_history_visibility'] as String? ?? 'private') == option.$1,
+                  selected:
+                      (_privacy['translation_history_visibility'] as String? ??
+                          'private') ==
+                      option.$1,
                   label: Text(option.$2),
-                  onSelected: (_) => _setPrivacy('translation_history_visibility', option.$1),
+                  onSelected: (_) =>
+                      _setPrivacy('translation_history_visibility', option.$1),
                 ),
             ],
           ),
@@ -17085,11 +17612,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: _fitilaSurfaceAlt,
                           shape: BoxShape.circle,
                           border: Border.all(color: _fitilaPrimary, width: 2),
-                          image: (_profile?['avatar_url'] as String?)?.isNotEmpty == true
-                              ? DecorationImage(image: NetworkImage(_profile!['avatar_url'] as String), fit: BoxFit.cover)
+                          image:
+                              (_profile?['avatar_url'] as String?)
+                                      ?.isNotEmpty ==
+                                  true
+                              ? DecorationImage(
+                                  image: NetworkImage(
+                                    _profile!['avatar_url'] as String,
+                                  ),
+                                  fit: BoxFit.cover,
+                                )
                               : null,
                         ),
-                        child: (_profile?['avatar_url'] as String?)?.isNotEmpty == true
+                        child:
+                            (_profile?['avatar_url'] as String?)?.isNotEmpty ==
+                                true
                             ? null
                             : Text(
                                 _displayName.characters.first,
@@ -17106,7 +17643,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           bottom: 0,
                           right: 0,
                           child: GestureDetector(
-                            onTap: _uploadingAvatar ? null : _pickAndUploadAvatar,
+                            onTap: _uploadingAvatar
+                                ? null
+                                : _pickAndUploadAvatar,
                             child: Container(
                               width: 26,
                               height: 26,
@@ -17119,9 +17658,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ? const SizedBox(
                                       width: 12,
                                       height: 12,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
                                     )
-                                  : const Icon(Icons.camera_alt_rounded, size: 13, color: Colors.white),
+                                  : const Icon(
+                                      Icons.camera_alt_rounded,
+                                      size: 13,
+                                      color: Colors.white,
+                                    ),
                             ),
                           ),
                         ),
@@ -17142,10 +17688,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Text(
                     '${widget.session.phone} · ${widget.session.role}',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: _fitilaMuted,
-                      fontSize: 12,
-                    ),
+                    style: const TextStyle(color: _fitilaMuted, fontSize: 12),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -17257,10 +17800,7 @@ class _PremiumProfileStat extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: _fitilaMuted,
-              fontSize: 10,
-            ),
+            style: const TextStyle(color: _fitilaMuted, fontSize: 10),
           ),
         ],
       ),
@@ -17291,7 +17831,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadPreferences() async {
     try {
       final prefs = await FitilaBackend.fetchPreferences();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _baribaFirst = prefs['bariba_first'] as bool? ?? false;
         _offline = prefs['offline_cache'] as bool? ?? true;
@@ -17304,16 +17846,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _loadingPrefs = false;
       });
     } catch (_) {
-      if (mounted) setState(() => _loadingPrefs = false);
+      if (mounted) {
+        setState(() => _loadingPrefs = false);
+      }
     }
   }
 
-  Future<void> _setPref(String key, bool value, void Function(bool) apply) async {
+  Future<void> _setPref(
+    String key,
+    bool value,
+    void Function(bool) apply,
+  ) async {
     setState(() => apply(value));
     try {
       await FitilaBackend.updatePreferences({key: value});
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Non enregistré (hors-ligne ?) : $e')),
       );
@@ -17325,18 +17875,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final data = await FitilaBackend.exportMyData();
       final dir = await getApplicationDocumentsDirectory();
-      final fileName = 'fitila_export_${DateTime.now().millisecondsSinceEpoch}.json';
+      final fileName =
+          'fitila_export_${DateTime.now().millisecondsSinceEpoch}.json';
       final file = File('${dir.path}${Platform.pathSeparator}$fileName');
-      await file.writeAsString(const JsonEncoder.withIndent('  ').convert(data));
-      if (!mounted) return;
+      await file.writeAsString(
+        const JsonEncoder.withIndent('  ').convert(data),
+      );
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('✓ Données exportées : $fileName'), backgroundColor: _fitilaSage),
+        SnackBar(
+          content: Text('✓ Données exportées : $fileName'),
+          backgroundColor: _fitilaSage,
+        ),
       );
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur export : $e')));
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erreur export : $e')));
     } finally {
-      if (mounted) setState(() => _exporting = false);
+      if (mounted) {
+        setState(() => _exporting = false);
+      }
     }
   }
 
@@ -17350,24 +17914,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
           'Cette action est irréversible une fois traitée.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Demander la suppression', style: TextStyle(color: Colors.red)),
+            child: const Text(
+              'Demander la suppression',
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true) {
+      return;
+    }
     try {
       await FitilaBackend.requestAccountDeletion();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Demande envoyée. Un administrateur va traiter votre demande.')),
+        const SnackBar(
+          content: Text(
+            'Demande envoyée. Un administrateur va traiter votre demande.',
+          ),
+        ),
       );
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
     }
   }
 
@@ -17395,27 +17977,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.visibility_rounded,
             title: 'Confirmation avant actions sensibles',
             value: _visualSecurity,
-            onChanged: (v) => _setPref('visual_security', v, (val) => _visualSecurity = val),
+            onChanged: (v) =>
+                _setPref('visual_security', v, (val) => _visualSecurity = val),
           ),
           const SizedBox(height: 12),
-          const Text('Données', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: _fitilaMuted)),
+          const Text(
+            'Données',
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+              color: _fitilaMuted,
+            ),
+          ),
           const SizedBox(height: 8),
           Card(
             child: ListTile(
               leading: const Icon(Icons.download_rounded),
               title: const Text('Exporter mes données'),
-              subtitle: const Text('Profil, historique de traduction et progression d\'apprentissage (JSON).'),
+              subtitle: const Text(
+                'Profil, historique de traduction et progression d\'apprentissage (JSON).',
+              ),
               trailing: _exporting
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Icon(Icons.chevron_right_rounded),
               onTap: _exporting ? null : _exportData,
             ),
           ),
           Card(
             child: ListTile(
-              leading: const Icon(Icons.delete_forever_rounded, color: Colors.red),
-              title: const Text('Supprimer mon compte', style: TextStyle(color: Colors.red)),
-              subtitle: const Text('Envoie une demande de suppression à un administrateur.'),
+              leading: const Icon(
+                Icons.delete_forever_rounded,
+                color: Colors.red,
+              ),
+              title: const Text(
+                'Supprimer mon compte',
+                style: TextStyle(color: Colors.red),
+              ),
+              subtitle: const Text(
+                'Envoie une demande de suppression à un administrateur.',
+              ),
               onTap: _confirmDeleteAccount,
             ),
           ),
@@ -17505,37 +18109,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.language_rounded,
             title: 'Afficher le Bariba en premier',
             value: _baribaFirst,
-            onChanged: (value) => _setPref('bariba_first', value, (v) => _baribaFirst = v),
+            onChanged: (value) =>
+                _setPref('bariba_first', value, (v) => _baribaFirst = v),
           ),
           _SwitchTile(
             icon: Icons.offline_bolt_rounded,
             title: 'Activer le cache offline',
             value: _offline,
-            onChanged: (value) => _setPref('offline_cache', value, (v) => _offline = v),
+            onChanged: (value) =>
+                _setPref('offline_cache', value, (v) => _offline = v),
           ),
           _SwitchTile(
             icon: Icons.volume_up_rounded,
             title: 'Lecture audio automatique',
             value: _audio,
-            onChanged: (value) => _setPref('auto_audio', value, (v) => _audio = v),
+            onChanged: (value) =>
+                _setPref('auto_audio', value, (v) => _audio = v),
           ),
           _SwitchTile(
             icon: Icons.notifications_rounded,
             title: 'Notifications fil, classe et corrections',
             value: _push,
-            onChanged: (value) => _setPref('notifications', value, (v) => _push = v),
+            onChanged: (value) =>
+                _setPref('notifications', value, (v) => _push = v),
           ),
           _SwitchTile(
             icon: Icons.touch_app_rounded,
             title: 'Grands contrôles tactiles',
             value: _largeTouch,
-            onChanged: (value) => _setPref('large_touch', value, (v) => _largeTouch = v),
+            onChanged: (value) =>
+                _setPref('large_touch', value, (v) => _largeTouch = v),
           ),
           _SwitchTile(
             icon: Icons.analytics_rounded,
             title: 'Partager diagnostics anonymes',
             value: _analytics,
-            onChanged: (value) => _setPref('share_diagnostics', value, (v) => _analytics = v),
+            onChanged: (value) =>
+                _setPref('share_diagnostics', value, (v) => _analytics = v),
           ),
           _SwitchTile(
             icon: Icons.admin_panel_settings_rounded,
@@ -17653,11 +18263,18 @@ class _PageFrame extends StatelessWidget {
           return Column(
             children: [
               Padding(
-                padding: EdgeInsets.fromLTRB(compact ? 18 : 22, 6, compact ? 18 : 22, 14),
+                padding: EdgeInsets.fromLTRB(
+                  compact ? 18 : 22,
+                  6,
+                  compact ? 18 : 22,
+                  14,
+                ),
                 child: Row(
                   children: [
                     _PremiumTopIcon(
-                      icon: canOpenDrawer ? Icons.menu_rounded : Icons.arrow_back_rounded,
+                      icon: canOpenDrawer
+                          ? Icons.menu_rounded
+                          : Icons.arrow_back_rounded,
                       tooltip: canOpenDrawer ? 'Menu' : 'Retour',
                       onPressed: () {
                         if (canOpenDrawer) {
@@ -17709,7 +18326,10 @@ class _PageFrame extends StatelessWidget {
               if (compact && action != null)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
-                  child: Align(alignment: Alignment.centerRight, child: action!),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: action!,
+                  ),
                 ),
               Expanded(
                 child: Padding(
@@ -17984,7 +18604,9 @@ class _PostCardState extends State<_PostCard> {
       _videoReady = _videoController!.initialize();
     }
     _audioPlayer.onPlayerComplete.listen((_) {
-      if (mounted) setState(() => _audioPlaying = false);
+      if (mounted) {
+        setState(() => _audioPlaying = false);
+      }
     });
   }
 
@@ -17996,7 +18618,9 @@ class _PostCardState extends State<_PostCard> {
   }
 
   Future<void> _toggleLike() async {
-    if (_likeBusy) return;
+    if (_likeBusy) {
+      return;
+    }
     final next = !_liked;
     setState(() {
       _likeBusy = true;
@@ -18013,30 +18637,40 @@ class _PostCardState extends State<_PostCard> {
         );
       }
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _liked = !next;
         widget.post.likes += next ? -1 : 1;
       });
     } finally {
-      if (mounted) setState(() => _likeBusy = false);
+      if (mounted) {
+        setState(() => _likeBusy = false);
+      }
     }
   }
 
   Future<void> _toggleAudio() async {
     final url = widget.post.mediaUrl;
-    if (url == null || url.isEmpty) return;
+    if (url == null || url.isEmpty) {
+      return;
+    }
     if (_audioPlaying) {
       await _audioPlayer.pause();
     } else {
       await _audioPlayer.play(audio.UrlSource(url));
     }
-    if (mounted) setState(() => _audioPlaying = !_audioPlaying);
+    if (mounted) {
+      setState(() => _audioPlaying = !_audioPlaying);
+    }
   }
 
   Widget _mediaPreview(FeedPost post) {
     final url = post.mediaUrl;
-    if (url == null || url.isEmpty) return const SizedBox.shrink();
+    if (url == null || url.isEmpty) {
+      return const SizedBox.shrink();
+    }
     if (post.kind == 'photo') {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
@@ -18053,7 +18687,9 @@ class _PostCardState extends State<_PostCard> {
         post.kind == 'vidéo' ||
         post.kind == 'video') {
       final controller = _videoController;
-      if (controller == null) return const SizedBox.shrink();
+      if (controller == null) {
+        return const SizedBox.shrink();
+      }
       return FutureBuilder<void>(
         future: _videoReady,
         builder: (context, snapshot) {
@@ -18351,7 +18987,9 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
     setState(() => _busy = true);
     try {
       final generated = await FitilaBackend.askFitilaIa(prompt);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _kind = 'ia';
         _title.text = 'Publication Fitila IA';
@@ -18359,12 +18997,16 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
         _tags.text = 'ia, bariba, communaute';
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('La génération IA a échoué.')),
       );
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -18373,9 +19015,13 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
       final picked = _kind == 'photo'
           ? await _mediaController.pickImage(source)
           : await _mediaController.pickVideo(source);
-      if (picked != null && mounted) setState(() => _media = picked);
+      if (picked != null && mounted) {
+        setState(() => _media = picked);
+      }
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Le média ne peut pas être ouvert.')),
       );
@@ -18386,17 +19032,23 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
     try {
       if (_recording) {
         final recorded = await _mediaController.stopAudio();
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         setState(() {
           _recording = false;
           _media = recorded;
         });
       } else {
         await _mediaController.startAudio();
-        if (mounted) setState(() => _recording = true);
+        if (mounted) {
+          setState(() => _recording = true);
+        }
       }
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _recording = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -18409,7 +19061,9 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
   Future<void> _publish() async {
     final title = _title.text.trim();
     final body = _text.text.trim();
-    if (title.isEmpty && body.isEmpty || _busy) return;
+    if (title.isEmpty && body.isEmpty || _busy) {
+      return;
+    }
     if (_publishNow &&
         (_kind == 'audio' || _kind == 'vidéo' || _kind == 'photo') &&
         _media == null) {
@@ -18444,11 +19098,15 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
       final post = _publishNow && widget.onPersistPost != null
           ? await widget.onPersistPost!(draft)
           : draft;
-      if (!mounted || post == null) return;
+      if (!mounted || post == null) {
+        return;
+      }
       widget.onPostCreated(post);
       Navigator.pop(context);
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -18457,7 +19115,9 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
         ),
       );
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -18745,9 +19405,7 @@ class _TextPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: _fitilaCard,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: readOnly ? _fitilaPrimary : _fitilaBorder,
-        ),
+        border: Border.all(color: readOnly ? _fitilaPrimary : _fitilaBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -19082,6 +19740,7 @@ class _BaribaKeyboard extends StatelessWidget {
     );
   }
 }
+
 class _FeatureGrid extends StatelessWidget {
   const _FeatureGrid({required this.items});
 
@@ -19194,10 +19853,7 @@ class _ActionList extends StatelessWidget {
                   item.subtitle,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _fitilaMuted,
-                    fontSize: 11,
-                  ),
+                  style: const TextStyle(color: _fitilaMuted, fontSize: 11),
                 ),
                 trailing: const Icon(
                   Icons.chevron_right_rounded,
@@ -19210,6 +19866,7 @@ class _ActionList extends StatelessWidget {
     );
   }
 }
+
 class _ActionItem {
   const _ActionItem(this.icon, this.title, this.subtitle);
 
@@ -19394,11 +20051,7 @@ class _NavItem extends StatelessWidget {
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         selectedTileColor: _fitilaSurfaceAlt,
-        leading: Icon(
-          page.icon,
-          size: 19,
-          color: _fitilaGoldDeep,
-        ),
+        leading: Icon(page.icon, size: 19, color: _fitilaGoldDeep),
         title: Text(
           page.title,
           style: TextStyle(
@@ -19663,6 +20316,7 @@ class _SwitchTile extends StatelessWidget {
     );
   }
 }
+
 class _EmptyState extends StatelessWidget {
   const _EmptyState({
     required this.icon,
@@ -19824,6 +20478,541 @@ class _InfoBox extends StatelessWidget {
       ),
     );
   }
+}
+
+// ============================================================================
+// Widgets partagés du design premium (maquette IA jointe) — orbe micro,
+// ondes, anneaux de score, étapes de traitement, écran sombre.
+//
+// Règle de conception non négociable : `_FitilaProcessingChecklist.doneCount`
+// et `_FitilaScoreRing.score` doivent toujours refléter un état RÉEL déjà
+// obtenu (résultat d'un appel réseau terminé, score calculé côté serveur) —
+// jamais une minuterie ou une animation déconnectée du travail effectif.
+// Les animations ci-dessous (pulsations, ondes, tracé de l'anneau) sont
+// purement décoratives, exactement comme dans la maquette de référence
+// (ses propres barres d'onde utilisent une boucle CSS `waveBounce`, sans
+// lien avec une amplitude audio réelle) — reproduire ce comportement n'est
+// donc pas une simplification malhonnête, mais une fidélité exacte.
+// ============================================================================
+
+/// Fond dégradé sombre utilisé pour les écrans "IA" (micro, traitement,
+/// score...) — même dégradé que la maquette (`--dark1/2/3`).
+class _FitilaDarkStage extends StatelessWidget {
+  const _FitilaDarkStage({required this.child, this.padding});
+
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: padding ?? const EdgeInsets.fromLTRB(20, 28, 20, 24),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [_fitilaDark1, _fitilaDark2, _fitilaDark3],
+          stops: [0.0, 0.55, 1.0],
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Orbe micro pulsant (3 anneaux d'expansion en boucle) — écran d'accueil
+/// vocal d'Echo Sɔ̃ɔ et de Live Griot IA. `active` accélère et intensifie
+/// la pulsation (ex: pendant un enregistrement réel en cours).
+class _FitilaOrbMic extends StatefulWidget {
+  const _FitilaOrbMic({
+    required this.icon,
+    this.active = false,
+    this.size = 132,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final bool active;
+  final double size;
+  final VoidCallback? onTap;
+
+  @override
+  State<_FitilaOrbMic> createState() => _FitilaOrbMicState();
+}
+
+class _FitilaOrbMicState extends State<_FitilaOrbMic>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: widget.active ? 1400 : 2200),
+    )..repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant _FitilaOrbMic oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.active != widget.active) {
+      _controller.duration = Duration(
+        milliseconds: widget.active ? 1400 : 2200,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Widget _ring(double delay) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final t = (_controller.value + delay) % 1.0;
+        final scale = 1.0 + t * 0.9;
+        final opacity =
+            (1.0 - t).clamp(0.0, 1.0) * (widget.active ? 0.55 : 0.35);
+        return Opacity(
+          opacity: opacity,
+          child: Transform.scale(
+            scale: scale,
+            child: Container(
+              width: widget.size,
+              height: widget.size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: _fitilaPrimary, width: 1.4),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: SizedBox(
+        width: widget.size * 2.1,
+        height: widget.size * 2.1,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            _ring(0.0),
+            _ring(0.33),
+            _ring(0.66),
+            Container(
+              width: widget.size,
+              height: widget.size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [_fitilaPrimary, _fitilaGoldDeep],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _fitilaPrimary.withValues(
+                      alpha: widget.active ? 0.55 : 0.35,
+                    ),
+                    blurRadius: 28,
+                    spreadRadius: widget.active ? 6 : 2,
+                  ),
+                ],
+              ),
+              child: Icon(
+                widget.icon,
+                color: Colors.white,
+                size: widget.size * 0.42,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Barres d'onde décoratives (comme la maquette : animation en boucle,
+/// pas une véritable analyse d'amplitude audio). `active=false` fige les
+/// barres à une hauteur basse et régulière (silence / en pause).
+class _FitilaWaveformBars extends StatefulWidget {
+  const _FitilaWaveformBars({
+    this.active = true,
+    this.barCount = 20,
+    this.height = 46,
+    this.color,
+  });
+
+  final bool active;
+  final int barCount;
+  final double height;
+  final Color? color;
+
+  @override
+  State<_FitilaWaveformBars> createState() => _FitilaWaveformBarsState();
+}
+
+class _FitilaWaveformBarsState extends State<_FitilaWaveformBars>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final List<double> _phases;
+  late final List<double> _speeds;
+
+  @override
+  void initState() {
+    super.initState();
+    final rnd = math.Random(7);
+    _phases = List.generate(
+      widget.barCount,
+      (_) => rnd.nextDouble() * math.pi * 2,
+    );
+    _speeds = List.generate(
+      widget.barCount,
+      (_) => 0.7 + rnd.nextDouble() * 0.9,
+    );
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 60),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final barColor = widget.color ?? _fitilaPrimary;
+    return SizedBox(
+      height: widget.height,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          final t = _controller.value * math.pi * 2 * 60;
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(widget.barCount, (i) {
+              double level;
+              if (widget.active) {
+                level =
+                    0.28 +
+                    0.72 * (0.5 + 0.5 * math.sin(t * _speeds[i] + _phases[i]));
+              } else {
+                level = 0.16;
+              }
+              return Container(
+                width: 3.4,
+                height: widget.height * level,
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                decoration: BoxDecoration(
+                  color: barColor.withValues(
+                    alpha: widget.active ? 0.95 : 0.45,
+                  ),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              );
+            }),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Petit indicateur "étape X / N" affiché en haut d'un parcours en
+/// plusieurs écrans (assistant Echo Sɔ̃ɔ, Aburu Fim IA...).
+class _FitilaStepProgress extends StatelessWidget {
+  const _FitilaStepProgress({
+    required this.totalSteps,
+    required this.currentStep,
+    this.light = false,
+  });
+
+  final int totalSteps;
+  final int currentStep;
+  final bool light;
+
+  @override
+  Widget build(BuildContext context) {
+    final inactive = light
+        ? Colors.white.withValues(alpha: 0.25)
+        : _fitilaBorder;
+    final active = light ? Colors.white : _fitilaPrimary;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(totalSteps, (i) {
+        final done = i <= currentStep;
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          width: i == currentStep ? 22 : 8,
+          height: 6,
+          decoration: BoxDecoration(
+            color: done ? active : inactive,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+/// Liste d'étapes de traitement (ex: "Traduction en cours", "Publication
+/// de la vidéo") avec coche animée pour les étapes réellement terminées.
+///
+/// IMPORTANT : `doneCount` doit venir d'un état applicatif réel (nombre
+/// d'appels asynchrones effectivement terminés) — jamais d'une minuterie
+/// indépendante du travail en cours. Une étape sans équivalent réel
+/// aujourd'hui doit être passée dans `futureSteps`, affichée avec un
+/// badge "Bientôt", jamais mêlée aux étapes réellement exécutées.
+class _FitilaProcessingChecklist extends StatelessWidget {
+  const _FitilaProcessingChecklist({
+    required this.steps,
+    required this.doneCount,
+    this.futureSteps = const [],
+    this.light = false,
+  });
+
+  final List<String> steps;
+  final int doneCount;
+  final List<String> futureSteps;
+  final bool light;
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = light ? Colors.white : _fitilaInk;
+    final mutedColor = light
+        ? Colors.white.withValues(alpha: 0.45)
+        : _fitilaMuted;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < steps.length; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                if (i < doneCount)
+                  Container(
+                    width: 20,
+                    height: 20,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _fitilaSage,
+                    ),
+                    child: const Icon(
+                      Icons.check_rounded,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                  )
+                else if (i == doneCount)
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      valueColor: AlwaysStoppedAnimation(
+                        light ? Colors.white : _fitilaPrimary,
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: mutedColor, width: 1.4),
+                    ),
+                  ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    steps[i],
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: i <= doneCount
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: i <= doneCount ? textColor : mutedColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        for (final label in futureSteps)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: mutedColor, width: 1.4),
+                  ),
+                  child: Icon(
+                    Icons.schedule_rounded,
+                    size: 12,
+                    color: mutedColor,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: mutedColor,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: mutedColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Bientôt',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: mutedColor,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Anneau de score animé (0-100), tracé progressivement jusqu'à `score`.
+/// `score` doit être une valeur réellement calculée (ex: retour du
+/// backend de Sagesse Battle), jamais un chiffre fixe de démonstration.
+class _FitilaScoreRing extends StatelessWidget {
+  const _FitilaScoreRing({
+    required this.score,
+    this.size = 148,
+    this.label,
+    this.light = true,
+  });
+
+  final int score;
+  final double size;
+  final String? label;
+  final bool light;
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = light ? Colors.white : _fitilaInk;
+    final mutedColor = light
+        ? Colors.white.withValues(alpha: 0.6)
+        : _fitilaMuted;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: score.clamp(0, 100).toDouble()),
+      duration: const Duration(milliseconds: 1100),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, _) {
+        return SizedBox(
+          width: size,
+          height: size,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              CustomPaint(
+                size: Size(size, size),
+                painter: _ScoreRingPainter(progress: value / 100),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${value.round()}%',
+                    style: TextStyle(
+                      fontSize: size * 0.22,
+                      fontWeight: FontWeight.w800,
+                      color: textColor,
+                    ),
+                  ),
+                  if (label != null)
+                    Text(
+                      label!,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: mutedColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ScoreRingPainter extends CustomPainter {
+  _ScoreRingPainter({required this.progress});
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.shortestSide - 12) / 2;
+    final trackPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.14)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, trackPaint);
+
+    final progressPaint = Paint()
+      ..shader = SweepGradient(
+        colors: const [_fitilaPrimary, _fitilaGoldDeep, _fitilaPrimary],
+        startAngle: 0,
+        endAngle: math.pi * 2,
+      ).createShader(Rect.fromCircle(center: center, radius: radius))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10
+      ..strokeCap = StrokeCap.round;
+
+    final sweep = math.pi * 2 * progress.clamp(0.0, 1.0);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      sweep,
+      false,
+      progressPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ScoreRingPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 const _lessons = [
@@ -20472,6 +21661,209 @@ String _initialLetter(String? value) {
   return trimmed.isEmpty ? 'G' : trimmed.substring(0, 1).toUpperCase();
 }
 
+class _FitilaListenButton extends StatefulWidget {
+  const _FitilaListenButton({
+    this.bariba,
+    this.french,
+    required this.label,
+    this.compact = false,
+    this.dark = false,
+  });
+
+  final String? bariba;
+  final String? french;
+  final String label;
+  final bool compact;
+  final bool dark;
+
+  @override
+  State<_FitilaListenButton> createState() => _FitilaListenButtonState();
+}
+
+class _FitilaListenButtonState extends State<_FitilaListenButton> {
+  final _player = audio.AudioPlayer();
+  final _frenchTts = FlutterTts();
+  bool _busy = false;
+  bool _playing = false;
+
+  @override
+  void dispose() {
+    _player.dispose();
+    _frenchTts.stop();
+    super.dispose();
+  }
+
+  Future<void> _stop() async {
+    await _player.stop();
+    await _frenchTts.stop();
+    if (mounted) {
+      setState(() {
+        _busy = false;
+        _playing = false;
+      });
+    }
+  }
+
+  Future<void> _toggle() async {
+    if (_busy) {
+      return;
+    }
+    if (_playing) {
+      await _stop();
+      return;
+    }
+
+    final bariba = (widget.bariba ?? '').trim();
+    final french = (widget.french ?? '').trim();
+    final text = bariba.isNotEmpty ? bariba : french;
+    if (text.length < 2) {
+      return;
+    }
+
+    setState(() {
+      _busy = true;
+      _playing = false;
+    });
+    try {
+      if (bariba.isNotEmpty) {
+        if (!FitilaBackend.configured) {
+          throw StateError('Service vocal Bariba indisponible hors connexion.');
+        }
+        final response = await FitilaBackend.client.functions.invoke(
+          'bariba-tts',
+          body: {
+            'text': bariba,
+            'speakingRate': 1.0,
+            'noiseScale': 0.5,
+            'noiseScaleW': 0.6,
+          },
+        );
+        final data = response.data;
+        if (data is! Map) {
+          throw StateError('Réponse audio invalide.');
+        }
+        if (data['skipped'] == true) {
+          return;
+        }
+        final remoteError = data['error']?.toString().trim() ?? '';
+        if (remoteError.isNotEmpty) {
+          throw StateError(remoteError);
+        }
+
+        final audioUrl = data['audio_url']?.toString().trim() ?? '';
+        final encoded = data['audio']?.toString().trim() ?? '';
+        if (mounted) {
+          setState(() => _playing = true);
+        }
+        if (audioUrl.isNotEmpty) {
+          await _player.play(audio.UrlSource(audioUrl));
+        } else if (encoded.isNotEmpty) {
+          final raw = encoded.contains(',') ? encoded.split(',').last : encoded;
+          await _player.play(audio.BytesSource(base64Decode(raw)));
+        } else {
+          throw StateError('Aucun audio reçu du service vocal.');
+        }
+        await _player.onPlayerComplete.first;
+      } else {
+        await _frenchTts.setLanguage('fr-FR');
+        await _frenchTts.setSpeechRate(0.5);
+        await _frenchTts.awaitSpeakCompletion(true);
+        if (mounted) {
+          setState(() => _playing = true);
+        }
+        await _frenchTts.speak(french);
+      }
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      final message = error.toString().replaceFirst('Bad state: ', '');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _playing = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = widget.dark ? Colors.white : _fitilaGoldDeep;
+    return TextButton.icon(
+      style: TextButton.styleFrom(
+        foregroundColor: foreground,
+        visualDensity: widget.compact
+            ? VisualDensity.compact
+            : VisualDensity.standard,
+        padding: widget.compact
+            ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+            : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+      onPressed: _busy ? null : _toggle,
+      icon: _busy
+          ? SizedBox(
+              width: widget.compact ? 14 : 18,
+              height: widget.compact ? 14 : 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: foreground,
+              ),
+            )
+          : Icon(
+              _playing ? Icons.stop_circle_rounded : Icons.volume_up_rounded,
+              size: widget.compact ? 17 : 20,
+            ),
+      label: Text(
+        widget.label,
+        style: TextStyle(fontSize: widget.compact ? 11 : 13),
+      ),
+    );
+  }
+}
+
+class _FitilaCollapsibleNote extends StatelessWidget {
+  const _FitilaCollapsibleNote({
+    required this.icon,
+    required this.summary,
+    required this.detail,
+  });
+
+  final IconData icon;
+  final String summary;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      color: _fitilaSurfaceAlt,
+      child: ExpansionTile(
+        leading: Icon(icon, color: _fitilaGoldDeep, size: 20),
+        title: Text(
+          summary,
+          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+        ),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              detail,
+              style: TextStyle(color: _fitilaMuted, fontSize: 12, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────
 // 1. Echo Sɔ̃ɔ — voix/texte + traduction instantanée + visuel signature
 // ─────────────────────────────────────────────────────────────────
@@ -20496,11 +21888,36 @@ class _EchoSonScreenState extends State<EchoSonScreen> {
   final _mediaController = FitilaMediaController();
   final _textController = TextEditingController();
   static const _presets = [
-    _EchoVisualPreset('Aube dorée', Color(0xFFC99530), Color(0xFF9C6B1D), Icons.wb_sunny_rounded),
-    _EchoVisualPreset('Nuit Sahel', Color(0xFF241F2E), Color(0xFF3A3448), Icons.nightlight_round),
-    _EchoVisualPreset("Terre d'argile", Color(0xFFB54E33), Color(0xFF8C3D28), Icons.terrain_rounded),
-    _EchoVisualPreset('Feuille de sauge', Color(0xFF3F6E52), Color(0xFF2C4E3A), Icons.eco_rounded),
-    _EchoVisualPreset('Griot pourpre', Color(0xFF6758C9), Color(0xFF4A3B96), Icons.auto_awesome_rounded),
+    _EchoVisualPreset(
+      'Aube dorée',
+      Color(0xFFC99530),
+      Color(0xFF9C6B1D),
+      Icons.wb_sunny_rounded,
+    ),
+    _EchoVisualPreset(
+      'Nuit Sahel',
+      Color(0xFF241F2E),
+      Color(0xFF3A3448),
+      Icons.nightlight_round,
+    ),
+    _EchoVisualPreset(
+      "Terre d'argile",
+      Color(0xFFB54E33),
+      Color(0xFF8C3D28),
+      Icons.terrain_rounded,
+    ),
+    _EchoVisualPreset(
+      'Feuille de sauge',
+      Color(0xFF3F6E52),
+      Color(0xFF2C4E3A),
+      Icons.eco_rounded,
+    ),
+    _EchoVisualPreset(
+      'Griot pourpre',
+      Color(0xFF6758C9),
+      Color(0xFF4A3B96),
+      Icons.auto_awesome_rounded,
+    ),
   ];
   int _presetIndex = 0;
   TranslationDirection _direction = TranslationDirection.frenchToBariba;
@@ -20509,39 +21926,138 @@ class _EchoSonScreenState extends State<EchoSonScreen> {
   bool _recording = false;
   FitilaMediaAsset? _audio;
   bool _publishing = false;
+  final _playback = audio.AudioPlayer();
+  bool _playingBack = false;
+
+  // Parcours en 4 écrans, inspiré du visuel de la maquette premium jointe
+  // (orbe micro → enregistrement → traitement réel → aperçu/publication),
+  // implémenté comme une simple machine à états interne plutôt qu'avec
+  // de nouvelles routes, pour ne rien changer à la navigation partagée.
+  // 0 = accueil (choisir voix ou texte) · 1 = enregistrement en cours ·
+  // 2 = aperçu / édition · 3 = publication en cours (traitement réel).
+  int _step = 0;
+  Timer? _recTimer;
+  int _recElapsedSeconds = 0;
 
   @override
   void dispose() {
     _textController.dispose();
     _mediaController.dispose();
+    _playback.dispose();
+    _recTimer?.cancel();
     super.dispose();
+  }
+
+  String get _recTimerLabel {
+    final m = (_recElapsedSeconds ~/ 60).toString().padLeft(2, '0');
+    final s = (_recElapsedSeconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  Future<void> _startRecordingStep() async {
+    try {
+      await _mediaController.startAudio();
+      if (!mounted) {
+        return;
+      }
+      _recTimer?.cancel();
+      _recElapsedSeconds = 0;
+      _recTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) {
+          setState(() => _recElapsedSeconds++);
+        }
+      });
+      setState(() {
+        _recording = true;
+        _step = 1;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Bad state: ', '')),
+        ),
+      );
+    }
   }
 
   Future<void> _toggleRecording() async {
     try {
       if (_recording) {
         final asset = await _mediaController.stopAudio();
-        if (!mounted) return;
+        _recTimer?.cancel();
+        if (!mounted) {
+          return;
+        }
         setState(() {
           _recording = false;
           _audio = asset;
+          _step = 2;
         });
       } else {
-        await _mediaController.startAudio();
-        if (mounted) setState(() => _recording = true);
+        await _startRecordingStep();
       }
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
+      _recTimer?.cancel();
       setState(() => _recording = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceFirst('Bad state: ', ''))),
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Bad state: ', '')),
+        ),
       );
     }
   }
 
+  Future<void> _discardRecording() async {
+    await _playback.stop();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _audio = null;
+      _playingBack = false;
+      // Sans audio ni texte déjà saisi, revenir à l'accueil plutôt que de
+      // laisser un écran d'aperçu vide.
+      if (_textController.text.trim().isEmpty) {
+        _step = 0;
+      }
+    });
+  }
+
+  Future<void> _togglePlayback() async {
+    final clip = _audio;
+    if (clip == null) {
+      return;
+    }
+    if (_playingBack) {
+      await _playback.stop();
+      if (mounted) {
+        setState(() => _playingBack = false);
+      }
+      return;
+    }
+    await _playback.play(audio.DeviceFileSource(clip.path));
+    if (!mounted) {
+      return;
+    }
+    setState(() => _playingBack = true);
+    _playback.onPlayerComplete.first.then((_) {
+      if (mounted) {
+        setState(() => _playingBack = false);
+      }
+    });
+  }
+
   Future<void> _translate() async {
     final text = _textController.text.trim();
-    if (text.isEmpty || _translating) return;
+    if (text.isEmpty || _translating) {
+      return;
+    }
     setState(() => _translating = true);
     try {
       final session = FitilaBackend.client.auth.currentSession;
@@ -20550,27 +22066,46 @@ class _EchoSonScreenState extends State<EchoSonScreen> {
         _direction,
         accessToken: session?.accessToken,
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _translated = result);
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Traduction indisponible pour le moment.')),
+        const SnackBar(
+          content: Text('Traduction indisponible pour le moment.'),
+        ),
       );
     } finally {
-      if (mounted) setState(() => _translating = false);
+      if (mounted) {
+        setState(() => _translating = false);
+      }
     }
   }
+
+  // Reflète une progression RÉELLE (pas une minuterie) : 0 tant que rien
+  // n'est parti, 1 dès que la requête réseau de publication est en vol
+  // (préparation client déjà faite), 2 seulement après sa réussite.
+  int _publishDoneCount = 0;
 
   Future<void> _publish() async {
     final text = _textController.text.trim();
     if (text.isEmpty && _audio == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ajoutez un texte ou un enregistrement audio.')),
+        const SnackBar(
+          content: Text('Ajoutez un texte ou un enregistrement audio.'),
+        ),
       );
       return;
     }
-    setState(() => _publishing = true);
+    setState(() {
+      _publishing = true;
+      _publishDoneCount = 1;
+      _step = 3;
+    });
     final preset = _presets[_presetIndex];
     final caption = [
       text,
@@ -20592,209 +22127,552 @@ class _EchoSonScreenState extends State<EchoSonScreen> {
               hashtags: const ['echo-sonn', 'fitila-ia'],
               templateId: preset.name,
             );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       widget.onPostCreated(FeedPost.fromBackend(row));
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Echo Sɔ̃ɔ publié dans le fil.')),
+        SnackBar(
+          content: const Text('Echo Sɔ̃ɔ publié dans le fil.'),
+          action: caption.trim().isEmpty
+              ? null
+              : SnackBarAction(
+                  label: 'Rendre bilingue',
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SasaraIaScreen(
+                        onPostCreated: widget.onPostCreated,
+                        initialText: caption,
+                      ),
+                    ),
+                  ),
+                ),
+        ),
       );
+      await _playback.stop();
       setState(() {
         _textController.clear();
         _translated = '';
         _audio = null;
+        _playingBack = false;
+        _publishDoneCount = 2;
+        _step = 0;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
+      setState(() => _step = 2);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Publication impossible. Réessayez.')),
       );
     } finally {
-      if (mounted) setState(() => _publishing = false);
+      if (mounted) {
+        setState(() => _publishing = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final preset = _presets[_presetIndex];
     return _PageFrame(
       title: 'Echo Sɔ̃ɔ',
-      subtitle: "Voix, texte et traduction instantanée habillés d'un visuel signature.",
-      child: ListView(
+      subtitle:
+          "Voix, texte et traduction instantanée habillés d'un visuel signature.",
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 260),
+        child: KeyedSubtree(key: ValueKey(_step), child: _buildStepBody()),
+      ),
+    );
+  }
+
+  Widget _buildStepBody() {
+    switch (_step) {
+      case 1:
+        return _buildRecordingStep();
+      case 2:
+        return _buildPreviewStep();
+      case 3:
+        return _buildProcessingStep();
+      case 0:
+      default:
+        return _buildIntroStep();
+    }
+  }
+
+  // Étape 1/4 (maquette) — orbe micro, choix voix ou texte.
+  Widget _buildIntroStep() {
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [preset.colorA, preset.colorB],
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(preset.icon, color: Colors.white, size: 22),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        preset.name,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(_recording ? Icons.stop_circle_rounded : Icons.mic_rounded, color: Colors.white),
-                      tooltip: _recording ? 'Arrêter' : 'Enregistrer une voix',
-                      onPressed: _toggleRecording,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  _audio != null
-                      ? 'Voix enregistrée : ${_audio!.name}'
-                      : 'Aucun enregistrement — le texte ci-dessous sera publié.',
-                  style: const TextStyle(color: Colors.white70, fontSize: 12.5),
-                ),
-              ],
-            ),
+          const SizedBox(height: 4),
+          const _FitilaStepProgress(
+            totalSteps: 3,
+            currentStep: 0,
+            light: false,
           ),
           const SizedBox(height: 14),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
+          Expanded(
+            child: _FitilaDarkStage(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('Visuel signature', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 64,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _presets.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final p = _presets[index];
-                        final selected = index == _presetIndex;
-                        return GestureDetector(
-                          onTap: () => setState(() => _presetIndex = index),
-                          child: Container(
-                            width: 64,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: [p.colorA, p.colorB]),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: selected ? _fitilaInk : Colors.transparent,
-                                width: 2,
-                              ),
-                            ),
-                            child: Icon(p.icon, color: Colors.white),
-                          ),
-                        );
-                      },
+                  _FitilaOrbMic(
+                    icon: Icons.mic_rounded,
+                    onTap: _startRecordingStep,
+                  ),
+                  const SizedBox(height: 22),
+                  const Text(
+                    'Raconte quelque chose…',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Texte à publier', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                   const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _fitilaSurfaceAlt,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline_rounded, size: 15, color: _fitilaMuted),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            "La dictée vocale automatique n'est pas encore disponible : rédigez votre texte, Fitila IA le traduit.",
-                            style: TextStyle(fontSize: 11, color: _fitilaMuted),
-                          ),
-                        ),
-                      ],
+                  Text(
+                    'En bariba ou en français — Fitila IA traduit et publie pour vous.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 12.5,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _textController,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      hintText: 'Ecrivez votre message…',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 22),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
+                    alignment: WrapAlignment.center,
                     children: [
                       ChoiceChip(
-                        label: const Text('Français → Bariba'),
-                        selected: _direction == TranslationDirection.frenchToBariba,
-                        onSelected: (_) => setState(() => _direction = TranslationDirection.frenchToBariba),
+                        label: const Text('Bàátɔ̀nú'),
+                        selected:
+                            _direction == TranslationDirection.baribaToFrench,
+                        onSelected: (_) => setState(
+                          () =>
+                              _direction = TranslationDirection.baribaToFrench,
+                        ),
                       ),
                       ChoiceChip(
-                        label: const Text('Bariba → Français'),
-                        selected: _direction == TranslationDirection.baribaToFrench,
-                        onSelected: (_) => setState(() => _direction = TranslationDirection.baribaToFrench),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _translating ? null : _translate,
-                        icon: _translating
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.translate_rounded, size: 16),
-                        label: const Text('Traduire'),
+                        label: const Text('Français'),
+                        selected:
+                            _direction == TranslationDirection.frenchToBariba,
+                        onSelected: (_) => setState(
+                          () =>
+                              _direction = TranslationDirection.frenchToBariba,
+                        ),
                       ),
                     ],
                   ),
-                  if (_translated.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: _fitilaPrimarySoft,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(_translated, style: const TextStyle(fontSize: 13.5)),
-                    ),
-                  ],
                 ],
               ),
             ),
           ),
           const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _publishing ? null : _publish,
-            icon: _publishing
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : const Icon(Icons.send_rounded),
-            label: const Text('Publier dans le fil'),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _startRecordingStep,
+              icon: const Icon(Icons.mic_rounded),
+              label: const Text('Parler'),
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => setState(() => _step = 2),
+              icon: const Icon(Icons.edit_rounded),
+              label: const Text('Écrire à la place'),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  // Étape 2/4 — enregistrement réel en cours (waveform décorative, comme
+  // dans la maquette — la durée et le micro, eux, sont bien réels).
+  Widget _buildRecordingStep() {
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        children: [
+          const SizedBox(height: 4),
+          const _FitilaStepProgress(
+            totalSteps: 3,
+            currentStep: 1,
+            light: false,
+          ),
+          const SizedBox(height: 14),
+          Expanded(
+            child: _FitilaDarkStage(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 9,
+                        height: 9,
+                        decoration: const BoxDecoration(
+                          color: _fitilaClay,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _recTimerLabel,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  _FitilaOrbMic(
+                    icon: Icons.graphic_eq_rounded,
+                    active: true,
+                    size: 96,
+                  ),
+                  const SizedBox(height: 24),
+                  const _FitilaWaveformBars(
+                    active: true,
+                    height: 52,
+                    color: _fitilaPrimary,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    "L'écriture automatique en direct n'est pas encore disponible — votre voix est enregistrée fidèlement.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _toggleRecording,
+              icon: const Icon(Icons.stop_circle_rounded),
+              label: const Text('Terminer l’enregistrement'),
+              style: FilledButton.styleFrom(backgroundColor: _fitilaClay),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Étape 3/4 — aperçu, texte, traduction, visuel signature : tout ce qui
+  // est réellement modifiable avant publication.
+  Widget _buildPreviewStep() {
+    final preset = _presets[_presetIndex];
+    return ListView(
+      children: [
+        const _FitilaStepProgress(totalSteps: 3, currentStep: 2, light: false),
+        const SizedBox(height: 14),
+        if (_audio != null)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(colors: [preset.colorA, preset.colorB]),
+            ),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: Icon(
+                    _playingBack
+                        ? Icons.stop_circle_rounded
+                        : Icons.play_circle_fill_rounded,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                  tooltip: _playingBack
+                      ? 'Arrêter'
+                      : 'Écouter mon enregistrement',
+                  onPressed: _togglePlayback,
+                ),
+                Expanded(
+                  child: _FitilaWaveformBars(active: _playingBack, height: 34),
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: Colors.white70,
+                  ),
+                  tooltip: 'Supprimer et recommencer',
+                  onPressed: _discardRecording,
+                ),
+              ],
+            ),
+          )
+        else
+          OutlinedButton.icon(
+            onPressed: _startRecordingStep,
+            icon: const Icon(Icons.mic_rounded),
+            label: const Text('Ajouter une voix'),
+          ),
+        const SizedBox(height: 14),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Visuel signature',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 64,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _presets.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final p = _presets[index];
+                      final selected = index == _presetIndex;
+                      return GestureDetector(
+                        onTap: () => setState(() => _presetIndex = index),
+                        child: Container(
+                          width: 64,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [p.colorA, p.colorB],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: selected ? _fitilaInk : Colors.transparent,
+                              width: 2,
+                            ),
+                          ),
+                          child: Icon(p.icon, color: Colors.white),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _audio != null ? 'Texte (optionnel)' : 'Texte à publier',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _fitilaSurfaceAlt,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 15,
+                        color: _fitilaMuted,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          _audio != null
+                              ? "Votre voix suffit pour publier — écrivez seulement si vous voulez aussi une traduction texte."
+                              : "La dictée vocale automatique n'est pas encore disponible : rédigez votre texte, Fitila IA le traduit — ou enregistrez simplement votre voix.",
+                          style: TextStyle(fontSize: 11, color: _fitilaMuted),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _textController,
+                  builder: (context, value, _) => Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _textController,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            hintText: 'Ecrivez votre message…',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      _FitilaListenButton(
+                        french: value.text,
+                        label: 'Écouter mon texte',
+                        compact: true,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Français → Bariba'),
+                      selected:
+                          _direction == TranslationDirection.frenchToBariba,
+                      onSelected: (_) => setState(
+                        () => _direction = TranslationDirection.frenchToBariba,
+                      ),
+                    ),
+                    ChoiceChip(
+                      label: const Text('Bariba → Français'),
+                      selected:
+                          _direction == TranslationDirection.baribaToFrench,
+                      onSelected: (_) => setState(
+                        () => _direction = TranslationDirection.baribaToFrench,
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _translating ? null : _translate,
+                      icon: _translating
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.translate_rounded, size: 16),
+                      label: const Text('Traduire'),
+                    ),
+                  ],
+                ),
+                if (_translated.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: _fitilaPrimarySoft,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _translated,
+                            style: const TextStyle(fontSize: 13.5),
+                          ),
+                        ),
+                        _FitilaListenButton(
+                          bariba:
+                              _direction == TranslationDirection.frenchToBariba
+                              ? _translated
+                              : null,
+                          french:
+                              _direction == TranslationDirection.baribaToFrench
+                              ? _translated
+                              : null,
+                          label: 'Écouter la traduction',
+                          compact: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            Chip(
+              avatar: const Icon(Icons.palette_rounded, size: 15),
+              label: Text(preset.name),
+            ),
+            Chip(
+              avatar: const Icon(
+                Icons.schedule_rounded,
+                size: 15,
+                color: _fitilaMuted,
+              ),
+              label: const Text('Musique — bientôt'),
+              backgroundColor: _fitilaSurfaceAlt,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: _publishing ? null : _publish,
+          icon: const Icon(Icons.send_rounded),
+          label: const Text('Publier dans le Fil'),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  // Étape 4/4 — traitement réel avant publication (pas de minuterie
+  // déconnectée : `doneCount` reflète l'appel réseau réellement en cours).
+  Widget _buildProcessingStep() {
+    return SizedBox(
+      width: double.infinity,
+      child: _FitilaDarkStage(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('🪄', style: TextStyle(fontSize: 40)),
+            const SizedBox(height: 16),
+            const Text(
+              'Préparation de votre publication…',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 22),
+            _FitilaProcessingChecklist(
+              light: true,
+              steps: const ['Préparation du contenu', 'Envoi dans le fil'],
+              doneCount: _publishDoneCount,
+              futureSteps: const [
+                'Habillage visuel généré par IA',
+                "Musique d'ambiance générée",
+                'Sous-titres bilingues automatiques',
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -20818,15 +22696,15 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
   String _language = 'Bariba + Français';
   bool _allowGuests = true;
   bool _scheduling = false;
-List<Map<String, dynamic>> _activeLives = const [];
-bool _loadingLives = true;
-bool _startingLive = false;
+  List<Map<String, dynamic>> _activeLives = const [];
+  bool _loadingLives = true;
+  bool _startingLive = false;
 
-@override
-void initState() {
-super.initState();
-_loadActiveLives();
-}
+  @override
+  void initState() {
+    super.initState();
+    _loadActiveLives();
+  }
 
   @override
   void dispose() {
@@ -20836,75 +22714,93 @@ _loadActiveLives();
   }
 
   Future<void> _loadActiveLives() async {
-setState(() => _loadingLives = true);
-try {
-final lives = await FitilaBackend.fetchActiveLiveSessions();
-if (!mounted) return;
-setState(() {
-_activeLives = lives;
-_loadingLives = false;
-});
-} catch (_) {
-if (!mounted) return;
-setState(() => _loadingLives = false);
-}
-}
+    setState(() => _loadingLives = true);
+    try {
+      final lives = await FitilaBackend.fetchActiveLiveSessions();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _activeLives = lives;
+        _loadingLives = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _loadingLives = false);
+    }
+  }
 
-Future<void> _startLiveNow() async {
-final title = _title.text.trim();
-if (title.isEmpty) {
-ScaffoldMessenger.of(context).showSnackBar(
-const SnackBar(content: Text('Donnez un titre à votre direct avant de démarrer.')),
-);
-return;
-}
-setState(() => _startingLive = true);
-try {
-final live = await FitilaBackend.createLiveSession(
-title: title,
-description: _description.text.trim().isEmpty ? null : _description.text.trim(),
-language: _language,
-);
-if (!mounted) return;
-await Navigator.push(
-context,
-MaterialPageRoute(
-builder: (_) => LiveRoomScreen(
-  liveId: live['id'].toString(),
-  title: title,
-  role: FitilaLiveRole.host,
-),
-),
-);
-if (mounted) _loadActiveLives();
-} catch (error) {
-if (!mounted) return;
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(
-content: Text(
-  'Impossible de démarrer le direct : ${error.toString().replaceFirst("Bad state: ", "")}',
-),
-),
-);
-} finally {
-if (mounted) setState(() => _startingLive = false);
-}
-}
+  Future<void> _startLiveNow() async {
+    final title = _title.text.trim();
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Donnez un titre à votre direct avant de démarrer.'),
+        ),
+      );
+      return;
+    }
+    setState(() => _startingLive = true);
+    try {
+      final live = await FitilaBackend.createLiveSession(
+        title: title,
+        description: _description.text.trim().isEmpty
+            ? null
+            : _description.text.trim(),
+        language: _language,
+      );
+      if (!mounted) {
+        return;
+      }
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => LiveRoomScreen(
+            liveId: live['id'].toString(),
+            title: title,
+            role: FitilaLiveRole.host,
+          ),
+        ),
+      );
+      if (mounted) {
+        _loadActiveLives();
+      }
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Impossible de démarrer le direct : ${error.toString().replaceFirst("Bad state: ", "")}',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _startingLive = false);
+      }
+    }
+  }
 
-void _joinLive(Map<String, dynamic> live) {
-Navigator.push(
-context,
-MaterialPageRoute(
-builder: (_) => LiveRoomScreen(
-liveId: live['id'].toString(),
-title: live['title']?.toString() ?? 'Live Griot IA',
-role: FitilaLiveRole.viewer,
-),
-),
-).then((_) {
-if (mounted) _loadActiveLives();
-});
-}
+  void _joinLive(Map<String, dynamic> live) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LiveRoomScreen(
+          liveId: live['id'].toString(),
+          title: live['title']?.toString() ?? 'Live Griot IA',
+          role: FitilaLiveRole.viewer,
+        ),
+      ),
+    ).then((_) {
+      if (mounted) {
+        _loadActiveLives();
+      }
+    });
+  }
 
   Future<void> _scheduleAnnouncement() async {
     final title = _title.text.trim();
@@ -20926,7 +22822,9 @@ if (mounted) _loadActiveLives();
         hashtags: const ['live-a-venir', 'live-griot-ia'],
         templateId: 'live-griot-ia',
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       widget.onPostCreated(FeedPost.fromBackend(row));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Annonce publiée dans le fil.')),
@@ -20936,12 +22834,16 @@ if (mounted) _loadActiveLives();
         _description.clear();
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Publication impossible. Réessayez.')),
       );
     } finally {
-      if (mounted) setState(() => _scheduling = false);
+      if (mounted) {
+        setState(() => _scheduling = false);
+      }
     }
   }
 
@@ -20974,80 +22876,95 @@ if (mounted) _loadActiveLives();
           ),
           const SizedBox(height: 16),
           Row(
-  children: [
-    const Expanded(
-      child: Text('Lives en cours', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-    ),
-    IconButton(
-      onPressed: _loadingLives ? null : _loadActiveLives,
-      icon: const Icon(Icons.refresh_rounded),
-      tooltip: 'Actualiser',
-    ),
-  ],
-),
-if (_loadingLives)
-  const Padding(
-    padding: EdgeInsets.symmetric(vertical: 12),
-    child: Center(child: CircularProgressIndicator()),
-  )
-else if (_activeLives.isEmpty)
-  Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    child: Text(
-      'Aucun direct en cours pour le moment.',
-      style: TextStyle(color: _fitilaMuted, fontSize: 12.5),
-    ),
-  )
-else
-  for (final live in _activeLives)
-    Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _fitilaCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _fitilaBorder),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  live['title']?.toString() ?? 'Live Griot IA',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+            children: [
+              const Expanded(
+                child: Text(
+                  'Lives en cours',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                 ),
-                Text(
-                  "${live['host_display_name'] ?? 'Griot Fitila'} • ${live['viewer_count'] ?? 0} auditeur(s)",
-                  style: TextStyle(fontSize: 11.5, color: _fitilaMuted),
+              ),
+              IconButton(
+                onPressed: _loadingLives ? null : _loadActiveLives,
+                icon: const Icon(Icons.refresh_rounded),
+                tooltip: 'Actualiser',
+              ),
+            ],
+          ),
+          if (_loadingLives)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_activeLives.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'Aucun direct en cours pour le moment.',
+                style: TextStyle(color: _fitilaMuted, fontSize: 12.5),
+              ),
+            )
+          else
+            for (final live in _activeLives)
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _fitilaCard,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: _fitilaBorder),
                 ),
-              ],
-            ),
-          ),
-          FilledButton(
-            onPressed: () => _joinLive(live),
-            child: const Text('Rejoindre'),
-          ),
-        ],
-      ),
-    ),
-const SizedBox(height: 16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            live['title']?.toString() ?? 'Live Griot IA',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13.5,
+                            ),
+                          ),
+                          Text(
+                            "${live['host_display_name'] ?? 'Griot Fitila'} • ${live['viewer_count'] ?? 0} auditeur(s)",
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: _fitilaMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    FilledButton(
+                      onPressed: () => _joinLive(live),
+                      child: const Text('Rejoindre'),
+                    ),
+                  ],
+                ),
+              ),
+          const SizedBox(height: 16),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Configuration du direct', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                  const Text(
+                    'Configuration du direct',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     'Utilisée pour démarrer un direct maintenant, ou pour programmer une simple annonce.',
@@ -21056,19 +22973,29 @@ const SizedBox(height: 16),
                   const SizedBox(height: 10),
                   TextField(
                     controller: _title,
-                    decoration: const InputDecoration(labelText: 'Titre du direct', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Titre du direct',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: _description,
                     maxLines: 2,
-                    decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Description',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
                     children: [
-                      for (final lang in const ['Bariba + Français', 'Bariba', 'Français'])
+                      for (final lang in const [
+                        'Bariba + Français',
+                        'Bariba',
+                        'Français',
+                      ])
                         ChoiceChip(
                           label: Text(lang),
                           selected: _language == lang,
@@ -21087,37 +23014,80 @@ const SizedBox(height: 16),
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-  children: [
-    Expanded(
-      child: FilledButton.icon(
-        onPressed: _startingLive ? null : _startLiveNow,
-        icon: _startingLive
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-              )
-            : const Icon(Icons.podcasts_rounded),
-        label: const Text('Démarrer le direct'),
-      ),
-    ),
-    const SizedBox(width: 10),
-    Expanded(
-      child: OutlinedButton.icon(
-        onPressed: _scheduling ? null : _scheduleAnnouncement,
-        icon: _scheduling
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.campaign_rounded),
-        label: const Text('Programmer une annonce'),
-      ),
-    ),
-  ],
-),
+          _FitilaDarkStage(
+            child: Column(
+              children: [
+                _FitilaOrbMic(
+                  icon: Icons.podcasts_rounded,
+                  size: 84,
+                  active: _startingLive,
+                  onTap: _startingLive ? null : _startLiveNow,
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  _title.text.trim().isEmpty
+                      ? 'Prêt·e à parler à votre public ?'
+                      : _title.text.trim(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$_language • ${_allowGuests ? 'invités autorisés' : 'invités désactivés'}',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    fontSize: 11.5,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _startingLive ? null : _startLiveNow,
+                        icon: _startingLive
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.podcasts_rounded),
+                        label: const Text('🔴 Démarrer mon direct'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Colors.white38),
+                        ),
+                        onPressed: _scheduling ? null : _scheduleAnnouncement,
+                        icon: _scheduling
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.campaign_rounded),
+                        label: const Text('Programmer une annonce'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 24),
         ],
       ),
@@ -21178,10 +23148,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
       }
       _engine = engine;
       _peerCountSub = engine.peerCount.listen((count) {
-        if (mounted) setState(() => _peerCount = count);
+        if (mounted) {
+          setState(() => _peerCount = count);
+        }
       });
       _chatSub = FitilaBackend.streamLiveChat(widget.liveId).listen((rows) {
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         setState(() {
           _chatMessages
             ..clear()
@@ -21190,17 +23164,22 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
       });
       setState(() => _connecting = false);
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _connecting = false;
-        _error = 'Connexion impossible : ${error.toString().replaceFirst("Bad state: ", "")}';
+        _error =
+            'Connexion impossible : ${error.toString().replaceFirst("Bad state: ", "")}';
       });
     }
   }
 
   void _toggleMute() {
     final stream = _engine?.localStream;
-    if (stream == null) return;
+    if (stream == null) {
+      return;
+    }
     setState(() => _muted = !_muted);
     for (final track in stream.getAudioTracks()) {
       track.enabled = !_muted;
@@ -21209,17 +23188,24 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
 
   Future<void> _sendChat() async {
     final text = _chatController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty) {
+      return;
+    }
     _chatController.clear();
     try {
-      await FitilaBackend.sendLiveChatMessage(liveId: widget.liveId, message: text);
+      await FitilaBackend.sendLiveChatMessage(
+        liveId: widget.liveId,
+        message: text,
+      );
     } catch (_) {
       // Un message perdu ne doit pas interrompre le direct.
     }
   }
 
   Future<void> _cleanup() async {
-    if (_cleanedUp) return;
+    if (_cleanedUp) {
+      return;
+    }
     _cleanedUp = true;
     final engine = _engine;
     _engine = null;
@@ -21241,10 +23227,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
   }
 
   Future<void> _endOrLeave() async {
-    if (_ending) return;
+    if (_ending) {
+      return;
+    }
     setState(() => _ending = true);
     await _cleanup();
-    if (mounted) Navigator.pop(context);
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -21263,7 +23253,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
+        if (didPop) {
+          return;
+        }
         _endOrLeave();
       },
       child: Scaffold(
@@ -21276,11 +23268,22 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(6)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                       child: const Text(
                         'DIRECT',
-                        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -21289,23 +23292,45 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                         widget.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
-                    const Icon(Icons.headphones_rounded, color: Colors.white70, size: 16),
+                    const Icon(
+                      Icons.headphones_rounded,
+                      color: Colors.white70,
+                      size: 16,
+                    ),
                     const SizedBox(width: 4),
-                    Text('$_peerCount', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
+                    Text(
+                      '$_peerCount',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ),
               ),
               if (_connecting)
-                const Expanded(child: Center(child: CircularProgressIndicator(color: Colors.white)))
+                const Expanded(
+                  child: Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  ),
+                )
               else if (_error != null)
                 Expanded(
                   child: Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
-                      child: Text(_error!, style: const TextStyle(color: Colors.white70), textAlign: TextAlign.center),
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(color: Colors.white70),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
                 )
@@ -21313,10 +23338,36 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                 Expanded(
                   child: _chatMessages.isEmpty
                       ? Center(
-                          child: Text(
-                            _isHost ? 'Vous êtes en direct. Le chat apparaîtra ici.' : 'Connecté au direct. Le chat apparaîtra ici.',
-                            style: const TextStyle(color: Colors.white38, fontSize: 12.5),
-                            textAlign: TextAlign.center,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _FitilaOrbMic(
+                                icon: _isHost
+                                    ? (_muted
+                                          ? Icons.mic_off_rounded
+                                          : Icons.mic_rounded)
+                                    : Icons.hearing_rounded,
+                                size: 74,
+                                active: !_muted,
+                              ),
+                              const SizedBox(height: 18),
+                              _FitilaWaveformBars(
+                                active: !_muted,
+                                height: 30,
+                                barCount: 16,
+                              ),
+                              const SizedBox(height: 18),
+                              Text(
+                                _isHost
+                                    ? 'Vous êtes en direct. Le chat apparaîtra ici.'
+                                    : 'Connecté au direct. Le chat apparaîtra ici.',
+                                style: const TextStyle(
+                                  color: Colors.white38,
+                                  fontSize: 12.5,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
                           ),
                         )
                       : ListView.builder(
@@ -21324,7 +23375,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                           reverse: true,
                           itemCount: _chatMessages.length,
                           itemBuilder: (context, index) {
-                            final message = _chatMessages[_chatMessages.length - 1 - index];
+                            final message =
+                                _chatMessages[_chatMessages.length - 1 - index];
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 10),
                               child: Row(
@@ -21335,7 +23387,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                                     backgroundColor: Colors.white12,
                                     child: Text(
                                       _initials(message['display_name']),
-                                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
@@ -21344,12 +23400,23 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                                       text: TextSpan(
                                         children: [
                                           TextSpan(
-                                            text: '${message['display_name'] ?? 'Griot Fitila'}  ',
-                                            style: const TextStyle(color: Color(0xFFC99530), fontWeight: FontWeight.w800, fontSize: 13),
+                                            text:
+                                                '${message['display_name'] ?? 'Griot Fitila'}  ',
+                                            style: const TextStyle(
+                                              color: Color(0xFFC99530),
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 13,
+                                            ),
                                           ),
                                           TextSpan(
-                                            text: message['message']?.toString() ?? '',
-                                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                                            text:
+                                                message['message']
+                                                    ?.toString() ??
+                                                '',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 13,
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -21368,7 +23435,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                     if (_isHost) ...[
                       IconButton.filledTonal(
                         onPressed: _toggleMute,
-                        icon: Icon(_muted ? Icons.mic_off_rounded : Icons.mic_rounded),
+                        icon: Icon(
+                          _muted ? Icons.mic_off_rounded : Icons.mic_rounded,
+                        ),
                       ),
                       const SizedBox(width: 8),
                     ],
@@ -21381,17 +23450,28 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                           hintStyle: const TextStyle(color: Colors.white38),
                           filled: true,
                           fillColor: Colors.white.withValues(alpha: .08),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                         ),
                         onSubmitted: (_) => _sendChat(),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    IconButton.filled(onPressed: _sendChat, icon: const Icon(Icons.send_rounded)),
+                    IconButton.filled(
+                      onPressed: _sendChat,
+                      icon: const Icon(Icons.send_rounded),
+                    ),
                     const SizedBox(width: 8),
                     FilledButton.icon(
-                      style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
                       onPressed: _ending ? null : _endOrLeave,
                       icon: const Icon(Icons.call_end_rounded),
                       label: Text(_isHost ? 'Terminer' : 'Quitter'),
@@ -21422,15 +23502,20 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
   String? _error;
   LearningExerciseItem? _challenge;
   String _challengeId = '';
+  String _hiddenWord = '';
+  String _blankedProverb = '';
   final _answerController = TextEditingController();
-  final Stopwatch _stopwatch = Stopwatch();
   Timer? _ticker;
   bool _submitted = false;
   bool _submitting = false;
   int _score = 0;
   int _xpEarned = 0;
+  bool _scoredByAi = false;
   List<Map<String, dynamic>> _chain = const [];
   Map<String, dynamic> _stats = const {'attempts': 0, 'total_xp': 0, 'wins': 0};
+  int _participantCount = 0;
+  Map<String, dynamic>? _bestResponse;
+  bool _communityUnavailable = false;
 
   @override
   void initState() {
@@ -21445,6 +23530,48 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
     super.dispose();
   }
 
+  // Choisit un mot à cacher dans le proverbe bariba — de façon
+  // déterministe à partir du défi du jour, pour que TOUT le monde
+  // reçoive le même trou le même jour (indispensable pour que le
+  // classement communautaire ait un sens).
+  void _computeBlank(String bariba, String challengeId) {
+    final words = bariba.split(RegExp(r'\s+'));
+    final candidates = <int>[];
+    for (var i = 0; i < words.length; i++) {
+      final clean = words[i].replaceAll(RegExp(r'[^\p{L}]', unicode: true), '');
+      if (clean.length >= 3) {
+        candidates.add(i);
+      }
+    }
+    final pool = candidates.isNotEmpty
+        ? candidates
+        : List.generate(words.length, (i) => i);
+    final seed = challengeId.codeUnits.fold<int>(0, (a, b) => a + b);
+    final chosen = pool[seed % pool.length];
+    final hidden = words[chosen].replaceAll(
+      RegExp(r'[^\p{L}]', unicode: true),
+      '',
+    );
+    final displayWords = List<String>.from(words);
+    displayWords[chosen] = '▁▁▁▁▁';
+    _hiddenWord = hidden;
+    _blankedProverb = displayWords.join(' ');
+  }
+
+  String _remainingTime() {
+    final now = DateTime.now();
+    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    final remaining = endOfDay.difference(now);
+    if (remaining.isNegative) {
+      return '0h';
+    }
+    final h = remaining.inHours;
+    final m = remaining.inMinutes.remainder(60);
+    return h > 0
+        ? '${h}h${m > 0 ? m.toString().padLeft(2, '0') : ''}'
+        : '${m}min';
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -21452,7 +23579,8 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
     });
     try {
       final bank = await FitilaServices.loadLearningBank();
-      final proverbs = bank.exercises['proverbes'] ?? const <LearningExerciseItem>[];
+      final proverbs =
+          bank.exercises['proverbes'] ?? const <LearningExerciseItem>[];
       if (proverbs.isEmpty) {
         throw StateError('Aucun proverbe disponible.');
       }
@@ -21461,26 +23589,39 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
       final challenge = proverbs[index];
       final challengeId =
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      _computeBlank(challenge.bariba, challengeId);
       final results = await Future.wait([
         FitilaBackend.fetchBattleChain(challengeId: challengeId),
         FitilaBackend.fetchMyBattleStats(),
+        FitilaBackend.fetchBattleChallengeStats(challengeId),
       ]);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
+      final challengeStats = results[2] as Map<String, dynamic>;
       setState(() {
         _challenge = challenge;
         _challengeId = challengeId;
         _chain = results[0] as List<Map<String, dynamic>>;
         _stats = results[1] as Map<String, dynamic>;
+        _participantCount = (challengeStats['participant_count'] as int?) ?? 0;
+        _bestResponse =
+            challengeStats['best_response'] as Map<String, dynamic>?;
+        _communityUnavailable = false;
         _loading = false;
       });
-      _stopwatch
-        ..reset()
-        ..start();
-      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted) setState(() {});
+      // Le proverbe garde le même trou toute la journée : un simple
+      // rafraîchissement d'affichage suffit pour faire vivre le compte
+      // à rebours réel jusqu'à minuit (_remainingTime()).
+      _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
+        if (mounted) {
+          setState(() {});
+        }
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _error = 'Impossible de charger le défi du jour.';
         _loading = false;
@@ -21488,32 +23629,61 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
     }
   }
 
-  int _computeScore(String answer, String reference) {
-    String normalize(String s) {
-      var out = s.toLowerCase();
-      for (final ch in const ['.', ',', '!', '?', ';', ':', '"', "'", '(', ')', '-', '—', '«', '»']) {
-        out = out.replaceAll(ch, ' ');
-      }
-      return out.replaceAll(RegExp(r'\s+'), ' ').trim();
-    }
-
+  // Score local de secours (mot exact ou variante orthographique très
+  // proche) — utilisé UNIQUEMENT si Fitila IA est indisponible, pour
+  // que le défi reste jouable hors-ligne. Jamais présenté comme "IA"
+  // quand c'est ce chemin qui est pris (voir _scoredByAi dans _submit).
+  int _computeFallbackScore(String answer, String hiddenWord) {
+    String normalize(String s) => s.toLowerCase().trim();
     final a = normalize(answer);
-    final b = normalize(reference);
-    if (a.isEmpty || b.isEmpty) return 0;
-    if (a == b) return 100;
-    final aWords = a.split(' ').toSet();
-    final bWords = b.split(' ').toSet();
-    if (aWords.isEmpty || bWords.isEmpty) return 0;
-    final overlap = aWords.intersection(bWords).length;
-    final union = aWords.union(bWords).length;
-    double score = union == 0 ? 0 : overlap / union;
-    if (a.contains(b) || b.contains(a)) score = (score + 0.3).clamp(0.0, 1.0);
-    return (score * 100).round();
+    final b = normalize(hiddenWord);
+    if (a.isEmpty || b.isEmpty) {
+      return 0;
+    }
+    if (a == b) {
+      return 100;
+    }
+    if (a.contains(b) || b.contains(a)) {
+      return 70;
+    }
+    final aChars = a.split('').toSet();
+    final bChars = b.split('').toSet();
+    final overlap = aChars.intersection(bChars).length;
+    final union = aChars.union(bChars).length;
+    return union == 0 ? 0 : ((overlap / union) * 60).round();
+  }
+
+  // Notation RÉELLE par Fitila IA : le modèle juge si le mot proposé
+  // correspond au mot caché, en tolérant les variations orthographiques
+  // bariba (tons, diacritiques) qu'une comparaison exacte pénaliserait
+  // à tort. En cas d'échec (réseau, edge function indisponible), on
+  // retombe sur _computeFallbackScore et on le dit honnêtement dans l'UI.
+  Future<int> _scoreWithAi(
+    String answer,
+    String hiddenWord,
+    String fullProverb,
+  ) async {
+    final prompt =
+        'Dans le jeu Sagesse Battle de Fitila, le proverbe bariba est : "$fullProverb". '
+        'Le mot caché à deviner est : "$hiddenWord". Un joueur a répondu : "$answer". '
+        'Juge si sa réponse correspond au mot caché, en tolérant les variations '
+        "orthographiques bariba raisonnables (tons, diacritiques, légère faute de frappe) "
+        'mais pas un mot complètement différent. Réponds UNIQUEMENT avec une ligne '
+        'exactement au format "SCORE: N" où N est un entier de 0 à 100 (100 = mot exact ou '
+        'variante orthographique très proche, 0 = mot sans rapport).';
+    final result = await FitilaBackend.askFitilaIa(prompt);
+    final match = RegExp(r'SCORE\s*:\s*(\d{1,3})').firstMatch(result);
+    if (match == null) {
+      throw StateError('Réponse IA invalide.');
+    }
+    return int.parse(match.group(1)!).clamp(0, 100);
   }
 
   Future<void> _submit() async {
     final challenge = _challenge;
-    if (challenge == null || _submitting || _submitted) return;
+    if (challenge == null || _submitting || _submitted) {
+      return;
+    }
     final answer = _answerController.text.trim();
     if (answer.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -21522,9 +23692,16 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
       return;
     }
     setState(() => _submitting = true);
-    _stopwatch.stop();
     _ticker?.cancel();
-    final score = _computeScore(answer, challenge.french);
+    int score;
+    bool scoredByAi;
+    try {
+      score = await _scoreWithAi(answer, _hiddenWord, challenge.bariba);
+      scoredByAi = true;
+    } catch (_) {
+      score = _computeFallbackScore(answer, _hiddenWord);
+      scoredByAi = false;
+    }
     final fallbackXp = 10 + (score / 100 * 40).round();
     try {
       await FitilaBackend.submitBattleResponse(
@@ -21542,235 +23719,553 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
         correctCount: score >= 60 ? 1 : 0,
         totalCount: 1,
       );
-      final chain = await FitilaBackend.fetchBattleChain(challengeId: _challengeId);
-      final stats = await FitilaBackend.fetchMyBattleStats();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _submitted = true;
         _score = score;
+        _scoredByAi = scoredByAi;
         _xpEarned = (result['xpEarned'] as num?)?.toInt() ?? fallbackXp;
-        _chain = chain;
-        _stats = stats;
       });
+      try {
+        final results = await Future.wait([
+          FitilaBackend.fetchBattleChain(challengeId: _challengeId),
+          FitilaBackend.fetchMyBattleStats(),
+          FitilaBackend.fetchBattleChallengeStats(_challengeId),
+        ]);
+        if (mounted) {
+          final challengeStats = results[2] as Map<String, dynamic>;
+          setState(() {
+            _chain = results[0] as List<Map<String, dynamic>>;
+            _stats = results[1] as Map<String, dynamic>;
+            _participantCount =
+                (challengeStats['participant_count'] as int?) ?? 0;
+            _bestResponse =
+                challengeStats['best_response'] as Map<String, dynamic>?;
+            _communityUnavailable = false;
+          });
+        }
+      } catch (_) {
+        if (mounted) {
+          setState(() => _communityUnavailable = true);
+        }
+      }
       final unlocked = (result['unlockedBadges'] as List?) ?? const [];
       if (unlocked.isNotEmpty && mounted) {
         final badge = unlocked.first as Map;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Badge débloqué : ${badge['name'] ?? badge['id']} !')),
+          SnackBar(
+            content: Text('Badge débloqué : ${badge['name'] ?? badge['id']} !'),
+          ),
         );
       }
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Envoi impossible. Réessayez.')),
       );
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
     }
   }
 
-  String _elapsed() {
-    final d = _stopwatch.elapsed;
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$m:$s';
+  Future<void> _toggleVote(Map<String, dynamic> response) async {
+    final id = response['id'] as String;
+    final voted = response['voted_by_me'] == true;
+    setState(() {
+      response['voted_by_me'] = !voted;
+      response['vote_count'] =
+          ((response['vote_count'] as int?) ?? 0) + (voted ? -1 : 1);
+    });
+    try {
+      await FitilaBackend.toggleBattleResponseVote(
+        responseId: id,
+        like: !voted,
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        response['voted_by_me'] = voted;
+        response['vote_count'] =
+            ((response['vote_count'] as int?) ?? 0) + (voted ? 1 : -1);
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return _PageFrame(
       title: 'Sagesse Battle',
-      subtitle: 'Défi proverbe quotidien — traduisez, marquez des points, grimpez au fil.',
+      subtitle:
+          'Complétez le proverbe du jour, marquez des points, grimpez au fil.',
       child: _loading
-          ? const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(40),
+                child: CircularProgressIndicator(),
+              ),
+            )
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!),
-                        const SizedBox(height: 12),
-                        FilledButton(onPressed: _load, child: const Text('Réessayer')),
-                      ],
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_error!),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: _load,
+                      child: const Text('Réessayer'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : ListView(
+              children: [
+                _MetricStrip(
+                  metrics: [
+                    (
+                      'Tentatives',
+                      '${_stats['attempts'] ?? 0}',
+                      Icons.bolt_rounded,
+                    ),
+                    (
+                      'XP Battle',
+                      '${_stats['total_xp'] ?? 0}',
+                      Icons.military_tech_rounded,
+                    ),
+                    (
+                      'Victoires',
+                      '${_stats['wins'] ?? 0}',
+                      Icons.emoji_events_rounded,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [_fitilaGoldDeep, _fitilaClay],
                     ),
                   ),
-                )
-              : ListView(
-                  children: [
-                    _MetricStrip(
-                      metrics: [
-                        ('Tentatives', '${_stats['attempts'] ?? 0}', Icons.bolt_rounded),
-                        ('XP Battle', '${_stats['total_xp'] ?? 0}', Icons.military_tech_rounded),
-                        ('Victoires', '${_stats['wins'] ?? 0}', Icons.emoji_events_rounded),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [_fitilaGoldDeep, _fitilaClay],
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.shield_rounded, color: Colors.white),
-                              const SizedBox(width: 8),
-                              const Expanded(
-                                child: Text('Défi du jour', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                          const Icon(Icons.shield_rounded, color: Colors.white),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Complète le proverbe',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: .18),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(_elapsed(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            _challenge!.bariba,
-                            style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w800),
-                          ),
-                          if (_challenge!.context != null && _challenge!.context!.isNotEmpty) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              _challenge!.context!,
-                              style: const TextStyle(color: Colors.white70, fontSize: 12.5, fontStyle: FontStyle.italic),
                             ),
-                          ],
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Que signifie ce proverbe en français ?',
-                            style: TextStyle(color: Colors.white70, fontSize: 12.5),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: .18),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              _remainingTime(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _submitted ? _challenge!.bariba : _blankedProverb,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 21,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          _FitilaListenButton(
+                            bariba: _submitted
+                                ? _challenge!.bariba
+                                : _blankedProverb,
+                            label: 'Écouter le proverbe',
+                            compact: true,
+                            dark: true,
+                          ),
+                        ],
+                      ),
+                      if (_challenge!.context != null &&
+                          _challenge!.context!.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          _challenge!.context!,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12.5,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Quel mot complète ce proverbe ?',
+                        style: TextStyle(color: Colors.white70, fontSize: 12.5),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.groups_rounded,
+                            size: 13,
+                            color: Colors.white.withValues(alpha: 0.55),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _participantCount == 0
+                                ? 'Aucun participant pour le moment — soyez le premier'
+                                : '$_participantCount participant(s) aujourd\'hui',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.55),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                if (!_submitted) ...[
+                  if (_bestResponse != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _fitilaGoldDeep.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.emoji_events_rounded,
+                            size: 16,
+                            color: _fitilaGoldDeep,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Meilleure réponse actuelle : ${_bestResponse!['display_name'] ?? 'Griot Fitila'} — ${_bestResponse!['score'] ?? 0}%',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    if (!_submitted) ...[
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              TextField(
-                                controller: _answerController,
-                                maxLines: 2,
-                                decoration: const InputDecoration(
-                                  hintText: 'Votre traduction ou interprétation…',
-                                  border: OutlineInputBorder(),
-                                ),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextField(
+                            controller: _answerController,
+                            decoration: const InputDecoration(
+                              hintText: 'Le mot manquant…',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          FilledButton.icon(
+                            onPressed: _submitting ? null : _submit,
+                            icon: _submitting
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.send_rounded),
+                            label: Text(
+                              _submitting
+                                  ? 'Fitila IA note votre réponse…'
+                                  : 'Valider ma réponse',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  _FitilaDarkStage(
+                    child: Column(
+                      children: [
+                        _FitilaScoreRing(
+                          score: _score,
+                          size: 148,
+                          label: 'de justesse',
+                          light: true,
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _scoredByAi
+                                  ? Icons.auto_awesome_rounded
+                                  : Icons.wifi_off_rounded,
+                              size: 12,
+                              color: Colors.white.withValues(alpha: 0.55),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _scoredByAi
+                                  ? 'Noté par Fitila IA'
+                                  : 'Fitila IA indisponible — noté hors-ligne',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.55),
+                                fontSize: 10.5,
                               ),
-                              const SizedBox(height: 12),
-                              FilledButton.icon(
-                                onPressed: _submitting ? null : _submit,
-                                icon: _submitting
-                                    ? const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                      )
-                                    : const Icon(Icons.send_rounded),
-                                label: const Text('Valider ma réponse'),
-                              ),
-                            ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _fitilaPrimary.withValues(alpha: 0.22),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '🏅 Badge +$_xpEarned XP',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
-                      ),
-                    ] else ...[
-                      Card(
-                        color: _fitilaPrimarySoft,
-                        child: Padding(
+                        const SizedBox(height: 18),
+                        Container(
+                          width: double.infinity,
                           padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.check_circle_rounded, color: _fitilaSage),
-                                  const SizedBox(width: 8),
-                                  Text('Score : $_score/100', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                                  const Spacer(),
-                                  Text('+$_xpEarned XP', style: const TextStyle(fontWeight: FontWeight.w800, color: _fitilaGoldDeep)),
+                                  const Expanded(
+                                    child: Text(
+                                      'Mot attendu & traduction',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 12.5,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  _FitilaListenButton(
+                                    french: _challenge!.french,
+                                    label: 'Écouter la réponse',
+                                    compact: true,
+                                    dark: true,
+                                  ),
                                 ],
                               ),
-                              const SizedBox(height: 10),
-                              const Text('Réponse de référence :', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+                              const SizedBox(height: 6),
+                              Text(
+                                _hiddenWord,
+                                style: const TextStyle(
+                                  color: _fitilaGoldDeep,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                ),
+                              ),
                               const SizedBox(height: 4),
-                              Text(_challenge!.french),
+                              Text(
+                                '« ${_challenge!.french} »',
+                                style: const TextStyle(color: Colors.white70),
+                              ),
                             ],
                           ),
                         ),
-                      ),
-                    ],
-                    const SizedBox(height: 18),
-                    const Text('Fil des griots du jour', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                    const SizedBox(height: 8),
-                    if (_chain.isEmpty)
-                      Text(
-                        "Personne n'a encore répondu aujourd'hui — soyez le premier !",
-                        style: TextStyle(color: _fitilaMuted),
-                      ),
-                    for (final entry in _chain)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: _fitilaCard,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: _fitilaBorder),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 18),
+                const Text(
+                  'Chaîne communautaire',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                ),
+                const SizedBox(height: 8),
+                if (_communityUnavailable)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _fitilaSurfaceAlt,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _fitilaBorder),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.cloud_off_rounded,
+                          size: 18,
+                          color: _fitilaMuted,
                         ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'La chaîne communautaire est temporairement indisponible. Votre défi reste jouable.',
+                            style: TextStyle(color: _fitilaMuted, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (_chain.isEmpty && !_communityUnavailable)
+                  Text(
+                    "Personne n'a encore répondu aujourd'hui — soyez le premier !",
+                    style: TextStyle(color: _fitilaMuted),
+                  ),
+                for (final entry in _chain)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _fitilaCard,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: _fitilaBorder),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: _fitilaPrimarySoft,
+                          child: Text(
+                            _initialLetter(entry['display_name']?.toString()),
+                            style: const TextStyle(
+                              color: _fitilaGoldDeep,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                entry['display_name']?.toString() ??
+                                    'Griot Fitila',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                entry['answer_text']?.toString() ?? '',
+                                style: const TextStyle(fontSize: 12.5),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _fitilaSurfaceAlt,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${entry['score'] ?? 0}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: _fitilaClay,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Column(
                           children: [
-                            CircleAvatar(
-                              radius: 16,
-                              backgroundColor: _fitilaPrimarySoft,
-                              child: Text(
-                                _initialLetter(entry['display_name']?.toString()),
-                                style: const TextStyle(color: _fitilaGoldDeep, fontWeight: FontWeight.w800),
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 28,
+                                minHeight: 28,
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    entry['display_name']?.toString() ?? 'Griot Fitila',
-                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(entry['answer_text']?.toString() ?? '', style: const TextStyle(fontSize: 12.5)),
-                                ],
+                              icon: Icon(
+                                entry['voted_by_me'] == true
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                size: 17,
+                                color: entry['voted_by_me'] == true
+                                    ? _fitilaClay
+                                    : _fitilaMuted,
                               ),
+                              onPressed: () => _toggleVote(entry),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(color: _fitilaSurfaceAlt, borderRadius: BorderRadius.circular(10)),
-                              child: Text(
-                                '${entry['score'] ?? 0}',
-                                style: const TextStyle(fontWeight: FontWeight.w800, color: _fitilaClay, fontSize: 12),
+                            Text(
+                              '${entry['vote_count'] ?? 0}',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: _fitilaMuted,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 24),
+              ],
+            ),
     );
   }
 }
@@ -21779,7 +24274,13 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
 // 4. Aburu Fim IA — template connecté aux vrais produits du Marché
 // ─────────────────────────────────────────────────────────────────
 class _AburuTemplate {
-  const _AburuTemplate(this.id, this.label, this.colorA, this.colorB, this.captionSuffix);
+  const _AburuTemplate(
+    this.id,
+    this.label,
+    this.colorA,
+    this.colorB,
+    this.captionSuffix,
+  );
   final String id;
   final String label;
   final Color colorA;
@@ -21804,16 +24305,58 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
   final _manualName = TextEditingController();
   final _manualPrice = TextEditingController();
   int _templateIndex = 0;
+  // "Vidéo (un seul plan)" est le mode par défaut — c'est le geste
+  // décrit par la maquette ("aucune consigne de montage : un plan de
+  // quelques secondes suffit"). La photo reste possible pour les cas
+  // où une vidéo n'a pas de sens (petite annonce statique).
+  String _captureMode = 'video';
   FitilaMediaAsset? _photo;
+  VideoPlayerController? _previewVideoController;
   bool _publishing = false;
 
   static const _templates = [
-    _AburuTemplate('flash', 'Vente flash', Color(0xFFDC2626), Color(0xFF9C1C1C), '🔥 Offre du jour, ne ratez pas ça !'),
-    _AburuTemplate('nouveau', 'Nouveauté', Color(0xFFC99530), Color(0xFF9C6B1D), '✨ Tout juste arrivé au marché.'),
-    _AburuTemplate('artisanal', 'Artisanal', Color(0xFFB54E33), Color(0xFF8C3D28), '🧺 Fait main, qualité garantie.'),
-    _AburuTemplate('fraicheur', 'Fraîcheur', Color(0xFF3F6E52), Color(0xFF2C4E3A), '🌿 Produit frais du jour.'),
-    _AburuTemplate('premium', 'Premium', Color(0xFF241F2E), Color(0xFF4A3B96), '💎 Sélection premium Fitila.'),
-    _AburuTemplate('promo', 'Petit prix', Color(0xFF0F766E), Color(0xFF115E59), '💰 Le meilleur prix du marché.'),
+    _AburuTemplate(
+      'flash',
+      'Vente flash',
+      Color(0xFFDC2626),
+      Color(0xFF9C1C1C),
+      '🔥 Offre du jour, ne ratez pas ça !',
+    ),
+    _AburuTemplate(
+      'nouveau',
+      'Nouveauté',
+      Color(0xFFC99530),
+      Color(0xFF9C6B1D),
+      '✨ Tout juste arrivé au marché.',
+    ),
+    _AburuTemplate(
+      'artisanal',
+      'Artisanal',
+      Color(0xFFB54E33),
+      Color(0xFF8C3D28),
+      '🧺 Fait main, qualité garantie.',
+    ),
+    _AburuTemplate(
+      'fraicheur',
+      'Fraîcheur',
+      Color(0xFF3F6E52),
+      Color(0xFF2C4E3A),
+      '🌿 Produit frais du jour.',
+    ),
+    _AburuTemplate(
+      'premium',
+      'Premium',
+      Color(0xFF241F2E),
+      Color(0xFF4A3B96),
+      '💎 Sélection premium Fitila.',
+    ),
+    _AburuTemplate(
+      'promo',
+      'Petit prix',
+      Color(0xFF0F766E),
+      Color(0xFF115E59),
+      '💰 Le meilleur prix du marché.',
+    ),
   ];
 
   @override
@@ -21827,48 +24370,123 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
     _manualName.dispose();
     _manualPrice.dispose();
     _mediaController.dispose();
+    _previewVideoController?.dispose();
     super.dispose();
   }
 
   Future<void> _loadProducts() async {
     try {
       final products = await FitilaBackend.fetchMyProducts();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _products = products;
         _selectedProduct = products.isNotEmpty ? products.first : null;
         _loadingProducts = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _loadingProducts = false);
     }
   }
 
-  Future<void> _pickPhoto(ImageSource source) async {
+  Future<void> _pickCapture(ImageSource source) async {
     try {
-      final asset = await _mediaController.pickImage(source);
-      if (asset != null && mounted) setState(() => _photo = asset);
+      final asset = _captureMode == 'video'
+          ? await _mediaController.pickVideo(source)
+          : await _mediaController.pickImage(source);
+      if (asset == null || !mounted) {
+        return;
+      }
+      _previewVideoController?.dispose();
+      _previewVideoController = null;
+      if (asset.mediaType == 'video') {
+        final controller = VideoPlayerController.file(File(asset.path));
+        await controller.initialize();
+        await controller.setLooping(true);
+        await controller.setVolume(0);
+        await controller.play();
+        if (!mounted) {
+          controller.dispose();
+          return;
+        }
+        _previewVideoController = controller;
+      }
+      setState(() => _photo = asset);
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossible de charger la photo.')),
+        SnackBar(
+          content: Text(
+            _captureMode == 'video'
+                ? 'Impossible de charger la vidéo.'
+                : 'Impossible de charger la photo.',
+          ),
+        ),
       );
     }
   }
 
   String get _productName => _selectedProduct != null
-      ? (_selectedProduct!['title_fr'] ?? _selectedProduct!['title'] ?? 'Produit').toString()
-      : (_manualName.text.trim().isEmpty ? 'Mon produit' : _manualName.text.trim());
+      ? (_selectedProduct!['title_fr'] ??
+                _selectedProduct!['title'] ??
+                'Produit')
+            .toString()
+      : (_manualName.text.trim().isEmpty
+            ? 'Mon produit'
+            : _manualName.text.trim());
 
   String get _productPrice => _selectedProduct != null
-      ? (_selectedProduct!['price'] != null ? '${_selectedProduct!['price']} FCFA' : '')
-      : (_manualPrice.text.trim().isEmpty ? '' : '${_manualPrice.text.trim()} FCFA');
+      ? (_selectedProduct!['price'] != null
+            ? '${_selectedProduct!['price']} FCFA'
+            : '')
+      : (_manualPrice.text.trim().isEmpty
+            ? ''
+            : '${_manualPrice.text.trim()} FCFA');
+
+  // Étiquette de destination réelle : dérivée de la catégorie du produit
+  // sélectionné (jamais un texte fabriqué) — "Fil" seul pour une info libre.
+  String get _publishDestinationTag {
+    final category = _selectedProduct?['category']?.toString();
+    return category != null && category.isNotEmpty ? 'Fil → Marché' : 'Fil';
+  }
+
+  // Langues réellement renseignées sur le produit (title_fr / title_ba) —
+  // jamais une case cochée par défaut sans donnée derrière.
+  String get _productLanguages {
+    final hasBariba =
+        (_selectedProduct?['title_ba']?.toString().trim().isNotEmpty) == true;
+    return hasBariba ? 'FR + Bàátɔ̀nú' : 'FR';
+  }
+
+  String get _productStockLabel {
+    switch (_selectedProduct?['status']?.toString()) {
+      case 'sold':
+        return 'Épuisé';
+      case 'reserved':
+        return 'Réservé';
+      case 'available':
+        return 'En stock';
+      default:
+        return 'Info libre';
+    }
+  }
 
   Future<void> _publish() async {
     if (_photo == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ajoutez une photo du produit.')),
+        SnackBar(
+          content: Text(
+            _captureMode == 'video'
+                ? 'Filmez un plan du produit.'
+                : 'Ajoutez une photo du produit.',
+          ),
+        ),
       );
       return;
     }
@@ -21885,24 +24503,52 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
         bytes: await _photo!.readBytes(),
         originalName: _photo!.name,
         contentType: _photo!.contentType,
-        mediaType: 'photo',
+        mediaType: _photo!.mediaType,
         text: caption,
-        hashtags: ['aburu-fim', template.id, if (category != null && category.isNotEmpty) category],
+        hashtags: [
+          'aburu-fim',
+          template.id,
+          if (category != null && category.isNotEmpty) category,
+        ],
         templateId: 'aburu-fim-${template.id}',
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       widget.onPostCreated(FeedPost.fromBackend(row));
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Publication Aburu Fim IA envoyée au fil.')),
+        SnackBar(
+          content: Text(
+            'Publication automatique envoyée — $_publishDestinationTag.',
+          ),
+          action: SnackBarAction(
+            label: 'Rendre bilingue',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => SasaraIaScreen(
+                  onPostCreated: widget.onPostCreated,
+                  initialText: caption,
+                ),
+              ),
+            ),
+          ),
+        ),
       );
+      _previewVideoController?.dispose();
+      _previewVideoController = null;
       setState(() => _photo = null);
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Publication impossible. Réessayez.')),
       );
     } finally {
-      if (mounted) setState(() => _publishing = false);
+      if (mounted) {
+        setState(() => _publishing = false);
+      }
     }
   }
 
@@ -21911,9 +24557,15 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
     final template = _templates[_templateIndex];
     return _PageFrame(
       title: 'Aburu Fim IA',
-      subtitle: 'Choisissez un produit, un template, une photo — publication instantanée.',
+      subtitle:
+          'Galerie connectée à vos données réelles — un plan, publication instantanée.',
       child: _loadingProducts
-          ? const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(40),
+                child: CircularProgressIndicator(),
+              ),
+            )
           : ListView(
               children: [
                 Card(
@@ -21922,41 +24574,104 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('1. Produit', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                        const Text(
+                          '1. Galerie de templates',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          _products.isEmpty
+                              ? "Aucun produit enregistré dans le Marché — remplissez les champs libres ci-dessous."
+                              : 'Connectée à vos ${_products.length} produit(s) réels du Marché.',
+                          style: TextStyle(color: _fitilaMuted, fontSize: 11.5),
+                        ),
                         const SizedBox(height: 10),
                         if (_products.isNotEmpty)
-                          DropdownButtonFormField<Map<String, dynamic>?>(
-                            initialValue: _selectedProduct,
-                            isExpanded: true,
-                            decoration: const InputDecoration(border: OutlineInputBorder()),
-                            items: [
-                              for (final p in _products)
-                                DropdownMenuItem(
-                                  value: p,
-                                  child: Text('${p['title_fr'] ?? p['title'] ?? 'Produit'} — ${p['price'] ?? ''} FCFA'),
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  mainAxisSpacing: 10,
+                                  crossAxisSpacing: 10,
+                                  childAspectRatio: 1.35,
                                 ),
-                              const DropdownMenuItem(value: null, child: Text('Info libre (sans produit enregistré)')),
-                            ],
-                            onChanged: (value) => setState(() => _selectedProduct = value),
-                          )
-                        else
-                          Text(
-                            "Aucun produit enregistré dans le Marché — remplissez les champs libres ci-dessous.",
-                            style: TextStyle(color: _fitilaMuted, fontSize: 12),
+                            itemCount: _products.length + 1,
+                            itemBuilder: (context, index) {
+                              if (index == _products.length) {
+                                final selected = _selectedProduct == null;
+                                return _AburuGalleryCard(
+                                  selected: selected,
+                                  live: false,
+                                  title: 'Info libre',
+                                  subtitle: 'Sans produit enregistré',
+                                  onTap: () =>
+                                      setState(() => _selectedProduct = null),
+                                );
+                              }
+                              final p = _products[index];
+                              final selected = _selectedProduct == p;
+                              final price = p['price'];
+                              return _AburuGalleryCard(
+                                selected: selected,
+                                live: true,
+                                title:
+                                    (p['title_fr'] ?? p['title'] ?? 'Produit')
+                                        .toString(),
+                                subtitle: price != null
+                                    ? '$price FCFA'
+                                    : 'Prix non renseigné',
+                                onTap: () =>
+                                    setState(() => _selectedProduct = p),
+                              );
+                            },
                           ),
+                        if (_selectedProduct != null) ...[
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              _AburuInfoChip(
+                                icon: Icons.inventory_2_rounded,
+                                label: _productStockLabel,
+                              ),
+                              _AburuInfoChip(
+                                icon: Icons.translate_rounded,
+                                label: _productLanguages,
+                              ),
+                              _AburuInfoChip(
+                                icon: Icons.sell_rounded,
+                                label: _productPrice.isEmpty
+                                    ? 'Prix libre'
+                                    : _productPrice,
+                              ),
+                            ],
+                          ),
+                        ],
                         if (_selectedProduct == null) ...[
                           const SizedBox(height: 10),
                           TextField(
                             controller: _manualName,
                             onChanged: (_) => setState(() {}),
-                            decoration: const InputDecoration(labelText: 'Nom du produit', border: OutlineInputBorder()),
+                            decoration: const InputDecoration(
+                              labelText: 'Nom du produit',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
                           const SizedBox(height: 10),
                           TextField(
                             controller: _manualPrice,
                             onChanged: (_) => setState(() {}),
                             keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(labelText: 'Prix (FCFA)', border: OutlineInputBorder()),
+                            decoration: const InputDecoration(
+                              labelText: 'Prix (FCFA)',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
                         ],
                       ],
@@ -21970,7 +24685,13 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('2. Template', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                        const Text(
+                          '2. Template',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
+                        ),
                         const SizedBox(height: 10),
                         Wrap(
                           spacing: 8,
@@ -21980,7 +24701,8 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
                               ChoiceChip(
                                 label: Text(_templates[i].label),
                                 selected: _templateIndex == i,
-                                onSelected: (_) => setState(() => _templateIndex = i),
+                                onSelected: (_) =>
+                                    setState(() => _templateIndex = i),
                               ),
                           ],
                         ),
@@ -21995,7 +24717,36 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('3. Photo & aperçu', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                        const Text(
+                          '3. Capture — un seul plan',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Aucune consigne de montage : un seul plan suffit à nourrir le template.',
+                          style: TextStyle(color: _fitilaMuted, fontSize: 11.5),
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            ChoiceChip(
+                              label: const Text('🎬 Vidéo (un seul plan)'),
+                              selected: _captureMode == 'video',
+                              onSelected: (_) =>
+                                  setState(() => _captureMode = 'video'),
+                            ),
+                            ChoiceChip(
+                              label: const Text('📷 Photo'),
+                              selected: _captureMode == 'photo',
+                              onSelected: (_) =>
+                                  setState(() => _captureMode = 'photo'),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 10),
                         AspectRatio(
                           aspectRatio: 1,
@@ -22005,10 +24756,85 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
                               fit: StackFit.expand,
                               children: [
                                 _photo != null
-                                    ? Image.file(File(_photo!.path), fit: BoxFit.cover)
+                                    ? (_photo!.mediaType == 'video' &&
+                                              _previewVideoController != null
+                                          ? (_previewVideoController!
+                                                    .value
+                                                    .isInitialized
+                                                ? FittedBox(
+                                                    fit: BoxFit.cover,
+                                                    child: SizedBox(
+                                                      width:
+                                                          _previewVideoController!
+                                                              .value
+                                                              .size
+                                                              .width,
+                                                      height:
+                                                          _previewVideoController!
+                                                              .value
+                                                              .size
+                                                              .height,
+                                                      child: VideoPlayer(
+                                                        _previewVideoController!,
+                                                      ),
+                                                    ),
+                                                  )
+                                                : const Center(
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          color: Colors.white,
+                                                        ),
+                                                  ))
+                                          : Image.file(
+                                              File(_photo!.path),
+                                              fit: BoxFit.cover,
+                                            ))
                                     : Container(
-                                        color: _fitilaSurfaceAlt,
-                                        child: Icon(Icons.image_rounded, size: 48, color: _fitilaMuted),
+                                        decoration: const BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              _fitilaDark1,
+                                              _fitilaDark2,
+                                              _fitilaDark3,
+                                            ],
+                                            stops: [0.0, 0.55, 1.0],
+                                          ),
+                                        ),
+                                        child: Stack(
+                                          children: [
+                                            for (final align in const [
+                                              Alignment.topLeft,
+                                              Alignment.topRight,
+                                              Alignment.bottomLeft,
+                                              Alignment.bottomRight,
+                                            ])
+                                              Align(
+                                                alignment: align,
+                                                child: Padding(
+                                                  padding: const EdgeInsets.all(
+                                                    14,
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.crop_free_rounded,
+                                                    size: 22,
+                                                    color: Colors.white
+                                                        .withValues(
+                                                          alpha: 0.45,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ),
+                                            const Center(
+                                              child: Icon(
+                                                Icons.photo_camera_rounded,
+                                                size: 40,
+                                                color: Colors.white54,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                 Positioned(
                                   left: 0,
@@ -22020,20 +24846,36 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
                                       gradient: LinearGradient(
                                         begin: Alignment.topCenter,
                                         end: Alignment.bottomCenter,
-                                        colors: [Colors.transparent, template.colorA.withValues(alpha: .92)],
+                                        colors: [
+                                          Colors.transparent,
+                                          template.colorA.withValues(
+                                            alpha: .92,
+                                          ),
+                                        ],
                                       ),
                                     ),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text(
                                           template.captionSuffix,
-                                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                         Text(
-                                          _productPrice.isNotEmpty ? '$_productName — $_productPrice' : _productName,
-                                          style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800),
+                                          _productPrice.isNotEmpty
+                                              ? '$_productName — $_productPrice'
+                                              : _productName,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w800,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -22048,23 +24890,126 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
                           children: [
                             Expanded(
                               child: OutlinedButton.icon(
-                                onPressed: () => _pickPhoto(ImageSource.camera),
-                                icon: const Icon(Icons.photo_camera_rounded),
-                                label: const Text('Prendre une photo'),
+                                onPressed: () =>
+                                    _pickCapture(ImageSource.camera),
+                                icon: Icon(
+                                  _captureMode == 'video'
+                                      ? Icons.videocam_rounded
+                                      : Icons.photo_camera_rounded,
+                                ),
+                                label: Text(
+                                  _captureMode == 'video'
+                                      ? 'Filmer'
+                                      : 'Prendre une photo',
+                                ),
                               ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: OutlinedButton.icon(
-                                onPressed: () => _pickPhoto(ImageSource.gallery),
+                                onPressed: () =>
+                                    _pickCapture(ImageSource.gallery),
                                 icon: const Icon(Icons.photo_library_rounded),
                                 label: const Text('Galerie'),
                               ),
                             ),
                           ],
                         ),
+                        if (_photo != null) ...[
+                          const SizedBox(height: 14),
+                          const Text(
+                            'Brut vs personnalisé',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _AburuComparisonThumb(
+                                  label: 'Brut',
+                                  child: _photo!.mediaType == 'video'
+                                      ? const ColoredBox(
+                                          color: Colors.black,
+                                          child: Center(
+                                            child: Icon(
+                                              Icons.videocam_rounded,
+                                              color: Colors.white54,
+                                            ),
+                                          ),
+                                        )
+                                      : Image.file(
+                                          File(_photo!.path),
+                                          fit: BoxFit.cover,
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _AburuComparisonThumb(
+                                  label: 'Personnalisé FITILA',
+                                  highlighted: true,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          template.colorA,
+                                          template.colorB,
+                                        ],
+                                      ),
+                                    ),
+                                    padding: const EdgeInsets.all(6),
+                                    alignment: Alignment.bottomLeft,
+                                    child: Text(
+                                      _productName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _fitilaSurfaceAlt,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.bolt_rounded,
+                        size: 15,
+                        color: _fitilaGoldDeep,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Publication immédiate — sans ouvrir d\'éditeur. Destination : $_publishDestinationTag.',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -22074,10 +25019,13 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Icon(Icons.storefront_rounded),
-                  label: const Text('Publier dans le fil'),
+                  label: const Text('Publier automatiquement'),
                 ),
                 const SizedBox(height: 24),
               ],
@@ -22086,13 +25034,168 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
   }
 }
 
+/// Carte de la galerie Aburu Fim IA — tuile "Live" liée à un vrai
+/// produit du Marché (ou tuile "Info libre" sans donnée derrière).
+class _AburuGalleryCard extends StatelessWidget {
+  const _AburuGalleryCard({
+    required this.selected,
+    required this.live,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final bool selected;
+  final bool live;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: selected ? _fitilaPrimarySoft : _fitilaSurfaceAlt,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? _fitilaPrimary : _fitilaBorder,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (live)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: _fitilaClay,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  '● Live',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 12.5,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: _fitilaMuted, fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AburuInfoChip extends StatelessWidget {
+  const _AburuInfoChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: _fitilaSurfaceAlt,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: _fitilaMuted),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AburuComparisonThumb extends StatelessWidget {
+  const _AburuComparisonThumb({
+    required this.label,
+    required this.child,
+    this.highlighted = false,
+  });
+
+  final String label;
+  final Widget child;
+  final bool highlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: highlighted ? _fitilaGoldDeep : _fitilaSurfaceAlt,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w800,
+              color: highlighted ? Colors.white : _fitilaMuted,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        AspectRatio(
+          aspectRatio: 1.6,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: child,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────
 // 5. Sasara IA — pont bilingue + corpus communautaire opt-in
 // ─────────────────────────────────────────────────────────────────
 class SasaraIaScreen extends StatefulWidget {
-  const SasaraIaScreen({super.key, required this.onPostCreated});
+  const SasaraIaScreen({
+    super.key,
+    required this.onPostCreated,
+    this.initialText,
+  });
 
   final ValueChanged<FeedPost> onPostCreated;
+  // Rempli quand Sasara IA est proposé juste après une autre création
+  // (Echo Sɔ̃ɔ, Aburu Fim IA…) — évite de retaper le texte à traduire.
+  final String? initialText;
 
   @override
   State<SasaraIaScreen> createState() => _SasaraIaScreenState();
@@ -22102,74 +25205,141 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
   final _input = TextEditingController();
   TranslationDirection _direction = TranslationDirection.frenchToBariba;
   String _translated = '';
+  List<TextEditingController> _lineControllers = [];
+  int? _editingLine;
   bool _translating = false;
   bool _consent = false;
   bool _publishing = false;
   int _contributions = 0;
+  int _communityCount = 0;
 
   @override
   void initState() {
     super.initState();
+    if (widget.initialText != null && widget.initialText!.trim().isNotEmpty) {
+      _input.text = widget.initialText!.trim();
+    }
     _loadContributions();
   }
 
   @override
   void dispose() {
     _input.dispose();
+    for (final c in _lineControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
   Future<void> _loadContributions() async {
     try {
-      final count = await FitilaBackend.fetchCorpusContributionCount();
-      if (mounted) setState(() => _contributions = count);
+      final results = await Future.wait([
+        FitilaBackend.fetchCorpusContributionCount(),
+        FitilaBackend.fetchCorpusCommunityCountThisMonth(),
+      ]);
+      if (mounted) {
+        setState(() {
+          _contributions = results[0];
+          _communityCount = results[1];
+        });
+      }
     } catch (_) {
-      // Best-effort — le compteur reste à 0 si la lecture échoue.
+      // Best-effort — les compteurs restent à 0 si la lecture échoue.
     }
   }
 
+  // Découpe la traduction en lignes/phrases éditables individuellement
+  // — c'est ce qui permet de corriger l'IA ligne par ligne avant de
+  // publier, plutôt que de tout retraduire si un seul mot est faux.
+  void _rebuildLineControllers(String text) {
+    for (final c in _lineControllers) {
+      c.dispose();
+    }
+    final lines = text
+        .split(RegExp(r'(?<=[.!?])\s+|\n'))
+        .where((l) => l.trim().isNotEmpty)
+        .toList();
+    _lineControllers = (lines.isEmpty ? [text] : lines)
+        .map((l) => TextEditingController(text: l))
+        .toList();
+    _editingLine = null;
+  }
+
+  String get _editedTranslation => _lineControllers
+      .map((c) => c.text.trim())
+      .where((l) => l.isNotEmpty)
+      .join(' ');
+
   Future<void> _translate() async {
     final text = _input.text.trim();
-    if (text.isEmpty || _translating) return;
+    if (text.isEmpty || _translating) {
+      return;
+    }
     setState(() => _translating = true);
     try {
       final session = FitilaBackend.client.auth.currentSession;
-      final result = await FitilaServices.translate(text, _direction, accessToken: session?.accessToken);
-      if (!mounted) return;
-      setState(() => _translated = result);
+      final result = await FitilaServices.translate(
+        text,
+        _direction,
+        accessToken: session?.accessToken,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _translated = result;
+        _rebuildLineControllers(result);
+      });
       if (result.isNotEmpty && FitilaBackend.configured) {
         FitilaBackend.saveTranslationHistory(
-          sourceLang: _direction == TranslationDirection.frenchToBariba ? 'fr' : 'ba',
-          targetLang: _direction == TranslationDirection.frenchToBariba ? 'ba' : 'fr',
+          sourceLang: _direction == TranslationDirection.frenchToBariba
+              ? 'fr'
+              : 'ba',
+          targetLang: _direction == TranslationDirection.frenchToBariba
+              ? 'ba'
+              : 'fr',
           sourceText: text,
           translatedText: result,
           mode: 'Sasara IA',
         ).catchError((_) => <String, dynamic>{});
       }
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Traduction indisponible pour le moment.')),
+        const SnackBar(
+          content: Text('Traduction indisponible pour le moment.'),
+        ),
       );
     } finally {
-      if (mounted) setState(() => _translating = false);
+      if (mounted) {
+        setState(() => _translating = false);
+      }
     }
   }
 
   Future<void> _publish() async {
     final source = _input.text.trim();
-    if (source.isEmpty || _translated.trim().isEmpty) {
+    final translated = _editedTranslation;
+    if (source.isEmpty || translated.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Traduisez votre phrase avant de publier.')),
+        const SnackBar(
+          content: Text('Traduisez votre phrase avant de publier.'),
+        ),
       );
       return;
     }
     setState(() => _publishing = true);
-    final sourceLang = _direction == TranslationDirection.frenchToBariba ? 'fr' : 'ba';
-    final targetLang = _direction == TranslationDirection.frenchToBariba ? 'ba' : 'fr';
+    final sourceLang = _direction == TranslationDirection.frenchToBariba
+        ? 'fr'
+        : 'ba';
+    final targetLang = _direction == TranslationDirection.frenchToBariba
+        ? 'ba'
+        : 'fr';
     final content = _direction == TranslationDirection.frenchToBariba
-        ? '$source\n\n🌉 $_translated'
-        : '$_translated\n\n🌉 $source';
+        ? '$source\n\n🌉 $translated'
+        : '$translated\n\n🌉 $source';
     try {
       final row = await FitilaBackend.createTextPost(
         text: content,
@@ -22181,11 +25351,13 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
           sourceLang: sourceLang,
           targetLang: targetLang,
           sourceText: source,
-          translatedText: _translated,
+          translatedText: translated,
         ).catchError((_) => <String, dynamic>{});
         _loadContributions();
       }
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       widget.onPostCreated(FeedPost.fromBackend(row));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Publication bilingue envoyée au fil.')),
@@ -22193,14 +25365,19 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
       setState(() {
         _input.clear();
         _translated = '';
+        _rebuildLineControllers('');
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Publication impossible. Réessayez.')),
       );
     } finally {
-      if (mounted) setState(() => _publishing = false);
+      if (mounted) {
+        setState(() => _publishing = false);
+      }
     }
   }
 
@@ -22208,7 +25385,8 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
   Widget build(BuildContext context) {
     return _PageFrame(
       title: 'Sasara IA',
-      subtitle: 'Le pont bilingue — publiez en Bariba et en Français, ensemble.',
+      subtitle:
+          'Le pont bilingue — publiez en Bariba et en Français, ensemble.',
       child: ListView(
         children: [
           Container(
@@ -22243,13 +25421,21 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
                     children: [
                       ChoiceChip(
                         label: const Text('Français → Bariba'),
-                        selected: _direction == TranslationDirection.frenchToBariba,
-                        onSelected: (_) => setState(() => _direction = TranslationDirection.frenchToBariba),
+                        selected:
+                            _direction == TranslationDirection.frenchToBariba,
+                        onSelected: (_) => setState(
+                          () =>
+                              _direction = TranslationDirection.frenchToBariba,
+                        ),
                       ),
                       ChoiceChip(
                         label: const Text('Bariba → Français'),
-                        selected: _direction == TranslationDirection.baribaToFrench,
-                        onSelected: (_) => setState(() => _direction = TranslationDirection.baribaToFrench),
+                        selected:
+                            _direction == TranslationDirection.baribaToFrench,
+                        onSelected: (_) => setState(
+                          () =>
+                              _direction = TranslationDirection.baribaToFrench,
+                        ),
                       ),
                     ],
                   ),
@@ -22257,23 +25443,124 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
                   TextField(
                     controller: _input,
                     maxLines: 3,
-                    decoration: const InputDecoration(hintText: 'Votre phrase…', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      hintText: 'Votre phrase…',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   OutlinedButton.icon(
                     onPressed: _translating ? null : _translate,
                     icon: _translating
-                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : const Icon(Icons.translate_rounded, size: 16),
                     label: const Text('Traduire'),
                   ),
                   if (_translated.isNotEmpty) ...[
                     const SizedBox(height: 10),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: _fitilaPrimarySoft, borderRadius: BorderRadius.circular(10)),
-                      child: Text(_translated, style: const TextStyle(fontSize: 13.5)),
+                    Row(
+                      children: [
+                        const Text(
+                          'Vérifie la transcription',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const Spacer(),
+                        _FitilaListenButton(
+                          bariba:
+                              _direction == TranslationDirection.frenchToBariba
+                              ? _editedTranslation
+                              : null,
+                          french:
+                              _direction == TranslationDirection.baribaToFrench
+                              ? _editedTranslation
+                              : null,
+                          label: 'Écouter la traduction',
+                          compact: true,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    for (int i = 0; i < _lineControllers.length; i++)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _fitilaPrimarySoft,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: _editingLine == i
+                            ? Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _lineControllers[i],
+                                      autofocus: true,
+                                      style: const TextStyle(fontSize: 13.5),
+                                      decoration: const InputDecoration(
+                                        isDense: true,
+                                        border: InputBorder.none,
+                                      ),
+                                      onSubmitted: (_) =>
+                                          setState(() => _editingLine = null),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 28,
+                                      minHeight: 28,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.check_rounded,
+                                      size: 18,
+                                    ),
+                                    onPressed: () =>
+                                        setState(() => _editingLine = null),
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _lineControllers[i].text,
+                                      style: const TextStyle(fontSize: 13.5),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 28,
+                                      minHeight: 28,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.edit_rounded,
+                                      size: 16,
+                                    ),
+                                    onPressed: () =>
+                                        setState(() => _editingLine = i),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    Text(
+                      'Corrigez chaque ligne si besoin — la correction sert d\'abord à améliorer votre propre traduction.',
+                      style: TextStyle(
+                        color: _fitilaMuted,
+                        fontSize: 10.5,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   ],
                 ],
@@ -22281,22 +25568,116 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
             ),
           ),
           const SizedBox(height: 14),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: _consent,
-                    onChanged: (v) => setState(() => _consent = v),
-                    title: const Text('Contribuer cette phrase à la mémoire vocale Bariba'),
-                    subtitle: const Text('Désactivé par défaut. Aide à construire un corpus bilingue communautaire.'),
+          _FitilaDarkStage(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'Bàátɔ̀nú ⇄ Français',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      Icons.auto_stories_rounded,
+                      color: Colors.white.withValues(alpha: 0.5),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$_contributions',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  activeThumbColor: _fitilaPrimary,
+                  value: _consent,
+                  onChanged: (v) => setState(() => _consent = v),
+                  title: const Text(
+                    'Contribuer cette phrase à la mémoire de traduction Bariba',
+                    style: TextStyle(color: Colors.white, fontSize: 13),
                   ),
-                  Text('Vos contributions : $_contributions', style: TextStyle(color: _fitilaMuted, fontSize: 12)),
-                ],
-              ),
+                  subtitle: Text(
+                    'Désactivé par défaut. Texte uniquement pour le moment (pas encore de voix) — vos contributions personnelles ci-dessus.',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.55),
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.groups_rounded,
+                        color: Colors.white.withValues(alpha: 0.6),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'CORPUS COMMUNAUTAIRE',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: .4,
+                              ),
+                            ),
+                            Text(
+                              '$_communityCount phrase(s) bariba contribuées ce mois-ci',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              'Merci à celles et ceux qui ont activé la contribution.',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.5),
+                                fontSize: 10.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
@@ -22306,10 +25687,13 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
                 ? const SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Icon(Icons.send_rounded),
-            label: const Text('Publier en bilingue'),
+            label: const Text('Publier 🌉 en bilingue'),
           ),
           const SizedBox(height: 24),
         ],
@@ -22329,280 +25713,1449 @@ class HanduniaWasaScreen extends StatefulWidget {
 }
 
 class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
-  bool _interested = false;
-  bool _saving = false;
-final _fragmentController = TextEditingController();
-bool _publishingFragment = false;
-bool _generating = false;
-bool _aiAssisted = false;
+  // Parcours en 6 écrans — les 4 premiers repris À L'IDENTIQUE de la
+  // maquette validée, complétés par deux briques qui rendent le monde
+  // dynamique et social plutôt que limité à une liste fermée de lieux :
+  // 0 = portail d'entrée · 1 = carte des lieux vivants (densité réelle,
+  // recherche, tri, création libre) · 2 = présence dans un lieu généré
+  // (scène + mémoire collective + souvenirs de la communauté, IA
+  // réellement appelée à partir de souvenirs réels) · 3 = tisser un
+  // souvenir (écriture réelle, volontairement pas une "publication") ·
+  // 4 = tisser un nouveau lieu (ouvert à tout utilisateur) · 5 = fil du
+  // monde vivant (souvenirs récents, tous lieux confondus).
+  int _step = 0;
+  bool _loadingLieux = true;
+  String? _lieuxError;
+  List<Map<String, dynamic>> _lieux = const [];
+  Map<String, int> _density = const {};
+  final _lieuxQuery = TextEditingController();
+  bool _sortByPopular = true;
 
-@override
-void dispose() {
-_fragmentController.dispose();
-super.dispose();
-}
+  Map<String, dynamic>? _selectedLieu;
+  bool _loadingScene = false;
+  String _scene = '';
+  List<Map<String, dynamic>> _lieuFragments = const [];
+  final _askController = TextEditingController();
+  bool _asking = false;
+  String _memoryAnswer = '';
 
+  final _fragmentController = TextEditingController();
+  bool _weaving = false;
+  bool _generating = false;
+  bool _aiAssisted = false;
 
-  Future<void> _generateFragment() async {
-setState(() => _generating = true);
-try {
-const prompt =
-'Imagine en 3 à 4 phrases un fragment du monde Handunia Wasa : un lieu, '
-'un personnage ou un petit récit inspiré de la culture et de la langue bariba, '
-"comme s'il faisait partie d'un monde vivant et persistant. "
-'Réponds uniquement par le fragment, sans introduction ni explication.';
-final result = await FitilaBackend.askFitilaIa(prompt);
-if (!mounted) return;
-setState(() {
-_fragmentController.text = result;
-_aiAssisted = true;
-});
-} catch (_) {
-if (!mounted) return;
-ScaffoldMessenger.of(context).showSnackBar(
-const SnackBar(content: Text('Génération IA indisponible pour le moment.')),
-);
-} finally {
-if (mounted) setState(() => _generating = false);
-}
-}
+  final _newLieuName = TextEditingController();
+  final _newLieuIcon = TextEditingController(text: '📍');
+  final _newLieuDescription = TextEditingController();
+  bool _suggestingLieu = false;
+  bool _creatingLieu = false;
 
-  Future<void> _toggleInterest(bool value) async {
+  bool _loadingWorldFeed = false;
+  List<Map<String, dynamic>> _worldFeed = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLieux();
+  }
+
+  @override
+  void dispose() {
+    _fragmentController.dispose();
+    _askController.dispose();
+    _lieuxQuery.dispose();
+    _newLieuName.dispose();
+    _newLieuIcon.dispose();
+    _newLieuDescription.dispose();
+    super.dispose();
+  }
+
+  // Lieux visibles dans la grille : filtrés par la recherche libre et
+  // triés soit par popularité réelle (densité), soit par nouveauté —
+  // deux tris réellement calculés, jamais un ordre figé.
+  List<Map<String, dynamic>> get _visibleLieux {
+    final query = _lieuxQuery.text.trim().toLowerCase();
+    var list = query.isEmpty
+        ? _lieux
+        : _lieux
+              .where(
+                (l) =>
+                    (l['name']?.toString() ?? '').toLowerCase().contains(query),
+              )
+              .toList();
+    list = List<Map<String, dynamic>>.from(list);
+    if (_sortByPopular) {
+      list.sort(
+        (a, b) => (_density[b['id']] ?? 0).compareTo(_density[a['id']] ?? 0),
+      );
+    } else {
+      list.sort((a, b) {
+        final da =
+            DateTime.tryParse(a['created_at']?.toString() ?? '') ??
+            DateTime(2000);
+        final db =
+            DateTime.tryParse(b['created_at']?.toString() ?? '') ??
+            DateTime(2000);
+        return db.compareTo(da);
+      });
+    }
+    return list;
+  }
+
+  Future<void> _loadLieux() async {
     setState(() {
-      _interested = value;
-      _saving = true;
+      _loadingLieux = true;
+      _lieuxError = null;
     });
     try {
-      await FitilaBackend.registerHanduniaWasaInterest(value);
+      final results = await Future.wait([
+        FitilaBackend.fetchHanduniaLieux(),
+        FitilaBackend.fetchHanduniaDensity(),
+      ]);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _lieux = results[0] as List<Map<String, dynamic>>;
+        _density = results[1] as Map<String, int>;
+        _loadingLieux = false;
+      });
     } catch (_) {
-      // Best-effort : l'intérêt reste affiché localement même si l'enregistrement échoue.
-    } finally {
-      if (mounted) setState(() => _saving = false);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _lieuxError = 'Impossible de charger les lieux vivants pour le moment.';
+        _loadingLieux = false;
+      });
     }
   }
 
-  Future<void> _publishFragment() async {
-final text = _fragmentController.text.trim();
-if (text.isEmpty) {
-ScaffoldMessenger.of(context).showSnackBar(
-const SnackBar(content: Text('Écrivez ou générez un fragment avant de publier.')),
-);
-return;
-}
-setState(() => _publishingFragment = true);
-final content = _aiAssisted
-? '🌌 Fragment généré par Fitila IA pour Handunia Wasa\n\n$text\n\n'
-    "(Texte réellement généré par l'IA Fitila à partir d'un thème bariba — vision exploratoire 10-15 ans, pas un monde vivant fonctionnel aujourd'hui.)"
-: '🌌 Fragment imaginé pour Handunia Wasa\n\n$text\n\n'
-    '(Contribution communautaire à une vision exploratoire 10-15 ans — pas un contenu généré par une IA.)';
-try {
-await FitilaBackend.createTextPost(
-text: content,
-hashtags: [
-'handunia-wasa',
-if (_aiAssisted) 'ia-generatif' else 'vision-communautaire',
-],
-templateId: 'handunia-wasa',
-);
-if (!mounted) return;
-ScaffoldMessenger.of(context).showSnackBar(
-const SnackBar(content: Text('Fragment publié dans le fil.')),
-);
-setState(() {
-_fragmentController.clear();
-_aiAssisted = false;
-});
-} catch (_) {
-if (!mounted) return;
-ScaffoldMessenger.of(context).showSnackBar(
-const SnackBar(content: Text('Publication impossible. Réessayez.')),
-);
-} finally {
-if (mounted) setState(() => _publishingFragment = false);
-}
-}
+  // La densité affichée est un vrai décompte de souvenirs, ramené à une
+  // échelle 0-100 (20 souvenirs = lieu pleinement dense) — jamais un
+  // chiffre inventé. Un lieu sans souvenir affiche honnêtement 0%.
+  int _densityPercent(String lieuId) {
+    final count = _density[lieuId] ?? 0;
+    if (count <= 0) {
+      return 0;
+    }
+    return ((count / 20) * 100).clamp(0, 100).round();
+  }
+
+  Future<void> _openLieu(Map<String, dynamic> lieu) async {
+    setState(() {
+      _selectedLieu = lieu;
+      _step = 2;
+      _loadingScene = true;
+      _scene = '';
+      _memoryAnswer = '';
+      _askController.clear();
+    });
+    try {
+      final fragments = await FitilaBackend.fetchHanduniaFragments(
+        lieu['id'] as String,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() => _lieuFragments = fragments);
+      final scene = await _generateScene(lieu, fragments);
+      if (!mounted) {
+        return;
+      }
+      setState(() => _scene = scene);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(
+        () => _scene =
+            'La mémoire collective de ce lieu est momentanément indisponible — réessayez dans un instant.',
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _loadingScene = false);
+      }
+    }
+  }
+
+  // Scène RÉELLEMENT générée par Fitila IA : à partir des souvenirs
+  // effectivement déposés pour ce lieu quand il y en a, ou honnêtement
+  // à partir de la seule description éditoriale sinon — jamais un texte
+  // fabriqué présenté comme une reconstitution collective.
+  Future<String> _generateScene(
+    Map<String, dynamic> lieu,
+    List<Map<String, dynamic>> fragments,
+  ) async {
+    final name = lieu['name']?.toString() ?? 'ce lieu';
+    final description = lieu['description']?.toString() ?? '';
+    if (fragments.isEmpty) {
+      final prompt =
+          'Voici la description éditoriale d\'un lieu du monde bariba Handunia Wasa nommé "$name" : '
+          '$description Aucun souvenir communautaire n\'a encore été partagé pour ce lieu. '
+          'Rédige 2 à 3 phrases sensorielles qui évoquent ce lieu à partir de cette seule description, '
+          'comme une première évocation à enrichir par la communauté. Réponds uniquement par le texte, sans introduction.';
+      return FitilaBackend.askFitilaIa(prompt);
+    }
+    final memories = fragments.take(6).map((f) => '- ${f['text']}').join('\n');
+    final prompt =
+        'Voici des souvenirs RÉELS partagés par la communauté à propos du lieu "$name" ($description) :\n$memories\n\n'
+        'Rédige 2 à 3 phrases sensorielles qui reconstituent une scène évoquant ce lieu, en t\'appuyant '
+        'uniquement sur ces souvenirs réels. Réponds uniquement par le texte, sans introduction ni liste.';
+    return FitilaBackend.askFitilaIa(prompt);
+  }
+
+  // "Demander à la mémoire collective" : un vrai mini-RAG — la réponse
+  // vient uniquement des souvenirs réellement tissés pour ce lieu,
+  // jamais d'une connaissance générale inventée pour l'occasion.
+  Future<void> _askCollectiveMemory() async {
+    final question = _askController.text.trim();
+    final lieu = _selectedLieu;
+    if (question.isEmpty || lieu == null || _asking) {
+      return;
+    }
+    setState(() {
+      _asking = true;
+      _memoryAnswer = '';
+    });
+    try {
+      final name = lieu['name']?.toString() ?? 'ce lieu';
+      if (_lieuFragments.isEmpty) {
+        setState(() {
+          _memoryAnswer =
+              "Aucun souvenir communautaire n'a encore été partagé pour $name — soyez le premier à en tisser un, pour que la mémoire collective puisse un jour répondre.";
+        });
+        return;
+      }
+      final memories = _lieuFragments
+          .take(8)
+          .map((f) => '- ${f['text']}')
+          .join('\n');
+      final prompt =
+          'En te basant UNIQUEMENT sur les souvenirs communautaires réels suivants à propos de "$name" :\n$memories\n\n'
+          'Réponds à cette question : "$question". '
+          'Si ces souvenirs ne suffisent pas pour répondre, dis-le honnêtement plutôt que d\'inventer.';
+      final answer = await FitilaBackend.askFitilaIa(prompt);
+      if (!mounted) {
+        return;
+      }
+      setState(() => _memoryAnswer = answer);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(
+        () => _memoryAnswer =
+            'La mémoire collective est momentanément indisponible.',
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _asking = false);
+      }
+    }
+  }
+
+  Future<void> _generateFragment() async {
+    final lieu = _selectedLieu;
+    setState(() => _generating = true);
+    try {
+      final name = lieu?['name']?.toString() ?? 'Handunia Wasa';
+      final description = lieu?['description']?.toString() ?? '';
+      final prompt =
+          'Imagine en 3 à 4 phrases un souvenir ou un petit récit inspiré du lieu "$name" ($description) '
+          'dans le monde bariba Handunia Wasa, comme un fragment que quelqu\'un du village raconterait. '
+          'Réponds uniquement par le fragment, sans introduction ni explication.';
+      final result = await FitilaBackend.askFitilaIa(prompt);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _fragmentController.text = result;
+        _aiAssisted = true;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Génération IA indisponible pour le moment.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _generating = false);
+      }
+    }
+  }
+
+  // "Tisser dans le monde vivant" — volontairement PAS une publication
+  // dans le fil : le souvenir rejoint uniquement la mémoire du lieu.
+  Future<void> _weaveFragment() async {
+    final lieu = _selectedLieu;
+    final text = _fragmentController.text.trim();
+    if (lieu == null) {
+      return;
+    }
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Décrivez votre souvenir avant de le tisser.'),
+        ),
+      );
+      return;
+    }
+    setState(() => _weaving = true);
+    try {
+      await FitilaBackend.weaveHanduniaFragment(
+        lieuId: lieu['id'] as String,
+        text: text,
+        aiGenerated: _aiAssisted,
+      );
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Votre souvenir a rejoint le monde vivant.'),
+        ),
+      );
+      setState(() {
+        _fragmentController.clear();
+        _aiAssisted = false;
+        _step = 1;
+      });
+      _loadLieux();
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Impossible de tisser ce souvenir. Réessayez.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _weaving = false);
+      }
+    }
+  }
+
+  // Ouvre l'écran de création d'un nouveau lieu. Si un lieu de nom très
+  // proche existe déjà, on le propose à la place plutôt que de laisser
+  // filer vers un doublon — la contrainte d'unicité en base est le
+  // filet de sécurité final, pas la première ligne de défense.
+  void _openCreateLieuStep() {
+    _newLieuName.clear();
+    _newLieuIcon.text = '📍';
+    _newLieuDescription.clear();
+    setState(() => _step = 4);
+  }
+
+  Map<String, dynamic>? _findSimilarLieu(String name) {
+    final target = name.trim().toLowerCase();
+    if (target.isEmpty) {
+      return null;
+    }
+    for (final lieu in _lieux) {
+      if ((lieu['name']?.toString() ?? '').trim().toLowerCase() == target) {
+        return lieu;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _suggestLieuDetails() async {
+    final name = _newLieuName.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Donnez un nom au lieu avant de demander une suggestion.',
+          ),
+        ),
+      );
+      return;
+    }
+    setState(() => _suggestingLieu = true);
+    try {
+      final prompt =
+          'Pour un lieu du monde vivant bariba Handunia Wasa nommé "$name", propose exactement deux lignes : '
+          'une ligne "ICONE: " suivie d\'un seul emoji pertinent, puis une ligne "DESCRIPTION: " suivie '
+          'd\'une phrase courte et évocatrice (moins de 25 mots) qui donne envie d\'y déposer un souvenir. '
+          'Réponds uniquement avec ces deux lignes, rien d\'autre.';
+      final result = await FitilaBackend.askFitilaIa(prompt);
+      final iconMatch = RegExp(r'ICONE\s*:\s*(\S+)').firstMatch(result);
+      final descMatch = RegExp(
+        r'DESCRIPTION\s*:\s*(.+)',
+        dotAll: true,
+      ).firstMatch(result);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        if (iconMatch != null) {
+          _newLieuIcon.text = iconMatch.group(1)!.trim();
+        }
+        if (descMatch != null) {
+          _newLieuDescription.text = descMatch.group(1)!.trim();
+        } else if (iconMatch == null) {
+          _newLieuDescription.text = result.trim();
+        }
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Suggestion IA indisponible pour le moment.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _suggestingLieu = false);
+      }
+    }
+  }
+
+  Future<void> _submitNewLieu() async {
+    final name = _newLieuName.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Donnez un nom à ce lieu.')));
+      return;
+    }
+    final similar = _findSimilarLieu(name);
+    if (similar != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('« $name » existe déjà — ouverture de ce lieu.'),
+        ),
+      );
+      _openLieu(similar);
+      return;
+    }
+    setState(() => _creatingLieu = true);
+    try {
+      await FitilaBackend.createHanduniaLieu(
+        name: name,
+        icon: _newLieuIcon.text,
+        description: _newLieuDescription.text,
+      );
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('« $name » a rejoint le monde vivant.')),
+      );
+      setState(() => _step = 1);
+      await _loadLieux();
+    } on StateError catch (e) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Impossible de créer ce lieu. Réessayez.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _creatingLieu = false);
+      }
+    }
+  }
+
+  Future<void> _openWorldFeed() async {
+    setState(() {
+      _step = 5;
+      _loadingWorldFeed = true;
+    });
+    try {
+      final feed = await FitilaBackend.fetchHanduniaWorldFeed();
+      if (!mounted) {
+        return;
+      }
+      setState(() => _worldFeed = feed);
+    } catch (_) {
+      // Best-effort : le fil reste vide plutôt que de bloquer l'écran.
+    } finally {
+      if (mounted) {
+        setState(() => _loadingWorldFeed = false);
+      }
+    }
+  }
+
+  // "J'aime" réellement écrit en base — jamais un compteur local
+  // seulement affiché côté app. La liste affichée (fil du lieu ou fil
+  // du monde) est mise à jour optimistement puis resynchronisée.
+  Future<void> _toggleLike(
+    Map<String, dynamic> fragment,
+    List<Map<String, dynamic>> list,
+    void Function(void Function()) apply,
+  ) async {
+    final id = fragment['id'] as String;
+    final liked = fragment['liked_by_me'] == true;
+    apply(() {
+      fragment['liked_by_me'] = !liked;
+      fragment['like_count'] =
+          ((fragment['like_count'] as int?) ?? 0) + (liked ? -1 : 1);
+    });
+    try {
+      await FitilaBackend.toggleHanduniaFragmentLike(
+        fragmentId: id,
+        like: !liked,
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      apply(() {
+        fragment['liked_by_me'] = liked;
+        fragment['like_count'] =
+            ((fragment['like_count'] as int?) ?? 0) + (liked ? 1 : -1);
+      });
+    }
+  }
+
+  Widget _buildFragmentTile(
+    Map<String, dynamic> fragment,
+    List<Map<String, dynamic>> list, {
+    bool showLieu = false,
+  }) {
+    final likeCount = (fragment['like_count'] as int?) ?? 0;
+    final liked = fragment['liked_by_me'] == true;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: _fitilaCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _fitilaBorder),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: _fitilaPrimarySoft,
+            child: Text(
+              _initialLetter(fragment['display_name']?.toString()),
+              style: const TextStyle(
+                color: _fitilaGoldDeep,
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        fragment['display_name']?.toString() ?? 'Griot Fitila',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ),
+                    if (fragment['ai_generated'] == true)
+                      Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 12,
+                        color: _fitilaGoldDeep,
+                      ),
+                    if (showLieu) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        '${fragment['lieu_icon'] ?? ''} ${fragment['lieu_name'] ?? ''}',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          color: _fitilaMuted,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  fragment['text']?.toString() ?? '',
+                  style: const TextStyle(fontSize: 12.5),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            children: [
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                icon: Icon(
+                  liked
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  size: 17,
+                  color: liked ? _fitilaClay : _fitilaMuted,
+                ),
+                onPressed: () => _toggleLike(fragment, list, setState),
+              ),
+              Text(
+                '$likeCount',
+                style: TextStyle(fontSize: 10, color: _fitilaMuted),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return _PageFrame(
       title: 'Handunia Wasa',
-      subtitle: 'Un monde vivant, généré en continu — vision exploratoire 10-15 ans.',
-      child: ListView(
+      subtitle:
+          'Le monde vivant Bàátɔ̀nú, tissé par chaque voix, chaque souvenir, chaque récit.',
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 260),
+        child: KeyedSubtree(key: ValueKey(_step), child: _buildStepBody()),
+      ),
+    );
+  }
+
+  Widget _buildStepBody() {
+    switch (_step) {
+      case 1:
+        return _buildLieuxStep();
+      case 2:
+        return _buildSceneStep();
+      case 3:
+        return _buildWeaveStep();
+      case 4:
+        return _buildCreateLieuStep();
+      case 5:
+        return _buildWorldFeedStep();
+      case 0:
+      default:
+        return _buildPortalStep();
+    }
+  }
+
+  // 1/4 — Portail d'entrée : un seuil qui respire lentement, pour
+  // signaler qu'on entre ailleurs, pas dans un menu.
+  Widget _buildPortalStep() {
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
         children: [
-          Container(
-            height: 260,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              gradient: const RadialGradient(
-                center: Alignment(0, -0.2),
-                radius: 1.1,
-                colors: [Color(0xFF4A3B78), Color(0xFF241F2E), Color(0xFF14111C)],
-                stops: [0.0, 0.6, 1.0],
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: const RadialGradient(
+                  center: Alignment(0, -0.1),
+                  radius: 1.1,
+                  colors: [
+                    Color(0xFF4A3B78),
+                    Color(0xFF241F2E),
+                    Color(0xFF14111C),
+                  ],
+                  stops: [0.0, 0.6, 1.0],
+                ),
               ),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                for (final ring in [70.0, 110.0, 150.0, 190.0])
-                  Container(
-                    width: ring,
-                    height: ring,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFF8FE3CF).withValues(alpha: .28), width: 1),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 170,
+                    height: 170,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        for (final size in [80.0, 120.0, 160.0])
+                          Container(
+                            width: size,
+                            height: size,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(
+                                  0xFF8FE3CF,
+                                ).withValues(alpha: 0.28),
+                              ),
+                            ),
+                          ),
+                        Container(
+                          width: 54,
+                          height: 54,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [Color(0xFF8FE3CF), Color(0xFF3F6E52)],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                const Icon(Icons.auto_awesome_rounded, color: Color(0xFF8FE3CF), size: 40),
-                const Positioned(
-                  bottom: 18,
-                  child: Text(
-                    'HANDUNIA WASA',
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Handunia Wasa',
                     style: TextStyle(
-                      color: Color(0xFF8FE3CF),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                      letterSpacing: 3,
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'serif',
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: _fitilaSurfaceAlt,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _fitilaBorder),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.science_rounded, color: _fitilaClay),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    "Vision exploratoire 10-15 ans : aucun monde vivant persistant n'existe aujourd'hui. Ce qui est réel dès maintenant : la génération de fragments texte par l'IA Fitila et leur publication dans le fil, ci-dessous.",
-                    style: TextStyle(fontSize: 12, color: _fitilaInkSoft),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 30),
+                    child: Text(
+                      'Le monde vivant Bàátɔ̀nú, tissé par chaque voix, chaque souvenir, chaque récit.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.65),
+                        fontSize: 12.5,
+                        height: 1.4,
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text('Le principe', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-          const SizedBox(height: 8),
-          const Text(
-            "Plutôt qu'un fil de vidéos que l'on consomme, Handunia Wasa imagine un monde bariba persistant et généré en continu : "
-            "des lieux, des personnages et des histoires qui existent en dehors de toute vidéo, que l'on visite et façonne avec d'autres, "
-            'porté par une IA qui tisse en temps réel la langue, la musique et les récits de la communauté.',
-            style: TextStyle(fontSize: 13.5, height: 1.5),
-          ),
-          const SizedBox(height: 16),
-          const _FeatureGrid(
-            items: [
-              (Icons.map_rounded, 'Monde persistant', "Des lieux qui continuent d'exister et d'évoluer entre les visites."),
-              (Icons.groups_rounded, 'Présence partagée', "S'y retrouver à plusieurs, en direct, sans passer par une vidéo."),
-              (Icons.auto_stories_rounded, 'Récits tissés par l\'IA', 'Histoires et dialogues générés en continu à partir du patrimoine bariba.'),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: SwitchListTile(
-              value: _interested,
-              onChanged: _saving ? null : _toggleInterest,
-              title: const Text('Me prévenir si cette vision avance un jour'),
-              subtitle: const Text('Le seul geste réel de cet écran : enregistrer votre intérêt dans vos préférences.'),
-            ),
-          ),
-          const SizedBox(height: 16),
-Card(
-  child: Padding(
-    padding: const EdgeInsets.all(14),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Imaginer un fragment',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          "Décrivez-le vous-même, ou laissez Fitila IA en générer un vraiment — relisez et modifiez avant de publier. Le fil indique toujours l'origine réelle : IA ou communauté.",
-          style: TextStyle(fontSize: 11.5, color: _fitilaMuted),
-        ),
-        const SizedBox(height: 10),
-        TextField(
-          controller: _fragmentController,
-          maxLines: 3,
-          onChanged: (value) {
-            if (value.trim().isEmpty && _aiAssisted) {
-              setState(() => _aiAssisted = false);
-            }
-          },
-          decoration: const InputDecoration(
-            hintText: 'Ex : Un marché nocturne où les proverbes prennent vie…',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        if (_aiAssisted) ...[
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Icon(Icons.auto_awesome_rounded, size: 14, color: _fitilaGoldDeep),
-              const SizedBox(width: 4),
-              Text(
-                'Généré par Fitila IA — modifiable avant publication',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: _fitilaGoldDeep,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ],
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _generating ? null : _generateFragment,
-                icon: _generating
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.auto_awesome_rounded, size: 16),
-                label: const Text('Générer avec Fitila IA'),
+                ],
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: _publishingFragment ? null : _publishFragment,
-                icon: _publishingFragment
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Icon(Icons.auto_stories_rounded),
-                label: const Text('Publier'),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => setState(() => _step = 1),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: const Text(
+                'Entrer dans le monde',
+                style: TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
-          ],
-        ),
-      ],
-    ),
-  ),
-),
-          const SizedBox(height: 24),
+          ),
         ],
       ),
     );
   }
+
+  // 2/4 — Carte des lieux vivants : chaque lieu se densifie visuellement
+  // à mesure que la communauté y dépose souvenirs, voix et récits —
+  // une vraie densité, jamais fabriquée (voir _densityPercent).
+  Widget _buildLieuxStep() {
+    return SizedBox(
+      width: double.infinity,
+      child: _loadingLieux
+          ? const Center(child: CircularProgressIndicator())
+          : _lieuxError != null
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_lieuxError!),
+                  const SizedBox(height: 10),
+                  FilledButton(
+                    onPressed: _loadLieux,
+                    child: const Text('Réessayer'),
+                  ),
+                ],
+              ),
+            )
+          : ListView(
+              children: [
+                Row(
+                  children: [
+                    const Text('🌐', style: TextStyle(fontSize: 16)),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Lieux vivants',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: _openWorldFeed,
+                      icon: const Icon(Icons.dynamic_feed_rounded, size: 16),
+                      label: const Text('Fil du monde'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${_lieux.length} lieux tissés par la communauté — ouverts à tous, sans limite',
+                  style: TextStyle(color: _fitilaMuted, fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _lieuxQuery,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'Rechercher un lieu…',
+                    prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    ChoiceChip(
+                      label: const Text('🔥 Populaires'),
+                      selected: _sortByPopular,
+                      onSelected: (_) => setState(() => _sortByPopular = true),
+                    ),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: const Text('🆕 Récents'),
+                      selected: !_sortByPopular,
+                      onSelected: (_) => setState(() => _sortByPopular = false),
+                    ),
+                    const Spacer(),
+                    OutlinedButton.icon(
+                      onPressed: _openCreateLieuStep,
+                      icon: const Icon(
+                        Icons.add_location_alt_rounded,
+                        size: 16,
+                      ),
+                      label: const Text('Nouveau lieu'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                if (_visibleLieux.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        "Aucun lieu ne correspond — soyez le premier à en tisser un.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: _fitilaMuted, fontSize: 12.5),
+                      ),
+                    ),
+                  )
+                else
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 14,
+                          crossAxisSpacing: 14,
+                          childAspectRatio: 0.92,
+                        ),
+                    itemCount: _visibleLieux.length,
+                    itemBuilder: (context, index) {
+                      final lieu = _visibleLieux[index];
+                      final id = lieu['id'] as String;
+                      final percent = _densityPercent(id);
+                      return GestureDetector(
+                        onTap: () => _openLieu(lieu),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: _fitilaInk,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 62,
+                                height: 62,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    CustomPaint(
+                                      size: const Size(62, 62),
+                                      painter: _ScoreRingPainter(
+                                        progress: percent / 100,
+                                      ),
+                                    ),
+                                    Text(
+                                      lieu['icon']?.toString() ?? '📍',
+                                      style: const TextStyle(fontSize: 22),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                lieu['name']?.toString() ?? '',
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Text(
+                                lieu['created_by'] == null
+                                    ? 'Densité $percent%'
+                                    : 'Densité $percent% · communauté',
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                const SizedBox(height: 12),
+                const _FitilaCollapsibleNote(
+                  icon: Icons.info_outline_rounded,
+                  summary: "D'où vient la densité affichée ?",
+                  detail:
+                      "Chaque pourcentage reflète le nombre réel de souvenirs déjà tissés pour ce lieu (20 souvenirs = lieu pleinement dense) — jamais un chiffre fabriqué. Un lieu à 0% n'a simplement reçu aucun souvenir pour le moment. N'importe quel membre peut tisser un nouveau lieu : les 7 lieux d'origine ne sont qu'un point de départ.",
+                ),
+              ],
+            ),
+    );
+  }
+
+  // 3/4 — Présence dans un lieu généré : scène abstraite tissée à
+  // partir de récits réels ; l'IA est la présence gardienne de la
+  // mémoire — jamais une personne précise inventée.
+  Widget _buildSceneStep() {
+    final lieu = _selectedLieu;
+    if (lieu == null) {
+      return const SizedBox.shrink();
+    }
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => setState(() => _step = 1),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      lieu['name']?.toString() ?? '',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      'Reconstitué par la mémoire collective',
+                      style: TextStyle(color: _fitilaMuted, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: _FitilaDarkStage(
+              child: _loadingScene
+                  ? const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    )
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          lieu['icon']?.toString() ?? '📍',
+                          style: const TextStyle(fontSize: 34),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _scene.isNotEmpty
+                              ? '"$_scene"'
+                              : (lieu['description']?.toString() ?? ''),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontStyle: FontStyle.italic,
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          _lieuFragments.isEmpty
+                              ? 'Première évocation — aucun souvenir communautaire pour ce lieu pour le moment.'
+                              : '${_lieuFragments.length} souvenir(s) communautaire(s) tissé(s) ici.',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            fontSize: 10.5,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+          if (_lieuFragments.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 150,
+              child: ListView.builder(
+                itemCount: _lieuFragments.length,
+                itemBuilder: (context, index) =>
+                    _buildFragmentTile(_lieuFragments[index], _lieuFragments),
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          if (_memoryAnswer.isNotEmpty)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: _fitilaPrimarySoft,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                _memoryAnswer,
+                style: const TextStyle(fontSize: 12.5),
+              ),
+            ),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _askController,
+                  decoration: const InputDecoration(
+                    hintText: '💬 Demander à la mémoire collective…',
+                    border: OutlineInputBorder(),
+                  ),
+                  onSubmitted: (_) => _askCollectiveMemory(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(
+                onPressed: _asking ? null : _askCollectiveMemory,
+                icon: _asking
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.send_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => setState(() => _step = 3),
+              icon: const Icon(Icons.auto_stories_rounded),
+              label: const Text('Tisser un souvenir ici'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 4/4 — Le bouton n'est pas "Publier" : le geste est cadré comme un
+  // tissage collectif, pas une publication individuelle dans le fil.
+  Widget _buildWeaveStep() {
+    final lieu = _selectedLieu;
+    return ListView(
+      children: [
+        Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_back_rounded),
+              onPressed: () => setState(() => _step = 2),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Tisser un souvenir',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                  ),
+                  Text(
+                    'Il rejoint Handunia Wasa',
+                    style: TextStyle(color: _fitilaMuted, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'TON RÉCIT',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                    letterSpacing: .5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _fragmentController,
+                  builder: (context, value, _) => Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _fragmentController,
+                          maxLines: 3,
+                          onChanged: (v) {
+                            if (v.trim().isEmpty && _aiAssisted) {
+                              setState(() => _aiAssisted = false);
+                            }
+                          },
+                          decoration: InputDecoration(
+                            hintText: lieu != null
+                                ? 'Ex : Ma grand-mère racontait que…'
+                                : 'Décrivez votre souvenir…',
+                            border: const OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      _FitilaListenButton(
+                        french: value.text,
+                        label: 'Écouter le souvenir',
+                        compact: true,
+                      ),
+                    ],
+                  ),
+                ),
+                if (_aiAssisted) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 14,
+                        color: _fitilaGoldDeep,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Généré par Fitila IA — modifiable avant de tisser',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: _fitilaGoldDeep,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: _generating ? null : _generateFragment,
+                  icon: _generating
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.auto_awesome_rounded, size: 16),
+                  label: const Text('Générer avec Fitila IA'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 60,
+          width: double.infinity,
+          child: CustomPaint(painter: _WeaveLinePainter()),
+        ),
+        const SizedBox(height: 10),
+        FilledButton.icon(
+          onPressed: _weaving ? null : _weaveFragment,
+          icon: _weaving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.auto_awesome_mosaic_rounded),
+          label: const Text('Tisser dans le monde vivant'),
+        ),
+        const SizedBox(height: 6),
+        Center(
+          child: Text(
+            "Ce geste n'est pas une publication dans le fil : votre souvenir rejoint la mémoire du lieu, tissée collectivement.",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: _fitilaMuted, fontSize: 10.5),
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  // 5 — Créer un nouveau lieu : n'importe quel membre peut faire naître
+  // un lieu du monde vivant, pas seulement les 7 lieux éditoriaux de
+  // départ. Fitila IA peut aider à proposer une icône et une description,
+  // mais rien n'est publié tant que l'utilisateur n'a pas validé.
+  Widget _buildCreateLieuStep() {
+    return ListView(
+      children: [
+        Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_back_rounded),
+              onPressed: () => setState(() => _step = 1),
+            ),
+            const Expanded(
+              child: Text(
+                'Tisser un nouveau lieu',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          "Le monde vivant ne se limite pas aux lieux d'origine : proposez un lieu et il rejoint la carte pour toute la communauté.",
+          style: TextStyle(color: _fitilaMuted, fontSize: 12, height: 1.4),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'NOM DU LIEU',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                    letterSpacing: .5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _newLieuName,
+                  decoration: const InputDecoration(
+                    hintText: 'Ex : Rive du fleuve Alibori',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'ICÔNE',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                    letterSpacing: .5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _newLieuIcon,
+                  maxLength: 4,
+                  decoration: const InputDecoration(
+                    hintText: '📍',
+                    border: OutlineInputBorder(),
+                    counterText: '',
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'DESCRIPTION',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                    letterSpacing: .5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _newLieuDescription,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    hintText:
+                        'Ce qui se vit dans ce lieu, ce qui donne envie d\'y déposer un souvenir…',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: _suggestingLieu ? null : _suggestLieuDetails,
+                  icon: _suggestingLieu
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.auto_awesome_rounded, size: 16),
+                  label: const Text('Suggérer avec Fitila IA'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _creatingLieu ? null : _submitNewLieu,
+            icon: _creatingLieu
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.add_location_alt_rounded),
+            label: const Text('Créer ce lieu'),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Center(
+          child: Text(
+            "Un lieu du même nom existe déjà ? Vous serez redirigé vers celui-ci plutôt que d'en créer un doublon.",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: _fitilaMuted, fontSize: 10.5),
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  // 6 — Fil du monde : le geste social qui manquait — voir, à travers
+  // tous les lieux, les souvenirs récemment tissés par la communauté,
+  // avec leur auteur réel et la possibilité de les aimer.
+  Widget _buildWorldFeedStep() {
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => setState(() => _step = 1),
+              ),
+              const Expanded(
+                child: Text(
+                  'Fil du monde vivant',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded),
+                onPressed: _loadingWorldFeed ? null : _openWorldFeed,
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              'Les derniers souvenirs tissés par toute la communauté, tous lieux confondus.',
+              style: TextStyle(color: _fitilaMuted, fontSize: 12),
+            ),
+          ),
+          Expanded(
+            child: _loadingWorldFeed
+                ? const Center(child: CircularProgressIndicator())
+                : _worldFeed.isEmpty
+                ? Center(
+                    child: Text(
+                      "Aucun souvenir tissé pour le moment — soyez le premier.",
+                      style: TextStyle(color: _fitilaMuted, fontSize: 12.5),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _worldFeed.length,
+                    itemBuilder: (context, index) => _buildFragmentTile(
+                      _worldFeed[index],
+                      _worldFeed,
+                      showLieu: true,
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Petit trait tissé entre un point d'ancrage et un nouveau point —
+/// purement décoratif (comme le tracé animé de la maquette), pour
+/// symboliser un souvenir qui rejoint le tissage collectif.
+class _WeaveLinePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final linePaint = Paint()
+      ..color = _fitilaPrimary
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    final path = Path()
+      ..moveTo(12, size.height - 10)
+      ..quadraticBezierTo(size.width * 0.5, 4, size.width - 12, 14);
+    canvas.drawPath(path, linePaint);
+    final anchorPaint = Paint()..color = _fitilaMuted;
+    canvas.drawCircle(Offset(12, size.height - 10), 4, anchorPaint);
+    final newPaint = Paint()..color = _fitilaPrimary;
+    canvas.drawCircle(Offset(size.width - 12, 14), 5, newPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _WeaveLinePainter oldDelegate) => false;
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -22650,14 +27203,22 @@ class _CreationIaTile extends StatelessWidget {
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13.5),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 13.5,
+              ),
             ),
             const SizedBox(height: 3),
             Text(
               subtitle,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white70, fontSize: 10.5, height: 1.2),
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 10.5,
+                height: 1.2,
+              ),
             ),
           ],
         ),
