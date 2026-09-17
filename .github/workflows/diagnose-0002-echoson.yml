@@ -121,6 +121,63 @@ jobs:
               reset="        _translated = '';\n        _audio = null;"
               if reset in s:
                   s=s.replace(reset,"        _translated = '';\n        _audio = null;\n        _playingBack = false;",1)
+              # Premium Live Griot, en conservant les deux actions réelles actuelles.
+              live_class=s.index('class _LiveGriotScreenState')
+              live_button=s.index('_startingLive ? null : _startLiveNow', live_class)
+              live_start=s.rfind('          Row(', live_class, live_button)
+              live_end=s.index('          const SizedBox(height: 24),', live_button)
+              assert live_start >= live_class and live_end > live_button
+              premium_live=(
+                '          _FitilaDarkStage(\n'
+                '            child: Column(\n'
+                '              children: [\n'
+                '                _FitilaOrbMic(\n'
+                '                  icon: Icons.podcasts_rounded,\n'
+                '                  size: 84,\n'
+                '                  active: _startingLive,\n'
+                '                  onTap: _startingLive ? null : _startLiveNow,\n'
+                '                ),\n'
+                '                const SizedBox(height: 18),\n'
+                '                Text(\n'
+                "                  _title.text.trim().isEmpty ? 'Prêt·e à parler à votre public ?' : _title.text.trim(),\n"
+                '                  textAlign: TextAlign.center,\n'
+                '                  style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),\n'
+                '                ),\n'
+                '                const SizedBox(height: 4),\n'
+                '                Text(\n'
+                "                  _language + ' • ' + (_allowGuests ? 'invités autorisés' : 'invités désactivés'),\n"
+                '                  style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 11.5),\n'
+                '                ),\n'
+                '                const SizedBox(height: 18),\n'
+                '                Row(\n'
+                '                  children: [\n'
+                '                    Expanded(\n'
+                '                      child: FilledButton.icon(\n'
+                '                        onPressed: _startingLive ? null : _startLiveNow,\n'
+                '                        icon: _startingLive\n'
+                '                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))\n'
+                '                            : const Icon(Icons.podcasts_rounded),\n'
+                "                        label: const Text('🔴 Démarrer mon direct'),\n"
+                '                      ),\n'
+                '                    ),\n'
+                '                    const SizedBox(width: 10),\n'
+                '                    Expanded(\n'
+                '                      child: OutlinedButton.icon(\n'
+                '                        style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white38)),\n'
+                '                        onPressed: _scheduling ? null : _scheduleAnnouncement,\n'
+                '                        icon: _scheduling\n'
+                '                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))\n'
+                '                            : const Icon(Icons.campaign_rounded),\n'
+                "                        label: const Text('Programmer une annonce'),\n"
+                '                      ),\n'
+                '                    ),\n'
+                '                  ],\n'
+                '                ),\n'
+                '              ],\n'
+                '            ),\n'
+                '          ),\n'
+              )
+              s=s[:live_start]+premium_live+s[live_end:]
               p.write_text(s,encoding='utf-8')
           PY
 
@@ -136,7 +193,7 @@ jobs:
           for line in lines:
               if line.startswith('@@ '):
                   hunk += 1
-                  skip = hunk == 4
+                  skip = hunk in (4, 9)
               elif line.startswith('diff --git '):
                   skip = False
               if not skip:
