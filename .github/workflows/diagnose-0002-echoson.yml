@@ -1,4 +1,5 @@
 name: FITILA semantic merge validation 0002-0008
+# UI tests aligned with immersive 0008 navigation.
 
 on:
   push:
