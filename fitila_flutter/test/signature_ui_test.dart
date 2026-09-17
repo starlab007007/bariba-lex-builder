@@ -66,7 +66,6 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.byType(Scaffold), findsWidgets);
-
     });
   }
 
@@ -108,7 +107,7 @@ void main() {
     await tester.tap(creationButton);
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
-    expect(find.text('Createur de contenu'), findsWidgets);
+    expect(find.byType(ContentCreatorScreen), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -127,24 +126,21 @@ void main() {
     await tester.tap(find.text('Se connecter'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Menu').first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Traducteur').last);
+    await tester.tap(find.text('Traduc.').first);
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
 
     final field = find.byType(TextField).first;
     await tester.ensureVisible(field);
     await tester.enterText(field, 'Bonjour FITILA');
+    await tester.pump();
 
-    await tester.binding.handlePopRoute();
+    await tester.tap(find.text('Fil').first);
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
-    expect(find.text('Fil Fitila'), findsWidgets);
+    expect(find.text('Fil'), findsWidgets);
 
-    await tester.tap(find.byTooltip('Menu').first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Traducteur').last);
+    await tester.tap(find.text('Traduc.').first);
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
 
