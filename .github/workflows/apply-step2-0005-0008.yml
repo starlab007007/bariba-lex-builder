@@ -19,97 +19,129 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Reconstruct and verify exact patches 0002-0004
+      - name: Reconstruct and verify all exact uploaded patches
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
           import base64, gzip, hashlib
-          prefix_expected = {
-            1:'da1c97b0d6e4c4130de81516cad78d1fdb88979e355b36cddd5167d077df6f49',
-            2:'7cf2bfbd1cce97ae8924ce27531bc8c775623c51fdd9536c730c9f2756a6b6c7',
-            3:'6dfa19e216ccf2de200f075025eac9ccfe7bec1e6b85a28c0a51133d397b1443',
-            4:'7103da843675c1f434e6e195948cd9d19c401fc9175fb81d012e2dfb85cfb756',
-            6:'1220f8b3f56bf686d27e00dbe0109afbe4d77184b1f3633376d29d3f34a03119',
-            7:'ca2af2540f5472eb6aee577cd288c6253706b3dc0e0504e62a115a6a8bcff8de',
-            8:'0f11c4fa49c380a41a58553c4741ee164e33ce597d327739cbe3e7376d1a09d2'}
-          half5={'a':'b94d9a44f1384e4cd97154ea6146ef0aea14fadd188ea177ea1f3f601063f9e9','b':'eafa55a2f6af6ed046016d7be6dabf6e8d4ca8498d4e293abdc1c4a15760951d'}
-          tail_expected={3:(8000,'737f977dcc86f930a14b2d3087b4193de678899b73139316107a3da040971af2'),4:(8000,'b8a96b6925c18d2b8eb97036b41ccafde5da66c926051f1eecb4f8f5ce83ed7e'),5:(8000,'b7cb5d03e99da11eaccf4002729fa3da43c29fd17f44c2d4c8e019ce51332f05'),6:(6760,'fcec53d5b593eacd5714b1813c8bd0be6028e425cdb0fd21ddbe6b71c13b70c8')}
-          expected={'0002-design-premium-6-modules.patch':'7976eea171984ac5289905a485404990db0418e524ad03f5cbfbd17057a3d051','0003-handunia-wasa-socle-technique.patch':'be30d8fd605993973aee182139b08b75e7fc0cc849035a8b8fe43d17cb04056a','0004-handunia-wasa-dynamique-social.patch':'63336234fdc3b7bca061acc375f23df74287b5d50aa834659ea2b02bf6d5c55b'}
+
+          expected = {
+            '0002-design-premium-6-modules.patch':'7976eea171984ac5289905a485404990db0418e524ad03f5cbfbd17057a3d051',
+            '0003-handunia-wasa-socle-technique.patch':'be30d8fd605993973aee182139b08b75e7fc0cc849035a8b8fe43d17cb04056a',
+            '0004-handunia-wasa-dynamique-social.patch':'63336234fdc3b7bca061acc375f23df74287b5d50aa834659ea2b02bf6d5c55b',
+            '0005-sagesse-battle-proverbe-a-trou-ia.patch':'9c38477c2396be6ad6b1bcf0fdfc2cc9f50082e13b0e82aa902ae8386bfd1b1a',
+            '0006-aburu-fim-galerie-live-video.patch':'52ae14abe5b53a7d0d557f6bde720840d9e72b17fa43ce5bbc1be4964fa30ed3',
+            '0007-sasara-ia-edition-ligne-par-ligne.patch':'cb0a531b10c25b090f0a26b8677d09224c16171cd3323bd6910804c5599dd701',
+            '0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch':'0de7dcf4672f1c9ac52f45ec5fcb7a7cf30303d32cc771c3eb352a8b9247993c',
+            '20260916225824_sagesse_battle_votes_communaute.sql':'87995d36e227a19b488c99d7bd43c8d87224d5c565ce83ccfe0a0807da16a1ee',
+          }
+          out=Path('/tmp/fitila-patches'); out.mkdir(parents=True,exist_ok=True)
+
+          def unpack(encoded, bundle_sha):
+              packed=base64.b64decode(encoded,validate=True)
+              got=hashlib.sha256(packed).hexdigest()
+              print('bundle',got)
+              assert got==bundle_sha, (got,bundle_sha)
+              raw=gzip.decompress(packed); pos=0
+              while pos<len(raw):
+                  assert raw.startswith(b'###FILE ',pos)
+                  eol=raw.find(b'\n',pos)
+                  name,size_s=raw[pos+8:eol].decode().rsplit(' ',1)
+                  size=int(size_s); start=eol+1; end=start+size
+                  assert raw[end:end+8]==b'\n###END\n'
+                  data=raw[start:end]
+                  if name in expected:
+                      got=hashlib.sha256(data).hexdigest()
+                      print(name,got)
+                      assert got==expected[name], (name,got,expected[name])
+                      (out/name).write_bytes(data)
+                  pos=end+8
+
           prefix=[]
-          for i in (1,2,3,4):
-            t=''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()); assert len(t)==2000 and hashlib.sha256(t.encode()).hexdigest()==prefix_expected[i]; prefix.append(t)
-          hs=[]
-          for s in ('a','b'):
-            t=''.join(Path(f'.patches/step1_fix_05{s}.b64').read_text().split()); assert len(t)==1000 and hashlib.sha256(t.encode()).hexdigest()==half5[s]; hs.append(t)
-          prefix.append(''.join(hs))
-          for i in (6,7,8):
-            t=''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()); assert len(t)==2000 and hashlib.sha256(t.encode()).hexdigest()==prefix_expected[i]; prefix.append(t)
-          prefix=''.join(prefix); assert len(prefix)==16000
-          tail=[]
-          for i in range(3,7):
-            t=''.join(Path(f'.patches/step1_upload_{i:02d}.b64').read_text().split()); n,h=tail_expected[i]; assert len(t)==n and hashlib.sha256(t.encode()).hexdigest()==h; tail.append(t)
-          packed=base64.b64decode(prefix+''.join(tail),validate=True); assert hashlib.sha256(packed).hexdigest()=='b9edeff2d51255d2d509e0337baaa7113bf3e5a530a1914acfc287195eb2d3e9'
-          raw=gzip.decompress(packed); out=Path('/tmp/fitila-patches'); out.mkdir(parents=True,exist_ok=True); pos=0; found=set()
-          while pos<len(raw):
-            assert raw.startswith(b'###FILE ',pos); eol=raw.find(b'\n',pos); name,size_s=raw[pos+8:eol].decode().rsplit(' ',1); size=int(size_s); start=eol+1; end=start+size; assert raw[end:end+8]==b'\n###END\n'; data=raw[start:end]
-            if name in expected:
-              got=hashlib.sha256(data).hexdigest(); print(name,got); assert got==expected[name]; (out/name).write_bytes(data); found.add(name)
-            pos=end+8
-          assert found==set(expected)
+          for i in (1,2,3,4): prefix.append(''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()))
+          prefix.append(''.join(Path('.patches/step1_fix_05a.b64').read_text().split()) + ''.join(Path('.patches/step1_fix_05b.b64').read_text().split()))
+          for i in (6,7,8): prefix.append(''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()))
+          tail=[''.join(Path(f'.patches/step1_upload_{i:02d}.b64').read_text().split()) for i in range(3,7)]
+          unpack(''.join(prefix)+''.join(tail),'b9edeff2d51255d2d509e0337baaa7113bf3e5a530a1914acfc287195eb2d3e9')
+
+          current=''.join(''.join(Path(f'.patches/step2_upload_{i:02d}.b64').read_text().split()) for i in range(1,5))
+          unpack(current,'183a0681e102509e3ad58077a88538e703ea797903f9678ad48214fbb2bd89c4')
+
+          missing=[n for n in expected if not (out/n).exists()]
+          assert not missing, missing
           PY
 
-      - name: Reconstruct and verify exact current uploads 0005-0008 and SQL
+      - name: Apply exact patch chain with semantic conflict resolution
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          import base64,gzip,hashlib
-          part_expected={1:(10000,'b189b47906dde62fa9663ce272a5dba340cffebc2b5ab79d1fc759b2dbdb0dc2'),2:(10000,'cac21a6f51b760f713a1e51ff11c96f5a6012c8d81dabdde27f25d570ff06400'),3:(10000,'47cb39009b8af7c50c10f2b334c11fa2081187f0fd04790d44648f37b3ef54c8'),4:(8936,'31623db2ad232fea1d0c6334be9ff6c7adee9f4c96c5ac01a8b5d12a043f33c6')}
-          expected={'0005-sagesse-battle-proverbe-a-trou-ia.patch':'9c38477c2396be6ad6b1bcf0fdfc2cc9f50082e13b0e82aa902ae8386bfd1b1a','0006-aburu-fim-galerie-live-video.patch':'52ae14abe5b53a7d0d557f6bde720840d9e72b17fa43ce5bbc1be4964fa30ed3','0007-sasara-ia-edition-ligne-par-ligne.patch':'cb0a531b10c25b090f0a26b8677d09224c16171cd3323bd6910804c5599dd701','0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch':'0de7dcf4672f1c9ac52f45ec5fcb7a7cf30303d32cc771c3eb352a8b9247993c','20260916225824_sagesse_battle_votes_communaute.sql':'87995d36e227a19b488c99d7bd43c8d87224d5c565ce83ccfe0a0807da16a1ee'}
-          chunks=[]
-          for i in range(1,5):
-            t=''.join(Path(f'.patches/step2_upload_{i:02d}.b64').read_text().split()); n,h=part_expected[i]; got=hashlib.sha256(t.encode()).hexdigest(); print('part',i,len(t),got); assert len(t)==n and got==h; chunks.append(t)
-          packed=base64.b64decode(''.join(chunks),validate=True); assert hashlib.sha256(packed).hexdigest()=='183a0681e102509e3ad58077a88538e703ea797903f9678ad48214fbb2bd89c4'
-          raw=gzip.decompress(packed); out=Path('/tmp/fitila-patches'); pos=0; found=set()
-          while pos<len(raw):
-            assert raw.startswith(b'###FILE ',pos); eol=raw.find(b'\n',pos); name,size_s=raw[pos+8:eol].decode().rsplit(' ',1); size=int(size_s); start=eol+1; end=start+size; assert raw[end:end+8]==b'\n###END\n'; data=raw[start:end]
-            if name in expected:
-              got=hashlib.sha256(data).hexdigest(); print(name,got); assert got==expected[name]; (out/name).write_bytes(data); found.add(name)
-            pos=end+8
-          assert found==set(expected)
-          PY
 
-      - name: Apply exact patch chain by hunks and resolve overlaps to latest patch
-        shell: bash
-        run: |
-          set -euo pipefail
-          resolve_conflicts() {
-            python - "$@" <<'PY'
+          resolve_markers() {
+            python - fitila_flutter/lib/main.dart fitila_flutter/lib/core/fitila_backend.dart <<'PY'
           from pathlib import Path
           import sys
           for arg in sys.argv[1:]:
               p=Path(arg)
-              if not p.exists() or not p.is_file(): continue
-              text=p.read_text(encoding='utf-8')
-              if '<<<<<<<' not in text: continue
-              lines=text.splitlines(keepends=True); out=[]; i=0; count=0
-              while i < len(lines):
+              if not p.exists(): continue
+              lines=p.read_text(encoding='utf-8').splitlines(keepends=True)
+              if not any(x.startswith('<<<<<<<') for x in lines): continue
+              out=[]; i=0; count=0
+              while i<len(lines):
                   if not lines[i].startswith('<<<<<<<'):
                       out.append(lines[i]); i+=1; continue
                   count+=1; i+=1
-                  while i<len(lines) and not lines[i].startswith('======='):
-                      i+=1
-                  if i>=len(lines): raise SystemExit(f'Unterminated conflict before separator in {p}')
+                  while i<len(lines) and not lines[i].startswith('======='): i+=1
+                  if i>=len(lines): raise SystemExit(f'Bad conflict separator in {p}')
                   i+=1
                   while i<len(lines) and not lines[i].startswith('>>>>>>>'):
                       out.append(lines[i]); i+=1
-                  if i>=len(lines): raise SystemExit(f'Unterminated conflict end in {p}')
+                  if i>=len(lines): raise SystemExit(f'Bad conflict end in {p}')
                   i+=1
               p.write_text(''.join(out),encoding='utf-8')
-              print(f'resolved {count} overlap(s) in {p} using latest patch side')
+              print(f'resolved {count} overlap(s) in {p} with latest patch side')
+          PY
+          }
+
+          repair_0002_rejects() {
+            python - <<'PY'
+          from pathlib import Path
+          p=Path('fitila_flutter/lib/main.dart')
+          text=p.read_text(encoding='utf-8')
+
+          def scope_replace(text, start_marker, end_marker, old, new, label):
+              s=text.find(start_marker)
+              if s<0: raise SystemExit(f'{label}: scope start not found')
+              e=text.find(end_marker,s) if end_marker else len(text)
+              if e<0: e=len(text)
+              seg=text[s:e]
+              if new in seg:
+                  print(label,'already present'); return text
+              count=seg.count(old)
+              if count!=1: raise SystemExit(f'{label}: expected one semantic anchor, got {count}')
+              seg=seg.replace(old,new,1)
+              print(label,'repaired from rejected hunk')
+              return text[:s]+seg+text[e:]
+
+          text=scope_replace(
+              text,
+              'class _EchoSonScreenState extends State<EchoSonScreen> {',
+              '// ─────────────────────────────────────────────────────────────────\n// 2.',
+              '    setState(() => _publishing = true);',
+              '    setState(() {\n      _publishing = true;\n      _publishDoneCount = 1;\n      _step = 3;\n    });',
+              'EchoSon publish state')
+
+          old_chat="""                      ? Center(\n                          child: Text(\n                            _isHost ? 'Vous êtes en direct. Le chat apparaîtra ici.' : 'Connecté au direct. Le chat apparaîtra ici.',\n                            style: const TextStyle(color: Colors.white38, fontSize: 12.5),\n                            textAlign: TextAlign.center,\n                          ),\n                        )"""
+          new_chat="""                      ? Center(\n                          child: Column(\n                            mainAxisSize: MainAxisSize.min,\n                            children: [\n                              _FitilaOrbMic(\n                                icon: _isHost ? (_muted ? Icons.mic_off_rounded : Icons.mic_rounded) : Icons.hearing_rounded,\n                                size: 74,\n                                active: !_muted,\n                              ),\n                              const SizedBox(height: 18),\n                              _FitilaWaveformBars(active: !_muted, height: 30, barCount: 16),\n                              const SizedBox(height: 18),\n                              Text(\n                                _isHost ? 'Vous êtes en direct. Le chat apparaîtra ici.' : 'Connecté au direct. Le chat apparaîtra ici.',\n                                style: const TextStyle(color: Colors.white38, fontSize: 12.5),\n                                textAlign: TextAlign.center,\n                              ),\n                            ],\n                          ),\n                        )"""
+          text=scope_replace(
+              text,
+              'class _LiveRoomScreenState extends State<LiveRoomScreen> {',
+              '// ─────────────────────────────────────────────────────────────────\n// 3. Sagesse Battle',
+              old_chat,new_chat,'LiveRoom empty state')
+          p.write_text(text,encoding='utf-8')
+          rej=Path('fitila_flutter/lib/main.dart.rej')
+          if rej.exists(): rej.unlink()
           PY
           }
 
@@ -122,20 +154,22 @@ jobs:
             0007-sasara-ia-edition-ligne-par-ligne.patch \
             0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch
           do
-            echo "===== MERGE APPLY $name ====="
+            echo "===== APPLY $name ====="
             set +e
             patch -p1 --forward --batch --merge=diff3 --fuzz=3 < "/tmp/fitila-patches/$name"
             rc=$?
             set -e
             echo "patch rc=$rc"
+            resolve_markers
+            if [ "$name" = "0002-design-premium-6-modules.patch" ] && [ -f fitila_flutter/lib/main.dart.rej ]; then
+              repair_0002_rejects
+            fi
             rejects="$(find fitila_flutter supabase -type f -name '*.rej' -print 2>/dev/null || true)"
             if [ -n "$rejects" ]; then
-              echo "Unmerged rejects after $name:"
-              echo "$rejects"
+              echo "Unmerged rejects after $name: $rejects"
               while IFS= read -r f; do [ -z "$f" ] || { echo "--- $f"; cat "$f"; }; done <<< "$rejects"
               exit 1
             fi
-            resolve_conflicts fitila_flutter/lib/main.dart fitila_flutter/lib/core/fitila_backend.dart
             if grep -R -n '^<<<<<<<\|^=======\|^>>>>>>>' fitila_flutter/lib/main.dart fitila_flutter/lib/core/fitila_backend.dart; then
               echo 'Conflict markers remain'; exit 1
             fi
