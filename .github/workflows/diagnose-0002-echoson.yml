@@ -451,6 +451,8 @@ jobs:
         run: |
           set -euo pipefail
           cd fitila_flutter
+          echo "=== SAGESSE MERGED SOURCE 21460-21930 ==="
+          nl -ba lib/main.dart | sed -n '21460,21930p'
           dart format lib/main.dart lib/core/fitila_backend.dart
           flutter pub get
           flutter analyze
