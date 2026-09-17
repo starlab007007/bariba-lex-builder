@@ -1,0 +1,81 @@
+name: FITILA diagnose 0002 EchoSon
+
+on:
+  push:
+    branches:
+      - release/fitila-flutter-android-v1.8.1-build12-web-parity
+    paths:
+      - .github/workflows/diagnose-0002-echoson.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Reconstruct 0002 and print EchoSon hunk
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import base64, gzip, hashlib, re
+
+          prefix=[]
+          for i in (1,2,3,4):
+              prefix.append(''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()))
+          prefix.append(''.join(Path('.patches/step1_fix_05a.b64').read_text().split()) + ''.join(Path('.patches/step1_fix_05b.b64').read_text().split()))
+          for i in (6,7,8):
+              prefix.append(''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()))
+          tail=[''.join(Path(f'.patches/step1_upload_{i:02d}.b64').read_text().split()) for i in range(3,7)]
+          packed=base64.b64decode(''.join(prefix)+''.join(tail),validate=True)
+          assert hashlib.sha256(packed).hexdigest()=='b9edeff2d51255d2d509e0337baaa7113bf3e5a530a1914acfc287195eb2d3e9'
+          raw=gzip.decompress(packed)
+          pos=0; patch=None
+          while pos<len(raw):
+              assert raw.startswith(b'###FILE ',pos)
+              eol=raw.find(b'\n',pos); name,size_s=raw[pos+8:eol].decode().rsplit(' ',1)
+              size=int(size_s); start=eol+1; end=start+size
+              data=raw[start:end]
+              if name=='0002-design-premium-6-modules.patch': patch=data.decode()
+              pos=end+8
+          assert patch
+          assert hashlib.sha256(patch.encode()).hexdigest()=='7976eea171984ac5289905a485404990db0418e524ad03f5cbfbd17057a3d051'
+          hunks=[]
+          lines=patch.splitlines(True); i=0
+          while i<len(lines):
+              if lines[i].startswith('@@ '):
+                  header=lines[i].rstrip(); body=[]; i+=1
+                  while i<len(lines) and not lines[i].startswith('@@ ') and not lines[i].startswith('diff --git '):
+                      body.append(lines[i]); i+=1
+                  hunks.append((header,body)); continue
+              i+=1
+          print('=== ECHOSON HUNKS FROM 0002 ===')
+          for n,(header,body) in enumerate(hunks,1):
+              if 'EchoSonScreenState' in header:
+                  print(f'--- GLOBAL HUNK {n} ---')
+                  print(header)
+                  print(''.join(body))
+
+          text=Path('fitila_flutter/lib/main.dart').read_text()
+          print('=== CURRENT ECHOSON CLASS LOCATION ===')
+          for pat in ['class _EchoSonScreenState', '_audio = null', '_playingBack = false', 'Future<void> _stopPlayback']:
+              print(f'-- {pat!r} --')
+              for m in re.finditer(re.escape(pat), text):
+                  line=text.count('\n',0,m.start())+1
+                  print('line',line)
+          lines2=text.splitlines()
+          for idx,line in enumerate(lines2):
+              if 'class _EchoSonScreenState' in line:
+                  lo=max(0,idx); hi=min(len(lines2),idx+380)
+                  print(f'=== CURRENT ECHOSON {lo+1}:{hi} ===')
+                  for j in range(lo,hi):
+                      if any(k in lines2[j] for k in ('_audio','_playingBack','stopPlayback','dispose','play','record')):
+                          a=max(lo,j-8); b=min(hi,j+14)
+                          print(f'--- context {a+1}:{b} ---')
+                          for x in range(a,b): print(f'{x+1}: {lines2[x]}')
+          PY
