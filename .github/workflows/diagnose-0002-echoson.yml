@@ -76,15 +76,208 @@ jobs:
           from pathlib import Path
           p=Path('fitila_flutter/lib/main.dart')
           s=p.read_text(encoding='utf-8')
+          if "package:flutter_tts/flutter_tts.dart" not in s:
+              s=s.replace(
+                  "import 'package:flutter/material.dart';\n",
+                  "import 'package:flutter/material.dart';\nimport 'package:flutter_tts/flutter_tts.dart';\n",
+                  1,
+              )
+          if 'class _FitilaListenButton extends StatefulWidget' not in s:
+              helper_anchor='// ─────────────────────────────────────────────────────────────────\n// 1. Echo Sɔ̃ɔ'
+              assert helper_anchor in s
+              helpers=r'''
+class _FitilaListenButton extends StatefulWidget {
+  const _FitilaListenButton({
+    this.bariba,
+    this.french,
+    required this.label,
+    this.compact = false,
+    this.dark = false,
+  });
+
+  final String? bariba;
+  final String? french;
+  final String label;
+  final bool compact;
+  final bool dark;
+
+  @override
+  State<_FitilaListenButton> createState() => _FitilaListenButtonState();
+}
+
+class _FitilaListenButtonState extends State<_FitilaListenButton> {
+  final _player = audio.AudioPlayer();
+  final _frenchTts = FlutterTts();
+  bool _busy = false;
+  bool _playing = false;
+
+  @override
+  void dispose() {
+    _player.dispose();
+    _frenchTts.stop();
+    super.dispose();
+  }
+
+  Future<void> _stop() async {
+    await _player.stop();
+    await _frenchTts.stop();
+    if (mounted) {
+      setState(() {
+        _busy = false;
+        _playing = false;
+      });
+    }
+  }
+
+  Future<void> _toggle() async {
+    if (_busy) return;
+    if (_playing) {
+      await _stop();
+      return;
+    }
+
+    final bariba = (widget.bariba ?? '').trim();
+    final french = (widget.french ?? '').trim();
+    final text = bariba.isNotEmpty ? bariba : french;
+    if (text.length < 2) return;
+
+    setState(() {
+      _busy = true;
+      _playing = false;
+    });
+    try {
+      if (bariba.isNotEmpty) {
+        if (!FitilaBackend.configured) {
+          throw StateError('Service vocal Bariba indisponible hors connexion.');
+        }
+        final response = await FitilaBackend.client.functions.invoke(
+          'bariba-tts',
+          body: {
+            'text': bariba,
+            'speakingRate': 1.0,
+            'noiseScale': 0.5,
+            'noiseScaleW': 0.6,
+          },
+        );
+        final data = response.data;
+        if (data is! Map) {
+          throw StateError('Réponse audio invalide.');
+        }
+        if (data['skipped'] == true) return;
+        final remoteError = data['error']?.toString().trim() ?? '';
+        if (remoteError.isNotEmpty) throw StateError(remoteError);
+
+        final audioUrl = data['audio_url']?.toString().trim() ?? '';
+        final encoded = data['audio']?.toString().trim() ?? '';
+        if (mounted) setState(() => _playing = true);
+        if (audioUrl.isNotEmpty) {
+          await _player.play(audio.UrlSource(audioUrl));
+        } else if (encoded.isNotEmpty) {
+          final raw = encoded.contains(',') ? encoded.split(',').last : encoded;
+          await _player.play(audio.BytesSource(base64Decode(raw)));
+        } else {
+          throw StateError('Aucun audio reçu du service vocal.');
+        }
+        await _player.onPlayerComplete.first;
+      } else {
+        await _frenchTts.setLanguage('fr-FR');
+        await _frenchTts.setSpeechRate(0.5);
+        await _frenchTts.awaitSpeakCompletion(true);
+        if (mounted) setState(() => _playing = true);
+        await _frenchTts.speak(french);
+      }
+    } catch (error) {
+      if (!mounted) return;
+      final message = error.toString().replaceFirst('Bad state: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _playing = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = widget.dark ? Colors.white : _fitilaGoldDeep;
+    return TextButton.icon(
+      style: TextButton.styleFrom(
+        foregroundColor: foreground,
+        visualDensity: widget.compact ? VisualDensity.compact : VisualDensity.standard,
+        padding: widget.compact
+            ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+            : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+      onPressed: _busy ? null : _toggle,
+      icon: _busy
+          ? SizedBox(
+              width: widget.compact ? 14 : 18,
+              height: widget.compact ? 14 : 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: foreground),
+            )
+          : Icon(
+              _playing ? Icons.stop_circle_rounded : Icons.volume_up_rounded,
+              size: widget.compact ? 17 : 20,
+            ),
+      label: Text(widget.label, style: TextStyle(fontSize: widget.compact ? 11 : 13)),
+    );
+  }
+}
+
+class _FitilaCollapsibleNote extends StatelessWidget {
+  const _FitilaCollapsibleNote({
+    required this.icon,
+    required this.summary,
+    required this.detail,
+  });
+
+  final IconData icon;
+  final String summary;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      color: _fitilaSurfaceAlt,
+      child: ExpansionTile(
+        leading: Icon(icon, color: _fitilaGoldDeep, size: 20),
+        title: Text(
+          summary,
+          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+        ),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(detail, style: TextStyle(color: _fitilaMuted, fontSize: 12, height: 1.4)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+'''
+              s=s.replace(helper_anchor,helpers+helper_anchor,1)
           if '_togglePlayback' not in s:
+              echo_start=s.index('class _EchoSonScreenState extends State<EchoSonScreen> {')
+              echo_end=s.index('// ─────────────────────────────────────────────────────────────────\n// 2. Live Griot IA', echo_start)
+              echo=s[echo_start:echo_end]
               field='  bool _publishing = false;\n'
-              assert field in s
-              s=s.replace(field,field+'  final _playback = audio.AudioPlayer();\n  bool _playingBack = false;\n',1)
+              assert field in echo
+              echo=echo.replace(field,field+'  final _playback = audio.AudioPlayer();\n  bool _playingBack = false;\n',1)
               dispose='    _mediaController.dispose();\n    super.dispose();'
-              assert dispose in s
-              s=s.replace(dispose,'    _mediaController.dispose();\n    _playback.dispose();\n    super.dispose();',1)
+              assert dispose in echo
+              echo=echo.replace(dispose,'    _mediaController.dispose();\n    _playback.dispose();\n    super.dispose();',1)
               anchor='\n  Future<void> _translate() async {'
-              assert anchor in s
+              assert anchor in echo
               methods=(
                 '  Future<void> _discardRecording() async {\n'
                 '    await _playback.stop();\n'
@@ -113,14 +306,14 @@ jobs:
                 '    });\n'
                 '  }\n'
               )
-              s=s.replace(anchor,'\n'+methods+anchor,1)
-              # Preserve playback state correctly after recording/publishing.
+              echo=echo.replace(anchor,'\n'+methods+anchor,1)
               rec='          _recording = false;\n          _audio = asset;'
-              if rec in s:
-                  s=s.replace(rec,'          _recording = false;\n          _audio = asset;\n          _playingBack = false;',1)
+              if rec in echo:
+                  echo=echo.replace(rec,'          _recording = false;\n          _audio = asset;\n          _playingBack = false;',1)
               reset="        _translated = '';\n        _audio = null;"
-              if reset in s:
-                  s=s.replace(reset,"        _translated = '';\n        _audio = null;\n        _playingBack = false;",1)
+              if reset in echo:
+                  echo=echo.replace(reset,"        _translated = '';\n        _audio = null;\n        _playingBack = false;",1)
+              s=s[:echo_start]+echo+s[echo_end:]
               challenge_anchor = "      final results = await Future.wait([\n        FitilaBackend.fetchBattleChain(challengeId: challengeId),"
               if '_computeBlank(challenge.bariba, challengeId);' not in s:
                   assert challenge_anchor in s
@@ -511,6 +704,19 @@ jobs:
           )
           assert sasara_broken in s
           s=s.replace(sasara_broken, sasara_fixed, 1)
+          s=s.replace(
+              '  bool _expanded = false;\n\n  late final AnimationController _heartBurstController;',
+              '  late final AnimationController _heartBurstController;',
+              1,
+          )
+          s=s.replace(
+              'SagesseBattleScreen(onPostCreated: widget.onPostCreated)',
+              'const SagesseBattleScreen()',
+          )
+          s=s.replace(
+              'HanduniaWasaScreen(onPostCreated: widget.onPostCreated)',
+              'const HanduniaWasaScreen()',
+          )
           p.write_text(s,encoding='utf-8')
           PY
 
