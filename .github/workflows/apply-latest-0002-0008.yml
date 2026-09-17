@@ -24,17 +24,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -s .patches/latest_series.bundle.xz
           python - <<'PY'
           from pathlib import Path
-          import lzma, hashlib
+          import base64, gzip, hashlib
 
-          src = Path('.patches/latest_series.bundle.xz')
-          raw = lzma.decompress(src.read_bytes())
+          parts = sorted(Path('.patches').glob('newseries_*.b64'))
+          if not parts:
+              raise SystemExit('Missing .patches/newseries_*.b64 staging files')
+          text = ''.join(p.read_text(encoding='utf-8', errors='ignore') for p in parts)
+          alphabet = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=')
+          clean = ''.join(ch for ch in text if ch in alphabet)
+          try:
+              packed = base64.b64decode(clean, validate=False)
+              raw = gzip.decompress(packed)
+          except Exception as exc:
+              raise SystemExit(f'Cannot reconstruct newseries bundle: {exc}')
+
           pos = 0
           out = Path('/tmp/fitila-step1')
           out.mkdir(parents=True, exist_ok=True)
-
           while pos < len(raw):
               if not raw.startswith(b'###FILE ', pos):
                   raise SystemExit(f'Invalid bundle marker at byte {pos}')
@@ -60,7 +68,7 @@ jobs:
           for name, want in expected.items():
               p = out / name
               if not p.exists():
-                  raise SystemExit(f'Missing {name} in bundle')
+                  raise SystemExit(f'Missing {name} in reconstructed bundle')
               got = hashlib.sha256(p.read_bytes()).hexdigest()
               print(f'{name}: {got}')
               if got != want:
@@ -85,7 +93,7 @@ jobs:
             git apply --whitespace=nowarn "$patch"
           done
 
-      - name: Verify standalone SQL is represented exactly once
+      - name: Verify Handunia social migration exactly once
         shell: bash
         run: |
           set -euo pipefail
