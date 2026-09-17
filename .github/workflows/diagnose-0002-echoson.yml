@@ -92,6 +92,9 @@ jobs:
                 '    setState(() {\n'
                 '      _audio = null;\n'
                 '      _playingBack = false;\n'
+                "      // Sans audio ni texte déjà saisi, revenir à l'accueil plutôt que de\n"
+                "      // laisser un écran d'aperçu vide.\n"
+                '      if (_textController.text.trim().isEmpty) _step = 0;\n'
                 '    });\n'
                 '  }\n\n'
                 '  Future<void> _togglePlayback() async {\n'
