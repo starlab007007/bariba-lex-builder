@@ -75,6 +75,7 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
+          from textwrap import dedent
           p=Path('fitila_flutter/lib/main.dart')
           s=p.read_text(encoding='utf-8')
           if "package:flutter_tts/flutter_tts.dart" not in s:
