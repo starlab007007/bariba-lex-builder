@@ -360,7 +360,7 @@ jobs:
             /tmp/fitila-patches/0004-handunia-wasa-dynamique-social-semantic.patch \
             /tmp/fitila-patches/0005-semantic.patch \
             /tmp/fitila-patches/0006-aburu-fim-galerie-live-video.patch \
-            /tmp/fitila-patches/0007-sasara-ia-edition-ligne-par-ligne.patch \
+            /tmp/fitila-patches/0007-semantic.patch \
             /tmp/fitila-patches/0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch
 
           test -z "$(grep -R -l -E '^(<<<<<<<|=======|>>>>>>>)' fitila_flutter/lib || true)"
