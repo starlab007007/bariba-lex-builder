@@ -755,6 +755,7 @@ jobs:
           set -euo pipefail
           cd fitila_flutter
           flutter pub get
+          dart fix --apply
           dart format lib/main.dart lib/core/fitila_backend.dart
           flutter analyze
           flutter test --reporter compact
