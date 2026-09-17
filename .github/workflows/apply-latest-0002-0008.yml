@@ -1,5 +1,4 @@
-# RUN STEP 1 — requested 2026-09-17 20:09 Africa/Porto-Novo
-# STEP 1 — apply only the four files received on 2026-09-17
+# RUN STEP 1 — exact 4-file bundle
 name: FITILA step 1 - apply 0002 0003 0004 and Handunia SQL
 
 on:
@@ -21,7 +20,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Extract and verify exact uploaded patches
+      - name: Extract and verify exact 4 uploaded files
         shell: bash
         run: |
           set -euo pipefail
@@ -32,64 +31,51 @@ jobs:
           expected = {
             '0002-design-premium-6-modules.patch': '7976eea171984ac5289905a485404990db0418e524ad03f5cbfbd17057a3d051',
             '0003-handunia-wasa-socle-technique.patch': 'be30d8fd605993973aee182139b08b75e7fc0cc849035a8b8fe43d17cb04056a',
+            'handunia_wasa_dynamique_social_migration.sql': '6cc7575ee8fe02df081809f5f4cb2ca33f45dc61e941192d15457be4e5b47635',
             '0004-handunia-wasa-dynamique-social.patch': '63336234fdc3b7bca061acc375f23df74287b5d50aa834659ea2b02bf6d5c55b',
           }
 
-          parts = sorted(Path('.patches').glob('newseries_*.b64'))
-          if not parts:
-              raise SystemExit('Missing .patches/newseries_*.b64 staging files')
-          text = ''.join(p.read_text(encoding='utf-8', errors='ignore') for p in parts)
-          alphabet = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=')
-          clean = ''.join(ch for ch in text if ch in alphabet)
-          packed = base64.b64decode(clean, validate=False)
+          parts = sorted(Path('.patches').glob('step1_exact_*.b64'))
+          if len(parts) != 2:
+              raise SystemExit(f'Expected 2 step1_exact parts, got {len(parts)}')
+          text = ''.join(p.read_text(encoding='utf-8', errors='strict') for p in parts)
+          clean = ''.join(text.split())
+          packed = base64.b64decode(clean, validate=True)
 
-          # Recover the gzip payload as a stream. The historical staging has a
-          # damaged CRC/trailer, but the beginning of the stream is intact.
-          # We still accept nothing unless each requested patch matches its
-          # exact SHA-256 below.
           dec = zlib.decompressobj(16 + zlib.MAX_WBITS)
           recovered = bytearray()
-          for i in range(0, len(packed), 256):
-              try:
-                  recovered.extend(dec.decompress(packed[i:i+256]))
-              except zlib.error as exc:
-                  print(f'WARNING: gzip trailer/CRC error after {len(recovered)} recovered bytes: {exc}')
-                  break
+          try:
+              recovered.extend(dec.decompress(packed))
+              recovered.extend(dec.flush())
+          except zlib.error as exc:
+              raise SystemExit(f'Exact step1 gzip bundle is invalid: {exc}')
           raw = bytes(recovered)
 
-          pos = 0
           out = Path('/tmp/fitila-step1')
           out.mkdir(parents=True, exist_ok=True)
-          found = set()
-          while pos < len(raw) and found != set(expected):
-              if not raw.startswith(b'###FILE ', pos):
-                  raise SystemExit(f'Invalid bundle marker at byte {pos}')
+          for name, want in expected.items():
+              marker = ('###FILE ' + name + ' ').encode()
+              pos = raw.find(marker)
+              if pos < 0:
+                  raise SystemExit(f'Missing {name} in exact step1 bundle')
               eol = raw.find(b'\n', pos)
               if eol < 0:
-                  raise SystemExit('Truncated bundle header')
-              header = raw[pos+8:eol].decode()
-              name, size_s = header.rsplit(' ', 1)
+                  raise SystemExit(f'Truncated header for {name}')
+              header = raw[pos + 8:eol].decode()
+              parsed_name, size_s = header.rsplit(' ', 1)
+              if parsed_name != name:
+                  raise SystemExit(f'Unexpected name {parsed_name} while reading {name}')
               size = int(size_s)
               start = eol + 1
               end = start + size
-              if end + 8 > len(raw):
-                  raise SystemExit(f'Truncated {name} before requested files were fully recovered')
               data = raw[start:end]
-              if raw[end:end+8] != b'\n###END\n':
-                  raise SystemExit(f'Invalid end marker for {name}')
-              if name in expected:
-                  (out / name).write_bytes(data)
-                  found.add(name)
-              pos = end + 8
-
-          for name, want in expected.items():
-              p = out / name
-              if not p.exists():
-                  raise SystemExit(f'Missing {name} in recovered bundle')
-              got = hashlib.sha256(p.read_bytes()).hexdigest()
+              if len(data) != size or raw[end:end+8] != b'\n###END\n':
+                  raise SystemExit(f'Invalid payload framing for {name}')
+              got = hashlib.sha256(data).hexdigest()
               print(f'{name}: {got}')
               if got != want:
                   raise SystemExit(f'SHA mismatch for {name}: {got} != {want}')
+              (out / name).write_bytes(data)
           PY
 
       - name: Apply 0002 0003 0004 sequentially
@@ -110,12 +96,15 @@ jobs:
             git apply --whitespace=nowarn "$patch"
           done
 
-      - name: Verify Handunia social migration exactly once
+      - name: Verify standalone SQL equals canonical migration exactly once
         shell: bash
         run: |
           set -euo pipefail
+          standalone="/tmp/fitila-step1/handunia_wasa_dynamique_social_migration.sql"
           migration="supabase/migrations/20260916222617_handunia_wasa_dynamique_social.sql"
+          test -s "$standalone"
           test -s "$migration"
+          cmp -s "$standalone" "$migration"
           echo "6cc7575ee8fe02df081809f5f4cb2ca33f45dc61e941192d15457be4e5b47635  $migration" | sha256sum -c -
           test "$(find supabase/migrations -maxdepth 1 -type f -name '*handunia_wasa_dynamique_social*.sql' | wc -l)" -eq 1
 
