@@ -121,6 +121,10 @@ jobs:
               reset="        _translated = '';\n        _audio = null;"
               if reset in s:
                   s=s.replace(reset,"        _translated = '';\n        _audio = null;\n        _playingBack = false;",1)
+              challenge_anchor = "      final results = await Future.wait([\n        FitilaBackend.fetchBattleChain(challengeId: challengeId),"
+              if '_computeBlank(challenge.bariba, challengeId);' not in s:
+                  assert challenge_anchor in s
+                  s=s.replace(challenge_anchor, "      _computeBlank(challenge.bariba, challengeId);\n"+challenge_anchor, 1)
               # Premium Live Griot, en conservant les deux actions réelles actuelles.
               live_class=s.index('class _LiveGriotScreenState')
               live_button=s.index('_startingLive ? null : _startLiveNow', live_class)
@@ -217,12 +221,26 @@ jobs:
                       1,
                   )
               (src.parent/(name.replace('.patch','-semantic.patch'))).write_text(text,encoding='utf-8')
+          src5=Path('/tmp/fitila-patches/0005-sagesse-battle-proverbe-a-trou-ia.patch')
+          lines5=src5.read_text(encoding='utf-8').splitlines(keepends=True)
+          out5=[]; in_main=False; main_hunk=0; skip=False
+          for line in lines5:
+              if line.startswith('diff --git '):
+                  in_main=line.startswith('diff --git a/fitila_flutter/lib/main.dart ')
+                  skip=False
+              if in_main and line.startswith('@@ '):
+                  main_hunk += 1
+                  skip = main_hunk == 3
+              if not skip:
+                  out5.append(line)
+          assert main_hunk == 20, main_hunk
+          Path('/tmp/fitila-patches/0005-semantic.patch').write_text(''.join(out5),encoding='utf-8')
           PY
           python .github/scripts/apply_fitila_patch_chain.py \
             /tmp/fitila-patches/0002-semantic.patch \
             /tmp/fitila-patches/0003-handunia-wasa-socle-technique-semantic.patch \
             /tmp/fitila-patches/0004-handunia-wasa-dynamique-social-semantic.patch \
-            /tmp/fitila-patches/0005-sagesse-battle-proverbe-a-trou-ia.patch \
+            /tmp/fitila-patches/0005-semantic.patch \
             /tmp/fitila-patches/0006-aburu-fim-galerie-live-video.patch \
             /tmp/fitila-patches/0007-sasara-ia-edition-ligne-par-ligne.patch \
             /tmp/fitila-patches/0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch
