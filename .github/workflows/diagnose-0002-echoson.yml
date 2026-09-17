@@ -487,6 +487,30 @@ jobs:
           )
           assert broken_banner in s
           s=s.replace(broken_banner, fixed_banner, 1)
+          sasara_broken = (
+              "                    Text(\n"
+              "                      'Corrigez chaque ligne si besoin — la correction sert d\\'abord à améliorer votre propre traduction.',\n"
+              "                      style: TextStyle(color: _fitilaMuted, fontSize: 10.5, fontStyle: FontStyle.italic),\n"
+              "                    ),\n"
+              "                  ],\n"
+              "                ],\n"
+              "          ),\n"
+              "          const SizedBox(height: 14),\n"
+          )
+          sasara_fixed = (
+              "                    Text(\n"
+              "                      'Corrigez chaque ligne si besoin — la correction sert d\\'abord à améliorer votre propre traduction.',\n"
+              "                      style: TextStyle(color: _fitilaMuted, fontSize: 10.5, fontStyle: FontStyle.italic),\n"
+              "                    ),\n"
+              "                  ],\n"
+              "                ],\n"
+              "              ),\n"
+              "            ),\n"
+              "          ),\n"
+              "          const SizedBox(height: 14),\n"
+          )
+          assert sasara_broken in s
+          s=s.replace(sasara_broken, sasara_fixed, 1)
           p.write_text(s,encoding='utf-8')
           PY
 
@@ -523,8 +547,6 @@ jobs:
           set -euo pipefail
           cd fitila_flutter
           flutter pub get
-          echo "=== MERGED SOURCE 22640-22970 ==="
-          nl -ba lib/main.dart | sed -n '22640,22970p'
           dart format lib/main.dart lib/core/fitila_backend.dart
           flutter analyze
           flutter test --reporter compact
