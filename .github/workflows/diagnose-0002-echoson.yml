@@ -128,8 +128,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          src=Path('/tmp/fitila-patches/0002-design-premium-6-modules.patch')
+          lines=src.read_text(encoding='utf-8').splitlines(keepends=True)
+          out=[]; hunk=0; skip=False
+          for line in lines:
+              if line.startswith('@@ '):
+                  hunk += 1
+                  skip = hunk == 4
+              elif line.startswith('diff --git '):
+                  skip = False
+              if not skip:
+                  out.append(line)
+          assert hunk == 14, hunk
+          Path('/tmp/fitila-patches/0002-semantic.patch').write_text(''.join(out),encoding='utf-8')
+          PY
           python .github/scripts/apply_fitila_patch_chain.py \
-            /tmp/fitila-patches/0002-design-premium-6-modules.patch \
+            /tmp/fitila-patches/0002-semantic.patch \
             /tmp/fitila-patches/0003-handunia-wasa-socle-technique.patch \
             /tmp/fitila-patches/0004-handunia-wasa-dynamique-social.patch \
             /tmp/fitila-patches/0005-sagesse-battle-proverbe-a-trou-ia.patch \
