@@ -28,38 +28,58 @@ jobs:
           from pathlib import Path
           import base64, gzip, hashlib
 
-          expected_parts = {
-            1: (8000, '4fd14aa80528599cc03e3665385c0a95aac7351bb8cd301dcc1780079fb57e82'),
-            2: (8000, '068949c60633ac7213a85c3d3bc4b2350bfbcd7f8793b7120dc4eb62550f0684'),
+          prefix_expected = {
+            1: 'da1c97b0d6e4c4130de81516cad78d1fdb88979e355b36cddd5167d077df6f49',
+            2: '7cf2bfbd1cce97ae8924ce27531bc8c775623c51fdd9536c730c9f2756a6b6c7',
+            3: '6dfa19e216ccf2de200f075025eac9ccfe7bec1e6b85a28c0a51133d397b1443',
+            4: '7103da843675c1f434e6e195948cd9d19c401fc9175fb81d012e2dfb85cfb756',
+            5: 'f58488a36f32ab405bfae4fdf5db3dc3acbd661bb42c64caa675f763eb08d6e8',
+            6: '1220f8b3f56bf686d27e00dbe0109afbe4d77184b1f3633376d29d3f34a03119',
+            7: 'ca2af2540f5472eb6aee577cd288c6253706b3dc0e0504e62a115a6a8bcff8de',
+            8: '0f11c4fa49c380a41a58553c4741ee164e33ce597d327739cbe3e7376d1a09d2',
+          }
+          tail_expected = {
             3: (8000, '737f977dcc86f930a14b2d3087b4193de678899b73139316107a3da040971af2'),
             4: (8000, 'b8a96b6925c18d2b8eb97036b41ccafde5da66c926051f1eecb4f8f5ce83ed7e'),
             5: (8000, 'b7cb5d03e99da11eaccf4002729fa3da43c29fd17f44c2d4c8e019ce51332f05'),
             6: (6760, 'fcec53d5b593eacd5714b1813c8bd0be6028e425cdb0fd21ddbe6b71c13b70c8'),
           }
-          expected = {
+          expected_files = {
             '0002-design-premium-6-modules.patch': '7976eea171984ac5289905a485404990db0418e524ad03f5cbfbd17057a3d051',
             '0003-handunia-wasa-socle-technique.patch': 'be30d8fd605993973aee182139b08b75e7fc0cc849035a8b8fe43d17cb04056a',
             'handunia_wasa_dynamique_social_migration.sql': '6cc7575ee8fe02df081809f5f4cb2ca33f45dc61e941192d15457be4e5b47635',
             '0004-handunia-wasa-dynamique-social.patch': '63336234fdc3b7bca061acc375f23df74287b5d50aa834659ea2b02bf6d5c55b',
           }
 
-          normalized = []
-          bad = []
-          for i in range(1, 7):
-              p = Path(f'.patches/step1_upload_{i:02d}.b64')
-              if not p.exists():
-                  raise SystemExit(f'Missing staging part: {p}')
+          prefix = []
+          for i in range(1, 9):
+              p = Path(f'.patches/step1_fix_{i:02d}.b64')
               text = ''.join(p.read_text(encoding='utf-8').split())
               got = hashlib.sha256(text.encode()).hexdigest()
-              want_len, want_sha = expected_parts[i]
-              print(f'PART {i:02d}: len={len(text)} sha256={got} expected_len={want_len} expected_sha={want_sha}')
-              if len(text) != want_len or got != want_sha:
-                  bad.append(i)
-              normalized.append(text)
-          if bad:
-              raise SystemExit(f'Corrupted staging parts: {bad}')
+              print(f'FIX {i:02d}: len={len(text)} sha256={got}')
+              if len(text) != 2000 or got != prefix_expected[i]:
+                  raise SystemExit(f'Bad replacement block {i}: len={len(text)} sha={got}')
+              prefix.append(text)
+          prefix_text = ''.join(prefix)
+          p1 = prefix_text[:8000]
+          p2 = prefix_text[8000:16000]
+          if hashlib.sha256(p1.encode()).hexdigest() != '4fd14aa80528599cc03e3665385c0a95aac7351bb8cd301dcc1780079fb57e82':
+              raise SystemExit('Reconstructed original part 01 mismatch')
+          if hashlib.sha256(p2.encode()).hexdigest() != '068949c60633ac7213a85c3d3bc4b2350bfbcd7f8793b7120dc4eb62550f0684':
+              raise SystemExit('Reconstructed original part 02 mismatch')
 
-          encoded = ''.join(normalized)
+          tail = []
+          for i in range(3, 7):
+              p = Path(f'.patches/step1_upload_{i:02d}.b64')
+              text = ''.join(p.read_text(encoding='utf-8').split())
+              want_len, want_sha = tail_expected[i]
+              got = hashlib.sha256(text.encode()).hexdigest()
+              print(f'TAIL {i:02d}: len={len(text)} sha256={got}')
+              if len(text) != want_len or got != want_sha:
+                  raise SystemExit(f'Bad verified tail part {i}: len={len(text)} sha={got}')
+              tail.append(text)
+
+          encoded = prefix_text + ''.join(tail)
           packed = base64.b64decode(encoded, validate=True)
           bundle_sha = hashlib.sha256(packed).hexdigest()
           want_bundle = 'b9edeff2d51255d2d509e0337baaa7113bf3e5a530a1914acfc287195eb2d3e9'
@@ -86,16 +106,16 @@ jobs:
               if end + 8 > len(raw) or raw[end:end+8] != b'\n###END\n':
                   raise SystemExit(f'Invalid payload framing for {name}')
               data = raw[start:end]
-              if name in expected:
+              if name in expected_files:
                   got = hashlib.sha256(data).hexdigest()
                   print(f'{name}: {got}')
-                  if got != expected[name]:
-                      raise SystemExit(f'SHA mismatch for {name}: {got} != {expected[name]}')
+                  if got != expected_files[name]:
+                      raise SystemExit(f'SHA mismatch for {name}: {got} != {expected_files[name]}')
                   (out / name).write_bytes(data)
                   found[name] = got
               pos = end + 8
-          if set(found) != set(expected):
-              raise SystemExit(f'Missing expected files: {set(expected) - set(found)}')
+          if set(found) != set(expected_files):
+              raise SystemExit(f'Missing expected files: {set(expected_files) - set(found)}')
           PY
 
       - name: Apply patches 0002 0003 0004 sequentially
