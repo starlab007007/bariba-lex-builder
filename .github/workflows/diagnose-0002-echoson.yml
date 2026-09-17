@@ -523,8 +523,8 @@ jobs:
           set -euo pipefail
           cd fitila_flutter
           flutter pub get
-          echo "=== MERGED SOURCE 22840-22970 ==="
-          nl -ba lib/main.dart | sed -n '22840,22970p'
+          echo "=== MERGED SOURCE 22640-22970 ==="
+          nl -ba lib/main.dart | sed -n '22640,22970p'
           dart format lib/main.dart lib/core/fitila_backend.dart
           flutter analyze
           flutter test --reporter compact
