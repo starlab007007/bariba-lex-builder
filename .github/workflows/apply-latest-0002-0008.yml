@@ -1,4 +1,4 @@
-# Integration trigger: latest uploaded FITILA 0002-0008 series — 2026-09-17
+# Integration trigger: latest uploaded FITILA 0002-0008 series — 2026-09-17 gzip bundle
 name: Apply latest FITILA 0002-0008 series
 
 on:
@@ -24,13 +24,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .patches/latest_series.part*.b64 | tr -d '\n\r' | base64 -d > /tmp/latest_series.bundle.xz
-          echo "6abb0be69b45a46d7f6ff2163eff78f13b91ed6554013a2eaceb3d59de1e571e  /tmp/latest_series.bundle.xz" | sha256sum -c -
+          cat .patches/newseries_*.b64 | tr -d '\n\r' | base64 -d > /tmp/newseries.bundle.gz
+          gzip -t /tmp/newseries.bundle.gz
           python - <<'PY'
           from pathlib import Path
-          import lzma, hashlib
-          src = Path('/tmp/latest_series.bundle.xz')
-          raw = lzma.decompress(src.read_bytes())
+          import gzip, hashlib
+          src = Path('/tmp/newseries.bundle.gz')
+          raw = gzip.decompress(src.read_bytes())
           pos = 0
           out = Path('/tmp/fitila-latest-patches')
           out.mkdir(parents=True, exist_ok=True)
