@@ -308,6 +308,21 @@ jobs:
                   out5.append(line)
           assert main_hunk == 20, main_hunk
           Path('/tmp/fitila-patches/0005-semantic.patch').write_text(''.join(out5),encoding='utf-8')
+          src7=Path('/tmp/fitila-patches/0007-sasara-ia-edition-ligne-par-ligne.patch')
+          text7=src7.read_text(encoding='utf-8')
+          old7=(
+              '@@ -23775,9 +23799,12 @@ class _AburuComparisonThumb extends StatelessWidget {\n'
+              ' // 5. Sasara IA — pont bilingue + corpus communautaire opt-in\n'
+              ' // ─────────────────────────────────────────────────────────────────\n'
+              ' class SasaraIaScreen extends StatefulWidget {\n'
+          )
+          new7=(
+              '@@ -23777,7 +23801,10 @@ class SasaraIaScreen extends StatefulWidget {\n'
+              ' class SasaraIaScreen extends StatefulWidget {\n'
+          )
+          assert old7 in text7
+          text7=text7.replace(old7,new7,1)
+          Path('/tmp/fitila-patches/0007-semantic.patch').write_text(text7,encoding='utf-8')
           PY
           python - <<'PY'
           from pathlib import Path
