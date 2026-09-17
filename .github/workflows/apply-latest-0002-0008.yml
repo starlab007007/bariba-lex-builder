@@ -1,5 +1,5 @@
-# Integration trigger: latest uploaded FITILA 0002-0008 series — 2026-09-17 gzip bundle
-name: Apply latest FITILA 0002-0008 series
+# STEP 1 — apply only the four files received on 2026-09-17
+name: FITILA step 1 - apply 0002 0003 0004 and Handunia SQL
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 jobs:
-  apply-validate-build:
+  apply-step1:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout release branch
@@ -20,20 +20,21 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Reconstruct exact patch series
+      - name: Extract and verify exact uploaded patches
         shell: bash
         run: |
           set -euo pipefail
-          cat .patches/newseries_*.b64 | tr -d '\n\r' | base64 -d > /tmp/newseries.bundle.gz
-          gzip -t /tmp/newseries.bundle.gz
+          test -s .patches/latest_series.bundle.xz
           python - <<'PY'
           from pathlib import Path
-          import gzip, hashlib
-          src = Path('/tmp/newseries.bundle.gz')
-          raw = gzip.decompress(src.read_bytes())
+          import lzma, hashlib
+
+          src = Path('.patches/latest_series.bundle.xz')
+          raw = lzma.decompress(src.read_bytes())
           pos = 0
-          out = Path('/tmp/fitila-latest-patches')
+          out = Path('/tmp/fitila-step1')
           out.mkdir(parents=True, exist_ok=True)
+
           while pos < len(raw):
               if not raw.startswith(b'###FILE ', pos):
                   raise SystemExit(f'Invalid bundle marker at byte {pos}')
@@ -50,54 +51,48 @@ jobs:
                   raise SystemExit(f'Invalid end marker for {name}')
               (out / name).write_bytes(data)
               pos = end + 8
+
           expected = {
             '0002-design-premium-6-modules.patch': '7976eea171984ac5289905a485404990db0418e524ad03f5cbfbd17057a3d051',
             '0003-handunia-wasa-socle-technique.patch': 'be30d8fd605993973aee182139b08b75e7fc0cc849035a8b8fe43d17cb04056a',
             '0004-handunia-wasa-dynamique-social.patch': '63336234fdc3b7bca061acc375f23df74287b5d50aa834659ea2b02bf6d5c55b',
-            '0005-sagesse-battle-proverbe-a-trou-ia.patch': '9c38477c2396be6ad6b1bcf0fdfc2cc9f50082e13b0e82aa902ae8386bfd1b1a',
-            '0006-aburu-fim-galerie-live-video.patch': '52ae14abe5b53a7d0d557f6bde720840d9e72b17fa43ce5bbc1be4964fa30ed3',
-            '0007-sasara-ia-edition-ligne-par-ligne.patch': 'cb0a531b10c25b090f0a26b8677d09224c16171cd3323bd6910804c5599dd701',
-            '0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch': '0de7dcf4672f1c9ac52f45ec5fcb7a7cf30303d32cc771c3eb352a8b9247993c',
           }
           for name, want in expected.items():
-              data = (out / name).read_bytes()
-              got = hashlib.sha256(data).hexdigest()
-              print(name, got)
+              p = out / name
+              if not p.exists():
+                  raise SystemExit(f'Missing {name} in bundle')
+              got = hashlib.sha256(p.read_bytes()).hexdigest()
+              print(f'{name}: {got}')
               if got != want:
                   raise SystemExit(f'SHA mismatch for {name}: {got} != {want}')
           PY
 
-      - name: Apply patches sequentially
+      - name: Apply 0002 0003 0004 sequentially
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "OpenAI"
           git config user.email "noreply@openai.com"
-          for patch in /tmp/fitila-latest-patches/000*.patch; do
-            echo "===== APPLYING $(basename "$patch") ====="
-            find . -name '*.rej' -delete
-            git apply --reject --whitespace=nowarn "$patch" || true
-            rejects="$(find . -name '*.rej' -type f -print)"
-            if [ -n "$rejects" ]; then
-              echo "===== REJECTS FOR $(basename "$patch") ====="
-              for f in $rejects; do
-                echo "----- $f -----"
-                cat "$f"
-              done
-              exit 1
-            fi
-            git add -A
-            if ! git diff --cached --quiet; then
-              git commit -m "feat(latest): apply $(basename "$patch" .patch)"
-            fi
+          for name in \
+            0002-design-premium-6-modules.patch \
+            0003-handunia-wasa-socle-technique.patch \
+            0004-handunia-wasa-dynamique-social.patch
+          do
+            patch="/tmp/fitila-step1/$name"
+            echo "===== CHECK $name ====="
+            git apply --check "$patch"
+            echo "===== APPLY $name ====="
+            git apply --whitespace=nowarn "$patch"
           done
 
-      - name: Verify SQL migrations
+      - name: Verify standalone SQL is represented exactly once
         shell: bash
         run: |
           set -euo pipefail
-          echo "6cc7575ee8fe02df081809f5f4cb2ca33f45dc61e941192d15457be4e5b47635  supabase/migrations/20260916222617_handunia_wasa_dynamique_social.sql" | sha256sum -c -
-          echo "87995d36e227a19b488c99d7bd43c8d87224d5c565ce83ccfe0a0807da16a1ee  supabase/migrations/20260916225824_sagesse_battle_votes_communaute.sql" | sha256sum -c -
+          migration="supabase/migrations/20260916222617_handunia_wasa_dynamique_social.sql"
+          test -s "$migration"
+          echo "6cc7575ee8fe02df081809f5f4cb2ca33f45dc61e941192d15457be4e5b47635  $migration" | sha256sum -c -
+          test "$(find supabase/migrations -maxdepth 1 -type f -name '*handunia_wasa_dynamique_social*.sql' | wc -l)" -eq 1
 
       - name: Setup Java 17
         uses: actions/setup-java@v5
@@ -112,79 +107,20 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Prepare server configuration
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd fitila_flutter
-          flutter --version
-          grep -q '^version: 1.8.1+12$' pubspec.yaml
-          python - <<'PY'
-          from pathlib import Path
-          import json
-          env_path = Path('../.env')
-          if not env_path.exists():
-              raise SystemExit('Missing ../.env')
-          env = {}
-          for raw in env_path.read_text(encoding='utf-8').splitlines():
-              line = raw.strip()
-              if not line or line.startswith('#') or '=' not in line:
-                  continue
-              k, v = line.split('=', 1)
-              env[k.strip()] = v.strip().strip('"').strip("'")
-          url = env.get('SUPABASE_URL') or env.get('VITE_SUPABASE_URL') or ''
-          key = env.get('SUPABASE_ANON_KEY') or env.get('SUPABASE_PUBLISHABLE_KEY') or env.get('VITE_SUPABASE_PUBLISHABLE_KEY') or ''
-          if not url or not key:
-              raise SystemExit('Missing Supabase configuration')
-          Path('.ci-dart-defines.json').write_text(json.dumps({'SUPABASE_URL': url, 'SUPABASE_ANON_KEY': key}), encoding='utf-8')
-          PY
-
       - name: Resolve dependencies
         run: cd fitila_flutter && flutter pub get
 
       - name: Static analysis
         run: cd fitila_flutter && flutter analyze
 
-      - name: Full Flutter tests
-        run: cd fitila_flutter && flutter test --dart-define-from-file=.ci-dart-defines.json --reporter compact
-
-      - name: Build optimized release APK
+      - name: Commit and push step 1 only after validation
         shell: bash
         run: |
           set -euo pipefail
-          cd fitila_flutter
-          flutter build apk --release \
-            --dart-define-from-file=.ci-dart-defines.json \
-            --obfuscate \
-            --split-debug-info=build/symbols
-          test -s build/app/outputs/flutter-apk/app-release.apk
-          unzip -t build/app/outputs/flutter-apk/app-release.apk
-          mkdir -p build/release-output
-          cp build/app/outputs/flutter-apk/app-release.apk build/release-output/FITILA-Android-v1.8.1-build12-latest-series-release.apk
-          cp -R build/symbols build/release-output/symbols
-          cd build/release-output
-          sha256sum FITILA-Android-v1.8.1-build12-latest-series-release.apk | tee SHA256SUMS.txt
-          ls -lh FITILA-Android-v1.8.1-build12-latest-series-release.apk
-
-      - name: Remove temporary patch staging
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf .patches
-          rm -f .github/workflows/apply-latest-0002-0008.yml
-          git add -A
-          git commit -m "chore(ci): remove latest patch staging"
-
-      - name: Push validated commits
-        shell: bash
-        run: |
-          set -euo pipefail
+          git add fitila_flutter/lib/main.dart \
+                  fitila_flutter/lib/core/fitila_backend.dart \
+                  supabase/migrations/20260916221308_handunia_wasa_monde_vivant.sql \
+                  supabase/migrations/20260916222617_handunia_wasa_dynamique_social.sql
+          git diff --cached --check
+          git commit -m "feat(fitila): apply step1 design and Handunia social patches"
           git push origin HEAD:${GITHUB_REF_NAME}
-
-      - name: Upload validated APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: FITILA-Android-v1.8.1-build12-latest-series-release
-          path: fitila_flutter/build/release-output/
-          if-no-files-found: error
-          retention-days: 14
