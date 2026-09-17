@@ -1,4 +1,4 @@
-# RUN STEP 1 — exact 4-file bundle
+# RUN STEP 1 — exact 4-file bundle with one-character staging repair
 name: FITILA step 1 - apply 0002 0003 0004 and Handunia SQL
 
 on:
@@ -26,7 +26,7 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-          import base64, hashlib, zlib
+          import base64, gzip, hashlib
 
           expected = {
             '0002-design-premium-6-modules.patch': '7976eea171984ac5289905a485404990db0418e524ad03f5cbfbd17057a3d051',
@@ -38,43 +38,75 @@ jobs:
           parts = sorted(Path('.patches').glob('step1_exact_*.b64'))
           if len(parts) != 2:
               raise SystemExit(f'Expected 2 step1_exact parts, got {len(parts)}')
-          text = ''.join(p.read_text(encoding='utf-8', errors='strict') for p in parts)
-          clean = ''.join(text.split())
-          packed = base64.b64decode(clean, validate=True)
+          chunks = [''.join(p.read_text(encoding='utf-8', errors='strict').split()) for p in parts]
+          joined = ''.join(chunks)
+          boundary = len(chunks[0])
+          print('step1_exact cleaned lengths:', [len(x) for x in chunks], 'total=', len(joined))
 
-          dec = zlib.decompressobj(16 + zlib.MAX_WBITS)
-          recovered = bytearray()
-          try:
-              recovered.extend(dec.decompress(packed))
-              recovered.extend(dec.flush())
-          except zlib.error as exc:
-              raise SystemExit(f'Exact step1 gzip bundle is invalid: {exc}')
-          raw = bytes(recovered)
+          def validate_candidate(encoded: str):
+              try:
+                  packed = base64.b64decode(encoded, validate=True)
+                  raw = gzip.decompress(packed)
+              except Exception:
+                  return None
+              result = {}
+              for name, want in expected.items():
+                  marker = ('###FILE ' + name + ' ').encode()
+                  pos = raw.find(marker)
+                  if pos < 0:
+                      return None
+                  eol = raw.find(b'\n', pos)
+                  if eol < 0:
+                      return None
+                  header = raw[pos + 8:eol].decode()
+                  parsed_name, size_s = header.rsplit(' ', 1)
+                  if parsed_name != name:
+                      return None
+                  size = int(size_s)
+                  start = eol + 1
+                  end = start + size
+                  data = raw[start:end]
+                  if len(data) != size or raw[end:end+8] != b'\n###END\n':
+                      return None
+                  got = hashlib.sha256(data).hexdigest()
+                  if got != want:
+                      return None
+                  result[name] = data
+              return result
 
+          candidates = []
+          if len(joined) % 4 == 1:
+              # The staging is known to contain one extra base64 character.
+              # It was split at the part boundary, so test a safe window around
+              # that boundary plus the extreme ends. Exact SHA-256 checks below
+              # make false acceptance impossible.
+              positions = list(range(max(0, boundary - 32), min(len(joined), boundary + 33)))
+              positions += list(range(0, min(16, len(joined))))
+              positions += list(range(max(0, len(joined) - 16), len(joined)))
+              seen = set()
+              for pos in positions:
+                  if pos in seen:
+                      continue
+                  seen.add(pos)
+                  fixed = joined[:pos] + joined[pos+1:]
+                  result = validate_candidate(fixed)
+                  if result is not None:
+                      candidates.append((pos, joined[pos], result))
+          else:
+              result = validate_candidate(joined)
+              if result is not None:
+                  candidates.append((-1, '', result))
+
+          if len(candidates) != 1:
+              raise SystemExit(f'Could not uniquely repair exact step1 staging; valid candidates={[(p,c) for p,c,_ in candidates]}')
+
+          removed_pos, removed_char, files = candidates[0]
+          print(f'Validated exact bundle; removed staging char at position {removed_pos}: {removed_char!r}')
           out = Path('/tmp/fitila-step1')
           out.mkdir(parents=True, exist_ok=True)
-          for name, want in expected.items():
-              marker = ('###FILE ' + name + ' ').encode()
-              pos = raw.find(marker)
-              if pos < 0:
-                  raise SystemExit(f'Missing {name} in exact step1 bundle')
-              eol = raw.find(b'\n', pos)
-              if eol < 0:
-                  raise SystemExit(f'Truncated header for {name}')
-              header = raw[pos + 8:eol].decode()
-              parsed_name, size_s = header.rsplit(' ', 1)
-              if parsed_name != name:
-                  raise SystemExit(f'Unexpected name {parsed_name} while reading {name}')
-              size = int(size_s)
-              start = eol + 1
-              end = start + size
-              data = raw[start:end]
-              if len(data) != size or raw[end:end+8] != b'\n###END\n':
-                  raise SystemExit(f'Invalid payload framing for {name}')
+          for name, data in files.items():
               got = hashlib.sha256(data).hexdigest()
               print(f'{name}: {got}')
-              if got != want:
-                  raise SystemExit(f'SHA mismatch for {name}: {got} != {want}')
               (out / name).write_bytes(data)
           PY
 
