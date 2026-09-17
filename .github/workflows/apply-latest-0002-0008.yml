@@ -1,5 +1,5 @@
-# RUN STEP 1 — exact 4-file bundle with one-character staging repair
-name: FITILA step 1 - apply 0002 0003 0004 and Handunia SQL
+# STEP 1 — exact four files uploaded on 2026-09-17
+name: FITILA step 1 - apply exact 4 files
 
 on:
   push:
@@ -20,10 +20,17 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Extract and verify exact 4 uploaded files
+      - name: Verify and extract exact uploaded bundle
         shell: bash
         run: |
           set -euo pipefail
+          echo "4fd14aa80528599cc03e3665385c0a95aac7351bb8cd301dcc1780079fb57e82  .patches/step1_upload_01.b64" | sha256sum -c -
+          echo "068949c60633ac7213a85c3d3bc4b2350bfbcd7f8793b7120dc4eb62550f0684  .patches/step1_upload_02.b64" | sha256sum -c -
+          echo "737f977dcc86f930a14b2d3087b4193de678899b73139316107a3da040971af2  .patches/step1_upload_03.b64" | sha256sum -c -
+          echo "b8a96b6925c18d2b8eb97036b41ccafde5da66c926051f1eecb4f8f5ce83ed7e  .patches/step1_upload_04.b64" | sha256sum -c -
+          echo "b7cb5d03e99da11eaccf4002729fa3da43c29fd17f44c2d4c8e019ce51332f05  .patches/step1_upload_05.b64" | sha256sum -c -
+          echo "fcec53d5b593eacd5714b1813c8bd0be6028e425cdb0fd21ddbe6b71c13b70c8  .patches/step1_upload_06.b64" | sha256sum -c -
+
           python - <<'PY'
           from pathlib import Path
           import base64, gzip, hashlib
@@ -35,82 +42,48 @@ jobs:
             '0004-handunia-wasa-dynamique-social.patch': '63336234fdc3b7bca061acc375f23df74287b5d50aa834659ea2b02bf6d5c55b',
           }
 
-          parts = sorted(Path('.patches').glob('step1_exact_*.b64'))
-          if len(parts) != 2:
-              raise SystemExit(f'Expected 2 step1_exact parts, got {len(parts)}')
-          chunks = [''.join(p.read_text(encoding='utf-8', errors='strict').split()) for p in parts]
-          joined = ''.join(chunks)
-          boundary = len(chunks[0])
-          print('step1_exact cleaned lengths:', [len(x) for x in chunks], 'total=', len(joined))
+          parts = [Path(f'.patches/step1_upload_{i:02d}.b64') for i in range(1, 7)]
+          encoded = ''.join(''.join(p.read_text(encoding='utf-8').split()) for p in parts)
+          packed = base64.b64decode(encoded, validate=True)
+          bundle_sha = hashlib.sha256(packed).hexdigest()
+          want_bundle = 'b9edeff2d51255d2d509e0337baaa7113bf3e5a530a1914acfc287195eb2d3e9'
+          print('bundle sha256:', bundle_sha)
+          if bundle_sha != want_bundle:
+              raise SystemExit(f'Bundle SHA mismatch: {bundle_sha} != {want_bundle}')
+          raw = gzip.decompress(packed)
 
-          def validate_candidate(encoded: str):
-              try:
-                  packed = base64.b64decode(encoded, validate=True)
-                  raw = gzip.decompress(packed)
-              except Exception:
-                  return None
-              result = {}
-              for name, want in expected.items():
-                  marker = ('###FILE ' + name + ' ').encode()
-                  pos = raw.find(marker)
-                  if pos < 0:
-                      return None
-                  eol = raw.find(b'\n', pos)
-                  if eol < 0:
-                      return None
-                  header = raw[pos + 8:eol].decode()
-                  parsed_name, size_s = header.rsplit(' ', 1)
-                  if parsed_name != name:
-                      return None
-                  size = int(size_s)
-                  start = eol + 1
-                  end = start + size
-                  data = raw[start:end]
-                  if len(data) != size or raw[end:end+8] != b'\n###END\n':
-                      return None
-                  got = hashlib.sha256(data).hexdigest()
-                  if got != want:
-                      return None
-                  result[name] = data
-              return result
-
-          candidates = []
-          if len(joined) % 4 == 1:
-              # The staging is known to contain one extra base64 character.
-              # It was split at the part boundary, so test a safe window around
-              # that boundary plus the extreme ends. Exact SHA-256 checks below
-              # make false acceptance impossible.
-              positions = list(range(max(0, boundary - 32), min(len(joined), boundary + 33)))
-              positions += list(range(0, min(16, len(joined))))
-              positions += list(range(max(0, len(joined) - 16), len(joined)))
-              seen = set()
-              for pos in positions:
-                  if pos in seen:
-                      continue
-                  seen.add(pos)
-                  fixed = joined[:pos] + joined[pos+1:]
-                  result = validate_candidate(fixed)
-                  if result is not None:
-                      candidates.append((pos, joined[pos], result))
-          else:
-              result = validate_candidate(joined)
-              if result is not None:
-                  candidates.append((-1, '', result))
-
-          if len(candidates) != 1:
-              raise SystemExit(f'Could not uniquely repair exact step1 staging; valid candidates={[(p,c) for p,c,_ in candidates]}')
-
-          removed_pos, removed_char, files = candidates[0]
-          print(f'Validated exact bundle; removed staging char at position {removed_pos}: {removed_char!r}')
           out = Path('/tmp/fitila-step1')
           out.mkdir(parents=True, exist_ok=True)
-          for name, data in files.items():
-              got = hashlib.sha256(data).hexdigest()
-              print(f'{name}: {got}')
-              (out / name).write_bytes(data)
+          pos = 0
+          found = {}
+          while pos < len(raw):
+              if not raw.startswith(b'###FILE ', pos):
+                  raise SystemExit(f'Invalid bundle marker at byte {pos}')
+              eol = raw.find(b'\n', pos)
+              if eol < 0:
+                  raise SystemExit('Truncated bundle header')
+              header = raw[pos + 8:eol].decode('utf-8')
+              name, size_s = header.rsplit(' ', 1)
+              size = int(size_s)
+              start = eol + 1
+              end = start + size
+              if end + 8 > len(raw) or raw[end:end+8] != b'\n###END\n':
+                  raise SystemExit(f'Invalid payload framing for {name}')
+              data = raw[start:end]
+              if name in expected:
+                  got = hashlib.sha256(data).hexdigest()
+                  print(f'{name}: {got}')
+                  if got != expected[name]:
+                      raise SystemExit(f'SHA mismatch for {name}: {got} != {expected[name]}')
+                  (out / name).write_bytes(data)
+                  found[name] = got
+              pos = end + 8
+
+          if set(found) != set(expected):
+              raise SystemExit(f'Missing expected files: {set(expected) - set(found)}')
           PY
 
-      - name: Apply 0002 0003 0004 sequentially
+      - name: Apply patches 0002 0003 0004 sequentially
         shell: bash
         run: |
           set -euo pipefail
@@ -128,7 +101,7 @@ jobs:
             git apply --whitespace=nowarn "$patch"
           done
 
-      - name: Verify standalone SQL equals canonical migration exactly once
+      - name: Verify standalone SQL and canonical migration
         shell: bash
         run: |
           set -euo pipefail
@@ -159,14 +132,16 @@ jobs:
       - name: Static analysis
         run: cd fitila_flutter && flutter analyze
 
-      - name: Commit and push step 1 only after validation
+      - name: Commit and push validated application changes
         shell: bash
         run: |
           set -euo pipefail
-          git add fitila_flutter/lib/main.dart \
-                  fitila_flutter/lib/core/fitila_backend.dart \
-                  supabase/migrations/20260916221308_handunia_wasa_monde_vivant.sql \
-                  supabase/migrations/20260916222617_handunia_wasa_dynamique_social.sql
+          git add \
+            fitila_flutter/lib/main.dart \
+            fitila_flutter/lib/core/fitila_backend.dart \
+            supabase/migrations/20260916221308_handunia_wasa_monde_vivant.sql \
+            supabase/migrations/20260916222617_handunia_wasa_dynamique_social.sql
           git diff --cached --check
+          git diff --cached --quiet && { echo 'No application changes staged'; exit 1; }
           git commit -m "feat(fitila): apply step1 design and Handunia social patches"
           git push origin HEAD:${GITHUB_REF_NAME}
