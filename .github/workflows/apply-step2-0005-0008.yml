@@ -54,11 +54,70 @@ jobs:
           assert not missing, missing
           PY
 
+      - name: Prepare relocation-aware context applier
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          src_path = Path('.github/scripts/apply_fitila_patch_chain.py')
+          s = src_path.read_text(encoding='utf-8')
+          old = '''def locate_hunk(
+              current: list[str], h: Hunk, old: list[str], new: list[str], line_shift: int
+          ) -> tuple[int, int, str, float]:
+              scope_lo, scope_hi = class_scope(current, h.section)
+              expected_global = max(0, min(len(current), h.old_start - 1 + line_shift))
+          '''
+          new = '''def locate_hunk(
+              current: list[str], h: Hunk, old: list[str], new: list[str], line_shift: int, relocation_offset: int
+          ) -> tuple[int, int, str, float]:
+              scope_lo, scope_hi = class_scope(current, h.section)
+              expected_global = max(0, min(len(current), h.old_start - 1 + line_shift + relocation_offset))
+          '''
+          if old not in s:
+              raise SystemExit('locate_hunk signature block not found')
+          s = s.replace(old, new, 1)
+          old = '''    current = target.read_text(encoding="utf-8").splitlines(keepends=True)
+              line_shift = 0
+              for idx, h in enumerate(fp.hunks, 1):
+          '''
+          new = '''    current = target.read_text(encoding="utf-8").splitlines(keepends=True)
+              line_shift = 0
+              relocation_offset = 0
+              relocation_known = False
+              for idx, h in enumerate(fp.hunks, 1):
+          '''
+          if old not in s:
+              raise SystemExit('apply_file_patch state block not found')
+          s = s.replace(old, new, 1)
+          old = '            start, end, mode, score = locate_hunk(current, h, old, new, line_shift)\n'
+          new = '            start, end, mode, score = locate_hunk(current, h, old, new, line_shift, relocation_offset)\n'
+          if old not in s:
+              raise SystemExit('locate_hunk call not found')
+          s = s.replace(old, new, 1)
+          marker = '''        if mode == "already":
+              print(f"{patch_name}: {target_rel} hunk {idx}/{len(fp.hunks)} already present")
+              continue
+          '''
+          replacement = '''        if not relocation_known:
+              relocation_offset = start - (h.old_start - 1 + line_shift)
+              relocation_known = True
+              print(f"{patch_name}: {target_rel} relocation offset={relocation_offset:+d}")
+              if mode == "already":
+                  print(f"{patch_name}: {target_rel} hunk {idx}/{len(fp.hunks)} already present")
+                  continue
+          '''
+          if marker not in s:
+              raise SystemExit('already-present block not found')
+          s = s.replace(marker, replacement, 1)
+          Path('/tmp/apply_fitila_patch_chain.py').write_text(s, encoding='utf-8')
+          PY
+
       - name: Apply only exact patches 0005, 0006 and 0007
         shell: bash
         run: |
           set -euo pipefail
-          python .github/scripts/apply_fitila_patch_chain.py \
+          python /tmp/apply_fitila_patch_chain.py \
             /tmp/fitila-patches/0005-sagesse-battle-proverbe-a-trou-ia.patch \
             /tmp/fitila-patches/0006-aburu-fim-galerie-live-video.patch \
             /tmp/fitila-patches/0007-sasara-ia-edition-ligne-par-ligne.patch
