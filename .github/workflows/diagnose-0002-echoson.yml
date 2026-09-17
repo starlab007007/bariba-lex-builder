@@ -1,4 +1,4 @@
-name: FITILA diagnose 0002 EchoSon
+name: FITILA diagnose 0002 base
 
 on:
   push:
@@ -16,66 +16,45 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
-      - name: Reconstruct 0002 and print EchoSon hunk
+          fetch-depth: 0
+      - name: Reconstruct 0002 and inspect 3-way base
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-          import base64, gzip, hashlib, re
-
+          import base64,gzip,hashlib
           prefix=[]
-          for i in (1,2,3,4):
-              prefix.append(''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()))
-          prefix.append(''.join(Path('.patches/step1_fix_05a.b64').read_text().split()) + ''.join(Path('.patches/step1_fix_05b.b64').read_text().split()))
-          for i in (6,7,8):
-              prefix.append(''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()))
+          for i in (1,2,3,4): prefix.append(''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()))
+          prefix.append(''.join(Path('.patches/step1_fix_05a.b64').read_text().split())+''.join(Path('.patches/step1_fix_05b.b64').read_text().split()))
+          for i in (6,7,8): prefix.append(''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()))
           tail=[''.join(Path(f'.patches/step1_upload_{i:02d}.b64').read_text().split()) for i in range(3,7)]
           packed=base64.b64decode(''.join(prefix)+''.join(tail),validate=True)
           assert hashlib.sha256(packed).hexdigest()=='b9edeff2d51255d2d509e0337baaa7113bf3e5a530a1914acfc287195eb2d3e9'
-          raw=gzip.decompress(packed)
-          pos=0; patch=None
+          raw=gzip.decompress(packed); pos=0
           while pos<len(raw):
-              assert raw.startswith(b'###FILE ',pos)
-              eol=raw.find(b'\n',pos); name,size_s=raw[pos+8:eol].decode().rsplit(' ',1)
-              size=int(size_s); start=eol+1; end=start+size
-              data=raw[start:end]
-              if name=='0002-design-premium-6-modules.patch': patch=data.decode()
+              eol=raw.find(b'\n',pos); name,size_s=raw[pos+8:eol].decode().rsplit(' ',1); size=int(size_s)
+              start=eol+1; end=start+size; data=raw[start:end]
+              if name=='0002-design-premium-6-modules.patch':
+                  Path('/tmp/0002.patch').write_bytes(data)
+                  print('sha256',hashlib.sha256(data).hexdigest())
               pos=end+8
-          assert patch
-          assert hashlib.sha256(patch.encode()).hexdigest()=='7976eea171984ac5289905a485404990db0418e524ad03f5cbfbd17057a3d051'
-          hunks=[]
-          lines=patch.splitlines(True); i=0
-          while i<len(lines):
-              if lines[i].startswith('@@ '):
-                  header=lines[i].rstrip(); body=[]; i+=1
-                  while i<len(lines) and not lines[i].startswith('@@ ') and not lines[i].startswith('diff --git '):
-                      body.append(lines[i]); i+=1
-                  hunks.append((header,body)); continue
-              i+=1
-          print('=== ECHOSON HUNKS FROM 0002 ===')
-          for n,(header,body) in enumerate(hunks,1):
-              if 'EchoSonScreenState' in header:
-                  print(f'--- GLOBAL HUNK {n} ---')
-                  print(header)
-                  print(''.join(body))
-
-          text=Path('fitila_flutter/lib/main.dart').read_text()
-          print('=== CURRENT ECHOSON CLASS LOCATION ===')
-          for pat in ['class _EchoSonScreenState', '_audio = null', '_playingBack = false', 'Future<void> _stopPlayback']:
-              print(f'-- {pat!r} --')
-              for m in re.finditer(re.escape(pat), text):
-                  line=text.count('\n',0,m.start())+1
-                  print('line',line)
-          lines2=text.splitlines()
-          for idx,line in enumerate(lines2):
-              if 'class _EchoSonScreenState' in line:
-                  lo=max(0,idx); hi=min(len(lines2),idx+380)
-                  print(f'=== CURRENT ECHOSON {lo+1}:{hi} ===')
-                  for j in range(lo,hi):
-                      if any(k in lines2[j] for k in ('_audio','_playingBack','stopPlayback','dispose','play','record')):
-                          a=max(lo,j-8); b=min(hi,j+14)
-                          print(f'--- context {a+1}:{b} ---')
-                          for x in range(a,b): print(f'{x+1}: {lines2[x]}')
           PY
+          echo '=== PATCH HEADERS / INDEX ==='
+          grep -E '^(diff --git|index |--- |\+\+\+ )' /tmp/0002.patch
+          echo '=== MAIN.DART INDEX BASE OBJECT CHECK ==='
+          OLD=$(awk '/^diff --git a\/fitila_flutter\/lib\/main.dart/{f=1;next} f && /^index /{split($2,a,"\\.\\."); print a[1]; exit}' /tmp/0002.patch)
+          echo "old-prefix=$OLD"
+          git rev-parse "$OLD^{blob}" || true
+          FULL=$(git rev-parse "$OLD^{blob}" 2>/dev/null || true)
+          if [ -n "$FULL" ]; then
+            echo "base-blob=$FULL"
+            git cat-file -s "$FULL"
+            git show "$FULL" | grep -n -A120 -B20 'class _EchoSonScreenState' | head -180 || true
+          else
+            echo 'BASE_BLOB_NOT_IN_HISTORY'
+          fi
+          echo '=== GIT APPLY 3WAY CHECK ==='
+          git apply --3way --check /tmp/0002.patch || true
+          echo '=== CURRENT ECHOSON KEY SYMBOLS ==='
+          grep -n -E 'class _EchoSonScreenState|_playback|_playingBack|_discardRecording|_togglePlayback' fitila_flutter/lib/main.dart | head -80 || true
