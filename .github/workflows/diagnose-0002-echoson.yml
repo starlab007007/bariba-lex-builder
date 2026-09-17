@@ -1,4 +1,4 @@
-name: FITILA diagnose 0002 base
+name: FITILA recover historical prerequisite bundles
 
 on:
   push:
@@ -11,50 +11,49 @@ permissions:
   contents: read
 
 jobs:
-  diagnose:
+  recover:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Reconstruct 0002 and inspect 3-way base
+      - name: Locate and verify historical p4 and pia fragments
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          import base64,gzip,hashlib
-          prefix=[]
-          for i in (1,2,3,4): prefix.append(''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()))
-          prefix.append(''.join(Path('.patches/step1_fix_05a.b64').read_text().split())+''.join(Path('.patches/step1_fix_05b.b64').read_text().split()))
-          for i in (6,7,8): prefix.append(''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()))
-          tail=[''.join(Path(f'.patches/step1_upload_{i:02d}.b64').read_text().split()) for i in range(3,7)]
-          packed=base64.b64decode(''.join(prefix)+''.join(tail),validate=True)
-          assert hashlib.sha256(packed).hexdigest()=='b9edeff2d51255d2d509e0337baaa7113bf3e5a530a1914acfc287195eb2d3e9'
-          raw=gzip.decompress(packed); pos=0
-          while pos<len(raw):
-              eol=raw.find(b'\n',pos); name,size_s=raw[pos+8:eol].decode().rsplit(' ',1); size=int(size_s)
-              start=eol+1; end=start+size; data=raw[start:end]
-              if name=='0002-design-premium-6-modules.patch':
-                  Path('/tmp/0002.patch').write_bytes(data)
-                  print('sha256',hashlib.sha256(data).hexdigest())
-              pos=end+8
-          PY
-          echo '=== PATCH HEADERS / INDEX ==='
-          grep -E '^(diff --git|index |--- |\+\+\+ )' /tmp/0002.patch
-          echo '=== MAIN.DART INDEX BASE OBJECT CHECK ==='
-          OLD=$(awk '/^diff --git a\/fitila_flutter\/lib\/main.dart/{f=1;next} f && /^index /{split($2,a,"\\.\\."); print a[1]; exit}' /tmp/0002.patch)
-          echo "old-prefix=$OLD"
-          git rev-parse "$OLD^{blob}" || true
-          FULL=$(git rev-parse "$OLD^{blob}" 2>/dev/null || true)
-          if [ -n "$FULL" ]; then
-            echo "base-blob=$FULL"
-            git cat-file -s "$FULL"
-            git show "$FULL" | grep -n -A120 -B20 'class _EchoSonScreenState' | head -180 || true
-          else
-            echo 'BASE_BLOB_NOT_IN_HISTORY'
-          fi
-          echo '=== GIT APPLY 3WAY CHECK ==='
-          git apply --3way --check /tmp/0002.patch || true
-          echo '=== CURRENT ECHOSON KEY SYMBOLS ==='
-          grep -n -E 'class _EchoSonScreenState|_playback|_playingBack|_discardRecording|_togglePlayback' fitila_flutter/lib/main.dart | head -80 || true
+          echo '=== historical prerequisite paths ==='
+          git log --all --name-only --format= -- .patches \
+            | sed '/^$/d' | sort -u \
+            | grep -E '^\.patches/(p4_|pia_)' || true
+
+          recover_family() {
+            local family="$1"
+            local out="$2"
+            local expected="$3"
+            local tmpdir="/tmp/recover-${family}"
+            mkdir -p "$tmpdir"
+            mapfile -t paths < <(git log --all --name-only --format= -- .patches | sed '/^$/d' | sort -u | grep -E "^\\.patches/${family}" || true)
+            echo "family=$family paths=${#paths[@]}"
+            if [ "${#paths[@]}" -eq 0 ]; then
+              return 2
+            fi
+            for path in "${paths[@]}"; do
+              last=$(git log --all -1 --format=%H -- "$path")
+              echo "$path last-change=$last"
+              src="$last:$path"
+              if ! git cat-file -e "$src" 2>/dev/null; then
+                src="$last^:$path"
+              fi
+              git cat-file -e "$src"
+              git show "$src" > "$tmpdir/$(basename "$path")"
+              echo "  source=$src bytes=$(wc -c < "$tmpdir/$(basename "$path")")"
+            done
+            cat "$tmpdir"/* | tr -d '\n\r' | base64 -d | gunzip > "$out"
+            sha=$(sha256sum "$out" | awk '{print $1}')
+            echo "$family reconstructed-sha=$sha bytes=$(wc -c < "$out")"
+            test "$sha" = "$expected"
+            grep -E '^(diff --git|index )' "$out" | head -120 || true
+          }
+
+          recover_family 'p4_' /tmp/patch4.diff b25f139dfbf9b5bc611abcf280ddbab7d2a17a24e71a77547a54aec6e6b2788d
+          recover_family 'pia_' /tmp/patchIA.diff ca5224436fa6a83930c9a927e36b08d254955d784767a1d1d04cfbd327f5a03f
