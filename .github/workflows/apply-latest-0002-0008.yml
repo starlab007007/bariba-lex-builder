@@ -28,6 +28,14 @@ jobs:
           from pathlib import Path
           import base64, gzip, hashlib
 
+          expected_parts = {
+            1: (8000, '4fd14aa80528599cc03e3665385c0a95aac7351bb8cd301dcc1780079fb57e82'),
+            2: (8000, '068949c60633ac7213a85c3d3bc4b2350bfbcd7f8793b7120dc4eb62550f0684'),
+            3: (8000, '737f977dcc86f930a14b2d3087b4193de678899b73139316107a3da040971af2'),
+            4: (8000, 'b8a96b6925c18d2b8eb97036b41ccafde5da66c926051f1eecb4f8f5ce83ed7e'),
+            5: (8000, 'b7cb5d03e99da11eaccf4002729fa3da43c29fd17f44c2d4c8e019ce51332f05'),
+            6: (6760, 'fcec53d5b593eacd5714b1813c8bd0be6028e425cdb0fd21ddbe6b71c13b70c8'),
+          }
           expected = {
             '0002-design-premium-6-modules.patch': '7976eea171984ac5289905a485404990db0418e524ad03f5cbfbd17057a3d051',
             '0003-handunia-wasa-socle-technique.patch': 'be30d8fd605993973aee182139b08b75e7fc0cc849035a8b8fe43d17cb04056a',
@@ -35,12 +43,23 @@ jobs:
             '0004-handunia-wasa-dynamique-social.patch': '63336234fdc3b7bca061acc375f23df74287b5d50aa834659ea2b02bf6d5c55b',
           }
 
-          parts = [Path(f'.patches/step1_upload_{i:02d}.b64') for i in range(1, 7)]
-          for p in parts:
+          normalized = []
+          bad = []
+          for i in range(1, 7):
+              p = Path(f'.patches/step1_upload_{i:02d}.b64')
               if not p.exists():
                   raise SystemExit(f'Missing staging part: {p}')
-          # Ignore only text whitespace introduced by repository transport.
-          encoded = ''.join(''.join(p.read_text(encoding='utf-8').split()) for p in parts)
+              text = ''.join(p.read_text(encoding='utf-8').split())
+              got = hashlib.sha256(text.encode()).hexdigest()
+              want_len, want_sha = expected_parts[i]
+              print(f'PART {i:02d}: len={len(text)} sha256={got} expected_len={want_len} expected_sha={want_sha}')
+              if len(text) != want_len or got != want_sha:
+                  bad.append(i)
+              normalized.append(text)
+          if bad:
+              raise SystemExit(f'Corrupted staging parts: {bad}')
+
+          encoded = ''.join(normalized)
           packed = base64.b64decode(encoded, validate=True)
           bundle_sha = hashlib.sha256(packed).hexdigest()
           want_bundle = 'b9edeff2d51255d2d509e0337baaa7113bf3e5a530a1914acfc287195eb2d3e9'
@@ -75,7 +94,6 @@ jobs:
                   (out / name).write_bytes(data)
                   found[name] = got
               pos = end + 8
-
           if set(found) != set(expected):
               raise SystemExit(f'Missing expected files: {set(expected) - set(found)}')
           PY
