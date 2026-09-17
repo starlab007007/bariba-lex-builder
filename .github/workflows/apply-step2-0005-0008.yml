@@ -6,6 +6,7 @@ on:
       - release/fitila-flutter-android-v1.8.1-build12-web-parity
     paths:
       - .github/workflows/apply-step2-0005-0008.yml
+      - .github/scripts/apply_fitila_patch_chain.py
 
 permissions:
   contents: write
