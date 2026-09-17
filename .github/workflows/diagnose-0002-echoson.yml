@@ -88,32 +88,31 @@ jobs:
 
           translate_anchor='\n  Future<void> _translate() async {'
           if translate_anchor not in s: raise SystemExit('EchoSon translate anchor missing')
-          playback=r'''
-  Future<void> _discardRecording() async {
-    await _playback.stop();
-    if (!mounted) return;
-    setState(() {
-      _audio = null;
-      _playingBack = false;
-    });
-  }
-
-  Future<void> _togglePlayback() async {
-    final clip = _audio;
-    if (clip == null) return;
-    if (_playingBack) {
-      await _playback.stop();
-      if (mounted) setState(() => _playingBack = false);
-      return;
-    }
-    await _playback.play(audio.DeviceFileSource(clip.path));
-    if (!mounted) return;
-    setState(() => _playingBack = true);
-    _playback.onPlayerComplete.first.then((_) {
-      if (mounted) setState(() => _playingBack = false);
-    });
-  }
-'''
+          playback=(
+              '  Future<void> _discardRecording() async {\n'
+              '    await _playback.stop();\n'
+              '    if (!mounted) return;\n'
+              '    setState(() {\n'
+              '      _audio = null;\n'
+              '      _playingBack = false;\n'
+              '    });\n'
+              '  }\n\n'
+              '  Future<void> _togglePlayback() async {\n'
+              '    final clip = _audio;\n'
+              '    if (clip == null) return;\n'
+              '    if (_playingBack) {\n'
+              '      await _playback.stop();\n'
+              '      if (mounted) setState(() => _playingBack = false);\n'
+              '      return;\n'
+              '    }\n'
+              '    await _playback.play(audio.DeviceFileSource(clip.path));\n'
+              '    if (!mounted) return;\n'
+              '    setState(() => _playingBack = true);\n'
+              '    _playback.onPlayerComplete.first.then((_) {\n'
+              '      if (mounted) setState(() => _playingBack = false);\n'
+              '    });\n'
+              '  }\n'
+          )
           s=s.replace(translate_anchor,'\n'+playback+translate_anchor,1)
           p.write_text(s,encoding='utf-8')
           PY
