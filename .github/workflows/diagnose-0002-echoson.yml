@@ -125,6 +125,53 @@ jobs:
               if '_computeBlank(challenge.bariba, challengeId);' not in s:
                   assert challenge_anchor in s
                   s=s.replace(challenge_anchor, "      _computeBlank(challenge.bariba, challengeId);\n"+challenge_anchor, 1)
+              sage_load_old = (
+                  "      final results = await Future.wait([\n"
+                  "        FitilaBackend.fetchBattleChain(challengeId: challengeId),\n"
+                  "        FitilaBackend.fetchMyBattleStats(),\n"
+                  "      ]);\n"
+                  "      if (!mounted) return;\n"
+                  "      setState(() {\n"
+                  "        _challenge = challenge;\n"
+                  "        _challengeId = challengeId;\n"
+                  "        _chain = results[0] as List<Map<String, dynamic>>;\n"
+                  "        _stats = results[1] as Map<String, dynamic>;\n"
+                  "        _loading = false;\n"
+                  "      });\n"
+                  "      _stopwatch\n"
+                  "        ..reset()\n"
+                  "        ..start();\n"
+                  "      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {\n"
+                  "        if (mounted) setState(() {});\n"
+                  "      });\n"
+              )
+              sage_load_new = (
+                  "      final results = await Future.wait([\n"
+                  "        FitilaBackend.fetchBattleChain(challengeId: challengeId),\n"
+                  "        FitilaBackend.fetchMyBattleStats(),\n"
+                  "        FitilaBackend.fetchBattleChallengeStats(challengeId),\n"
+                  "      ]);\n"
+                  "      if (!mounted) return;\n"
+                  "      final challengeStats = results[2] as Map<String, dynamic>;\n"
+                  "      setState(() {\n"
+                  "        _challenge = challenge;\n"
+                  "        _challengeId = challengeId;\n"
+                  "        _chain = results[0] as List<Map<String, dynamic>>;\n"
+                  "        _stats = results[1] as Map<String, dynamic>;\n"
+                  "        _participantCount = (challengeStats['participant_count'] as int?) ?? 0;\n"
+                  "        _bestResponse = challengeStats['best_response'] as Map<String, dynamic>?;\n"
+                  "        _communityUnavailable = false;\n"
+                  "        _loading = false;\n"
+                  "      });\n"
+                  "      // Le proverbe garde le même trou toute la journée : un simple\n"
+                  "      // rafraîchissement d'affichage suffit pour faire vivre le compte\n"
+                  "      // à rebours réel jusqu'à minuit (_remainingTime()).\n"
+                  "      _ticker = Timer.periodic(const Duration(minutes: 1), (_) {\n"
+                  "        if (mounted) setState(() {});\n"
+                  "      });\n"
+              )
+              assert sage_load_old in s
+              s=s.replace(sage_load_old,sage_load_new,1)
               # Premium Live Griot, en conservant les deux actions réelles actuelles.
               live_class=s.index('class _LiveGriotScreenState')
               live_button=s.index('_startingLive ? null : _startLiveNow', live_class)
@@ -230,7 +277,7 @@ jobs:
                   skip=False
               if in_main and line.startswith('@@ '):
                   main_hunk += 1
-                  skip = main_hunk == 3
+                  skip = main_hunk in (3, 4, 5)
               if not skip:
                   out5.append(line)
           assert main_hunk == 20, main_hunk
