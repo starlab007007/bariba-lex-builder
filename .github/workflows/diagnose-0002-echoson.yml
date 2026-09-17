@@ -200,11 +200,16 @@ jobs:
                   out.append(line)
           assert hunk == 14, hunk
           Path('/tmp/fitila-patches/0002-semantic.patch').write_text(''.join(out),encoding='utf-8')
+          for name in ('0003-handunia-wasa-socle-technique.patch','0004-handunia-wasa-dynamique-social.patch'):
+              src=Path('/tmp/fitila-patches')/name
+              text=src.read_text(encoding='utf-8')
+              text=text.replace('@@ class HanduniaWasaScreen extends StatefulWidget {','@@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {')
+              (src.parent/(name.replace('.patch','-semantic.patch'))).write_text(text,encoding='utf-8')
           PY
           python .github/scripts/apply_fitila_patch_chain.py \
             /tmp/fitila-patches/0002-semantic.patch \
-            /tmp/fitila-patches/0003-handunia-wasa-socle-technique.patch \
-            /tmp/fitila-patches/0004-handunia-wasa-dynamique-social.patch \
+            /tmp/fitila-patches/0003-handunia-wasa-socle-technique-semantic.patch \
+            /tmp/fitila-patches/0004-handunia-wasa-dynamique-social-semantic.patch \
             /tmp/fitila-patches/0005-sagesse-battle-proverbe-a-trou-ia.patch \
             /tmp/fitila-patches/0006-aburu-fim-galerie-live-video.patch \
             /tmp/fitila-patches/0007-sasara-ia-edition-ligne-par-ligne.patch \
