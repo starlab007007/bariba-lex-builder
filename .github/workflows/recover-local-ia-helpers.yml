@@ -1,0 +1,30 @@
+name: FITILA recover local IA helpers
+on:
+  push:
+    branches:
+      - release/fitila-flutter-android-v1.8.1-build12-web-parity
+    paths:
+      - .github/workflows/recover-local-ia-helpers.yml
+permissions:
+  contents: read
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Recover patchIA helpers
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref=27d6b7d194e2ba21a34859e2c3030efdd1b0ec05
+          {
+            git show "$ref:.patches/pia_00"
+            git show "$ref:.patches/pia_01"
+          } | tr -d '\n\r ' | base64 -d | gzip -dc > /tmp/patchIA.diff
+          sha256sum /tmp/patchIA.diff
+          echo '=== LISTEN BUTTON ==='
+          grep -n -B80 -A220 '_FitilaListenButton' /tmp/patchIA.diff || true
+          echo '=== COLLAPSIBLE NOTE ==='
+          grep -n -B80 -A220 '_FitilaCollapsibleNote' /tmp/patchIA.diff || true
