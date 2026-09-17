@@ -414,7 +414,12 @@ jobs:
             /tmp/fitila-patches/0007-semantic.patch \
             /tmp/fitila-patches/0008-semantic.patch
 
-          test -z "$(grep -R -l -E '^(<<<<<<<|=======|>>>>>>>)' fitila_flutter/lib || true)"
+          conflict_files="$(grep -R -l -E '^(<<<<<<<|=======|>>>>>>>)' fitila_flutter/lib || true)"
+          if [ -n "$conflict_files" ]; then
+            echo "=== CONFLICT MARKERS ==="
+            grep -R -n -E '^(<<<<<<<|=======|>>>>>>>)' fitila_flutter/lib || true
+            exit 1
+          fi
           cmp -s /tmp/fitila-patches/handunia_wasa_dynamique_social_migration.sql supabase/migrations/20260916222617_handunia_wasa_dynamique_social.sql
           cmp -s /tmp/fitila-patches/20260916225824_sagesse_battle_votes_communaute.sql supabase/migrations/20260916225824_sagesse_battle_votes_communaute.sql
           git diff --check
