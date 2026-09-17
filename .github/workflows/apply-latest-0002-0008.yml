@@ -23,10 +23,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          cat .patches/latest_series.part*.b64 | tr -d '\n\r' | base64 -d > /tmp/latest_series.bundle.xz
+          echo "6abb0be69b45a46d7f6ff2163eff78f13b91ed6554013a2eaceb3d59de1e571e  /tmp/latest_series.bundle.xz" | sha256sum -c -
           python - <<'PY'
           from pathlib import Path
           import lzma, hashlib
-          src = Path('.patches/latest_series.bundle.xz')
+          src = Path('/tmp/latest_series.bundle.xz')
           raw = lzma.decompress(src.read_bytes())
           pos = 0
           out = Path('/tmp/fitila-latest-patches')
@@ -79,12 +81,14 @@ jobs:
               echo "===== REJECTS FOR $(basename "$patch") ====="
               for f in $rejects; do
                 echo "----- $f -----"
-                grep '^@@ ' "$f" || true
+                cat "$f"
               done
               exit 1
             fi
             git add -A
-            git commit -m "feat(latest): apply $(basename "$patch" .patch)"
+            if ! git diff --cached --quiet; then
+              git commit -m "feat(latest): apply $(basename "$patch" .patch)"
+            fi
           done
 
       - name: Verify SQL migrations
@@ -113,10 +117,13 @@ jobs:
           set -euo pipefail
           cd fitila_flutter
           flutter --version
+          grep -q '^version: 1.8.1+12$' pubspec.yaml
           python - <<'PY'
           from pathlib import Path
           import json
           env_path = Path('../.env')
+          if not env_path.exists():
+              raise SystemExit('Missing ../.env')
           env = {}
           for raw in env_path.read_text(encoding='utf-8').splitlines():
               line = raw.strip()
@@ -156,6 +163,7 @@ jobs:
           cp -R build/symbols build/release-output/symbols
           cd build/release-output
           sha256sum FITILA-Android-v1.8.1-build12-latest-series-release.apk | tee SHA256SUMS.txt
+          ls -lh FITILA-Android-v1.8.1-build12-latest-series-release.apk
 
       - name: Remove temporary patch staging
         shell: bash
