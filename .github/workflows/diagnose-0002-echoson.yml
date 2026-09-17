@@ -745,6 +745,17 @@ jobs:
             grep -R -q "$symbol" fitila_flutter/lib || { echo "MISSING_SYMBOL=$symbol"; exit 1; }
           done
           echo "SEMANTIC_CHAIN_APPLIED=YES"
+          echo "=== BACKEND 1748-1766 ==="
+          nl -ba fitila_flutter/lib/core/fitila_backend.dart | sed -n '1748,1766p'
+          echo "=== BACKEND 2098-2116 ==="
+          nl -ba fitila_flutter/lib/core/fitila_backend.dart | sed -n '2098,2116p'
+          echo "=== MAIN 16630-16650 ==="
+          nl -ba fitila_flutter/lib/main.dart | sed -n '16630,16650p'
+          echo "=== MAIN 25438-25458 ==="
+          nl -ba fitila_flutter/lib/main.dart | sed -n '25438,25458p'
+          echo "=== MAIN 26204-26224 ==="
+          nl -ba fitila_flutter/lib/main.dart | sed -n '26204,26224p'
+          exit 2
 
       - name: Setup Java 17
         uses: actions/setup-java@v5
