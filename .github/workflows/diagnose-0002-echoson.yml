@@ -403,6 +403,11 @@ jobs:
               '        if h.section not in section_relocation:\n            section_relocation[h.section] = start - (h.old_start - 1 + line_shift)\n            print(f"{patch_name}: {target_rel} section relocation={section_relocation[h.section]:+d} section={h.section!r}")\n        if mode == "already":\n            print(f"{patch_name}: {target_rel} hunk {idx}/{len(fp.hunks)} already present")\n            continue',
               1,
           )
+          src=src.replace(
+              '            if any(mark in text for mark in ("<<<<<<<", "=======", ">>>>>>>")):\n                raise RuntimeError(f"Conflict marker remains in {rel}")',
+              '            import re\n            if re.search(r"(?m)^(<<<<<<<|=======|>>>>>>>)", text):\n                raise RuntimeError(f"Conflict marker remains in {rel}")',
+              1,
+          )
           Path('/tmp/apply_semantic.py').write_text(src,encoding='utf-8')
           PY
           python /tmp/apply_semantic.py \
