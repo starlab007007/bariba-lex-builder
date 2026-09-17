@@ -70,7 +70,7 @@ jobs:
           assert not missing, missing
           PY
 
-      - name: Prepare relocation-aware context applier
+      - name: Prepare section-aware context applier
         shell: bash
         run: |
           set -euo pipefail
@@ -78,6 +78,7 @@ jobs:
           from pathlib import Path
           src_path = Path('.github/scripts/apply_fitila_patch_chain.py')
           s = src_path.read_text(encoding='utf-8')
+
           old = '''def locate_hunk(
               current: list[str], h: Hunk, old: list[str], new: list[str], line_shift: int
           ) -> tuple[int, int, str, float]:
@@ -100,8 +101,7 @@ jobs:
           '''
           new = '''    current = target.read_text(encoding="utf-8").splitlines(keepends=True)
               line_shift = 0
-              relocation_offset = 0
-              relocation_known = False
+              section_offsets: dict[str, int] = {}
               for idx, h in enumerate(fp.hunks, 1):
           '''
           if old not in s:
@@ -109,7 +109,10 @@ jobs:
           s = s.replace(old, new, 1)
 
           old = '            start, end, mode, score = locate_hunk(current, h, old, new, line_shift)\n'
-          new = '            start, end, mode, score = locate_hunk(current, h, old, new, line_shift, relocation_offset)\n'
+          new = (
+              '            relocation_offset = section_offsets.get(h.section, 0)\n'
+              '            start, end, mode, score = locate_hunk(current, h, old, new, line_shift, relocation_offset)\n'
+          )
           if old not in s:
               raise SystemExit('locate_hunk call not found')
           s = s.replace(old, new, 1)
@@ -120,10 +123,11 @@ jobs:
               '            continue\n'
           )
           replacement = (
-              '        if not relocation_known:\n'
-              '            relocation_offset = start - (h.old_start - 1 + line_shift)\n'
-              '            relocation_known = True\n'
-              '            print(f"{patch_name}: {target_rel} relocation offset={relocation_offset:+d}")\n'
+              '        section_offset = start - (h.old_start - 1 + line_shift)\n'
+              '        previous_offset = section_offsets.get(h.section)\n'
+              '        section_offsets[h.section] = section_offset\n'
+              '        if previous_offset != section_offset:\n'
+              '            print(f"{patch_name}: {target_rel} section={h.section!r} relocation offset={section_offset:+d}")\n'
               '        if mode == "already":\n'
               '            print(f"{patch_name}: {target_rel} hunk {idx}/{len(fp.hunks)} already present")\n'
               '            continue\n'
