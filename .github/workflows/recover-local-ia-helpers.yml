@@ -24,7 +24,14 @@ jobs:
             git show "$ref:.patches/pia_01"
           } | tr -d '\n\r ' | base64 -d | gzip -dc > /tmp/patchIA.diff
           sha256sum /tmp/patchIA.diff
-          echo '=== LISTEN BUTTON ==='
-          grep -n -B80 -A220 '_FitilaListenButton' /tmp/patchIA.diff || true
-          echo '=== COLLAPSIBLE NOTE ==='
-          grep -n -B80 -A220 '_FitilaCollapsibleNote' /tmp/patchIA.diff || true
+          echo '=== PATCHIA LISTEN/COLLAPSIBLE ==='
+          grep -n -B80 -A220 -E '_FitilaListenButton|_FitilaCollapsibleNote' /tmp/patchIA.diff || true
+          {
+            git show "$ref:.patches/p4_00"
+            git show "$ref:.patches/p4_01"
+            git show "$ref:.patches/p4_02"
+            git show "$ref:.patches/p4_03"
+          } | tr -d '\n\r ' | base64 -d | gzip -dc > /tmp/patch4.diff
+          sha256sum /tmp/patch4.diff
+          echo '=== PATCH4 LISTEN/COLLAPSIBLE ==='
+          grep -n -B100 -A260 -E '_FitilaListenButton|_FitilaCollapsibleNote' /tmp/patch4.diff || true
