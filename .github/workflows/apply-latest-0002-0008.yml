@@ -24,13 +24,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "4fd14aa80528599cc03e3665385c0a95aac7351bb8cd301dcc1780079fb57e82  .patches/step1_upload_01.b64" | sha256sum -c -
-          echo "068949c60633ac7213a85c3d3bc4b2350bfbcd7f8793b7120dc4eb62550f0684  .patches/step1_upload_02.b64" | sha256sum -c -
-          echo "737f977dcc86f930a14b2d3087b4193de678899b73139316107a3da040971af2  .patches/step1_upload_03.b64" | sha256sum -c -
-          echo "b8a96b6925c18d2b8eb97036b41ccafde5da66c926051f1eecb4f8f5ce83ed7e  .patches/step1_upload_04.b64" | sha256sum -c -
-          echo "b7cb5d03e99da11eaccf4002729fa3da43c29fd17f44c2d4c8e019ce51332f05  .patches/step1_upload_05.b64" | sha256sum -c -
-          echo "fcec53d5b593eacd5714b1813c8bd0be6028e425cdb0fd21ddbe6b71c13b70c8  .patches/step1_upload_06.b64" | sha256sum -c -
-
           python - <<'PY'
           from pathlib import Path
           import base64, gzip, hashlib
@@ -43,6 +36,10 @@ jobs:
           }
 
           parts = [Path(f'.patches/step1_upload_{i:02d}.b64') for i in range(1, 7)]
+          for p in parts:
+              if not p.exists():
+                  raise SystemExit(f'Missing staging part: {p}')
+          # Ignore only text whitespace introduced by repository transport.
           encoded = ''.join(''.join(p.read_text(encoding='utf-8').split()) for p in parts)
           packed = base64.b64decode(encoded, validate=True)
           bundle_sha = hashlib.sha256(packed).hexdigest()
