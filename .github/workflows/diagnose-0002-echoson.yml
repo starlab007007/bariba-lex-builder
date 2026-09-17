@@ -172,6 +172,32 @@ jobs:
               )
               assert sage_load_old in s
               s=s.replace(sage_load_old,sage_load_new,1)
+              sage_proverb_old = (
+                  "                          Text(\n"
+                  "                            _challenge!.bariba,\n"
+                  "                            style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w800),\n"
+                  "                          ),\n"
+              )
+              sage_proverb_new = (
+                  "                          Row(\n"
+                  "                            children: [\n"
+                  "                              Expanded(\n"
+                  "                                child: Text(\n"
+                  "                                  _submitted ? _challenge!.bariba : _blankedProverb,\n"
+                  "                                  style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w800),\n"
+                  "                                ),\n"
+                  "                              ),\n"
+                  "                              _FitilaListenButton(\n"
+                  "                                bariba: _submitted ? _challenge!.bariba : _blankedProverb,\n"
+                  "                                label: 'Écouter le proverbe',\n"
+                  "                                compact: true,\n"
+                  "                                dark: true,\n"
+                  "                              ),\n"
+                  "                            ],\n"
+                  "                          ),\n"
+              )
+              assert sage_proverb_old in s
+              s=s.replace(sage_proverb_old,sage_proverb_new,1)
               # Premium Live Griot, en conservant les deux actions réelles actuelles.
               live_class=s.index('class _LiveGriotScreenState')
               live_button=s.index('_startingLive ? null : _startLiveNow', live_class)
@@ -277,7 +303,7 @@ jobs:
                   skip=False
               if in_main and line.startswith('@@ '):
                   main_hunk += 1
-                  skip = main_hunk in (3, 4, 5)
+                  skip = main_hunk in (3, 4, 5, 12)
               if not skip:
                   out5.append(line)
           assert main_hunk == 20, main_hunk
