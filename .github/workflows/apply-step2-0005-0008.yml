@@ -95,18 +95,20 @@ jobs:
           if old not in s:
               raise SystemExit('locate_hunk call not found')
           s = s.replace(old, new, 1)
-          marker = '''        if mode == "already":
-              print(f"{patch_name}: {target_rel} hunk {idx}/{len(fp.hunks)} already present")
-              continue
-          '''
-          replacement = '''        if not relocation_known:
-              relocation_offset = start - (h.old_start - 1 + line_shift)
-              relocation_known = True
-              print(f"{patch_name}: {target_rel} relocation offset={relocation_offset:+d}")
-              if mode == "already":
-                  print(f"{patch_name}: {target_rel} hunk {idx}/{len(fp.hunks)} already present")
-                  continue
-          '''
+          marker = (
+              '        if mode == "already":\n'
+              '            print(f"{patch_name}: {target_rel} hunk {idx}/{len(fp.hunks)} already present")\n'
+              '            continue\n'
+          )
+          replacement = (
+              '        if not relocation_known:\n'
+              '            relocation_offset = start - (h.old_start - 1 + line_shift)\n'
+              '            relocation_known = True\n'
+              '            print(f"{patch_name}: {target_rel} relocation offset={relocation_offset:+d}")\n'
+              '        if mode == "already":\n'
+              '            print(f"{patch_name}: {target_rel} hunk {idx}/{len(fp.hunks)} already present")\n'
+              '            continue\n'
+          )
           if marker not in s:
               raise SystemExit('already-present block not found')
           s = s.replace(marker, replacement, 1)
