@@ -419,6 +419,77 @@ jobs:
             /tmp/fitila-patches/0007-semantic.patch \
             /tmp/fitila-patches/0008-semantic.patch
 
+          # Restore unchanged Sagesse resilience blocks that existed only in
+          # the local baseline used to create 0005 and therefore are absent
+          # from the online branch. These are context gaps, not new features.
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('fitila_flutter/lib/main.dart')
+          s=p.read_text(encoding='utf-8')
+
+          redundant = (
+              "      final chain = await FitilaBackend.fetchBattleChain(challengeId: _challengeId);\n"
+              "      final stats = await FitilaBackend.fetchMyBattleStats();\n"
+              "      if (!mounted) return;\n"
+          )
+          assert redundant in s
+          s=s.replace(redundant, "      if (!mounted) return;\n", 1)
+
+          inner_end = (
+              "            _communityUnavailable = false;\n"
+              "          });\n"
+              "        }\n"
+              "      final unlocked = (result['unlockedBadges'] as List?) ?? const [];\n"
+          )
+          inner_fixed = (
+              "            _communityUnavailable = false;\n"
+              "          });\n"
+              "        }\n"
+              "      } catch (_) {\n"
+              "        if (mounted) {\n"
+              "          setState(() => _communityUnavailable = true);\n"
+              "        }\n"
+              "      }\n"
+              "      final unlocked = (result['unlockedBadges'] as List?) ?? const [];\n"
+          )
+          assert inner_end in s
+          s=s.replace(inner_end, inner_fixed, 1)
+
+          broken_banner = (
+              "                    if (_communityUnavailable)\n"
+              "                      Container(\n"
+              "                    if (_chain.isEmpty)\n"
+          )
+          fixed_banner = (
+              "                    if (_communityUnavailable)\n"
+              "                      Container(\n"
+              "                        margin: const EdgeInsets.only(bottom: 10),\n"
+              "                        padding: const EdgeInsets.all(12),\n"
+              "                        decoration: BoxDecoration(\n"
+              "                          color: _fitilaSurfaceAlt,\n"
+              "                          borderRadius: BorderRadius.circular(12),\n"
+              "                          border: Border.all(color: _fitilaBorder),\n"
+              "                        ),\n"
+              "                        child: Row(\n"
+              "                          children: [\n"
+              "                            const Icon(Icons.cloud_off_rounded, size: 18, color: _fitilaMuted),\n"
+              "                            const SizedBox(width: 8),\n"
+              "                            Expanded(\n"
+              "                              child: Text(\n"
+              "                                'La chaîne communautaire est temporairement indisponible. Votre défi reste jouable.',\n"
+              "                                style: TextStyle(color: _fitilaMuted, fontSize: 12),\n"
+              "                              ),\n"
+              "                            ),\n"
+              "                          ],\n"
+              "                        ),\n"
+              "                      ),\n"
+              "                    if (_chain.isEmpty && !_communityUnavailable)\n"
+          )
+          assert broken_banner in s
+          s=s.replace(broken_banner, fixed_banner, 1)
+          p.write_text(s,encoding='utf-8')
+          PY
+
           conflict_files="$(grep -R -l -E '^(<<<<<<<|=======|>>>>>>>)' fitila_flutter/lib || true)"
           if [ -n "$conflict_files" ]; then
             echo "=== CONFLICT MARKERS ==="
@@ -451,10 +522,8 @@ jobs:
         run: |
           set -euo pipefail
           cd fitila_flutter
-          echo "=== SAGESSE MERGED SOURCE 21460-21930 ==="
-          nl -ba lib/main.dart | sed -n '21460,21930p'
-          dart format lib/main.dart lib/core/fitila_backend.dart
           flutter pub get
+          dart format lib/main.dart lib/core/fitila_backend.dart
           flutter analyze
           flutter test --reporter compact
 
