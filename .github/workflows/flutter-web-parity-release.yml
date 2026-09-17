@@ -1,4 +1,5 @@
 name: FITILA Flutter Web Parity Release
+# Build trigger for validated application commit 3b7c32e9719a81aa2c7ac126b8ddf824f4c61a2c.
 
 on:
   push:
