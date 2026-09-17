@@ -8,7 +8,7 @@ on:
       - .github/workflows/diagnose-0002-echoson.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   validate:
@@ -255,6 +255,44 @@ jobs:
                 '          ),\n'
               )
               s=s[:live_start]+premium_live+s[live_end:]
+              # 0008: fusion sémantique des trois blocs qui traversent
+              # plusieurs classes dans le diff historique.
+              p8=Path('/tmp/fitila-patches/0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch')
+              t8=p8.read_text(encoding='utf-8').splitlines(keepends=True)
+              hunks=[]; body=[]
+              for line in t8:
+                  if line.startswith('@@ '):
+                      if body: hunks.append(body)
+                      body=[line]
+                  elif body and not line.startswith('diff --git '):
+                      body.append(line)
+              if body: hunks.append(body)
+              assert len(hunks) == 8, len(hunks)
+              def new_lines(h):
+                  out=[]
+                  for line in h[1:]:
+                      if line.startswith('+') and not line.startswith('+++'): out.append(line[1:])
+                      elif line.startswith(' '): out.append(line[1:])
+                  return out
+              # Hunk 2 : FeedScreen devient uniquement immersif plein écran.
+              n2=new_lines(hunks[1])
+              a2=next(i for i,x in enumerate(n2) if x.startswith('class _FeedScreenState'))
+              b2=next(i for i,x in enumerate(n2[a2:],a2) if x.startswith('/// Fil immersif'))
+              feed_new=''.join(n2[a2:b2]).rstrip()+'\n\n'
+              fs=s.index('class _FeedScreenState extends State<FeedScreen> {')
+              fe=s.index('/// Fil immersif',fs)
+              s=s[:fs]+feed_new+s[fe:]
+              # Hunk 6 : suppression du rail de progression obsolète.
+              rs=s.index('/// Rail vertical indiquant la position dans le fil')
+              re=s.index('/// Une publication du fil immersif',rs)
+              s=s[:rs]+s[re:]
+              # Hunk 8 : Créateur réduit aux six modules IA, sans ancien studio.
+              n8=new_lines(hunks[7])
+              a8=next(i for i,x in enumerate(n8) if x.startswith('class _ContentCreatorScreenState'))
+              creator_new=''.join(n8[a8:]).rstrip()+'\n}\n\n'
+              cs=s.index('class _ContentCreatorScreenState extends State<ContentCreatorScreen> {')
+              ce=s.index('class _CreatorPhaseBar extends StatelessWidget {',cs)
+              s=s[:cs]+creator_new+s[ce:]
               p.write_text(s,encoding='utf-8')
           PY
 
@@ -323,6 +361,19 @@ jobs:
           assert old7 in text7
           text7=text7.replace(old7,new7,1)
           Path('/tmp/fitila-patches/0007-semantic.patch').write_text(text7,encoding='utf-8')
+          src8=Path('/tmp/fitila-patches/0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch')
+          lines8=src8.read_text(encoding='utf-8').splitlines(keepends=True)
+          out8=[]; h8=0; skip8=False
+          for line in lines8:
+              if line.startswith('@@ '):
+                  h8 += 1
+                  skip8 = h8 in (2, 6, 8)
+              elif line.startswith('diff --git '):
+                  skip8 = False
+              if not skip8:
+                  out8.append(line)
+          assert h8 == 8, h8
+          Path('/tmp/fitila-patches/0008-semantic.patch').write_text(''.join(out8),encoding='utf-8')
           PY
           python - <<'PY'
           from pathlib import Path
@@ -361,7 +412,7 @@ jobs:
             /tmp/fitila-patches/0005-semantic.patch \
             /tmp/fitila-patches/0006-aburu-fim-galerie-live-video.patch \
             /tmp/fitila-patches/0007-semantic.patch \
-            /tmp/fitila-patches/0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch
+            /tmp/fitila-patches/0008-semantic.patch
 
           test -z "$(grep -R -l -E '^(<<<<<<<|=======|>>>>>>>)' fitila_flutter/lib || true)"
           cmp -s /tmp/fitila-patches/handunia_wasa_dynamique_social_migration.sql supabase/migrations/20260916222617_handunia_wasa_dynamique_social.sql
@@ -385,10 +436,25 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Resolve dependencies and analyze
+      - name: Format, resolve, analyze and test
         shell: bash
         run: |
           set -euo pipefail
           cd fitila_flutter
+          dart format lib/main.dart lib/core/fitila_backend.dart
           flutter pub get
           flutter analyze
+          flutter test --reporter compact
+
+      - name: Commit validated application integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git config user.name "FITILA CI"
+          git config user.email "zimesongbian007@gmail.com"
+          git add             fitila_flutter/lib/main.dart             fitila_flutter/lib/core/fitila_backend.dart             supabase/migrations/20260916221308_handunia_wasa_monde_vivant.sql             supabase/migrations/20260916222617_handunia_wasa_dynamique_social.sql             supabase/migrations/20260916225824_sagesse_battle_votes_communaute.sql
+          git diff --cached --stat
+          git diff --cached --quiet && { echo "No application changes to commit"; exit 0; }
+          git commit -m "feat(fitila): integrate patches 0002-0008 and migrations"
+          git push origin HEAD:release/fitila-flutter-android-v1.8.1-build12-web-parity
