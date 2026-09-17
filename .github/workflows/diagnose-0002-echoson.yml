@@ -1,4 +1,4 @@
-name: FITILA recover EchoSon local baseline
+name: FITILA validate reconstructed local baseline and patch chain
 
 on:
   push:
@@ -16,56 +16,127 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
-      - name: Search all Git history for EchoSon playback primitives
+      - name: Reconstruct certified patch chain
         shell: bash
         run: |
           set -euo pipefail
-          file=fitila_flutter/lib/main.dart
-          echo '=== COMMITS ADDING _togglePlayback ==='
-          git log --all --format='%H %ad %s' --date=iso -S'_togglePlayback' -- "$file" || true
-          echo '=== COMMITS ADDING _discardRecording ==='
-          git log --all --format='%H %ad %s' --date=iso -S'_discardRecording' -- "$file" || true
-          echo '=== COMMITS ADDING _playback ==='
-          git log --all --format='%H %ad %s' --date=iso -S'_playback' -- "$file" || true
-          echo '=== ALL REFS CONTAINING SYMBOLS ==='
-          found=0
-          for ref in $(git for-each-ref --format='%(refname)' refs/remotes/origin refs/tags); do
-            if git grep -q '_togglePlayback' "$ref" -- "$file" 2>/dev/null; then
-              found=1
-              echo "--- $ref ---"
-              git grep -n -E '_playback|_playingBack|_togglePlayback|_discardRecording' "$ref" -- "$file" || true
-            fi
-          done
-          if [ "$found" -eq 0 ]; then echo 'NO_REF_WITH_PLAYBACK_SYMBOLS'; fi
-
-          echo '=== RELEVANT COMMIT SNAPSHOTS ==='
-          mapfile -t commits < <(
-            {
-              git log --all --format='%H' -S'_togglePlayback' -- "$file"
-              git log --all --format='%H' -S'_discardRecording' -- "$file"
-              git log --all --format='%H' -S'_playback' -- "$file"
-            } | sort -u
-          )
-          for c in "${commits[@]}"; do
-            echo "===== $c $(git show -s --format='%s' "$c") ====="
-            git show "$c:$file" > /tmp/main.dart 2>/dev/null || continue
-            python - "$c" <<'PY'
-          import sys
+          python - <<'PY'
           from pathlib import Path
-          s=Path('/tmp/main.dart').read_text()
-          lines=s.splitlines()
-          for i,l in enumerate(lines):
-              if 'class _EchoSonScreenState' in l:
-                  start=i
-                  end=min(len(lines),i+500)
-                  for j in range(start,end):
-                      if any(x in lines[j] for x in ('_playback','_playingBack','_togglePlayback','_discardRecording')):
-                          a=max(start,j-12); b=min(end,j+45)
-                          print(f'--- {a+1}:{b} ---')
-                          for k in range(a,b):
-                              print(f'{k+1}: {lines[k]}')
-                  break
+          import base64,gzip,hashlib
+          expected={
+            '0002-design-premium-6-modules.patch':'7976eea171984ac5289905a485404990db0418e524ad03f5cbfbd17057a3d051',
+            '0003-handunia-wasa-socle-technique.patch':'be30d8fd605993973aee182139b08b75e7fc0cc849035a8b8fe43d17cb04056a',
+            '0004-handunia-wasa-dynamique-social.patch':'63336234fdc3b7bca061acc375f23df74287b5d50aa834659ea2b02bf6d5c55b',
+            'handunia_wasa_dynamique_social_migration.sql':'6cc7575ee8fe02df081809f5f4cb2ca33f45dc61e941192d15457be4e5b47635',
+            '0005-sagesse-battle-proverbe-a-trou-ia.patch':'9c38477c2396be6ad6b1bcf0fdfc2cc9f50082e13b0e82aa902ae8386bfd1b1a',
+            '0006-aburu-fim-galerie-live-video.patch':'52ae14abe5b53a7d0d557f6bde720840d9e72b17fa43ce5bbc1be4964fa30ed3',
+            '0007-sasara-ia-edition-ligne-par-ligne.patch':'cb0a531b10c25b090f0a26b8677d09224c16171cd3323bd6910804c5599dd701',
+            '0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch':'0de7dcf4672f1c9ac52f45ec5fcb7a7cf30303d32cc771c3eb352a8b9247993c',
+            '20260916225824_sagesse_battle_votes_communaute.sql':'87995d36e227a19b488c99d7bd43c8d87224d5c565ce83ccfe0a0807da16a1ee',
+          }
+          out=Path('/tmp/fitila-patches'); out.mkdir(parents=True,exist_ok=True)
+          def unpack(encoded,bundle_sha):
+              packed=base64.b64decode(encoded,validate=True)
+              assert hashlib.sha256(packed).hexdigest()==bundle_sha
+              raw=gzip.decompress(packed); pos=0
+              while pos<len(raw):
+                  assert raw.startswith(b'###FILE ',pos)
+                  eol=raw.find(b'\n',pos); name,size_s=raw[pos+8:eol].decode().rsplit(' ',1)
+                  size=int(size_s); start=eol+1; end=start+size; data=raw[start:end]
+                  assert raw[end:end+8]==b'\n###END\n'
+                  if name in expected:
+                      got=hashlib.sha256(data).hexdigest(); print(name,got); assert got==expected[name]
+                      (out/name).write_bytes(data)
+                  pos=end+8
+          prefix=[]
+          for i in (1,2,3,4): prefix.append(''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()))
+          prefix.append(''.join(Path('.patches/step1_fix_05a.b64').read_text().split())+''.join(Path('.patches/step1_fix_05b.b64').read_text().split()))
+          for i in (6,7,8): prefix.append(''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()))
+          tail=[''.join(Path(f'.patches/step1_upload_{i:02d}.b64').read_text().split()) for i in range(3,7)]
+          unpack(''.join(prefix)+''.join(tail),'b9edeff2d51255d2d509e0337baaa7113bf3e5a530a1914acfc287195eb2d3e9')
+          second=''.join(''.join(Path(f'.patches/step2_upload_{i:02d}.b64').read_text().split()) for i in range(1,5))
+          unpack(second,'183a0681e102509e3ad58077a88538e703ea797903f9678ad48214fbb2bd89c4')
+          missing=set(expected)-{p.name for p in out.iterdir()}
+          assert not missing, missing
           PY
+
+      - name: Reconstruct missing EchoSon local playback baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('fitila_flutter/lib/main.dart')
+          s=p.read_text(encoding='utf-8')
+          if '_togglePlayback' in s or '_discardRecording' in s:
+              raise SystemExit('Playback primitives unexpectedly already present')
+
+          field_anchor='  bool _publishing = false;\n'
+          fields=(
+              '  bool _publishing = false;\n'
+              '  final _playback = audio.AudioPlayer();\n'
+              '  bool _playingBack = false;\n'
+          )
+          if field_anchor not in s: raise SystemExit('EchoSon field anchor missing')
+          s=s.replace(field_anchor,fields,1)
+
+          dispose_anchor='    _mediaController.dispose();\n    super.dispose();'
+          if dispose_anchor not in s: raise SystemExit('EchoSon dispose anchor missing')
+          s=s.replace(dispose_anchor,'    _mediaController.dispose();\n    _playback.dispose();\n    super.dispose();',1)
+
+          translate_anchor='\n  Future<void> _translate() async {'
+          if translate_anchor not in s: raise SystemExit('EchoSon translate anchor missing')
+          playback=r'''
+  Future<void> _discardRecording() async {
+    await _playback.stop();
+    if (!mounted) return;
+    setState(() {
+      _audio = null;
+      _playingBack = false;
+    });
+  }
+
+  Future<void> _togglePlayback() async {
+    final clip = _audio;
+    if (clip == null) return;
+    if (_playingBack) {
+      await _playback.stop();
+      if (mounted) setState(() => _playingBack = false);
+      return;
+    }
+    await _playback.play(audio.DeviceFileSource(clip.path));
+    if (!mounted) return;
+    setState(() => _playingBack = true);
+    _playback.onPlayerComplete.first.then((_) {
+      if (mounted) setState(() => _playingBack = false);
+    });
+  }
+'''
+          s=s.replace(translate_anchor,'\n'+playback+translate_anchor,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          grep -n -A100 -B10 'final _playback' fitila_flutter/lib/main.dart | head -150
+
+      - name: Verify and apply entire exact chain
+        shell: bash
+        run: |
+          set -euo pipefail
+          for patch in             0002-design-premium-6-modules.patch             0003-handunia-wasa-socle-technique.patch             0004-handunia-wasa-dynamique-social.patch             0005-sagesse-battle-proverbe-a-trou-ia.patch             0006-aburu-fim-galerie-live-video.patch             0007-sasara-ia-edition-ligne-par-ligne.patch             0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch
+          do
+            echo "===== CHECK $patch ====="
+            if ! git apply --check "/tmp/fitila-patches/$patch"; then
+              echo "===== REJECT DIAGNOSTIC $patch ====="
+              git apply --reject --whitespace=nowarn "/tmp/fitila-patches/$patch" || true
+              find . -name '*.rej' -type f -print -exec sh -c 'echo "--- $1"; cat "$1"' _ {} \;
+              exit 1
+            fi
+            git apply --whitespace=nowarn "/tmp/fitila-patches/$patch"
           done
+          cmp -s /tmp/fitila-patches/handunia_wasa_dynamique_social_migration.sql supabase/migrations/20260916222617_handunia_wasa_dynamique_social.sql
+          cmp -s /tmp/fitila-patches/20260916225824_sagesse_battle_votes_communaute.sql supabase/migrations/20260916225824_sagesse_battle_votes_communaute.sql
+          git diff --check
+          echo 'FULL_EXACT_CHAIN=YES'
+          echo "main=$(git hash-object fitila_flutter/lib/main.dart)"
+          echo "backend=$(git hash-object fitila_flutter/lib/core/fitila_backend.dart)"
