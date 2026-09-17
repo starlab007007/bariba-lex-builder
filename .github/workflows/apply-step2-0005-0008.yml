@@ -41,22 +41,14 @@ jobs:
 
           def unpack(encoded, bundle_sha):
               packed=base64.b64decode(encoded,validate=True)
-              got=hashlib.sha256(packed).hexdigest()
-              print('bundle',got)
-              assert got==bundle_sha, (got,bundle_sha)
+              got=hashlib.sha256(packed).hexdigest(); print('bundle',got); assert got==bundle_sha
               raw=gzip.decompress(packed); pos=0
               while pos<len(raw):
                   assert raw.startswith(b'###FILE ',pos)
-                  eol=raw.find(b'\n',pos)
-                  name,size_s=raw[pos+8:eol].decode().rsplit(' ',1)
-                  size=int(size_s); start=eol+1; end=start+size
-                  assert raw[end:end+8]==b'\n###END\n'
-                  data=raw[start:end]
+                  eol=raw.find(b'\n',pos); name,size_s=raw[pos+8:eol].decode().rsplit(' ',1)
+                  size=int(size_s); start=eol+1; end=start+size; assert raw[end:end+8]==b'\n###END\n'; data=raw[start:end]
                   if name in expected:
-                      got=hashlib.sha256(data).hexdigest()
-                      print(name,got)
-                      assert got==expected[name], (name,got,expected[name])
-                      (out/name).write_bytes(data)
+                      got=hashlib.sha256(data).hexdigest(); print(name,got); assert got==expected[name]; (out/name).write_bytes(data)
                   pos=end+8
 
           prefix=[]
@@ -65,122 +57,35 @@ jobs:
           for i in (6,7,8): prefix.append(''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()))
           tail=[''.join(Path(f'.patches/step1_upload_{i:02d}.b64').read_text().split()) for i in range(3,7)]
           unpack(''.join(prefix)+''.join(tail),'b9edeff2d51255d2d509e0337baaa7113bf3e5a530a1914acfc287195eb2d3e9')
-
           current=''.join(''.join(Path(f'.patches/step2_upload_{i:02d}.b64').read_text().split()) for i in range(1,5))
           unpack(current,'183a0681e102509e3ad58077a88538e703ea797903f9678ad48214fbb2bd89c4')
-
-          missing=[n for n in expected if not (out/n).exists()]
-          assert not missing, missing
+          missing=[n for n in expected if not (out/n).exists()]; assert not missing, missing
           PY
 
-      - name: Apply exact patch chain with semantic conflict resolution
+      - name: Apply exact patch chain by unified-diff context anchors
         shell: bash
         run: |
           set -euo pipefail
-
-          resolve_markers() {
-            python - fitila_flutter/lib/main.dart fitila_flutter/lib/core/fitila_backend.dart <<'PY'
-          from pathlib import Path
-          import sys
-          for arg in sys.argv[1:]:
-              p=Path(arg)
-              if not p.exists(): continue
-              lines=p.read_text(encoding='utf-8').splitlines(keepends=True)
-              if not any(x.startswith('<<<<<<<') for x in lines): continue
-              out=[]; i=0; count=0
-              while i<len(lines):
-                  if not lines[i].startswith('<<<<<<<'):
-                      out.append(lines[i]); i+=1; continue
-                  count+=1; i+=1
-                  while i<len(lines) and not lines[i].startswith('======='): i+=1
-                  if i>=len(lines): raise SystemExit(f'Bad conflict separator in {p}')
-                  i+=1
-                  while i<len(lines) and not lines[i].startswith('>>>>>>>'):
-                      out.append(lines[i]); i+=1
-                  if i>=len(lines): raise SystemExit(f'Bad conflict end in {p}')
-                  i+=1
-              p.write_text(''.join(out),encoding='utf-8')
-              print(f'resolved {count} overlap(s) in {p} with latest patch side')
-          PY
-          }
-
-          repair_0002_rejects() {
-            python - <<'PY'
-          from pathlib import Path
-          p=Path('fitila_flutter/lib/main.dart')
-          text=p.read_text(encoding='utf-8')
-
-          def scope_replace(text, start_marker, end_marker, old, new, label):
-              s=text.find(start_marker)
-              if s<0: raise SystemExit(f'{label}: scope start not found')
-              e=text.find(end_marker,s) if end_marker else len(text)
-              if e<0: e=len(text)
-              seg=text[s:e]
-              if new in seg:
-                  print(label,'already present'); return text
-              count=seg.count(old)
-              if count!=1: raise SystemExit(f'{label}: expected one semantic anchor, got {count}')
-              seg=seg.replace(old,new,1)
-              print(label,'repaired from rejected hunk')
-              return text[:s]+seg+text[e:]
-
-          text=scope_replace(
-              text,
-              'class _EchoSonScreenState extends State<EchoSonScreen> {',
-              '// ─────────────────────────────────────────────────────────────────\n// 2.',
-              '    setState(() => _publishing = true);',
-              '    setState(() {\n      _publishing = true;\n      _publishDoneCount = 1;\n      _step = 3;\n    });',
-              'EchoSon publish state')
-
-          old_chat="""                      ? Center(\n                          child: Text(\n                            _isHost ? 'Vous êtes en direct. Le chat apparaîtra ici.' : 'Connecté au direct. Le chat apparaîtra ici.',\n                            style: const TextStyle(color: Colors.white38, fontSize: 12.5),\n                            textAlign: TextAlign.center,\n                          ),\n                        )"""
-          new_chat="""                      ? Center(\n                          child: Column(\n                            mainAxisSize: MainAxisSize.min,\n                            children: [\n                              _FitilaOrbMic(\n                                icon: _isHost ? (_muted ? Icons.mic_off_rounded : Icons.mic_rounded) : Icons.hearing_rounded,\n                                size: 74,\n                                active: !_muted,\n                              ),\n                              const SizedBox(height: 18),\n                              _FitilaWaveformBars(active: !_muted, height: 30, barCount: 16),\n                              const SizedBox(height: 18),\n                              Text(\n                                _isHost ? 'Vous êtes en direct. Le chat apparaîtra ici.' : 'Connecté au direct. Le chat apparaîtra ici.',\n                                style: const TextStyle(color: Colors.white38, fontSize: 12.5),\n                                textAlign: TextAlign.center,\n                              ),\n                            ],\n                          ),\n                        )"""
-          text=scope_replace(
-              text,
-              'class _LiveRoomScreenState extends State<LiveRoomScreen> {',
-              '// ─────────────────────────────────────────────────────────────────\n// 3. Sagesse Battle',
-              old_chat,new_chat,'LiveRoom empty state')
-          p.write_text(text,encoding='utf-8')
-          rej=Path('fitila_flutter/lib/main.dart.rej')
-          if rej.exists(): rej.unlink()
-          PY
-          }
-
-          for name in \
-            0002-design-premium-6-modules.patch \
-            0003-handunia-wasa-socle-technique.patch \
-            0004-handunia-wasa-dynamique-social.patch \
-            0005-sagesse-battle-proverbe-a-trou-ia.patch \
-            0006-aburu-fim-galerie-live-video.patch \
-            0007-sasara-ia-edition-ligne-par-ligne.patch \
-            0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch
-          do
-            echo "===== APPLY $name ====="
-            set +e
-            patch -p1 --forward --batch --merge=diff3 --fuzz=3 < "/tmp/fitila-patches/$name"
-            rc=$?
-            set -e
-            echo "patch rc=$rc"
-            resolve_markers
-            if [ "$name" = "0002-design-premium-6-modules.patch" ] && [ -f fitila_flutter/lib/main.dart.rej ]; then
-              repair_0002_rejects
-            fi
-            rejects="$(find fitila_flutter supabase -type f -name '*.rej' -print 2>/dev/null || true)"
-            if [ -n "$rejects" ]; then
-              echo "Unmerged rejects after $name: $rejects"
-              while IFS= read -r f; do [ -z "$f" ] || { echo "--- $f"; cat "$f"; }; done <<< "$rejects"
-              exit 1
-            fi
-            if grep -R -n '^<<<<<<<\|^=======\|^>>>>>>>' fitila_flutter/lib/main.dart fitila_flutter/lib/core/fitila_backend.dart; then
-              echo 'Conflict markers remain'; exit 1
-            fi
-            find fitila_flutter supabase -type f -name '*.orig' -delete 2>/dev/null || true
-          done
+          python .github/scripts/apply_fitila_patch_chain.py \
+            /tmp/fitila-patches/0002-design-premium-6-modules.patch \
+            /tmp/fitila-patches/0003-handunia-wasa-socle-technique.patch \
+            /tmp/fitila-patches/0004-handunia-wasa-dynamique-social.patch \
+            /tmp/fitila-patches/0005-sagesse-battle-proverbe-a-trou-ia.patch \
+            /tmp/fitila-patches/0006-aburu-fim-galerie-live-video.patch \
+            /tmp/fitila-patches/0007-sasara-ia-edition-ligne-par-ligne.patch \
+            /tmp/fitila-patches/0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch
 
           migration=supabase/migrations/20260916225824_sagesse_battle_votes_communaute.sql
           test -s "$migration"
           cmp -s /tmp/fitila-patches/20260916225824_sagesse_battle_votes_communaute.sql "$migration"
           echo '87995d36e227a19b488c99d7bd43c8d87224d5c565ce83ccfe0a0807da16a1ee  supabase/migrations/20260916225824_sagesse_battle_votes_communaute.sql' | sha256sum -c -
           test "$(find supabase/migrations -maxdepth 1 -type f -name '20260916225824_sagesse_battle_votes_communaute.sql' | wc -l)" -eq 1
+
+          grep -q '_scoreWithAi' fitila_flutter/lib/main.dart
+          grep -q 'toggleBattleResponseVote' fitila_flutter/lib/core/fitila_backend.dart
+          grep -q 'class _AburuGalleryCard' fitila_flutter/lib/main.dart
+          grep -q 'fetchCorpusCommunityCountThisMonth' fitila_flutter/lib/core/fitila_backend.dart
+          grep -q 'style Kuaishou' fitila_flutter/lib/main.dart
           git diff --check
           git status --short
 
