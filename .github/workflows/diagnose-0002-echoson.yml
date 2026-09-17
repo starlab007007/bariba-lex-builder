@@ -204,6 +204,18 @@ jobs:
               src=Path('/tmp/fitila-patches')/name
               text=src.read_text(encoding='utf-8')
               text=text.replace('@@ class HanduniaWasaScreen extends StatefulWidget {','@@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {')
+              if name.startswith('0003-'):
+                  text=text.replace(
+                      '@@ -23612,26 +23612,169 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {\n }\n \n class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {\n',
+                      '@@ -23614,24 +23614,167 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {\n class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {\n',
+                      1,
+                  )
+              if name.startswith('0004-'):
+                  text=text.replace(
+                      '@@ -23612,16 +23612,23 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {\n }\n \n class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {\n',
+                      '@@ -23614,14 +23614,21 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {\n class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {\n',
+                      1,
+                  )
               (src.parent/(name.replace('.patch','-semantic.patch'))).write_text(text,encoding='utf-8')
           PY
           python .github/scripts/apply_fitila_patch_chain.py \
