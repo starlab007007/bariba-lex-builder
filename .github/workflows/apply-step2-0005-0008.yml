@@ -1,4 +1,4 @@
-name: FITILA step 2 - integrate exact patches 0005 through 0007
+name: FITILA integrate exact patch chain 0002 through 0008
 
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Reconstruct and verify exact uploaded files 0005-0007 + SQL
+      - name: Reconstruct and verify exact patch chain
         shell: bash
         run: |
           set -euo pipefail
@@ -28,28 +28,44 @@ jobs:
           import base64, gzip, hashlib
 
           expected = {
+            '0002-design-premium-6-modules.patch':'7976eea171984ac5289905a485404990db0418e524ad03f5cbfbd17057a3d051',
+            '0003-handunia-wasa-socle-technique.patch':'be30d8fd605993973aee182139b08b75e7fc0cc849035a8b8fe43d17cb04056a',
+            '0004-handunia-wasa-dynamique-social.patch':'63336234fdc3b7bca061acc375f23df74287b5d50aa834659ea2b02bf6d5c55b',
             '0005-sagesse-battle-proverbe-a-trou-ia.patch':'9c38477c2396be6ad6b1bcf0fdfc2cc9f50082e13b0e82aa902ae8386bfd1b1a',
             '0006-aburu-fim-galerie-live-video.patch':'52ae14abe5b53a7d0d557f6bde720840d9e72b17fa43ce5bbc1be4964fa30ed3',
             '0007-sasara-ia-edition-ligne-par-ligne.patch':'cb0a531b10c25b090f0a26b8677d09224c16171cd3323bd6910804c5599dd701',
+            '0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch':'0de7dcf4672f1c9ac52f45ec5fcb7a7cf30303d32cc771c3eb352a8b9247993c',
             '20260916225824_sagesse_battle_votes_communaute.sql':'87995d36e227a19b488c99d7bd43c8d87224d5c565ce83ccfe0a0807da16a1ee',
           }
           out=Path('/tmp/fitila-patches'); out.mkdir(parents=True,exist_ok=True)
-          encoded=''.join(''.join(Path(f'.patches/step2_upload_{i:02d}.b64').read_text().split()) for i in range(1,5))
-          packed=base64.b64decode(encoded,validate=True)
-          got=hashlib.sha256(packed).hexdigest(); print('bundle',got)
-          assert got=='183a0681e102509e3ad58077a88538e703ea797903f9678ad48214fbb2bd89c4'
-          raw=gzip.decompress(packed); pos=0
-          while pos<len(raw):
-              assert raw.startswith(b'###FILE ',pos)
-              eol=raw.find(b'\n',pos); name,size_s=raw[pos+8:eol].decode().rsplit(' ',1)
-              size=int(size_s); start=eol+1; end=start+size
-              assert raw[end:end+8]==b'\n###END\n'
-              data=raw[start:end]
-              if name in expected:
-                  digest=hashlib.sha256(data).hexdigest(); print(name,digest)
-                  assert digest==expected[name]
-                  (out/name).write_bytes(data)
-              pos=end+8
+
+          def unpack(encoded, bundle_sha):
+              packed=base64.b64decode(encoded,validate=True)
+              got=hashlib.sha256(packed).hexdigest(); print('bundle',got); assert got==bundle_sha
+              raw=gzip.decompress(packed); pos=0
+              while pos<len(raw):
+                  assert raw.startswith(b'###FILE ',pos)
+                  eol=raw.find(b'\n',pos); name,size_s=raw[pos+8:eol].decode().rsplit(' ',1)
+                  size=int(size_s); start=eol+1; end=start+size
+                  assert raw[end:end+8]==b'\n###END\n'
+                  data=raw[start:end]
+                  if name in expected:
+                      digest=hashlib.sha256(data).hexdigest(); print(name,digest); assert digest==expected[name]
+                      (out/name).write_bytes(data)
+                  pos=end+8
+
+          prefix=[]
+          for i in (1,2,3,4):
+              prefix.append(''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()))
+          prefix.append(''.join(Path('.patches/step1_fix_05a.b64').read_text().split()) + ''.join(Path('.patches/step1_fix_05b.b64').read_text().split()))
+          for i in (6,7,8):
+              prefix.append(''.join(Path(f'.patches/step1_fix_{i:02d}.b64').read_text().split()))
+          tail=[''.join(Path(f'.patches/step1_upload_{i:02d}.b64').read_text().split()) for i in range(3,7)]
+          unpack(''.join(prefix)+''.join(tail),'b9edeff2d51255d2d509e0337baaa7113bf3e5a530a1914acfc287195eb2d3e9')
+
+          current=''.join(''.join(Path(f'.patches/step2_upload_{i:02d}.b64').read_text().split()) for i in range(1,5))
+          unpack(current,'183a0681e102509e3ad58077a88538e703ea797903f9678ad48214fbb2bd89c4')
+
           missing=[n for n in expected if not (out/n).exists()]
           assert not missing, missing
           PY
@@ -77,6 +93,7 @@ jobs:
           if old not in s:
               raise SystemExit('locate_hunk signature block not found')
           s = s.replace(old, new, 1)
+
           old = '''    current = target.read_text(encoding="utf-8").splitlines(keepends=True)
               line_shift = 0
               for idx, h in enumerate(fp.hunks, 1):
@@ -90,11 +107,13 @@ jobs:
           if old not in s:
               raise SystemExit('apply_file_patch state block not found')
           s = s.replace(old, new, 1)
+
           old = '            start, end, mode, score = locate_hunk(current, h, old, new, line_shift)\n'
           new = '            start, end, mode, score = locate_hunk(current, h, old, new, line_shift, relocation_offset)\n'
           if old not in s:
               raise SystemExit('locate_hunk call not found')
           s = s.replace(old, new, 1)
+
           marker = (
               '        if mode == "already":\n'
               '            print(f"{patch_name}: {target_rel} hunk {idx}/{len(fp.hunks)} already present")\n'
@@ -115,14 +134,18 @@ jobs:
           Path('/tmp/apply_fitila_patch_chain.py').write_text(s, encoding='utf-8')
           PY
 
-      - name: Apply only exact patches 0005, 0006 and 0007
+      - name: Apply exact patches 0002 through 0008
         shell: bash
         run: |
           set -euo pipefail
           python /tmp/apply_fitila_patch_chain.py \
+            /tmp/fitila-patches/0002-design-premium-6-modules.patch \
+            /tmp/fitila-patches/0003-handunia-wasa-socle-technique.patch \
+            /tmp/fitila-patches/0004-handunia-wasa-dynamique-social.patch \
             /tmp/fitila-patches/0005-sagesse-battle-proverbe-a-trou-ia.patch \
             /tmp/fitila-patches/0006-aburu-fim-galerie-live-video.patch \
-            /tmp/fitila-patches/0007-sasara-ia-edition-ligne-par-ligne.patch
+            /tmp/fitila-patches/0007-sasara-ia-edition-ligne-par-ligne.patch \
+            /tmp/fitila-patches/0008-fil-fitila-createur-contenu-plein-ecran-kuaishou.patch
 
           migration=supabase/migrations/20260916225824_sagesse_battle_votes_communaute.sql
           test -s "$migration"
@@ -134,6 +157,7 @@ jobs:
           grep -q 'toggleBattleResponseVote' fitila_flutter/lib/core/fitila_backend.dart
           grep -q 'class _AburuGalleryCard' fitila_flutter/lib/main.dart
           grep -q 'fetchCorpusCommunityCountThisMonth' fitila_flutter/lib/core/fitila_backend.dart
+          grep -q 'style Kuaishou' fitila_flutter/lib/main.dart
           git diff --check
           git status --short
 
@@ -156,7 +180,7 @@ jobs:
       - name: Analyze merged Flutter application
         run: cd fitila_flutter && flutter analyze
 
-      - name: Commit and push targeted integration
+      - name: Commit and push complete integration
         shell: bash
         run: |
           set -euo pipefail
@@ -165,11 +189,13 @@ jobs:
           git add \
             fitila_flutter/lib/main.dart \
             fitila_flutter/lib/core/fitila_backend.dart \
+            supabase/migrations/20260916221308_handunia_wasa_monde_vivant.sql \
+            supabase/migrations/20260916222617_handunia_wasa_dynamique_social.sql \
             supabase/migrations/20260916225824_sagesse_battle_votes_communaute.sql
           git diff --cached --check
           if git diff --cached --quiet; then
-            echo 'No application changes to commit; targeted patch set is already present.'
+            echo 'No application changes to commit; complete patch chain is already present.'
             exit 0
           fi
-          git commit -m 'feat(fitila): integrate patches 0005-0007 and battle votes migration'
+          git commit -m 'feat(fitila): integrate creation IA patch chain 0002-0008'
           git push origin HEAD:${GITHUB_REF_NAME}
