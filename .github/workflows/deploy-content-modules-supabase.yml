@@ -1,6 +1,13 @@
 name: Deploy FITILA Content Modules to Supabase
 
 on:
+  push:
+    branches:
+      - release/fitila-flutter-android-v1.8.1-build12-web-parity
+    paths:
+      - supabase/migrations/**
+      - supabase/functions/live-turn-credentials/**
+      - .github/workflows/deploy-content-modules-supabase.yml
   workflow_dispatch:
 
 permissions:
