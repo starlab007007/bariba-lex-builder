@@ -1799,7 +1799,7 @@ class FitilaBackend {
         .maybeSingle();
     final data = await client
         .from('battle_responses')
-        .insert({
+        .upsert({
           'user_id': user.id,
           'challenge_id': challengeId,
           'prompt_bariba': promptBariba,
@@ -1807,7 +1807,7 @@ class FitilaBackend {
           'answer_text': answerText.trim(),
           'score': score,
           'xp_awarded': xpAwarded,
-        })
+        }, onConflict: 'challenge_id,user_id')
         .select()
         .single();
     return {
@@ -2386,31 +2386,18 @@ class FitilaBackend {
         .toList(growable: false);
   }
 
-  static Future<void> adjustLiveViewerCount(String liveId, int delta) async {
-    await client.rpc(
-      'adjust_live_viewer_count',
-      params: {'p_live_id': liveId, 'p_delta': delta},
-    );
-  }
-
   static Future<void> joinLiveAsViewer(String liveId) async {
     final user = client.auth.currentUser;
     if (user == null) {
       throw const AuthException('Connexion requise.');
     }
-    final inserted = await client
+    await client
         .from('tamtam_live_viewers')
         .upsert(
           {'live_id': liveId, 'user_id': user.id},
           onConflict: 'live_id,user_id',
           ignoreDuplicates: true,
-        )
-        .select('id')
-        .maybeSingle();
-    if (inserted == null) {
-      return;
-    }
-    await adjustLiveViewerCount(liveId, 1);
+        );
   }
 
   static Future<void> leaveLiveAsViewer(String liveId) async {
@@ -2418,16 +2405,6 @@ class FitilaBackend {
     if (user == null) {
       return;
     }
-    final existing = await client
-        .from('tamtam_live_viewers')
-        .select('id')
-        .eq('live_id', liveId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-    if (existing == null) {
-      return;
-    }
-    await adjustLiveViewerCount(liveId, -1);
     await client
         .from('tamtam_live_viewers')
         .delete()
@@ -2440,6 +2417,27 @@ class FitilaBackend {
         .from('tamtam_live_viewers')
         .stream(primaryKey: ['id'])
         .eq('live_id', liveId);
+  }
+
+  /// Récupère des identifiants TURN temporaires. L'Edge Function signe des
+  /// identifiants coturn à courte durée de vie ; aucun secret TURN n'est donc
+  /// embarqué dans l'APK. Une liste vide signifie que le moteur doit rester
+  /// sur ses serveurs STUN publics.
+  static Future<List<Map<String, dynamic>>> fetchLiveTurnServers() async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      return const [];
+    }
+    final response = await client.functions.invoke('live-turn-credentials');
+    final data = response.data;
+    if (data is! Map || data['iceServers'] is! List) {
+      return const [];
+    }
+    return List<Map<String, dynamic>>.from(
+      (data['iceServers'] as List).whereType<Map>().map(
+        (server) => Map<String, dynamic>.from(server),
+      ),
+    );
   }
 
   static Future<void> sendLiveChatMessage({
@@ -2493,6 +2491,18 @@ class FitilaBackend {
       'signal_type': signalType,
       'payload': payload,
     });
+  }
+
+  static Future<void> acknowledgeLiveSignal(String signalId) async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      return;
+    }
+    await client
+        .from('tamtam_live_signals')
+        .delete()
+        .eq('id', signalId)
+        .eq('to_user', user.id);
   }
 
   /// Flux temps réel des signaux WebRTC adressés à l'utilisateur

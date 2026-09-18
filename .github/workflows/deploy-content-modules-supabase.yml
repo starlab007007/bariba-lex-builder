@@ -1,0 +1,132 @@
+name: Deploy FITILA Content Modules to Supabase
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fitila-content-modules-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: pmrhezgnyffiskbaiudb
+      TURN_URLS: ${{ secrets.TURN_URLS }}
+      TURN_SHARED_SECRET: ${{ secrets.TURN_SHARED_SECRET }}
+      TURN_TTL_SECONDS: ${{ vars.TURN_TTL_SECONDS || '3600' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate production secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing required production secret: $name" >&2
+              exit 1
+            fi
+          done
+          if [ "$SUPABASE_PROJECT_ID" != "pmrhezgnyffiskbaiudb" ]; then
+            echo "Refusing to deploy to an unexpected Supabase project." >&2
+            exit 1
+          fi
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link production project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Preview pending migrations
+        run: supabase db push --dry-run
+
+      - name: Deploy database migrations
+        run: supabase db push
+
+      - name: Configure temporary TURN credentials
+        run: |
+          if [ -n "$TURN_URLS" ] && [ -n "$TURN_SHARED_SECRET" ]; then
+            supabase secrets set \
+              TURN_URLS="$TURN_URLS" \
+              TURN_SHARED_SECRET="$TURN_SHARED_SECRET" \
+              TURN_TTL_SECONDS="$TURN_TTL_SECONDS" \
+              --project-ref "$SUPABASE_PROJECT_ID"
+          else
+            echo "TURN secrets are not configured; Live Griot will use STUN fallback."
+          fi
+
+      - name: Deploy Live Griot TURN function
+        run: |
+          supabase functions deploy live-turn-credentials \
+            --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Verify deployed schema contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.error import HTTPError
+          from urllib.request import Request, urlopen
+          import json
+
+          values = {}
+          for raw in Path('.env').read_text(encoding='utf-8').splitlines():
+              line = raw.strip()
+              if line and not line.startswith('#') and '=' in line:
+                  key, value = line.split('=', 1)
+                  values[key.strip()] = value.strip().strip('"').strip("'")
+
+          url = values.get('SUPABASE_URL') or values.get('VITE_SUPABASE_URL')
+          key = (
+              values.get('SUPABASE_ANON_KEY')
+              or values.get('SUPABASE_PUBLISHABLE_KEY')
+              or values.get('VITE_SUPABASE_PUBLISHABLE_KEY')
+          )
+          request = Request(
+              f'{url}/rest/v1/rpc/fitila_content_modules_schema_version',
+              data=b'{}',
+              method='POST',
+              headers={
+                  'apikey': key,
+                  'Authorization': f'Bearer {key}',
+                  'Content-Type': 'application/json',
+              },
+          )
+          with urlopen(request, timeout=20) as response:
+              version = json.loads(response.read().decode('utf-8'))
+          if version != '20260918.2':
+              raise SystemExit(f'Unexpected content-module schema: {version!r}')
+
+          turn_request = Request(
+              f'{url}/functions/v1/live-turn-credentials',
+              data=b'{}',
+              method='POST',
+              headers={
+                  'apikey': key,
+                  'Authorization': f'Bearer {key}',
+                  'Content-Type': 'application/json',
+              },
+          )
+          try:
+              with urlopen(turn_request, timeout=20) as response:
+                  status = response.status
+          except HTTPError as error:
+              status = error.code
+          if status not in (200, 401):
+              raise SystemExit(
+                  f'live-turn-credentials is unavailable (HTTP {status})'
+              )
+          print('Supabase content-module schema 20260918.2 is deployed.')
+          print('Live Griot TURN credential endpoint is deployed.')
+          PY

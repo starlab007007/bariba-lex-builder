@@ -16,12 +16,12 @@ enum FitilaLiveRole { host, viewer }
 /// Supabase Realtime, et la découverte des spectateurs par la table
 /// tamtam_live_viewers déjà existante.
 ///
-/// Limite assumée : un maillage pair-à-pair n'utilise que des
-/// serveurs STUN publics (pas de TURN) et n'est dimensionné que pour
-/// un public restreint (de l'ordre d'une dizaine de spectateurs
+/// Le moteur utilise toujours deux serveurs STUN publics et ajoute, lorsqu'il
+/// est configuré, des identifiants TURN temporaires délivrés par Supabase.
+/// Le maillage reste dimensionné pour un public restreint (de l'ordre d'une
+/// dizaine de spectateurs
 /// simultanés — chaque spectateur ajoute une connexion sortante côté
-/// host). Au-delà, ou pour joindre des réseaux très restrictifs (NAT
-/// symétrique, proxy d'entreprise), une infrastructure SFU dédiée
+/// host). Au-delà, une infrastructure SFU dédiée
 /// (LiveKit, Agora…) serait nécessaire ; ce choix impliquerait un
 /// compte et des identifiants tiers que seul le porteur du projet
 /// peut créer, et reste hors périmètre de cette première version.
@@ -31,11 +31,13 @@ class FitilaLiveEngine {
   final String liveId;
   final FitilaLiveRole role;
 
-  static const Map<String, dynamic> _iceServers = {
-    'iceServers': [
-      {'urls': 'stun:stun.l.google.com:19302'},
-      {'urls': 'stun:stun1.l.google.com:19302'},
-    ],
+  static const List<Map<String, dynamic>> _baseIceServers = [
+    {'urls': 'stun:stun.l.google.com:19302'},
+    {'urls': 'stun:stun1.l.google.com:19302'},
+  ];
+
+  Map<String, dynamic> _iceConfiguration = const {
+    'iceServers': _baseIceServers,
   };
 
   rtc.MediaStream? localStream;
@@ -44,6 +46,7 @@ class FitilaLiveEngine {
   final Map<String, List<rtc.RTCIceCandidate>> _pendingCandidates = {};
   final Set<String> _remoteDescriptionReady = {};
   final Set<String> _handledSignalIds = {};
+  final Set<String> _processingSignalIds = {};
   final Map<String, rtc.MediaStream> _remoteStreams = {};
 
   StreamSubscription<List<Map<String, dynamic>>>? _signalSub;
@@ -77,6 +80,20 @@ class FitilaLiveEngine {
       throw StateError('Connexion requise pour rejoindre ce direct.');
     }
 
+    final iceServers = <Map<String, dynamic>>[
+      ..._baseIceServers.map(Map<String, dynamic>.from),
+    ];
+    try {
+      final turnServers = await FitilaBackend.fetchLiveTurnServers().timeout(
+        const Duration(seconds: 4),
+      );
+      iceServers.addAll(turnServers);
+    } catch (_) {
+      // TURN est une amélioration de connectivité : STUN garde le direct
+      // utilisable lorsque le service temporaire est absent ou hors ligne.
+    }
+    _iceConfiguration = {'iceServers': iceServers};
+
     if (role == FitilaLiveRole.host) {
       localStream = await rtc.navigator.mediaDevices.getUserMedia({
         'audio': true,
@@ -105,41 +122,56 @@ class FitilaLiveEngine {
     _signalSub = FitilaBackend.streamLiveSignalsForMe(liveId).listen((rows) {
       for (final row in rows) {
         if (row['to_user']?.toString() != selfId) continue;
-        _handleSignal(row);
+        unawaited(_handleSignal(row));
       }
     });
   }
 
   Future<void> _handleSignal(Map<String, dynamic> row) async {
     final id = row['id']?.toString();
-    if (id == null || _handledSignalIds.contains(id)) return;
-    _handledSignalIds.add(id);
+    if (id == null ||
+        _handledSignalIds.contains(id) ||
+        _processingSignalIds.contains(id)) {
+      return;
+    }
     final fromUser = row['from_user']?.toString();
     final signalType = row['signal_type']?.toString();
     final rawPayload = row['payload'];
     if (fromUser == null || rawPayload is! Map) return;
     final payload = Map<String, dynamic>.from(rawPayload);
 
-    switch (signalType) {
-      case 'offer':
-        await _handleOffer(fromUser, payload);
-        break;
-      case 'answer':
-        await _handleAnswer(fromUser, payload);
-        break;
-      case 'ice-candidate':
-        await _handleRemoteCandidate(fromUser, payload);
-        break;
-      case 'bye':
-        _closePeer(fromUser);
-        break;
+    _processingSignalIds.add(id);
+    try {
+      switch (signalType) {
+        case 'offer':
+          await _handleOffer(fromUser, payload);
+          break;
+        case 'answer':
+          await _handleAnswer(fromUser, payload);
+          break;
+        case 'ice-candidate':
+          await _handleRemoteCandidate(fromUser, payload);
+          break;
+        case 'bye':
+          _closePeer(fromUser);
+          break;
+        default:
+          return;
+      }
+      _handledSignalIds.add(id);
+      await FitilaBackend.acknowledgeLiveSignal(id);
+    } catch (_) {
+      // Le signal reste en base et sera rejoué lors du prochain événement
+      // Realtime plutôt que d'être perdu silencieusement.
+    } finally {
+      _processingSignalIds.remove(id);
     }
   }
 
   Future<rtc.RTCPeerConnection> _ensurePeerConnection(String peerId) async {
     final existing = _peerConnections[peerId];
     if (existing != null) return existing;
-    final pc = await rtc.createPeerConnection(_iceServers);
+    final pc = await rtc.createPeerConnection(_iceConfiguration);
     _peerConnections[peerId] = pc;
     _peerCountController.add(_peerConnections.length);
 

@@ -93,8 +93,28 @@ CREATE POLICY "Users send signals as themselves"
 CREATE INDEX IF NOT EXISTS idx_tamtam_live_signals_recipient
   ON public.tamtam_live_signals (live_id, to_user, created_at ASC);
 
-ALTER PUBLICATION supabase_realtime ADD TABLE public.tamtam_live_chat_messages;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.tamtam_live_signals;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'tamtam_live_chat_messages'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime
+      ADD TABLE public.tamtam_live_chat_messages;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'tamtam_live_signals'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime
+      ADD TABLE public.tamtam_live_signals;
+  END IF;
+END;
+$$;
 -- Note : tamtam_lives et tamtam_live_viewers sont déjà membres de la
 -- publication supabase_realtime depuis la migration du 18/12/2025 —
 -- on ne les rajoute pas ici (ALTER PUBLICATION ... ADD TABLE échoue

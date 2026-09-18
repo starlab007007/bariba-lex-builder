@@ -131,6 +131,7 @@ jobs:
           from urllib.error import HTTPError
           from urllib.parse import urlencode
           from urllib.request import Request, urlopen
+          import json
 
           env = {}
           for raw in Path('../.env').read_text(encoding='utf-8').splitlines():
@@ -145,20 +146,22 @@ jobs:
               or env.get('SUPABASE_PUBLISHABLE_KEY')
               or env.get('VITE_SUPABASE_PUBLISHABLE_KEY')
           )
-          tables = (
-              'battle_responses',
-              'battle_response_votes',
-              'corpus_contributions',
-              'handunia_lieux',
-              'handunia_fragments',
-              'handunia_fragment_likes',
-              'tamtam_live_chat_messages',
-              'tamtam_live_signals',
-          )
+          tables = {
+              'battle_responses': 'id,user_id,challenge_id,score,xp_awarded',
+              'battle_response_votes': 'response_id,user_id',
+              'corpus_contributions': 'id,user_id,source_lang,target_lang',
+              'handunia_lieux': 'id,name,created_by,created_at',
+              'handunia_fragments': 'id,user_id,lieu_id,ai_generated',
+              'handunia_fragment_likes': 'fragment_id,user_id',
+              'tamtam_lives': 'id,host_id,description,language,room_name,source_module',
+              'tamtam_live_viewers': 'id,live_id,user_id',
+              'tamtam_live_chat_messages': 'id,live_id,user_id,message',
+              'tamtam_live_signals': 'id,live_id,from_user,to_user,signal_type,payload',
+          }
           missing = []
-          for table in tables:
+          for table, columns in tables.items():
               request = Request(
-                  f'{url}/rest/v1/{table}?' + urlencode({'select': '*', 'limit': 1}),
+                  f'{url}/rest/v1/{table}?' + urlencode({'select': columns, 'limit': 1}),
                   headers={'apikey': key, 'Authorization': f'Bearer {key}'},
               )
               try:
@@ -167,6 +170,42 @@ jobs:
                           missing.append(f'{table} (HTTP {response.status})')
               except HTTPError as error:
                   missing.append(f'{table} (HTTP {error.code})')
+
+          version_request = Request(
+              f'{url}/rest/v1/rpc/fitila_content_modules_schema_version',
+              data=b'{}',
+              method='POST',
+              headers={
+                  'apikey': key,
+                  'Authorization': f'Bearer {key}',
+                  'Content-Type': 'application/json',
+              },
+          )
+          try:
+              with urlopen(version_request, timeout=20) as response:
+                  version = json.loads(response.read().decode('utf-8'))
+              if version != '20260918.2':
+                  missing.append(f'schema version {version!r}')
+          except HTTPError as error:
+              missing.append(f'schema version RPC (HTTP {error.code})')
+
+          turn_request = Request(
+              f'{url}/functions/v1/live-turn-credentials',
+              data=b'{}',
+              method='POST',
+              headers={
+                  'apikey': key,
+                  'Authorization': f'Bearer {key}',
+                  'Content-Type': 'application/json',
+              },
+          )
+          try:
+              with urlopen(turn_request, timeout=20) as response:
+                  if response.status not in (200, 401):
+                      missing.append(f'live-turn-credentials (HTTP {response.status})')
+          except HTTPError as error:
+              if error.code != 401:
+                  missing.append(f'live-turn-credentials (HTTP {error.code})')
 
           if missing:
               raise SystemExit(
