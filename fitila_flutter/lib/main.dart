@@ -13,6 +13,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:audioplayers/audioplayers.dart' as audio;
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
@@ -23590,26 +23591,42 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
       final challengeId =
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
       _computeBlank(challenge.bariba, challengeId);
-      final results = await Future.wait([
-        FitilaBackend.fetchBattleChain(challengeId: challengeId),
-        FitilaBackend.fetchMyBattleStats(),
-        FitilaBackend.fetchBattleChallengeStats(challengeId),
-      ]);
       if (!mounted) {
         return;
       }
-      final challengeStats = results[2] as Map<String, dynamic>;
       setState(() {
         _challenge = challenge;
         _challengeId = challengeId;
-        _chain = results[0] as List<Map<String, dynamic>>;
-        _stats = results[1] as Map<String, dynamic>;
-        _participantCount = (challengeStats['participant_count'] as int?) ?? 0;
-        _bestResponse =
-            challengeStats['best_response'] as Map<String, dynamic>?;
-        _communityUnavailable = false;
         _loading = false;
       });
+      if (FitilaBackend.configured) {
+        try {
+          final results = await Future.wait([
+            FitilaBackend.fetchBattleChain(challengeId: challengeId),
+            FitilaBackend.fetchMyBattleStats(),
+            FitilaBackend.fetchBattleChallengeStats(challengeId),
+          ]);
+          if (!mounted) {
+            return;
+          }
+          final challengeStats = results[2] as Map<String, dynamic>;
+          setState(() {
+            _chain = results[0] as List<Map<String, dynamic>>;
+            _stats = results[1] as Map<String, dynamic>;
+            _participantCount =
+                (challengeStats['participant_count'] as int?) ?? 0;
+            _bestResponse =
+                challengeStats['best_response'] as Map<String, dynamic>?;
+            _communityUnavailable = false;
+          });
+        } catch (_) {
+          if (mounted) {
+            setState(() => _communityUnavailable = true);
+          }
+        }
+      } else {
+        setState(() => _communityUnavailable = true);
+      }
       // Le proverbe garde le même trou toute la journée : un simple
       // rafraîchissement d'affichage suffit pour faire vivre le compte
       // à rebours réel jusqu'à minuit (_remainingTime()).
@@ -23703,31 +23720,55 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
       scoredByAi = false;
     }
     final fallbackXp = 10 + (score / 100 * 40).round();
-    try {
-      await FitilaBackend.submitBattleResponse(
-        challengeId: _challengeId,
-        promptBariba: challenge.bariba,
-        promptFrancais: challenge.french,
-        answerText: answer,
-        score: score,
-        xpAwarded: fallbackXp,
-      );
-      final result = await FitilaBackend.recordLearningSession(
-        sessionType: 'battle',
-        themeKey: 'proverbes',
-        direction: 'bariba_to_fr',
-        correctCount: score >= 60 ? 1 : 0,
-        totalCount: 1,
-      );
-      if (!mounted) {
-        return;
+    var responseSynced = false;
+    var result = <String, dynamic>{'xpEarned': fallbackXp};
+    if (FitilaBackend.configured) {
+      try {
+        await FitilaBackend.submitBattleResponse(
+          challengeId: _challengeId,
+          promptBariba: challenge.bariba,
+          promptFrancais: challenge.french,
+          answerText: answer,
+          score: score,
+          xpAwarded: fallbackXp,
+        );
+        responseSynced = true;
+      } catch (_) {
+        // Le défi reste jouable localement si la migration communautaire
+        // n'est pas encore déployée ou si le réseau est indisponible.
       }
-      setState(() {
-        _submitted = true;
-        _score = score;
-        _scoredByAi = scoredByAi;
-        _xpEarned = (result['xpEarned'] as num?)?.toInt() ?? fallbackXp;
-      });
+      try {
+        result = await FitilaBackend.recordLearningSession(
+          sessionType: 'battle',
+          themeKey: 'proverbes',
+          direction: 'bariba_to_fr',
+          correctCount: score >= 60 ? 1 : 0,
+          totalCount: 1,
+        );
+      } catch (_) {
+        // Le score et l'XP calculé restent affichés localement.
+      }
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _submitted = true;
+      _score = score;
+      _scoredByAi = scoredByAi;
+      _xpEarned = (result['xpEarned'] as num?)?.toInt() ?? fallbackXp;
+      _communityUnavailable = !responseSynced;
+    });
+    if (!responseSynced) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Score calculé sur cet appareil. La synchronisation communautaire est indisponible.',
+          ),
+        ),
+      );
+    }
+    if (responseSynced) {
       try {
         final results = await Future.wait([
           FitilaBackend.fetchBattleChain(challengeId: _challengeId),
@@ -23751,26 +23792,18 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
           setState(() => _communityUnavailable = true);
         }
       }
-      final unlocked = (result['unlockedBadges'] as List?) ?? const [];
-      if (unlocked.isNotEmpty && mounted) {
-        final badge = unlocked.first as Map;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Badge débloqué : ${badge['name'] ?? badge['id']} !'),
-          ),
-        );
-      }
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
+    }
+    final unlocked = (result['unlockedBadges'] as List?) ?? const [];
+    if (unlocked.isNotEmpty && mounted) {
+      final badge = unlocked.first as Map;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Envoi impossible. Réessayez.')),
+        SnackBar(
+          content: Text('Badge débloqué : ${badge['name'] ?? badge['id']} !'),
+        ),
       );
-    } finally {
-      if (mounted) {
-        setState(() => _submitting = false);
-      }
+    }
+    if (mounted) {
+      setState(() => _submitting = false);
     }
   }
 
@@ -23945,13 +23978,15 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                             color: Colors.white.withValues(alpha: 0.55),
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            _participantCount == 0
-                                ? 'Aucun participant pour le moment — soyez le premier'
-                                : '$_participantCount participant(s) aujourd\'hui',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.55),
-                              fontSize: 11,
+                          Expanded(
+                            child: Text(
+                              _participantCount == 0
+                                  ? 'Aucun participant pour le moment — soyez le premier'
+                                  : '$_participantCount participant(s) aujourd\'hui',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.55),
+                                fontSize: 11,
+                              ),
                             ),
                           ),
                         ],
@@ -24040,7 +24075,6 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                         ),
                         const SizedBox(height: 8),
                         Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               _scoredByAi
@@ -24050,13 +24084,16 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                               color: Colors.white.withValues(alpha: 0.55),
                             ),
                             const SizedBox(width: 4),
-                            Text(
-                              _scoredByAi
-                                  ? 'Noté par Fitila IA'
-                                  : 'Fitila IA indisponible — noté hors-ligne',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.55),
-                                fontSize: 10.5,
+                            Expanded(
+                              child: Text(
+                                _scoredByAi
+                                    ? 'Noté par Fitila IA'
+                                    : 'Fitila IA indisponible — noté hors-ligne',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.55),
+                                  fontSize: 10.5,
+                                ),
                               ),
                             ),
                           ],
@@ -25346,21 +25383,33 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
         hashtags: const ['sasara-ia', 'bilingue'],
         templateId: 'sasara-ia',
       );
+      var corpusSaved = !_consent;
       if (_consent) {
-        await FitilaBackend.saveCorpusContribution(
-          sourceLang: sourceLang,
-          targetLang: targetLang,
-          sourceText: source,
-          translatedText: translated,
-        ).catchError((_) => <String, dynamic>{});
-        _loadContributions();
+        try {
+          await FitilaBackend.saveCorpusContribution(
+            sourceLang: sourceLang,
+            targetLang: targetLang,
+            sourceText: source,
+            translatedText: translated,
+          );
+          corpusSaved = true;
+          _loadContributions();
+        } catch (_) {
+          corpusSaved = false;
+        }
       }
       if (!mounted) {
         return;
       }
       widget.onPostCreated(FeedPost.fromBackend(row));
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Publication bilingue envoyée au fil.')),
+        SnackBar(
+          content: Text(
+            corpusSaved
+                ? 'Publication bilingue envoyée au fil.'
+                : 'Publication envoyée, mais la contribution au corpus n’a pas pu être enregistrée.',
+          ),
+        ),
       );
       setState(() {
         _input.clear();
@@ -25610,20 +25659,23 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  activeThumbColor: _fitilaPrimary,
-                  value: _consent,
-                  onChanged: (v) => setState(() => _consent = v),
-                  title: const Text(
-                    'Contribuer cette phrase à la mémoire de traduction Bariba',
-                    style: TextStyle(color: Colors.white, fontSize: 13),
-                  ),
-                  subtitle: Text(
-                    'Désactivé par défaut. Texte uniquement pour le moment (pas encore de voix) — vos contributions personnelles ci-dessus.',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      fontSize: 11,
+                Material(
+                  type: MaterialType.transparency,
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    activeThumbColor: _fitilaPrimary,
+                    value: _consent,
+                    onChanged: (v) => setState(() => _consent = v),
+                    title: const Text(
+                      'Contribuer cette phrase à la mémoire de traduction Bariba',
+                      style: TextStyle(color: Colors.white, fontSize: 13),
+                    ),
+                    subtitle: Text(
+                      'Désactivé par défaut. Texte uniquement pour le moment (pas encore de voix) — vos contributions personnelles ci-dessus.',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 11,
+                      ),
                     ),
                   ),
                 ),
@@ -25703,7 +25755,7 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// 6. Handunia Wasa — écran vision 10-15 ans, non fonctionnel
+// 6. Handunia Wasa — monde vivant, avec continuité locale hors ligne
 // ─────────────────────────────────────────────────────────────────
 class HanduniaWasaScreen extends StatefulWidget {
   const HanduniaWasaScreen({super.key});
@@ -25713,6 +25765,65 @@ class HanduniaWasaScreen extends StatefulWidget {
 }
 
 class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
+  static const _fallbackLieux = <Map<String, dynamic>>[
+    {
+      'id': 'marche-nikki',
+      'name': 'Marché de Nikki',
+      'icon': '🏮',
+      'description':
+          'Le grand marché où l’on vient acheter, vendre et partager les nouvelles du pays.',
+      'sort_order': 1,
+    },
+    {
+      'id': 'veillee-contes',
+      'name': 'Veillée de contes',
+      'icon': '🔥',
+      'description':
+          'Le cercle du soir où les récits se transmettent autour du feu.',
+      'sort_order': 2,
+    },
+    {
+      'id': 'intronisation',
+      'name': 'Intronisation',
+      'icon': '👑',
+      'description':
+          'Le jour solennel où un chef reçoit ses insignes devant la communauté.',
+      'sort_order': 3,
+    },
+    {
+      'id': 'recoltes',
+      'name': 'Récoltes',
+      'icon': '🌾',
+      'description':
+          'Le temps des champs, quand le village se retrouve pour rentrer la moisson.',
+      'sort_order': 4,
+    },
+    {
+      'id': 'fete-gaani',
+      'name': 'Fête du Gaani',
+      'icon': '🥁',
+      'description':
+          'La grande fête des tambours et des cavaliers qui rassemble les familles.',
+      'sort_order': 5,
+    },
+    {
+      'id': 'puits-village',
+      'name': 'Puits du village',
+      'icon': '💧',
+      'description':
+          'Le point d’eau où circulent chaque matin autant de seaux que d’histoires.',
+      'sort_order': 6,
+    },
+    {
+      'id': 'chemin-caravanes',
+      'name': 'Chemin des caravanes',
+      'icon': '🐫',
+      'description':
+          'La vieille route où les voyageurs échangent nouvelles et récits.',
+      'sort_order': 7,
+    },
+  ];
+
   // Parcours en 6 écrans — les 4 premiers repris À L'IDENTIQUE de la
   // maquette validée, complétés par deux briques qui rendent le monde
   // dynamique et social plutôt que limité à une liste fermée de lieux :
@@ -25725,6 +25836,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   // monde vivant (souvenirs récents, tous lieux confondus).
   int _step = 0;
   bool _loadingLieux = true;
+  bool _backendUnavailable = false;
   String? _lieuxError;
   List<Map<String, dynamic>> _lieux = const [];
   Map<String, int> _density = const {};
@@ -25818,6 +25930,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       setState(() {
         _lieux = results[0] as List<Map<String, dynamic>>;
         _density = results[1] as Map<String, int>;
+        _backendUnavailable = false;
         _loadingLieux = false;
       });
     } catch (_) {
@@ -25825,10 +25938,47 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         return;
       }
       setState(() {
-        _lieuxError = 'Impossible de charger les lieux vivants pour le moment.';
+        _lieux = _fallbackLieux
+            .map((lieu) => Map<String, dynamic>.from(lieu))
+            .toList(growable: false);
+        _density = const {};
+        _lieuxError = null;
+        _backendUnavailable = true;
         _loadingLieux = false;
       });
     }
+  }
+
+  String _localFragmentKey(String lieuId) =>
+      'handunia_wasa_local_fragments_$lieuId';
+
+  Future<List<Map<String, dynamic>>> _readLocalFragments(String lieuId) async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final values = preferences.getStringList(_localFragmentKey(lieuId)) ?? [];
+      return values.reversed
+          .map(
+            (text) => <String, dynamic>{
+              'id': 'local-${text.hashCode}',
+              'text': text,
+              'display_name': 'Sur cet appareil',
+              'like_count': 0,
+              'liked_by_me': false,
+              'local_only': true,
+            },
+          )
+          .toList(growable: false);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> _saveLocalFragment(String lieuId, String text) async {
+    final preferences = await SharedPreferences.getInstance();
+    final key = _localFragmentKey(lieuId);
+    final values = preferences.getStringList(key) ?? <String>[];
+    values.add(text);
+    await preferences.setStringList(key, values);
   }
 
   // La densité affichée est un vrai décompte de souvenirs, ramené à une
@@ -25851,15 +26001,16 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       _memoryAnswer = '';
       _askController.clear();
     });
+    final lieuId = lieu['id'] as String;
+    final localFragments = await _readLocalFragments(lieuId);
     try {
-      final fragments = await FitilaBackend.fetchHanduniaFragments(
-        lieu['id'] as String,
-      );
+      final fragments = await FitilaBackend.fetchHanduniaFragments(lieuId);
       if (!mounted) {
         return;
       }
-      setState(() => _lieuFragments = fragments);
-      final scene = await _generateScene(lieu, fragments);
+      final mergedFragments = [...localFragments, ...fragments];
+      setState(() => _lieuFragments = mergedFragments);
+      final scene = await _generateScene(lieu, mergedFragments);
       if (!mounted) {
         return;
       }
@@ -25868,10 +26019,14 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       if (!mounted) {
         return;
       }
-      setState(
-        () => _scene =
-            'La mémoire collective de ce lieu est momentanément indisponible — réessayez dans un instant.',
-      );
+      final description = lieu['description']?.toString().trim() ?? '';
+      setState(() {
+        _backendUnavailable = true;
+        _lieuFragments = localFragments;
+        _scene = localFragments.isEmpty
+            ? '$description\n\nMode hors ligne : aucun souvenir local n’a encore été tissé pour ce lieu.'
+            : '$description\n\nSouvenirs conservés sur cet appareil :\n${localFragments.take(3).map((fragment) => '• ${fragment['text']}').join('\n')}';
+      });
     } finally {
       if (mounted) {
         setState(() => _loadingScene = false);
@@ -26006,18 +26161,28 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       return;
     }
     setState(() => _weaving = true);
+    var savedLocally = false;
     try {
-      await FitilaBackend.weaveHanduniaFragment(
-        lieuId: lieu['id'] as String,
-        text: text,
-        aiGenerated: _aiAssisted,
-      );
+      if (_backendUnavailable || !FitilaBackend.configured) {
+        await _saveLocalFragment(lieu['id'] as String, text);
+        savedLocally = true;
+      } else {
+        await FitilaBackend.weaveHanduniaFragment(
+          lieuId: lieu['id'] as String,
+          text: text,
+          aiGenerated: _aiAssisted,
+        );
+      }
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Votre souvenir a rejoint le monde vivant.'),
+        SnackBar(
+          content: Text(
+            savedLocally
+                ? 'Souvenir conservé sur cet appareil. Il sera à retisser lorsque le service communautaire sera disponible.'
+                : 'Votre souvenir a rejoint le monde vivant.',
+          ),
         ),
       );
       setState(() {
@@ -26025,7 +26190,14 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         _aiAssisted = false;
         _step = 1;
       });
-      _loadLieux();
+      if (savedLocally) {
+        setState(() {
+          final id = lieu['id'] as String;
+          _density = {..._density, id: (_density[id] ?? 0) + 1};
+        });
+      } else {
+        _loadLieux();
+      }
     } catch (_) {
       if (!mounted) {
         return;
@@ -26235,6 +26407,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   }) {
     final likeCount = (fragment['like_count'] as int?) ?? 0;
     final liked = fragment['liked_by_me'] == true;
+    final localOnly = fragment['local_only'] == true;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
@@ -26274,7 +26447,13 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                         ),
                       ),
                     ),
-                    if (fragment['ai_generated'] == true)
+                    if (localOnly)
+                      Icon(
+                        Icons.offline_pin_rounded,
+                        size: 12,
+                        color: _fitilaGoldDeep,
+                      )
+                    else if (fragment['ai_generated'] == true)
                       Icon(
                         Icons.auto_awesome_rounded,
                         size: 12,
@@ -26313,7 +26492,9 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                   size: 17,
                   color: liked ? _fitilaClay : _fitilaMuted,
                 ),
-                onPressed: () => _toggleLike(fragment, list, setState),
+                onPressed: localOnly
+                    ? null
+                    : () => _toggleLike(fragment, list, setState),
               ),
               Text(
                 '$likeCount',
@@ -26499,13 +26680,35 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                       ),
                     ),
                     TextButton.icon(
-                      onPressed: _openWorldFeed,
+                      onPressed: _backendUnavailable
+                          ? () => ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Le fil communautaire nécessite la synchronisation du serveur.',
+                                ),
+                              ),
+                            )
+                          : _openWorldFeed,
                       icon: const Icon(Icons.dynamic_feed_rounded, size: 16),
                       label: const Text('Fil du monde'),
                     ),
                   ],
                 ),
                 const SizedBox(height: 2),
+                if (_backendUnavailable) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: _fitilaPrimarySoft.withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Mode hors ligne : les lieux de départ restent accessibles et vos souvenirs sont conservés sur cet appareil.',
+                      style: TextStyle(fontSize: 11.5),
+                    ),
+                  ),
+                ],
                 Text(
                   '${_lieux.length} lieux tissés par la communauté — ouverts à tous, sans limite',
                   style: TextStyle(color: _fitilaMuted, fontSize: 12),
@@ -26539,7 +26742,15 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                     ),
                     const Spacer(),
                     OutlinedButton.icon(
-                      onPressed: _openCreateLieuStep,
+                      onPressed: _backendUnavailable
+                          ? () => ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'La création d’un lieu nécessite la synchronisation du serveur.',
+                                ),
+                              ),
+                            )
+                          : _openCreateLieuStep,
                       icon: const Icon(
                         Icons.add_location_alt_rounded,
                         size: 16,

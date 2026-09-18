@@ -8,10 +8,26 @@ plugins {
 }
 
 val fitilaSigningProperties = Properties()
-val fitilaSigningFile = rootProject.file("../../android/app/signing.properties")
-val fitilaReleaseKeystore = rootProject.file("../../.keystore/fitila-release.jks")
+val fitilaSigningFile = rootProject.file("key.properties")
 if (fitilaSigningFile.exists()) {
     FileInputStream(fitilaSigningFile).use(fitilaSigningProperties::load)
+}
+val fitilaStoreFile = fitilaSigningProperties.getProperty("storeFile")
+val fitilaReleaseKeystore = fitilaStoreFile?.let(rootProject::file)
+val releaseSigningReady = fitilaSigningFile.exists() &&
+    fitilaReleaseKeystore?.exists() == true &&
+    !fitilaSigningProperties.getProperty("storePassword").isNullOrBlank() &&
+    !fitilaSigningProperties.getProperty("keyAlias").isNullOrBlank() &&
+    !fitilaSigningProperties.getProperty("keyPassword").isNullOrBlank()
+val releaseRequested = gradle.startParameter.taskNames.any {
+    it.contains("release", ignoreCase = true)
+}
+
+if (releaseRequested && !releaseSigningReady) {
+    throw GradleException(
+        "Release signing is not configured. Provide android/key.properties " +
+            "and the referenced keystore; debug-signed release APKs are forbidden.",
+    )
 }
 
 android {
@@ -33,9 +49,9 @@ android {
     }
 
     signingConfigs {
-        if (fitilaSigningFile.exists() && fitilaReleaseKeystore.exists()) {
+        if (releaseSigningReady) {
             create("fitilaRelease") {
-                storeFile = fitilaReleaseKeystore
+                storeFile = fitilaReleaseKeystore!!
                 storePassword = fitilaSigningProperties.getProperty("storePassword")
                 keyAlias = fitilaSigningProperties.getProperty("keyAlias")
                 keyPassword = fitilaSigningProperties.getProperty("keyPassword")
@@ -46,7 +62,6 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.findByName("fitilaRelease")
-                ?: signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

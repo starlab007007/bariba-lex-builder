@@ -80,8 +80,101 @@ jobs:
           print('FITILA server configuration prepared.')
           PY
 
+      - name: Prepare production Android signing
+        env:
+          FITILA_KEYSTORE_BASE64: ${{ secrets.FITILA_KEYSTORE_BASE64 }}
+          FITILA_KEYSTORE_PASSWORD: ${{ secrets.FITILA_KEYSTORE_PASSWORD }}
+          FITILA_KEY_ALIAS: ${{ secrets.FITILA_KEY_ALIAS }}
+          FITILA_KEY_PASSWORD: ${{ secrets.FITILA_KEY_PASSWORD }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64
+          import os
+
+          required = {
+              name: os.environ.get(name, '')
+              for name in (
+                  'FITILA_KEYSTORE_BASE64',
+                  'FITILA_KEYSTORE_PASSWORD',
+                  'FITILA_KEY_ALIAS',
+                  'FITILA_KEY_PASSWORD',
+              )
+          }
+          missing = [name for name, value in required.items() if not value]
+          if missing:
+              raise SystemExit(
+                  'Production Android signing secrets missing: ' + ', '.join(missing)
+              )
+
+          keystore = Path('android/app/fitila-release.jks')
+          keystore.write_bytes(base64.b64decode(required['FITILA_KEYSTORE_BASE64']))
+          Path('android/key.properties').write_text(
+              '\n'.join([
+                  'storeFile=app/fitila-release.jks',
+                  f"storePassword={required['FITILA_KEYSTORE_PASSWORD']}",
+                  f"keyAlias={required['FITILA_KEY_ALIAS']}",
+                  f"keyPassword={required['FITILA_KEY_PASSWORD']}",
+                  '',
+              ]),
+              encoding='utf-8',
+          )
+          PY
+
       - name: Resolve dependencies
         run: flutter pub get
+
+      - name: Validate content-module backend schema
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.error import HTTPError
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+
+          env = {}
+          for raw in Path('../.env').read_text(encoding='utf-8').splitlines():
+              line = raw.strip()
+              if line and not line.startswith('#') and '=' in line:
+                  key, value = line.split('=', 1)
+                  env[key.strip()] = value.strip().strip('"').strip("'")
+
+          url = env.get('SUPABASE_URL') or env.get('VITE_SUPABASE_URL')
+          key = (
+              env.get('SUPABASE_ANON_KEY')
+              or env.get('SUPABASE_PUBLISHABLE_KEY')
+              or env.get('VITE_SUPABASE_PUBLISHABLE_KEY')
+          )
+          tables = (
+              'battle_responses',
+              'battle_response_votes',
+              'corpus_contributions',
+              'handunia_lieux',
+              'handunia_fragments',
+              'handunia_fragment_likes',
+              'tamtam_live_chat_messages',
+              'tamtam_live_signals',
+          )
+          missing = []
+          for table in tables:
+              request = Request(
+                  f'{url}/rest/v1/{table}?' + urlencode({'select': '*', 'limit': 1}),
+                  headers={'apikey': key, 'Authorization': f'Bearer {key}'},
+              )
+              try:
+                  with urlopen(request, timeout=20) as response:
+                      if response.status != 200:
+                          missing.append(f'{table} (HTTP {response.status})')
+              except HTTPError as error:
+                  missing.append(f'{table} (HTTP {error.code})')
+
+          if missing:
+              raise SystemExit(
+                  'Deploy the pending Supabase migrations before release: '
+                  + ', '.join(missing)
+              )
+          print('All content-module backend tables are available.')
+          PY
 
       - name: Static analysis
         run: flutter analyze
@@ -101,6 +194,14 @@ jobs:
           test -s build/app/outputs/flutter-apk/app-release.apk
           unzip -t build/app/outputs/flutter-apk/app-release.apk
           file build/app/outputs/flutter-apk/app-release.apk
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          test -n "$APKSIGNER"
+          CERT_INFO="$($APKSIGNER verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk)"
+          echo "$CERT_INFO"
+          if echo "$CERT_INFO" | grep -q 'CN=Android Debug'; then
+            echo 'Refusing debug-signed release APK.' >&2
+            exit 1
+          fi
 
       - name: Prepare named artifact
         run: |

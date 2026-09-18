@@ -2011,19 +2011,13 @@ class FitilaBackend {
   // Filtrée sur le mois en cours pour rester un chiffre vivant plutôt
   // qu'un total qui ne fait que croître indéfiniment.
   static Future<int> fetchCorpusCommunityCountThisMonth() async {
-    final now = DateTime.now();
-    final startOfMonth = DateTime(now.year, now.month, 1).toIso8601String();
-    final rows = await client
-        .from('corpus_contributions')
-        .select('id')
-        .gte('created_at', startOfMonth);
-    return List.from(rows as List).length;
+    final value = await client.rpc('corpus_contribution_count_this_month');
+    return (value as num?)?.toInt() ?? 0;
   }
 
   // ───────────────────────────────────────────────────────────────
-  // Handunia Wasa — vision 10-15 ans, non fonctionnelle aujourd'hui.
-  // Seul geste réel : enregistrer l'intérêt de l'utilisateur dans ses
-  // préférences déjà existantes, pour une future priorisation produit.
+  // Handunia Wasa — compatibilité avec l'ancien indicateur d'intérêt.
+  // Le monde vivant complet est implémenté dans les méthodes ci-dessous.
   // ───────────────────────────────────────────────────────────────
   static Future<void> registerHanduniaWasaInterest(bool interested) async {
     await updatePreferences({'handunia_wasa_interested': interested});
@@ -2404,10 +2398,18 @@ class FitilaBackend {
     if (user == null) {
       throw const AuthException('Connexion requise.');
     }
-    await client.from('tamtam_live_viewers').insert({
-      'live_id': liveId,
-      'user_id': user.id,
-    });
+    final inserted = await client
+        .from('tamtam_live_viewers')
+        .upsert(
+          {'live_id': liveId, 'user_id': user.id},
+          onConflict: 'live_id,user_id',
+          ignoreDuplicates: true,
+        )
+        .select('id')
+        .maybeSingle();
+    if (inserted == null) {
+      return;
+    }
     await adjustLiveViewerCount(liveId, 1);
   }
 
@@ -2416,12 +2418,21 @@ class FitilaBackend {
     if (user == null) {
       return;
     }
+    final existing = await client
+        .from('tamtam_live_viewers')
+        .select('id')
+        .eq('live_id', liveId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+    if (existing == null) {
+      return;
+    }
+    await adjustLiveViewerCount(liveId, -1);
     await client
         .from('tamtam_live_viewers')
         .delete()
         .eq('live_id', liveId)
         .eq('user_id', user.id);
-    await adjustLiveViewerCount(liveId, -1);
   }
 
   static Stream<List<Map<String, dynamic>>> streamLiveViewers(String liveId) {
