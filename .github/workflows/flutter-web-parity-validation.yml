@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/fitila-web-parity-20260914
+      - release/fitila-flutter-android-v1.8.1-build12-web-parity
   workflow_dispatch:
 
 permissions:
@@ -21,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -33,14 +34,163 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Verify validation metadata
+        run: |
+          flutter --version
+          grep -q '^version: 1.8.1+12$' pubspec.yaml
+          grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
+
+      - name: Prepare server configuration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          env_path = Path('../.env')
+          if not env_path.exists():
+              raise SystemExit('FITILA server configuration file ../.env is missing')
+
+          env = {}
+          for raw in env_path.read_text(encoding='utf-8').splitlines():
+              line = raw.strip()
+              if not line or line.startswith('#') or '=' not in line:
+                  continue
+              key, value = line.split('=', 1)
+              env[key.strip()] = value.strip().strip('"').strip("'")
+
+          url = env.get('SUPABASE_URL') or env.get('VITE_SUPABASE_URL') or ''
+          key = (
+              env.get('SUPABASE_ANON_KEY')
+              or env.get('SUPABASE_PUBLISHABLE_KEY')
+              or env.get('VITE_SUPABASE_PUBLISHABLE_KEY')
+              or ''
+          )
+
+          if not url or not key:
+              raise SystemExit('FITILA server URL or publishable key is missing')
+
+          Path('.ci-dart-defines.json').write_text(
+              json.dumps({
+                  'SUPABASE_URL': url,
+                  'SUPABASE_ANON_KEY': key,
+              }),
+              encoding='utf-8',
+          )
+          print('FITILA server configuration prepared.')
+          PY
+
       - name: Resolve dependencies
         run: flutter pub get
+
+      - name: Validate deployed content-module backend contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.error import HTTPError
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+          import json
+
+          env = {}
+          for raw in Path('../.env').read_text(encoding='utf-8').splitlines():
+              line = raw.strip()
+              if line and not line.startswith('#') and '=' in line:
+                  key, value = line.split('=', 1)
+                  env[key.strip()] = value.strip().strip('"').strip("'")
+
+          url = env.get('SUPABASE_URL') or env.get('VITE_SUPABASE_URL')
+          key = (
+              env.get('SUPABASE_ANON_KEY')
+              or env.get('SUPABASE_PUBLISHABLE_KEY')
+              or env.get('VITE_SUPABASE_PUBLISHABLE_KEY')
+          )
+          if not url or not key:
+              raise SystemExit('FITILA server URL or publishable key is missing')
+
+          tables = {
+              'battle_responses': 'id,user_id,challenge_id,score,xp_awarded',
+              'battle_response_votes': 'response_id,user_id',
+              'corpus_contributions': 'id,user_id,source_lang,target_lang',
+              'handunia_lieux': 'id,name,created_by,created_at',
+              'handunia_fragments': 'id,user_id,lieu_id,ai_generated',
+              'handunia_fragment_likes': 'fragment_id,user_id',
+              'tamtam_lives': 'id,host_id,description,language,room_name,source_module',
+              'tamtam_live_viewers': 'id,live_id,user_id',
+              'tamtam_live_chat_messages': 'id,live_id,user_id,message',
+              'tamtam_live_signals': 'id,live_id,from_user,to_user,signal_type,payload',
+          }
+          failures = []
+          for table, columns in tables.items():
+              request = Request(
+                  f'{url}/rest/v1/{table}?' + urlencode({'select': columns, 'limit': 1}),
+                  headers={'apikey': key, 'Authorization': f'Bearer {key}'},
+              )
+              try:
+                  with urlopen(request, timeout=20) as response:
+                      if response.status != 200:
+                          failures.append(f'{table} (HTTP {response.status})')
+              except HTTPError as error:
+                  failures.append(f'{table} (HTTP {error.code})')
+
+          version_request = Request(
+              f'{url}/rest/v1/rpc/fitila_content_modules_schema_version',
+              data=b'{}',
+              method='POST',
+              headers={
+                  'apikey': key,
+                  'Authorization': f'Bearer {key}',
+                  'Content-Type': 'application/json',
+              },
+          )
+          try:
+              with urlopen(version_request, timeout=20) as response:
+                  version = json.loads(response.read().decode('utf-8'))
+              if version != '20260918.2':
+                  failures.append(f'schema version {version!r}')
+          except HTTPError as error:
+              failures.append(f'schema version RPC (HTTP {error.code})')
+
+          turn_request = Request(
+              f'{url}/functions/v1/live-turn-credentials',
+              data=b'{}',
+              method='POST',
+              headers={
+                  'apikey': key,
+                  'Authorization': f'Bearer {key}',
+                  'Content-Type': 'application/json',
+              },
+          )
+          try:
+              with urlopen(turn_request, timeout=20) as response:
+                  turn_status = response.status
+          except HTTPError as error:
+              turn_status = error.code
+          if turn_status not in (200, 401):
+              failures.append(f'live-turn-credentials (HTTP {turn_status})')
+
+          if failures:
+              raise SystemExit(
+                  'Backend contract not ready: ' + ', '.join(failures)
+              )
+          print('FITILA content-module backend contract is reachable.')
+          PY
 
       - name: Static analysis
         run: flutter analyze
 
-      - name: Flutter tests
-        run: flutter test --reporter compact
+      - name: Focused content-creation module tests
+        run: >-
+          flutter test test/content_creation_modules_test.dart
+          --dart-define-from-file=.ci-dart-defines.json
+          --reporter compact
 
-      - name: Compile Android debug APK
-        run: flutter build apk --debug
+      - name: Full Flutter tests
+        run: >-
+          flutter test
+          --dart-define-from-file=.ci-dart-defines.json
+          --reporter compact
+
+      - name: Compile configured Android debug APK
+        run: >-
+          flutter build apk --debug
+          --dart-define-from-file=.ci-dart-defines.json
