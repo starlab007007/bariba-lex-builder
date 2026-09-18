@@ -24,7 +24,7 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      SUPABASE_PROJECT_ID: pmrhezgnyffiskbaiudb
+      SUPABASE_PROJECT_ID: dvswhjawiooprghzeyol
       TURN_URLS: ${{ secrets.TURN_URLS }}
       TURN_SHARED_SECRET: ${{ secrets.TURN_SHARED_SECRET }}
       TURN_TTL_SECONDS: ${{ vars.TURN_TTL_SECONDS || '3600' }}
@@ -43,7 +43,7 @@ jobs:
               exit 1
             fi
           done
-          if [ "$SUPABASE_PROJECT_ID" != "pmrhezgnyffiskbaiudb" ]; then
+          if [ "$SUPABASE_PROJECT_ID" != "dvswhjawiooprghzeyol" ]; then
             echo "Refusing to deploy to an unexpected Supabase project." >&2
             exit 1
           fi

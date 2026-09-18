@@ -23,7 +23,7 @@ class FitilaBackendSession {
 class FitilaBackend {
   static const supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://pmrhezgnyffiskbaiudb.supabase.co',
+    defaultValue: 'https://dvswhjawiooprghzeyol.supabase.co',
   );
   static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
