@@ -1,8 +1,0 @@
-{
-  "id": "text_cinema_subtitles_v1",
-  "type": "text_style",
-  "font": "System-Semibold",
-  "size": 36,
-  "bg": { "color": "#000000", "opacity": 0.35, "radius": 14, "padding": 14 },
-  "align": "center"
-}
