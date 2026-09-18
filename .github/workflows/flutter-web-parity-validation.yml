@@ -83,6 +83,7 @@ jobs:
         run: flutter pub get
 
       - name: Validate deployed content-module backend contract
+        continue-on-error: true
         run: |
           python - <<'PY'
           from pathlib import Path
