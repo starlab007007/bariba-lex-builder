@@ -7,6 +7,9 @@ on:
     paths:
       - supabase/migrations/**
       - supabase/functions/live-turn-credentials/**
+      - supabase/functions/ai-translate/**
+      - supabase/functions/bariba-tts/**
+      - supabase/functions/_shared/**
       - .github/workflows/deploy-content-modules-supabase.yml
   workflow_dispatch:
 
@@ -96,6 +99,29 @@ jobs:
             echo "TURN secrets are not configured; Live Griot will use STUN fallback."
           fi
 
+      - name: Validate Echo service configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          secrets="$(supabase secrets list --project-ref "$SUPABASE_PROJECT_ID")"
+          echo "$secrets" | grep -q 'LOVABLE_API_KEY' || {
+            echo "Missing Supabase secret required by ai-translate: LOVABLE_API_KEY" >&2
+            exit 1
+          }
+          echo "Echo translation secret is configured."
+          if echo "$secrets" | grep -Eq 'HUGGING_FACE_API_TOKEN|HF_TOKEN|HUGGINGFACEHUB_API_TOKEN'; then
+            echo "A Hugging Face token is configured for Bariba TTS."
+          else
+            echo "No Hugging Face token found; bariba-tts will rely on its configured/public Space fallback."
+          fi
+
+      - name: Deploy Echo translation and Bariba TTS functions
+        run: |
+          supabase functions deploy ai-translate \
+            --project-ref "$SUPABASE_PROJECT_ID"
+          supabase functions deploy bariba-tts \
+            --project-ref "$SUPABASE_PROJECT_ID"
+
       - name: Deploy Live Griot TURN function
         run: |
           supabase functions deploy live-turn-credentials \
@@ -155,6 +181,28 @@ jobs:
                   f'Aburu product relation unavailable (HTTP {error.code})'
               )
 
+          for function_name in ('ai-translate', 'bariba-tts'):
+              request = Request(
+                  f'{url}/functions/v1/{function_name}',
+                  method='OPTIONS',
+                  headers={
+                      'apikey': key,
+                      'Authorization': f'Bearer {key}',
+                      'Origin': 'https://fitila.bj',
+                      'Access-Control-Request-Method': 'POST',
+                      'Access-Control-Request-Headers': 'authorization,content-type',
+                  },
+              )
+              try:
+                  with urlopen(request, timeout=20) as response:
+                      status = response.status
+              except HTTPError as error:
+                  status = error.code
+              if status not in (200, 204, 401):
+                  raise SystemExit(
+                      f'{function_name} is unavailable (HTTP {status})'
+                  )
+
           turn_request = Request(
               f'{url}/functions/v1/live-turn-credentials',
               data=b'{}',
@@ -175,5 +223,6 @@ jobs:
                   f'live-turn-credentials is unavailable (HTTP {status})'
               )
           print('Supabase content-module schema 20260918.2 is deployed.')
+          print('Echo ai-translate and bariba-tts endpoints are deployed.')
           print('Live Griot TURN credential endpoint is deployed.')
           PY
