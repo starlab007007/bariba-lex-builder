@@ -91,6 +91,45 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Handunia route owns a Material ancestor for text inputs', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: SignatureTheme.light(),
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: FilledButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const HanduniaWasaScreen(),
+                  ),
+                ),
+                child: const Text('Ouvrir Handunia'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Ouvrir Handunia'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Entrer dans le monde'));
+    await tester.pump();
+
+    expect(find.byType(TextField), findsWidgets);
+    expect(find.text('Rechercher un lieu…'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Handunia Wasa exposes its offline continuity path', (
     tester,
   ) async {
