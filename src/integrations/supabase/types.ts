@@ -462,6 +462,127 @@ export type Database = {
           },
         ]
       }
+      battle_challenges: {
+        Row: {
+          challenge_date: string
+          created_at: string
+          id: string
+          is_active: boolean
+          prompt_ba: string | null
+          prompt_fr: string
+          proverb_ba: string | null
+          proverb_fr: string | null
+        }
+        Insert: {
+          challenge_date?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          prompt_ba?: string | null
+          prompt_fr: string
+          proverb_ba?: string | null
+          proverb_fr?: string | null
+        }
+        Update: {
+          challenge_date?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          prompt_ba?: string | null
+          prompt_fr?: string
+          proverb_ba?: string | null
+          proverb_fr?: string | null
+        }
+        Relationships: []
+      }
+      battle_response_votes: {
+        Row: {
+          created_at: string
+          id: string
+          response_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          response_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          response_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_response_votes_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "battle_responses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_responses: {
+        Row: {
+          ai_feedback: string | null
+          ai_score: number | null
+          audio_url: string | null
+          challenge_id: string
+          created_at: string
+          id: string
+          local_score: number | null
+          response_lang: string
+          response_text: string
+          scoring_method: string
+          updated_at: string
+          user_id: string
+          votes_count: number
+          xp_awarded: number
+        }
+        Insert: {
+          ai_feedback?: string | null
+          ai_score?: number | null
+          audio_url?: string | null
+          challenge_id: string
+          created_at?: string
+          id?: string
+          local_score?: number | null
+          response_lang?: string
+          response_text: string
+          scoring_method?: string
+          updated_at?: string
+          user_id: string
+          votes_count?: number
+          xp_awarded?: number
+        }
+        Update: {
+          ai_feedback?: string | null
+          ai_score?: number | null
+          audio_url?: string | null
+          challenge_id?: string
+          created_at?: string
+          id?: string
+          local_score?: number | null
+          response_lang?: string
+          response_text?: string
+          scoring_method?: string
+          updated_at?: string
+          user_id?: string
+          votes_count?: number
+          xp_awarded?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_responses_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "battle_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       character_references: {
         Row: {
           character_name: string
@@ -1075,6 +1196,45 @@ export type Database = {
           },
         ]
       }
+      corpus_contributions: {
+        Row: {
+          audio_url: string | null
+          consent_given: boolean
+          created_at: string
+          id: string
+          origin: string
+          source_lang: string
+          source_text: string
+          target_lang: string
+          target_text: string
+          user_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          consent_given?: boolean
+          created_at?: string
+          id?: string
+          origin?: string
+          source_lang: string
+          source_text: string
+          target_lang: string
+          target_text: string
+          user_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          consent_given?: boolean
+          created_at?: string
+          id?: string
+          origin?: string
+          source_lang?: string
+          source_text?: string
+          target_lang?: string
+          target_text?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       dictionary_enrichments: {
         Row: {
           applied: boolean | null
@@ -1334,6 +1494,112 @@ export type Database = {
           title?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      handunia_fragment_likes: {
+        Row: {
+          created_at: string
+          fragment_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fragment_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fragment_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handunia_fragment_likes_fragment_id_fkey"
+            columns: ["fragment_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_fragments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      handunia_fragments: {
+        Row: {
+          ai_assisted: boolean
+          audio_url: string | null
+          content_ba: string | null
+          content_fr: string | null
+          created_at: string
+          id: string
+          lieu_id: string
+          likes_count: number
+          user_id: string
+        }
+        Insert: {
+          ai_assisted?: boolean
+          audio_url?: string | null
+          content_ba?: string | null
+          content_fr?: string | null
+          created_at?: string
+          id?: string
+          lieu_id: string
+          likes_count?: number
+          user_id: string
+        }
+        Update: {
+          ai_assisted?: boolean
+          audio_url?: string | null
+          content_ba?: string | null
+          content_fr?: string | null
+          created_at?: string
+          id?: string
+          lieu_id?: string
+          likes_count?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handunia_fragments_lieu_id_fkey"
+            columns: ["lieu_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_lieux"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      handunia_lieux: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          fragments_count: number
+          id: string
+          name: string
+          name_normalized: string
+          region: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          fragments_count?: number
+          id?: string
+          name: string
+          name_normalized: string
+          region?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          fragments_count?: number
+          id?: string
+          name?: string
+          name_normalized?: string
+          region?: string | null
         }
         Relationships: []
       }
@@ -2306,6 +2572,38 @@ export type Database = {
           },
         ]
       }
+      tamtam_live_chat_messages: {
+        Row: {
+          created_at: string
+          id: string
+          live_id: string
+          message: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          live_id: string
+          message: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          live_id?: string
+          message?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tamtam_live_chat_messages_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_lives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tamtam_live_reactions: {
         Row: {
           created_at: string | null
@@ -2331,6 +2629,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tamtam_live_reactions_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_lives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tamtam_live_signals: {
+        Row: {
+          created_at: string
+          from_user: string
+          id: string
+          live_id: string
+          payload: Json
+          signal_type: string
+          to_user: string | null
+        }
+        Insert: {
+          created_at?: string
+          from_user: string
+          id?: string
+          live_id: string
+          payload: Json
+          signal_type: string
+          to_user?: string | null
+        }
+        Update: {
+          created_at?: string
+          from_user?: string
+          id?: string
+          live_id?: string
+          payload?: Json
+          signal_type?: string
+          to_user?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tamtam_live_signals_live_id_fkey"
             columns: ["live_id"]
             isOneToOne: false
             referencedRelation: "tamtam_lives"
@@ -2688,6 +3024,7 @@ export type Database = {
           location_name: string | null
           media_type: string | null
           media_url: string | null
+          product_id: string | null
           response_to_post_id: string | null
           shares_count: number | null
           template_id: string | null
@@ -2720,6 +3057,7 @@ export type Database = {
           location_name?: string | null
           media_type?: string | null
           media_url?: string | null
+          product_id?: string | null
           response_to_post_id?: string | null
           shares_count?: number | null
           template_id?: string | null
@@ -2752,6 +3090,7 @@ export type Database = {
           location_name?: string | null
           media_type?: string | null
           media_url?: string | null
+          product_id?: string | null
           response_to_post_id?: string | null
           shares_count?: number | null
           template_id?: string | null
@@ -2764,6 +3103,13 @@ export type Database = {
           utility_score?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "tamtam_posts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tamtam_posts_response_to_post_id_fkey"
             columns: ["response_to_post_id"]
@@ -3739,6 +4085,7 @@ export type Database = {
     }
     Functions: {
       calculate_level: { Args: { points: number }; Returns: number }
+      corpus_contribution_count_this_month: { Args: never; Returns: number }
       get_user_phone: { Args: { target_user_id: string }; Returns: string }
       has_role: {
         Args: {
