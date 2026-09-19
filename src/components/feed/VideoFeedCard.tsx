@@ -384,6 +384,42 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
         </div>
       )}
 
+      {post.product_id && post.product && (
+        <motion.button
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/fitila/market?product=${post.product_id}`);
+          }}
+          className="absolute left-3 right-16 sm:right-20 z-30 rounded-2xl border border-white/15 bg-black/55 p-3 text-left backdrop-blur-xl"
+          style={{ bottom: 'max(10.5rem, calc(env(safe-area-inset-bottom) + 10.5rem))' }}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            {(post.product.thumbnail_url || post.product.images?.[0]) ? (
+              <img
+                src={post.product.thumbnail_url || post.product.images?.[0]}
+                alt=""
+                className="h-12 w-12 shrink-0 rounded-xl object-cover"
+              />
+            ) : (
+              <div className="h-12 w-12 shrink-0 rounded-xl bg-white/10 grid place-items-center">📦</div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs text-amber-300 font-semibold">Produit du Marché FITILA</p>
+              <p className="truncate text-sm text-white font-bold">{post.product.title_fr || post.product.title}</p>
+              <div className="mt-0.5 flex items-center gap-2 text-xs text-white/70">
+                <span className="font-bold text-white">
+                  {post.product.price != null ? `${Number(post.product.price).toLocaleString('fr-FR')} ${post.product.currency || 'XOF'}` : 'Prix à convenir'}
+                </span>
+                {post.product.location && <span className="truncate">· {post.product.location}</span>}
+              </div>
+            </div>
+            <span className="shrink-0 rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-black text-black">Voir</span>
+          </div>
+        </motion.button>
+      )}
+
       {/* Author info - bottom left */}
       <div 
         className="absolute bottom-0 left-0 right-16 sm:right-20 px-3 sm:px-4"

@@ -345,54 +345,62 @@ const TamTamCreator: React.FC = () => {
     setPhase('publishing');
 
     try {
-      // 1. Upload video to Supabase Storage
-      const videoPath = `videos/${Date.now()}_${selectedTemplate?.id || 'custom'}.webm`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('tamtam-media')
-        .upload(videoPath, finalVideoBlob, {
-          contentType: 'video/webm',
-          upsert: false
+      const { data: userData, error: authError } = await supabase.auth.getUser();
+      if (authError || !userData?.user) throw new Error('Connectez-vous pour publier.');
+
+      const { uploadMediaWithProgress } = await import('@/lib/mediaUpload');
+      const mediaUrl = await uploadMediaWithProgress(finalVideoBlob, {
+        kind: 'video',
+        folder: `${userData.user.id}/creator`,
+        onProgress: (percent) => {
+          if (percent % 10 === 0 || percent === 100) {
+            console.log(`[TamTamCreator] upload ${percent}%`);
+          }
+        },
+      });
+      if (!mediaUrl || mediaUrl.startsWith('local://')) {
+        throw new Error('Le média n’a pas été envoyé.');
+      }
+
+      const { data: existingProfile } = await supabase
+        .from('tamtam_profiles')
+        .select('user_id')
+        .eq('user_id', userData.user.id)
+        .maybeSingle();
+      if (!existingProfile) {
+        const shortId = userData.user.id.replace(/-/g, '').slice(0, 8);
+        const { error: profileError } = await supabase.from('tamtam_profiles').insert({
+          user_id: userData.user.id,
+          username: `user_${shortId}`,
+          display_name: userData.user.user_metadata?.display_name || 'Utilisateur',
         });
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        // Continue anyway with local blob for demo
+        if (profileError) throw profileError;
       }
 
-      // 2. Get public URL
-      let mediaUrl = '';
-      if (uploadData) {
-        const { data: urlData } = supabase.storage
-          .from('tamtam-media')
-          .getPublicUrl(videoPath);
-        mediaUrl = urlData.publicUrl;
-      }
-
-      // 3. Create post in tamtam_posts
       const { data: postData, error: postError } = await supabase
         .from('tamtam_posts')
         .insert({
-          transcript: caption || '',
-          audio_url: mediaUrl || 'local://preview',
+          user_id: userData.user.id,
+          transcript_fr: caption || '',
+          audio_url: mediaUrl,
           media_type: 'video',
           media_url: mediaUrl,
-          template_id: selectedTemplate?.id,
+          template_id: selectedTemplate?.id || null,
           feeling_emoji: selectedTemplate?.emoji || '🎬',
           duration_seconds: Math.floor((selectedTemplate?.duration || 15)),
+          is_public: true,
         })
         .select()
         .single();
 
-      if (postError) {
-        console.warn('Post creation error:', postError);
+      if (postError || !postData?.id) {
+        console.error('Post creation error:', postError);
+        throw new Error(postError?.message || 'La publication n’a pas été créée.');
       }
 
-      // 4. Clear draft
       clearCurrentDraft();
-
-      // 5. Transition to success
       setPhase('success');
-      setPublishedPostId(postData?.id || null);
+      setPublishedPostId(postData.id);
       toast.success('Vidéo publiée !');
 
     } catch (error) {

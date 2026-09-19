@@ -43,6 +43,7 @@ const TamTamHealth = lazy(() => import("./pages/tamtam/TamTamHealth"));
 const TamTamKuaishouTest = lazy(() => import("./pages/tamtam/TamTamKuaishouTest"));
 const TamTamCreator = lazy(() => import("./pages/tamtam/TamTamCreator"));
 const TamTamTemplates = lazy(() => import("./pages/tamtam/TamTamTemplates"));
+const AburuFimIA = lazy(() => import("./pages/fitila/AburuFimIA"));
 const TemplateTest = lazy(() => import("./pages/TemplateTest"));
 const SystemValidation = lazy(() => import("./pages/SystemValidation"));
 const AssetsDashboard = lazy(() => import("./pages/AssetsDashboard"));
@@ -127,6 +128,7 @@ const App = () => (
                 <Route path="kuaishou-test" element={<TamTamKuaishouTest />} />
                 <Route path="creator" element={<TamTamCreator />} />
                 <Route path="templates" element={<TamTamTemplates />} />
+                <Route path="creer/aburu-fim" element={<ProtectedRoute><SafeBoundary label="Aburu Fim IA"><AburuFimIA /></SafeBoundary></ProtectedRoute>} />
                 <Route path="griot-studio" element={<GriotStudioPage />} />
                 <Route path="sos" element={<TamTamSOS />} />
                 <Route path="profile" element={<ProtectedRoute><SafeBoundary label="Profil"><TamTamProfile /></SafeBoundary></ProtectedRoute>} />

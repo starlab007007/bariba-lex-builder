@@ -17,6 +17,20 @@ export interface TamTamPost {
   shares_count: number | null;
   duration_seconds: number | null;
   created_at: string | null;
+  product_id?: string | null;
+  product?: {
+    id: string;
+    title: string;
+    title_fr: string | null;
+    title_ba: string | null;
+    price: number | null;
+    currency: string | null;
+    category: string | null;
+    location: string | null;
+    status: string | null;
+    thumbnail_url: string | null;
+    images: string[] | null;
+  } | null;
   // Joined data
   profile?: {
     username: string;
@@ -118,8 +132,8 @@ export async function uploadMediaToStorage(
   
   console.log(`📤 Upload: type=${type}, blob.type=${blobType} -> ext=${ext}, contentType=${contentType}`);
   
-  const fileName = `${type}_${userId}_${Date.now()}.${ext}`;
-  const filePath = `posts/${fileName}`;
+  const fileName = `${type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const filePath = `${userId}/posts/${fileName}`;
   
   const { data, error } = await supabase.storage
     .from('tamtam-media')
@@ -152,7 +166,8 @@ export const useTamTamPosts = () => {
         .from('tamtam_posts')
         .select(`
           *,
-          profile:tamtam_profiles!tamtam_posts_user_id_fkey(username, display_name, avatar_url)
+          profile:tamtam_profiles!tamtam_posts_user_id_fkey(username, display_name, avatar_url),
+          product:tamtam_products!tamtam_posts_product_id_fkey(id, title, title_fr, title_ba, price, currency, category, location, status, thumbnail_url, images)
         `)
         .eq('is_public', true)
         .order('created_at', { ascending: false })
@@ -184,6 +199,7 @@ export const useTamTamPosts = () => {
       const postsWithReactions = (data || []).map(post => ({
         ...post,
         profile: Array.isArray(post.profile) ? post.profile[0] : post.profile,
+        product: Array.isArray(post.product) ? post.product[0] : post.product,
         reactions: reactionsByPost.get(post.id) || { like: 0, love: 0, laugh: 0, wow: 0, pray: 0 }
       }));
 
@@ -234,6 +250,7 @@ export const useTamTamPosts = () => {
     music_id?: string;
     hashtags?: string[];
     cover_url?: string;
+    product_id?: string | null;
   }) => {
     console.log('[useTamTamPosts.createPost] Starting post creation...');
     console.log('[useTamTamPosts.createPost] Post data:', JSON.stringify(postData, null, 2));
@@ -295,6 +312,7 @@ export const useTamTamPosts = () => {
         topic: postData.topic || null,
         template_id: postData.template_id || null,
         hashtags: postData.hashtags || null, // ✅ Hashtags array
+        product_id: postData.product_id || null,
         is_public: true
       };
       

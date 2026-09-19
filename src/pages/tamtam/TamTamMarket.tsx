@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, ShoppingCart, Package, Briefcase, HandHelping, Volume2 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
@@ -23,6 +24,8 @@ import { useToast } from '@/hooks/use-toast';
 type MainView = 'home' | 'buy' | 'sell' | 'work' | 'hire' | 'my-shop' | 'my-jobs';
 
 export default function TamTamMarket() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState<MainView>('home');
   const [isCreatingProduct, setIsCreatingProduct] = useState(false);
   const [isCreatingJob, setIsCreatingJob] = useState(false);
@@ -52,6 +55,22 @@ export default function TamTamMarket() {
     else if (view === 'hire') fetchDemands();
     else if (view === 'my-jobs') fetchMyJobs();
   }, [view, fetchProducts, fetchMyProducts, fetchOffers, fetchDemands, fetchMyJobs]);
+
+  useEffect(() => {
+    const productId = searchParams.get('product');
+    if (!productId) return;
+    if (view !== 'buy') {
+      setView('buy');
+      return;
+    }
+    const product = products.find((p) => p.id === productId);
+    if (product) {
+      setSelectedProduct(product);
+      const next = new URLSearchParams(searchParams);
+      next.delete('product');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams, products, view]);
 
   const handleMainAction = async (action: MainView) => {
     tamtamFeedback.play('click');
@@ -192,6 +211,21 @@ export default function TamTamMarket() {
                 </motion.button>
               ))}
             </div>
+
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => navigate('/fitila/creer/aburu-fim')}
+              className="mb-4 w-full rounded-2xl border border-amber-400/25 bg-gradient-to-r from-amber-400/15 to-purple-500/10 p-4 text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 shrink-0 rounded-2xl bg-amber-400 text-black grid place-items-center text-xl">✨</div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-black text-tamtam-text">Aburu Fim IA</p>
+                  <p className="text-xs text-tamtam-text-muted break-words">Transformez un produit du Marché en contenu prêt à publier.</p>
+                </div>
+                <span className="text-tamtam-text-muted">›</span>
+              </div>
+            </motion.button>
 
             {/* Quick access */}
             <div className="flex gap-3 mb-6">
