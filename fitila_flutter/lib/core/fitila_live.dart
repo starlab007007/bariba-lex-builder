@@ -128,6 +128,7 @@ class FitilaLiveEngine {
 
     _signalSub = FitilaBackend.streamLiveSignalsForMe(liveId).listen((rows) {
       for (final row in rows) {
+        if (row['live_id']?.toString() != liveId) continue;
         if (row['to_user']?.toString() != selfId) continue;
         unawaited(_handleSignal(row));
       }
