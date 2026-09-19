@@ -148,7 +148,7 @@ jobs:
           try:
               with urlopen(version_request, timeout=20) as response:
                   version = json.loads(response.read().decode('utf-8'))
-              if version != '20260918.2':
+              if version != '20260919.3':
                   failures.append(f'schema version {version!r}')
           except HTTPError as error:
               failures.append(f'schema version RPC (HTTP {error.code})')
