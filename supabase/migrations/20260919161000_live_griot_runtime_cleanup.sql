@@ -15,10 +15,12 @@ BEGIN
     DELETE FROM public.tamtam_live_viewers
     WHERE live_id = NEW.id;
 
-    NEW.viewer_count := 0;
+    UPDATE public.tamtam_lives
+    SET viewer_count = 0
+    WHERE id = NEW.id;
   END IF;
 
-  RETURN NEW;
+  RETURN NULL;
 END;
 $$;
 
@@ -26,7 +28,7 @@ DROP TRIGGER IF EXISTS cleanup_griot_live_runtime_on_end
   ON public.tamtam_lives;
 
 CREATE TRIGGER cleanup_griot_live_runtime_on_end
-BEFORE UPDATE OF status ON public.tamtam_lives
+AFTER UPDATE OF status ON public.tamtam_lives
 FOR EACH ROW
 WHEN (OLD.status IS DISTINCT FROM NEW.status)
 EXECUTE FUNCTION public.cleanup_griot_live_runtime_on_end();
