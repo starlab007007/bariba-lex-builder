@@ -11,6 +11,7 @@ on:
       - 'src/pages/tamtam/TamTamMarket.tsx'
       - 'src/components/feed/VideoFeedCard.tsx'
       - 'src/hooks/useTamTamPosts.ts'
+      - 'src/integrations/supabase/types.ts'
       - 'src/lib/mediaUpload.ts'
       - 'supabase/functions/aburu-fim-ai/**'
       - '.github/workflows/aburu-fim-quality.yml'
