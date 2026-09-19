@@ -510,46 +510,65 @@ class FitilaServices {
     if (trimmed.isEmpty) {
       return '';
     }
-    // The existing API requires an authenticated user. Demo sessions do not
-    // manufacture a token or bypass the backend's access rules.
+
+    // Authenticated remote chain:
+    // 1. ai-translate (Lovable/Gemini when configured)
+    // 2. byt5-bariba-translate (FITILA Bariba model)
+    // 3. embedded dictionary exact match below.
     if (accessToken != null && accessToken.isNotEmpty) {
       final transport = client ?? http.Client();
+      final body = jsonEncode({
+        'text': trimmed,
+        'sourceLang': direction == TranslationDirection.frenchToBariba
+            ? 'french'
+            : 'bariba',
+        'targetLang': direction == TranslationDirection.frenchToBariba
+            ? 'bariba'
+            : 'french',
+      });
+      final headers = <String, String>{
+        'content-type': 'application/json',
+        'Authorization': 'Bearer $accessToken',
+        if (FitilaBackend.supabaseAnonKey.isNotEmpty)
+          'apikey': FitilaBackend.supabaseAnonKey,
+      };
       try {
-        final response = await transport
-            .post(
-              Uri.parse('$_supabaseUrl/functions/v1/ai-translate'),
-              headers: {
-                'content-type': 'application/json',
-                'Authorization': 'Bearer $accessToken',
-              },
-              body: jsonEncode({
-                'text': trimmed,
-                'sourceLang': direction == TranslationDirection.frenchToBariba
-                    ? 'french'
-                    : 'bariba',
-                'targetLang': direction == TranslationDirection.frenchToBariba
-                    ? 'bariba'
-                    : 'french',
-              }),
-            )
-            .timeout(const Duration(seconds: 5));
-        if (response.statusCode >= 200 && response.statusCode < 300) {
-          final decoded = jsonDecode(response.body);
-          if (decoded is Map && decoded['translation'] is String) {
-            final translated = (decoded['translation'] as String).trim();
-            if (translated.isNotEmpty) {
-              return translated;
+        for (final endpoint in const [
+          'ai-translate',
+          'byt5-bariba-translate',
+        ]) {
+          try {
+            final timeout = endpoint == 'ai-translate'
+                ? const Duration(seconds: 8)
+                : const Duration(seconds: 55);
+            final response = await transport
+                .post(
+                  Uri.parse('$_supabaseUrl/functions/v1/$endpoint'),
+                  headers: headers,
+                  body: body,
+                )
+                .timeout(timeout);
+            if (response.statusCode < 200 || response.statusCode >= 300) {
+              continue;
             }
+            final decoded = jsonDecode(response.body);
+            if (decoded is Map && decoded['translation'] is String) {
+              final translated = (decoded['translation'] as String).trim();
+              if (translated.isNotEmpty) {
+                return translated;
+              }
+            }
+          } catch (_) {
+            // Continue to the next real translation engine.
           }
         }
-      } catch (_) {
-        // A failed remote request can still use a real dictionary match.
       } finally {
         if (client == null) {
           transport.close();
         }
       }
     }
+
     final entries = await (dictionaryLoader ?? loadDictionary)();
     final query = trimmed.toLowerCase();
     for (final entry in entries) {
@@ -563,7 +582,7 @@ class FitilaServices {
       }
     }
     throw StateError(
-      'Aucune traduction locale trouvée. Une connexion authentifiée est nécessaire pour traduire ce texte.',
+      'Aucune traduction disponible. Vérifiez la connexion puis réessayez.',
     );
   }
 
