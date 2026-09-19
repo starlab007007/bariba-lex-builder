@@ -120,6 +120,7 @@ jobs:
               'tamtam_live_chat_messages': 'id,live_id,user_id,message',
               'tamtam_live_signals': 'id,live_id,from_user,to_user,signal_type,payload',
           }
+          private_tables = {'tamtam_live_signals'}
           failures = []
           for table, columns in tables.items():
               request = Request(
@@ -131,7 +132,8 @@ jobs:
                       if response.status != 200:
                           failures.append(f'{table} (HTTP {response.status})')
               except HTTPError as error:
-                  failures.append(f'{table} (HTTP {error.code})')
+                  if not (table in private_tables and error.code in (401, 403)):
+                      failures.append(f'{table} (HTTP {error.code})')
 
           version_request = Request(
               f'{url}/rest/v1/rpc/fitila_content_modules_schema_version',
@@ -195,3 +197,21 @@ jobs:
         run: >-
           flutter build apk --debug
           --dart-define-from-file=.ci-dart-defines.json
+
+      - name: Prepare QA APK artifact
+        run: |
+          test -s build/app/outputs/flutter-apk/app-debug.apk
+          mkdir -p build/qa-output
+          cp build/app/outputs/flutter-apk/app-debug.apk \
+            build/qa-output/FITILA-Android-v1.8.1-build12-web-parity-qa-debug.apk
+          cd build/qa-output
+          sha256sum FITILA-Android-v1.8.1-build12-web-parity-qa-debug.apk | tee SHA256SUMS.txt
+          ls -lh FITILA-Android-v1.8.1-build12-web-parity-qa-debug.apk
+
+      - name: Upload QA APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FITILA-Android-v1.8.1-build12-web-parity-qa-debug
+          path: fitila_flutter/build/qa-output/
+          if-no-files-found: error
+          retention-days: 14
