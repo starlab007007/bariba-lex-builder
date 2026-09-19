@@ -18254,7 +18254,7 @@ class _PageFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
+    return Material(
       color: _fitilaSurface,
       child: LayoutBuilder(
         builder: (context, constraints) {
