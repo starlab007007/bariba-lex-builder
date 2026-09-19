@@ -127,6 +127,14 @@ void main() {
 
     expect(find.byType(TextField), findsWidgets);
     expect(find.text('Rechercher un lieu…'), findsOneWidget);
+
+    final worldFeed = find.text('Fil du monde');
+    await tester.tap(worldFeed);
+    await tester.pump();
+    expect(
+      find.textContaining('synchronisation du serveur'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
