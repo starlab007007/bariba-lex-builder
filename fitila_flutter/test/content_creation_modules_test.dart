@@ -97,6 +97,52 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Live Griot premium studio is stable on a short phone', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      phoneApp(LiveGriotScreen(onPostCreated: (_) {})),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect(find.text('LIVE STUDIO'), findsOneWidget);
+    expect(find.text('Préparer le direct'), findsOneWidget);
+    expect(find.text('Démarrer le direct'), findsOneWidget);
+    expect(find.textContaining('faute de serveur relais dédié'), findsNothing);
+    expect(find.byType(Scrollable), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Live Griot draft title updates the premium launch stage', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      phoneApp(LiveGriotScreen(onPostCreated: (_) {})),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final titleField = find.byType(TextField).first;
+    await tester.ensureVisible(titleField);
+    await tester.enterText(titleField, 'Veillée des griots');
+    await tester.pump();
+
+    expect(find.text('Veillée des griots'), findsWidgets);
+    expect(find.byType(ChoiceChip), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Sagesse Battle remains playable when community sync is down', (
     tester,
   ) async {
