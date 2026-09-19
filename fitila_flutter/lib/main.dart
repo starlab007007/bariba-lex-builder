@@ -22783,17 +22783,17 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
   }
 
   Future<void> _checkTurnInfrastructure() async {
-    if (!FitilaBackend.configured ||
-        FitilaBackend.client.auth.currentUser == null) {
-      if (mounted) {
-        setState(() {
-          _checkingTurn = false;
-          _turnReady = false;
-        });
-      }
-      return;
-    }
     try {
+      if (!FitilaBackend.configured ||
+          FitilaBackend.client.auth.currentUser == null) {
+        if (mounted) {
+          setState(() {
+            _checkingTurn = false;
+            _turnReady = false;
+          });
+        }
+        return;
+      }
       final servers = await FitilaBackend.fetchLiveTurnServers().timeout(
         const Duration(seconds: 6),
       );
@@ -22805,6 +22805,9 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
         _turnReady = servers.isNotEmpty;
       });
     } catch (_) {
+      // Pendant le bootstrap, Supabase.instance peut ne pas encore être
+      // initialisé même si les dart-defines sont présents. Le studio reste
+      // utilisable et bascule visuellement sur le fallback STUN.
       if (!mounted) {
         return;
       }
