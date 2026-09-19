@@ -89,7 +89,8 @@ jobs:
             listening-port=3478
             min-port=49160
             max-port=49200
-            external-ip=$PUBLIC_IP
+            external-ip=$PUBLIC_IP/172.31.254.2
+            relay-ip=172.31.254.2
             realm=fitila.bj
             fingerprint
             use-auth-secret
@@ -121,10 +122,20 @@ jobs:
 
             docker pull coturn/coturn:latest
             docker rm -f fitila-coturn >/dev/null 2>&1 || true
+            docker network rm fitila-turn-net >/dev/null 2>&1 || true
+            docker network create \
+              --driver bridge \
+              --subnet 172.31.254.0/24 \
+              fitila-turn-net >/dev/null
+
             docker run -d \
               --name fitila-coturn \
               --restart unless-stopped \
-              --network host \
+              --network fitila-turn-net \
+              --ip 172.31.254.2 \
+              -p 3478:3478/tcp \
+              -p 3478:3478/udp \
+              -p 49160-49200:49160-49200/udp \
               -v "$TURN_DIR/turnserver.conf:/etc/coturn/turnserver.conf:ro" \
               coturn/coturn:latest \
               -c /etc/coturn/turnserver.conf
