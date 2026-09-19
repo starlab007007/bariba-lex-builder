@@ -26736,7 +26736,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                   style: TextStyle(color: _fitilaMuted, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                _HanduniaTextField(
                   controller: _lieuxQuery,
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
@@ -26989,7 +26989,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           Row(
             children: [
               Expanded(
-                child: TextField(
+                child: _HanduniaTextField(
                   controller: _askController,
                   decoration: const InputDecoration(
                     hintText: '💬 Demander à la mémoire collective…',
@@ -27079,7 +27079,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: TextField(
+                        child: _HanduniaTextField(
                           controller: _fragmentController,
                           maxLines: 3,
                           onChanged: (v) {
@@ -27216,7 +27216,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                TextField(
+                _HanduniaTextField(
                   controller: _newLieuName,
                   decoration: const InputDecoration(
                     hintText: 'Ex : Rive du fleuve Alibori',
@@ -27233,7 +27233,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                TextField(
+                _HanduniaTextField(
                   controller: _newLieuIcon,
                   maxLength: 4,
                   decoration: const InputDecoration(
@@ -27252,7 +27252,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                TextField(
+                _HanduniaTextField(
                   controller: _newLieuDescription,
                   maxLines: 3,
                   decoration: const InputDecoration(
@@ -27370,6 +27370,40 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
 /// Petit trait tissé entre un point d'ancrage et un nouveau point —
 /// purement décoratif (comme le tracé animé de la maquette), pour
 /// symboliser un souvenir qui rejoint le tissage collectif.
+class _HanduniaTextField extends StatelessWidget {
+  const _HanduniaTextField({
+    required this.controller,
+    this.onChanged,
+    this.onSubmitted,
+    this.decoration,
+    this.maxLines = 1,
+    this.maxLength,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final InputDecoration? decoration;
+  final int? maxLines;
+  final int? maxLength;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      type: MaterialType.transparency,
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        onSubmitted: onSubmitted,
+        decoration: decoration,
+        maxLines: maxLines,
+        maxLength: maxLength,
+      ),
+    );
+  }
+}
+
+
 class _WeaveLinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
