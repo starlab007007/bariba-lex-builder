@@ -83,6 +83,12 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
 
+      - name: Static analysis
+        run: flutter analyze
+
+      - name: Full Flutter tests
+        run: flutter test --dart-define-from-file=.ci-dart-defines.json --reporter compact
+
       - name: Validate content-module backend schema
         run: |
           python - <<'PY'
@@ -175,12 +181,6 @@ jobs:
               )
           print('All content-module backend tables are available.')
           PY
-
-      - name: Static analysis
-        run: flutter analyze
-
-      - name: Full Flutter tests
-        run: flutter test --dart-define-from-file=.ci-dart-defines.json --reporter compact
 
       - name: Prepare production Android signing
         env:
