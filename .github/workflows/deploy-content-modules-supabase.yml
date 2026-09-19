@@ -37,7 +37,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD; do
+          for name in SUPABASE_ACCESS_TOKEN; do
             if [ -z "${!name:-}" ]; then
               echo "Missing required production secret: $name" >&2
               exit 1
@@ -53,14 +53,36 @@ jobs:
         with:
           version: latest
 
-      - name: Link production project
-        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+      - name: Apply release database migration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          import json
+          import os
 
-      - name: Preview pending migrations
-        run: supabase db push --dry-run
+          project_ref = os.environ['SUPABASE_PROJECT_ID']
+          access_token = os.environ['SUPABASE_ACCESS_TOKEN']
+          migration = Path(
+              'supabase/migrations/20260919133000_aburu_product_link_and_realtime.sql'
+          ).read_text(encoding='utf-8')
 
-      - name: Deploy database migrations
-        run: supabase db push
+          request = Request(
+              f'https://api.supabase.com/v1/projects/{project_ref}/database/query',
+              data=json.dumps({'query': migration}).encode('utf-8'),
+              method='POST',
+              headers={
+                  'Authorization': f'Bearer {access_token}',
+                  'Content-Type': 'application/json',
+              },
+          )
+          with urlopen(request, timeout=180) as response:
+              if response.status not in (200, 201):
+                  raise SystemExit(
+                      f'Database migration API returned HTTP {response.status}'
+                  )
+          print('Release database migration applied through Management API.')
+          PY
 
       - name: Configure temporary TURN credentials
         run: |
@@ -114,6 +136,24 @@ jobs:
               version = json.loads(response.read().decode('utf-8'))
           if version != '20260918.2':
               raise SystemExit(f'Unexpected content-module schema: {version!r}')
+
+          product_request = Request(
+              f'{url}/rest/v1/tamtam_posts?select=id,product_id&limit=1',
+              headers={
+                  'apikey': key,
+                  'Authorization': f'Bearer {key}',
+              },
+          )
+          try:
+              with urlopen(product_request, timeout=20) as response:
+                  if response.status != 200:
+                      raise SystemExit(
+                          f'Aburu product relation unavailable (HTTP {response.status})'
+                      )
+          except HTTPError as error:
+              raise SystemExit(
+                  f'Aburu product relation unavailable (HTTP {error.code})'
+              )
 
           turn_request = Request(
               f'{url}/functions/v1/live-turn-credentials',
