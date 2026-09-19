@@ -267,6 +267,7 @@ class FitilaBackend {
     required String text,
     required List<String> hashtags,
     String? templateId,
+    String? productId,
     bool isPublic = true,
   }) async {
     final user = client.auth.currentUser;
@@ -343,6 +344,7 @@ class FitilaBackend {
           'duration_seconds': null,
           'topic': hashtags.isEmpty ? null : hashtags.first,
           'template_id': templateId,
+          'product_id': productId,
           'hashtags': hashtags.isEmpty ? null : hashtags,
           'is_public': isPublic,
         })
