@@ -18254,13 +18254,14 @@ class _PageFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
+    final parentScaffold = Scaffold.maybeOf(context);
+    final page = Material(
       color: _fitilaSurface,
       child: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
           final compact = constraints.maxWidth < 700;
-          final scaffold = Scaffold.maybeOf(context);
+          final scaffold = parentScaffold;
           final canOpenDrawer = scaffold?.hasDrawer ?? false;
           return Column(
             children: [
@@ -18350,6 +18351,13 @@ class _PageFrame extends StatelessWidget {
         ),
       ),
     );
+    if (parentScaffold == null) {
+      return Scaffold(
+        backgroundColor: _fitilaSurface,
+        body: page,
+      );
+    }
+    return page;
   }
 }
 
