@@ -95,7 +95,7 @@ async function pollGradioQueue(
     try {
       const pollResponse = await fetch(pollUrl, {
         headers: {
-          Authorization: `Bearer ${hfToken}`,
+          ...(hfToken ? { Authorization: `Bearer ${hfToken}` } : {}),
           Accept: "text/event-stream",
         },
         signal: abortSignal,
@@ -185,7 +185,7 @@ async function callGradioTranslate(
     const joinResponse = await fetch(`${spaceUrl}${apiPrefix}/queue/join`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${hfToken}`,
+        ...(hfToken ? { Authorization: `Bearer ${hfToken}` } : {}),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -318,18 +318,11 @@ serve(async (req) => {
       skipRefine = false,
     }: TranslationRequest = await req.json();
 
-    const HF_TOKEN = Deno.env.get("HUGGING_FACE_API_TOKEN");
+    const HF_TOKEN = Deno.env.get("HUGGING_FACE_API_TOKEN") ?? "";
 
     // API exploration mode
     if (exploreApi) {
       clearTimeout(timeoutId);
-
-      if (!HF_TOKEN) {
-        return new Response(
-          JSON.stringify({ error: "HuggingFace token not configured" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
 
       const exploration: any = { spaceUrl: SPACE_URL, endpoints: [] };
 
@@ -343,7 +336,7 @@ serve(async (req) => {
       for (const url of configUrls) {
         try {
           const resp = await fetch(url, {
-            headers: { Authorization: `Bearer ${HF_TOKEN}` },
+            HF_TOKEN ? { Authorization: `Bearer ${HF_TOKEN}` } : {},
           });
 
           if (!resp.ok) continue;
@@ -373,13 +366,6 @@ serve(async (req) => {
     if (healthCheck) {
       clearTimeout(timeoutId);
 
-      if (!HF_TOKEN) {
-        return new Response(
-          JSON.stringify({ error: "HuggingFace token not configured" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-
       const hcStart = Date.now();
       const hcController = new AbortController();
       const hcTimeoutId = setTimeout(() => hcController.abort(), 4000);
@@ -390,7 +376,7 @@ serve(async (req) => {
         for (const configPath of ["/gradio_api/config", "/config"]) {
           try {
             const configResponse = await fetch(`${SPACE_URL}${configPath}`, {
-              headers: { Authorization: `Bearer ${HF_TOKEN}` },
+              HF_TOKEN ? { Authorization: `Bearer ${HF_TOKEN}` } : {},
               signal: hcController.signal,
             });
             if (configResponse.ok) {
@@ -437,14 +423,6 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Missing required fields: text, sourceLang, targetLang" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    if (!HF_TOKEN) {
-      clearTimeout(timeoutId);
-      return new Response(
-        JSON.stringify({ error: "HuggingFace token not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
