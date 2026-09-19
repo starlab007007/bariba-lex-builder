@@ -19,6 +19,8 @@ class FitilaMediaAsset {
   final String contentType;
 
   Future<Uint8List> readBytes() => File(path).readAsBytes();
+
+  Future<int> sizeBytes() => File(path).length();
 }
 
 class FitilaMediaController {
@@ -45,7 +47,7 @@ class FitilaMediaController {
   Future<FitilaMediaAsset?> pickVideo(ImageSource source) async {
     final file = await _picker.pickVideo(
       source: source,
-      maxDuration: const Duration(minutes: 10),
+      maxDuration: const Duration(seconds: 90),
     );
     if (file == null) return null;
     return FitilaMediaAsset(
