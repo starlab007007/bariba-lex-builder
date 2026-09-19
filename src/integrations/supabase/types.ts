@@ -2688,6 +2688,7 @@ export type Database = {
           location_name: string | null
           media_type: string | null
           media_url: string | null
+          product_id: string | null
           response_to_post_id: string | null
           shares_count: number | null
           template_id: string | null
@@ -2720,6 +2721,7 @@ export type Database = {
           location_name?: string | null
           media_type?: string | null
           media_url?: string | null
+          product_id?: string | null
           response_to_post_id?: string | null
           shares_count?: number | null
           template_id?: string | null
@@ -2752,6 +2754,7 @@ export type Database = {
           location_name?: string | null
           media_type?: string | null
           media_url?: string | null
+          product_id?: string | null
           response_to_post_id?: string | null
           shares_count?: number | null
           template_id?: string | null
@@ -2764,6 +2767,13 @@ export type Database = {
           utility_score?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "tamtam_posts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "tamtam_products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tamtam_posts_response_to_post_id_fkey"
             columns: ["response_to_post_id"]
