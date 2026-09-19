@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: fitila-live-turn-production
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   configure-turn:
@@ -74,11 +74,9 @@ jobs:
             set -eu
 
             PUBLIC_IP="$(curl -4 -fsS --max-time 10 https://api.ipify.org || true)"
-            if [ -z "$PUBLIC_IP" ]; then
-              PUBLIC_IP="$(hostname -I | awk '{print $1}')"
-            fi
-            if [ -z "$PUBLIC_IP" ]; then
-              echo "Unable to determine VPS public IPv4 address." >&2
+            LOCAL_IP="$(hostname -I | awk '{print $1}')"
+            if [ -z "$PUBLIC_IP" ] || [ -z "$LOCAL_IP" ]; then
+              echo "Unable to determine VPS public/local IPv4 addresses." >&2
               exit 1
             fi
 
@@ -89,8 +87,8 @@ jobs:
             listening-port=3478
             min-port=49160
             max-port=49169
-            external-ip=$PUBLIC_IP/172.31.254.2
-            relay-ip=172.31.254.2
+            external-ip=$PUBLIC_IP/$LOCAL_IP
+            relay-ip=$LOCAL_IP
             realm=fitila.bj
             fingerprint
             use-auth-secret
@@ -121,21 +119,29 @@ jobs:
             fi
 
             docker pull coturn/coturn:latest
-            docker rm -f fitila-coturn >/dev/null 2>&1 || true
+            docker pull alpine:3.20
+            docker rm -f fitila-coturn fitila-turn-firewall >/dev/null 2>&1 || true
             docker network rm fitila-turn-net >/dev/null 2>&1 || true
-            docker network create \
-              --driver bridge \
-              --subnet 172.31.254.0/24 \
-              fitila-turn-net >/dev/null
+
+            # Docker is already authorized on this host. A tiny privileged
+            # sidecar inserts host INPUT rules before distro firewall drops
+            # and reapplies them automatically after a Docker/VM restart.
+            docker run -d \
+              --name fitila-turn-firewall \
+              --restart unless-stopped \
+              --privileged \
+              --network host \
+              alpine:3.20 \
+              sh -c 'apk add --no-cache iptables >/dev/null && \
+                iptables -C INPUT -p tcp --dport 3478 -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p tcp --dport 3478 -j ACCEPT; \
+                iptables -C INPUT -p udp --dport 3478 -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p udp --dport 3478 -j ACCEPT; \
+                iptables -C INPUT -p udp --dport 49160:49169 -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p udp --dport 49160:49169 -j ACCEPT; \
+                while true; do sleep 3600; done'
 
             docker run -d \
               --name fitila-coturn \
               --restart unless-stopped \
-              --network fitila-turn-net \
-              --ip 172.31.254.2 \
-              -p 3478:3478/tcp \
-              -p 3478:3478/udp \
-              -p 49160-49169:49160-49169/udp \
+              --network host \
               -v "$TURN_DIR/turnserver.conf:/etc/coturn/turnserver.conf:ro" \
               coturn/coturn:latest \
               -c /etc/coturn/turnserver.conf
