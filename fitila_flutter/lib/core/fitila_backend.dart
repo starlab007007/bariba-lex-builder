@@ -2519,7 +2519,6 @@ class FitilaBackend {
     return client
         .from('tamtam_live_signals')
         .stream(primaryKey: ['id'])
-        .eq('live_id', liveId)
         .eq('to_user', user.id)
         .order('created_at');
   }
