@@ -336,7 +336,7 @@ serve(async (req) => {
       for (const url of configUrls) {
         try {
           const resp = await fetch(url, {
-            HF_TOKEN ? { Authorization: `Bearer ${HF_TOKEN}` } : {},
+            headers: HF_TOKEN ? { Authorization: `Bearer ${HF_TOKEN}` } : {},
           });
 
           if (!resp.ok) continue;
@@ -376,7 +376,7 @@ serve(async (req) => {
         for (const configPath of ["/gradio_api/config", "/config"]) {
           try {
             const configResponse = await fetch(`${SPACE_URL}${configPath}`, {
-              HF_TOKEN ? { Authorization: `Bearer ${HF_TOKEN}` } : {},
+              headers: HF_TOKEN ? { Authorization: `Bearer ${HF_TOKEN}` } : {},
               signal: hcController.signal,
             });
             if (configResponse.ok) {
