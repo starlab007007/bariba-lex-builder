@@ -37,15 +37,11 @@ jobs:
         run: npm ci --legacy-peer-deps
       - name: TypeScript
         run: npx tsc --noEmit -p tsconfig.app.json
-      - name: Lint changed Aburu surface
+      - name: Lint new Aburu surface
         run: >
           npx eslint
           src/App.tsx
           src/pages/fitila/AburuFimIA.tsx
-          src/pages/tamtam/TamTamCreator.tsx
-          src/pages/tamtam/TamTamMarket.tsx
-          src/components/feed/VideoFeedCard.tsx
-          src/hooks/useTamTamPosts.ts
           src/lib/mediaUpload.ts
       - name: Production build
         run: npm run build

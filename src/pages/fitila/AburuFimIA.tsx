@@ -79,7 +79,9 @@ export default function AburuFimIA() {
         const product = myProducts.find((p) => p.id === saved.productId);
         if (product) setSelectedProduct(product);
       }
-    } catch {}
+    } catch (error) {
+      console.warn('[AburuFimIA] Brouillon local illisible, ignoré.', error);
+    }
   }, [myProducts]);
   useEffect(() => { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); }, [draft]);
   useEffect(() => () => { if (mediaUrl.startsWith('blob:')) URL.revokeObjectURL(mediaUrl); }, [mediaUrl]);
