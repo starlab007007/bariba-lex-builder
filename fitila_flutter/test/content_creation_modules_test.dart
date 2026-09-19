@@ -138,6 +138,33 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Handunia opens from the creation hub without Material errors', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      phoneApp(ContentCreatorScreen(onPostCreated: (_) {})),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Handunia Wasa'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    final enter = find.text('Entrer dans le monde');
+    await tester.ensureVisible(enter);
+    await tester.tap(enter);
+    await tester.pump();
+
+    expect(find.text('Rechercher un lieu…'), findsOneWidget);
+    expect(find.byType(TextField), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Handunia Wasa exposes its offline continuity path', (
     tester,
   ) async {
