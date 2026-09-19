@@ -100,6 +100,37 @@ void main() {
     client.close();
   });
 
+  test('falls back to FITILA ByT5 when ai-translate is unavailable', () async {
+    final calls = <String>[];
+    final client = MockClient((request) async {
+      calls.add(request.url.path);
+      if (request.url.path == '/functions/v1/ai-translate') {
+        return http.Response('primary unavailable', 503);
+      }
+      expect(request.url.path, '/functions/v1/byt5-bariba-translate');
+      return http.Response(
+        jsonEncode({'translation': 'barka test'}),
+        200,
+      );
+    });
+
+    expect(
+      await FitilaServices.translate(
+        'bonjour',
+        TranslationDirection.frenchToBariba,
+        accessToken: 'test-token',
+        client: client,
+        dictionaryLoader: dictionary,
+      ),
+      'barka test',
+    );
+    expect(calls, [
+      '/functions/v1/ai-translate',
+      '/functions/v1/byt5-bariba-translate',
+    ]);
+    client.close();
+  });
+
   test('uses a dictionary match when the API is unavailable', () async {
     final client = MockClient((_) async => http.Response('unavailable', 503));
     expect(
