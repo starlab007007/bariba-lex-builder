@@ -1,0 +1,180 @@
+name: Configure FITILA Live TURN
+
+on:
+  push:
+    branches:
+      - release/fitila-flutter-android-v1.8.1-build12-web-parity
+    paths:
+      - .github/workflows/configure-live-turn.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fitila-live-turn-production
+  cancel-in-progress: false
+
+jobs:
+  configure-turn:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: dvswhjawiooprghzeyol
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+
+    steps:
+      - name: Validate infrastructure secrets
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          for name in SUPABASE_ACCESS_TOKEN VPS_HOST VPS_USER SSH_PRIVATE_KEY; do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing required infrastructure secret: $name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Generate ephemeral TURN deployment secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          secret="$(openssl rand -hex 32)"
+          echo "::add-mask::$secret"
+          echo "TURN_SHARED_SECRET=$secret" >> "$GITHUB_ENV"
+
+          host="$VPS_HOST"
+          host="${host#http://}"
+          host="${host#https://}"
+          host="${host%%/*}"
+          if [ -z "$host" ]; then
+            echo "Unable to derive TURN host from VPS_HOST." >&2
+            exit 1
+          fi
+          echo "::add-mask::$host"
+          echo "TURN_HOST=$host" >> "$GITHUB_ENV"
+          echo "TURN_URLS=turn:$host:3478?transport=udp,turn:$host:3478?transport=tcp" >> "$GITHUB_ENV"
+
+      - name: Deploy authenticated coturn on FITILA VPS
+        uses: appleboy/ssh-action@v0.1.10
+        env:
+          TURN_SHARED_SECRET: ${{ env.TURN_SHARED_SECRET }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 10m
+          envs: TURN_SHARED_SECRET
+          script: |
+            set -eu
+
+            PUBLIC_IP="$(curl -4 -fsS --max-time 10 https://api.ipify.org || true)"
+            if [ -z "$PUBLIC_IP" ]; then
+              PUBLIC_IP="$(hostname -I | awk '{print $1}')"
+            fi
+            if [ -z "$PUBLIC_IP" ]; then
+              echo "Unable to determine VPS public IPv4 address." >&2
+              exit 1
+            fi
+
+            TURN_DIR="$HOME/fitila-turn"
+            mkdir -p "$TURN_DIR"
+
+            cat > "$TURN_DIR/turnserver.conf" <<EOF
+            listening-port=3478
+            min-port=49160
+            max-port=49200
+            external-ip=$PUBLIC_IP
+            realm=fitila.bj
+            fingerprint
+            use-auth-secret
+            static-auth-secret=$TURN_SHARED_SECRET
+            stale-nonce=600
+            user-quota=8
+            total-quota=128
+            no-multicast-peers
+            no-cli
+            no-tls
+            no-dtls
+            denied-peer-ip=10.0.0.0-10.255.255.255
+            denied-peer-ip=100.64.0.0-100.127.255.255
+            denied-peer-ip=127.0.0.0-127.255.255.255
+            denied-peer-ip=169.254.0.0-169.254.255.255
+            denied-peer-ip=172.16.0.0-172.31.255.255
+            denied-peer-ip=192.168.0.0-192.168.255.255
+            EOF
+
+            chmod 600 "$TURN_DIR/turnserver.conf"
+
+            if command -v ufw >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+              if sudo ufw status | grep -q '^Status: active'; then
+                sudo ufw allow 3478/tcp
+                sudo ufw allow 3478/udp
+                sudo ufw allow 49160:49200/udp
+              fi
+            fi
+
+            docker pull coturn/coturn:latest
+            docker rm -f fitila-coturn >/dev/null 2>&1 || true
+            docker run -d \
+              --name fitila-coturn \
+              --restart unless-stopped \
+              --network host \
+              -v "$TURN_DIR/turnserver.conf:/etc/coturn/turnserver.conf:ro" \
+              coturn/coturn:latest \
+              -c /etc/coturn/turnserver.conf
+
+            sleep 4
+            if [ "$(docker inspect -f '{{.State.Running}}' fitila-coturn)" != "true" ]; then
+              docker logs fitila-coturn || true
+              echo "coturn container is not running." >&2
+              exit 1
+            fi
+
+            if ! docker logs fitila-coturn 2>&1 | tail -80 | grep -Eq 'listener|Relay address|IO method|RFC 5780|Coturn|TURN Server'; then
+              echo "coturn is running; startup log signature was not conclusive."
+            fi
+
+      - name: Verify TURN listener from outside VPS
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          import socket
+
+          host = os.environ['TURN_HOST']
+          with socket.create_connection((host, 3478), timeout=10):
+              pass
+          print('TURN TCP listener is reachable on port 3478.')
+          PY
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Configure Supabase TURN secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase secrets set \
+            "TURN_URLS=$TURN_URLS" \
+            "TURN_SHARED_SECRET=$TURN_SHARED_SECRET" \
+            "TURN_TTL_SECONDS=3600" \
+            --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Verify Supabase TURN secret names
+        shell: bash
+        run: |
+          set -euo pipefail
+          secrets="$(supabase secrets list --project-ref "$SUPABASE_PROJECT_ID")"
+          echo "$secrets" | grep -q 'TURN_URLS'
+          echo "$secrets" | grep -q 'TURN_SHARED_SECRET'
+          echo "$secrets" | grep -q 'TURN_TTL_SECONDS'
+          echo "TURN_URLS, TURN_SHARED_SECRET and TURN_TTL_SECONDS are configured."
