@@ -267,7 +267,6 @@ class FitilaBackend {
     required String text,
     required List<String> hashtags,
     String? templateId,
-    String? productId,
     bool isPublic = true,
   }) async {
     final user = client.auth.currentUser;
@@ -306,6 +305,7 @@ class FitilaBackend {
     required String text,
     required List<String> hashtags,
     String? templateId,
+    String? productId,
     bool isPublic = true,
   }) async {
     final user = client.auth.currentUser;
