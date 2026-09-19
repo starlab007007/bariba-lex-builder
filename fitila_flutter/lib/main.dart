@@ -24559,6 +24559,7 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
           if (category != null && category.isNotEmpty) category,
         ],
         templateId: 'aburu-fim-${template.id}',
+        productId: _selectedProduct?['id']?.toString(),
       );
       if (!mounted) {
         return;
