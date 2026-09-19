@@ -54,10 +54,11 @@ void main() {
     await tester.pumpWidget(
       phoneApp(ContentCreatorScreen(onPostCreated: (_) {})),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
 
     await tester.tap(find.text('Echo Sɔ̃ɔ').first);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
 
     expect(find.text('Raconte quelque chose…'), findsOneWidget);
     expect(find.text('Bàátɔ̀nú'), findsOneWidget);
@@ -66,7 +67,8 @@ void main() {
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('Écrire à la place'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
     expect(find.text('Français → Bariba'), findsOneWidget);
     expect(find.text('Bariba → Français'), findsOneWidget);
     expect(find.byType(TextField), findsWidgets);
@@ -82,7 +84,8 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(phoneApp(EchoSonScreen(onPostCreated: (_) {})));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
 
     expect(find.text('Raconte quelque chose…'), findsOneWidget);
     expect(find.byType(Scrollable), findsWidgets);
