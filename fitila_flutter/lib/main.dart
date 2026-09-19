@@ -3370,7 +3370,7 @@ class _ContentCreatorScreenState extends State<ContentCreatorScreen> {
                     _CreationIaTile(
                       emoji: '🎙️',
                       title: 'Live Griot IA',
-                      subtitle: 'Direct commenté par une IA griot.',
+                      subtitle: 'Direct audio, chat en temps réel et auditeurs connectés.',
                       colorA: const Color(0xFF6758C9),
                       colorB: const Color(0xFF4A3B96),
                       onTap: () => Navigator.push(
@@ -3428,7 +3428,7 @@ class _ContentCreatorScreenState extends State<ContentCreatorScreen> {
                     _CreationIaTile(
                       emoji: '🌌',
                       title: 'Handunia Wasa',
-                      subtitle: 'Vision 10-15 ans — non fonctionnel.',
+                      subtitle: 'Monde vivant, souvenirs et mémoire collective.',
                       colorA: const Color(0xFF4A3B78),
                       colorB: const Color(0xFF14111C),
                       onTap: () => Navigator.push(
@@ -21645,12 +21645,13 @@ const _fitilaTemplates = [
 // Création de contenu — 6 fonctionnalités IA validées le 15/09/2026 :
 // Echo Sɔ̃ɔ, Live Griot IA, Sagesse Battle, Aburu Fim IA, Sasara IA,
 // Handunia Wasa. Périmètre honnête : Echo Sɔ̃ɔ / Sasara IA / Aburu Fim
-// IA sont pleinement réels avec des simplifications assumées (pas de
-// dictée vocale, pas de génération visuelle IA, pas de détection
-// produit par vision) ; Sagesse Battle est entièrement réel (thème
-// « proverbes » + XP/badges du module Apprendre) ; Live Griot IA et
-// Handunia Wasa sont honnêtement non fonctionnels (aucune infra live,
-// vision 10-15 ans) et le disent clairement à l'écran.
+// IA sont opérationnels avec des simplifications assumées (pas de
+// dictée vocale automatique, pas de génération visuelle IA, pas de
+// détection produit par vision) ; Sagesse Battle est opérationnel
+// (thème « proverbes » + XP/badges du module Apprendre) ; Live Griot IA
+// fournit un direct audio WebRTC + chat temps réel pour petit public,
+// avec fallback STUN si aucun relais TURN n'est disponible ; Handunia
+// Wasa fournit lieux, fragments, likes et continuité hors ligne.
 // ═══════════════════════════════════════════════════════════════════
 
 int _dayOfYear(DateTime date) {
@@ -22695,7 +22696,6 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
   final _title = TextEditingController();
   final _description = TextEditingController();
   String _language = 'Bariba + Français';
-  bool _allowGuests = true;
   bool _scheduling = false;
   List<Map<String, dynamic>> _activeLives = const [];
   bool _loadingLives = true;
@@ -22815,7 +22815,7 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
     final content = [
       '📡 Live Griot IA à venir : $title',
       if (_description.text.trim().isNotEmpty) _description.text.trim(),
-      'Langue : $_language • Invités ${_allowGuests ? "autorisés" : "non autorisés"}',
+      'Langue : $_language • Direct audio et chat en temps réel',
     ].join('\n\n');
     try {
       final row = await FitilaBackend.createTextPost(
@@ -22852,7 +22852,7 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
   Widget build(BuildContext context) {
     return _PageFrame(
       title: 'Live Griot IA',
-      subtitle: 'Direct commenté par une IA griot — configuration et annonce.',
+      subtitle: 'Direct audio, chat en temps réel et auditeurs connectés.',
       child: ListView(
         children: [
           Container(
@@ -23004,12 +23004,6 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
                         ),
                     ],
                   ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: _allowGuests,
-                    onChanged: (v) => setState(() => _allowGuests = v),
-                    title: const Text('Autoriser les invités sur scène'),
-                  ),
                 ],
               ),
             ),
@@ -23038,7 +23032,7 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$_language • ${_allowGuests ? 'invités autorisés' : 'invités désactivés'}',
+                  '$_language • audio direct',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.55),
                     fontSize: 11.5,
