@@ -43,6 +43,57 @@ void main() {
     });
   }
 
+  testWidgets('Echo opens from creator hub without Material or overflow errors', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      phoneApp(ContentCreatorScreen(onPostCreated: (_) {})),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Echo Sɔ̃ɔ').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Raconte quelque chose…'), findsOneWidget);
+    expect(find.text('Bàátɔ̀nú'), findsOneWidget);
+    expect(find.text('Français'), findsOneWidget);
+    expect(find.byType(ChoiceChip), findsWidgets);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Écrire à la place'));
+    await tester.pumpAndSettle();
+    expect(find.text('Français → Bariba'), findsOneWidget);
+    expect(find.text('Bariba → Français'), findsOneWidget);
+    expect(find.byType(TextField), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Echo remains scrollable on a short Android viewport', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(phoneApp(EchoSonScreen(onPostCreated: (_) {})));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Raconte quelque chose…'), findsOneWidget);
+    expect(find.byType(Scrollable), findsWidgets);
+    expect(tester.takeException(), isNull);
+
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -300));
+    await tester.pump();
+    expect(find.text('Écrire à la place'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Sagesse Battle remains playable when community sync is down', (
     tester,
   ) async {
