@@ -71,6 +71,12 @@ class FitilaLiveEngine {
 
   bool _started = false;
   bool _disposed = false;
+  bool _usingTurn = false;
+
+  /// Vrai quand l'Edge Function a fourni au moins un relais TURN temporaire
+  /// pour cette session. L'UI peut ainsi distinguer un direct relayable d'un
+  /// simple fallback STUN sans exposer les identifiants du serveur.
+  bool get usingTurn => _usingTurn;
 
   Future<void> start() async {
     if (_started) return;
@@ -85,8 +91,9 @@ class FitilaLiveEngine {
     ];
     try {
       final turnServers = await FitilaBackend.fetchLiveTurnServers().timeout(
-        const Duration(seconds: 4),
+        const Duration(seconds: 6),
       );
+      _usingTurn = turnServers.isNotEmpty;
       iceServers.addAll(turnServers);
     } catch (_) {
       // TURN est une amélioration de connectivité : STUN garde le direct
