@@ -80,47 +80,6 @@ jobs:
           print('FITILA server configuration prepared.')
           PY
 
-      - name: Prepare production Android signing
-        env:
-          FITILA_KEYSTORE_BASE64: ${{ secrets.FITILA_KEYSTORE_BASE64 }}
-          FITILA_KEYSTORE_PASSWORD: ${{ secrets.FITILA_KEYSTORE_PASSWORD }}
-          FITILA_KEY_ALIAS: ${{ secrets.FITILA_KEY_ALIAS }}
-          FITILA_KEY_PASSWORD: ${{ secrets.FITILA_KEY_PASSWORD }}
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import base64
-          import os
-
-          required = {
-              name: os.environ.get(name, '')
-              for name in (
-                  'FITILA_KEYSTORE_BASE64',
-                  'FITILA_KEYSTORE_PASSWORD',
-                  'FITILA_KEY_ALIAS',
-                  'FITILA_KEY_PASSWORD',
-              )
-          }
-          missing = [name for name, value in required.items() if not value]
-          if missing:
-              raise SystemExit(
-                  'Production Android signing secrets missing: ' + ', '.join(missing)
-              )
-
-          keystore = Path('android/app/fitila-release.jks')
-          keystore.write_bytes(base64.b64decode(required['FITILA_KEYSTORE_BASE64']))
-          Path('android/key.properties').write_text(
-              '\n'.join([
-                  'storeFile=app/fitila-release.jks',
-                  f"storePassword={required['FITILA_KEYSTORE_PASSWORD']}",
-                  f"keyAlias={required['FITILA_KEY_ALIAS']}",
-                  f"keyPassword={required['FITILA_KEY_PASSWORD']}",
-                  '',
-              ]),
-              encoding='utf-8',
-          )
-          PY
-
       - name: Resolve dependencies
         run: flutter pub get
 
@@ -158,6 +117,7 @@ jobs:
               'tamtam_live_chat_messages': 'id,live_id,user_id,message',
               'tamtam_live_signals': 'id,live_id,from_user,to_user,signal_type,payload',
           }
+          private_tables = {'tamtam_live_signals'}
           missing = []
           for table, columns in tables.items():
               request = Request(
@@ -169,7 +129,8 @@ jobs:
                       if response.status != 200:
                           missing.append(f'{table} (HTTP {response.status})')
               except HTTPError as error:
-                  missing.append(f'{table} (HTTP {error.code})')
+                  if not (table in private_tables and error.code in (401, 403)):
+                      missing.append(f'{table} (HTTP {error.code})')
 
           version_request = Request(
               f'{url}/rest/v1/rpc/fitila_content_modules_schema_version',
@@ -220,6 +181,47 @@ jobs:
 
       - name: Full Flutter tests
         run: flutter test --dart-define-from-file=.ci-dart-defines.json --reporter compact
+
+      - name: Prepare production Android signing
+        env:
+          FITILA_KEYSTORE_BASE64: ${{ secrets.FITILA_KEYSTORE_BASE64 }}
+          FITILA_KEYSTORE_PASSWORD: ${{ secrets.FITILA_KEYSTORE_PASSWORD }}
+          FITILA_KEY_ALIAS: ${{ secrets.FITILA_KEY_ALIAS }}
+          FITILA_KEY_PASSWORD: ${{ secrets.FITILA_KEY_PASSWORD }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64
+          import os
+
+          required = {
+              name: os.environ.get(name, '')
+              for name in (
+                  'FITILA_KEYSTORE_BASE64',
+                  'FITILA_KEYSTORE_PASSWORD',
+                  'FITILA_KEY_ALIAS',
+                  'FITILA_KEY_PASSWORD',
+              )
+          }
+          missing = [name for name, value in required.items() if not value]
+          if missing:
+              raise SystemExit(
+                  'Production Android signing secrets missing: ' + ', '.join(missing)
+              )
+
+          keystore = Path('android/app/fitila-release.jks')
+          keystore.write_bytes(base64.b64decode(required['FITILA_KEYSTORE_BASE64']))
+          Path('android/key.properties').write_text(
+              '\n'.join([
+                  'storeFile=app/fitila-release.jks',
+                  f"storePassword={required['FITILA_KEYSTORE_PASSWORD']}",
+                  f"keyAlias={required['FITILA_KEY_ALIAS']}",
+                  f"keyPassword={required['FITILA_KEY_PASSWORD']}",
+                  '',
+              ]),
+              encoding='utf-8',
+          )
+          PY
 
       - name: Build optimized release APK
         run: |
