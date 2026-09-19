@@ -20516,19 +20516,22 @@ class _FitilaDarkStage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: padding ?? const EdgeInsets.fromLTRB(20, 28, 20, 24),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [_fitilaDark1, _fitilaDark2, _fitilaDark3],
-          stops: [0.0, 0.55, 1.0],
+    return Material(
+      type: MaterialType.transparency,
+      child: Container(
+        width: double.infinity,
+        padding: padding ?? const EdgeInsets.fromLTRB(20, 28, 20, 24),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [_fitilaDark1, _fitilaDark2, _fitilaDark3],
+            stops: [0.0, 0.55, 1.0],
+          ),
         ),
+        child: child,
       ),
-      child: child,
     );
   }
 }
@@ -22215,181 +22218,172 @@ class _EchoSonScreenState extends State<EchoSonScreen> {
 
   // Étape 1/4 (maquette) — orbe micro, choix voix ou texte.
   Widget _buildIntroStep() {
-    return SizedBox(
-      width: double.infinity,
-      child: Column(
-        children: [
-          const SizedBox(height: 4),
-          const _FitilaStepProgress(
-            totalSteps: 3,
-            currentStep: 0,
-            light: false,
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        const SizedBox(height: 4),
+        const _FitilaStepProgress(
+          totalSteps: 3,
+          currentStep: 0,
+          light: false,
+        ),
+        const SizedBox(height: 14),
+        _FitilaDarkStage(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _FitilaOrbMic(
+                icon: Icons.mic_rounded,
+                onTap: _startRecordingStep,
+              ),
+              const SizedBox(height: 22),
+              const Text(
+                'Raconte quelque chose…',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'En bariba ou en français — Fitila IA traduit et publie pour vous.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 12.5,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Material(
+                type: MaterialType.transparency,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Bàátɔ̀nú'),
+                      selected:
+                          _direction == TranslationDirection.baribaToFrench,
+                      onSelected: (_) => setState(
+                        () => _direction = TranslationDirection.baribaToFrench,
+                      ),
+                    ),
+                    ChoiceChip(
+                      label: const Text('Français'),
+                      selected:
+                          _direction == TranslationDirection.frenchToBariba,
+                      onSelected: (_) => setState(
+                        () => _direction = TranslationDirection.frenchToBariba,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
-          Expanded(
-            child: _FitilaDarkStage(
-              child: Column(
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _startRecordingStep,
+            icon: const Icon(Icons.mic_rounded),
+            label: const Text('Parler'),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => setState(() => _step = 2),
+            icon: const Icon(Icons.edit_rounded),
+            label: const Text('Écrire à la place'),
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _buildRecordingStep() {
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        const SizedBox(height: 4),
+        const _FitilaStepProgress(
+          totalSteps: 3,
+          currentStep: 1,
+          light: false,
+        ),
+        const SizedBox(height: 14),
+        _FitilaDarkStage(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _FitilaOrbMic(
-                    icon: Icons.mic_rounded,
-                    onTap: _startRecordingStep,
+                  Container(
+                    width: 9,
+                    height: 9,
+                    decoration: const BoxDecoration(
+                      color: _fitilaClay,
+                      shape: BoxShape.circle,
+                    ),
                   ),
-                  const SizedBox(height: 22),
-                  const Text(
-                    'Raconte quelque chose…',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
+                  const SizedBox(width: 8),
+                  Text(
+                    _recTimerLabel,
+                    style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'En bariba ou en français — Fitila IA traduit et publie pour vous.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontSize: 12.5,
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.center,
-                    children: [
-                      ChoiceChip(
-                        label: const Text('Bàátɔ̀nú'),
-                        selected:
-                            _direction == TranslationDirection.baribaToFrench,
-                        onSelected: (_) => setState(
-                          () =>
-                              _direction = TranslationDirection.baribaToFrench,
-                        ),
-                      ),
-                      ChoiceChip(
-                        label: const Text('Français'),
-                        selected:
-                            _direction == TranslationDirection.frenchToBariba,
-                        onSelected: (_) => setState(
-                          () =>
-                              _direction = TranslationDirection.frenchToBariba,
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
-            ),
+              const SizedBox(height: 28),
+              _FitilaOrbMic(
+                icon: Icons.graphic_eq_rounded,
+                active: true,
+                size: 96,
+              ),
+              const SizedBox(height: 24),
+              const _FitilaWaveformBars(
+                active: true,
+                height: 52,
+                color: _fitilaPrimary,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                "L'écriture automatique en direct n'est pas encore disponible — votre voix est enregistrée fidèlement.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  fontSize: 11.5,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _startRecordingStep,
-              icon: const Icon(Icons.mic_rounded),
-              label: const Text('Parler'),
-            ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _toggleRecording,
+            icon: const Icon(Icons.stop_circle_rounded),
+            label: const Text('Terminer l’enregistrement'),
+            style: FilledButton.styleFrom(backgroundColor: _fitilaClay),
           ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => setState(() => _step = 2),
-              icon: const Icon(Icons.edit_rounded),
-              label: const Text('Écrire à la place'),
-            ),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 8),
+      ],
     );
   }
 
-  // Étape 2/4 — enregistrement réel en cours (waveform décorative, comme
-  // dans la maquette — la durée et le micro, eux, sont bien réels).
-  Widget _buildRecordingStep() {
-    return SizedBox(
-      width: double.infinity,
-      child: Column(
-        children: [
-          const SizedBox(height: 4),
-          const _FitilaStepProgress(
-            totalSteps: 3,
-            currentStep: 1,
-            light: false,
-          ),
-          const SizedBox(height: 14),
-          Expanded(
-            child: _FitilaDarkStage(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 9,
-                        height: 9,
-                        decoration: const BoxDecoration(
-                          color: _fitilaClay,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _recTimerLabel,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 28),
-                  _FitilaOrbMic(
-                    icon: Icons.graphic_eq_rounded,
-                    active: true,
-                    size: 96,
-                  ),
-                  const SizedBox(height: 24),
-                  const _FitilaWaveformBars(
-                    active: true,
-                    height: 52,
-                    color: _fitilaPrimary,
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    "L'écriture automatique en direct n'est pas encore disponible — votre voix est enregistrée fidèlement.",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 11.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _toggleRecording,
-              icon: const Icon(Icons.stop_circle_rounded),
-              label: const Text('Terminer l’enregistrement'),
-              style: FilledButton.styleFrom(backgroundColor: _fitilaClay),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Étape 3/4 — aperçu, texte, traduction, visuel signature : tout ce qui
-  // est réellement modifiable avant publication.
   Widget _buildPreviewStep() {
     final preset = _presets[_presetIndex];
     return ListView(
