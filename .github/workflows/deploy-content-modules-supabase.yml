@@ -8,6 +8,7 @@ on:
       - supabase/migrations/**
       - supabase/functions/live-turn-credentials/**
       - supabase/functions/ai-translate/**
+      - supabase/functions/byt5-bariba-translate/**
       - supabase/functions/bariba-tts/**
       - supabase/functions/_shared/**
       - .github/workflows/deploy-content-modules-supabase.yml
@@ -104,20 +105,22 @@ jobs:
         run: |
           set -euo pipefail
           secrets="$(supabase secrets list --project-ref "$SUPABASE_PROJECT_ID")"
-          echo "$secrets" | grep -q 'LOVABLE_API_KEY' || {
-            echo "Missing Supabase secret required by ai-translate: LOVABLE_API_KEY" >&2
-            exit 1
-          }
-          echo "Echo translation secret is configured."
-          if echo "$secrets" | grep -Eq 'HUGGING_FACE_API_TOKEN|HF_TOKEN|HUGGINGFACEHUB_API_TOKEN'; then
-            echo "A Hugging Face token is configured for Bariba TTS."
+          if echo "$secrets" | grep -q 'LOVABLE_API_KEY'; then
+            echo "Lovable/Gemini translation is configured as Echo primary engine."
           else
-            echo "No Hugging Face token found; bariba-tts will rely on its configured/public Space fallback."
+            echo "LOVABLE_API_KEY is absent; Echo will use the FITILA ByT5 translation fallback."
+          fi
+          if echo "$secrets" | grep -Eq 'HUGGING_FACE_API_TOKEN|HF_TOKEN|HUGGINGFACEHUB_API_TOKEN'; then
+            echo "A Hugging Face token is configured."
+          else
+            echo "No Hugging Face token found; ByT5 and Bariba TTS will use their public Space fallbacks."
           fi
 
       - name: Deploy Echo translation and Bariba TTS functions
         run: |
           supabase functions deploy ai-translate \
+            --project-ref "$SUPABASE_PROJECT_ID"
+          supabase functions deploy byt5-bariba-translate \
             --project-ref "$SUPABASE_PROJECT_ID"
           supabase functions deploy bariba-tts \
             --project-ref "$SUPABASE_PROJECT_ID"
@@ -181,7 +184,7 @@ jobs:
                   f'Aburu product relation unavailable (HTTP {error.code})'
               )
 
-          for function_name in ('ai-translate', 'bariba-tts'):
+          for function_name in ('ai-translate', 'byt5-bariba-translate', 'bariba-tts'):
               request = Request(
                   f'{url}/functions/v1/{function_name}',
                   method='OPTIONS',
@@ -223,6 +226,6 @@ jobs:
                   f'live-turn-credentials is unavailable (HTTP {status})'
               )
           print('Supabase content-module schema 20260918.2 is deployed.')
-          print('Echo ai-translate and bariba-tts endpoints are deployed.')
+          print('Echo ai-translate, ByT5 fallback and bariba-tts endpoints are deployed.')
           print('Live Griot TURN credential endpoint is deployed.')
           PY
