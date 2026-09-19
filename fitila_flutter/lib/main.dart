@@ -18256,8 +18256,9 @@ class _PageFrame extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: _fitilaSurface,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
+      child: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
           final compact = constraints.maxWidth < 700;
           final scaffold = Scaffold.maybeOf(context);
           final canOpenDrawer = scaffold?.hasDrawer ?? false;
@@ -18345,7 +18346,8 @@ class _PageFrame extends StatelessWidget {
               ),
             ],
           );
-        },
+          },
+        ),
       ),
     );
   }
