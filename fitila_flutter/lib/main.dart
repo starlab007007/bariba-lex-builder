@@ -24521,6 +24521,23 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
       );
       return;
     }
+    if (_photo!.mediaType == 'video') {
+      const maxVideoBytes = 50 * 1024 * 1024;
+      final videoBytes = await _photo!.sizeBytes();
+      if (videoBytes > maxVideoBytes) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'La vidéo dépasse 50 Mo. Raccourcissez-la avant publication.',
+            ),
+          ),
+        );
+        return;
+      }
+    }
     final template = _templates[_templateIndex];
     final price = _productPrice;
     final caption = [
