@@ -112,10 +112,27 @@ void main() {
     await tester.pump(const Duration(milliseconds: 700));
 
     expect(find.text('LIVE STUDIO'), findsOneWidget);
-    expect(find.text('Préparer le direct'), findsOneWidget);
-    expect(find.text('Démarrer le direct'), findsOneWidget);
     expect(find.textContaining('faute de serveur relais dédié'), findsNothing);
     expect(find.byType(Scrollable), findsWidgets);
+    expect(tester.takeException(), isNull);
+
+    final prepare = find.text('Préparer le direct');
+    await tester.scrollUntilVisible(
+      prepare,
+      260,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump();
+    expect(prepare, findsOneWidget);
+
+    final startButton = find.text('Démarrer le direct');
+    await tester.scrollUntilVisible(
+      startButton,
+      260,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump();
+    expect(startButton, findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
