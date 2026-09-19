@@ -57,7 +57,7 @@ jobs:
         with:
           version: latest
 
-      - name: Apply release database migration
+      - name: Apply release database migrations
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -67,25 +67,28 @@ jobs:
 
           project_ref = os.environ['SUPABASE_PROJECT_ID']
           access_token = os.environ['SUPABASE_ACCESS_TOKEN']
-          migration = Path(
-              'supabase/migrations/20260919133000_aburu_product_link_and_realtime.sql'
-          ).read_text(encoding='utf-8')
-
-          request = Request(
-              f'https://api.supabase.com/v1/projects/{project_ref}/database/query',
-              data=json.dumps({'query': migration}).encode('utf-8'),
-              method='POST',
-              headers={
-                  'Authorization': f'Bearer {access_token}',
-                  'Content-Type': 'application/json',
-              },
+          migration_paths = (
+              'supabase/migrations/20260919133000_aburu_product_link_and_realtime.sql',
+              'supabase/migrations/20260919161000_live_griot_runtime_cleanup.sql',
           )
-          with urlopen(request, timeout=180) as response:
-              if response.status not in (200, 201):
-                  raise SystemExit(
-                      f'Database migration API returned HTTP {response.status}'
-                  )
-          print('Release database migration applied through Management API.')
+
+          for migration_path in migration_paths:
+              migration = Path(migration_path).read_text(encoding='utf-8')
+              request = Request(
+                  f'https://api.supabase.com/v1/projects/{project_ref}/database/query',
+                  data=json.dumps({'query': migration}).encode('utf-8'),
+                  method='POST',
+                  headers={
+                      'Authorization': f'Bearer {access_token}',
+                      'Content-Type': 'application/json',
+                  },
+              )
+              with urlopen(request, timeout=180) as response:
+                  if response.status not in (200, 201):
+                      raise SystemExit(
+                          f'{migration_path} returned HTTP {response.status}'
+                      )
+              print(f'Applied {migration_path}')
           PY
 
       - name: Configure temporary TURN credentials
@@ -163,7 +166,7 @@ jobs:
           )
           with urlopen(request, timeout=20) as response:
               version = json.loads(response.read().decode('utf-8'))
-          if version != '20260918.2':
+          if version != '20260919.3':
               raise SystemExit(f'Unexpected content-module schema: {version!r}')
 
           product_request = Request(
@@ -225,7 +228,7 @@ jobs:
               raise SystemExit(
                   f'live-turn-credentials is unavailable (HTTP {status})'
               )
-          print('Supabase content-module schema 20260918.2 is deployed.')
+          print('Supabase content-module schema 20260919.3 is deployed.')
           print('Echo ai-translate, ByT5 fallback and bariba-tts endpoints are deployed.')
           print('Live Griot TURN credential endpoint is deployed.')
           PY
