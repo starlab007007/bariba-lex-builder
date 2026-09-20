@@ -24690,6 +24690,7 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
   FitilaMediaAsset? _photo;
   VideoPlayerController? _previewVideoController;
   bool _publishing = false;
+  int _aburuUiStep = 0;
 
   static const _templates = [
     _AburuTemplate(
@@ -24949,484 +24950,652 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final template = _templates[_templateIndex];
-    return _PageFrame(
-      title: 'Aburu Fim IA',
-      subtitle:
-          'Galerie connectée à vos données réelles — un plan, publication instantanée.',
-      child: _loadingProducts
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(40),
-                child: CircularProgressIndicator(),
+    if (_loadingProducts) {
+      return const ReferenceCreationShell(
+        title: 'Modèles intelligents',
+        subtitle: 'Connectés à tes données',
+        leading: Text('🛍️', style: TextStyle(fontSize: 15)),
+        child: Center(
+          child: CircularProgressIndicator(color: FitilaReferenceUi.gold),
+        ),
+      );
+    }
+
+    switch (_aburuUiStep) {
+      case 1:
+        return _buildAburuCaptureReference();
+      case 2:
+        return _buildAburuPersonalizationReference();
+      case 3:
+        return _buildAburuSuccessReference();
+      case 0:
+      default:
+        return _buildAburuTemplatesReference();
+    }
+  }
+
+  Widget _buildAburuTemplatesReference() {
+    final productPreview = _selectedProduct == null
+        ? (_manualName.text.trim().isEmpty ? 'Info libre' : _manualName.text.trim())
+        : _productName;
+    final pricePreview = _productPrice.isEmpty ? 'Prix non renseigné' : _productPrice;
+    final cards = <({String emoji, String title, String data})>[
+      (emoji: '🍅', title: 'Nouveau produit', data: '$productPreview · $pricePreview'),
+      (emoji: '⚡', title: 'Promo du jour', data: pricePreview),
+      (
+        emoji: '🌦️',
+        title: 'Conseil agricole',
+        data: _selectedProduct?['category']?.toString() ?? 'Données du produit',
+      ),
+      (
+        emoji: '🩺',
+        title: 'Alerte santé',
+        data: _productStockLabel,
+      ),
+    ];
+
+    return ReferenceCreationShell(
+      dark: false,
+      title: 'Modèles intelligents',
+      subtitle: 'Connectés à tes données',
+      leading: const Text('🛍️', style: TextStyle(fontSize: 15)),
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          if (_products.isNotEmpty) ...[
+            const ReferenceLabel('Produit source'),
+            const SizedBox(height: 7),
+            SizedBox(
+              height: 40,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _products.length + 1,
+                separatorBuilder: (_, _) => const SizedBox(width: 7),
+                itemBuilder: (context, index) {
+                  if (index == _products.length) {
+                    final selected = _selectedProduct == null;
+                    return ChoiceChip(
+                      label: const Text('Info libre'),
+                      selected: selected,
+                      onSelected: (_) => setState(() => _selectedProduct = null),
+                    );
+                  }
+                  final product = _products[index];
+                  final selected = identical(product, _selectedProduct);
+                  return ChoiceChip(
+                    label: Text(
+                      (product['title_fr'] ?? product['title'] ?? 'Produit')
+                          .toString(),
+                    ),
+                    selected: selected,
+                    onSelected: (_) => setState(() => _selectedProduct = product),
+                  );
+                },
               ),
-            )
-          : ListView(
-              children: [
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '1. Galerie de templates',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          _products.isEmpty
-                              ? "Aucun produit enregistré dans le Marché — remplissez les champs libres ci-dessous."
-                              : 'Connectée à vos ${_products.length} produit(s) réels du Marché.',
-                          style: TextStyle(color: _fitilaMuted, fontSize: 11.5),
-                        ),
-                        const SizedBox(height: 10),
-                        if (_products.isNotEmpty)
-                          GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  mainAxisSpacing: 10,
-                                  crossAxisSpacing: 10,
-                                  childAspectRatio: 1.35,
-                                ),
-                            itemCount: _products.length + 1,
-                            itemBuilder: (context, index) {
-                              if (index == _products.length) {
-                                final selected = _selectedProduct == null;
-                                return _AburuGalleryCard(
-                                  selected: selected,
-                                  live: false,
-                                  title: 'Info libre',
-                                  subtitle: 'Sans produit enregistré',
-                                  onTap: () =>
-                                      setState(() => _selectedProduct = null),
-                                );
-                              }
-                              final p = _products[index];
-                              final selected = _selectedProduct == p;
-                              final price = p['price'];
-                              return _AburuGalleryCard(
-                                selected: selected,
-                                live: true,
-                                title:
-                                    (p['title_fr'] ?? p['title'] ?? 'Produit')
-                                        .toString(),
-                                subtitle: price != null
-                                    ? '$price FCFA'
-                                    : 'Prix non renseigné',
-                                onTap: () =>
-                                    setState(() => _selectedProduct = p),
-                              );
-                            },
-                          ),
-                        if (_selectedProduct != null) ...[
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 6,
-                            children: [
-                              _AburuInfoChip(
-                                icon: Icons.inventory_2_rounded,
-                                label: _productStockLabel,
-                              ),
-                              _AburuInfoChip(
-                                icon: Icons.translate_rounded,
-                                label: _productLanguages,
-                              ),
-                              _AburuInfoChip(
-                                icon: Icons.sell_rounded,
-                                label: _productPrice.isEmpty
-                                    ? 'Prix libre'
-                                    : _productPrice,
-                              ),
-                            ],
-                          ),
-                        ],
-                        if (_selectedProduct == null) ...[
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: _manualName,
-                            onChanged: (_) => setState(() {}),
-                            decoration: const InputDecoration(
-                              labelText: 'Nom du produit',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: _manualPrice,
-                            onChanged: (_) => setState(() {}),
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'Prix (FCFA)',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ],
-                      ],
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (_selectedProduct == null) ...[
+            ReferenceCard(
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _manualName,
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(
+                      labelText: 'Nom du produit',
                     ),
                   ),
-                ),
-                const SizedBox(height: 14),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '2. Template',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (int i = 0; i < _templates.length; i++)
-                              ChoiceChip(
-                                label: Text(_templates[i].label),
-                                selected: _templateIndex == i,
-                                onSelected: (_) =>
-                                    setState(() => _templateIndex = i),
-                              ),
-                          ],
-                        ),
-                      ],
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _manualPrice,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(
+                      labelText: 'Prix (FCFA)',
                     ),
                   ),
-                ),
-                const SizedBox(height: 14),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                ],
+              ),
+            ),
+          ],
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 1.08,
+            ),
+            itemCount: cards.length,
+            itemBuilder: (context, index) {
+              final card = cards[index];
+              final selected = _templateIndex == index;
+              return Material(
+                color: selected
+                    ? FitilaReferenceUi.goldTint
+                    : FitilaReferenceUi.surface,
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  onTap: () => setState(() => _templateIndex = index),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.all(11),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: selected
+                            ? FitilaReferenceUi.gold
+                            : FitilaReferenceUi.hairline,
+                      ),
+                    ),
+                    child: Stack(
                       children: [
-                        const Text(
-                          '3. Capture — un seul plan',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          'Aucune consigne de montage : un seul plan suffit à nourrir le template.',
-                          style: TextStyle(color: _fitilaMuted, fontSize: 11.5),
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ChoiceChip(
-                              label: const Text('🎬 Vidéo (un seul plan)'),
-                              selected: _captureMode == 'video',
-                              onSelected: (_) =>
-                                  setState(() => _captureMode = 'video'),
+                            Text(card.emoji, style: const TextStyle(fontSize: 20)),
+                            const Spacer(),
+                            Text(
+                              card.title,
+                              style: const TextStyle(
+                                color: FitilaReferenceUi.ink,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
-                            ChoiceChip(
-                              label: const Text('📷 Photo'),
-                              selected: _captureMode == 'photo',
-                              onSelected: (_) =>
-                                  setState(() => _captureMode = 'photo'),
+                            const SizedBox(height: 5),
+                            Text(
+                              card.data,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: FitilaReferenceUi.muted,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
-                        AspectRatio(
-                          aspectRatio: 1,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: Stack(
-                              fit: StackFit.expand,
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: FitilaReferenceUi.sageTint,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                _photo != null
-                                    ? (_photo!.mediaType == 'video' &&
-                                              _previewVideoController != null
-                                          ? (_previewVideoController!
-                                                    .value
-                                                    .isInitialized
-                                                ? FittedBox(
-                                                    fit: BoxFit.cover,
-                                                    child: SizedBox(
-                                                      width:
-                                                          _previewVideoController!
-                                                              .value
-                                                              .size
-                                                              .width,
-                                                      height:
-                                                          _previewVideoController!
-                                                              .value
-                                                              .size
-                                                              .height,
-                                                      child: VideoPlayer(
-                                                        _previewVideoController!,
-                                                      ),
-                                                    ),
-                                                  )
-                                                : const Center(
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                          color: Colors.white,
-                                                        ),
-                                                  ))
-                                          : Image.file(
-                                              File(_photo!.path),
-                                              fit: BoxFit.cover,
-                                            ))
-                                    : Container(
-                                        decoration: const BoxDecoration(
-                                          gradient: LinearGradient(
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                            colors: [
-                                              _fitilaDark1,
-                                              _fitilaDark2,
-                                              _fitilaDark3,
-                                            ],
-                                            stops: [0.0, 0.55, 1.0],
-                                          ),
-                                        ),
-                                        child: Stack(
-                                          children: [
-                                            for (final align in const [
-                                              Alignment.topLeft,
-                                              Alignment.topRight,
-                                              Alignment.bottomLeft,
-                                              Alignment.bottomRight,
-                                            ])
-                                              Align(
-                                                alignment: align,
-                                                child: Padding(
-                                                  padding: const EdgeInsets.all(
-                                                    14,
-                                                  ),
-                                                  child: Icon(
-                                                    Icons.crop_free_rounded,
-                                                    size: 22,
-                                                    color: Colors.white
-                                                        .withValues(
-                                                          alpha: 0.45,
-                                                        ),
-                                                  ),
-                                                ),
-                                              ),
-                                            const Center(
-                                              child: Icon(
-                                                Icons.photo_camera_rounded,
-                                                size: 40,
-                                                color: Colors.white54,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                Positioned(
-                                  left: 0,
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                        colors: [
-                                          Colors.transparent,
-                                          template.colorA.withValues(
-                                            alpha: .92,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          template.captionSuffix,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        Text(
-                                          _productPrice.isNotEmpty
-                                              ? '$_productName — $_productPrice'
-                                              : _productName,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                Icon(
+                                  Icons.circle,
+                                  size: 5,
+                                  color: FitilaReferenceUi.sageDeep,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Live',
+                                  style: TextStyle(
+                                    color: FitilaReferenceUi.sageDeep,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
                                   ),
                                 ),
                               ],
                             ),
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () =>
-                                    _pickCapture(ImageSource.camera),
-                                icon: Icon(
-                                  _captureMode == 'video'
-                                      ? Icons.videocam_rounded
-                                      : Icons.photo_camera_rounded,
-                                ),
-                                label: Text(
-                                  _captureMode == 'video'
-                                      ? 'Filmer'
-                                      : 'Prendre une photo',
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () =>
-                                    _pickCapture(ImageSource.gallery),
-                                icon: const Icon(Icons.photo_library_rounded),
-                                label: const Text('Galerie'),
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (_photo != null) ...[
-                          const SizedBox(height: 14),
-                          const Text(
-                            'Brut vs personnalisé',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _AburuComparisonThumb(
-                                  label: 'Brut',
-                                  child: _photo!.mediaType == 'video'
-                                      ? const ColoredBox(
-                                          color: Colors.black,
-                                          child: Center(
-                                            child: Icon(
-                                              Icons.videocam_rounded,
-                                              color: Colors.white54,
-                                            ),
-                                          ),
-                                        )
-                                      : Image.file(
-                                          File(_photo!.path),
-                                          fit: BoxFit.cover,
-                                        ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: _AburuComparisonThumb(
-                                  label: 'Personnalisé FITILA',
-                                  highlighted: true,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          template.colorA,
-                                          template.colorB,
-                                        ],
-                                      ),
-                                    ),
-                                    padding: const EdgeInsets.all(6),
-                                    alignment: Alignment.bottomLeft,
-                                    child: Text(
-                                      _productName,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _fitilaSurfaceAlt,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.bolt_rounded,
-                        size: 15,
-                        color: _fitilaGoldDeep,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Publication immédiate — sans ouvrir d\'éditeur. Destination : $_publishDestinationTag.',
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                          ),
+              );
+            },
+          ),
+          const SizedBox(height: 14),
+          ReferenceGoldButton(
+            label: 'Filmer un seul plan',
+            icon: Icons.videocam_rounded,
+            onPressed: () => setState(() => _aburuUiStep = 1),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAburuCaptureReference() {
+    return ReferenceCreationShell(
+      dark: true,
+      title: 'Nouveau produit',
+      subtitle: 'Un seul plan suffit',
+      leading: const Icon(Icons.close_rounded, size: 17, color: Colors.white),
+      onBack: () => setState(() => _aburuUiStep = 0),
+      child: Column(
+        children: [
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: .30),
+                  width: 2,
+                ),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (_photo != null)
+                    _aburuMediaPreview()
+                  else
+                    Center(
+                      child: Text(
+                        'Cadre ton étal\nou ton produit',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: .50),
+                          fontSize: 12,
+                          height: 1.4,
                         ),
+                      ),
+                    ),
+                  ..._aburuViewfinderCorners(),
+                ],
+              ),
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                tooltip: 'Galerie',
+                onPressed: () => _pickCapture(ImageSource.gallery),
+                icon: const Icon(
+                  Icons.photo_library_rounded,
+                  color: Colors.white70,
+                ),
+              ),
+              const SizedBox(width: 18),
+              GestureDetector(
+                onTap: () => _pickCapture(ImageSource.camera),
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: .35),
+                      width: 4,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.white.withValues(alpha: .18),
+                        blurRadius: 18,
                       ),
                     ],
                   ),
+                  child: Icon(
+                    _captureMode == 'video'
+                        ? Icons.videocam_rounded
+                        : Icons.photo_camera_rounded,
+                    color: FitilaReferenceUi.ink,
+                  ),
                 ),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: _publishing ? null : _publish,
-                  icon: _publishing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.storefront_rounded),
-                  label: const Text('Publier automatiquement'),
+              ),
+              const SizedBox(width: 18),
+              IconButton(
+                tooltip: _captureMode == 'video' ? 'Passer en photo' : 'Passer en vidéo',
+                onPressed: () => setState(
+                  () => _captureMode =
+                      _captureMode == 'video' ? 'photo' : 'video',
                 ),
-                const SizedBox(height: 24),
-              ],
+                icon: Icon(
+                  _captureMode == 'video'
+                      ? Icons.photo_camera_rounded
+                      : Icons.videocam_rounded,
+                  color: Colors.white70,
+                ),
+              ),
+            ],
+          ),
+          if (_photo != null) ...[
+            const SizedBox(height: 12),
+            ReferenceGoldButton(
+              label: 'Personnaliser avec l’IA',
+              icon: Icons.auto_awesome_rounded,
+              onPressed: () => setState(() => _aburuUiStep = 2),
             ),
+          ],
+        ],
+      ),
     );
   }
+
+  List<Widget> _aburuViewfinderCorners() {
+    Widget corner(Alignment alignment, Border border) => Align(
+          alignment: alignment,
+          child: Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(border: border),
+          ),
+        );
+    const c = FitilaReferenceUi.gold;
+    return [
+      corner(
+        Alignment.topLeft,
+        const Border(
+          top: BorderSide(color: c, width: 3),
+          left: BorderSide(color: c, width: 3),
+        ),
+      ),
+      corner(
+        Alignment.topRight,
+        const Border(
+          top: BorderSide(color: c, width: 3),
+          right: BorderSide(color: c, width: 3),
+        ),
+      ),
+      corner(
+        Alignment.bottomLeft,
+        const Border(
+          bottom: BorderSide(color: c, width: 3),
+          left: BorderSide(color: c, width: 3),
+        ),
+      ),
+      corner(
+        Alignment.bottomRight,
+        const Border(
+          bottom: BorderSide(color: c, width: 3),
+          right: BorderSide(color: c, width: 3),
+        ),
+      ),
+    ];
+  }
+
+  Widget _aburuMediaPreview() {
+    final asset = _photo;
+    if (asset == null) {
+      return const ColoredBox(color: Colors.transparent);
+    }
+    if (asset.mediaType == 'video') {
+      final controller = _previewVideoController;
+      if (controller != null && controller.value.isInitialized) {
+        return FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: controller.value.size.width,
+            height: controller.value.size.height,
+            child: VideoPlayer(controller),
+          ),
+        );
+      }
+      return const ColoredBox(
+        color: Colors.black,
+        child: Center(
+          child: Icon(Icons.videocam_rounded, color: Colors.white54, size: 42),
+        ),
+      );
+    }
+    return Image.file(File(asset.path), fit: BoxFit.cover);
+  }
+
+  Widget _buildAburuPersonalizationReference() {
+    final template = _templates[_templateIndex];
+    return ReferenceCreationShell(
+      dark: false,
+      title: 'Personnalisation IA',
+      subtitle: 'Brut → prêt à publier',
+      onBack: () => setState(() => _aburuUiStep = 1),
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          SizedBox(
+            height: 300,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildAburuComparePane(
+                    label: 'Brut',
+                    child: _aburuMediaPreview(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildAburuComparePane(
+                    label: 'Personnalisé',
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        _aburuMediaPreview(),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                template.colorA.withValues(alpha: .74),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 34,
+                          left: 8,
+                          child: _aburuDropTag(
+                            _productPrice.isEmpty ? 'Prix libre' : _productPrice,
+                          ),
+                        ),
+                        const Positioned(
+                          top: 8,
+                          right: 8,
+                          child: _AburuReferenceTag(text: 'FITILA'),
+                        ),
+                        Positioned(
+                          left: 8,
+                          right: 8,
+                          bottom: 34,
+                          child: _aburuDropTag(_productName),
+                        ),
+                        const Positioned(
+                          right: 8,
+                          bottom: 8,
+                          child: _AburuReferenceTag(text: '🎵'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          _aburuFieldRow('Prix', _productPrice.isEmpty ? 'Prix libre' : _productPrice),
+          _aburuFieldRow('Stock', _productStockLabel),
+          _aburuFieldRow('Langues', _productLanguages),
+          const SizedBox(height: 16),
+          ReferenceGoldButton(
+            label: 'Publier automatiquement',
+            icon: Icons.storefront_rounded,
+            busy: _publishing,
+            onPressed: _publishing
+                ? null
+                : () async {
+                    await _publish();
+                    if (mounted && _photo == null) {
+                      setState(() => _aburuUiStep = 3);
+                    }
+                  },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAburuComparePane({
+    required String label,
+    required Widget child,
+  }) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF2C2440), Color(0xFF3F345A)],
+              ),
+            ),
+          ),
+          child,
+          Positioned(
+            top: 6,
+            left: 6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: .50),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _aburuDropTag(String text) {
+    return _AburuReferenceTag(text: text);
+  }
+
+  Widget _aburuFieldRow(String key, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: FitilaReferenceUi.hairline),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              key,
+              style: const TextStyle(
+                color: FitilaReferenceUi.muted,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              color: FitilaReferenceUi.ink,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAburuSuccessReference() {
+    return ReferenceCreationShell(
+      dark: false,
+      showTopBar: false,
+      centerBody: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ReferenceCheckMark(),
+          const SizedBox(height: 12),
+          Text(
+            'Publié automatiquement',
+            textAlign: TextAlign.center,
+            style: FitilaReferenceUi.serif(
+              size: 18,
+              color: FitilaReferenceUi.ink,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const ReferenceTinyPill(
+            icon: Icons.schedule_rounded,
+            label: 'Publication immédiate',
+          ),
+          const SizedBox(height: 8),
+          ReferenceTinyPill(
+            icon: Icons.storefront_rounded,
+            label: _publishDestinationTag,
+            color: FitilaReferenceUi.sageDeep,
+          ),
+          const SizedBox(height: 22),
+          TextButton(
+            onPressed: () => setState(() => _aburuUiStep = 0),
+            child: const Text('Créer un autre Fim'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AburuReferenceTag extends StatelessWidget {
+  const _AburuReferenceTag({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 130),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x33000000),
+            blurRadius: 14,
+            spreadRadius: -6,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Text(
+        text,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: FitilaReferenceUi.ink,
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+
 }
 
 /// Carte de la galerie Aburu Fim IA — tuile "Live" liée à un vrai
