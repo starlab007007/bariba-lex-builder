@@ -91,16 +91,22 @@ class _HaloDensiteState extends State<HaloDensite>
   void _syncAnimation() {
     _reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     final value = widget.valeur.clamp(0.0, 1.0);
-    if (_reduceMotion || (value <= 0 && !widget.loading)) {
+    if (_reduceMotion) {
       _controller.stop();
       _controller.value = 0.5;
       return;
     }
+
+    _controller.stop();
+    if (value <= 0 && !widget.loading) {
+      _controller.duration = const Duration(seconds: 14);
+      _controller.repeat();
+      return;
+    }
+
     final millis = (7000 - 2000 * value).round();
     _controller.duration = Duration(milliseconds: millis);
-    if (!_controller.isAnimating) {
-      _controller.repeat(reverse: true);
-    }
+    _controller.repeat(reverse: true);
   }
 
   @override
@@ -158,8 +164,9 @@ class _HaloPainter extends CustomPainter {
 
     if (!live) {
       const segments = 18;
+      final rotation = math.pi * 2 * pulse;
       for (var i = 0; i < segments; i++) {
-        final start = (math.pi * 2 / segments) * i;
+        final start = rotation + (math.pi * 2 / segments) * i;
         canvas.drawArc(
           Rect.fromCircle(center: center, radius: radius),
           start,
