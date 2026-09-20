@@ -173,8 +173,15 @@ class HanduniaMapData {
   }
 
   static Future<int> syncPending() async {
-    if (!FitilaBackend.configured ||
-        FitilaBackend.client.auth.currentUser == null) {
+    try {
+      if (!FitilaBackend.configured) {
+        return 0;
+      }
+      final client = FitilaBackend.client;
+      if (client.auth.currentUser == null) {
+        return 0;
+      }
+    } catch (_) {
       return 0;
     }
     final preferences = await SharedPreferences.getInstance();
