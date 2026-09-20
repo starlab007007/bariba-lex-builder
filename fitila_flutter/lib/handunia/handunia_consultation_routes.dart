@@ -2403,12 +2403,87 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
           setState(() => _replay = _travel.value);
         }
       });
+    unawaited(_flushPendingPaths());
   }
 
   @override
   void dispose() {
     _travel.dispose();
     super.dispose();
+  }
+
+  Future<void> _flushPendingPaths() async {
+    final preferences = await SharedPreferences.getInstance();
+    const key = 'handunia_pending_paths_v1';
+    final raw = preferences.getString(key);
+    if (raw == null || raw.isEmpty) {
+      return;
+    }
+
+    List<dynamic> queued;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) {
+        await preferences.remove(key);
+        return;
+      }
+      queued = decoded;
+    } catch (_) {
+      await preferences.remove(key);
+      return;
+    }
+
+    final remaining = <dynamic>[];
+    for (final rawItem in queued) {
+      if (rawItem is! Map) {
+        continue;
+      }
+      final item = Map<String, dynamic>.from(rawItem);
+      final fragmentId = item['fragment_id']?.toString() ?? '';
+      final capturedAt = DateTime.tryParse(
+        item['captured_at']?.toString() ?? '',
+      );
+      final rawPoints = item['path_points'];
+      if (fragmentId.isEmpty || rawPoints is! List) {
+        continue;
+      }
+      final points = <Map<String, double>>[];
+      for (final rawPoint in rawPoints) {
+        if (rawPoint is! Map) {
+          continue;
+        }
+        final x = rawPoint['x'];
+        final y = rawPoint['y'];
+        if (x is num && y is num) {
+          points.add(<String, double>{
+            'x': x.toDouble(),
+            'y': y.toDouble(),
+          });
+        }
+      }
+      if (points.length < 2) {
+        continue;
+      }
+
+      try {
+        await HanduniaConsultationExtendedData.savePath(
+          fragmentId: fragmentId,
+          points: points,
+          capturedAt: capturedAt,
+        );
+      } catch (_) {
+        remaining.add(item);
+      }
+    }
+
+    if (remaining.isEmpty) {
+      await preferences.remove(key);
+      if (mounted && _notice == 'En attente de réseau') {
+        setState(() => _notice = null);
+      }
+    } else {
+      await preferences.setString(key, jsonEncode(remaining));
+    }
   }
 
   Future<void> _save(Size size) async {
@@ -2430,7 +2505,9 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
       await HanduniaConsultationExtendedData.savePath(
         fragmentId: id,
         points: normalized,
+        capturedAt: DateTime.parse(capturedAt),
       );
+      unawaited(_flushPendingPaths());
       if (mounted) {
         setState(() => _notice = null);
       }
