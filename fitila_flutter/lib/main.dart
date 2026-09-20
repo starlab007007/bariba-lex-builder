@@ -26238,8 +26238,8 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     }
     setState(() => _generating = true);
     try {
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(
+      await Navigator.of(context).push<bool>(
+        MaterialPageRoute<bool>(
           builder: (_) => HanduniaAiCreationRoute(
             lieu: Map<String, dynamic>.from(lieu),
             voiceCount: _density[lieu['id']?.toString() ?? ''] ?? 0,
@@ -27394,10 +27394,23 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       pendingCount: _worldFeed
           .where((item) => item['local_only'] == true)
           .length,
-      onBack: () => Navigator.of(context).maybePop(),
+      onBack: () => setState(() => _step = 1),
       onRefresh: _openWorldFeed,
       onFilterChanged: _changeWorldFeedFilter,
       onOpenMemory: _openWorldMemory,
+      onPublish: () {
+        setState(() {
+          _step = 1;
+          _selectedLieu = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Choisissez un lieu, puis publiez votre souvenir.',
+            ),
+          ),
+        );
+      },
       onFindMissingVoice: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => HanduniaLivingMapRoute(
