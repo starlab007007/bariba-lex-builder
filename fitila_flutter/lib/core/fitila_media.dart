@@ -77,15 +77,38 @@ class FitilaMediaController {
     recording = true;
   }
 
+  Future<void> startHanduniaOpusAudio() async {
+    if (!await _recorder.hasPermission()) {
+      throw StateError('Autorisation microphone refusée.');
+    }
+    if (!await _recorder.isEncoderSupported(AudioEncoder.opus)) {
+      throw StateError('Codec Opus indisponible sur cet appareil.');
+    }
+    final directory = await getTemporaryDirectory();
+    final path =
+        '${directory.path}${Platform.pathSeparator}handunia_${DateTime.now().millisecondsSinceEpoch}.opus';
+    await _recorder.start(
+      const RecordConfig(
+        encoder: AudioEncoder.opus,
+        sampleRate: 16000,
+        numChannels: 1,
+        bitRate: 16000,
+      ),
+      path: path,
+    );
+    recording = true;
+  }
+
   Future<FitilaMediaAsset?> stopAudio() async {
     final path = await _recorder.stop();
     recording = false;
     if (path == null || !File(path).existsSync()) return null;
+    final lowerPath = path.toLowerCase();
     return FitilaMediaAsset(
       path: path,
       name: path.split(Platform.pathSeparator).last,
       mediaType: 'audio',
-      contentType: 'audio/mp4',
+      contentType: lowerPath.endsWith('.opus') ? 'audio/opus' : 'audio/mp4',
     );
   }
 
