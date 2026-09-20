@@ -5,7 +5,6 @@ import 'package:audioplayers/audioplayers.dart' as audio;
 import 'package:flutter/material.dart';
 
 import '../core/fitila_media.dart';
-import 'handunia_consultation_routes.dart';
 import 'handunia_consultation_ui.dart';
 import 'handunia_geo_trace_route.dart';
 import 'handunia_creation_ai_data.dart';
