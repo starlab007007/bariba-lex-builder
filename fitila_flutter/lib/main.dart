@@ -26729,6 +26729,8 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
 
   bool _loadingWorldFeed = false;
   List<Map<String, dynamic>> _worldFeed = const [];
+  bool _syncingOffline = false;
+  int _syncedOfflineCount = 0;
 
   @override
   void initState() {
@@ -26783,21 +26785,55 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     setState(() {
       _loadingLieux = true;
       _lieuxError = null;
+      _syncedOfflineCount = 0;
     });
     try {
       final results = await Future.wait([
         FitilaBackend.fetchHanduniaLieux(),
         FitilaBackend.fetchHanduniaDensity(),
       ]);
+      final serverLieux = results[0] as List<Map<String, dynamic>>;
+      var serverDensity = results[1] as Map<String, int>;
+
+      if (mounted) {
+        setState(() => _syncingOffline = true);
+      }
+      var synced = 0;
+      try {
+        synced = await _syncPendingLocalFragments(serverLieux);
+        if (synced > 0) {
+          serverDensity = await FitilaBackend.fetchHanduniaDensity();
+        }
+      } catch (_) {
+        // La synchronisation locale est best-effort : elle ne bloque jamais
+        // l'accès au monde vivant ni les données déjà disponibles.
+      }
+
       if (!mounted) {
         return;
       }
       setState(() {
-        _lieux = results[0] as List<Map<String, dynamic>>;
-        _density = results[1] as Map<String, int>;
+        _lieux = serverLieux;
+        _density = serverDensity;
         _backendUnavailable = false;
         _loadingLieux = false;
+        _syncingOffline = false;
+        _syncedOfflineCount = synced;
       });
+      if (synced > 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+            SnackBar(
+              content: Text(
+                synced == 1
+                    ? '1 souvenir hors ligne a été synchronisé.'
+                    : '$synced souvenirs hors ligne ont été synchronisés.',
+              ),
+            ),
+          );
+        });
+      }
     } catch (_) {
       if (!mounted) {
         return;
@@ -26810,11 +26846,54 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         _lieuxError = null;
         _backendUnavailable = true;
         _loadingLieux = false;
+        _syncingOffline = false;
       });
     }
   }
 
-  String _localFragmentKey(String lieuId) =>
+  Future<int> _syncPendingLocalFragments(
+    List<Map<String, dynamic>> lieux,
+  ) async {
+    if (!FitilaBackend.configured) {
+      return 0;
+    }
+    final preferences = await SharedPreferences.getInstance();
+    var synced = 0;
+    for (final lieu in lieux) {
+      final lieuId = lieu['id']?.toString() ?? '';
+      if (lieuId.isEmpty) {
+        continue;
+      }
+      final key = _localFragmentKey(lieuId);
+      final pending = List<String>.from(
+        preferences.getStringList(key) ?? const <String>[],
+      );
+      if (pending.isEmpty) {
+        continue;
+      }
+      final remaining = <String>[];
+      for (final text in pending) {
+        try {
+          await FitilaBackend.weaveHanduniaFragment(
+            lieuId: lieuId,
+            text: text,
+            aiGenerated: false,
+          );
+          synced += 1;
+        } catch (_) {
+          remaining.add(text);
+        }
+      }
+      if (remaining.isEmpty) {
+        await preferences.remove(key);
+      } else {
+        await preferences.setStringList(key, remaining);
+      }
+    }
+    return synced;
+  }
+
+  String _localFragmentKey(String lieuId) =>  String _localFragmentKey(String lieuId) =>
       'handunia_wasa_local_fragments_$lieuId';
 
   Future<List<Map<String, dynamic>>> _readLocalFragments(String lieuId) async {
@@ -27045,7 +27124,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         SnackBar(
           content: Text(
             savedLocally
-                ? 'Souvenir conservé sur cet appareil. Il sera à retisser lorsque le service communautaire sera disponible.'
+                ? 'Souvenir conservé sur cet appareil. Il sera synchronisé automatiquement lorsque le service communautaire sera de nouveau disponible.'
                 : 'Votre souvenir a rejoint le monde vivant.',
           ),
         ),
@@ -27273,26 +27352,50 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     final likeCount = (fragment['like_count'] as int?) ?? 0;
     final liked = fragment['liked_by_me'] == true;
     final localOnly = fragment['local_only'] == true;
+    final displayName =
+        fragment['display_name']?.toString().trim().isNotEmpty == true
+        ? fragment['display_name'].toString().trim()
+        : 'Griot Fitila';
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(10),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: _fitilaCard,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _fitilaBorder),
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF151D2C), Color(0xFF0D141F)],
+        ),
+        border: Border.all(color: const Color(0x1FFFFFFF)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 20,
+            offset: Offset(0, 10),
+            spreadRadius: -12,
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 14,
-            backgroundColor: _fitilaPrimarySoft,
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [Color(0xFF8FE3CF), Color(0xFF4A3B78)],
+              ),
+              border: Border.all(color: Colors.white.withValues(alpha: .14)),
+            ),
             child: Text(
-              _initialLetter(fragment['display_name']?.toString()),
+              _initialLetter(displayName),
               style: const TextStyle(
-                color: _fitilaGoldDeep,
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
+                color: Color(0xFF071018),
+                fontWeight: FontWeight.w900,
+                fontSize: 13,
               ),
             ),
           ),
@@ -27305,57 +27408,71 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        fragment['display_name']?.toString() ?? 'Griot Fitila',
+                        displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                           fontSize: 12.5,
                         ),
                       ),
                     ),
                     if (localOnly)
-                      Icon(
-                        Icons.offline_pin_rounded,
-                        size: 12,
-                        color: _fitilaGoldDeep,
+                      const _HanduniaTinyBadge(
+                        icon: Icons.cloud_off_rounded,
+                        label: 'local',
                       )
                     else if (fragment['ai_generated'] == true)
-                      Icon(
-                        Icons.auto_awesome_rounded,
-                        size: 12,
-                        color: _fitilaGoldDeep,
+                      const _HanduniaTinyBadge(
+                        icon: Icons.auto_awesome_rounded,
+                        label: 'assisté IA',
                       ),
-                    if (showLieu) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        '${fragment['lieu_icon'] ?? ''} ${fragment['lieu_name'] ?? ''}',
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          color: _fitilaMuted,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
-                const SizedBox(height: 2),
+                if (showLieu) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    '${fragment['lieu_icon'] ?? '📍'} ${fragment['lieu_name'] ?? ''}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      color: Color(0xFF8FE3CF),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 7),
                 Text(
                   fragment['text']?.toString() ?? '',
-                  style: const TextStyle(fontSize: 12.5),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: .86),
+                    fontSize: 12.5,
+                    height: 1.42,
+                  ),
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 6),
           Column(
             children: [
               IconButton(
+                tooltip: localOnly
+                    ? 'Synchronisation requise avant de pouvoir aimer'
+                    : liked
+                    ? 'Retirer le j’aime'
+                    : 'J’aime',
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
                 icon: Icon(
                   liked
                       ? Icons.favorite_rounded
                       : Icons.favorite_border_rounded,
-                  size: 17,
-                  color: liked ? _fitilaClay : _fitilaMuted,
+                  size: 19,
+                  color: liked
+                      ? const Color(0xFFFF7F73)
+                      : Colors.white.withValues(alpha: .46),
                 ),
                 onPressed: localOnly
                     ? null
@@ -27363,7 +27480,11 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
               ),
               Text(
                 '$likeCount',
-                style: TextStyle(fontSize: 10, color: _fitilaMuted),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.white.withValues(alpha: .48),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -27373,19 +27494,281 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   }
 
   @override
+  Widget build(BuildContext context) {  @override
   Widget build(BuildContext context) {
-    return _PageFrame(
-      title: 'Handunia Wasa',
-      subtitle:
-          'Le monde vivant Bàátɔ̀nú, tissé par chaque voix, chaque souvenir, chaque récit.',
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 260),
-        child: KeyedSubtree(key: ValueKey(_step), child: _buildStepBody()),
+    final totalMemories = _density.values.fold<int>(
+      0,
+      (total, value) => total + value,
+    );
+    final statusLabel = _backendUnavailable
+        ? 'Mode hors ligne'
+        : _syncingOffline
+        ? 'Synchronisation…'
+        : _syncedOfflineCount > 0
+        ? '$_syncedOfflineCount synchronisé(s)'
+        : 'Monde connecté';
+
+    final handuniaTheme = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF8FE3CF),
+        brightness: Brightness.dark,
+      ),
+      scaffoldBackgroundColor: Colors.transparent,
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFF0E1725),
+        hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.38)),
+        labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.72)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(18)),
+          borderSide: BorderSide(color: Color(0xFF8FE3CF), width: 1.4),
+        ),
+      ),
+    );
+
+    return Theme(
+      data: handuniaTheme,
+      child: Material(
+        color: const Color(0xFF070B14),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: Stack(
+              children: [
+                const Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFF08101B),
+                          Color(0xFF111526),
+                          Color(0xFF0A1118),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: -90,
+                  right: -70,
+                  child: IgnorePointer(
+                    child: Container(
+                      width: 250,
+                      height: 250,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF4A3B78).withValues(alpha: 0.22),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x334A3B78),
+                            blurRadius: 90,
+                            spreadRadius: 26,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: -120,
+                  left: -70,
+                  child: IgnorePointer(
+                    child: Container(
+                      width: 260,
+                      height: 260,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF3F6E52).withValues(alpha: 0.18),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x333F6E52),
+                            blurRadius: 100,
+                            spreadRadius: 32,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+                      child: Row(
+                        children: [
+                          Material(
+                            color: Colors.white.withValues(alpha: 0.07),
+                            borderRadius: BorderRadius.circular(16),
+                            child: IconButton(
+                              tooltip: 'Retour',
+                              onPressed: () => Navigator.maybePop(context),
+                              icon: const Icon(Icons.arrow_back_rounded),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            width: 42,
+                            height: 42,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(14),
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF8FE3CF), Color(0xFF4A3B78)],
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x338FE3CF),
+                                  blurRadius: 20,
+                                  spreadRadius: -4,
+                                ),
+                              ],
+                            ),
+                            child: const Text('🌌', style: TextStyle(fontSize: 21)),
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Handunia Wasa',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                                Text(
+                                  'Monde vivant · mémoire collective',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Color(0xFF9AA7B8),
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            constraints: const BoxConstraints(maxWidth: 132),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: (_backendUnavailable
+                                      ? const Color(0xFFF59E0B)
+                                      : const Color(0xFF10B981))
+                                  .withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: (_backendUnavailable
+                                        ? const Color(0xFFF59E0B)
+                                        : const Color(0xFF10B981))
+                                    .withValues(alpha: 0.28),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _backendUnavailable
+                                      ? Icons.cloud_off_rounded
+                                      : _syncingOffline
+                                      ? Icons.sync_rounded
+                                      : Icons.public_rounded,
+                                  size: 13,
+                                  color: _backendUnavailable
+                                      ? const Color(0xFFFFC768)
+                                      : const Color(0xFF7FE2BE),
+                                ),
+                                const SizedBox(width: 5),
+                                Flexible(
+                                  child: Text(
+                                    statusLabel,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_step != 0)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 2, 14, 8),
+                        child: Row(
+                          children: [
+                            _HanduniaMetric(
+                              icon: Icons.place_rounded,
+                              value: '${_lieux.length}',
+                              label: 'lieux',
+                            ),
+                            const SizedBox(width: 8),
+                            _HanduniaMetric(
+                              icon: Icons.auto_stories_rounded,
+                              value: '$totalMemories',
+                              label: 'souvenirs',
+                            ),
+                            const Spacer(),
+                            if (_step == 1)
+                              IconButton(
+                                tooltip: 'Actualiser',
+                                onPressed: _loadingLieux ? null : _loadLieux,
+                                icon: const Icon(Icons.refresh_rounded),
+                              ),
+                          ],
+                        ),
+                      ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 4, 14, 12),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 320),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          child: KeyedSubtree(
+                            key: ValueKey(_step),
+                            child: _buildStepBody(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildStepBody() {
+  Widget _buildStepBody() {  Widget _buildStepBody() {
     switch (_step) {
       case 1:
         return _buildLieuxStep();
@@ -27406,325 +27789,532 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   // 1/4 — Portail d'entrée : un seuil qui respire lentement, pour
   // signaler qu'on entre ailleurs, pas dans un menu.
   Widget _buildPortalStep() {
-    return SizedBox(
-      width: double.infinity,
-      child: Column(
-        children: [
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: const RadialGradient(
-                  center: Alignment(0, -0.1),
-                  radius: 1.1,
-                  colors: [
-                    Color(0xFF4A3B78),
-                    Color(0xFF241F2E),
-                    Color(0xFF14111C),
+    final totalMemories = _density.values.fold<int>(
+      0,
+      (total, value) => total + value,
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                constraints: const BoxConstraints(minHeight: 360),
+                padding: const EdgeInsets.fromLTRB(22, 28, 22, 24),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF2E2352),
+                      Color(0xFF14283A),
+                      Color(0xFF0B151C),
+                    ],
+                  ),
+                  border: Border.all(color: const Color(0x338FE3CF)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x5531265C),
+                      blurRadius: 42,
+                      offset: Offset(0, 18),
+                      spreadRadius: -20,
+                    ),
                   ],
-                  stops: [0.0, 0.6, 1.0],
                 ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 170,
-                    height: 170,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        for (final size in [80.0, 120.0, 160.0])
-                          Container(
-                            width: size,
-                            height: size,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: const Color(
-                                  0xFF8FE3CF,
-                                ).withValues(alpha: 0.28),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 174,
+                      height: 174,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          for (final size in [92.0, 132.0, 172.0])
+                            Container(
+                              width: size,
+                              height: size,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFF8FE3CF).withValues(
+                                    alpha: size == 92 ? 0.42 : 0.18,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        Container(
-                          width: 54,
-                          height: 54,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: RadialGradient(
-                              colors: [Color(0xFF8FE3CF), Color(0xFF3F6E52)],
+                          Container(
+                            width: 72,
+                            height: 72,
+                            alignment: Alignment.center,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: RadialGradient(
+                                colors: [Color(0xFFB3F4E4), Color(0xFF3F6E52)],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0x668FE3CF),
+                                  blurRadius: 32,
+                                  spreadRadius: -5,
+                                ),
+                              ],
                             ),
+                            child: const Text('🌍', style: TextStyle(fontSize: 31)),
                           ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'Le monde vivant Bàátɔ̀nú',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 25,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 9),
+                    Text(
+                      'Entrez dans une mémoire collective faite de lieux, de voix et de souvenirs transmis par la communauté.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.67),
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _HanduniaPill(
+                          icon: Icons.place_rounded,
+                          label: '${_lieux.length} lieux',
+                        ),
+                        _HanduniaPill(
+                          icon: Icons.auto_stories_rounded,
+                          label: '$totalMemories souvenirs',
+                        ),
+                        const _HanduniaPill(
+                          icon: Icons.auto_awesome_rounded,
+                          label: 'Fitila IA',
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Handunia Wasa',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'serif',
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => setState(() => _step = 1),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(56),
+                    backgroundColor: const Color(0xFF8FE3CF),
+                    foregroundColor: const Color(0xFF071018),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 30),
-                    child: Text(
-                      'Le monde vivant Bàátɔ̀nú, tissé par chaque voix, chaque souvenir, chaque récit.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.65),
-                        fontSize: 12.5,
-                        height: 1.4,
-                      ),
-                    ),
+                  icon: const Icon(Icons.explore_rounded),
+                  label: const Text(
+                    'Entrer dans le monde',
+                    style: TextStyle(fontWeight: FontWeight.w900),
                   ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(height: 10),
+              Text(
+                'Chaque souvenir reste attribué à son auteur. L’IA aide à relier la mémoire, elle ne remplace pas les témoignages.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.42),
+                  fontSize: 10.5,
+                  height: 1.4,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () => setState(() => _step = 1),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: const Text(
-                'Entrer dans le monde',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  // 2/4 — Carte des lieux vivants : chaque lieu se densifie visuellement
+  // 2/4 — Carte des lieux vivants  // 2/4 — Carte des lieux vivants : chaque lieu se densifie visuellement
   // à mesure que la communauté y dépose souvenirs, voix et récits —
   // une vraie densité, jamais fabriquée (voir _densityPercent).
   Widget _buildLieuxStep() {
+    final memories = _density.values.fold<int>(
+      0,
+      (total, value) => total + value,
+    );
     return SizedBox(
       width: double.infinity,
       child: _loadingLieux
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF8FE3CF)),
+            )
           : _lieuxError != null
           ? Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(_lieuxError!),
-                  const SizedBox(height: 10),
-                  FilledButton(
+                  const Icon(
+                    Icons.cloud_off_rounded,
+                    size: 42,
+                    color: Color(0xFFFFC768),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _lieuxError!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
                     onPressed: _loadLieux,
-                    child: const Text('Réessayer'),
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Réessayer'),
                   ),
                 ],
               ),
             )
-          : ListView(
-              children: [
-                Row(
-                  children: [
-                    const Text('🌐', style: TextStyle(fontSize: 16)),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Lieux vivants',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: _backendUnavailable
-                          ? () => ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Le fil communautaire nécessite la synchronisation du serveur.',
-                                ),
-                              ),
-                            )
-                          : _openWorldFeed,
-                      icon: const Icon(Icons.dynamic_feed_rounded, size: 16),
-                      label: const Text('Fil du monde'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                if (_backendUnavailable) ...[
+          : RefreshIndicator(
+              color: const Color(0xFF8FE3CF),
+              onRefresh: _loadLieux,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
                   Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: _fitilaPrimarySoft.withValues(alpha: 0.55),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      'Mode hors ligne : les lieux de départ restent accessibles et vos souvenirs sont conservés sur cet appareil.',
-                      style: TextStyle(fontSize: 11.5),
-                    ),
-                  ),
-                ],
-                Text(
-                  '${_lieux.length} lieux tissés par la communauté — ouverts à tous, sans limite',
-                  style: TextStyle(color: _fitilaMuted, fontSize: 12),
-                ),
-                const SizedBox(height: 12),
-                _HanduniaTextField(
-                  controller: _lieuxQuery,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    hintText: 'Rechercher un lieu…',
-                    prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                    isDense: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    ChoiceChip(
-                      label: const Text('🔥 Populaires'),
-                      selected: _sortByPopular,
-                      onSelected: (_) => setState(() => _sortByPopular = true),
-                    ),
-                    const SizedBox(width: 8),
-                    ChoiceChip(
-                      label: const Text('🆕 Récents'),
-                      selected: !_sortByPopular,
-                      onSelected: (_) => setState(() => _sortByPopular = false),
-                    ),
-                    const Spacer(),
-                    OutlinedButton.icon(
-                      onPressed: _backendUnavailable
-                          ? () => ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'La création d’un lieu nécessite la synchronisation du serveur.',
-                                ),
-                              ),
-                            )
-                          : _openCreateLieuStep,
-                      icon: const Icon(
-                        Icons.add_location_alt_rounded,
-                        size: 16,
+                      borderRadius: BorderRadius.circular(24),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF161E31), Color(0xFF101923)],
                       ),
-                      label: const Text('Nouveau lieu'),
+                      border: Border.all(color: const Color(0x1FFFFFFF)),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                if (_visibleLieux.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                      child: Text(
-                        "Aucun lieu ne correspond — soyez le premier à en tisser un.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: _fitilaMuted, fontSize: 12.5),
-                      ),
-                    ),
-                  )
-                else
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 14,
-                          crossAxisSpacing: 14,
-                          childAspectRatio: 0.92,
-                        ),
-                    itemCount: _visibleLieux.length,
-                    itemBuilder: (context, index) {
-                      final lieu = _visibleLieux[index];
-                      final id = lieu['id'] as String;
-                      final percent = _densityPercent(id);
-                      return GestureDetector(
-                        onTap: () => _openLieu(lieu),
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: _fitilaInk,
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(16),
+                            color: const Color(0xFF8FE3CF).withValues(alpha: .12),
                           ),
+                          child: const Text('🌐', style: TextStyle(fontSize: 22)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
                           child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SizedBox(
-                                width: 62,
-                                height: 62,
-                                child: Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    CustomPaint(
-                                      size: const Size(62, 62),
-                                      painter: _ScoreRingPainter(
-                                        progress: percent / 100,
-                                      ),
-                                    ),
-                                    Text(
-                                      lieu['icon']?.toString() ?? '📍',
-                                      style: const TextStyle(fontSize: 22),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                lieu['name']?.toString() ?? '',
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              Text(
-                                lieu['created_by'] == null
-                                    ? 'Densité $percent%'
-                                    : 'Densité $percent% · communauté',
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              const Text(
+                                'Lieux vivants',
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.5),
-                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 18,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${_lieux.length} lieux · $memories souvenirs tissés',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: .48),
+                                  fontSize: 11.5,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      );
-                    },
+                        TextButton.icon(
+                          onPressed: _backendUnavailable
+                              ? () => ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Le fil communautaire nécessite la synchronisation du serveur.',
+                                    ),
+                                  ),
+                                )
+                              : _openWorldFeed,
+                          icon: const Icon(Icons.dynamic_feed_rounded, size: 17),
+                          label: const Text('Fil du monde'),
+                        ),
+                      ],
+                    ),
                   ),
-                const SizedBox(height: 12),
-                const _FitilaCollapsibleNote(
-                  icon: Icons.info_outline_rounded,
-                  summary: "D'où vient la densité affichée ?",
-                  detail:
-                      "Chaque pourcentage reflète le nombre réel de souvenirs déjà tissés pour ce lieu (20 souvenirs = lieu pleinement dense) — jamais un chiffre fabriqué. Un lieu à 0% n'a simplement reçu aucun souvenir pour le moment. N'importe quel membre peut tisser un nouveau lieu : les 7 lieux d'origine ne sont qu'un point de départ.",
-                ),
-              ],
+                  if (_backendUnavailable) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF59E0B).withValues(alpha: .10),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: const Color(0xFFF59E0B).withValues(alpha: .24),
+                        ),
+                      ),
+                      child: const Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.offline_bolt_rounded,
+                            size: 18,
+                            color: Color(0xFFFFC768),
+                          ),
+                          SizedBox(width: 9),
+                          Expanded(
+                            child: Text(
+                              'Mode hors ligne : les lieux de départ restent accessibles et vos souvenirs sont conservés sur cet appareil puis synchronisés automatiquement au retour du réseau.',
+                              style: TextStyle(
+                                color: Color(0xFFFFDCA0),
+                                fontSize: 11.5,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  _HanduniaTextField(
+                    controller: _lieuxQuery,
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(
+                      hintText: 'Rechercher un lieu…',
+                      prefixIcon: Icon(Icons.search_rounded, size: 20),
+                      suffixIcon: Icon(Icons.travel_explore_rounded, size: 18),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      ChoiceChip(
+                        avatar: const Icon(Icons.local_fire_department_rounded, size: 16),
+                        label: const Text('Populaires'),
+                        selected: _sortByPopular,
+                        onSelected: (_) => setState(() => _sortByPopular = true),
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        avatar: const Icon(Icons.schedule_rounded, size: 16),
+                        label: const Text('Récents'),
+                        selected: !_sortByPopular,
+                        onSelected: (_) => setState(() => _sortByPopular = false),
+                      ),
+                      const Spacer(),
+                      IconButton.filledTonal(
+                        tooltip: 'Nouveau lieu',
+                        onPressed: _backendUnavailable
+                            ? () => ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'La création d’un lieu nécessite la synchronisation du serveur.',
+                                  ),
+                                ),
+                              )
+                            : _openCreateLieuStep,
+                        icon: const Icon(Icons.add_location_alt_rounded),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  if (_visibleLieux.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 34,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: .035),
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: Colors.white.withValues(alpha: .08)),
+                      ),
+                      child: const Column(
+                        children: [
+                          Icon(Icons.map_outlined, size: 38, color: Color(0xFF8FE3CF)),
+                          SizedBox(height: 10),
+                          Text(
+                            'Aucun lieu ne correspond.',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          SizedBox(height: 5),
+                          Text(
+                            'Modifiez la recherche ou tissez un nouveau lieu.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Color(0xFF93A0B0), fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 0.82,
+                          ),
+                      itemCount: _visibleLieux.length,
+                      itemBuilder: (context, index) {
+                        final lieu = _visibleLieux[index];
+                        final id = lieu['id'] as String;
+                        final percent = _densityPercent(id);
+                        final count = _density[id] ?? 0;
+                        final palettes = const [
+                          [Color(0xFF25324A), Color(0xFF101826)],
+                          [Color(0xFF32264D), Color(0xFF171222)],
+                          [Color(0xFF15392F), Color(0xFF0C1A17)],
+                          [Color(0xFF3D2B21), Color(0xFF1D1511)],
+                        ];
+                        final palette = palettes[index % palettes.length];
+                        return Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(22),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(22),
+                            onTap: () => _openLieu(lieu),
+                            child: Ink(
+                              padding: const EdgeInsets.all(13),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(22),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: palette,
+                                ),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: .09),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 58,
+                                        height: 58,
+                                        child: Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            CustomPaint(
+                                              size: const Size(58, 58),
+                                              painter: _ScoreRingPainter(
+                                                progress: percent / 100,
+                                              ),
+                                            ),
+                                            Text(
+                                              lieu['icon']?.toString() ?? '📍',
+                                              style: const TextStyle(fontSize: 22),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 7,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withValues(alpha: .18),
+                                          borderRadius: BorderRadius.circular(999),
+                                        ),
+                                        child: Text(
+                                          '$percent%',
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w900,
+                                            color: Color(0xFF8FE3CF),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    lieu['name']?.toString() ?? '',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w900,
+                                      height: 1.15,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    lieu['description']?.toString() ?? '',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: .46),
+                                      fontSize: 10.5,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.auto_stories_rounded,
+                                        size: 13,
+                                        color: Color(0xFF8FE3CF),
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Expanded(
+                                        child: Text(
+                                          count == 0
+                                              ? 'Premier souvenir attendu'
+                                              : '$count souvenir${count > 1 ? 's' : ''}',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(alpha: .64),
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  const SizedBox(height: 14),
+                  const _FitilaCollapsibleNote(
+                    icon: Icons.info_outline_rounded,
+                    summary: "Comment fonctionne la densité ?",
+                    detail:
+                        "La densité reflète le nombre réel de souvenirs tissés pour chaque lieu (20 souvenirs = 100 %). Un lieu à 0 % n'a encore reçu aucun souvenir : aucun chiffre n'est inventé.",
+                  ),
+                  const SizedBox(height: 18),
+                ],
+              ),
             ),
     );
   }
 
-  // 3/4 — Présence dans un lieu généré : scène abstraite tissée à
+  // 3/4 — Présence dans un lieu généré  // 3/4 — Présence dans un lieu généré : scène abstraite tissée à
   // partir de récits réels ; l'IA est la présence gardienne de la
   // mémoire — jamais une personne précise inventée.
   Widget _buildSceneStep() {
@@ -28232,13 +28822,31 @@ class _HanduniaTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final base = decoration ?? const InputDecoration();
     return Material(
-      type: MaterialType.transparency,
+      color: Colors.transparent,
       child: TextField(
         controller: controller,
         onChanged: onChanged,
         onSubmitted: onSubmitted,
-        decoration: decoration,
+        decoration: base.copyWith(
+          filled: true,
+          fillColor: const Color(0xFF0E1725),
+          hintStyle: const TextStyle(color: Color(0xFF667487)),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: BorderSide(
+              color: Colors.white.withValues(alpha: .10),
+            ),
+          ),
+          focusedBorder: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(18)),
+            borderSide: BorderSide(color: Color(0xFF8FE3CF), width: 1.4),
+          ),
+        ),
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        cursorColor: const Color(0xFF8FE3CF),
+        controller: controller,
         maxLines: maxLines,
         maxLength: maxLength,
       ),
@@ -28247,7 +28855,116 @@ class _HanduniaTextField extends StatelessWidget {
 }
 
 
-class _WeaveLinePainter extends CustomPainter {
+class _HanduniaMetric extends StatelessWidget {
+  const _HanduniaMetric({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .055),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: .08)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: const Color(0xFF8FE3CF)),
+          const SizedBox(width: 6),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: .48),
+              fontSize: 10,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HanduniaPill extends StatelessWidget {
+  const _HanduniaPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .07),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: .09)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: const Color(0xFF8FE3CF)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HanduniaTinyBadge extends StatelessWidget {
+  const _HanduniaTinyBadge({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFF8FE3CF).withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: const Color(0xFF8FE3CF).withValues(alpha: .18),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 10, color: const Color(0xFF8FE3CF)),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFFB9F2E4),
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeaveLinePainter extends CustomPainter {class _WeaveLinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final linePaint = Paint()
