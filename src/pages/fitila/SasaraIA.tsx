@@ -221,18 +221,34 @@ export default function SasaraIA() {
         translation = result.translation;
         method = result.method || method;
       } catch (primaryError) {
-        const { data, error } = await supabase.functions.invoke('ai-translate', {
+        const { data: refinedData, error: refinedError } = await supabase.functions.invoke('refine-bariba', {
           body: {
             text: input,
-            sourceLang: sourceLanguage,
-            targetLang: targetLanguage,
+            type: 'translate',
+            direction,
+            style: 'natural',
           },
         });
-        if (error || data?.error || !data?.translation) {
+
+        if (!refinedError && refinedData?.refined) {
+          translation = String(refinedData.refined);
+          method = 'Sasara IA';
+        } else if (user) {
+          const { data, error } = await supabase.functions.invoke('ai-translate', {
+            body: {
+              text: input,
+              sourceLang: sourceLanguage,
+              targetLang: targetLanguage,
+            },
+          });
+          if (error || data?.error || !data?.translation) {
+            throw primaryError;
+          }
+          translation = String(data.translation);
+          method = data.model || 'IA FITILA';
+        } else {
           throw primaryError;
         }
-        translation = String(data.translation);
-        method = data.model || 'IA FITILA';
       }
 
       if (!translation.trim()) throw new Error('Empty translation');
