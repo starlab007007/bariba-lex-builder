@@ -836,17 +836,17 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
       final x = ((lng - minLng) / lngSpan).clamp(0.0, 1.0).toDouble();
       final y =
           (1 - (lat - minLat) / latSpan).clamp(0.0, 1.0).toDouble();
-      return Alignment(x * 1.6 - .8, y * 1.6 - .8);
+      return Alignment(x * 1.4 - .7, y * 1.36 - .68);
     }
 
     const fallback = <Alignment>[
-      Alignment(-.72, -.78),
-      Alignment(.54, -.72),
-      Alignment(-.12, -.08),
-      Alignment(.68, .10),
-      Alignment(-.60, .68),
-      Alignment(.18, .78),
-      Alignment(.72, .66),
+      Alignment(-.66, -.68),
+      Alignment(.54, -.64),
+      Alignment(-.14, -.10),
+      Alignment(.62, .08),
+      Alignment(-.56, .56),
+      Alignment(.16, .66),
+      Alignment(.60, .58),
     ];
     return fallback[index % fallback.length];
   }
@@ -1025,8 +1025,7 @@ class _MapPlaceNode extends StatelessWidget {
         child: GestureDetector(
           onTap: onTap,
           child: SizedBox(
-            width: 142,
-            height: 118,
+            width: 148,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1084,7 +1083,7 @@ class _MapPlaceNode extends StatelessWidget {
                         '$voices voix',
                         textAlign: TextAlign.center,
                         style: _karlaRoute(
-                          size: 11.5,
+                          size: 12.5,
                           color: voices > 0
                               ? HanduniaTokens.braise
                               : HanduniaTokens.cendre,
