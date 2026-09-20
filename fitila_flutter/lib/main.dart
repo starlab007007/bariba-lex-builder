@@ -27,6 +27,7 @@ import 'core/web_parity_models.dart';
 import 'handunia/handunia_consultation_data.dart';
 import 'handunia/handunia_consultation_model.dart';
 import 'handunia/handunia_consultation_routes.dart';
+import 'handunia/handunia_creation_ai_route.dart';
 import 'handunia/handunia_consultation_ui.dart';
 import 'ui/reference_creation_ui.dart';
 
@@ -26230,36 +26231,22 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
 
   Future<void> _generateFragment() async {
     final lieu = _selectedLieu;
-    setState(() => _generating = true);
-    try {
-      final name = lieu?['name']?.toString() ?? 'Handunia Wasa';
-      final description = lieu?['description']?.toString() ?? '';
-      final prompt =
-          'Imagine en 3 à 4 phrases un souvenir ou un petit récit inspiré du lieu "$name" ($description) '
-          'dans le monde bariba Handunia Wasa, comme un fragment que quelqu\'un du village raconterait. '
-          'Réponds uniquement par le fragment, sans introduction ni explication.';
-      final result = await FitilaBackend.askFitilaIa(prompt);
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _fragmentController.text = result;
-        _aiAssisted = true;
-      });
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Génération IA indisponible pour le moment.'),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _generating = false);
-      }
+    if (lieu == null) {
+      return;
     }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => HanduniaAiCreationRoute(
+          lieu: Map<String, dynamic>.from(lieu),
+          voiceCount: _density[lieu['id']?.toString() ?? ''] ?? 0,
+          onSaved: _loadLieux,
+        ),
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    await _openWorldFeed();
   }
 
   // "Tisser dans le monde vivant" — volontairement PAS une publication
@@ -27073,8 +27060,14 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         ],
         const SizedBox(height: 9),
         ReferenceGoldButton(
-          label: 'Tisser un souvenir ici',
-          icon: Icons.auto_stories_rounded,
+          label: 'Créer avec Lumière IA',
+          icon: Icons.light_mode_outlined,
+          onPressed: _generateFragment,
+        ),
+        const SizedBox(height: 8),
+        ReferenceGhostDarkButton(
+          label: 'Écrire sans IA',
+          icon: Icons.edit_note_outlined,
           onPressed: () => setState(() => _step = 3),
         ),
         const SizedBox(height: 12),
@@ -27151,11 +27144,11 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                     ),
                   )
                 : const Icon(
-                    Icons.auto_awesome_rounded,
+                    Icons.light_mode_outlined,
                     color: FitilaReferenceUi.wasaGlow,
                     size: 15,
                   ),
-            label: const Text('Aide Fitila IA'),
+            label: const Text('Créer avec Lumière IA'),
             style: TextButton.styleFrom(
               foregroundColor: Colors.white.withValues(alpha: .62),
               textStyle: const TextStyle(fontSize: 10.5),
