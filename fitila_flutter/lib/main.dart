@@ -23787,12 +23787,7 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Meilleure réponse actuelle : ' +
-                                      (_bestResponse!['display_name']?.toString() ??
-                                          'Griot Fitila') +
-                                      ' — ' +
-                                      (_bestResponse!['score'] ?? 0).toString() +
-                                      '%',
+                                  'Meilleure réponse actuelle : ${_bestResponse!['display_name']?.toString() ?? 'Griot Fitila'} — ${_bestResponse!['score'] ?? 0}%',
                                   style: const TextStyle(
                                     color: FitilaReferenceUi.inkSoft,
                                     fontSize: 11,
@@ -23863,7 +23858,7 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                               child: Text(
                                 challenge == null
                                     ? ''
-                                    : '"' + challenge.bariba + '"',
+                                    : '"${challenge.bariba}"',
                                 textAlign: TextAlign.center,
                                 style: FitilaReferenceUi.serif(
                                   size: 15,
@@ -23961,7 +23956,7 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                           ),
                         ),
                         Text(
-                          _chain.length.toString() + ' réponses',
+                          '${_chain.length} réponses',
                           style: const TextStyle(
                             color: FitilaReferenceUi.muted,
                             fontSize: 10.5,
@@ -24029,7 +24024,7 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
     return Text.rich(
       TextSpan(
         children: [
-          TextSpan(text: '"' + proverb.substring(0, index)),
+          TextSpan(text: '"${proverb.substring(0, index)}'),
           const WidgetSpan(
             alignment: PlaceholderAlignment.middle,
             child: DecoratedBox(
@@ -24049,7 +24044,7 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
               ),
             ),
           ),
-          TextSpan(text: proverb.substring(index + blank.length) + '"'),
+          TextSpan(text: '${proverb.substring(index + blank.length)}"'),
         ],
       ),
       textAlign: TextAlign.center,
@@ -24100,7 +24095,7 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  (entry['score'] ?? 0).toString() + '% de justesse',
+                  '${entry['score'] ?? 0}% de justesse',
                   style: const TextStyle(
                     color: FitilaReferenceUi.sageDeep,
                     fontSize: 10.5,
@@ -24126,7 +24121,7 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
             child: Padding(
               padding: const EdgeInsets.all(6),
               child: Text(
-                '♥ ' + (entry['vote_count'] ?? 0).toString(),
+                '♥ ${entry['vote_count'] ?? 0}',
                 style: TextStyle(
                   color: voted
                       ? FitilaReferenceUi.clay
@@ -26665,7 +26660,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         return ReferenceCreationShell(
           dark: true,
           title: 'Lieux vivants',
-          subtitle: _lieux.length.toString() + ' lieux tissés par la communauté',
+          subtitle: '${_lieux.length} lieux tissés par la communauté',
           leading: const Text('🌌', style: TextStyle(fontSize: 15)),
           onBack: () => setState(() => _step = 0),
           child: _buildLieuxStep(),
