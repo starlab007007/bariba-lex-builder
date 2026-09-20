@@ -1849,6 +1849,7 @@ class _HanduniaMemoryAnswerRouteState
   Map<String, dynamic>? _answer;
   bool _busy = false;
   bool _recording = false;
+  String? _notice;
 
   Future<void> _ask([String? provided]) async {
     final question = (provided ?? _questionController.text).trim();
@@ -1860,7 +1861,14 @@ class _HanduniaMemoryAnswerRouteState
       final answer =
           await HanduniaConsultationExtendedData.askMemory(question);
       if (mounted) {
-        setState(() => _answer = answer);
+        setState(() {
+          _answer = answer;
+          _notice = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _notice = 'En attente de réseau');
       }
     } finally {
       if (mounted) {
@@ -1922,6 +1930,18 @@ class _HanduniaMemoryAnswerRouteState
         child: Column(
           children: [
             _handuniaHeader(context, 'La mémoire répond'),
+            if (_notice != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  _notice!,
+                  style: _karlaRoute(
+                    size: 11.5,
+                    color: HanduniaTokens.terre,
+                    weight: FontWeight.w600,
+                  ),
+                ),
+              ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -2024,37 +2044,34 @@ class _HanduniaMemoryAnswerRouteState
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            state == 'refusal'
-                                ? _answer!['protocol']?.toString() ??
-                                      'Accès refusé'
-                                : _answer!['answer']?.toString() ??
-                                      'La communauté ne l’a pas encore raconté.',
-                            style: _frauncesRoute(
-                              size: 17,
-                              color: color,
-                              height: 1.55,
+                          if (state == 'sourced')
+                            HanduniaSourcedAnswer(
+                              answer:
+                                  _answer!['answer']?.toString() ??
+                                  'La communauté ne l’a pas encore raconté.',
+                              sources:
+                                  (_answer!['sources'] as List? ??
+                                          const <dynamic>[])
+                                      .whereType<Map>()
+                                      .map(
+                                        (source) =>
+                                            Map<String, dynamic>.from(source),
+                                      )
+                                      .toList(growable: false),
+                            )
+                          else
+                            Text(
+                              state == 'refusal'
+                                  ? _answer!['protocol']?.toString() ??
+                                        'Accès refusé'
+                                  : _answer!['answer']?.toString() ??
+                                        'La communauté ne l’a pas encore raconté.',
+                              style: _frauncesRoute(
+                                size: 17,
+                                color: color,
+                                height: 1.55,
+                              ),
                             ),
-                          ),
-                          if (state == 'sourced') ...[
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 7,
-                              runSpacing: 7,
-                              children: [
-                                for (final rawSource
-                                    in (_answer!['sources'] as List? ??
-                                        const <dynamic>[]))
-                                  PastilleSource(
-                                    temoin: (rawSource as Map)['witness']
-                                            ?.toString() ??
-                                        'TV',
-                                    annee:
-                                        rawSource['year']?.toString() ?? '',
-                                  ),
-                              ],
-                            ),
-                          ],
                         ],
                       ),
                     ),
@@ -2113,6 +2130,10 @@ class _HanduniaFoyerRouteState extends State<HanduniaFoyerRoute>
       if (mounted) {
         setState(() => _data = data);
       }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _data = null);
+      }
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -2162,6 +2183,15 @@ class _HanduniaFoyerRouteState extends State<HanduniaFoyerRoute>
                                 phase: _flame.value,
                               ),
                             ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          data['volume'].toString() + ' mémoires locales',
+                          textAlign: TextAlign.center,
+                          style: _frauncesRoute(
+                            size: 17,
+                            color: HanduniaTokens.cendre,
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -2359,10 +2389,31 @@ class HanduniaTraceRoute extends StatefulWidget {
   State<HanduniaTraceRoute> createState() => _HanduniaTraceRouteState();
 }
 
-class _HanduniaTraceRouteState extends State<HanduniaTraceRoute> {
+class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
+    with SingleTickerProviderStateMixin {
   final List<Offset> _points = [];
   double _replay = 1;
   bool _saved = false;
+  late final AnimationController _travel;
+
+  @override
+  void initState() {
+    super.initState();
+    _travel = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4500),
+    )..addListener(() {
+        if (mounted && _saved) {
+          setState(() => _replay = _travel.value);
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _travel.dispose();
+    super.dispose();
+  }
 
   Future<void> _save(Size size) async {
     final id = widget.fragmentId;
@@ -2382,10 +2433,19 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute> {
       points: normalized,
     );
     if (mounted) {
+      final reduceMotion =
+          MediaQuery.maybeOf(context)?.disableAnimations ?? false;
       setState(() {
         _saved = true;
-        _replay = 1;
+        _replay = reduceMotion ? 1 : 0;
       });
+      if (reduceMotion) {
+        _travel
+          ..stop()
+          ..value = 1;
+      } else {
+        _travel.forward(from: 0);
+      }
     }
   }
 
@@ -2405,13 +2465,16 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute> {
                     constraints.maxHeight,
                   );
                   return GestureDetector(
-                    onPanStart: (details) => setState(() {
-                      _saved = false;
-                      _replay = 1;
-                      _points
-                        ..clear()
-                        ..add(details.localPosition);
-                    }),
+                    onPanStart: (details) {
+                      _travel.stop();
+                      setState(() {
+                        _saved = false;
+                        _replay = 1;
+                        _points
+                          ..clear()
+                          ..add(details.localPosition);
+                      });
+                    },
                     onPanUpdate: (details) =>
                         setState(() => _points.add(details.localPosition)),
                     onPanEnd: (_) => _save(size),
@@ -2472,10 +2535,8 @@ class _TracePainter extends CustomPainter {
     if (points.length < 2) {
       return;
     }
-    final lastIndex =
-        ((points.length - 1) * replay).round().clamp(1, points.length - 1);
     final path = Path()..moveTo(points.first.dx, points.first.dy);
-    for (var i = 1; i <= lastIndex; i++) {
+    for (var i = 1; i < points.length; i++) {
       path.lineTo(points[i].dx, points[i].dy);
     }
     canvas.drawPath(
@@ -2485,6 +2546,14 @@ class _TracePainter extends CustomPainter {
         ..strokeWidth = 2
         ..strokeCap = StrokeCap.round
         ..color = HanduniaTokens.braise,
+    );
+
+    final sparkIndex =
+        ((points.length - 1) * replay).round().clamp(0, points.length - 1);
+    canvas.drawCircle(
+      points[sparkIndex],
+      3.5,
+      Paint()..color = HanduniaTokens.ivoire,
     );
   }
 
