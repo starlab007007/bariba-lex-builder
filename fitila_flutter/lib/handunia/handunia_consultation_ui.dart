@@ -1048,6 +1048,11 @@ class HanduniaFilView extends StatelessWidget {
                         ),
                       ),
                     )
+                  : ordered.isEmpty && notice == 'Accès réservé'
+                  ? const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(child: _HanduniaAccessDenied()),
+                    )
                   : ordered.isEmpty
                   ? Padding(
                       padding: const EdgeInsets.all(16),
@@ -1081,6 +1086,48 @@ class HanduniaFilView extends StatelessWidget {
                         ),
                       ],
                     ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HanduniaAccessDenied extends StatelessWidget {
+  const _HanduniaAccessDenied();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Accès réservé. Portée non autorisée.',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: HanduniaTokens.terre.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: HanduniaTokens.terre.withValues(alpha: 0.62),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.lock_outline,
+              color: HanduniaTokens.terre,
+              size: 26,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Accès réservé',
+              style: _fraunces(size: 17, color: HanduniaTokens.terre),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Portée non autorisée',
+              style: _karla(size: 11.5, color: HanduniaTokens.cendre),
             ),
           ],
         ),

@@ -67,6 +67,16 @@ void main() {
     expect(items.first['id'], 'gap');
   });
 
+  test('Handunia counts distinct voices only once', () {
+    expect(
+      handuniaDistinctVoiceCount(
+        'author-1',
+        const ['author-1', 'witness-2', 'witness-2', 'witness-3'],
+      ),
+      3,
+    );
+  });
+
   testWidgets('Handunia feed shows voices without social engagement', (
     tester,
   ) async {
@@ -126,5 +136,37 @@ void main() {
     expect(find.text('J’aime'), findsNothing);
     expect(find.text('Partager'), findsNothing);
     expect(find.text('vues'), findsNothing);
+  });
+
+  testWidgets('Handunia access denied is not rendered as a lacuna', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HanduniaFilView(
+          items: const [],
+          loading: false,
+          offline: false,
+          notice: 'Accès réservé',
+          filter: HanduniaFeedFilter.lineage,
+          pendingCount: 0,
+          onBack: () {},
+          onRefresh: () async {},
+          onFilterChanged: (_) {},
+          onOpenMemory: (_) {},
+          onFindMissingVoice: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Accès réservé'), findsWidgets);
+    expect(find.text('Portée non autorisée'), findsOneWidget);
+    expect(find.text('Aucune voix ici'), findsNothing);
   });
 }

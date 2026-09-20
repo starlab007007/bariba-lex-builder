@@ -179,7 +179,10 @@ class HanduniaConsultationData {
         'item_type': withdrawn ? 'withdrawn' : 'memory',
         'lieu_name': lieu?['name']?.toString() ?? '',
         'author_initials': handuniaInitials(displayName),
-        'voice_count': 1 + (voices[id]?.length ?? 0),
+        'voice_count': handuniaDistinctVoiceCount(
+          fragment['user_id']?.toString(),
+          voices[id] ?? const <String>{},
+        ),
         'latest_corroboration_at':
             latest[id]?.toIso8601String() ?? fragment['created_at'],
         'distance_m': distance,

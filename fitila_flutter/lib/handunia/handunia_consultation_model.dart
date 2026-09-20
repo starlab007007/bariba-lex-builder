@@ -31,6 +31,20 @@ String handuniaInitials(String value) {
       .toUpperCase();
 }
 
+/// Une voix humaine ne compte qu'une fois, même si l'auteur du souvenir
+/// apparaît aussi dans la table de corroboration. La métrique exprime la
+/// concordance de témoins distincts, jamais une somme d'interactions.
+int handuniaDistinctVoiceCount(
+  String? authorId,
+  Iterable<String> corroboratorIds,
+) {
+  final voices = <String>{
+    if (authorId != null && authorId.trim().isNotEmpty) authorId.trim(),
+    ...corroboratorIds.where((id) => id.trim().isNotEmpty).map((id) => id.trim()),
+  };
+  return voices.isEmpty ? 1 : voices.length;
+}
+
 DateTime _handuniaDate(dynamic value) {
   return DateTime.tryParse(value?.toString() ?? '') ??
       DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
