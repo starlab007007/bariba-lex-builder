@@ -418,7 +418,7 @@ class BadgeSceau extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.fingerprint,
+            Icons.verified_user_outlined,
             size: 15,
             color: sealed ? HanduniaTokens.braise : HanduniaTokens.cendre,
           ),
@@ -691,28 +691,38 @@ class CarteBraise extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 13),
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: HanduniaTokens.bordureForte),
-                ),
-                child: Text(
-                  initials,
-                  style: _fraunces(size: 12, color: HanduniaTokens.ivoire),
-                ),
+          if (withdrawn)
+            Text(
+              'Retiré par son auteur',
+              style: _karla(
+                size: 11.5,
+                weight: FontWeight.w600,
+                color: HanduniaTokens.cendre,
               ),
-              const Spacer(),
-              Text(
-                voices == 1 ? '1 voix' : '$voices voix',
-                style: _fraunces(size: 15, color: HanduniaTokens.braise),
-              ),
-            ],
-          ),
+            )
+          else
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: HanduniaTokens.bordureForte),
+                  ),
+                  child: Text(
+                    initials,
+                    style: _fraunces(size: 12, color: HanduniaTokens.ivoire),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  voices == 1 ? '1 voix' : '$voices voix',
+                  style: _fraunces(size: 15, color: HanduniaTokens.braise),
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -957,7 +967,7 @@ class HanduniaFilView extends StatelessWidget {
                       height: 44,
                       child: IconButton(
                         onPressed: onBack,
-                        icon: const Icon(Icons.arrow_back),
+                        icon: const Icon(Icons.arrow_back_outlined),
                         color: HanduniaTokens.ivoire,
                       ),
                     ),
