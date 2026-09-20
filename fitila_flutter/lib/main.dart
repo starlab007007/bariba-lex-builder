@@ -27767,7 +27767,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     );
   }
 
-  Widget _buildStepBody() {  Widget _buildStepBody() {
+  Widget _buildStepBody() {
     switch (_step) {
       case 1:
         return _buildLieuxStep();
