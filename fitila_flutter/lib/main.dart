@@ -6,7 +6,6 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
@@ -20526,170 +20525,17 @@ class _InfoBox extends StatelessWidget {
 // donc pas une simplification malhonnête, mais une fidélité exacte.
 // ============================================================================
 
-/// Fond dégradé sombre utilisé pour les écrans "IA" (micro, traitement,
-/// score...) — même dégradé que la maquette (`--dark1/2/3`).
-class _FitilaDarkStage extends StatelessWidget {
-  const _FitilaDarkStage({required this.child, this.padding});
-
-  final Widget child;
-  final EdgeInsetsGeometry? padding;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      type: MaterialType.transparency,
-      child: Container(
-        width: double.infinity,
-        padding: padding ?? const EdgeInsets.fromLTRB(20, 28, 20, 24),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [_fitilaDark1, _fitilaDark2, _fitilaDark3],
-            stops: [0.0, 0.55, 1.0],
-          ),
-        ),
-        child: child,
-      ),
-    );
-  }
-}
-
-/// Orbe micro pulsant (3 anneaux d'expansion en boucle) — écran d'accueil
-/// vocal d'Echo Sɔ̃ɔ et de Live Griot IA. `active` accélère et intensifie
-/// la pulsation (ex: pendant un enregistrement réel en cours).
-class _FitilaOrbMic extends StatefulWidget {
-  const _FitilaOrbMic({
-    required this.icon,
-    this.active = false,
-    this.size = 132,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final bool active;
-  final double size;
-  final VoidCallback? onTap;
-
-  @override
-  State<_FitilaOrbMic> createState() => _FitilaOrbMicState();
-}
-
-class _FitilaOrbMicState extends State<_FitilaOrbMic>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: widget.active ? 1400 : 2200),
-    )..repeat();
-  }
-
-  @override
-  void didUpdateWidget(covariant _FitilaOrbMic oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.active != widget.active) {
-      _controller.duration = Duration(
-        milliseconds: widget.active ? 1400 : 2200,
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Widget _ring(double delay) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        final t = (_controller.value + delay) % 1.0;
-        final scale = 1.0 + t * 0.9;
-        final opacity =
-            (1.0 - t).clamp(0.0, 1.0) * (widget.active ? 0.55 : 0.35);
-        return Opacity(
-          opacity: opacity,
-          child: Transform.scale(
-            scale: scale,
-            child: Container(
-              width: widget.size,
-              height: widget.size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: _fitilaPrimary, width: 1.4),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: widget.onTap,
-      child: SizedBox(
-        width: widget.size * 2.1,
-        height: widget.size * 2.1,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            _ring(0.0),
-            _ring(0.33),
-            _ring(0.66),
-            Container(
-              width: widget.size,
-              height: widget.size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [_fitilaPrimary, _fitilaGoldDeep],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: _fitilaPrimary.withValues(
-                      alpha: widget.active ? 0.55 : 0.35,
-                    ),
-                    blurRadius: 28,
-                    spreadRadius: widget.active ? 6 : 2,
-                  ),
-                ],
-              ),
-              child: Icon(
-                widget.icon,
-                color: Colors.white,
-                size: widget.size * 0.42,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// Barres d'onde décoratives (comme la maquette : animation en boucle,
 /// pas une véritable analyse d'amplitude audio). `active=false` fige les
 /// barres à une hauteur basse et régulière (silence / en pause).
 class _FitilaWaveformBars extends StatefulWidget {
   const _FitilaWaveformBars({
     this.active = true,
-    this.barCount = 20,
     this.height = 46,
-    this.color,
   });
 
   final bool active;
-  final int barCount;
   final double height;
-  final Color? color;
 
   @override
   State<_FitilaWaveformBars> createState() => _FitilaWaveformBarsState();
@@ -20706,11 +20552,11 @@ class _FitilaWaveformBarsState extends State<_FitilaWaveformBars>
     super.initState();
     final rnd = math.Random(7);
     _phases = List.generate(
-      widget.barCount,
+      20,
       (_) => rnd.nextDouble() * math.pi * 2,
     );
     _speeds = List.generate(
-      widget.barCount,
+      20,
       (_) => 0.7 + rnd.nextDouble() * 0.9,
     );
     _controller = AnimationController(
@@ -20727,7 +20573,7 @@ class _FitilaWaveformBarsState extends State<_FitilaWaveformBars>
 
   @override
   Widget build(BuildContext context) {
-    final barColor = widget.color ?? _fitilaPrimary;
+    const barColor = _fitilaPrimary;
     return SizedBox(
       height: widget.height,
       child: AnimatedBuilder(
@@ -20736,7 +20582,7 @@ class _FitilaWaveformBarsState extends State<_FitilaWaveformBars>
           final t = _controller.value * math.pi * 2 * 60;
           return Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(widget.barCount, (i) {
+            children: List.generate(20, (i) {
               double level;
               if (widget.active) {
                 level =
@@ -20760,43 +20606,6 @@ class _FitilaWaveformBarsState extends State<_FitilaWaveformBars>
           );
         },
       ),
-    );
-  }
-}
-
-/// Petit indicateur "étape X / N" affiché en haut d'un parcours en
-/// plusieurs écrans (assistant Echo Sɔ̃ɔ, Aburu Fim IA...).
-class _FitilaStepProgress extends StatelessWidget {
-  const _FitilaStepProgress({
-    required this.totalSteps,
-    required this.currentStep,
-    this.light = false,
-  });
-
-  final int totalSteps;
-  final int currentStep;
-  final bool light;
-
-  @override
-  Widget build(BuildContext context) {
-    final inactive = light
-        ? Colors.white.withValues(alpha: 0.25)
-        : _fitilaBorder;
-    final active = light ? Colors.white : _fitilaPrimary;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(totalSteps, (i) {
-        final done = i <= currentStep;
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          width: i == currentStep ? 22 : 8,
-          height: 6,
-          decoration: BoxDecoration(
-            color: done ? active : inactive,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        );
-      }),
     );
   }
 }
@@ -20939,114 +20748,6 @@ class _FitilaProcessingChecklist extends StatelessWidget {
       ],
     );
   }
-}
-
-/// Anneau de score animé (0-100), tracé progressivement jusqu'à `score`.
-/// `score` doit être une valeur réellement calculée (ex: retour du
-/// backend de Sagesse Battle), jamais un chiffre fixe de démonstration.
-class _FitilaScoreRing extends StatelessWidget {
-  const _FitilaScoreRing({
-    required this.score,
-    this.size = 148,
-    this.label,
-    this.light = true,
-  });
-
-  final int score;
-  final double size;
-  final String? label;
-  final bool light;
-
-  @override
-  Widget build(BuildContext context) {
-    final textColor = light ? Colors.white : _fitilaInk;
-    final mutedColor = light
-        ? Colors.white.withValues(alpha: 0.6)
-        : _fitilaMuted;
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: score.clamp(0, 100).toDouble()),
-      duration: const Duration(milliseconds: 1100),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, _) {
-        return SizedBox(
-          width: size,
-          height: size,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              CustomPaint(
-                size: Size(size, size),
-                painter: _ScoreRingPainter(progress: value / 100),
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${value.round()}%',
-                    style: TextStyle(
-                      fontSize: size * 0.22,
-                      fontWeight: FontWeight.w800,
-                      color: textColor,
-                    ),
-                  ),
-                  if (label != null)
-                    Text(
-                      label!,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: mutedColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _ScoreRingPainter extends CustomPainter {
-  _ScoreRingPainter({required this.progress});
-
-  final double progress;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.shortestSide - 12) / 2;
-    final trackPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.14)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 10
-      ..strokeCap = StrokeCap.round;
-    canvas.drawCircle(center, radius, trackPaint);
-
-    final progressPaint = Paint()
-      ..shader = SweepGradient(
-        colors: const [_fitilaPrimary, _fitilaGoldDeep, _fitilaPrimary],
-        startAngle: 0,
-        endAngle: math.pi * 2,
-      ).createShader(Rect.fromCircle(center: center, radius: radius))
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 10
-      ..strokeCap = StrokeCap.round;
-
-    final sweep = math.pi * 2 * progress.clamp(0.0, 1.0);
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2,
-      sweep,
-      false,
-      progressPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _ScoreRingPainter oldDelegate) =>
-      oldDelegate.progress != progress;
 }
 
 const _lessons = [
@@ -21694,209 +21395,6 @@ int _dayOfYear(DateTime date) {
 String _initialLetter(String? value) {
   final trimmed = (value ?? '').trim();
   return trimmed.isEmpty ? 'G' : trimmed.substring(0, 1).toUpperCase();
-}
-
-class _FitilaListenButton extends StatefulWidget {
-  const _FitilaListenButton({
-    this.bariba,
-    this.french,
-    required this.label,
-    this.compact = false,
-    this.dark = false,
-  });
-
-  final String? bariba;
-  final String? french;
-  final String label;
-  final bool compact;
-  final bool dark;
-
-  @override
-  State<_FitilaListenButton> createState() => _FitilaListenButtonState();
-}
-
-class _FitilaListenButtonState extends State<_FitilaListenButton> {
-  final _player = audio.AudioPlayer();
-  final _frenchTts = FlutterTts();
-  bool _busy = false;
-  bool _playing = false;
-
-  @override
-  void dispose() {
-    _player.dispose();
-    _frenchTts.stop();
-    super.dispose();
-  }
-
-  Future<void> _stop() async {
-    await _player.stop();
-    await _frenchTts.stop();
-    if (mounted) {
-      setState(() {
-        _busy = false;
-        _playing = false;
-      });
-    }
-  }
-
-  Future<void> _toggle() async {
-    if (_busy) {
-      return;
-    }
-    if (_playing) {
-      await _stop();
-      return;
-    }
-
-    final bariba = (widget.bariba ?? '').trim();
-    final french = (widget.french ?? '').trim();
-    final text = bariba.isNotEmpty ? bariba : french;
-    if (text.length < 2) {
-      return;
-    }
-
-    setState(() {
-      _busy = true;
-      _playing = false;
-    });
-    try {
-      if (bariba.isNotEmpty) {
-        if (!FitilaBackend.configured) {
-          throw StateError('Service vocal Bariba indisponible hors connexion.');
-        }
-        final response = await FitilaBackend.client.functions.invoke(
-          'bariba-tts',
-          body: {
-            'text': bariba,
-            'speakingRate': 1.0,
-            'noiseScale': 0.5,
-            'noiseScaleW': 0.6,
-          },
-        );
-        final data = response.data;
-        if (data is! Map) {
-          throw StateError('Réponse audio invalide.');
-        }
-        if (data['skipped'] == true) {
-          return;
-        }
-        final remoteError = data['error']?.toString().trim() ?? '';
-        if (remoteError.isNotEmpty) {
-          throw StateError(remoteError);
-        }
-
-        final audioUrl = data['audio_url']?.toString().trim() ?? '';
-        final encoded = data['audio']?.toString().trim() ?? '';
-        if (mounted) {
-          setState(() => _playing = true);
-        }
-        if (audioUrl.isNotEmpty) {
-          await _player.play(audio.UrlSource(audioUrl));
-        } else if (encoded.isNotEmpty) {
-          final raw = encoded.contains(',') ? encoded.split(',').last : encoded;
-          await _player.play(audio.BytesSource(base64Decode(raw)));
-        } else {
-          throw StateError('Aucun audio reçu du service vocal.');
-        }
-        await _player.onPlayerComplete.first;
-      } else {
-        await _frenchTts.setLanguage('fr-FR');
-        await _frenchTts.setSpeechRate(0.5);
-        await _frenchTts.awaitSpeakCompletion(true);
-        if (mounted) {
-          setState(() => _playing = true);
-        }
-        await _frenchTts.speak(french);
-      }
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      final message = error.toString().replaceFirst('Bad state: ', '');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
-    } finally {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-          _playing = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final foreground = widget.dark ? Colors.white : _fitilaGoldDeep;
-    return TextButton.icon(
-      style: TextButton.styleFrom(
-        foregroundColor: foreground,
-        visualDensity: widget.compact
-            ? VisualDensity.compact
-            : VisualDensity.standard,
-        padding: widget.compact
-            ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
-            : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      ),
-      onPressed: _busy ? null : _toggle,
-      icon: _busy
-          ? SizedBox(
-              width: widget.compact ? 14 : 18,
-              height: widget.compact ? 14 : 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: foreground,
-              ),
-            )
-          : Icon(
-              _playing ? Icons.stop_circle_rounded : Icons.volume_up_rounded,
-              size: widget.compact ? 17 : 20,
-            ),
-      label: Text(
-        widget.label,
-        style: TextStyle(fontSize: widget.compact ? 11 : 13),
-      ),
-    );
-  }
-}
-
-class _FitilaCollapsibleNote extends StatelessWidget {
-  const _FitilaCollapsibleNote({
-    required this.icon,
-    required this.summary,
-    required this.detail,
-  });
-
-  final IconData icon;
-  final String summary;
-  final String detail;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      color: _fitilaSurfaceAlt,
-      child: ExpansionTile(
-        leading: Icon(icon, color: _fitilaGoldDeep, size: 20),
-        title: Text(
-          summary,
-          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
-        ),
-        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              detail,
-              style: TextStyle(color: _fitilaMuted, fontSize: 12, height: 1.4),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -23223,7 +22721,6 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
   bool _muted = false;
   bool _ending = false;
   bool _cleanedUp = false;
-  bool _usingTurn = false;
   bool _remoteAudioReady = false;
 
   bool get _isHost => widget.role == FitilaLiveRole.host;
@@ -23253,7 +22750,6 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
         return;
       }
       _engine = engine;
-      _usingTurn = engine.usingTurn;
 
       _peerCountSub = engine.peerCount.listen((count) {
         if (mounted) {
@@ -23864,6 +23360,7 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
   int _xpEarned = 0;
   bool _scoredByAi = false;
   List<Map<String, dynamic>> _chain = const [];
+  // ignore: unused_field
   Map<String, dynamic> _stats = const {'attempts': 0, 'total_xp': 0, 'wins': 0};
   int _participantCount = 0;
   Map<String, dynamic>? _bestResponse;
@@ -25598,154 +25095,6 @@ class _AburuReferenceTag extends StatelessWidget {
 
 }
 
-/// Carte de la galerie Aburu Fim IA — tuile "Live" liée à un vrai
-/// produit du Marché (ou tuile "Info libre" sans donnée derrière).
-class _AburuGalleryCard extends StatelessWidget {
-  const _AburuGalleryCard({
-    required this.selected,
-    required this.live,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  final bool selected;
-  final bool live;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: selected ? _fitilaPrimarySoft : _fitilaSurfaceAlt,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected ? _fitilaPrimary : _fitilaBorder,
-            width: selected ? 1.5 : 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (live)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: _fitilaClay,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  '● Live',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            const SizedBox(height: 6),
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 12.5,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: _fitilaMuted, fontSize: 11),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AburuInfoChip extends StatelessWidget {
-  const _AburuInfoChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: _fitilaSurfaceAlt,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: _fitilaMuted),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AburuComparisonThumb extends StatelessWidget {
-  const _AburuComparisonThumb({
-    required this.label,
-    required this.child,
-    this.highlighted = false,
-  });
-
-  final String label;
-  final Widget child;
-  final bool highlighted;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: highlighted ? _fitilaGoldDeep : _fitilaSurfaceAlt,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w800,
-              color: highlighted ? Colors.white : _fitilaMuted,
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        AspectRatio(
-          aspectRatio: 1.6,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: child,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 // ─────────────────────────────────────────────────────────────────
 // 5. Sasara IA — pont bilingue + corpus communautaire opt-in
 // ─────────────────────────────────────────────────────────────────
@@ -26525,7 +25874,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   List<Map<String, dynamic>> _lieux = const [];
   Map<String, int> _density = const {};
   final _lieuxQuery = TextEditingController();
-  bool _sortByPopular = true;
+  final bool _sortByPopular = true;
 
   Map<String, dynamic>? _selectedLieu;
   bool _loadingScene = false;
@@ -26548,7 +25897,6 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
 
   bool _loadingWorldFeed = false;
   List<Map<String, dynamic>> _worldFeed = const [];
-  bool _syncingOffline = false;
   int _syncedOfflineCount = 0;
 
   @override
@@ -26615,8 +25963,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       var serverDensity = results[1] as Map<String, int>;
 
       if (mounted) {
-        setState(() => _syncingOffline = true);
-      }
+        }
       var synced = 0;
       try {
         synced = await _syncPendingLocalFragments(serverLieux);
@@ -26636,7 +25983,6 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         _density = serverDensity;
         _backendUnavailable = false;
         _loadingLieux = false;
-        _syncingOffline = false;
         _syncedOfflineCount = synced;
       });
       if (synced > 0) {
