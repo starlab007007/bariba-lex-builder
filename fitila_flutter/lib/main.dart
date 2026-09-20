@@ -25895,7 +25895,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
 
   bool _loadingWorldFeed = false;
   List<Map<String, dynamic>> _worldFeed = const [];
-  HanduniaFeedFilter _worldFeedFilter = HanduniaFeedFilter.around;
+  HanduniaFeedFilter _worldFeedFilter = HanduniaFeedFilter.all;
   bool _worldFeedFromCache = false;
   String? _worldFeedNotice;
   Position? _worldPosition;
