@@ -1,6 +1,7 @@
 import 'package:fitila_native/handunia/handunia_consultation_model.dart';
 import 'package:fitila_native/handunia/handunia_consultation_routes.dart';
 import 'package:fitila_native/handunia/handunia_consultation_ui.dart';
+import 'package:fitila_native/handunia/handunia_creation_ai_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -294,6 +295,40 @@ void main() {
     await tester.pump();
 
     expect(find.byType(OndeAudio), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+
+  testWidgets('Handunia Lumiere IA starts from a human-memory threshold', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: HanduniaAiCreationRoute(
+          lieu: <String, dynamic>{
+            'id': 'nikki',
+            'name': 'Nikki',
+          },
+          voiceCount: 34,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Handunia Wasa'), findsOneWidget);
+    expect(find.text('Nikki'), findsOneWidget);
+    expect(find.text('34 voix'), findsOneWidget);
+    expect(find.text('AVEC LUMIÈRE IA'), findsOneWidget);
+    expect(find.text('Parler sans IA'), findsOneWidget);
+    expect(
+      find.text('L’IA éclaire la mémoire. Elle ne l’invente pas.'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
