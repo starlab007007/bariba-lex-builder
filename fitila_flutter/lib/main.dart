@@ -25776,6 +25776,8 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
   bool _publishing = false;
   int _contributions = 0;
   int _communityCount = 0;
+  int _sasaraUiStep = 0;
+  bool _sasaraPreviewBariba = true;
 
   @override
   void initState() {
@@ -25959,299 +25961,99 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return _PageFrame(
-      title: 'Sasara IA',
-      subtitle:
-          'Le pont bilingue — publiez en Bariba et en Français, ensemble.',
+    switch (_sasaraUiStep) {
+      case 1:
+        return _buildSasaraTranscriptReference();
+      case 2:
+        return _buildSasaraPreviewReference();
+      case 3:
+        return _buildSasaraImpactReference();
+      case 0:
+      default:
+        return _buildSasaraConsentReference();
+    }
+  }
+
+  Widget _buildSasaraConsentReference() {
+    return ReferenceCreationShell(
+      dark: false,
+      title: 'Rendre bilingue ?',
+      subtitle: 'Après ta publication',
+      leading: const Text('🌉', style: TextStyle(fontSize: 15)),
       child: ListView(
+        padding: EdgeInsets.zero,
         children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: _fitilaSurfaceAlt,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _fitilaBorder),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline_rounded, color: _fitilaSage),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    "Doublage vocal automatique : en développement, pas encore actif. Aujourd'hui, Sasara IA traduit votre texte et le publie dans les deux langues.",
-                    style: TextStyle(fontSize: 12, color: _fitilaInkSoft),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      ChoiceChip(
-                        label: const Text('Français → Bariba'),
-                        selected:
-                            _direction == TranslationDirection.frenchToBariba,
-                        onSelected: (_) => setState(
-                          () =>
-                              _direction = TranslationDirection.frenchToBariba,
-                        ),
-                      ),
-                      ChoiceChip(
-                        label: const Text('Bariba → Français'),
-                        selected:
-                            _direction == TranslationDirection.baribaToFrench,
-                        onSelected: (_) => setState(
-                          () =>
-                              _direction = TranslationDirection.baribaToFrench,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _input,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      hintText: 'Votre phrase…',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: _translating ? null : _translate,
-                    icon: _translating
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.translate_rounded, size: 16),
-                    label: const Text('Traduire'),
-                  ),
-                  if (_translated.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        const Text(
-                          'Vérifie la transcription',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const Spacer(),
-                        _FitilaListenButton(
-                          bariba:
-                              _direction == TranslationDirection.frenchToBariba
-                              ? _editedTranslation
-                              : null,
-                          french:
-                              _direction == TranslationDirection.baribaToFrench
-                              ? _editedTranslation
-                              : null,
-                          label: 'Écouter la traduction',
-                          compact: true,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    for (int i = 0; i < _lineControllers.length; i++)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 6),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _fitilaPrimarySoft,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: _editingLine == i
-                            ? Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _lineControllers[i],
-                                      autofocus: true,
-                                      style: const TextStyle(fontSize: 13.5),
-                                      decoration: const InputDecoration(
-                                        isDense: true,
-                                        border: InputBorder.none,
-                                      ),
-                                      onSubmitted: (_) =>
-                                          setState(() => _editingLine = null),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(
-                                      minWidth: 28,
-                                      minHeight: 28,
-                                    ),
-                                    icon: const Icon(
-                                      Icons.check_rounded,
-                                      size: 18,
-                                    ),
-                                    onPressed: () =>
-                                        setState(() => _editingLine = null),
-                                  ),
-                                ],
-                              )
-                            : Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      _lineControllers[i].text,
-                                      style: const TextStyle(fontSize: 13.5),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(
-                                      minWidth: 28,
-                                      minHeight: 28,
-                                    ),
-                                    icon: const Icon(
-                                      Icons.edit_rounded,
-                                      size: 16,
-                                    ),
-                                    onPressed: () =>
-                                        setState(() => _editingLine = i),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    Text(
-                      'Corrigez chaque ligne si besoin — la correction sert d\'abord à améliorer votre propre traduction.',
-                      style: TextStyle(
-                        color: _fitilaMuted,
-                        fontSize: 10.5,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          _FitilaDarkStage(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+          ReferenceCard(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text(
-                        'Bàátɔ̀nú ⇄ Français',
+                    const ReferenceTinyPill(label: 'Bàátɔ̀nú'),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        '⇄',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
+                          color: FitilaReferenceUi.goldDeep,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
-                    const Spacer(),
-                    Icon(
-                      Icons.auto_stories_rounded,
-                      color: Colors.white.withValues(alpha: 0.5),
-                      size: 18,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$_contributions',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                    const ReferenceTinyPill(label: 'Français'),
                   ],
                 ),
-                const SizedBox(height: 10),
-                Material(
-                  type: MaterialType.transparency,
-                  child: SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    activeThumbColor: _fitilaPrimary,
-                    value: _consent,
-                    onChanged: (v) => setState(() => _consent = v),
-                    title: const Text(
-                      'Contribuer cette phrase à la mémoire de traduction Bariba',
-                      style: TextStyle(color: Colors.white, fontSize: 13),
-                    ),
-                    subtitle: Text(
-                      'Désactivé par défaut. Texte uniquement pour le moment (pas encore de voix) — vos contributions personnelles ci-dessus.',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.55),
-                        fontSize: 11,
-                      ),
-                    ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Ton contenu peut toucher deux publics en devenant bilingue automatiquement.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: FitilaReferenceUi.inkSoft,
+                    fontSize: 12,
+                    height: 1.5,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 12),
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(11),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.06),
+                    color: FitilaReferenceUi.surfaceAlt,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.groups_rounded,
-                        color: Colors.white.withValues(alpha: 0.6),
-                        size: 18,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'CORPUS COMMUNAUTAIRE',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: .4,
+                      const Expanded(
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text:
+                                    'Aider à améliorer la reconnaissance vocale Bariba',
+                                style: TextStyle(
+                                  color: FitilaReferenceUi.ink,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
-                            ),
-                            Text(
-                              '$_communityCount phrase(s) bariba contribuées ce mois-ci',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w700,
+                              TextSpan(
+                                text:
+                                    ' — en corrigeant la traduction, tu peux contribuer au corpus (facultatif).',
                               ),
-                            ),
-                            Text(
-                              'Merci à celles et ceux qui ont activé la contribution.',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.5),
-                                fontSize: 10.5,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
+                          style: TextStyle(
+                            color: FitilaReferenceUi.inkSoft,
+                            fontSize: 11,
+                            height: 1.45,
+                          ),
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      Switch(
+                        value: _consent,
+                        activeTrackColor: FitilaReferenceUi.sage,
+                        onChanged: (value) => setState(() => _consent = value),
                       ),
                     ],
                   ),
@@ -26259,26 +26061,381 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _publishing ? null : _publish,
-            icon: _publishing
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.send_rounded),
-            label: const Text('Publier 🌉 en bilingue'),
+          ReferenceLightSegment(
+            first: 'Français → Bariba',
+            second: 'Bariba → Français',
+            firstSelected: _direction == TranslationDirection.frenchToBariba,
+            onFirst: () => setState(
+              () => _direction = TranslationDirection.frenchToBariba,
+            ),
+            onSecond: () => setState(
+              () => _direction = TranslationDirection.baribaToFrench,
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _input,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              hintText: 'Votre phrase…',
+            ),
+          ),
+          const SizedBox(height: 12),
+          ReferenceGoldButton(
+            label: 'Rendre bilingue avec l’IA',
+            icon: Icons.auto_awesome_rounded,
+            busy: _translating,
+            onPressed: _translating
+                ? null
+                : () async {
+                    await _translate();
+                    if (mounted && _translated.isNotEmpty) {
+                      setState(() => _sasaraUiStep = 1);
+                    }
+                  },
+          ),
         ],
       ),
     );
   }
+
+  Widget _buildSasaraTranscriptReference() {
+    final targetLabel =
+        _direction == TranslationDirection.frenchToBariba
+            ? 'Bàátɔ̀nú (assistée par IA)'
+            : 'Français (assisté par IA)';
+    return ReferenceCreationShell(
+      dark: false,
+      title: 'Vérifie la transcription',
+      subtitle: targetLabel,
+      onBack: () => setState(() => _sasaraUiStep = 0),
+      child: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                if (_lineControllers.isEmpty)
+                  ReferenceCard(
+                    child: const Text(
+                      'Aucune traduction disponible.',
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                else
+                  for (var i = 0; i < _lineControllers.length; i++)
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: FitilaReferenceUi.hairline,
+                          ),
+                        ),
+                      ),
+                      child: _editingLine == i
+                          ? Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _lineControllers[i],
+                                    autofocus: true,
+                                    decoration: const InputDecoration(
+                                      border: InputBorder.none,
+                                      filled: false,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () =>
+                                      setState(() => _editingLine = null),
+                                  icon: const Icon(
+                                    Icons.check_rounded,
+                                    color: FitilaReferenceUi.goldDeep,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    _lineControllers[i].text,
+                                    style: const TextStyle(
+                                      color: FitilaReferenceUi.ink,
+                                      fontSize: 12.5,
+                                      height: 1.55,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 34,
+                                    minHeight: 34,
+                                  ),
+                                  onPressed: () =>
+                                      setState(() => _editingLine = i),
+                                  icon: const Icon(
+                                    Icons.edit_rounded,
+                                    color: FitilaReferenceUi.goldDeep,
+                                    size: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                const SizedBox(height: 10),
+                Text(
+                  'Corrige uniquement ce qui doit l’être : le résultat final reste entièrement sous ton contrôle.',
+                  style: const TextStyle(
+                    color: FitilaReferenceUi.muted,
+                    fontSize: 10.5,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          ReferenceGoldButton(
+            label: 'Valider & continuer',
+            icon: Icons.arrow_forward_rounded,
+            onPressed: _editedTranslation.isEmpty
+                ? null
+                : () => setState(() => _sasaraUiStep = 2),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSasaraPreviewReference() {
+    final source = _input.text.trim();
+    final translated = _editedTranslation;
+    final bariba = _direction == TranslationDirection.frenchToBariba
+        ? translated
+        : source;
+    final french = _direction == TranslationDirection.frenchToBariba
+        ? source
+        : translated;
+    final visibleCaption = _sasaraPreviewBariba ? bariba : french;
+
+    return ReferenceCreationShell(
+      dark: false,
+      title: 'Aperçu bilingue',
+      subtitle: 'Prêt à publier',
+      onBack: () => setState(() => _sasaraUiStep = 1),
+      actions: [
+        IconButton(
+          tooltip: 'Impact',
+          onPressed: () => setState(() => _sasaraUiStep = 3),
+          icon: const Icon(
+            Icons.insights_rounded,
+            color: FitilaReferenceUi.ink,
+            size: 19,
+          ),
+        ),
+      ],
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          ReferenceVideoMock(
+            caption: visibleCaption.isEmpty
+                ? 'Aperçu des sous-titres bilingues'
+                : visibleCaption,
+            child: const Center(
+              child: Icon(
+                Icons.subtitles_rounded,
+                size: 46,
+                color: Colors.white54,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ReferenceLightSegment(
+            first: 'Sous-titres Bariba',
+            second: 'Sous-titres Français',
+            firstSelected: _sasaraPreviewBariba,
+            onFirst: () => setState(() => _sasaraPreviewBariba = true),
+            onSecond: () => setState(() => _sasaraPreviewBariba = false),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+            decoration: BoxDecoration(
+              color: FitilaReferenceUi.surfaceAlt,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFFB7AF8E),
+                style: BorderStyle.solid,
+              ),
+            ),
+            child: const Text(
+              '🔜 Doublage vocal complet : disponible lorsque le modèle de voix Bariba sera entraîné sur le corpus communautaire.',
+              style: TextStyle(
+                color: FitilaReferenceUi.inkSoft,
+                fontSize: 10.5,
+                height: 1.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    final text = _sasaraPreviewBariba ? bariba : french;
+                    if (text.isEmpty) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Utilisez le bouton d’écoute disponible dans le module pour lire la traduction.',
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.volume_up_rounded, size: 16),
+                  label: const Text('Écouter'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ReferenceGoldButton(
+            label: 'Publier',
+            icon: Icons.send_rounded,
+            busy: _publishing,
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: .22),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: const Text(
+                '🌉 Bilingue',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            onPressed: _publishing
+                ? null
+                : () async {
+                    await _publish();
+                    if (mounted &&
+                        _input.text.isEmpty &&
+                        _translated.isEmpty) {
+                      setState(() => _sasaraUiStep = 3);
+                    }
+                  },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSasaraImpactReference() {
+    return ReferenceCreationShell(
+      dark: true,
+      title: 'Impact du bilingue',
+      subtitle: 'Depuis que Sasara IA est activé',
+      leading: const Icon(
+        Icons.insights_rounded,
+        size: 17,
+        color: Colors.white,
+      ),
+      onBack: () => setState(() => _sasaraUiStep = 2),
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildSasaraImpactMetric(
+                  _contributions.toString(),
+                  'Mes contributions',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildSasaraImpactMetric(
+                  _communityCount.toString(),
+                  'Phrases ce mois',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ReferenceCard(
+            dark: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const ReferenceLabel('Corpus communautaire', dark: true),
+                const SizedBox(height: 4),
+                Text(
+                  _communityCount.toString() +
+                      ' phrase(s) Bariba corrigée(s) ce mois-ci',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _consent
+                      ? 'Merci d’avoir activé la contribution 🙏'
+                      : 'La contribution reste facultative et désactivée tant que tu ne l’actives pas.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: .55),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSasaraImpactMetric(String value, String label) {
+    return Container(
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: .14)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: FitilaReferenceUi.serif(
+              size: 19,
+              color: FitilaReferenceUi.gold,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: .60),
+              fontSize: 9,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 }
 
 // ─────────────────────────────────────────────────────────────────
