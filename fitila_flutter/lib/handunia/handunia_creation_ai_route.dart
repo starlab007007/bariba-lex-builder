@@ -824,7 +824,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           Text(
             _questionReason,
             textAlign: TextAlign.center,
-            style: _karla(size: 11.5, color: HanduniaTokens.cendre),
+            style: _karla(size: 13, color: HanduniaTokens.cendre),
           ),
         ],
         const SizedBox(height: 30),
@@ -1058,7 +1058,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           Text(
             type.toUpperCase(),
             style: _karla(
-              size: 10,
+              size: 12,
               color: validated
                   ? HanduniaTokens.braise
                   : HanduniaTokens.terre,
@@ -1522,7 +1522,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
                 Text(
                   count == 0 ? 'aucune voix' : '$count voix seulement',
                   style: _karla(
-                    size: 11,
+                    size: 12.5,
                     color: HanduniaTokens.cendre,
                   ),
                 ),
@@ -1559,7 +1559,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
                 Text(
                   subtitle,
                   style: _karla(
-                    size: 11.5,
+                    size: 12.5,
                     color: HanduniaTokens.cendre,
                   ),
                 ),
@@ -1580,7 +1580,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
       ),
       child: Text(
         label,
-        style: _karla(size: 11, color: color, weight: FontWeight.w700),
+        style: _karla(size: 12.5, color: color, weight: FontWeight.w700),
       ),
     );
   }
