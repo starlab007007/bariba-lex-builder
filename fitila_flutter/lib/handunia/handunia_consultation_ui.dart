@@ -1069,40 +1069,61 @@ class HanduniaFilView extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 8),
-            SizedBox(
-              height: 48,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                scrollDirection: Axis.horizontal,
-                itemCount: HanduniaFeedFilter.values.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final value = HanduniaFeedFilter.values[index];
-                  final selected = value == filter;
-                  return SizedBox(
-                    height: 44,
-                    child: ChoiceChip(
-                      selected: selected,
-                      label: Text(value.label),
-                      onSelected: (_) => onFilterChanged(value),
-                      showCheckmark: false,
-                      side: BorderSide(
-                        color: selected
-                            ? HanduniaTokens.braise
-                            : HanduniaTokens.bordureForte,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(
+                height: 48,
+                child: Row(
+                  children: [
+                    for (var index = 0;
+                        index < HanduniaFeedFilter.values.length;
+                        index++) ...[
+                      if (index > 0) const SizedBox(width: 7),
+                      Expanded(
+                        child: SizedBox(
+                          height: 44,
+                          child: ChoiceChip(
+                            selected:
+                                HanduniaFeedFilter.values[index] == filter,
+                            label: SizedBox(
+                              width: double.infinity,
+                              child: Text(
+                                HanduniaFeedFilter.values[index].label,
+                                maxLines: 1,
+                                textAlign: TextAlign.center,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            onSelected: (_) => onFilterChanged(
+                              HanduniaFeedFilter.values[index],
+                            ),
+                            showCheckmark: false,
+                            labelPadding: const EdgeInsets.symmetric(
+                              horizontal: 2,
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            side: BorderSide(
+                              color:
+                                  HanduniaFeedFilter.values[index] == filter
+                                  ? HanduniaTokens.braise
+                                  : HanduniaTokens.bordureForte,
+                            ),
+                            backgroundColor: HanduniaTokens.nuit,
+                            selectedColor: HanduniaTokens.braise,
+                            labelStyle: _karla(
+                              size: 12.5,
+                              weight: FontWeight.w700,
+                              color:
+                                  HanduniaFeedFilter.values[index] == filter
+                                  ? HanduniaTokens.encre
+                                  : HanduniaTokens.ivoire,
+                            ),
+                          ),
+                        ),
                       ),
-                      backgroundColor: HanduniaTokens.nuit,
-                      selectedColor: HanduniaTokens.braise,
-                      labelStyle: _karla(
-                        size: 12.5,
-                        weight: FontWeight.w700,
-                        color: selected
-                            ? HanduniaTokens.encre
-                            : HanduniaTokens.cendre,
-                      ),
-                    ),
-                  );
-                },
+                    ],
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 6),
