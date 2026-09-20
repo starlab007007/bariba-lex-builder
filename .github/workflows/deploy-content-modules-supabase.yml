@@ -10,6 +10,7 @@ on:
       - supabase/functions/ai-translate/**
       - supabase/functions/byt5-bariba-translate/**
       - supabase/functions/bariba-tts/**
+      - supabase/functions/fitila-ia-chat/**
       - supabase/functions/_shared/**
       - .github/workflows/deploy-content-modules-supabase.yml
   workflow_dispatch:
@@ -128,6 +129,11 @@ jobs:
           supabase functions deploy bariba-tts \
             --project-ref "$SUPABASE_PROJECT_ID"
 
+      - name: Deploy Handunia Fitila IA function
+        run: |
+          supabase functions deploy fitila-ia-chat \
+            --project-ref "$SUPABASE_PROJECT_ID"
+
       - name: Deploy Live Griot TURN function
         run: |
           supabase functions deploy live-turn-credentials \
@@ -187,7 +193,7 @@ jobs:
                   f'Aburu product relation unavailable (HTTP {error.code})'
               )
 
-          for function_name in ('ai-translate', 'byt5-bariba-translate', 'bariba-tts'):
+          for function_name in ('ai-translate', 'byt5-bariba-translate', 'bariba-tts', 'fitila-ia-chat'):
               request = Request(
                   f'{url}/functions/v1/{function_name}',
                   method='OPTIONS',
@@ -229,6 +235,6 @@ jobs:
                   f'live-turn-credentials is unavailable (HTTP {status})'
               )
           print('Supabase content-module schema 20260919.3 is deployed.')
-          print('Echo ai-translate, ByT5 fallback and bariba-tts endpoints are deployed.')
+          print('Echo ai-translate, ByT5 fallback, bariba-tts and Handunia Fitila IA endpoints are deployed.')
           print('Live Griot TURN credential endpoint is deployed.')
           PY
