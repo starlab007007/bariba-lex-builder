@@ -541,6 +541,7 @@ class HanduniaConsultationExtendedData {
   static Future<void> savePath({
     required String fragmentId,
     required List<Map<String, double>> points,
+    DateTime? capturedAt,
   }) async {
     final user = _client.auth.currentUser;
     if (user == null) {
@@ -550,6 +551,8 @@ class HanduniaConsultationExtendedData {
       'fragment_id': fragmentId,
       'user_id': user.id,
       'path_points': points,
+      if (capturedAt != null)
+        'captured_at': capturedAt.toUtc().toIso8601String(),
     });
   }
 }
