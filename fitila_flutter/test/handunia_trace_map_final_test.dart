@@ -33,4 +33,32 @@ void main() {
     expect(find.text('Nikki'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('Handunia trace explains the next action before drawing', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HanduniaTraceRoute(
+          fragmentId: 'fragment-smoke',
+          completionDelay: const Duration(milliseconds: 80),
+          saveOverride: (points, capturedAt) async {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Tracer'), findsOneWidget);
+    expect(
+      find.text('Dessinez le trajet puis relâchez votre doigt pour valider.'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
 }
