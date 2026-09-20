@@ -931,8 +931,16 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                             alignment: _placeAlignment(i),
                             place: _places[i],
                             selected: i == _selectedIndex,
-                            onTap: () =>
-                                setState(() => _selectedIndex = i),
+                            onTap: () {
+                              setState(() => _selectedIndex = i);
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => HanduniaPlaceRoute(
+                                    lieuId: _places[i]['id'].toString(),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                       ],
                     ),
