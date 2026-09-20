@@ -27314,825 +27314,215 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final totalMemories = _density.values.fold<int>(
-      0,
-      (total, value) => total + value,
-    );
-    final statusLabel = _backendUnavailable
-        ? 'Local · hors connexion'
-        : _syncingOffline
-        ? 'Synchronisation…'
-        : _syncedOfflineCount > 0
-        ? '$_syncedOfflineCount synchronisé(s)'
-        : 'Monde connecté';
-
-    final handuniaTheme = ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF8FE3CF),
-        brightness: Brightness.dark,
-      ),
-      scaffoldBackgroundColor: Colors.transparent,
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: const Color(0xFF0E1725),
-        hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.38)),
-        labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.72)),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
-        ),
-        focusedBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(18)),
-          borderSide: BorderSide(color: Color(0xFF8FE3CF), width: 1.4),
-        ),
-      ),
-    );
-
-    return Theme(
-      data: handuniaTheme,
-      child: Material(
-        color: const Color(0xFF070B14),
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          body: SafeArea(
-            child: Stack(
-              children: [
-                const Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF08101B),
-                          Color(0xFF111526),
-                          Color(0xFF0A1118),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: -90,
-                  right: -70,
-                  child: IgnorePointer(
-                    child: Container(
-                      width: 250,
-                      height: 250,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFF4A3B78).withValues(alpha: 0.22),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x334A3B78),
-                            blurRadius: 90,
-                            spreadRadius: 26,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: -120,
-                  left: -70,
-                  child: IgnorePointer(
-                    child: Container(
-                      width: 260,
-                      height: 260,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFF3F6E52).withValues(alpha: 0.18),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x333F6E52),
-                            blurRadius: 100,
-                            spreadRadius: 32,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
-                      child: Row(
-                        children: [
-                          Material(
-                            color: Colors.white.withValues(alpha: 0.07),
-                            borderRadius: BorderRadius.circular(16),
-                            child: IconButton(
-                              tooltip: 'Retour',
-                              onPressed: () => Navigator.maybePop(context),
-                              icon: const Icon(Icons.arrow_back_rounded),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Container(
-                            width: 42,
-                            height: 42,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(14),
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF8FE3CF), Color(0xFF4A3B78)],
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x338FE3CF),
-                                  blurRadius: 20,
-                                  spreadRadius: -4,
-                                ),
-                              ],
-                            ),
-                            child: const Text('🌌', style: TextStyle(fontSize: 21)),
-                          ),
-                          const SizedBox(width: 10),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Handunia Wasa',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.3,
-                                  ),
-                                ),
-                                Text(
-                                  'Monde vivant · mémoire collective',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Color(0xFF9AA7B8),
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            constraints: const BoxConstraints(maxWidth: 132),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 7,
-                            ),
-                            decoration: BoxDecoration(
-                              color: (_backendUnavailable
-                                      ? const Color(0xFFF59E0B)
-                                      : const Color(0xFF10B981))
-                                  .withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: (_backendUnavailable
-                                        ? const Color(0xFFF59E0B)
-                                        : const Color(0xFF10B981))
-                                    .withValues(alpha: 0.28),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _backendUnavailable
-                                      ? Icons.cloud_off_rounded
-                                      : _syncingOffline
-                                      ? Icons.sync_rounded
-                                      : Icons.public_rounded,
-                                  size: 13,
-                                  color: _backendUnavailable
-                                      ? const Color(0xFFFFC768)
-                                      : const Color(0xFF7FE2BE),
-                                ),
-                                const SizedBox(width: 5),
-                                Flexible(
-                                  child: Text(
-                                    statusLabel,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (_step != 0)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 2, 14, 8),
-                        child: Row(
-                          children: [
-                            _HanduniaMetric(
-                              icon: Icons.place_rounded,
-                              value: '${_lieux.length}',
-                              label: 'lieux',
-                            ),
-                            const SizedBox(width: 8),
-                            _HanduniaMetric(
-                              icon: Icons.auto_stories_rounded,
-                              value: '$totalMemories',
-                              label: 'souvenirs',
-                            ),
-                            const Spacer(),
-                            if (_step == 1)
-                              IconButton(
-                                tooltip: 'Actualiser',
-                                onPressed: _loadingLieux ? null : _loadLieux,
-                                icon: const Icon(Icons.refresh_rounded),
-                              ),
-                          ],
-                        ),
-                      ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 4, 14, 12),
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 320),
-                          switchInCurve: Curves.easeOutCubic,
-                          switchOutCurve: Curves.easeInCubic,
-                          child: KeyedSubtree(
-                            key: ValueKey(_step),
-                            child: _buildStepBody(),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStepBody() {
     switch (_step) {
       case 1:
-        return _buildLieuxStep();
+        return ReferenceCreationShell(
+          dark: true,
+          title: 'Lieux vivants',
+          subtitle: _lieux.length.toString() + ' lieux tissés par la communauté',
+          leading: const Text('🌌', style: TextStyle(fontSize: 15)),
+          onBack: () => setState(() => _step = 0),
+          child: _buildLieuxStep(),
+        );
       case 2:
-        return _buildSceneStep();
+        return ReferenceCreationShell(
+          dark: true,
+          title: _selectedLieu?['name']?.toString() ?? 'Lieu vivant',
+          subtitle: 'Reconstitué par la mémoire collective',
+          onBack: () => setState(() => _step = 1),
+          child: _buildSceneStep(),
+        );
       case 3:
-        return _buildWeaveStep();
+        return ReferenceCreationShell(
+          dark: true,
+          title: 'Tisser un souvenir',
+          subtitle: 'Il rejoint Handunia Wasa',
+          leading: const Text('🧵', style: TextStyle(fontSize: 15)),
+          onBack: () => setState(() => _step = 2),
+          child: _buildWeaveStep(),
+        );
       case 4:
-        return _buildCreateLieuStep();
+        return ReferenceCreationShell(
+          dark: true,
+          title: 'Tisser un nouveau lieu',
+          subtitle: 'Le monde vivant grandit avec la communauté',
+          onBack: () => setState(() => _step = 1),
+          child: _buildCreateLieuStep(),
+        );
       case 5:
-        return _buildWorldFeedStep();
+        return ReferenceCreationShell(
+          dark: true,
+          title: 'Fil du monde',
+          subtitle: 'Souvenirs tissés par la communauté',
+          onBack: () => setState(() => _step = 1),
+          child: _buildWorldFeedStep(),
+        );
       case 0:
       default:
-        return _buildPortalStep();
+        return ReferenceCreationShell(
+          dark: true,
+          showTopBar: false,
+          bodyPadding: EdgeInsets.zero,
+          child: ReferencePortalStage(
+            onEnter: () => setState(() => _step = 1),
+          ),
+        );
     }
   }
 
-  // 1/4 — Portail d'entrée : un seuil qui respire lentement, pour
-  // signaler qu'on entre ailleurs, pas dans un menu.
   Widget _buildPortalStep() {
-    final totalMemories = _density.values.fold<int>(
-      0,
-      (total, value) => total + value,
+    return ReferencePortalStage(
+      onEnter: () => setState(() => _step = 1),
     );
-    return LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+  }
+
+  // 2/4 — Carte des lieux vivants  // 2/4 — Carte des lieux vivants  // 2/4 — Carte des lieux vivants : chaque lieu se densifie visuellement
+  // à mesure que la communauté y dépose souvenirs, voix et récits —
+  // une vraie densité, jamais fabriquée (voir _densityPercent).
+  Widget _buildLieuxStep() {
+    if (_loadingLieux) {
+      return const Center(
+        child: CircularProgressIndicator(color: FitilaReferenceUi.wasaGlow),
+      );
+    }
+    if (_lieuxError != null) {
+      return Center(
+        child: ReferenceCard(
+          dark: true,
+          margin: EdgeInsets.zero,
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: double.infinity,
-                constraints: const BoxConstraints(minHeight: 360),
-                padding: const EdgeInsets.fromLTRB(22, 28, 22, 24),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(30),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF2E2352),
-                      Color(0xFF14283A),
-                      Color(0xFF0B151C),
-                    ],
-                  ),
-                  border: Border.all(color: const Color(0x338FE3CF)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x5531265C),
-                      blurRadius: 42,
-                      offset: Offset(0, 18),
-                      spreadRadius: -20,
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 174,
-                      height: 174,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          for (final size in [92.0, 132.0, 172.0])
-                            Container(
-                              width: size,
-                              height: size,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: const Color(0xFF8FE3CF).withValues(
-                                    alpha: size == 92 ? 0.42 : 0.18,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          Container(
-                            width: 72,
-                            height: 72,
-                            alignment: Alignment.center,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: RadialGradient(
-                                colors: [Color(0xFFB3F4E4), Color(0xFF3F6E52)],
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Color(0x668FE3CF),
-                                  blurRadius: 32,
-                                  spreadRadius: -5,
-                                ),
-                              ],
-                            ),
-                            child: const Text('🌍', style: TextStyle(fontSize: 31)),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      'Le monde vivant Bàátɔ̀nú',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 25,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 9),
-                    Text(
-                      'Entrez dans une mémoire collective faite de lieux, de voix et de souvenirs transmis par la communauté.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.67),
-                        fontSize: 13,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _HanduniaPill(
-                          icon: Icons.place_rounded,
-                          label: '${_lieux.length} lieux',
-                        ),
-                        _HanduniaPill(
-                          icon: Icons.auto_stories_rounded,
-                          label: '$totalMemories souvenirs',
-                        ),
-                        const _HanduniaPill(
-                          icon: Icons.auto_awesome_rounded,
-                          label: 'Fitila IA',
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => setState(() => _step = 1),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(56),
-                    backgroundColor: const Color(0xFF8FE3CF),
-                    foregroundColor: const Color(0xFF071018),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                  icon: const Icon(Icons.explore_rounded),
-                  label: const Text(
-                    'Entrer dans le monde',
-                    style: TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                ),
+              const Icon(
+                Icons.cloud_off_rounded,
+                color: Color(0xFFFFC768),
+                size: 32,
               ),
               const SizedBox(height: 10),
               Text(
-                'Chaque souvenir reste attribué à son auteur. L’IA aide à relier la mémoire, elle ne remplace pas les témoignages.',
+                _lieuxError!,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.42),
-                  fontSize: 10.5,
-                  height: 1.4,
-                ),
+                style: const TextStyle(color: Colors.white70, fontSize: 11.5),
+              ),
+              const SizedBox(height: 10),
+              ReferenceGhostDarkButton(
+                label: 'Réessayer',
+                icon: Icons.refresh_rounded,
+                onPressed: _loadLieux,
               ),
             ],
           ),
         ),
+      );
+    }
+
+    final visible = _visibleLieux;
+    return RefreshIndicator(
+      color: FitilaReferenceUi.wasaGlow,
+      onRefresh: _loadLieux,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        children: [
+          SizedBox(
+            height: 320,
+            child: Stack(
+              children: [
+                for (var i = 0; i < math.min(visible.length, 7); i++)
+                  Align(
+                    alignment: _handuniaNodeAlignment(i),
+                    child: ReferenceWorldNode(
+                      emoji: visible[i]['icon']?.toString() ?? '📍',
+                      label: visible[i]['name']?.toString() ?? 'Lieu vivant',
+                      density: _densityPercent(visible[i]['id'].toString()),
+                      onTap: () => _openLieu(visible[i]),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (_backendUnavailable)
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF59E0B).withValues(alpha: .10),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFFF59E0B).withValues(alpha: .22),
+                ),
+              ),
+              child: const Text(
+                'Mode hors ligne : les lieux de départ restent accessibles et les souvenirs sont synchronisés au retour du réseau.',
+                style: TextStyle(
+                  color: Color(0xFFFFDCA0),
+                  fontSize: 10.5,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          Row(
+            children: [
+              Expanded(
+                child: _HanduniaTextField(
+                  controller: _lieuxQuery,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    hintText: 'Rechercher un lieu…',
+                    prefixIcon: Icon(Icons.search_rounded, size: 18),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                tooltip: 'Nouveau lieu',
+                onPressed: _backendUnavailable
+                    ? null
+                    : _openCreateLieuStep,
+                icon: const Icon(Icons.add_location_alt_rounded),
+              ),
+              IconButton(
+                tooltip: 'Fil du monde',
+                onPressed: _backendUnavailable ? null : _openWorldFeed,
+                icon: const Icon(
+                  Icons.dynamic_feed_rounded,
+                  color: FitilaReferenceUi.wasaGlow,
+                ),
+              ),
+            ],
+          ),
+          if (_syncedOfflineCount > 0) ...[
+            const SizedBox(height: 8),
+            Text(
+              _syncedOfflineCount.toString() +
+                  ' souvenir(s) hors ligne synchronisé(s).',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: .46),
+                fontSize: 9.5,
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+        ],
       ),
     );
   }
 
-  // 2/4 — Carte des lieux vivants  // 2/4 — Carte des lieux vivants : chaque lieu se densifie visuellement
-  // à mesure que la communauté y dépose souvenirs, voix et récits —
-  // une vraie densité, jamais fabriquée (voir _densityPercent).
-  Widget _buildLieuxStep() {
-    final memories = _density.values.fold<int>(
-      0,
-      (total, value) => total + value,
-    );
-    return SizedBox(
-      width: double.infinity,
-      child: _loadingLieux
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF8FE3CF)),
-            )
-          : _lieuxError != null
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.cloud_off_rounded,
-                    size: 42,
-                    color: Color(0xFFFFC768),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _lieuxError!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                  const SizedBox(height: 12),
-                  FilledButton.icon(
-                    onPressed: _loadLieux,
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('Réessayer'),
-                  ),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              color: const Color(0xFF8FE3CF),
-              onRefresh: _loadLieux,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF161E31), Color(0xFF101923)],
-                      ),
-                      border: Border.all(color: const Color(0x1FFFFFFF)),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            color: const Color(0xFF8FE3CF).withValues(alpha: .12),
-                          ),
-                          child: const Text('🌐', style: TextStyle(fontSize: 22)),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Lieux vivants',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 18,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${_lieux.length} lieux · $memories souvenirs tissés',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: .48),
-                                  fontSize: 11.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        TextButton.icon(
-                          onPressed: _backendUnavailable
-                              ? () => ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Le fil communautaire nécessite la synchronisation du serveur.',
-                                    ),
-                                  ),
-                                )
-                              : _openWorldFeed,
-                          icon: const Icon(Icons.dynamic_feed_rounded, size: 17),
-                          label: const Text('Fil du monde'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_backendUnavailable) ...[
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF59E0B).withValues(alpha: .10),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: const Color(0xFFF59E0B).withValues(alpha: .24),
-                        ),
-                      ),
-                      child: const Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            Icons.offline_bolt_rounded,
-                            size: 18,
-                            color: Color(0xFFFFC768),
-                          ),
-                          SizedBox(width: 9),
-                          Expanded(
-                            child: Text(
-                              'Mode hors ligne : les lieux de départ restent accessibles et vos souvenirs sont conservés sur cet appareil puis synchronisés automatiquement au retour du réseau.',
-                              style: TextStyle(
-                                color: Color(0xFFFFDCA0),
-                                fontSize: 11.5,
-                                height: 1.4,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  _HanduniaTextField(
-                    controller: _lieuxQuery,
-                    onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      hintText: 'Rechercher un lieu…',
-                      prefixIcon: Icon(Icons.search_rounded, size: 20),
-                      suffixIcon: Icon(Icons.travel_explore_rounded, size: 18),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      ChoiceChip(
-                        avatar: const Icon(Icons.local_fire_department_rounded, size: 16),
-                        label: const Text('Populaires'),
-                        selected: _sortByPopular,
-                        onSelected: (_) => setState(() => _sortByPopular = true),
-                      ),
-                      const SizedBox(width: 8),
-                      ChoiceChip(
-                        avatar: const Icon(Icons.schedule_rounded, size: 16),
-                        label: const Text('Récents'),
-                        selected: !_sortByPopular,
-                        onSelected: (_) => setState(() => _sortByPopular = false),
-                      ),
-                      const Spacer(),
-                      IconButton.filledTonal(
-                        tooltip: 'Nouveau lieu',
-                        onPressed: _backendUnavailable
-                            ? () => ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'La création d’un lieu nécessite la synchronisation du serveur.',
-                                  ),
-                                ),
-                              )
-                            : _openCreateLieuStep,
-                        icon: const Icon(Icons.add_location_alt_rounded),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  if (_visibleLieux.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 34,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: .035),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: Colors.white.withValues(alpha: .08)),
-                      ),
-                      child: const Column(
-                        children: [
-                          Icon(Icons.map_outlined, size: 38, color: Color(0xFF8FE3CF)),
-                          SizedBox(height: 10),
-                          Text(
-                            'Aucun lieu ne correspond.',
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                          SizedBox(height: 5),
-                          Text(
-                            'Modifiez la recherche ou tissez un nouveau lieu.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Color(0xFF93A0B0), fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: 0.82,
-                          ),
-                      itemCount: _visibleLieux.length,
-                      itemBuilder: (context, index) {
-                        final lieu = _visibleLieux[index];
-                        final id = lieu['id'] as String;
-                        final percent = _densityPercent(id);
-                        final count = _density[id] ?? 0;
-                        final palettes = const [
-                          [Color(0xFF25324A), Color(0xFF101826)],
-                          [Color(0xFF32264D), Color(0xFF171222)],
-                          [Color(0xFF15392F), Color(0xFF0C1A17)],
-                          [Color(0xFF3D2B21), Color(0xFF1D1511)],
-                        ];
-                        final palette = palettes[index % palettes.length];
-                        return Material(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(22),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(22),
-                            onTap: () => _openLieu(lieu),
-                            child: Ink(
-                              padding: const EdgeInsets.all(13),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(22),
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: palette,
-                                ),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: .09),
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      SizedBox(
-                                        width: 58,
-                                        height: 58,
-                                        child: Stack(
-                                          alignment: Alignment.center,
-                                          children: [
-                                            CustomPaint(
-                                              size: const Size(58, 58),
-                                              painter: _ScoreRingPainter(
-                                                progress: percent / 100,
-                                              ),
-                                            ),
-                                            Text(
-                                              lieu['icon']?.toString() ?? '📍',
-                                              style: const TextStyle(fontSize: 22),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 7,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.black.withValues(alpha: .18),
-                                          borderRadius: BorderRadius.circular(999),
-                                        ),
-                                        child: Text(
-                                          '$percent%',
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w900,
-                                            color: Color(0xFF8FE3CF),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    lieu['name']?.toString() ?? '',
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w900,
-                                      height: 1.15,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 5),
-                                  Text(
-                                    lieu['description']?.toString() ?? '',
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: .46),
-                                      fontSize: 10.5,
-                                      height: 1.3,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.auto_stories_rounded,
-                                        size: 13,
-                                        color: Color(0xFF8FE3CF),
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Expanded(
-                                        child: Text(
-                                          count == 0
-                                              ? 'Premier souvenir attendu'
-                                              : '$count souvenir${count > 1 ? 's' : ''}',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            color: Colors.white.withValues(alpha: .64),
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  const SizedBox(height: 14),
-                  const _FitilaCollapsibleNote(
-                    icon: Icons.info_outline_rounded,
-                    summary: "Comment fonctionne la densité ?",
-                    detail:
-                        "La densité reflète le nombre réel de souvenirs tissés pour chaque lieu (20 souvenirs = 100 %). Un lieu à 0 % n'a encore reçu aucun souvenir : aucun chiffre n'est inventé.",
-                  ),
-                  const SizedBox(height: 18),
-                ],
-              ),
-            ),
-    );
+  Alignment _handuniaNodeAlignment(int index) {
+    const positions = [
+      Alignment(-.72, -.82),
+      Alignment(.48, -.88),
+      Alignment(-.18, -.12),
+      Alignment(.73, .02),
+      Alignment(-.62, .78),
+      Alignment(.20, .86),
+      Alignment(.78, .72),
+    ];
+    return positions[index % positions.length];
   }
 
-  // 3/4 — Présence dans un lieu généré  // 3/4 — Présence dans un lieu généré : scène abstraite tissée à
+  // 3/4 — Présence dans un lieu généré  // 3/4 — Présence dans un lieu généré  // 3/4 — Présence dans un lieu généré : scène abstraite tissée à
   // partir de récits réels ; l'IA est la présence gardienne de la
   // mémoire — jamais une personne précise inventée.
   Widget _buildSceneStep() {
@@ -28140,292 +27530,227 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     if (lieu == null) {
       return const SizedBox.shrink();
     }
-    return SizedBox(
-      width: double.infinity,
-      child: Column(
-        children: [
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: () => setState(() => _step = 1),
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        if (_loadingScene)
+          const SizedBox(
+            height: 230,
+            child: Center(
+              child: CircularProgressIndicator(
+                color: FitilaReferenceUi.wasaGlow,
               ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      lieu['name']?.toString() ?? '',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                      ),
-                    ),
-                    Text(
-                      'Reconstitué par la mémoire collective',
-                      style: TextStyle(color: _fitilaMuted, fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: _FitilaDarkStage(
-              child: _loadingScene
-                  ? const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
-                    )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          lieu['icon']?.toString() ?? '📍',
-                          style: const TextStyle(fontSize: 34),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _scene.isNotEmpty
-                              ? '"$_scene"'
-                              : (lieu['description']?.toString() ?? ''),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontStyle: FontStyle.italic,
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          _lieuFragments.isEmpty
-                              ? 'Première évocation — aucun souvenir communautaire pour ce lieu pour le moment.'
-                              : '${_lieuFragments.length} souvenir(s) communautaire(s) tissé(s) ici.',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.45),
-                            fontSize: 10.5,
-                          ),
-                        ),
-                      ],
-                    ),
             ),
+          )
+        else
+          ReferenceSceneStage(
+            emoji: lieu['icon']?.toString() ?? '🌍',
+            caption: _scene.isNotEmpty
+                ? _scene
+                : (lieu['description']?.toString() ?? ''),
           ),
-          if (_lieuFragments.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 150,
-              child: ListView.builder(
-                itemCount: _lieuFragments.length,
-                itemBuilder: (context, index) =>
-                    _buildFragmentTile(_lieuFragments[index], _lieuFragments),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _HanduniaTextField(
+                controller: _askController,
+                decoration: const InputDecoration(
+                  hintText: '💬 Demander à la mémoire collective…',
+                ),
+                onSubmitted: (_) => _askCollectiveMemory(),
               ),
+            ),
+            const SizedBox(width: 7),
+            IconButton.filled(
+              onPressed: _asking ? null : _askCollectiveMemory,
+              icon: _asking
+                  ? const SizedBox(
+                      width: 15,
+                      height: 15,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.send_rounded),
             ),
           ],
-          const SizedBox(height: 12),
-          if (_memoryAnswer.isNotEmpty)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: _fitilaPrimarySoft,
-                borderRadius: BorderRadius.circular(10),
+        ),
+        if (_memoryAnswer.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          ReferenceCard(
+            dark: true,
+            child: Text(
+              _memoryAnswer,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11.5,
+                height: 1.4,
               ),
-              child: Text(
-                _memoryAnswer,
-                style: const TextStyle(fontSize: 12.5),
-              ),
-            ),
-          Row(
-            children: [
-              Expanded(
-                child: _HanduniaTextField(
-                  controller: _askController,
-                  decoration: const InputDecoration(
-                    hintText: '💬 Demander à la mémoire collective…',
-                    border: OutlineInputBorder(),
-                  ),
-                  onSubmitted: (_) => _askCollectiveMemory(),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton.filled(
-                onPressed: _asking ? null : _askCollectiveMemory,
-                icon: _asking
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.send_rounded),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: () => setState(() => _step = 3),
-              icon: const Icon(Icons.auto_stories_rounded),
-              label: const Text('Tisser un souvenir ici'),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // 4/4 — Le bouton n'est pas "Publier" : le geste est cadré comme un
-  // tissage collectif, pas une publication individuelle dans le fil.
-  Widget _buildWeaveStep() {
-    final lieu = _selectedLieu;
-    return ListView(
-      children: [
-        Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back_rounded),
-              onPressed: () => setState(() => _step = 2),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Tisser un souvenir',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                  ),
-                  Text(
-                    'Il rejoint Handunia Wasa',
-                    style: TextStyle(color: _fitilaMuted, fontSize: 11),
-                  ),
-                ],
-              ),
-            ),
-          ],
+        if (_lieuFragments.isNotEmpty) ...[
+          const SizedBox(height: 5),
+          const ReferenceLabel('Souvenirs du lieu', dark: true),
+          const SizedBox(height: 7),
+          for (final fragment in _lieuFragments.take(3))
+            _buildFragmentTile(fragment, _lieuFragments),
+        ],
+        const SizedBox(height: 9),
+        ReferenceGoldButton(
+          label: 'Tisser un souvenir ici',
+          icon: Icons.auto_stories_rounded,
+          onPressed: () => setState(() => _step = 3),
         ),
-        const SizedBox(height: 8),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'TON RÉCIT',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
-                    letterSpacing: .5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _fragmentController,
-                  builder: (context, value, _) => Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: _HanduniaTextField(
-                          controller: _fragmentController,
-                          maxLines: 3,
-                          onChanged: (v) {
-                            if (v.trim().isEmpty && _aiAssisted) {
-                              setState(() => _aiAssisted = false);
-                            }
-                          },
-                          decoration: InputDecoration(
-                            hintText: lieu != null
-                                ? 'Ex : Ma grand-mère racontait que…'
-                                : 'Décrivez votre souvenir…',
-                            border: const OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      _FitilaListenButton(
-                        french: value.text,
-                        label: 'Écouter le souvenir',
-                        compact: true,
-                      ),
-                    ],
-                  ),
-                ),
-                if (_aiAssisted) ...[
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.auto_awesome_rounded,
-                        size: 14,
-                        color: _fitilaGoldDeep,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Généré par Fitila IA — modifiable avant de tisser',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: _fitilaGoldDeep,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  onPressed: _generating ? null : _generateFragment,
-                  icon: _generating
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.auto_awesome_rounded, size: 16),
-                  label: const Text('Générer avec Fitila IA'),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 60,
-          width: double.infinity,
-          child: CustomPaint(painter: _WeaveLinePainter()),
-        ),
-        const SizedBox(height: 10),
-        FilledButton.icon(
-          onPressed: _weaving ? null : _weaveFragment,
-          icon: _weaving
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Icon(Icons.auto_awesome_mosaic_rounded),
-          label: const Text('Tisser dans le monde vivant'),
-        ),
-        const SizedBox(height: 6),
-        Center(
-          child: Text(
-            "Ce geste n'est pas une publication dans le fil : votre souvenir rejoint la mémoire du lieu, tissée collectivement.",
-            textAlign: TextAlign.center,
-            style: TextStyle(color: _fitilaMuted, fontSize: 10.5),
-          ),
-        ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 12),
       ],
     );
   }
 
-  // 5 — Créer un nouveau lieu : n'importe quel membre peut faire naître
+  // 4/4 — Le bouton n'est pas "Publier"  // 4/4 — Le bouton n'est pas "Publier" : le geste est cadré comme un
+  // tissage collectif, pas une publication individuelle dans le fil.
+  Widget _buildWeaveStep() {
+    final lieu = _selectedLieu;
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: .07),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withValues(alpha: .14)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'TON RÉCIT',
+                style: TextStyle(
+                  color: FitilaReferenceUi.gold,
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: .8,
+                ),
+              ),
+              const SizedBox(height: 5),
+              _HanduniaTextField(
+                controller: _fragmentController,
+                maxLines: 4,
+                onChanged: (value) {
+                  if (value.trim().isEmpty && _aiAssisted) {
+                    setState(() => _aiAssisted = false);
+                  }
+                },
+                decoration: InputDecoration(
+                  hintText: lieu != null
+                      ? 'Ma grand-mère racontait que…'
+                      : 'Décrivez votre souvenir…',
+                  filled: false,
+                  border: InputBorder.none,
+                ),
+              ),
+              if (_aiAssisted)
+                Text(
+                  'Assisté par Fitila IA — modifiable avant le tissage',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: .45),
+                    fontSize: 9.5,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _generating ? null : _generateFragment,
+            icon: _generating
+                ? const SizedBox(
+                    width: 13,
+                    height: 13,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: FitilaReferenceUi.wasaGlow,
+                    ),
+                  )
+                : const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: FitilaReferenceUi.wasaGlow,
+                    size: 15,
+                  ),
+            label: const Text('Aide Fitila IA'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white.withValues(alpha: .62),
+              textStyle: const TextStyle(fontSize: 10.5),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: 190,
+          width: double.infinity,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: CustomPaint(painter: _WeaveLinePainter()),
+              ),
+              const Positioned(
+                right: 48,
+                top: 42,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Color(0x55FFFFFF),
+                    shape: BoxShape.circle,
+                  ),
+                  child: SizedBox(width: 9, height: 9),
+                ),
+              ),
+              const Positioned(
+                left: 34,
+                bottom: 26,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: FitilaReferenceUi.wasaGlow,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0xAA8FE3CF),
+                        blurRadius: 14,
+                      ),
+                    ],
+                  ),
+                  child: SizedBox(width: 13, height: 13),
+                ),
+              ),
+            ],
+          ),
+        ),
+        ReferenceGoldButton(
+          label: 'Tisser dans le monde vivant',
+          icon: Icons.auto_awesome_mosaic_rounded,
+          busy: _weaving,
+          onPressed: _weaving ? null : _weaveFragment,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          "Ce geste n'est pas une publication individuelle : le souvenir rejoint la mémoire collective du lieu.",
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: .42),
+            fontSize: 9.5,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 18),
+      ],
+    );
+  }
+
+  // 5 — Créer un nouveau lieu  // 5 — Créer un nouveau lieu : n'importe quel membre peut faire naître
   // un lieu du monde vivant, pas seulement les 7 lieux éditoriaux de
   // départ. Fitila IA peut aider à proposer une icône et une description,
   // mais rien n'est publié tant que l'utilisateur n'a pas validé.
