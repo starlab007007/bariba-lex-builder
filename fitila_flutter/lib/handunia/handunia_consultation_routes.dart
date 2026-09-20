@@ -800,8 +800,9 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
       final maxLng = lngs.reduce(math.max);
       final latSpan = math.max(maxLat - minLat, 0.00001);
       final lngSpan = math.max(maxLng - minLng, 0.00001);
-      final x = ((lng - minLng) / lngSpan).clamp(0.0, 1.0);
-      final y = (1 - (lat - minLat) / latSpan).clamp(0.0, 1.0);
+      final x = ((lng - minLng) / lngSpan).clamp(0.0, 1.0).toDouble();
+      final y =
+          (1 - (lat - minLat) / latSpan).clamp(0.0, 1.0).toDouble();
       return Alignment(x * 1.6 - .8, y * 1.6 - .8);
     }
 
