@@ -107,9 +107,12 @@ Données :
 - `handunia_fragments`
 - `handunia_corroborations`
 
-Chaque lieu est visible, y compris ceux sans souvenir. La densité de voix
-pilote le rayon et le rythme du halo. Une densité nulle devient une lacune
-pointillée. Le toucher change l'anneau de sélection et la fiche du bas.
+Chaque lieu est visible, y compris ceux sans souvenir. Quand latitude et
+longitude sont disponibles, la position visuelle est une projection relative
+des coordonnées réelles ; aucun réseau de fils décoratif n'est inventé. Les
+lieux sans coordonnées utilisent seulement un repli déterministe. La densité
+de voix pilote le rayon et le rythme du halo. Une densité nulle devient une
+lacune pointillée. Le toucher change l'anneau de sélection et la fiche du bas.
 
 ## Écran 4 — Le lieu
 
@@ -177,7 +180,9 @@ Trois états :
 Le filtrage d'accès est exécuté avant la vectorisation. Chaque `[n]` renvoyé
 par le modèle est remplacé à l'affichage par la pastille de son témoin.
 Une panne réseau reste un état réseau et n'est plus présentée comme un vide de
-mémoire. L'entrée clavier et l'appui long vocal sont disponibles.
+mémoire. L'Edge Function renvoie `503 / unavailable` pour une panne technique ;
+seule l'absence réelle de témoignages renvoie `void`. L'entrée clavier et
+l'appui long vocal sont disponibles.
 
 ## Écran 8 — Le foyer du village
 
