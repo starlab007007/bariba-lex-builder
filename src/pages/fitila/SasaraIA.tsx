@@ -48,11 +48,18 @@ type StudioState =
 
 type RefineStyle = 'correct' | 'simplify' | 'natural' | 'formal';
 
-const EXAMPLES = [
+const EXAMPLES_FR = [
   'Bonjour, comment vas-tu ?',
   'Je vais au marché',
   'Le patient a pris son traitement',
   'Nous allons à l’école demain',
+];
+
+const EXAMPLES_BA = [
+  'A kpuna n do?',
+  'Na koko di',
+  'Na sɔmburu kasuu',
+  'Gura nɛ',
 ];
 
 const MAX_TEXT_LENGTH = 10000;
@@ -94,6 +101,7 @@ export default function SasaraIA() {
   const [corpusSaved, setCorpusSaved] = useState(false);
   const [monthlyCorpusCount, setMonthlyCorpusCount] = useState(0);
   const [translationMethod, setTranslationMethod] = useState('');
+  const [refiningStyle, setRefiningStyle] = useState<RefineStyle | null>(null);
   const [online, setOnline] = useState(() => navigator.onLine);
 
   const sourceLanguage = direction === 'fr-ba' ? 'french' : 'bariba';
@@ -245,6 +253,7 @@ export default function SasaraIA() {
       return;
     }
 
+    setRefiningStyle(style);
     setState('editing');
     setErrorMessage('');
     try {
@@ -268,6 +277,8 @@ export default function SasaraIA() {
     } catch (error) {
       setState('error');
       setErrorMessage(humanError(error, 'Impossible de corriger avec l’IA pour le moment.'));
+    } finally {
+      setRefiningStyle(null);
     }
   };
 
@@ -420,15 +431,15 @@ export default function SasaraIA() {
   const stateLabel = useMemo(() => {
     if (!online || state === 'offline') return 'Hors ligne';
     if (state === 'translating') return 'Traduction IA…';
-    if (state === 'editing') return 'Amélioration IA…';
+    if (state === 'editing') return refiningStyle ? 'Amélioration IA…' : 'Édition';
     if (state === 'publishing') return 'Publication…';
     if (state === 'contributing-corpus') return 'Contribution corpus…';
     if (state === 'partial-success') return 'Publié · corpus en attente';
     if (state === 'success') return 'Prêt';
     return 'Studio prêt';
-  }, [online, state]);
+  }, [online, state, refiningStyle]);
 
-  const isBusy = ['translating', 'editing', 'publishing', 'contributing-corpus', 'generating-audio'].includes(state);
+  const isBusy = ['translating', 'publishing', 'contributing-corpus', 'generating-audio'].includes(state) || refiningStyle !== null;
 
   return (
     <div
@@ -608,7 +619,7 @@ export default function SasaraIA() {
               )}
 
               <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-                {EXAMPLES.map((example) => (
+                {(sourceLanguage === 'french' ? EXAMPLES_FR : EXAMPLES_BA).map((example) => (
                   <button
                     key={example}
                     type="button"
@@ -762,7 +773,7 @@ export default function SasaraIA() {
                         onClick={() => refine(style as RefineStyle)}
                         className="min-h-11 rounded-xl border border-white/10 bg-white/5 px-3 text-xs font-semibold text-slate-200 transition hover:border-amber-300/30 hover:bg-amber-300/10 disabled:opacity-50"
                       >
-                        {state === 'editing' ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : label}
+                        {refiningStyle === style ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : label}
                       </button>
                     ))}
                   </div>
@@ -778,10 +789,7 @@ export default function SasaraIA() {
                     </div>
                     <Switch
                       checked={corpusConsent}
-                      onCheckedChange={(value) => {
-                        setCorpusConsent(value);
-                        if (!value) setCorpusSaved(false);
-                      }}
+                      onCheckedChange={setCorpusConsent}
                       aria-label="Autoriser la contribution au corpus"
                     />
                   </div>
