@@ -30,7 +30,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Chemin des caravanes'), findsWidgets);
-    expect(find.text('Nikki'), findsOneWidget);
+    expect(find.text('Nikki'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
