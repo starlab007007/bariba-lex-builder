@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/fitila_media.dart';
 import 'handunia_consultation_extended_data.dart';
 import 'handunia_consultation_ui.dart';
+import 'handunia_geo_trace_route.dart';
 
 TextStyle _frauncesRoute({
   double size = 18,
@@ -1264,7 +1265,7 @@ class _PlaceBody extends StatelessWidget {
                           final completed =
                               await Navigator.of(context).push<bool>(
                             MaterialPageRoute<bool>(
-                              builder: (_) => HanduniaTraceRoute(
+                              builder: (_) => HanduniaGeoTraceRoute(
                                 fragmentId: oldest!['id'].toString(),
                               ),
                             ),
