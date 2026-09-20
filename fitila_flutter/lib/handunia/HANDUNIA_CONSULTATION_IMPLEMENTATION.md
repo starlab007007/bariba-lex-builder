@@ -213,6 +213,8 @@ enregistrement, une étincelle rejoue réellement la trajectoire en 4,5 s.
 Le curseur permet de revenir dans la trajectoire. En cas de coupure, la
 trajectoire complète, son fragment et `captured_at` sont conservés dans la
 file locale `handunia_pending_paths_v1`, avec état `En attente de réseau`.
+Cette file est rejouée automatiquement au retour d'une connexion ; la date
+d'origine est écrite dans `handunia_memory_paths.captured_at`.
 
 ## États et accessibilité
 
