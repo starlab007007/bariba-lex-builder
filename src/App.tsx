@@ -38,7 +38,7 @@ const TamTamDictionary = lazy(() => import("./pages/tamtam/TamTamDictionary"));
 const TamTamAgriculture = lazy(() => import("./pages/tamtam/TamTamAgriculture"));
 const TamTamFinance = lazy(() => import("./pages/tamtam/TamTamFinance"));
 const TamTamEducation = lazy(() => import("./pages/tamtam/TamTamEducation"));
-const TamTamTranslator = lazy(() => import("./pages/tamtam/TamTamTranslator"));
+const SasaraIA = lazy(() => import("./pages/fitila/SasaraIA"));
 const TamTamHealth = lazy(() => import("./pages/tamtam/TamTamHealth"));
 const TamTamKuaishouTest = lazy(() => import("./pages/tamtam/TamTamKuaishouTest"));
 const TamTamCreator = lazy(() => import("./pages/tamtam/TamTamCreator"));
@@ -124,11 +124,12 @@ const App = () => (
                 <Route path="finance" element={<TamTamFinance />} />
                 <Route path="education" element={<TamTamEducation />} />
                 <Route path="health" element={<TamTamHealth />} />
-                <Route path="translator" element={<TamTamTranslator />} />
+                <Route path="translator" element={<SafeBoundary label="Sasara IA"><SasaraIA /></SafeBoundary>} />
                 <Route path="kuaishou-test" element={<TamTamKuaishouTest />} />
                 <Route path="creator" element={<TamTamCreator />} />
                 <Route path="templates" element={<TamTamTemplates />} />
                 <Route path="creer/aburu-fim" element={<ProtectedRoute><SafeBoundary label="Aburu Fim IA"><AburuFimIA /></SafeBoundary></ProtectedRoute>} />
+                <Route path="creer/sasara-ia" element={<SafeBoundary label="Sasara IA"><SasaraIA /></SafeBoundary>} />
                 <Route path="griot-studio" element={<GriotStudioPage />} />
                 <Route path="sos" element={<TamTamSOS />} />
                 <Route path="profile" element={<ProtectedRoute><SafeBoundary label="Profil"><TamTamProfile /></SafeBoundary></ProtectedRoute>} />
