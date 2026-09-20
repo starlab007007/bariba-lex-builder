@@ -30,7 +30,7 @@
 	<string>Fitila a besoin du microphone pour enregistrer vos messages audio, vos réponses de prononciation et diffuser vos directs Live Griot IA.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Fitila a besoin de l'appareil photo pour prendre des photos de vos produits et publications.</string>
-	<key>UIApplicationSceneManifest</key>
+	<key>NSLocationWhenInUseUsageDescription</key>\n\t<string>Handunia Wasa utilise votre position approximative pour ordonner les souvenirs autour de vous. La position n'est pas publiée.</string>\n\t<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>

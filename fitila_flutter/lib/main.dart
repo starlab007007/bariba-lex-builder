@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:audioplayers/audioplayers.dart' as audio;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,6 +24,9 @@ import 'core/fitila_media.dart';
 import 'core/foncier_rag.dart';
 import 'core/signature_theme.dart';
 import 'core/web_parity_models.dart';
+import 'handunia/handunia_consultation_data.dart';
+import 'handunia/handunia_consultation_model.dart';
+import 'handunia/handunia_consultation_ui.dart';
 import 'ui/reference_creation_ui.dart';
 
 Future<void> main() async {
@@ -25889,6 +25893,11 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
 
   bool _loadingWorldFeed = false;
   List<Map<String, dynamic>> _worldFeed = const [];
+  HanduniaFeedFilter _worldFeedFilter = HanduniaFeedFilter.around;
+  bool _worldFeedFromCache = false;
+  String? _worldFeedNotice;
+  Position? _worldPosition;
+  static const _worldFeedCacheKey = 'handunia_consultation_feed_cache_v1';
   int _syncedOfflineCount = 0;
 
   @override
@@ -26452,19 +26461,220 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     setState(() {
       _step = 5;
       _loadingWorldFeed = true;
+      _worldFeedNotice = null;
     });
+
+    final pending = await _readPendingWorldFragments();
+    final cached = await _readWorldFeedCache();
+    if (mounted && (pending.isNotEmpty || cached.isNotEmpty)) {
+      setState(() {
+        _worldFeed = <Map<String, dynamic>>[...pending, ...cached];
+        _worldFeedFromCache = cached.isNotEmpty;
+      });
+    }
+
     try {
-      final feed = await FitilaBackend.fetchHanduniaWorldFeed();
+      final position = await _resolveWorldPosition();
+      final feed = await HanduniaConsultationData.fetchFeed(
+        filter: _worldFeedFilter,
+        latitude: position?.latitude,
+        longitude: position?.longitude,
+      );
+      await _writeWorldFeedCache(feed);
       if (!mounted) {
         return;
       }
-      setState(() => _worldFeed = feed);
+      var notice =
+          _worldFeedFilter == HanduniaFeedFilter.lineage &&
+              HanduniaConsultationData.currentLineageKey == null
+          ? 'Lignée non renseignée'
+          : null;
+      if (_worldFeedFilter == HanduniaFeedFilter.around && position == null) {
+        notice = 'Position non disponible';
+      }
+      setState(() {
+        _worldFeed = <Map<String, dynamic>>[...pending, ...feed];
+        _worldFeedFromCache = false;
+        _worldFeedNotice = notice;
+      });
+      unawaited(_cacheWorldFeedAudio(feed));
+    } on PostgrestException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _worldFeedFromCache = true;
+        _worldFeedNotice =
+            error.code == '42501' ? 'Accès réservé' : 'En attente de réseau';
+      });
     } catch (_) {
-      // Best-effort : le fil reste vide plutôt que de bloquer l'écran.
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _worldFeedFromCache = true;
+        _worldFeedNotice = 'En attente de réseau';
+      });
     } finally {
       if (mounted) {
         setState(() => _loadingWorldFeed = false);
       }
+    }
+  }
+
+  Future<void> _changeWorldFeedFilter(HanduniaFeedFilter filter) async {
+    if (_worldFeedFilter == filter && !_worldFeedFromCache) {
+      return;
+    }
+    setState(() => _worldFeedFilter = filter);
+    await _openWorldFeed();
+  }
+
+  Future<Position?> _resolveWorldPosition() async {
+    if (_worldPosition != null) {
+      return _worldPosition;
+    }
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        return null;
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied &&
+          _worldFeedFilter == HanduniaFeedFilter.around) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return null;
+      }
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.low,
+          timeLimit: Duration(seconds: 5),
+        ),
+      );
+      _worldPosition = position;
+      return position;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _readPendingWorldFragments() async {
+    final result = <Map<String, dynamic>>[];
+    for (final lieu in _lieux) {
+      final lieuId = lieu['id']?.toString() ?? '';
+      if (lieuId.isEmpty) {
+        continue;
+      }
+      final local = await _readLocalFragments(lieuId);
+      for (final fragment in local) {
+        result.add(<String, dynamic>{
+          ...fragment,
+          'lieu_id': lieuId,
+          'lieu_name': lieu['name']?.toString() ?? '',
+          'period_label': '',
+          'scope_level': 'community',
+          'voice_count': 1,
+          'seal_hash': null,
+          'item_type': 'memory',
+          'local_only': true,
+        });
+      }
+    }
+    return result;
+  }
+
+  Future<List<Map<String, dynamic>>> _readWorldFeedCache() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final raw = preferences.getString(_worldFeedCacheKey);
+      if (raw == null || raw.isEmpty) {
+        return const [];
+      }
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) {
+        return const [];
+      }
+      return decoded
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList(growable: false);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> _writeWorldFeedCache(
+    List<Map<String, dynamic>> items,
+  ) async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final serializable = items
+          .where((item) => item['local_only'] != true)
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList(growable: false);
+      await preferences.setString(_worldFeedCacheKey, jsonEncode(serializable));
+    } catch (_) {
+      // Le cache ne doit jamais bloquer la consultation.
+    }
+  }
+
+  Future<void> _cacheWorldFeedAudio(
+    List<Map<String, dynamic>> items,
+  ) async {
+    try {
+      final cacheRoot = await getApplicationSupportDirectory();
+      final dir = Directory(cacheRoot.path + '/handunia_wasa_audio');
+      await dir.create(recursive: true);
+      var changed = false;
+      for (final item in items.take(8)) {
+        final url = item['audio_url']?.toString() ?? '';
+        final id = item['id']?.toString() ?? '';
+        if (url.isEmpty || id.isEmpty) {
+          continue;
+        }
+        final safeId = id.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+        final file = File(dir.path + '/' + safeId + '.opus');
+        if (!await file.exists()) {
+          final response = await http
+              .get(Uri.parse(url))
+              .timeout(const Duration(seconds: 8));
+          if (response.statusCode < 200 ||
+              response.statusCode >= 300 ||
+              response.bodyBytes.length > 12 * 1024 * 1024) {
+            continue;
+          }
+          await file.writeAsBytes(response.bodyBytes, flush: true);
+        }
+        item['cached_audio_path'] = file.path;
+        changed = true;
+      }
+      if (changed) {
+        await _writeWorldFeedCache(items);
+        if (mounted) {
+          setState(() {});
+        }
+      }
+    } catch (_) {
+      // Le flux reste utilisable en streaming ou en texte.
+    }
+  }
+
+  Future<void> _openWorldMemory(Map<String, dynamic> memory) async {
+    final lieuId = memory['lieu_id']?.toString();
+    if (lieuId == null || lieuId.isEmpty) {
+      return;
+    }
+    Map<String, dynamic>? lieu;
+    for (final candidate in _lieux) {
+      if (candidate['id']?.toString() == lieuId) {
+        lieu = candidate;
+        break;
+      }
+    }
+    if (lieu != null) {
+      await _openLieu(lieu);
     }
   }
 
@@ -26687,13 +26897,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           child: _buildCreateLieuStep(),
         );
       case 5:
-        return ReferenceCreationShell(
-          dark: true,
-          title: 'Fil du monde',
-          subtitle: 'Souvenirs tissés par la communauté',
-          onBack: () => setState(() => _step = 1),
-          child: _buildWorldFeedStep(),
-        );
+        return _buildWorldFeedStep();
       case 0:
       default:
         return ReferenceCreationShell(
@@ -27224,57 +27428,20 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   // tous les lieux, les souvenirs récemment tissés par la communauté,
   // avec leur auteur réel et la possibilité de les aimer.
   Widget _buildWorldFeedStep() {
-    return SizedBox(
-      width: double.infinity,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: () => setState(() => _step = 1),
-              ),
-              const Expanded(
-                child: Text(
-                  'Fil du monde vivant',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.refresh_rounded),
-                onPressed: _loadingWorldFeed ? null : _openWorldFeed,
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 8),
-            child: Text(
-              'Les derniers souvenirs tissés par toute la communauté, tous lieux confondus.',
-              style: TextStyle(color: _fitilaMuted, fontSize: 12),
-            ),
-          ),
-          Expanded(
-            child: _loadingWorldFeed
-                ? const Center(child: CircularProgressIndicator())
-                : _worldFeed.isEmpty
-                ? Center(
-                    child: Text(
-                      "Aucun souvenir tissé pour le moment — soyez le premier.",
-                      style: TextStyle(color: _fitilaMuted, fontSize: 12.5),
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: _worldFeed.length,
-                    itemBuilder: (context, index) => _buildFragmentTile(
-                      _worldFeed[index],
-                      _worldFeed,
-                      showLieu: true,
-                    ),
-                  ),
-          ),
-        ],
-      ),
+    return HanduniaFilView(
+      items: _worldFeed,
+      loading: _loadingWorldFeed,
+      offline: _worldFeedFromCache || _backendUnavailable,
+      notice: _worldFeedNotice,
+      filter: _worldFeedFilter,
+      pendingCount: _worldFeed
+          .where((item) => item['local_only'] == true)
+          .length,
+      onBack: () => setState(() => _step = 1),
+      onRefresh: _openWorldFeed,
+      onFilterChanged: _changeWorldFeedFilter,
+      onOpenMemory: _openWorldMemory,
+      onFindMissingVoice: () => setState(() => _step = 1),
     );
   }
 }
