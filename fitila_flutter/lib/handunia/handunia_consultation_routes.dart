@@ -14,9 +14,9 @@ import 'handunia_consultation_extended_data.dart';
 import 'handunia_consultation_ui.dart';
 
 TextStyle _frauncesRoute({
-  double size = 17,
+  double size = 18,
   Color color = HanduniaTokens.ivoire,
-  double height = 1.2,
+  double height = 1.28,
 }) {
   return TextStyle(
     fontFamily: 'Fraunces',
@@ -28,10 +28,10 @@ TextStyle _frauncesRoute({
 }
 
 TextStyle _karlaRoute({
-  double size = 13.5,
+  double size = 14.5,
   FontWeight weight = FontWeight.w400,
   Color color = HanduniaTokens.ivoire,
-  double height = 1.35,
+  double height = 1.45,
 }) {
   return TextStyle(
     fontFamily: 'Karla',
@@ -109,7 +109,7 @@ class _ConsultationState extends StatelessWidget {
               Text(
                 subtitle,
                 textAlign: TextAlign.center,
-                style: _karlaRoute(size: 11.5, color: HanduniaTokens.cendre),
+                style: _karlaRoute(size: 12.5, color: HanduniaTokens.cendre),
               ),
             ],
           ],
@@ -232,7 +232,7 @@ class _HanduniaMemoryRouteState extends State<HanduniaMemoryRoute> {
                 child: Text(
                   _notice!,
                   style: _karlaRoute(
-                    size: 11.5,
+                    size: 12.5,
                     color: HanduniaTokens.terre,
                     weight: FontWeight.w600,
                   ),
@@ -357,7 +357,7 @@ class _OpenMemoryBodyState extends State<_OpenMemoryBody> {
             widget.memory['transcript_reviewed_by_guardian'] == true
                 ? 'Transcription relue par un gardien'
                 : 'Transcription dérivée',
-            style: _karlaRoute(size: 11.5, color: HanduniaTokens.cendre),
+            style: _karlaRoute(size: 12.5, color: HanduniaTokens.cendre),
           ),
         ] else
           Text(
@@ -624,7 +624,7 @@ class _MemoryPlaybackOrbState extends State<_MemoryPlaybackOrb> {
         ),
         Text(
           '${_clock(_position)} / ${_clock(_duration)}',
-          style: _karlaRoute(size: 11.5, color: HanduniaTokens.cendre),
+          style: _karlaRoute(size: 12.5, color: HanduniaTokens.cendre),
         ),
       ],
     );
@@ -1146,7 +1146,7 @@ class _HanduniaPlaceRouteState extends State<HanduniaPlaceRoute> {
             if (_notice != null)
               Text(
                 _notice!,
-                style: _karlaRoute(size: 11.5, color: HanduniaTokens.terre),
+                style: _karlaRoute(size: 12.5, color: HanduniaTokens.terre),
               ),
             Expanded(
               child: _loading && data == null
@@ -1458,7 +1458,7 @@ class _HanduniaTimelineRouteState extends State<HanduniaTimelineRoute> {
                 child: Text(
                   _notice!,
                   style: _karlaRoute(
-                    size: 11.5,
+                    size: 12.5,
                     color: HanduniaTokens.terre,
                     weight: FontWeight.w600,
                   ),
@@ -1632,7 +1632,7 @@ class _HanduniaDivergencesRouteState
                 child: Text(
                   _notice!,
                   style: _karlaRoute(
-                    size: 11.5,
+                    size: 12.5,
                     color: HanduniaTokens.terre,
                     weight: FontWeight.w600,
                   ),
@@ -1705,7 +1705,7 @@ class _DivergenceDetail extends StatelessWidget {
         Text(
           'Glisser entre les versions',
           textAlign: TextAlign.center,
-          style: _karlaRoute(size: 11.5, color: HanduniaTokens.cendre),
+          style: _karlaRoute(size: 12.5, color: HanduniaTokens.cendre),
         ),
         const SizedBox(height: 12),
         Semantics(
@@ -1722,7 +1722,7 @@ class _DivergenceDetail extends StatelessWidget {
               Text(
                 'Conseil des gardiens disponible',
                 style: _karlaRoute(
-                  size: 11.5,
+                  size: 12.5,
                   weight: FontWeight.w600,
                   color: HanduniaTokens.terre,
                 ),
@@ -1745,7 +1745,7 @@ class _DivergenceDetail extends StatelessWidget {
                 Text(
                   'Avis des gardiens',
                   style: _karlaRoute(
-                    size: 11.5,
+                    size: 12.5,
                     weight: FontWeight.w700,
                     color: HanduniaTokens.terre,
                   ),
@@ -2017,7 +2017,7 @@ class _HanduniaMemoryAnswerRouteState
                 child: Text(
                   _notice!,
                   style: _karlaRoute(
-                    size: 11.5,
+                    size: 12.5,
                     color: HanduniaTokens.terre,
                     weight: FontWeight.w600,
                   ),
@@ -2364,7 +2364,7 @@ class _HanduniaFoyerRouteState extends State<HanduniaFoyerRoute>
                         Text(
                           'Désignés par la communauté',
                           style: _karlaRoute(
-                            size: 11.5,
+                            size: 12.5,
                             color: HanduniaTokens.cendre,
                           ),
                         ),
@@ -2401,7 +2401,7 @@ class _FoyerMetric extends StatelessWidget {
         Text(
           label,
           style: _karlaRoute(
-            size: 11.5,
+            size: 12.5,
             color: HanduniaTokens.cendre,
           ),
         ),
