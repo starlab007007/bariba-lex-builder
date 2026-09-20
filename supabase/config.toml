@@ -116,3 +116,6 @@ verify_jwt = false
 
 [functions.fitila-ia-chat]
 verify_jwt = true
+
+[functions.handunia-memory-query]
+verify_jwt = true

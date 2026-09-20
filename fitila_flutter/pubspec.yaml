@@ -47,6 +47,7 @@ dependencies:
   video_player: ^2.10.1
   shared_preferences: ^2.3.3
   geolocator: ^14.0.2
+  crypto: ^3.0.6
   flutter_webrtc: ^1.6.2+hotfix.3
 
 dev_dependencies:
