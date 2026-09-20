@@ -6,6 +6,7 @@ on:
       - feature/fitila-web-parity-20260914
       - release/fitila-flutter-android-v1.8.1-build12-web-parity
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - release/fitila-flutter-android-v1.8.1-build12-web-parity
   workflow_dispatch:
