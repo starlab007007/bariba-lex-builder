@@ -113,3 +113,6 @@ verify_jwt = false
 
 [functions.recognize-handwriting]
 verify_jwt = false
+
+[functions.fitila-ia-chat]
+verify_jwt = true
