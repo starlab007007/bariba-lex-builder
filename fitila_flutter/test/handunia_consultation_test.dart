@@ -323,8 +323,8 @@ void main() {
     expect(find.text('Handunia Wasa'), findsOneWidget);
     expect(find.text('Nikki'), findsOneWidget);
     expect(find.text('34 voix'), findsOneWidget);
-    expect(find.text('AVEC LUMIÈRE IA'), findsOneWidget);
-    expect(find.text('Parler sans IA'), findsOneWidget);
+    expect(find.text('COMMENCER AVEC LUMIÈRE IA'), findsOneWidget);
+    expect(find.text('Enregistrer directement'), findsOneWidget);
     expect(
       find.text('L’IA éclaire la mémoire. Elle ne l’invente pas.'),
       findsOneWidget,
