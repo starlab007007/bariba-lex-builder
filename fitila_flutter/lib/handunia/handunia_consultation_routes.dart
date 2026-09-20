@@ -733,9 +733,11 @@ class HanduniaLivingMapRoute extends StatefulWidget {
   const HanduniaLivingMapRoute({
     super.key,
     this.pendingLocal = 0,
+    this.initialPlaces,
   });
 
   final int pendingLocal;
+  final List<Map<String, dynamic>>? initialPlaces;
 
   @override
   State<HanduniaLivingMapRoute> createState() => _HanduniaLivingMapRouteState();
@@ -750,7 +752,14 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
   @override
   void initState() {
     super.initState();
-    unawaited(_load());
+    final initialPlaces = widget.initialPlaces;
+    if (initialPlaces != null) {
+      _places = List<Map<String, dynamic>>.from(initialPlaces);
+      _selectedIndex = _places.isEmpty ? 0 : 0;
+      _loading = false;
+    } else {
+      unawaited(_load());
+    }
   }
 
   Future<void> _load() async {
@@ -2453,9 +2462,16 @@ class HanduniaTraceRoute extends StatefulWidget {
   const HanduniaTraceRoute({
     super.key,
     required this.fragmentId,
+    this.saveOverride,
+    this.completionDelay = const Duration(milliseconds: 1500),
   });
 
   final String? fragmentId;
+  final Future<void> Function(
+    List<Map<String, double>> points,
+    DateTime capturedAt,
+  )? saveOverride;
+  final Duration completionDelay;
 
   @override
   State<HanduniaTraceRoute> createState() => _HanduniaTraceRouteState();
@@ -2581,12 +2597,17 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
 
     var queuedOffline = false;
     try {
-      await HanduniaConsultationExtendedData.savePath(
-        fragmentId: id,
-        points: normalized,
-        capturedAt: DateTime.parse(capturedAt),
-      );
-      unawaited(_flushPendingPaths());
+      final capturedDate = DateTime.parse(capturedAt);
+      if (widget.saveOverride != null) {
+        await widget.saveOverride!(normalized, capturedDate);
+      } else {
+        await HanduniaConsultationExtendedData.savePath(
+          fragmentId: id,
+          points: normalized,
+          capturedAt: capturedDate,
+        );
+        unawaited(_flushPendingPaths());
+      }
       if (mounted) {
         setState(() => _notice = 'Trajet enregistré.');
       }
@@ -2643,7 +2664,7 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
       return;
     }
     _advancing = true;
-    await Future<void>.delayed(const Duration(milliseconds: 1500));
+    await Future<void>.delayed(widget.completionDelay);
     if (!mounted || !_saved) {
       _advancing = false;
       return;
