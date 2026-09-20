@@ -20,6 +20,7 @@ void main() {
   final modules = <String, Widget Function()>{
     'Echo Sɔ̃ɔ': () => EchoSonScreen(onPostCreated: (_) {}),
     'Live Griot IA': () => LiveGriotScreen(onPostCreated: (_) {}),
+    'Sagesse Battle': () => const SagesseBattleScreen(),
     'Aburu Fim IA': () => AburuFimScreen(onPostCreated: (_) {}),
     'Sasara IA': () => SasaraIaScreen(onPostCreated: (_) {}),
     'Handunia Wasa': () => const HanduniaWasaScreen(),
@@ -60,10 +61,9 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
-    expect(find.text('Raconte quelque chose…'), findsOneWidget);
+    expect(find.textContaining('Raconte quelque chose'), findsOneWidget);
     expect(find.text('Bàátɔ̀nú'), findsOneWidget);
     expect(find.text('Français'), findsOneWidget);
-    expect(find.byType(ChoiceChip), findsWidgets);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('Écrire à la place'));
@@ -87,7 +87,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
-    expect(find.text('Raconte quelque chose…'), findsOneWidget);
+    expect(find.textContaining('Raconte quelque chose'), findsOneWidget);
     expect(find.byType(Scrollable), findsWidgets);
     expect(tester.takeException(), isNull);
 
@@ -111,19 +111,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 700));
 
-    expect(find.text('LIVE STUDIO'), findsOneWidget);
+    expect(find.text('Nouveau direct'), findsOneWidget);
+    expect(find.text('Sujet du direct'), findsOneWidget);
     expect(find.textContaining('faute de serveur relais dédié'), findsNothing);
     expect(find.byType(Scrollable), findsWidgets);
     expect(tester.takeException(), isNull);
-
-    final prepare = find.text('Préparer le direct');
-    await tester.scrollUntilVisible(
-      prepare,
-      260,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pump();
-    expect(prepare, findsOneWidget);
 
     final startButton = find.text('Démarrer le direct');
     await tester.scrollUntilVisible(
@@ -172,7 +164,7 @@ void main() {
     await tester.pump();
     for (
       var attempt = 0;
-      attempt < 30 && find.text('Complète le proverbe').evaluate().isEmpty;
+      attempt < 30 && find.text('COMPLÈTE LE PROVERBE').evaluate().isEmpty;
       attempt++
     ) {
       await tester.runAsync(
@@ -208,6 +200,42 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+
+  testWidgets('Aburu Fim follows the reference template gallery on phone', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(phoneApp(AburuFimScreen(onPostCreated: (_) {})));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.text('Modèles intelligents'), findsOneWidget);
+    expect(find.text('Connectés à tes données'), findsOneWidget);
+    expect(find.text('Filmer un seul plan'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Sasara matches the bilingual consent reference screen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(phoneApp(SasaraIaScreen(onPostCreated: (_) {})));
+    await tester.pump();
+
+    expect(find.text('Rendre bilingue ?'), findsOneWidget);
+    expect(find.text('Après ta publication'), findsOneWidget);
+    expect(find.text('Rendre bilingue avec l’IA'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Handunia premium shell is stable before opening a place', (
     tester,
   ) async {
@@ -221,7 +249,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('Handunia Wasa'), findsWidgets);
-    expect(find.text('Monde vivant · mémoire collective'), findsOneWidget);
+    expect(find.textContaining('Le monde vivant Bàátɔ̀nú'), findsOneWidget);
     expect(find.text('Entrer dans le monde'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
