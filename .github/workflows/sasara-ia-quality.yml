@@ -1,0 +1,48 @@
+name: Sasara IA Quality
+
+on:
+  push:
+    branches:
+      - release/fitila-flutter-android-v1.8.1-build12-web-parity
+    paths:
+      - 'src/App.tsx'
+      - 'src/pages/fitila/SasaraIA.tsx'
+      - 'public/i18n-platform.json'
+      - 'src/services/ByT5TranslationService.ts'
+      - 'src/hooks/useBaribaTTS.ts'
+      - 'src/hooks/useFrenchTTS.ts'
+      - 'src/hooks/useBaribaSTT.ts'
+      - 'src/hooks/useTamTamPosts.ts'
+      - 'supabase/functions/refine-bariba/**'
+      - 'supabase/functions/bariba-stt/**'
+      - 'supabase/functions/french-tts/**'
+      - '.github/workflows/sasara-ia-quality.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+      - name: TypeScript
+        run: npx tsc --noEmit -p tsconfig.app.json
+      - name: Lint Sasara surface
+        run: >
+          npx eslint
+          src/App.tsx
+          src/pages/fitila/SasaraIA.tsx
+      - name: Production build
+        run: npm run build
