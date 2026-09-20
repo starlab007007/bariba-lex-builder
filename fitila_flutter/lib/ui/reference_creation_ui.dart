@@ -818,9 +818,10 @@ class ReferenceVideoMock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: BoxConstraints(minHeight: minHeight),
+    return SizedBox(
+      height: minHeight,
       width: double.infinity,
+      child: Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         gradient: const LinearGradient(
@@ -878,6 +879,7 @@ class ReferenceVideoMock extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }
