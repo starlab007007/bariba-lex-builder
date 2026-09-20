@@ -45,6 +45,7 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
   Map<String, dynamic>? _end;
   List<Map<String, dynamic>> _searchResults = const <Map<String, dynamic>>[];
   List<Map<String, double>> _routePoints = const <Map<String, double>>[];
+  List<Map<String, dynamic>> _routePlaces = const <Map<String, dynamic>>[];
   final List<Map<String, double>> _historicalPoints = <Map<String, double>>[];
   double _distanceM = 0;
   double _durationS = 0;
@@ -251,6 +252,7 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
           _selectingStart = false;
           _end = null;
           _routePoints = const <Map<String, double>>[];
+          _routePlaces = const <Map<String, dynamic>>[];
           _distanceM = 0;
           _durationS = 0;
           _notice = 'Départ choisi · sélectionnez maintenant l’arrivée.';
@@ -304,6 +306,11 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
         _routePoints = List<Map<String, double>>.from(
           result['points'] as List,
         );
+        _routePlaces = result['places'] is List
+            ? List<Map<String, dynamic>>.from(
+                (result['places'] as List).whereType<Map>(),
+              )
+            : const <Map<String, dynamic>>[];
         _distanceM = _double(result['distance_m']) ?? 0;
         _durationS = _double(result['duration_s']) ?? 0;
         _provider = result['provider']?.toString() ?? 'osrm-osm';
@@ -315,6 +322,7 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
       if (mounted) {
         setState(() {
           _routePoints = const <Map<String, double>>[];
+          _routePlaces = const <Map<String, dynamic>>[];
           _notice =
               'Aucune route carrossable trouvée. Essayez le mode « Historique libre ».';
         });
@@ -375,6 +383,7 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
       _start = null;
       _end = null;
       _routePoints = const <Map<String, double>>[];
+      _routePlaces = const <Map<String, dynamic>>[];
       _historicalPoints.clear();
       _distanceM = 0;
       _durationS = 0;
@@ -400,6 +409,7 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
       _start = null;
       _end = null;
       _routePoints = const <Map<String, double>>[];
+      _routePlaces = const <Map<String, dynamic>>[];
       _historicalPoints.clear();
       _distanceM = 0;
       _durationS = 0;
@@ -442,6 +452,7 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
         durationS: _roadMode ? _durationS : null,
         provider: _provider,
         roadMatched: _roadMode,
+        routePlaces: _routePlaces,
       );
       if (!mounted) {
         return;
@@ -752,6 +763,60 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
                 ],
               ),
             ],
+            if (_roadMode && _routePlaces.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'LOCALITÉS SUR LE TRAJET',
+                  style: _karla(
+                    size: 11.5,
+                    color: HanduniaTokens.cendre,
+                    weight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 38,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _routePlaces.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 6),
+                  itemBuilder: (context, index) {
+                    final place = _routePlaces[index];
+                    final label =
+                        place['name']?.toString().trim().isNotEmpty == true
+                        ? place['name'].toString()
+                        : (place['display_name']?.toString() ?? 'Lieu');
+                    return Container(
+                      constraints: const BoxConstraints(maxWidth: 170),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: HanduniaTokens.nuit,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: HanduniaTokens.bordureForte,
+                        ),
+                      ),
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: _karla(
+                          size: 12.5,
+                          color: HanduniaTokens.ivoire,
+                          weight: FontWeight.w700,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
             if (_distanceM > 0) ...[
               const SizedBox(height: 10),
               Row(
@@ -828,7 +893,7 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
             ),
             const SizedBox(height: 7),
             Text(
-              'Carte © OpenStreetMap contributors · rendu OpenFreeMap',
+              'Carte réelle du Bénin · OpenStreetMap/OpenFreeMap · itinéraire OSRM',
               textAlign: TextAlign.center,
               style: _karla(size: 10.5, color: HanduniaTokens.cendre),
             ),
