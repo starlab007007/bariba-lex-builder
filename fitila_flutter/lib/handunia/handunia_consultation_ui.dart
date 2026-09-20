@@ -319,7 +319,7 @@ class PastilleSource extends StatelessWidget {
         child: Text(
           '$temoin · $annee',
           style: _karla(
-            size: 11.5,
+            size: 12.5,
             weight: FontWeight.w600,
             color: HanduniaTokens.cendre,
           ),
@@ -361,7 +361,7 @@ class HanduniaSourcedAnswer extends StatelessWidget {
         spans.add(
           TextSpan(
             text: match.group(0),
-            style: _karla(size: 11.5, color: HanduniaTokens.cendre),
+            style: _karla(size: 12.5, color: HanduniaTokens.cendre),
           ),
         );
       } else {
@@ -447,7 +447,7 @@ class BadgeSceau extends StatelessWidget {
           Text(
             label,
             style: _karla(
-              size: 11.5,
+              size: 12.5,
               weight: FontWeight.w600,
               color: sealed ? HanduniaTokens.braise : HanduniaTokens.cendre,
             ),
@@ -648,7 +648,7 @@ class CarteBraise extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: _karla(
-                    size: 11.5,
+                    size: 12.5,
                     weight: FontWeight.w700,
                     color: HanduniaTokens.braise,
                   ),
@@ -658,7 +658,7 @@ class CarteBraise extends StatelessWidget {
                 Text(
                   period,
                   style: _karla(
-                    size: 11.5,
+                    size: 12.5,
                     color: HanduniaTokens.cendre,
                   ),
                 ),
@@ -689,7 +689,7 @@ class CarteBraise extends StatelessWidget {
                   child: Text(
                     _scopeLabel(scope),
                     style: _karla(
-                      size: 11.5,
+                      size: 12.5,
                       weight: FontWeight.w600,
                       color: HanduniaTokens.cendre,
                     ),
@@ -705,7 +705,7 @@ class CarteBraise extends StatelessWidget {
             Text(
               'À envoyer',
               style: _karla(
-                size: 11.5,
+                size: 12.5,
                 weight: FontWeight.w700,
                 color: HanduniaTokens.terre,
               ),
@@ -716,7 +716,7 @@ class CarteBraise extends StatelessWidget {
             Text(
               'Retiré par son auteur',
               style: _karla(
-                size: 11.5,
+                size: 12.5,
                 weight: FontWeight.w600,
                 color: HanduniaTokens.cendre,
               ),
@@ -891,7 +891,7 @@ class _HanduniaAudioReaderState extends State<_HanduniaAudioReader> {
           const SizedBox(width: 7),
           Text(
             'Voix non jointe',
-            style: _karla(size: 11.5, color: HanduniaTokens.cendre),
+            style: _karla(size: 12.5, color: HanduniaTokens.cendre),
           ),
         ],
       );
@@ -926,7 +926,7 @@ class _HanduniaAudioReaderState extends State<_HanduniaAudioReader> {
         const SizedBox(width: 8),
         Text(
           '${_clock(_position)}/${_clock(_duration)}',
-          style: _karla(size: 11.5, color: HanduniaTokens.cendre),
+          style: _karla(size: 12.5, color: HanduniaTokens.cendre),
         ),
       ],
     );
@@ -1012,7 +1012,7 @@ class HanduniaFilView extends StatelessWidget {
                       child: Text(
                         '$pendingCount à envoyer',
                         style: _karla(
-                          size: 11.5,
+                          size: 12.5,
                           weight: FontWeight.w700,
                           color: HanduniaTokens.terre,
                         ),
@@ -1058,7 +1058,7 @@ class HanduniaFilView extends StatelessWidget {
                     Text(
                       notice ?? 'En attente de réseau',
                       style: _karla(
-                        size: 11.5,
+                        size: 12.5,
                         weight: FontWeight.w600,
                         color: offline
                             ? HanduniaTokens.terre
@@ -1094,7 +1094,7 @@ class HanduniaFilView extends StatelessWidget {
                       backgroundColor: HanduniaTokens.nuit,
                       selectedColor: HanduniaTokens.braise,
                       labelStyle: _karla(
-                        size: 11.5,
+                        size: 12.5,
                         weight: FontWeight.w700,
                         color: selected
                             ? HanduniaTokens.encre
@@ -1197,7 +1197,7 @@ class _HanduniaAccessDenied extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               'Portée non autorisée',
-              style: _karla(size: 11.5, color: HanduniaTokens.cendre),
+              style: _karla(size: 12.5, color: HanduniaTokens.cendre),
             ),
           ],
         ),
@@ -1298,7 +1298,7 @@ class _DivergenceCardState extends State<_DivergenceCard>
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: _karla(
-                        size: 11.5,
+                        size: 12.5,
                         color: HanduniaTokens.cendre,
                       ),
                     ),
