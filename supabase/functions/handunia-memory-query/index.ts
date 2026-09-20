@@ -55,10 +55,13 @@ serve(async (req: Request) => {
     const question = clean(body?.question);
     const requestedScope = clean(body?.requested_scope);
     if (!question) {
-      return new Response(JSON.stringify({ state: "void", answer: "" }), {
+      return new Response(
+        JSON.stringify({ state: "invalid", message: "Question requise" }),
+        {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+        },
+      );
     }
 
     const url = Deno.env.get("SUPABASE_URL") ?? "";
@@ -253,12 +256,11 @@ serve(async (req: Request) => {
     console.error("[handunia-memory-query]", error);
     return new Response(
       JSON.stringify({
-        state: "void",
-        answer: "La communauté ne l’a pas encore raconté.",
-        sources: [],
+        state: "unavailable",
+        message: "En attente de réseau",
       }),
       {
-        status: 200,
+        status: 503,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );
