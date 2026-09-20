@@ -855,14 +855,30 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
               ],
             ),
             if (_notice != null)
-              Text(
-                _notice!,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Text(
+                  _notice!,
+                  textAlign: TextAlign.center,
+                  style: _karlaRoute(
+                    size: 13,
+                    color: HanduniaTokens.terre,
+                    weight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 2, 18, 6),
+              child: Text(
+                'Touchez un lieu pour ouvrir sa mémoire.',
+                textAlign: TextAlign.center,
                 style: _karlaRoute(
-                  size: 11.5,
-                  color: HanduniaTokens.terre,
+                  size: 13,
+                  color: HanduniaTokens.cendre,
                   weight: FontWeight.w600,
                 ),
               ),
+            ),
             Expanded(
               child: _loading && _places.isEmpty
                   ? const _ConsultationState(
@@ -902,13 +918,15 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                     Expanded(
                       child: Text(
                         selected['name']?.toString() ?? '',
-                        style: _frauncesRoute(size: 17),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: _frauncesRoute(size: 19),
                       ),
                     ),
                     Text(
                       '${selected['voice_count'] ?? 0} voix',
                       style: _frauncesRoute(
-                        size: 15,
+                        size: 16,
                         color: HanduniaTokens.braise,
                       ),
                     ),
@@ -955,27 +973,86 @@ class _MapPlaceNode extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final voices = (place['voice_count'] as num?)?.toInt() ?? 0;
+    final name = place['name']?.toString().trim() ?? '';
     return Align(
       alignment: alignment,
       child: Semantics(
         button: true,
-        label:
-            '${place['name']?.toString() ?? ''}, $voices voix',
+        label: '$name, $voices voix',
         child: GestureDetector(
           onTap: onTap,
-          child: Container(
-            width: 78,
-            height: 78,
-            alignment: Alignment.center,
-            decoration: selected
-                ? BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: HanduniaTokens.ivoire),
-                  )
-                : null,
-            child: HaloDensite(
-              valeur: (voices / 12).clamp(0.0, 1.0),
-              size: 68,
+          child: SizedBox(
+            width: 142,
+            height: 118,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 76,
+                  height: 76,
+                  alignment: Alignment.center,
+                  decoration: selected
+                      ? BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: HanduniaTokens.ivoire,
+                            width: 1.6,
+                          ),
+                        )
+                      : null,
+                  child: HaloDensite(
+                    valeur: (voices / 12).clamp(0.0, 1.0),
+                    size: 66,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  constraints: const BoxConstraints(minHeight: 34),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: HanduniaTokens.nuitPortee.withValues(alpha: .96),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: selected
+                          ? HanduniaTokens.braise
+                          : HanduniaTokens.bordureForte,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          name.isEmpty ? 'Lieu sans nom' : name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: _karlaRoute(
+                            size: 13,
+                            color: HanduniaTokens.ivoire,
+                            weight: FontWeight.w700,
+                            height: 1.15,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        '$voices',
+                        style: _karlaRoute(
+                          size: 12,
+                          color: voices > 0
+                              ? HanduniaTokens.braise
+                              : HanduniaTokens.cendre,
+                          weight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -2391,6 +2468,7 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
   bool _saved = false;
   late final AnimationController _travel;
   String? _notice;
+  bool _advancing = false;
 
   @override
   void initState() {
@@ -2501,6 +2579,7 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
         .toList(growable: false);
     final capturedAt = DateTime.now().toUtc().toIso8601String();
 
+    var queuedOffline = false;
     try {
       await HanduniaConsultationExtendedData.savePath(
         fragmentId: id,
@@ -2509,9 +2588,10 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
       );
       unawaited(_flushPendingPaths());
       if (mounted) {
-        setState(() => _notice = null);
+        setState(() => _notice = 'Trajet enregistré.');
       }
     } catch (_) {
+      queuedOffline = true;
       final preferences = await SharedPreferences.getInstance();
       final key = 'handunia_pending_paths_v1';
       final existing = preferences.getString(key);
@@ -2533,7 +2613,10 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
       });
       await preferences.setString(key, jsonEncode(queue));
       if (mounted) {
-        setState(() => _notice = 'En attente de réseau');
+        setState(
+          () => _notice =
+              'Trajet enregistré sur cet appareil · synchronisation automatique.',
+        );
       }
     }
 
@@ -2551,7 +2634,21 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
       } else {
         _travel.forward(from: 0);
       }
+      unawaited(_advanceAfterSave(queuedOffline: queuedOffline));
     }
+  }
+
+  Future<void> _advanceAfterSave({required bool queuedOffline}) async {
+    if (_advancing) {
+      return;
+    }
+    _advancing = true;
+    await Future<void>.delayed(const Duration(milliseconds: 1500));
+    if (!mounted || !_saved) {
+      _advancing = false;
+      return;
+    }
+    Navigator.of(context).pop(true);
   }
 
   @override
@@ -2562,14 +2659,49 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
         child: Column(
           children: [
             _handuniaHeader(context, 'Tracer'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+              child: Text(
+                _saved
+                    ? 'Trajet validé · étape suivante automatique…'
+                    : 'Dessinez le trajet puis relâchez votre doigt pour valider.',
+                textAlign: TextAlign.center,
+                style: _karlaRoute(
+                  size: 13.5,
+                  color: _saved
+                      ? HanduniaTokens.braise
+                      : HanduniaTokens.ivoire,
+                  weight: FontWeight.w700,
+                ),
+              ),
+            ),
             if (_notice != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: (_saved
+                          ? HanduniaTokens.braise
+                          : HanduniaTokens.terre)
+                      .withValues(alpha: .10),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: (_saved
+                            ? HanduniaTokens.braise
+                            : HanduniaTokens.terre)
+                        .withValues(alpha: .55),
+                  ),
+                ),
                 child: Text(
                   _notice!,
+                  textAlign: TextAlign.center,
                   style: _karlaRoute(
-                    size: 11.5,
-                    color: HanduniaTokens.terre,
+                    size: 13,
+                    color: HanduniaTokens.ivoire,
                     weight: FontWeight.w600,
                   ),
                 ),
@@ -2586,6 +2718,7 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
                       _travel.stop();
                       setState(() {
                         _saved = false;
+                        _advancing = false;
                         _replay = 1;
                         _points
                           ..clear()
@@ -2617,18 +2750,46 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
               ),
             ),
             if (_saved)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                child: Semantics(
-                  label: 'Revenir dans la trajectoire',
-                  child: Slider(
-                    value: _replay,
-                    min: 0,
-                    max: 1,
-                    activeColor: HanduniaTokens.braise,
-                    inactiveColor: HanduniaTokens.bordureForte,
-                    onChanged: (value) => setState(() => _replay = value),
-                  ),
+              Container(
+                margin: const EdgeInsets.fromLTRB(18, 4, 18, 18),
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                decoration: BoxDecoration(
+                  color: HanduniaTokens.nuitPortee,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: HanduniaTokens.braise),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_outline,
+                      color: HanduniaTokens.braise,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Trajet validé',
+                        style: _karlaRoute(
+                          size: 15,
+                          color: HanduniaTokens.ivoire,
+                          weight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        _travel.stop();
+                        setState(() {
+                          _saved = false;
+                          _advancing = false;
+                          _points.clear();
+                          _replay = 1;
+                          _notice = null;
+                        });
+                      },
+                      child: const Text('Recommencer'),
+                    ),
+                  ],
                 ),
               ),
           ],
