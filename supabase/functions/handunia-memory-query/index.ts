@@ -29,7 +29,7 @@ async function embeddings(apiKey: string, input: string[]): Promise<number[][]> 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
     method: "POST",
     headers: {
-      Authorization: \`Bearer \${apiKey}\`,
+      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -38,7 +38,7 @@ async function embeddings(apiKey: string, input: string[]): Promise<number[][]> 
     }),
   });
   if (!response.ok) {
-    throw new Error(\`Embedding HTTP \${response.status}\`);
+    throw new Error(`Embedding HTTP ${response.status}`);
   }
   const data = await response.json();
   return (data?.data ?? []).map((item: any) => item.embedding as number[]);
@@ -198,7 +198,7 @@ serve(async (req: Request) => {
     const context = sources
       .map(
         (source: any) =>
-          \`[\${source.index}] \${source.text} — \${source.witness}, \${source.year}, \${source.place}\`,
+          `[${source.index}] ${source.text} — ${source.witness}, ${source.year}, ${source.place}`,
       )
       .join("\n");
     const llm = await fetch(
@@ -206,7 +206,7 @@ serve(async (req: Request) => {
       {
         method: "POST",
         headers: {
-          Authorization: \`Bearer \${aiKey}\`,
+          Authorization: `Bearer ${aiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -221,13 +221,13 @@ serve(async (req: Request) => {
             },
             {
               role: "user",
-              content: \`Question: \${question}\nTémoignages:\n\${context}\`,
+              content: `Question: ${question}\nTémoignages:\n${context}`,
             },
           ],
         }),
       },
     );
-    if (!llm.ok) throw new Error(\`LLM HTTP \${llm.status}\`);
+    if (!llm.ok) throw new Error(`LLM HTTP ${llm.status}`);
     const llmData = await llm.json();
     const answer = clean(llmData?.choices?.[0]?.message?.content);
     if (!answer || answer === "La communauté ne l’a pas encore raconté.") {
