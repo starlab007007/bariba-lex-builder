@@ -588,12 +588,12 @@ class _MemoryPlaybackOrbState extends State<_MemoryPlaybackOrb> {
     return Column(
       children: [
         SizedBox(
-          width: 112,
-          height: 112,
+          width: 104,
+          height: 104,
           child: Stack(
             alignment: Alignment.center,
             children: [
-              HaloDensite(valeur: density, size: 112),
+              HaloDensite(valeur: density, size: 104),
               Semantics(
                 button: true,
                 label: _playing ? 'Mettre en pause' : 'Écouter la voix',
@@ -778,6 +778,45 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
     }
   }
 
+  Alignment _placeAlignment(int index) {
+    final located = <Map<String, dynamic>>[
+      for (final place in _places)
+        if (place['latitude'] is num && place['longitude'] is num) place,
+    ];
+    final place = _places[index];
+    final lat = (place['latitude'] as num?)?.toDouble();
+    final lng = (place['longitude'] as num?)?.toDouble();
+
+    if (lat != null && lng != null && located.isNotEmpty) {
+      final lats = located
+          .map((item) => (item['latitude'] as num).toDouble())
+          .toList(growable: false);
+      final lngs = located
+          .map((item) => (item['longitude'] as num).toDouble())
+          .toList(growable: false);
+      final minLat = lats.reduce(math.min);
+      final maxLat = lats.reduce(math.max);
+      final minLng = lngs.reduce(math.min);
+      final maxLng = lngs.reduce(math.max);
+      final latSpan = math.max(maxLat - minLat, 0.00001);
+      final lngSpan = math.max(maxLng - minLng, 0.00001);
+      final x = ((lng - minLng) / lngSpan).clamp(0.0, 1.0);
+      final y = (1 - (lat - minLat) / latSpan).clamp(0.0, 1.0);
+      return Alignment(x * 1.6 - .8, y * 1.6 - .8);
+    }
+
+    const fallback = <Alignment>[
+      Alignment(-.72, -.78),
+      Alignment(.54, -.72),
+      Alignment(-.12, -.08),
+      Alignment(.68, .10),
+      Alignment(-.60, .68),
+      Alignment(.18, .78),
+      Alignment(.72, .66),
+    ];
+    return fallback[index % fallback.length];
+  }
+
   @override
   Widget build(BuildContext context) {
     final selected = _places.isEmpty ? null : _places[_selectedIndex];
@@ -837,15 +876,9 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                     )
                   : Stack(
                       children: [
-                        Positioned.fill(
-                          child: CustomPaint(
-                            painter: _MapThreadsPainter(count: _places.length),
-                          ),
-                        ),
                         for (var i = 0; i < _places.length; i++)
                           _MapPlaceNode(
-                            index: i,
-                            total: _places.length,
+                            alignment: _placeAlignment(i),
                             place: _places[i],
                             selected: i == _selectedIndex,
                             onTap: () =>
@@ -907,28 +940,22 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
 
 class _MapPlaceNode extends StatelessWidget {
   const _MapPlaceNode({
-    required this.index,
-    required this.total,
+    required this.alignment,
     required this.place,
     required this.selected,
     required this.onTap,
   });
 
-  final int index;
-  final int total;
+  final Alignment alignment;
   final Map<String, dynamic> place;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final angle = -math.pi / 2 +
-        (math.pi * 2 * index / math.max(1, total));
-    final x = .5 + .34 * math.cos(angle);
-    final y = .48 + .34 * math.sin(angle);
     final voices = (place['voice_count'] as num?)?.toInt() ?? 0;
     return Align(
-      alignment: Alignment(x * 2 - 1, y * 2 - 1),
+      alignment: alignment,
       child: Semantics(
         button: true,
         label:
@@ -953,40 +980,6 @@ class _MapPlaceNode extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _MapThreadsPainter extends CustomPainter {
-  const _MapThreadsPainter({required this.count});
-
-  final int count;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (count < 2) {
-      return;
-    }
-    final center = size.center(Offset.zero);
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = HanduniaTokens.bordure;
-    for (var i = 0; i < count; i++) {
-      final angle = -math.pi / 2 + math.pi * 2 * i / count;
-      canvas.drawLine(
-        center,
-        Offset(
-          size.width * (.5 + .34 * math.cos(angle)),
-          size.height * (.48 + .34 * math.sin(angle)),
-        ),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _MapThreadsPainter oldDelegate) {
-    return oldDelegate.count != count;
   }
 }
 
