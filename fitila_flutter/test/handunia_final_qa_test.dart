@@ -79,7 +79,7 @@ void main() {
                 ),
                 ValueListenableBuilder<String>(
                   valueListenable: result,
-                  builder: (_, value, __) => Text(value),
+                  builder: (context, value, child) => Text(value),
                 ),
               ],
             ),
@@ -99,7 +99,7 @@ void main() {
     await tester.dragFrom(
       const Offset(95, 310),
       const Offset(170, 190),
-      const Duration(milliseconds: 260),
+      duration: const Duration(milliseconds: 260),
     );
     await tester.pump();
 
