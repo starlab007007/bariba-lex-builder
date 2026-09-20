@@ -26277,17 +26277,22 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     setState(() => _weaving = true);
     var savedLocally = false;
     try {
-      if (_backendUnavailable || !FitilaBackend.configured) {
+      if (!FitilaBackend.configured) {
         await _saveLocalFragment(lieu['id'] as String, text);
         savedLocally = true;
       } else {
-        await FitilaBackend.weaveHanduniaFragment(
-          lieuId: lieu['id'] as String,
-          text: text,
-          aiGenerated: false,
-          aiAssisted: _aiAssisted,
-          scopeLevel: 'community',
-        );
+        try {
+          await FitilaBackend.weaveHanduniaFragment(
+            lieuId: lieu['id'] as String,
+            text: text,
+            aiGenerated: false,
+            aiAssisted: _aiAssisted,
+            scopeLevel: 'community',
+          );
+        } catch (_) {
+          await _saveLocalFragment(lieu['id'] as String, text);
+          savedLocally = true;
+        }
       }
       if (!mounted) {
         return;
