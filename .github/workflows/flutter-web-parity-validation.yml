@@ -1,4 +1,5 @@
 name: FITILA Flutter Web Parity Validation
+# Handunia final QA trigger
 
 on:
   push:
