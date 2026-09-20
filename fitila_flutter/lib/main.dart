@@ -26893,7 +26893,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     return synced;
   }
 
-  String _localFragmentKey(String lieuId) =>  String _localFragmentKey(String lieuId) =>
+  String _localFragmentKey(String lieuId) =>
       'handunia_wasa_local_fragments_$lieuId';
 
   Future<List<Map<String, dynamic>>> _readLocalFragments(String lieuId) async {
@@ -27494,7 +27494,6 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {  @override
   Widget build(BuildContext context) {
     final totalMemories = _density.values.fold<int>(
       0,
@@ -28846,7 +28845,6 @@ class _HanduniaTextField extends StatelessWidget {
         ),
         style: const TextStyle(color: Colors.white, fontSize: 14),
         cursorColor: const Color(0xFF8FE3CF),
-        controller: controller,
         maxLines: maxLines,
         maxLength: maxLength,
       ),
@@ -28964,7 +28962,7 @@ class _HanduniaTinyBadge extends StatelessWidget {
   }
 }
 
-class _WeaveLinePainter extends CustomPainter {class _WeaveLinePainter extends CustomPainter {
+class _WeaveLinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final linePaint = Paint()
