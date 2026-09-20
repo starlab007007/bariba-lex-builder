@@ -24185,477 +24185,466 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return _PageFrame(
-      title: 'Sagesse Battle',
-      subtitle:
-          'Complétez le proverbe du jour, marquez des points, grimpez au fil.',
+    final challenge = _challenge;
+    final participantLabel = _participantCount == 0
+        ? 'Aucun participant pour le moment'
+        : '$_participantCount participants';
+    return ReferenceCreationShell(
+      dark: false,
+      title: 'Défi du jour',
+      subtitle: participantLabel,
+      leading: const Text('🔥', style: TextStyle(fontSize: 15)),
       child: _loading
           ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(40),
-                child: CircularProgressIndicator(),
+              child: CircularProgressIndicator(
+                color: FitilaReferenceUi.gold,
               ),
             )
           : _error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(_error!),
-                    const SizedBox(height: 12),
-                    FilledButton(
-                      onPressed: _load,
-                      child: const Text('Réessayer'),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : ListView(
-              children: [
-                _MetricStrip(
-                  metrics: [
-                    (
-                      'Tentatives',
-                      '${_stats['attempts'] ?? 0}',
-                      Icons.bolt_rounded,
-                    ),
-                    (
-                      'XP Battle',
-                      '${_stats['total_xp'] ?? 0}',
-                      Icons.military_tech_rounded,
-                    ),
-                    (
-                      'Victoires',
-                      '${_stats['wins'] ?? 0}',
-                      Icons.emoji_events_rounded,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [_fitilaGoldDeep, _fitilaClay],
-                    ),
-                  ),
+              ? Center(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.shield_rounded, color: Colors.white),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Text(
-                              'Complète le proverbe',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: .18),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              _remainingTime(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
+                      Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: FitilaReferenceUi.inkSoft),
                       ),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _submitted ? _challenge!.bariba : _blankedProverb,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 21,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                          _FitilaListenButton(
-                            bariba: _submitted
-                                ? _challenge!.bariba
-                                : _blankedProverb,
-                            label: 'Écouter le proverbe',
-                            compact: true,
-                            dark: true,
-                          ),
-                        ],
-                      ),
-                      if (_challenge!.context != null &&
-                          _challenge!.context!.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          _challenge!.context!,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12.5,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Quel mot complète ce proverbe ?',
-                        style: TextStyle(color: Colors.white70, fontSize: 12.5),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.groups_rounded,
-                            size: 13,
-                            color: Colors.white.withValues(alpha: 0.55),
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              _participantCount == 0
-                                  ? 'Aucun participant pour le moment — soyez le premier'
-                                  : '$_participantCount participant(s) aujourd\'hui',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.55),
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 12),
+                      ReferenceGoldButton(
+                        label: 'Réessayer',
+                        icon: Icons.refresh_rounded,
+                        onPressed: _load,
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 14),
-                if (!_submitted) ...[
-                  if (_bestResponse != null)
+                )
+              : ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
                     Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
+                      padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                        color: _fitilaGoldDeep.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.emoji_events_rounded,
-                            size: 16,
-                            color: _fitilaGoldDeep,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Meilleure réponse actuelle : ${_bestResponse!['display_name'] ?? 'Griot Fitila'} — ${_bestResponse!['score'] ?? 0}%',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          TextField(
-                            controller: _answerController,
-                            decoration: const InputDecoration(
-                              hintText: 'Le mot manquant…',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          FilledButton.icon(
-                            onPressed: _submitting ? null : _submit,
-                            icon: _submitting
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.send_rounded),
-                            label: Text(
-                              _submitting
-                                  ? 'Fitila IA note votre réponse…'
-                                  : 'Valider ma réponse',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ] else ...[
-                  _FitilaDarkStage(
-                    child: Column(
-                      children: [
-                        _FitilaScoreRing(
-                          score: _score,
-                          size: 148,
-                          label: 'de justesse',
-                          light: true,
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            FitilaReferenceUi.clayTint,
+                            FitilaReferenceUi.surface,
+                          ],
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(
-                              _scoredByAi
-                                  ? Icons.auto_awesome_rounded
-                                  : Icons.wifi_off_rounded,
-                              size: 12,
-                              color: Colors.white.withValues(alpha: 0.55),
+                        border: Border.all(color: FitilaReferenceUi.clay),
+                      ),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'COMPLÈTE LE PROVERBE',
+                            style: TextStyle(
+                              color: Color(0xFF7A3018),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: .6,
                             ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                _scoredByAi
-                                    ? 'Noté par Fitila IA'
-                                    : 'Fitila IA indisponible — noté hors-ligne',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.55),
-                                  fontSize: 10.5,
-                                ),
+                          ),
+                          const SizedBox(height: 10),
+                          if (challenge != null)
+                            _buildReferenceProverb(
+                              _submitted ? challenge.bariba : _blankedProverb,
+                            ),
+                          if (challenge?.context?.isNotEmpty == true) ...[
+                            const SizedBox(height: 5),
+                            Text(
+                              challenge!.context!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: FitilaReferenceUi.inkSoft,
+                                fontSize: 11,
+                                fontStyle: FontStyle.italic,
                               ),
                             ),
                           ],
-                        ),
-                        const SizedBox(height: 12),
+                          const SizedBox(height: 10),
+                          ReferenceCountdownRing(
+                            label: _remainingTime(),
+                            progress: .76,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (!_submitted) ...[
+                      if (_bestResponse != null)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
+                            horizontal: 11,
+                            vertical: 9,
                           ),
                           decoration: BoxDecoration(
-                            color: _fitilaPrimary.withValues(alpha: 0.22),
-                            borderRadius: BorderRadius.circular(20),
+                            color: FitilaReferenceUi.surfaceAlt,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Text(
-                            '🏅 Badge +$_xpEarned XP',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 13,
-                            ),
+                          child: Row(
+                            children: [
+                              const Text('🏆', style: TextStyle(fontSize: 15)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Meilleure réponse actuelle : ' +
+                                      (_bestResponse!['display_name']?.toString() ??
+                                          'Griot Fitila') +
+                                      ' — ' +
+                                      (_bestResponse!['score'] ?? 0).toString() +
+                                      '%',
+                                  style: const TextStyle(
+                                    color: FitilaReferenceUi.inkSoft,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 18),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
+                      if (_bestResponse != null) const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: FitilaReferenceUi.darkGradient,
+                        ),
+                        child: Column(
+                          children: [
+                            const ReferenceMicOrb(
+                              icon: Icons.videocam_rounded,
+                              size: 78,
+                              ringExtent: 120,
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Enregistre ta réponse',
+                              style: TextStyle(
+                                color: Color(0xC7FFFFFF),
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: _answerController,
+                              style: const TextStyle(color: Colors.white),
+                              textAlign: TextAlign.center,
+                              decoration: const InputDecoration(
+                                hintText: 'Le mot manquant…',
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            ReferenceGoldButton(
+                              label: _submitting
+                                  ? 'Fitila IA note votre réponse…'
+                                  : 'Valider ma réponse',
+                              busy: _submitting,
+                              onPressed: _submitting ? null : _submit,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else ...[
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: FitilaReferenceUi.darkGradient,
+                        ),
+                        child: Column(
+                          children: [
+                            ReferenceScoreRing(score: _score),
+                            const SizedBox(height: 16),
+                            ReferenceCard(
+                              dark: true,
+                              margin: EdgeInsets.zero,
+                              child: Text(
+                                challenge == null
+                                    ? ''
+                                    : '"' + challenge.bariba + '"',
+                                textAlign: TextAlign.center,
+                                style: FitilaReferenceUi.serif(
+                                  size: 15,
+                                  color: Colors.white,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 11,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    FitilaReferenceUi.goldTint,
+                                    Colors.white,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: FitilaReferenceUi.gold,
+                                ),
+                              ),
+                              child: Row(
                                 children: [
-                                  const Expanded(
-                                    child: Text(
-                                      'Mot attendu & traduction',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12.5,
-                                        color: Colors.white,
-                                      ),
+                                  Container(
+                                    width: 36,
+                                    height: 36,
+                                    alignment: Alignment.center,
+                                    decoration: const BoxDecoration(
+                                      color: FitilaReferenceUi.gold,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Text(
+                                      '🏅',
+                                      style: TextStyle(fontSize: 16),
                                     ),
                                   ),
-                                  _FitilaListenButton(
-                                    french: _challenge!.french,
-                                    label: 'Écouter la réponse',
-                                    compact: true,
-                                    dark: true,
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Badge "Sage en herbe" débloqué',
+                                          style: TextStyle(
+                                            color: FitilaReferenceUi.ink,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                        Text(
+                                          '+$_xpEarned XP',
+                                          style: const TextStyle(
+                                            color: FitilaReferenceUi.muted,
+                                            fontSize: 10.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                _hiddenWord,
-                                style: const TextStyle(
-                                  color: _fitilaGoldDeep,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 15,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '« ${_challenge!.french} »',
-                                style: const TextStyle(color: Colors.white70),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 18),
-                const Text(
-                  'Chaîne communautaire',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                ),
-                const SizedBox(height: 8),
-                if (_communityUnavailable)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: _fitilaSurfaceAlt,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _fitilaBorder),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.cloud_off_rounded,
-                          size: 18,
-                          color: _fitilaMuted,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'La chaîne communautaire est temporairement indisponible. Votre défi reste jouable.',
-                            style: TextStyle(color: _fitilaMuted, fontSize: 12),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (_chain.isEmpty && !_communityUnavailable)
-                  Text(
-                    "Personne n'a encore répondu aujourd'hui — soyez le premier !",
-                    style: TextStyle(color: _fitilaMuted),
-                  ),
-                for (final entry in _chain)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: _fitilaCard,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: _fitilaBorder),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          radius: 16,
-                          backgroundColor: _fitilaPrimarySoft,
-                          child: Text(
-                            _initialLetter(entry['display_name']?.toString()),
-                            style: const TextStyle(
-                              color: _fitilaGoldDeep,
-                              fontWeight: FontWeight.w800,
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                entry['display_name']?.toString() ??
-                                    'Griot Fitila',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                entry['answer_text']?.toString() ?? '',
-                                style: const TextStyle(fontSize: 12.5),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _fitilaSurfaceAlt,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '${entry['score'] ?? 0}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              color: _fitilaClay,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Column(
-                          children: [
-                            IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                minWidth: 28,
-                                minHeight: 28,
-                              ),
-                              icon: Icon(
-                                entry['voted_by_me'] == true
-                                    ? Icons.favorite_rounded
-                                    : Icons.favorite_border_rounded,
-                                size: 17,
-                                color: entry['voted_by_me'] == true
-                                    ? _fitilaClay
-                                    : _fitilaMuted,
-                              ),
-                              onPressed: () => _toggleVote(entry),
-                            ),
+                            const SizedBox(height: 9),
                             Text(
-                              '${entry['vote_count'] ?? 0}',
+                              _scoredByAi
+                                  ? 'Noté par Fitila IA'
+                                  : 'Score calculé hors ligne',
                               style: TextStyle(
+                                color: Colors.white.withValues(alpha: .48),
                                 fontSize: 10,
-                                color: _fitilaMuted,
                               ),
                             ),
                           ],
                         ),
+                      ),
+                    ],
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Chaîne du jour',
+                            style: TextStyle(
+                              color: FitilaReferenceUi.ink,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          _chain.length.toString() + ' réponses',
+                          style: const TextStyle(
+                            color: FitilaReferenceUi.muted,
+                            fontSize: 10.5,
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                const SizedBox(height: 24),
-              ],
-            ),
+                    const SizedBox(height: 8),
+                    if (_communityUnavailable)
+                      ReferenceCard(
+                        color: FitilaReferenceUi.surfaceAlt,
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.cloud_off_rounded,
+                              color: FitilaReferenceUi.muted,
+                              size: 18,
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'La chaîne communautaire est temporairement indisponible. Le défi reste jouable.',
+                                style: TextStyle(
+                                  color: FitilaReferenceUi.muted,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (_chain.isEmpty && !_communityUnavailable)
+                      ReferenceCard(
+                        child: const Text(
+                          "Personne n'a encore répondu aujourd'hui — soyez le premier !",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: FitilaReferenceUi.muted,
+                            fontSize: 11.5,
+                          ),
+                        ),
+                      ),
+                    for (final entry in _chain)
+                      _buildReferenceChainEntry(entry),
+                    const SizedBox(height: 22),
+                  ],
+                ),
     );
   }
+
+  Widget _buildReferenceProverb(String proverb) {
+    const blank = '▁▁▁▁▁';
+    final index = proverb.indexOf(blank);
+    if (index < 0) {
+      return Text(
+        '"$proverb"',
+        textAlign: TextAlign.center,
+        style: FitilaReferenceUi.serif(
+          size: 17,
+          color: FitilaReferenceUi.ink,
+          height: 1.55,
+        ),
+      );
+    }
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: '"' + proverb.substring(0, index)),
+          const WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: FitilaReferenceUi.clay,
+                borderRadius: BorderRadius.all(Radius.circular(6)),
+              ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                child: Text(
+                  '?????',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          TextSpan(text: proverb.substring(index + blank.length) + '"'),
+        ],
+      ),
+      textAlign: TextAlign.center,
+      style: FitilaReferenceUi.serif(
+        size: 17,
+        color: FitilaReferenceUi.ink,
+        height: 1.55,
+      ),
+    );
+  }
+
+  Widget _buildReferenceChainEntry(Map<String, dynamic> entry) {
+    final voted = entry['voted_by_me'] == true;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+      decoration: BoxDecoration(
+        color: FitilaReferenceUi.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: FitilaReferenceUi.hairline),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: FitilaReferenceUi.sageTint,
+            child: Text(
+              _initialLetter(entry['display_name']?.toString()),
+              style: const TextStyle(
+                color: FitilaReferenceUi.sageDeep,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry['display_name']?.toString() ?? 'Griot Fitila',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  (entry['score'] ?? 0).toString() + '% de justesse',
+                  style: const TextStyle(
+                    color: FitilaReferenceUi.sageDeep,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                if ((entry['answer_text']?.toString() ?? '').isNotEmpty)
+                  Text(
+                    entry['answer_text'].toString(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: FitilaReferenceUi.inkSoft,
+                      fontSize: 10.5,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          InkWell(
+            onTap: () => _toggleVote(entry),
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Text(
+                '♥ ' + (entry['vote_count'] ?? 0).toString(),
+                style: TextStyle(
+                  color: voted
+                      ? FitilaReferenceUi.clay
+                      : FitilaReferenceUi.muted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 }
 
 // ─────────────────────────────────────────────────────────────────
