@@ -1136,15 +1136,55 @@ class _HanduniaAccessDenied extends StatelessWidget {
   }
 }
 
-class _DivergenceCard extends StatelessWidget {
+class _DivergenceCard extends StatefulWidget {
   const _DivergenceCard({required this.item});
 
   final Map<String, dynamic> item;
 
   @override
+  State<_DivergenceCard> createState() => _DivergenceCardState();
+}
+
+class _DivergenceCardState extends State<_DivergenceCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  bool _reduceMotion = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4500),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (_reduceMotion) {
+      _controller
+        ..stop()
+        ..value = .38;
+    } else if (!_controller.isAnimating) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final subject = widget.item['subject']?.toString().trim() ?? '';
     return Semantics(
-      label: 'Divergence de mémoire',
+      label: subject.isEmpty
+          ? 'Divergence de mémoire'
+          : 'Divergence de mémoire : $subject',
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -1155,19 +1195,45 @@ class _DivergenceCard extends StatelessWidget {
         child: Row(
           children: [
             SizedBox(
-              width: 54,
-              height: 44,
-              child: CustomPaint(painter: const _DivergencePainter()),
+              width: 58,
+              height: 48,
+              child: RepaintBoundary(
+                child: AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) => CustomPaint(
+                    painter: _DivergencePainter(
+                      phase: _reduceMotion ? .38 : _controller.value,
+                    ),
+                  ),
+                ),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                'Une mémoire se sépare en deux',
-                style: _fraunces(
-                  size: 17,
-                  color: HanduniaTokens.terre,
-                  height: 1.35,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Une mémoire se sépare en deux',
+                    style: _fraunces(
+                      size: 17,
+                      color: HanduniaTokens.terre,
+                      height: 1.35,
+                    ),
+                  ),
+                  if (subject.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subject,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: _karla(
+                        size: 11.5,
+                        color: HanduniaTokens.cendre,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ],
@@ -1178,39 +1244,65 @@ class _DivergenceCard extends StatelessWidget {
 }
 
 class _DivergencePainter extends CustomPainter {
-  const _DivergencePainter();
+  const _DivergencePainter({required this.phase});
+
+  final double phase;
+
+  Path _top(Size size) => Path()
+    ..moveTo(4, size.height / 2)
+    ..quadraticBezierTo(
+      size.width * .46,
+      size.height * .43,
+      size.width - 4,
+      6,
+    );
+
+  Path _bottom(Size size) => Path()
+    ..moveTo(4, size.height / 2)
+    ..quadraticBezierTo(
+      size.width * .46,
+      size.height * .57,
+      size.width - 4,
+      size.height - 6,
+    );
+
+  Offset _pointOn(Path path, double t) {
+    final metrics = path.computeMetrics().toList(growable: false);
+    if (metrics.isEmpty) {
+      return Offset.zero;
+    }
+    final metric = metrics.first;
+    final tangent = metric.getTangentForOffset(
+      metric.length * t.clamp(0.0, 1.0),
+    );
+    return tangent?.position ?? Offset.zero;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
+    final line = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.6
       ..strokeCap = StrokeCap.round
       ..color = HanduniaTokens.terre;
-    final center = Offset(4, size.height / 2);
-    final top = Path()
-      ..moveTo(center.dx, center.dy)
-      ..quadraticBezierTo(
-        size.width * 0.48,
-        size.height * 0.45,
-        size.width - 3,
-        6,
-      );
-    final bottom = Path()
-      ..moveTo(center.dx, center.dy)
-      ..quadraticBezierTo(
-        size.width * 0.48,
-        size.height * 0.55,
-        size.width - 3,
-        size.height - 6,
-      );
-    canvas.drawPath(top, paint);
-    canvas.drawPath(bottom, paint);
-    canvas.drawCircle(center, 3.5, Paint()..color = HanduniaTokens.braise);
+    final top = _top(size);
+    final bottom = _bottom(size);
+    canvas.drawPath(top, line);
+    canvas.drawPath(bottom, line);
+
+    final origin = Offset(4, size.height / 2);
+    canvas.drawCircle(origin, 3.3, Paint()..color = HanduniaTokens.braise);
+
+    final spark = Paint()..color = HanduniaTokens.braise;
+    final topPoint = _pointOn(top, phase);
+    final bottomPoint = _pointOn(bottom, (phase + .5) % 1);
+    canvas.drawCircle(topPoint, 2.6, spark);
+    canvas.drawCircle(bottomPoint, 2.6, spark);
   }
 
   @override
-  bool shouldRepaint(covariant _DivergencePainter oldDelegate) => false;
+  bool shouldRepaint(covariant _DivergencePainter oldDelegate) =>
+      oldDelegate.phase != phase;
 }
 
 String _scopeLabel(String scope) {
