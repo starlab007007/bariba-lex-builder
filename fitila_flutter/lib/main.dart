@@ -22665,6 +22665,8 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
   String? _loadError;
   bool _checkingTurn = true;
   bool _turnReady = false;
+  String _selectedLiveTopic = 'Marché';
+  bool _liveAiEnabled = true;
 
   @override
   void initState() {
@@ -22874,301 +22876,72 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
     }
   }
 
-  Widget _statusPill({
-    required IconData icon,
-    required String label,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: .13),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: .24)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 10.5,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _metric({
-    required IconData icon,
-    required String value,
+  Widget _buildReferenceTopic({
+    required String emoji,
     required String label,
   }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: .08),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: .09)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: const Color(0xFFF1C96A), size: 20),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-              ),
+    final selected = _selectedLiveTopic == label;
+    return Material(
+      color: selected
+          ? FitilaReferenceUi.gold
+          : Colors.white.withValues(alpha: .06),
+      borderRadius: BorderRadius.circular(13),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(13),
+        onTap: () => setState(() => _selectedLiveTopic = label),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(
+              color: selected
+                  ? FitilaReferenceUi.gold
+                  : Colors.white.withValues(alpha: .14),
             ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: .55),
-                fontSize: 9.5,
-                fontWeight: FontWeight.w600,
+          ),
+          child: Column(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 18)),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: selected ? FitilaReferenceUi.ink : Colors.white,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildHero() {
-    final networkLabel = _checkingTurn
-        ? 'Vérification réseau'
-        : _turnReady
-        ? 'TURN sécurisé prêt'
-        : 'STUN + fallback réseau';
-    final networkColor = _turnReady
-        ? const Color(0xFF63D7A2)
-        : const Color(0xFFF1C96A);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF17132B),
-            Color(0xFF2B214A),
-            Color(0xFF5B3FA0),
-          ],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF4A3B96).withValues(alpha: .2),
-            blurRadius: 30,
-            offset: const Offset(0, 14),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFF1C96A), Color(0xFFC99530)],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFC99530).withValues(alpha: .3),
-                      blurRadius: 18,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.podcasts_rounded,
-                  color: Colors.white,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'LIVE STUDIO',
-                      style: TextStyle(
-                        color: Color(0xFFF1C96A),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.6,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Parlez. Rassemblez. Transmettez.',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'Audio WebRTC en direct, chat communautaire et relais TURN pour garder la voix fluide même sur des réseaux mobiles plus difficiles.',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: .7),
-              height: 1.35,
-              fontSize: 11.5,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _statusPill(
-                icon: _turnReady
-                    ? Icons.shield_rounded
-                    : Icons.router_rounded,
-                label: networkLabel,
-                color: networkColor,
-              ),
-              _statusPill(
-                icon: Icons.forum_rounded,
-                label: 'Chat temps réel',
-                color: const Color(0xFF8EB5FF),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              _metric(
-                icon: Icons.sensors_rounded,
-                value: '${_activeLives.length}',
-                label: 'live(s) actif(s)',
-              ),
-              const SizedBox(width: 8),
-              _metric(
-                icon: Icons.graphic_eq_rounded,
-                value: 'WebRTC',
-                label: 'audio direct',
-              ),
-              const SizedBox(width: 8),
-              _metric(
-                icon: Icons.lock_rounded,
-                value: _turnReady ? 'TURN' : 'STUN',
-                label: 'transport',
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyLives() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: _fitilaCard,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _fitilaBorder),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: _fitilaPrimarySoft,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(Icons.waves_rounded, color: _fitilaPrimary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'La scène est libre',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Aucun direct n’est en cours. Vous pouvez lancer le prochain.',
-                  style: TextStyle(color: _fitilaMuted, fontSize: 11.5),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLiveCard(Map<String, dynamic> live) {
+  Widget _buildLiveReferenceCard(Map<String, dynamic> live) {
     final title = live['title']?.toString().trim();
     final host = live['host_display_name']?.toString().trim();
     final viewers = (live['viewer_count'] as num?)?.toInt() ?? 0;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF211B35), Color(0xFF342650)],
-        ),
-        border: Border.all(color: Colors.white.withValues(alpha: .08)),
-      ),
+    return ReferenceCard(
+      dark: true,
+      margin: const EdgeInsets.only(bottom: 9),
+      padding: const EdgeInsets.all(11),
       child: Row(
         children: [
-          Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: const Color(0xFF4A3B96),
-                child: Text(
-                  _initialLetter(host),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
+          CircleAvatar(
+            radius: 19,
+            backgroundColor: FitilaReferenceUi.gold,
+            child: Text(
+              _initialLetter(host),
+              style: const TextStyle(
+                color: FitilaReferenceUi.ink,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
               ),
-              Container(
-                width: 13,
-                height: 13,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF4D5F),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF211B35), width: 2),
-                ),
-              ),
-            ],
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 9),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -23179,263 +22952,33 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w800,
-                    fontSize: 14,
                   ),
                 ),
-                const SizedBox(height: 4),
                 Text(
-                  host?.isNotEmpty == true ? host! : 'Griot Fitila',
+                  (host?.isNotEmpty == true ? host! : 'Griot Fitila') +
+                      ' · $viewers auditeur(s)',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: .55),
-                    fontSize: 11,
+                    color: Colors.white.withValues(alpha: .52),
+                    fontSize: 10,
                   ),
-                ),
-                const SizedBox(height: 7),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.headphones_rounded,
-                      size: 14,
-                      color: Color(0xFFF1C96A),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$viewers auditeur(s)',
-                      style: const TextStyle(
-                        color: Color(0xFFF1C96A),
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 10),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFF1C96A),
-              foregroundColor: const Color(0xFF241F2E),
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
-            ),
+          const SizedBox(width: 6),
+          TextButton(
             onPressed: () => _joinLive(live),
+            style: TextButton.styleFrom(
+              foregroundColor: FitilaReferenceUi.gold,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            ),
             child: const Text(
               'Écouter',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildComposer() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _fitilaCard,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: _fitilaBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .035),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.tune_rounded, color: _fitilaGoldDeep),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Préparer le direct',
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Donnez un titre clair, choisissez la langue et entrez en scène.',
-            style: TextStyle(fontSize: 11.5, color: _fitilaMuted),
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _title,
-            maxLength: 80,
-            textInputAction: TextInputAction.next,
-            decoration: InputDecoration(
-              labelText: 'Titre du direct',
-              hintText: 'Ex. Histoires et proverbes de Nikki',
-              prefixIcon: const Icon(Icons.title_rounded),
-              filled: true,
-              fillColor: _fitilaSurfaceAlt,
-              counterText: '',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _description,
-            maxLines: 3,
-            maxLength: 280,
-            decoration: InputDecoration(
-              labelText: 'Description',
-              hintText: 'Présentez le sujet du direct en quelques mots…',
-              alignLabelWithHint: true,
-              prefixIcon: const Padding(
-                padding: EdgeInsets.only(bottom: 45),
-                child: Icon(Icons.notes_rounded),
-              ),
-              filled: true,
-              fillColor: _fitilaSurfaceAlt,
-              counterText: '',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Langue du direct',
-            style: TextStyle(
-              color: _fitilaInkSoft,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Material(
-            type: MaterialType.transparency,
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final lang in const [
-                  'Bariba + Français',
-                  'Bariba',
-                  'Français',
-                ])
-                  ChoiceChip(
-                    avatar: Icon(
-                      lang == 'Bariba + Français'
-                          ? Icons.translate_rounded
-                          : Icons.record_voice_over_rounded,
-                      size: 15,
-                    ),
-                    label: Text(lang),
-                    selected: _language == lang,
-                    onSelected: (_) => setState(() => _language = lang),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLaunchStage() {
-    final title = _title.text.trim();
-    return _FitilaDarkStage(
-      padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
-      child: Column(
-        children: [
-          _FitilaOrbMic(
-            icon: Icons.podcasts_rounded,
-            size: 78,
-            active: _startingLive,
-            onTap: _startingLive ? null : _startLiveNow,
-          ),
-          const SizedBox(height: 14),
-          Text(
-            title.isEmpty ? 'Votre scène est prête' : title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            '$_language • audio HD • chat temps réel',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: .55),
-              fontSize: 10.8,
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFF1C96A),
-                foregroundColor: const Color(0xFF241F2E),
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-              onPressed: _startingLive ? null : _startLiveNow,
-              icon: _startingLive
-                  ? const SizedBox(
-                      width: 17,
-                      height: 17,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFF241F2E),
-                      ),
-                    )
-                  : const Icon(Icons.podcasts_rounded),
-              label: Text(
-                _startingLive ? 'Ouverture du studio…' : 'Démarrer le direct',
-                style: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-            ),
-          ),
-          const SizedBox(height: 9),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: BorderSide(
-                  color: Colors.white.withValues(alpha: .18),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-              onPressed: _scheduling ? null : _scheduleAnnouncement,
-              icon: _scheduling
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.campaign_rounded),
-              label: const Text(
-                'Publier une annonce dans le Fil',
-                style: TextStyle(fontWeight: FontWeight.w800),
-              ),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
             ),
           ),
         ],
@@ -23445,57 +22988,177 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return _PageFrame(
-      title: 'Live Griot IA',
-      subtitle: 'Studio audio WebRTC, chat en direct et communauté Fitila.',
+    return ReferenceCreationShell(
+      dark: true,
+      title: 'Nouveau direct',
+      subtitle: 'Configuration',
+      leading: const Icon(Icons.close_rounded, size: 17, color: Colors.white),
       child: RefreshIndicator(
         onRefresh: _refreshAll,
+        color: FitilaReferenceUi.gold,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.only(bottom: 28),
+          padding: EdgeInsets.zero,
           children: [
-            _buildHero(),
-            const SizedBox(height: 20),
+            const ReferenceLabel('Sujet du direct', dark: true),
+            const SizedBox(height: 8),
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 9,
+              crossAxisSpacing: 9,
+              childAspectRatio: 1.55,
+              children: [
+                _buildReferenceTopic(emoji: '🛍️', label: 'Marché'),
+                _buildReferenceTopic(emoji: '🌾', label: 'Agriculture'),
+                _buildReferenceTopic(emoji: '🏛️', label: 'Culture'),
+                _buildReferenceTopic(emoji: '🩺', label: 'Santé'),
+              ],
+            ),
+            const SizedBox(height: 12),
             Row(
               children: [
                 const Expanded(
                   child: Text(
-                    'En direct maintenant',
+                    'Assistant IA activé',
                     style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 17,
+                      color: Colors.white,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-                IconButton.filledTonal(
-                  onPressed: _loadingLives ? null : _refreshAll,
-                  icon: const Icon(Icons.refresh_rounded),
-                  tooltip: 'Actualiser',
+                Switch(
+                  value: _liveAiEnabled,
+                  activeThumbColor: Colors.white,
+                  activeTrackColor: FitilaReferenceUi.sage,
+                  onChanged: (value) => setState(() => _liveAiEnabled = value),
                 ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            ReferenceCard(
+              dark: true,
+              margin: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _title,
+                    maxLength: 80,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    decoration: const InputDecoration(
+                      labelText: 'Titre du direct',
+                      hintText: 'Ex. Histoires et proverbes de Nikki',
+                      counterText: '',
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  TextField(
+                    controller: _description,
+                    maxLines: 2,
+                    maxLength: 280,
+                    style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                    decoration: const InputDecoration(
+                      labelText: 'Description',
+                      hintText: 'Présentez le direct en quelques mots…',
+                      counterText: '',
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  DropdownButtonFormField<String>(
+                    initialValue: _language,
+                    dropdownColor: FitilaReferenceUi.dark2,
+                    style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                    decoration: const InputDecoration(labelText: 'Langue'),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'Bariba + Français',
+                        child: Text('Bariba + Français'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Bariba',
+                        child: Text('Bariba'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Français',
+                        child: Text('Français'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) setState(() => _language = value);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            ReferenceGoldButton(
+              label: 'Démarrer le direct',
+              busy: _startingLive,
+              onPressed: _startingLive ? null : _startLiveNow,
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: _scheduling ? null : _scheduleAnnouncement,
+              icon: _scheduling
+                  ? const SizedBox(
+                      width: 13,
+                      height: 13,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white54,
+                      ),
+                    )
+                  : const Icon(Icons.campaign_rounded, size: 15),
+              label: const Text('Publier une annonce dans le Fil'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white.withValues(alpha: .58),
+                textStyle: const TextStyle(fontSize: 11),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Expanded(
+                  child: ReferenceLabel('En direct maintenant', dark: true),
+                ),
+                if (!_checkingTurn)
+                  ReferenceTinyPill(
+                    dark: true,
+                    icon: _turnReady
+                        ? Icons.shield_rounded
+                        : Icons.router_rounded,
+                    label: _turnReady ? 'TURN' : 'STUN',
+                    color: _turnReady
+                        ? const Color(0xFF7FE2BE)
+                        : const Color(0xFFF0C878),
+                  ),
               ],
             ),
             const SizedBox(height: 8),
             if (_loadingLives)
               const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Center(child: CircularProgressIndicator()),
+                padding: EdgeInsets.symmetric(vertical: 22),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: FitilaReferenceUi.gold,
+                  ),
+                ),
               )
             else if (_loadError != null)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _fitilaSurfaceAlt,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: _fitilaBorder),
-                ),
+              ReferenceCard(
+                dark: true,
                 child: Row(
                   children: [
-                    const Icon(Icons.cloud_off_rounded, color: _fitilaClay),
-                    const SizedBox(width: 10),
+                    const Icon(Icons.cloud_off_rounded, color: Color(0xFFFF8A7D)),
+                    const SizedBox(width: 9),
                     Expanded(
                       child: Text(
                         _loadError!,
-                        style: TextStyle(color: _fitilaInkSoft, fontSize: 12),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                     TextButton(
@@ -23506,13 +23169,20 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
                 ),
               )
             else if (_activeLives.isEmpty)
-              _buildEmptyLives()
+              ReferenceCard(
+                dark: true,
+                child: Text(
+                  'Aucun direct en cours — la scène est libre.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: .55),
+                    fontSize: 11.5,
+                  ),
+                ),
+              )
             else
-              for (final live in _activeLives) _buildLiveCard(live),
-            const SizedBox(height: 20),
-            _buildComposer(),
-            const SizedBox(height: 16),
-            _buildLaunchStage(),
+              for (final live in _activeLives) _buildLiveReferenceCard(live),
+            const SizedBox(height: 22),
           ],
         ),
       ),
@@ -23768,125 +23438,200 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
     required String label,
     required Color color,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: .13),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: .24)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 14),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w800,
-              fontSize: 10.5,
-            ),
-          ),
-        ],
-      ),
+    return ReferenceTinyPill(
+      dark: true,
+      icon: icon,
+      label: label,
+      color: color,
     );
   }
 
   Widget _buildConnectionStage() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF17132B),
-            Color(0xFF2A2142),
-            Color(0xFF4A337A),
-          ],
-        ),
-        border: Border.all(color: Colors.white12),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF4A3B96).withValues(alpha: .25),
-            blurRadius: 26,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
+    final latestChat = _chatMessages.isEmpty
+        ? ''
+        : (_chatMessages.last['message']?.toString() ?? '');
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Column(
         children: [
-          _FitilaOrbMic(
-            icon: _isHost
-                ? (_muted ? Icons.mic_off_rounded : Icons.mic_rounded)
-                : Icons.hearing_rounded,
-            size: 66,
-            active: !_connecting && _error == null && !_muted,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _connectionLabel,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            _isHost
-                ? 'Votre voix est diffusée en direct'
-                : 'Vous écoutez le direct de la communauté Fitila',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: .55),
-              fontSize: 10.8,
-            ),
-          ),
-          const SizedBox(height: 13),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
+          Row(
             children: [
-              _roomPill(
-                icon: _error == null
-                    ? Icons.wifi_tethering_rounded
-                    : Icons.wifi_off_rounded,
-                label: _connectionLabel,
-                color: _connectionColor,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF5A5F),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.circle, size: 6, color: Colors.white),
+                    SizedBox(width: 5),
+                    Text(
+                      'DIRECT',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              _roomPill(
-                icon: _usingTurn
-                    ? Icons.shield_rounded
-                    : Icons.router_rounded,
-                label: _usingTurn ? 'Relais TURN' : 'STUN',
-                color: _usingTurn
-                    ? const Color(0xFF63D7A2)
-                    : const Color(0xFFF1C96A),
-              ),
-              _roomPill(
-                icon: _isHost
-                    ? Icons.record_voice_over_rounded
-                    : Icons.headphones_rounded,
-                label: _isHost ? 'Hôte' : 'Auditeur',
-                color: const Color(0xFF8EB5FF),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .14),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '👁 $_peerCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
             ],
           ),
-          if (!_connecting && _error == null) ...[
-            const SizedBox(height: 14),
-            _FitilaWaveformBars(
-              active: !_muted && (_isHost || _remoteAudioReady),
-              height: 28,
-              barCount: 18,
-              color: const Color(0xFFF1C96A),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(minHeight: 280),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF2C2440), Color(0xFF3F345A)],
+              ),
             ),
-          ],
+            child: Stack(
+              children: [
+                Center(
+                  child: _connecting
+                      ? const CircularProgressIndicator(
+                          color: FitilaReferenceUi.gold,
+                        )
+                      : ReferenceMicOrb(
+                          icon: _isHost
+                              ? (_muted
+                                  ? Icons.mic_off_rounded
+                                  : Icons.mic_rounded)
+                              : Icons.hearing_rounded,
+                          size: 72,
+                          ringExtent: 122,
+                          active: _error == null && !_muted,
+                          onTap: _isHost ? _toggleMute : null,
+                        ),
+                ),
+                Positioned(
+                  top: 16,
+                  right: 12,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 175),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(14),
+                          topRight: Radius.circular(14),
+                          bottomLeft: Radius.circular(14),
+                          bottomRight: Radius.circular(4),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: .25),
+                            blurRadius: 20,
+                            spreadRadius: -8,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        _error != null
+                            ? 'Connexion interrompue'
+                            : _connectionLabel,
+                        style: const TextStyle(
+                          color: FitilaReferenceUi.ink,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 12,
+                  bottom: 12,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(6, 6, 12, 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: .40),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 13,
+                          backgroundColor: FitilaReferenceUi.gold,
+                          child: Text(
+                            _isHost ? 'H' : 'G',
+                            style: const TextStyle(
+                              color: FitilaReferenceUi.ink,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        Text(
+                          _isHost ? 'Hôte Fitila' : 'Live Griot IA',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: .55),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              latestChat.isNotEmpty
+                  ? latestChat
+                  : (_isHost
+                      ? 'Le chat et les sous-titres du direct apparaissent ici.'
+                      : (_remoteAudioReady
+                          ? 'Audio connecté · le direct est en cours.'
+                          : 'Synchronisation audio en cours…')),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -23896,51 +23641,42 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
     return Expanded(
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .06),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: Colors.white12),
-            ),
+          padding: const EdgeInsets.all(20),
+          child: ReferenceCard(
+            dark: true,
+            margin: EdgeInsets.zero,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(
                   Icons.portable_wifi_off_rounded,
                   color: Color(0xFFFF6B78),
-                  size: 36,
+                  size: 34,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 const Text(
                   'Le direct a perdu sa connexion',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
+                    fontSize: 15,
                     fontWeight: FontWeight.w900,
-                    fontSize: 16,
                   ),
                 ),
-                const SizedBox(height: 7),
+                const SizedBox(height: 6),
                 Text(
                   _error ?? 'Connexion indisponible.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white54,
-                    fontSize: 11.5,
-                    height: 1.35,
+                    fontSize: 11,
                   ),
                 ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: _retryConnection,
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('Reconnecter'),
-                  ),
+                const SizedBox(height: 12),
+                ReferenceGhostDarkButton(
+                  label: 'Reconnecter',
+                  icon: Icons.refresh_rounded,
+                  onPressed: _retryConnection,
                 ),
               ],
             ),
@@ -23952,90 +23688,57 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
 
   Widget _buildChat() {
     if (_chatMessages.isEmpty) {
-      return Expanded(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.forum_outlined,
-                  color: Colors.white.withValues(alpha: .28),
-                  size: 34,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  _isHost
-                      ? 'Le chat apparaîtra ici dès que la communauté vous rejoint.'
-                      : 'Soyez le premier à écrire dans le chat.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white38,
-                    fontSize: 11.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
+      return const SizedBox.shrink();
     }
-
-    return Expanded(
+    return Flexible(
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
         reverse: true,
-        itemCount: _chatMessages.length,
+        itemCount: math.min(_chatMessages.length, 8),
         itemBuilder: (context, index) {
-          final message =
-              _chatMessages[_chatMessages.length - 1 - index];
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .055),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withValues(alpha: .055)),
-            ),
+          final message = _chatMessages[_chatMessages.length - 1 - index];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
-                  radius: 14,
-                  backgroundColor: const Color(0xFF4A3B96),
+                  radius: 12,
+                  backgroundColor: FitilaReferenceUi.gold,
                   child: Text(
                     _initials(message['display_name']),
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10.5,
+                      color: FitilaReferenceUi.ink,
+                      fontSize: 9,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
-                const SizedBox(width: 9),
+                const SizedBox(width: 7),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        message['display_name']?.toString() ?? 'Griot Fitila',
-                        style: const TextStyle(
-                          color: Color(0xFFF1C96A),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 11.5,
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text:
+                              (message['display_name']?.toString() ?? 'Griot') +
+                                  '  ',
+                          style: const TextStyle(
+                            color: FitilaReferenceUi.gold,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        message['message']?.toString() ?? '',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12.5,
-                          height: 1.3,
+                        TextSpan(
+                          text: message['message']?.toString() ?? '',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11.5,
+                            height: 1.3,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -24048,11 +23751,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
 
   Widget _buildBottomControls() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      padding: const EdgeInsets.fromLTRB(12, 9, 12, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF17131F),
+        color: Colors.white.withValues(alpha: .04),
         border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: .08)),
+          top: BorderSide(color: Colors.white.withValues(alpha: .09)),
         ),
       ),
       child: SafeArea(
@@ -24063,75 +23766,43 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
             Row(
               children: [
                 if (_isHost) ...[
-                  IconButton.filledTonal(
+                  IconButton(
                     onPressed: _error == null ? _toggleMute : null,
                     tooltip: _muted ? 'Réactiver le micro' : 'Couper le micro',
                     icon: Icon(
                       _muted ? Icons.mic_off_rounded : Icons.mic_rounded,
+                      color: Colors.white,
                     ),
                   ),
-                  const SizedBox(width: 7),
+                  const SizedBox(width: 4),
                 ],
                 Expanded(
                   child: TextField(
                     controller: _chatController,
                     enabled: !_connecting && _error == null && !_ending,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    decoration: const InputDecoration(
                       hintText: 'Écrire au direct…',
-                      hintStyle: const TextStyle(color: Colors.white38),
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: .07),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(22),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
                     ),
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => _sendChat(),
                   ),
                 ),
-                const SizedBox(width: 7),
-                IconButton.filled(
-                  onPressed:
-                      !_connecting && _error == null ? _sendChat : null,
-                  tooltip: 'Envoyer',
-                  icon: const Icon(Icons.send_rounded),
+                const SizedBox(width: 5),
+                IconButton(
+                  onPressed: !_connecting && _error == null ? _sendChat : null,
+                  icon: const Icon(
+                    Icons.send_rounded,
+                    color: FitilaReferenceUi.gold,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFD94251),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                ),
-                onPressed: _ending ? null : _endOrLeave,
-                icon: _ending
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.call_end_rounded),
-                label: Text(
-                  _isHost ? 'Terminer le direct' : 'Quitter le direct',
-                  style: const TextStyle(fontWeight: FontWeight.w900),
-                ),
-              ),
+            const SizedBox(height: 7),
+            ReferenceGhostDarkButton(
+              label: _isHost ? 'Terminer le direct' : 'Quitter le direct',
+              icon: Icons.call_end_rounded,
+              onPressed: _ending ? null : _endOrLeave,
             ),
           ],
         ),
@@ -24144,133 +23815,28 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) {
-          _endOrLeave();
-        }
+        if (!didPop) _endOrLeave();
       },
-      child: Scaffold(
-        backgroundColor: const Color(0xFF100D18),
-        body: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: _ending ? null : _endOrLeave,
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD94251),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.fiber_manual_record_rounded,
-                            color: Colors.white,
-                            size: 10,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            'EN DIRECT',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: .7,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: Text(
-                        widget.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 14.5,
-                        ),
-                      ),
-                    ),
-                    const Icon(
-                      Icons.headphones_rounded,
-                      color: Colors.white54,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$_peerCount',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _buildConnectionStage(),
-              if (_connecting)
-                const Expanded(
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      color: Color(0xFFF1C96A),
-                    ),
-                  ),
-                )
-              else if (_error != null)
-                _buildErrorPanel()
-              else ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Chat du direct',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 13.5,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        '${_chatMessages.length} message(s)',
-                        style: const TextStyle(
-                          color: Colors.white38,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 5),
-                _buildChat(),
-              ],
-              _buildBottomControls(),
-            ],
-          ),
+      child: ReferenceCreationShell(
+        dark: true,
+        showTopBar: false,
+        bodyPadding: EdgeInsets.zero,
+        child: Column(
+          children: [
+            _buildConnectionStage(),
+            if (_error != null)
+              _buildErrorPanel()
+            else if (!_connecting)
+              _buildChat()
+            else
+              const Spacer(),
+            _buildBottomControls(),
+          ],
         ),
       ),
     );
   }
+
 }
 
 // ─────────────────────────────────────────────────────────────────
