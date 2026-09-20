@@ -26686,8 +26686,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   }
 
   Widget _buildFragmentTile(
-    Map<String, dynamic> fragment,
-    List<Map<String, dynamic>> list, {
+    Map<String, dynamic> fragment, {
     bool showLieu = false,
   }) {
     final localOnly = fragment['local_only'] == true;
@@ -27070,7 +27069,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           const ReferenceLabel('Souvenirs du lieu', dark: true),
           const SizedBox(height: 7),
           for (final fragment in _lieuFragments.take(3))
-            _buildFragmentTile(fragment, _lieuFragments),
+            _buildFragmentTile(fragment),
         ],
         const SizedBox(height: 9),
         ReferenceGoldButton(
