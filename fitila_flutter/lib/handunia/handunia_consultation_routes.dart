@@ -1,5 +1,6 @@
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -649,7 +650,7 @@ class _HoldToSpeakState extends State<_HoldToSpeak> {
     if (_recording || _sending) {
       return;
     }
-    await _media.startAudio();
+    await _media.startHanduniaOpusAudio();
     if (!mounted) {
       return;
     }
@@ -1881,7 +1882,7 @@ class _HanduniaMemoryAnswerRouteState
     if (_busy || _recording) {
       return;
     }
-    await _media.startAudio();
+    await _media.startHanduniaOpusAudio();
     if (mounted) {
       setState(() => _recording = true);
     }
@@ -2395,6 +2396,7 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
   double _replay = 1;
   bool _saved = false;
   late final AnimationController _travel;
+  String? _notice;
 
   @override
   void initState() {
@@ -2428,10 +2430,42 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
           },
         )
         .toList(growable: false);
-    await HanduniaConsultationExtendedData.savePath(
-      fragmentId: id,
-      points: normalized,
-    );
+    final capturedAt = DateTime.now().toUtc().toIso8601String();
+
+    try {
+      await HanduniaConsultationExtendedData.savePath(
+        fragmentId: id,
+        points: normalized,
+      );
+      if (mounted) {
+        setState(() => _notice = null);
+      }
+    } catch (_) {
+      final preferences = await SharedPreferences.getInstance();
+      final key = 'handunia_pending_paths_v1';
+      final existing = preferences.getString(key);
+      final queue = <dynamic>[];
+      if (existing != null && existing.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(existing);
+          if (decoded is List) {
+            queue.addAll(decoded);
+          }
+        } catch (_) {
+          // Une file locale illisible est remplacée par la trajectoire courante.
+        }
+      }
+      queue.add(<String, dynamic>{
+        'fragment_id': id,
+        'captured_at': capturedAt,
+        'path_points': normalized,
+      });
+      await preferences.setString(key, jsonEncode(queue));
+      if (mounted) {
+        setState(() => _notice = 'En attente de réseau');
+      }
+    }
+
     if (mounted) {
       final reduceMotion =
           MediaQuery.maybeOf(context)?.disableAnimations ?? false;
@@ -2457,6 +2491,18 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
         child: Column(
           children: [
             _handuniaHeader(context, 'Tracer'),
+            if (_notice != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  _notice!,
+                  style: _karlaRoute(
+                    size: 11.5,
+                    color: HanduniaTokens.terre,
+                    weight: FontWeight.w600,
+                  ),
+                ),
+              ),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -2548,8 +2594,10 @@ class _TracePainter extends CustomPainter {
         ..color = HanduniaTokens.braise,
     );
 
-    final sparkIndex =
-        ((points.length - 1) * replay).round().clamp(0, points.length - 1);
+    final sparkIndex = ((points.length - 1) * replay)
+        .round()
+        .clamp(0, points.length - 1)
+        .toInt();
     canvas.drawCircle(
       points[sparkIndex],
       3.5,
