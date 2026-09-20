@@ -1075,6 +1075,39 @@ export type Database = {
           },
         ]
       }
+      corpus_contributions: {
+        Row: {
+          audio_url: string | null
+          created_at: string | null
+          id: string
+          source_lang: string
+          source_text: string
+          target_lang: string
+          translated_text: string
+          user_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string | null
+          id?: string
+          source_lang: string
+          source_text: string
+          target_lang: string
+          translated_text: string
+          user_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string | null
+          id?: string
+          source_lang?: string
+          source_text?: string
+          target_lang?: string
+          translated_text?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       dictionary_enrichments: {
         Row: {
           applied: boolean | null
