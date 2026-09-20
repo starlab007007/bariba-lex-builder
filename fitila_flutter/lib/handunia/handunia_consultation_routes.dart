@@ -2497,7 +2497,9 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
           setState(() => _replay = _travel.value);
         }
       });
-    unawaited(_flushPendingPaths());
+    if (widget.saveOverride == null) {
+      unawaited(_flushPendingPaths());
+    }
   }
 
   @override
