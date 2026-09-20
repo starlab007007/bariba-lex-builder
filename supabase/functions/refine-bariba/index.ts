@@ -18,12 +18,14 @@ const GLOBAL_TIMEOUT_MS = 12_000;
 
 type RefineType = "translate" | "translation" | "transcription";
 type RefineDirection = "fr-ba" | "ba-fr";
+type RefineStyle = "correct" | "simplify" | "natural" | "formal";
 
 interface RefineRequest {
   text?: string;
   type?: RefineType;
   direction?: RefineDirection;
   originalInput?: string;
+  style?: RefineStyle;
 }
 
 serve(async (req: Request) => {
@@ -45,6 +47,10 @@ serve(async (req: Request) => {
         : "translation";
     const direction: RefineDirection | undefined =
       body.direction === "fr-ba" || body.direction === "ba-fr" ? body.direction : undefined;
+    const style: RefineStyle =
+      body.style === "simplify" || body.style === "natural" || body.style === "formal" || body.style === "correct"
+        ? body.style
+        : "correct";
 
     const originalInput =
       typeof body.originalInput === "string" ? normalizeBaribaText(body.originalInput) : undefined;
@@ -107,7 +113,14 @@ serve(async (req: Request) => {
       );
     }
 
-    const systemPrompt = buildRefineSystemPrompt(type, direction);
+    const baseSystemPrompt = buildRefineSystemPrompt(type, direction);
+    const styleInstruction: Record<RefineStyle, string> = {
+      correct: "Corrige les erreurs linguistiques et rends le texte exact, sans changer le sens.",
+      simplify: "Simplifie la formulation pour la rendre plus courte et plus facile à comprendre, sans supprimer d’information essentielle.",
+      natural: "Rends la formulation plus naturelle, idiomatique et fluide pour un locuteur natif, sans changer le sens.",
+      formal: "Rends la formulation plus formelle, claire et respectueuse, sans changer le sens.",
+    };
+    const systemPrompt = baseSystemPrompt + "\n\nSTYLE DE POST-ÉDITION DEMANDÉ :\n" + styleInstruction[style] + "\nRetourne uniquement le texte final.";
     const userPrompt = originalInput
       ? `Texte source : "${originalInput}"\nTexte à traiter : "${cleanedText}"`
       : cleanedText;
@@ -215,6 +228,7 @@ serve(async (req: Request) => {
           aiUsed: true,
           type,
           direction: direction || null,
+          style,
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
