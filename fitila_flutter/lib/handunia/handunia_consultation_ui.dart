@@ -10,20 +10,20 @@ import 'handunia_consultation_model.dart';
 
 abstract final class HanduniaTokens {
   static const nuit = Color(0xFF0D1018);
-  static const nuitPortee = Color(0xFF151A24);
-  static const bordure = Color(0xFF242C39);
-  static const bordureForte = Color(0xFF2E3848);
-  static const braise = Color(0xFFE0A03C);
-  static const terre = Color(0xFFC96A3F);
-  static const ivoire = Color(0xFFF3EFE6);
-  static const cendre = Color(0xFF9A9386);
+  static const nuitPortee = Color(0xFF171D28);
+  static const bordure = Color(0xFF354052);
+  static const bordureForte = Color(0xFF4A5870);
+  static const braise = Color(0xFFE6AA4A);
+  static const terre = Color(0xFFDF8058);
+  static const ivoire = Color(0xFFFAF7F0);
+  static const cendre = Color(0xFFC7C0B4);
   static const encre = Color(0xFF14100A);
 }
 
 TextStyle _fraunces({
-  double size = 17,
+  double size = 18,
   Color color = HanduniaTokens.ivoire,
-  double height = 1.2,
+  double height = 1.28,
 }) {
   return TextStyle(
     fontFamily: 'Fraunces',
@@ -35,10 +35,10 @@ TextStyle _fraunces({
 }
 
 TextStyle _karla({
-  double size = 13.5,
+  double size = 14.5,
   FontWeight weight = FontWeight.w400,
   Color color = HanduniaTokens.ivoire,
-  double height = 1.35,
+  double height = 1.45,
 }) {
   return TextStyle(
     fontFamily: 'Karla',
