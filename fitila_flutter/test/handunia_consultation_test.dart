@@ -149,7 +149,7 @@ void main() {
     expect(find.byIcon(Icons.favorite_border_rounded), findsNothing);
 
     final pendingTop = tester.getTopLeft(
-      find.text('Votre voix attend le réseau.'),
+      find.textContaining('Votre voix attend le réseau.'),
     ).dy;
     final remoteTop = tester.getTopLeft(
       find.text('“La voix traversait la place avant le marché.”'),
