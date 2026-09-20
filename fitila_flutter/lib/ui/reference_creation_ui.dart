@@ -907,7 +907,7 @@ class ReferenceCountdownRing extends StatelessWidget {
           CustomPaint(
             size: Size.square(size),
             painter: _ReferenceRingPainter(
-              progress: progress.clamp(0, 1),
+              progress: progress.clamp(0.0, 1.0).toDouble(),
               track: dark
                   ? Colors.white.withValues(alpha: .14)
                   : FitilaReferenceUi.hairline,
@@ -1119,7 +1119,7 @@ class _ReferenceCheckPainter extends CustomPainter {
       circle,
     );
     if (progress > .58) {
-      final checkProgress = ((progress - .58) / .42).clamp(0.0, 1.0);
+      final checkProgress = ((progress - .58) / .42).clamp(0.0, 1.0).toDouble();
       final path = Path()
         ..moveTo(size.width * .31, size.height * .52)
         ..lineTo(size.width * .44, size.height * .65)
@@ -1368,7 +1368,7 @@ class ReferenceWorldNode extends StatelessWidget {
                   CustomPaint(
                     size: const Size.square(54),
                     painter: _ReferenceRingPainter(
-                      progress: density.clamp(0, 100) / 100,
+                      progress: density.clamp(0, 100).toDouble() / 100,
                       track: Colors.white.withValues(alpha: .12),
                       color: FitilaReferenceUi.wasaGlow,
                       width: 4,
