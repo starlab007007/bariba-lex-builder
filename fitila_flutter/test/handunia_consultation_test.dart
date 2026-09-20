@@ -459,10 +459,10 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.dragFrom(
+    await tester.timedDragFrom(
       const Offset(90, 300),
       const Offset(180, 220),
-      duration: const Duration(milliseconds: 280),
+      const Duration(milliseconds: 280),
     );
     await tester.pump();
     expect(find.text('Trajet validé'), findsOneWidget);
