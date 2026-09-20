@@ -1001,30 +1001,6 @@ class HanduniaFilView extends StatelessWidget {
                       style: _fraunces(size: 27),
                     ),
                   ),
-                  if (onPublish != null) ...[
-                    SizedBox(
-                      height: 40,
-                      child: FilledButton.icon(
-                        onPressed: onPublish,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: HanduniaTokens.braise,
-                          foregroundColor: HanduniaTokens.encre,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          shape: const StadiumBorder(),
-                        ),
-                        icon: const Icon(Icons.add_outlined, size: 18),
-                        label: Text(
-                          'Publier',
-                          style: _karla(
-                            size: 13,
-                            color: HanduniaTokens.encre,
-                            weight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
                   if (pendingCount > 0)
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -1068,6 +1044,31 @@ class HanduniaFilView extends StatelessWidget {
                 ],
               ),
             ),
+            if (onPublish != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: FilledButton.icon(
+                    onPressed: onPublish,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: HanduniaTokens.braise,
+                      foregroundColor: HanduniaTokens.encre,
+                      shape: const StadiumBorder(),
+                    ),
+                    icon: const Icon(Icons.add_outlined, size: 20),
+                    label: Text(
+                      'PUBLIER UN SOUVENIR',
+                      style: _karla(
+                        size: 14,
+                        color: HanduniaTokens.encre,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             if (offline || notice != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
