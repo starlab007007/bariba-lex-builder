@@ -21987,11 +21987,12 @@ class _EchoSonScreenState extends State<EchoSonScreen> {
               childrenPadding: EdgeInsets.fromLTRB(12, 0, 12, 12),
             ),
           ),
-          child: Container(
-            decoration: BoxDecoration(
-              color: FitilaReferenceUi.surface,
+          child: Material(
+            color: FitilaReferenceUi.surface,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: FitilaReferenceUi.hairline),
+              side: const BorderSide(color: FitilaReferenceUi.hairline),
             ),
             child: ExpansionTile(
               dense: true,
