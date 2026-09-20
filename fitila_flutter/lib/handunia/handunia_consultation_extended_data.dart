@@ -550,6 +550,7 @@ class HanduniaConsultationExtendedData {
     String? provider,
     bool roadMatched = false,
     String geometryType = 'normalized',
+    List<Map<String, dynamic>> routePlaces = const <Map<String, dynamic>>[],
   }) async {
     final user = _client.auth.currentUser;
     if (user == null) {
@@ -567,6 +568,7 @@ class HanduniaConsultationExtendedData {
       'provider': provider,
       'road_matched': roadMatched,
       'geometry_type': geometryType,
+      'route_places': routePlaces,
       if (capturedAt != null)
         'captured_at': capturedAt.toUtc().toIso8601String(),
     });
