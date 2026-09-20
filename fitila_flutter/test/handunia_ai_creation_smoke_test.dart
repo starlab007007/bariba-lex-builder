@@ -19,8 +19,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('AVEC LUMIÈRE IA'), findsOneWidget);
-    expect(find.text('Parler sans IA'), findsOneWidget);
+    expect(find.text('COMMENCER AVEC LUMIÈRE IA'), findsOneWidget);
+    expect(find.text('Enregistrer directement'), findsOneWidget);
     expect(
       find.text('L’IA éclaire la mémoire. Elle ne l’invente pas.'),
       findsOneWidget,
