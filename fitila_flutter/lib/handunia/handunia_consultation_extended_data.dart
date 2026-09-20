@@ -125,7 +125,7 @@ class HanduniaConsultationExtendedData {
               'audio_duration_ms, period_label, period_year, scope_level, '
               'seal_hash, withdrawn_at, created_at, source_fragment_id',
             )
-            .filter('id', 'in', '(' + ids.join(',') + ')');
+            .filter('id', 'in', '(${ids.join(',')})');
         for (final row in List<Map<String, dynamic>>.from(extra as List)) {
           if (!versions.any((item) => item['id'] == row['id'])) {
             versions.add(row);
@@ -178,11 +178,7 @@ class HanduniaConsultationExtendedData {
     }
 
     final path =
-        'handunia/' +
-        user.id +
-        '/' +
-        DateTime.now().millisecondsSinceEpoch.toString() +
-        '.opus';
+        'handunia/${user.id}/${DateTime.now().millisecondsSinceEpoch}.opus';
     await _client.storage
         .from('tamtam-audio')
         .uploadBinary(
@@ -272,7 +268,7 @@ class HanduniaConsultationExtendedData {
       final rows = await _client
           .from('handunia_corroborations')
           .select('fragment_id, user_id')
-          .filter('fragment_id', 'in', '(' + ids.join(',') + ')');
+          .filter('fragment_id', 'in', '(${ids.join(',')})');
       corroborations = List<Map<String, dynamic>>.from(rows as List);
     }
     final corroborators = <String, Set<String>>{};
@@ -379,7 +375,7 @@ class HanduniaConsultationExtendedData {
       final raw = await _client
           .from('handunia_corroborations')
           .select('fragment_id, user_id')
-          .filter('fragment_id', 'in', '(' + ids.join(',') + ')');
+          .filter('fragment_id', 'in', '(${ids.join(',')})');
       corroborations = List<Map<String, dynamic>>.from(raw as List);
     }
     final byFragment = <String, Set<String>>{};
@@ -473,7 +469,7 @@ class HanduniaConsultationExtendedData {
       'handunia-memory-query',
       body: <String, dynamic>{
         'question': question.trim(),
-        if (requestedScope != null) 'requested_scope': requestedScope,
+        'requested_scope': ?requestedScope,
       },
     );
     final data = response.data;
@@ -507,7 +503,7 @@ class HanduniaConsultationExtendedData {
       final raw = await _client
           .from('tamtam_profiles')
           .select('user_id, display_name, username')
-          .filter('user_id', 'in', '(' + guardianIds.join(',') + ')');
+          .filter('user_id', 'in', '(${guardianIds.join(',')})');
       profiles = List<Map<String, dynamic>>.from(raw as List);
     }
     final profileMap = <String, Map<String, dynamic>>{
