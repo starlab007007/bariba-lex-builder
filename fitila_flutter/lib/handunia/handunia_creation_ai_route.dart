@@ -63,6 +63,59 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
       ? widget.lieu['name'].toString()
       : 'Ce lieu';
 
+  int get _flowStep => switch (_stage) {
+    0 => 0,
+    1 || 2 => 1,
+    3 || 4 || 5 => 2,
+    6 => 3,
+    7 || 8 => 4,
+    _ => 0,
+  };
+
+  String get _flowLabel => switch (_flowStep) {
+    0 => 'Commencer',
+    1 => 'Répondre',
+    2 => 'Vérifier',
+    3 => 'Partager',
+    _ => 'Terminé',
+  };
+
+  ThemeData _readableTheme(BuildContext context) {
+    final base = Theme.of(context);
+    final scheme = ColorScheme.fromSeed(
+      seedColor: HanduniaTokens.braise,
+      brightness: Brightness.dark,
+      surface: HanduniaTokens.nuitPortee,
+    ).copyWith(
+      primary: HanduniaTokens.braise,
+      onPrimary: HanduniaTokens.encre,
+      surface: HanduniaTokens.nuitPortee,
+      onSurface: HanduniaTokens.ivoire,
+      outline: HanduniaTokens.bordureForte,
+      error: HanduniaTokens.terre,
+    );
+    return base.copyWith(
+      colorScheme: scheme,
+      scaffoldBackgroundColor: HanduniaTokens.nuit,
+      textTheme: base.textTheme.apply(
+        fontFamily: 'Karla',
+        bodyColor: HanduniaTokens.ivoire,
+        displayColor: HanduniaTokens.ivoire,
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: HanduniaTokens.ivoire,
+          textStyle: const TextStyle(
+            fontFamily: 'Karla',
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
+          minimumSize: const Size(44, 44),
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -532,51 +585,77 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
       unawaited(_cancelRecording());
       return;
     }
-    setState(() => _stage = math.max(0, _stage - 1));
+    final previous = switch (_stage) {
+      1 => 0,
+      2 => 1,
+      3 => 2,
+      4 => 3,
+      5 => 4,
+      6 => 3,
+      7 => 6,
+      8 => 7,
+      _ => 0,
+    };
+    setState(() => _stage = previous);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: HanduniaTokens.nuit,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _header(),
-            if (_notice != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
-                child: Text(
-                  _notice!,
-                  textAlign: TextAlign.center,
-                  style: _karla(
-                    size: 11.5,
-                    color: HanduniaTokens.terre,
-                    weight: FontWeight.w600,
+    return Theme(
+      data: _readableTheme(context),
+      child: Scaffold(
+        backgroundColor: HanduniaTokens.nuit,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _header(),
+              if (_notice != null)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.fromLTRB(18, 0, 18, 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 11,
+                  ),
+                  decoration: BoxDecoration(
+                    color: HanduniaTokens.terre.withValues(alpha: .12),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: HanduniaTokens.terre.withValues(alpha: .55),
+                    ),
+                  ),
+                  child: Text(
+                    _notice!,
+                    textAlign: TextAlign.center,
+                    style: _karla(
+                      size: 13,
+                      color: HanduniaTokens.ivoire,
+                      weight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  child: KeyedSubtree(
+                    key: ValueKey<int>(_stage),
+                    child: switch (_stage) {
+                      0 => _thresholdStage(),
+                      1 => _questionStage(),
+                      2 => _recordStage(),
+                      3 => _understandingStage(),
+                      4 => _graphStage(),
+                      5 => _comparisonStage(),
+                      6 => _scopeStage(),
+                      7 => _sealedStage(),
+                      8 => _gapsStage(),
+                      _ => _thresholdStage(),
+                    },
                   ),
                 ),
               ),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
-                child: KeyedSubtree(
-                  key: ValueKey<int>(_stage),
-                  child: switch (_stage) {
-                    0 => _thresholdStage(),
-                    1 => _questionStage(),
-                    2 => _recordStage(),
-                    3 => _understandingStage(),
-                    4 => _graphStage(),
-                    5 => _comparisonStage(),
-                    6 => _scopeStage(),
-                    7 => _sealedStage(),
-                    8 => _gapsStage(),
-                    _ => _thresholdStage(),
-                  },
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -598,20 +677,45 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
             ),
           ),
           Expanded(
-            child: Text(
-              _stage == 0 ? 'Handunia Wasa' : 'Lumière IA',
-              style: _fraunces(size: 25),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _stage == 0 ? 'Handunia Wasa' : 'Lumière IA',
+                  style: _fraunces(size: 24),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _flowLabel,
+                  style: _karla(
+                    size: 12.5,
+                    color: HanduniaTokens.cendre,
+                    weight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
           ),
-          if (_stage > 0 && _stage < 7)
-            Text(
-              '${_stage + 1}/8',
-              style: _karla(
-                size: 11,
-                color: HanduniaTokens.cendre,
-                weight: FontWeight.w600,
-              ),
+          SizedBox(
+            width: 86,
+            child: Row(
+              children: List.generate(5, (index) {
+                final active = index <= _flowStep;
+                return Expanded(
+                  child: Container(
+                    height: 4,
+                    margin: EdgeInsets.only(left: index == 0 ? 0 : 4),
+                    decoration: BoxDecoration(
+                      color: active
+                          ? HanduniaTokens.braise
+                          : HanduniaTokens.bordure,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                );
+              }),
             ),
+          ),
         ],
       ),
     );
@@ -653,13 +757,13 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         ),
         const SizedBox(height: 34),
         _primaryButton(
-          label: 'AVEC LUMIÈRE IA',
+          label: 'COMMENCER AVEC LUMIÈRE IA',
           icon: Icons.light_mode_outlined,
           onPressed: _enterAi,
         ),
         const SizedBox(height: 10),
         _outlineButton(
-          label: 'Parler sans IA',
+          label: 'Enregistrer directement',
           icon: Icons.mic_none_outlined,
           onPressed: _startRecording,
         ),
@@ -667,7 +771,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         Text(
           'L’IA éclaire la mémoire. Elle ne l’invente pas.',
           textAlign: TextAlign.center,
-          style: _karla(size: 11.5, color: HanduniaTokens.cendre),
+          style: _karla(size: 13, color: HanduniaTokens.cendre),
         ),
       ],
     );
@@ -725,14 +829,14 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         ],
         const SizedBox(height: 30),
         _primaryButton(
-          label: 'PARLER',
+          label: 'RÉPONDRE PAR LA VOIX',
           icon: Icons.mic_none_outlined,
           onPressed: _loadingQuestion ? null : _startRecording,
         ),
         const SizedBox(height: 8),
         TextButton(
           onPressed: _loadingQuestion ? null : _anotherQuestion,
-          child: Text('Autre question', style: _karla(weight: FontWeight.w600)),
+          child: Text('Changer de question', style: _karla(weight: FontWeight.w700)),
         ),
       ],
     );
@@ -746,7 +850,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
       padding: const EdgeInsets.fromLTRB(22, 42, 22, 28),
       children: [
         Text(
-          _recording ? 'IA écoute' : 'Prêt à écouter',
+          _recording ? 'Je vous écoute' : 'Prêt à enregistrer',
           textAlign: TextAlign.center,
           style: _karla(
             size: 12,
@@ -797,13 +901,13 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         const SizedBox(height: 28),
         if (_recording)
           _primaryButton(
-            label: 'TERMINER',
+            label: 'TERMINER L’ENREGISTREMENT',
             icon: Icons.stop_circle_outlined,
             onPressed: _stopRecording,
           )
         else
           _primaryButton(
-            label: 'COMMENCER',
+            label: 'COMMENCER L’ENREGISTREMENT',
             icon: Icons.mic_none_outlined,
             onPressed: _startRecording,
           ),
@@ -821,7 +925,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         Text(
           'Original intact · Opus 16 kbps',
           textAlign: TextAlign.center,
-          style: _karla(size: 11, color: HanduniaTokens.cendre),
+          style: _karla(size: 12.5, color: HanduniaTokens.cendre),
         ),
       ],
     );
@@ -846,35 +950,66 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           const Center(
             child: HaloDensite(valeur: .5, loading: true, size: 76),
           ),
+        Text(
+          'Votre transcription',
+          style: _karla(
+            size: 13,
+            color: HanduniaTokens.braise,
+            weight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _transcriptController,
+          maxLines: 7,
+          minLines: 4,
+          style: _karla(size: 15.5, height: 1.5),
+          decoration: _inputDecoration(
+            'Écoutez, relisez et corrigez si nécessaire',
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'La voix originale reste la référence.',
+          style: _karla(size: 12.5, color: HanduniaTokens.cendre),
+        ),
+        const SizedBox(height: 16),
         if (entities.isEmpty)
           _stateCard(
             title: 'Voix originale conservée',
             subtitle: _transcriptController.text.trim().isEmpty
                 ? 'Transcription indisponible'
-                : 'Aucune donnée structurée certaine',
+                : 'Aucune donnée certaine à confirmer',
             color: HanduniaTokens.cendre,
           )
         else
-          for (var i = 0; i < entities.length; i++) ...[
-            _entityCard(entities[i], i),
-            const SizedBox(height: 9),
-          ],
-        const SizedBox(height: 10),
-        TextField(
-          controller: _transcriptController,
-          maxLines: 7,
-          minLines: 4,
-          style: _karla(size: 14),
-          decoration: _inputDecoration(
-            'Transcription automatique · corrigeable',
+          Theme(
+            data: Theme.of(context).copyWith(
+              dividerColor: Colors.transparent,
+            ),
+            child: ExpansionTile(
+              initiallyExpanded: entities.length <= 3,
+              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+              childrenPadding: EdgeInsets.zero,
+              iconColor: HanduniaTokens.braise,
+              collapsedIconColor: HanduniaTokens.cendre,
+              title: Text(
+                'Données détectées · ${entities.length}',
+                style: _karla(size: 15, weight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                'Touchez pour vérifier ou corriger',
+                style: _karla(size: 12.5, color: HanduniaTokens.cendre),
+              ),
+              children: [
+                for (var i = 0; i < entities.length; i++) ...[
+                  _entityCard(entities[i], i),
+                  const SizedBox(height: 9),
+                ],
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'La voix reste la source canonique.',
-          style: _karla(size: 10.5, color: HanduniaTokens.cendre),
-        ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 20),
         _primaryButton(
           label: _processing ? 'ANALYSE…' : 'CONTINUER',
           icon: Icons.arrow_forward_outlined,
@@ -883,9 +1018,15 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
               : () async {
                   await _reanalyzeIfNeeded();
                   if (mounted) {
-                    setState(() => _stage = 4);
+                    setState(() => _stage = 6);
                   }
                 },
+        ),
+        const SizedBox(height: 8),
+        TextButton.icon(
+          onPressed: _processing ? null : () => setState(() => _stage = 4),
+          icon: const Icon(Icons.account_tree_outlined, size: 19),
+          label: const Text('Voir les liens détectés'),
         ),
       ],
     );
@@ -990,7 +1131,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         ),
         const SizedBox(height: 18),
         _primaryButton(
-          label: 'VOIR LES AUTRES VOIX',
+          label: 'COMPARER AVEC LES AUTRES VOIX',
           icon: Icons.compare_arrows_outlined,
           onPressed: () => setState(() => _stage = 5),
         ),
@@ -1072,13 +1213,15 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           ),
           const SizedBox(height: 9),
         ],
+        _relationSummary(),
+        const SizedBox(height: 14),
         if (reason.isNotEmpty) ...[
-          const SizedBox(height: 12),
           _stateCard(
-            title: 'Lumière IA',
+            title: 'Suggestion de portée',
             subtitle: reason,
             color: HanduniaTokens.terre,
           ),
+          const SizedBox(height: 12),
         ],
         const SizedBox(height: 22),
         _primaryButton(
@@ -1244,17 +1387,60 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         .toList(growable: false);
   }
 
+  Widget _relationSummary() {
+    final relation = _comparison['relation']?.toString() ?? 'new';
+    final label = switch (relation) {
+      'corroborates' => 'Cette voix rejoint un témoignage existant.',
+      'nuances' => 'Cette voix apporte une nuance.',
+      'diverges' => 'Deux versions sont conservées.',
+      _ => 'Cette voix apporte une nouvelle trace.',
+    };
+    final color = relation == 'diverges'
+        ? HanduniaTokens.terre
+        : HanduniaTokens.braise;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: HanduniaTokens.nuitPortee,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: .62)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.hub_outlined, color: color, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: _karla(size: 13.5, weight: FontWeight.w600),
+            ),
+          ),
+          TextButton(
+            onPressed: () => setState(() => _stage = 5),
+            child: const Text('Détail'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _scopeTile({
     required String value,
     required String label,
     required bool suggested,
   }) {
     final selected = _selectedScope == value;
+    final description = switch (value) {
+      'elders' => 'Réservé aux gardiens et anciens',
+      'lineage' => 'Visible par votre lignée',
+      'all' => 'Visible à tous les utilisateurs',
+      _ => 'Visible par la communauté Handunia',
+    };
     return InkWell(
       borderRadius: BorderRadius.circular(18),
       onTap: () => setState(() => _selectedScope = value),
       child: Container(
-        constraints: const BoxConstraints(minHeight: 56),
+        constraints: const BoxConstraints(minHeight: 64),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: HanduniaTokens.nuitPortee,
@@ -1277,19 +1463,32 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                label,
-                style: _karla(
-                  size: 15,
-                  weight: FontWeight.w600,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: _karla(
+                      size: 16,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    description,
+                    style: _karla(
+                      size: 12.5,
+                      color: HanduniaTokens.cendre,
+                    ),
+                  ),
+                ],
               ),
             ),
             if (suggested)
               Text(
                 'suggéré',
                 style: _karla(
-                  size: 10.5,
+                  size: 12,
                   color: HanduniaTokens.terre,
                   weight: FontWeight.w700,
                 ),
@@ -1393,7 +1592,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 54,
+      height: 58,
       child: FilledButton.icon(
         onPressed: onPressed,
         style: FilledButton.styleFrom(
@@ -1407,6 +1606,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         label: Text(
           label,
           style: _karla(
+            size: 15.5,
             color: HanduniaTokens.encre,
             weight: FontWeight.w700,
           ),
@@ -1422,7 +1622,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 52,
+      height: 56,
       child: OutlinedButton.icon(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
@@ -1431,7 +1631,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           shape: const StadiumBorder(),
         ),
         icon: Icon(icon),
-        label: Text(label, style: _karla(weight: FontWeight.w700)),
+        label: Text(label, style: _karla(size: 15, weight: FontWeight.w700)),
       ),
     );
   }
@@ -1439,7 +1639,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: _karla(color: HanduniaTokens.cendre),
+      hintStyle: _karla(size: 14, color: HanduniaTokens.cendre),
       filled: true,
       fillColor: HanduniaTokens.nuitPortee,
       enabledBorder: OutlineInputBorder(
@@ -1698,9 +1898,9 @@ class _ComparisonPainter extends CustomPainter {
 }
 
 TextStyle _fraunces({
-  double size = 17,
+  double size = 18,
   Color color = HanduniaTokens.ivoire,
-  double height = 1.2,
+  double height = 1.28,
 }) {
   return TextStyle(
     fontFamily: 'Fraunces',
@@ -1712,10 +1912,10 @@ TextStyle _fraunces({
 }
 
 TextStyle _karla({
-  double size = 13.5,
+  double size = 15,
   FontWeight weight = FontWeight.w400,
   Color color = HanduniaTokens.ivoire,
-  double height = 1.35,
+  double height = 1.45,
 }) {
   return TextStyle(
     fontFamily: 'Karla',
