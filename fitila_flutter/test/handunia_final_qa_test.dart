@@ -96,10 +96,10 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.dragFrom(
+    await tester.timedDragFrom(
       const Offset(95, 310),
       const Offset(170, 190),
-      duration: const Duration(milliseconds: 260),
+      const Duration(milliseconds: 260),
     );
     await tester.pump();
 
