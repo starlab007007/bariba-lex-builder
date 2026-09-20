@@ -251,12 +251,14 @@ class HanduniaMapData {
     const earth = 6371000.0;
     const p = 0.017453292519943295;
     final a = 0.5 -
-        (cosValue((lat2 - lat1) * p) / 2) +
-        cosValue(lat1 * p) *
-            cosValue(lat2 * p) *
-            (1 - cosValue((lon2 - lon1) * p)) /
+        (math.cos((lat2 - lat1) * p) / 2) +
+        math.cos(lat1 * p) *
+            math.cos(lat2 * p) *
+            (1 - math.cos((lon2 - lon1) * p)) /
             2;
-    return 2 * earth * asinValue(a.sqrtClamped());
+    return 2 *
+        earth *
+        math.asin(math.sqrt(a.clamp(0.0, 1.0).toDouble()));
   }
 
   static double pathDistanceMeters(List<Map<String, double>> points) {
@@ -289,23 +291,3 @@ class HanduniaMapData {
   static String _coordinateLabel(double lat, double lon) =>
       '${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}';
 }
-
-extension on double {
-  double sqrtClamped() {
-    if (this <= 0) {
-      return 0;
-    }
-    if (this >= 1) {
-      return 1;
-    }
-    return this;
-  }
-}
-
-double cosValue(double value) {
-  // Taylor is avoided; dart:math is intentionally wrapped so this service
-  // stays straightforward to test.
-  return math.cos(value);
-}
-
-double asinValue(double value) => math.asin(value);
