@@ -26231,22 +26231,29 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
 
   Future<void> _generateFragment() async {
     final lieu = _selectedLieu;
-    if (lieu == null) {
+    if (lieu == null || _generating) {
       return;
     }
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => HanduniaAiCreationRoute(
-          lieu: Map<String, dynamic>.from(lieu),
-          voiceCount: _density[lieu['id']?.toString() ?? ''] ?? 0,
-          onSaved: _loadLieux,
+    setState(() => _generating = true);
+    try {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => HanduniaAiCreationRoute(
+            lieu: Map<String, dynamic>.from(lieu),
+            voiceCount: _density[lieu['id']?.toString() ?? ''] ?? 0,
+            onSaved: _loadLieux,
+          ),
         ),
-      ),
-    );
-    if (!mounted) {
-      return;
+      );
+      if (!mounted) {
+        return;
+      }
+      await _openWorldFeed();
+    } finally {
+      if (mounted) {
+        setState(() => _generating = false);
+      }
     }
-    await _openWorldFeed();
   }
 
   // "Tisser dans le monde vivant" — volontairement PAS une publication
@@ -26480,9 +26487,14 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       if (!mounted) {
         return;
       }
+      final lineageKey = _worldFeedFilter == HanduniaFeedFilter.lineage
+          ? await HanduniaConsultationData.resolveCurrentLineageKey()
+          : null;
+      if (!mounted) {
+        return;
+      }
       var notice =
-          _worldFeedFilter == HanduniaFeedFilter.lineage &&
-              HanduniaConsultationData.currentLineageKey == null
+          _worldFeedFilter == HanduniaFeedFilter.lineage && lineageKey == null
           ? 'Lignée non renseignée'
           : null;
       if (_worldFeedFilter == HanduniaFeedFilter.around && position == null) {

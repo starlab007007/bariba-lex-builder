@@ -8,13 +8,28 @@ import 'handunia_consultation_model.dart';
 class HanduniaConsultationData {
   static SupabaseClient get _client => FitilaBackend.client;
 
-  static String? get currentLineageKey {
+  static Future<String?> resolveCurrentLineageKey() async {
     if (!FitilaBackend.configured) {
       return null;
     }
-    final raw = _client.auth.currentUser?.userMetadata?['lineage_key'];
-    final value = raw?.toString().trim() ?? '';
-    return value.isEmpty ? null : value;
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return null;
+    }
+    try {
+      final row = await _client
+          .from('handunia_lineage_memberships')
+          .select('lineage_key')
+          .eq('user_id', user.id)
+          .eq('active', true)
+          .order('designated_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      final value = row?['lineage_key']?.toString().trim() ?? '';
+      return value.isEmpty ? null : value;
+    } catch (_) {
+      return null;
+    }
   }
 
   static bool get currentGuardian {
@@ -36,7 +51,7 @@ class HanduniaConsultationData {
       return const [];
     }
 
-    final lineage = currentLineageKey;
+    final lineage = await resolveCurrentLineageKey();
     if (filter == HanduniaFeedFilter.lineage && lineage == null) {
       return const [];
     }

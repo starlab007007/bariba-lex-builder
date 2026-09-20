@@ -932,7 +932,11 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
               onPressed: () => _playEvidence(item),
               icon: const Icon(Icons.play_circle_outline, size: 18),
               label: Text(
-                endMs == null
+                item['audio_range_estimated'] == true
+                    ? endMs == null
+                          ? '≈ ${_timeLabel(startMs)} · écouter'
+                          : '≈ ${_timeLabel(startMs)}–${_timeLabel(endMs)} · écouter'
+                    : endMs == null
                     ? '${_timeLabel(startMs)} · écouter'
                     : '${_timeLabel(startMs)}–${_timeLabel(endMs)} · écouter',
               ),
