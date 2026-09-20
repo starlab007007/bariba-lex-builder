@@ -188,7 +188,7 @@ class _HaloPainter extends CustomPainter {
   }
 }
 
-class OndeAudio extends StatefulWidget {
+class OndeAudio extends StatelessWidget {
   const OndeAudio({
     super.key,
     required this.progression,
@@ -201,70 +201,19 @@ class OndeAudio extends StatefulWidget {
   final double height;
 
   @override
-  State<OndeAudio> createState() => _OndeAudioState();
-}
-
-class _OndeAudioState extends State<OndeAudio>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  bool _reduceMotion = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 760),
-    );
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _sync();
-  }
-
-  @override
-  void didUpdateWidget(covariant OndeAudio oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _sync();
-  }
-
-  void _sync() {
-    _reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    if (widget.actif && !_reduceMotion) {
-      if (!_controller.isAnimating) {
-        _controller.repeat();
-      }
-    } else {
-      _controller.stop();
-      _controller.value = 0;
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: widget.height,
-      width: double.infinity,
-      child: RepaintBoundary(
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, _) {
-            return CustomPaint(
-              painter: _WavePainter(
-                progress: widget.progression.clamp(0.0, 1.0),
-                phase: _reduceMotion ? 0 : _controller.value,
-                active: widget.actif && !_reduceMotion,
-              ),
-            );
-          },
+    return Semantics(
+      label: actif ? 'Lecture audio en cours' : 'Progression audio',
+      child: SizedBox(
+        height: height,
+        width: double.infinity,
+        child: RepaintBoundary(
+          child: CustomPaint(
+            painter: _WavePainter(
+              progress: progression.clamp(0.0, 1.0),
+              active: actif,
+            ),
+          ),
         ),
       ),
     );
@@ -274,12 +223,10 @@ class _OndeAudioState extends State<OndeAudio>
 class _WavePainter extends CustomPainter {
   const _WavePainter({
     required this.progress,
-    required this.phase,
     required this.active,
   });
 
   final double progress;
-  final double phase;
   final bool active;
 
   @override
@@ -290,10 +237,7 @@ class _WavePainter extends CustomPainter {
     for (var i = 0; i < bars; i++) {
       final x = i / (bars - 1);
       final base = 0.24 + 0.62 * (0.5 + 0.5 * math.sin(i * 1.71));
-      final motion = active
-          ? 0.12 * math.sin((phase * math.pi * 2) + i * 0.74)
-          : 0.0;
-      final h = size.height * (base + motion).clamp(0.16, 0.94);
+      final h = size.height * base.clamp(0.16, 0.94);
       final rect = RRect.fromRectAndRadius(
         Rect.fromLTWH(
           i * (width + gap),
@@ -312,13 +256,20 @@ class _WavePainter extends CustomPainter {
               : HanduniaTokens.bordureForte,
       );
     }
+
+    if (active) {
+      final x = (size.width * progress).clamp(3.0, size.width - 3.0);
+      canvas.drawCircle(
+        Offset(x, size.height / 2),
+        3,
+        Paint()..color = HanduniaTokens.ivoire,
+      );
+    }
   }
 
   @override
   bool shouldRepaint(covariant _WavePainter oldDelegate) {
-    return progress != oldDelegate.progress ||
-        phase != oldDelegate.phase ||
-        active != oldDelegate.active;
+    return progress != oldDelegate.progress || active != oldDelegate.active;
   }
 }
 
@@ -351,6 +302,92 @@ class PastilleSource extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class HanduniaSourcedAnswer extends StatelessWidget {
+  const HanduniaSourcedAnswer({
+    super.key,
+    required this.answer,
+    required this.sources,
+  });
+
+  final String answer;
+  final List<Map<String, dynamic>> sources;
+
+  @override
+  Widget build(BuildContext context) {
+    final byIndex = <int, Map<String, dynamic>>{
+      for (final source in sources)
+        if ((source['index'] as num?)?.toInt() != null)
+          (source['index'] as num).toInt(): source,
+    };
+    final matches = RegExp(r'\[(\d+)\]').allMatches(answer).toList();
+    final spans = <InlineSpan>[];
+    var cursor = 0;
+    var resolvedCitation = false;
+
+    for (final match in matches) {
+      if (match.start > cursor) {
+        spans.add(TextSpan(text: answer.substring(cursor, match.start)));
+      }
+      final index = int.tryParse(match.group(1) ?? '');
+      final source = index == null ? null : byIndex[index];
+      if (source == null) {
+        spans.add(
+          TextSpan(
+            text: match.group(0),
+            style: _karla(size: 11.5, color: HanduniaTokens.cendre),
+          ),
+        );
+      } else {
+        resolvedCitation = true;
+        spans.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+              child: PastilleSource(
+                temoin: source['witness']?.toString() ?? 'TV',
+                annee: source['year']?.toString() ?? '',
+              ),
+            ),
+          ),
+        );
+      }
+      cursor = match.end;
+    }
+
+    if (cursor < answer.length) {
+      spans.add(TextSpan(text: answer.substring(cursor)));
+    }
+    if (spans.isEmpty) {
+      spans.add(TextSpan(text: answer));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text.rich(
+          TextSpan(children: spans),
+          style: _fraunces(size: 17, height: 1.55),
+        ),
+        if (!resolvedCitation && sources.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: [
+              for (final source in sources)
+                PastilleSource(
+                  temoin: source['witness']?.toString() ?? 'TV',
+                  annee: source['year']?.toString() ?? '',
+                ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }
