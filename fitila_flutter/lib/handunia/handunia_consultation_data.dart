@@ -30,7 +30,7 @@ class HanduniaConsultationData {
     double? longitude,
     HanduniaFeedFilter filter = HanduniaFeedFilter.all,
   }) async {
-    final fragments = await _fetchFragmentCandidates();
+    var fragments = await _fetchFragmentCandidates();
 
     if (fragments.isEmpty) {
       return const [];
