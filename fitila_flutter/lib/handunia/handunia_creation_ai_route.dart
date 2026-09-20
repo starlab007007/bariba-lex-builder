@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../core/fitila_media.dart';
 import 'handunia_consultation_routes.dart';
 import 'handunia_consultation_ui.dart';
+import 'handunia_geo_trace_route.dart';
 import 'handunia_creation_ai_data.dart';
 
 class HanduniaAiCreationRoute extends StatefulWidget {
@@ -1310,7 +1311,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
                     final completed = await Navigator.of(context).push<bool>(
                       MaterialPageRoute<bool>(
                         builder: (_) =>
-                            HanduniaTraceRoute(fragmentId: fragmentId),
+                            HanduniaGeoTraceRoute(fragmentId: fragmentId),
                       ),
                     );
                     if (!mounted || completed != true) {
