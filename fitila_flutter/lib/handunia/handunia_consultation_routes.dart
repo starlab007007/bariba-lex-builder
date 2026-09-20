@@ -755,7 +755,7 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
     final initialPlaces = widget.initialPlaces;
     if (initialPlaces != null) {
       _places = List<Map<String, dynamic>>.from(initialPlaces);
-      _selectedIndex = _places.isEmpty ? 0 : 0;
+      _selectedIndex = 0;
       _loading = false;
     } else {
       unawaited(_load());
@@ -1030,32 +1030,32 @@ class _MapPlaceNode extends StatelessWidget {
                           : HanduniaTokens.bordureForte,
                     ),
                   ),
-                  child: Row(
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Flexible(
-                        child: Text(
-                          name.isEmpty ? 'Lieu sans nom' : name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: _karlaRoute(
-                            size: 13,
-                            color: HanduniaTokens.ivoire,
-                            weight: FontWeight.w700,
-                            height: 1.15,
-                          ),
+                      Text(
+                        name.isEmpty ? 'Lieu sans nom' : name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: _karlaRoute(
+                          size: 13,
+                          color: HanduniaTokens.ivoire,
+                          weight: FontWeight.w700,
+                          height: 1.15,
                         ),
                       ),
-                      const SizedBox(width: 5),
+                      const SizedBox(height: 2),
                       Text(
-                        '$voices',
+                        '$voices voix',
+                        textAlign: TextAlign.center,
                         style: _karlaRoute(
-                          size: 12,
+                          size: 11.5,
                           color: voices > 0
                               ? HanduniaTokens.braise
                               : HanduniaTokens.cendre,
                           weight: FontWeight.w700,
+                          height: 1.1,
                         ),
                       ),
                     ],
@@ -2484,7 +2484,7 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
   bool _saved = false;
   late final AnimationController _travel;
   String? _notice;
-  bool _advancing = false;
+  int _completionGeneration = 0;
 
   @override
   void initState() {
@@ -2597,7 +2597,6 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
         .toList(growable: false);
     final capturedAt = DateTime.now().toUtc().toIso8601String();
 
-    var queuedOffline = false;
     try {
       final capturedDate = DateTime.parse(capturedAt);
       if (widget.saveOverride != null) {
@@ -2614,7 +2613,6 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
         setState(() => _notice = 'Trajet enregistré.');
       }
     } catch (_) {
-      queuedOffline = true;
       final preferences = await SharedPreferences.getInstance();
       final key = 'handunia_pending_paths_v1';
       final existing = preferences.getString(key);
@@ -2657,18 +2655,16 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
       } else {
         _travel.forward(from: 0);
       }
-      unawaited(_advanceAfterSave(queuedOffline: queuedOffline));
+      final generation = ++_completionGeneration;
+      unawaited(_advanceAfterSave(generation));
     }
   }
 
-  Future<void> _advanceAfterSave({required bool queuedOffline}) async {
-    if (_advancing) {
-      return;
-    }
-    _advancing = true;
+  Future<void> _advanceAfterSave(int generation) async {
     await Future<void>.delayed(widget.completionDelay);
-    if (!mounted || !_saved) {
-      _advancing = false;
+    if (!mounted ||
+        !_saved ||
+        generation != _completionGeneration) {
       return;
     }
     Navigator.of(context).pop(true);
@@ -2741,7 +2737,7 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
                       _travel.stop();
                       setState(() {
                         _saved = false;
-                        _advancing = false;
+                        _completionGeneration += 1;
                         _replay = 1;
                         _points
                           ..clear()
@@ -2804,7 +2800,7 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
                         _travel.stop();
                         setState(() {
                           _saved = false;
-                          _advancing = false;
+                          _completionGeneration += 1;
                           _points.clear();
                           _replay = 1;
                           _notice = null;
