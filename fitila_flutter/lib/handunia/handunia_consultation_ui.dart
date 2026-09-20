@@ -258,7 +258,9 @@ class _WavePainter extends CustomPainter {
     }
 
     if (active) {
-      final x = (size.width * progress).clamp(3.0, size.width - 3.0);
+      final x = (size.width * progress)
+          .clamp(3.0, math.max(3.0, size.width - 3.0))
+          .toDouble();
       canvas.drawCircle(
         Offset(x, size.height / 2),
         3,
