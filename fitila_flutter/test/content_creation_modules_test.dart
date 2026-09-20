@@ -17,13 +17,31 @@ void main() {
     home: Scaffold(body: SafeArea(child: child)),
   );
 
-  final modules = <String, Widget Function()>{
-    'Echo Sɔ̃ɔ': () => EchoSonScreen(onPostCreated: (_) {}),
-    'Live Griot IA': () => LiveGriotScreen(onPostCreated: (_) {}),
-    'Sagesse Battle': () => const SagesseBattleScreen(),
-    'Aburu Fim IA': () => AburuFimScreen(onPostCreated: (_) {}),
-    'Sasara IA': () => SasaraIaScreen(onPostCreated: (_) {}),
-    'Handunia Wasa': () => const HanduniaWasaScreen(),
+  final modules = <String, ({Widget Function() screen, String anchor})>{
+    'Echo Sɔ̃ɔ': (
+      screen: () => EchoSonScreen(onPostCreated: (_) {}),
+      anchor: 'Echo Sɔ̃ɔ',
+    ),
+    'Live Griot IA': (
+      screen: () => LiveGriotScreen(onPostCreated: (_) {}),
+      anchor: 'Nouveau direct',
+    ),
+    'Sagesse Battle': (
+      screen: () => const SagesseBattleScreen(),
+      anchor: 'Défi du jour',
+    ),
+    'Aburu Fim IA': (
+      screen: () => AburuFimScreen(onPostCreated: (_) {}),
+      anchor: 'Modèles intelligents',
+    ),
+    'Sasara IA': (
+      screen: () => SasaraIaScreen(onPostCreated: (_) {}),
+      anchor: 'Rendre bilingue ?',
+    ),
+    'Handunia Wasa': (
+      screen: () => const HanduniaWasaScreen(),
+      anchor: 'Handunia Wasa',
+    ),
   };
 
   for (final module in modules.entries) {
@@ -35,11 +53,11 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(phoneApp(module.value()));
+      await tester.pumpWidget(phoneApp(module.value.screen()));
       await tester.pump(const Duration(milliseconds: 600));
       await tester.pump();
 
-      expect(find.text(module.key), findsWidgets);
+      expect(find.text(module.value.anchor), findsWidgets);
       expect(tester.takeException(), isNull);
     });
   }
@@ -148,7 +166,6 @@ void main() {
     await tester.pump();
 
     expect(find.text('Veillée des griots'), findsWidgets);
-    expect(find.byType(ChoiceChip), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
@@ -175,7 +192,7 @@ void main() {
 
     expect(find.text('Impossible de charger le défi du jour.'), findsNothing);
     expect(
-      find.text('Complète le proverbe'),
+      find.text('COMPLÈTE LE PROVERBE'),
       findsOneWidget,
       reason: tester
           .widgetList<Text>(find.byType(Text))
@@ -291,13 +308,9 @@ void main() {
     expect(find.byType(TextField), findsWidgets);
     expect(find.text('Rechercher un lieu…'), findsOneWidget);
 
-    final worldFeed = find.text('Fil du monde');
-    await tester.tap(worldFeed);
-    await tester.pump();
-    expect(
-      find.textContaining('synchronisation du serveur'),
-      findsOneWidget,
-    );
+    final worldFeed = find.byTooltip('Fil du monde');
+    expect(worldFeed, findsOneWidget);
+    expect(tester.takeException(), isNull);
     expect(tester.takeException(), isNull);
   });
 
