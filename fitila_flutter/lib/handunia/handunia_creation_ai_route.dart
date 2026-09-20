@@ -505,6 +505,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         _savedFragment = fragment;
         _savedOffline = false;
         _stage = 7;
+        _notice = 'Publié dans le Fil Handunia Wasa.';
       });
       if (widget.onSaved != null) {
         await widget.onSaved!();
@@ -1325,9 +1326,18 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           onPressed: _loadGaps,
         ),
         const SizedBox(height: 10),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('Terminer', style: _karla(weight: FontWeight.w600)),
+        TextButton.icon(
+          onPressed: () => Navigator.of(context).pop(true),
+          icon: Icon(
+            _savedOffline
+                ? Icons.check_circle_outline
+                : Icons.dynamic_feed_outlined,
+            size: 19,
+          ),
+          label: Text(
+            _savedOffline ? 'Terminer' : 'VOIR DANS LE FIL',
+            style: _karla(weight: FontWeight.w700),
+          ),
         ),
       ],
     );
