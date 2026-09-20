@@ -1305,12 +1305,18 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
             icon: Icons.route_outlined,
             onPressed: fragmentId == null
                 ? null
-                : () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
+                : () async {
+                    final completed = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute<bool>(
                         builder: (_) =>
                             HanduniaTraceRoute(fragmentId: fragmentId),
                       ),
-                    ),
+                    );
+                    if (!mounted || completed != true) {
+                      return;
+                    }
+                    await _loadGaps();
+                  },
           ),
         if (hasMovement) const SizedBox(height: 10),
         _primaryButton(
