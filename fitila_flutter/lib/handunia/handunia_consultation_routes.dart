@@ -1269,7 +1269,7 @@ class _PlaceBody extends StatelessWidget {
                               ),
                             ),
                           );
-                          if (!mounted || completed != true) {
+                          if (!context.mounted || completed != true) {
                             return;
                           }
                           await Navigator.of(context).push(
