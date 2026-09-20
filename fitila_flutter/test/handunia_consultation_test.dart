@@ -252,4 +252,49 @@ void main() {
   });
 
 
+
+  testWidgets('Handunia source pills stay attached to cited claims', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: HanduniaSourcedAnswer(
+            answer: 'Le marché a changé de place [1].',
+            sources: [
+              {'index': 1, 'witness': 'AS', 'year': '1978'},
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('AS · 1978'), findsOneWidget);
+    expect(find.textContaining('[1]'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Handunia waveform remains readable without animation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MediaQuery(
+        data: MediaQueryData(disableAnimations: true),
+        child: MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 260,
+              child: OndeAudio(progression: .42, actif: true),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(OndeAudio), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
 }
