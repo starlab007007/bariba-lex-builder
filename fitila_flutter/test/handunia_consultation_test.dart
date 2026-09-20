@@ -443,7 +443,7 @@ void main() {
                 ),
                 ValueListenableBuilder<String>(
                   valueListenable: result,
-                  builder: (_, value, __) => Text(value),
+                  builder: (context, value, child) => Text(value),
                 ),
               ],
             ),
@@ -462,7 +462,7 @@ void main() {
     await tester.dragFrom(
       const Offset(90, 300),
       const Offset(180, 220),
-      const Duration(milliseconds: 280),
+      duration: const Duration(milliseconds: 280),
     );
     await tester.pump();
     expect(find.text('Trajet validé'), findsOneWidget);
