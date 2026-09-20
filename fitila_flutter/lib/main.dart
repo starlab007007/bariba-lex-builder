@@ -22261,7 +22261,7 @@ class _EchoSonScreenState extends State<EchoSonScreen> {
       builder: (context, constraints) => SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
         child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: math.max(500, constraints.maxHeight - 26)),
+          constraints: BoxConstraints(minHeight: math.max(500.0, constraints.maxHeight - 26).toDouble()),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
