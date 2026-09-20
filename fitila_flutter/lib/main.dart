@@ -27107,9 +27107,10 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
               const Text(
                 'TON RÉCIT',
                 style: TextStyle(
-                  color: FitilaReferenceUi.gold,
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w800,
+                  color: HanduniaTokens.braise,
+                  fontFamily: 'Karla',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
                   letterSpacing: .8,
                 ),
               ),
@@ -27134,8 +27135,9 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                 Text(
                   'Assisté par Fitila IA — modifiable avant le tissage',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: .45),
-                    fontSize: 9.5,
+                    color: HanduniaTokens.cendre,
+                    fontFamily: 'Karla',
+                    fontSize: 12.5,
                   ),
                 ),
             ],
@@ -27162,8 +27164,12 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                   ),
             label: const Text('Créer avec Lumière IA'),
             style: TextButton.styleFrom(
-              foregroundColor: Colors.white.withValues(alpha: .62),
-              textStyle: const TextStyle(fontSize: 10.5),
+              foregroundColor: HanduniaTokens.ivoire,
+              textStyle: const TextStyle(
+                fontFamily: 'Karla',
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ),
@@ -27218,9 +27224,10 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           "Ce geste n'est pas une publication individuelle : le souvenir rejoint la mémoire collective du lieu.",
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: .42),
-            fontSize: 9.5,
-            height: 1.35,
+            color: HanduniaTokens.cendre,
+            fontFamily: 'Karla',
+            fontSize: 12.5,
+            height: 1.45,
           ),
         ),
         const SizedBox(height: 18),
@@ -27423,21 +27430,28 @@ class _HanduniaTextField extends StatelessWidget {
         onSubmitted: onSubmitted,
         decoration: base.copyWith(
           filled: true,
-          fillColor: const Color(0xFF0E1725),
-          hintStyle: const TextStyle(color: Color(0xFF667487)),
+          fillColor: HanduniaTokens.nuitPortee,
+          hintStyle: const TextStyle(
+            fontFamily: 'Karla',
+            color: HanduniaTokens.cendre,
+            fontSize: 14,
+          ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: BorderSide(
-              color: Colors.white.withValues(alpha: .10),
-            ),
+            borderSide: const BorderSide(color: HanduniaTokens.bordureForte),
           ),
           focusedBorder: const OutlineInputBorder(
             borderRadius: BorderRadius.all(Radius.circular(18)),
-            borderSide: BorderSide(color: Color(0xFF8FE3CF), width: 1.4),
+            borderSide: BorderSide(color: HanduniaTokens.braise, width: 1.6),
           ),
         ),
-        style: const TextStyle(color: Colors.white, fontSize: 14),
-        cursorColor: const Color(0xFF8FE3CF),
+        style: const TextStyle(
+          fontFamily: 'Karla',
+          color: HanduniaTokens.ivoire,
+          fontSize: 15.5,
+          height: 1.4,
+        ),
+        cursorColor: HanduniaTokens.braise,
         maxLines: maxLines,
         maxLength: maxLength,
       ),
@@ -27473,14 +27487,20 @@ class _HanduniaMetric extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             value,
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900),
+            style: const TextStyle(
+              fontFamily: 'Karla',
+              color: HanduniaTokens.ivoire,
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: .48),
-              fontSize: 10,
+              color: HanduniaTokens.cendre,
+              fontFamily: 'Karla',
+              fontSize: 12.5,
             ),
           ),
         ],
@@ -27511,7 +27531,12 @@ class _HanduniaPill extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800),
+            style: const TextStyle(
+              fontFamily: 'Karla',
+              color: HanduniaTokens.ivoire,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -27544,9 +27569,10 @@ class _HanduniaTinyBadge extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              color: Color(0xFFB9F2E4),
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
+              color: HanduniaTokens.ivoire,
+              fontFamily: 'Karla',
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
