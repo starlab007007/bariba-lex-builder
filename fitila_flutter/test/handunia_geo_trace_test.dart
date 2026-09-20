@@ -29,6 +29,12 @@ void main() {
     expect(find.text('Suivre les routes'), findsOneWidget);
     expect(find.text('Historique libre'), findsOneWidget);
     expect(find.text('VALIDER CE TRAJET'), findsOneWidget);
+    expect(
+      find.text(
+        'Carte réelle du Bénin · OpenStreetMap/OpenFreeMap · itinéraire OSRM',
+      ),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('fake-benin-map')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
