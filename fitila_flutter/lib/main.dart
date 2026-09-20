@@ -26,6 +26,7 @@ import 'core/signature_theme.dart';
 import 'core/web_parity_models.dart';
 import 'handunia/handunia_consultation_data.dart';
 import 'handunia/handunia_consultation_model.dart';
+import 'handunia/handunia_consultation_routes.dart';
 import 'handunia/handunia_consultation_ui.dart';
 import 'ui/reference_creation_ui.dart';
 
@@ -26662,19 +26663,17 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   }
 
   Future<void> _openWorldMemory(Map<String, dynamic> memory) async {
-    final lieuId = memory['lieu_id']?.toString();
-    if (lieuId == null || lieuId.isEmpty) {
+    final id = memory['id']?.toString();
+    if (id == null || id.isEmpty) {
       return;
     }
-    Map<String, dynamic>? lieu;
-    for (final candidate in _lieux) {
-      if (candidate['id']?.toString() == lieuId) {
-        lieu = candidate;
-        break;
-      }
-    }
-    if (lieu != null) {
-      await _openLieu(lieu);
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => HanduniaMemoryRoute(memoryId: id, seed: memory),
+      ),
+    );
+    if (mounted) {
+      await _openWorldFeed();
     }
   }
 
@@ -27441,7 +27440,15 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       onRefresh: _openWorldFeed,
       onFilterChanged: _changeWorldFeedFilter,
       onOpenMemory: _openWorldMemory,
-      onFindMissingVoice: () => setState(() => _step = 1),
+      onFindMissingVoice: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => HanduniaLivingMapRoute(
+            pendingLocal: _worldFeed
+                .where((item) => item['local_only'] == true)
+                .length,
+          ),
+        ),
+      ),
     );
   }
 }

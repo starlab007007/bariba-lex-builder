@@ -1,4 +1,5 @@
 import 'package:fitila_native/handunia/handunia_consultation_model.dart';
+import 'package:fitila_native/handunia/handunia_consultation_routes.dart';
 import 'package:fitila_native/handunia/handunia_consultation_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -169,4 +170,28 @@ void main() {
     expect(find.text('Portée non autorisée'), findsOneWidget);
     expect(find.text('Aucune voix ici'), findsNothing);
   });
+  testWidgets('Handunia memory answer exposes keyboard and voice entry', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(home: HanduniaMemoryAnswerRoute()),
+    );
+    await tester.pump();
+
+    expect(find.text('La mémoire répond'), findsOneWidget);
+    expect(find.text('Question'), findsOneWidget);
+    expect(find.text('Interroger'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Maintenir pour poser la question'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+
 }
