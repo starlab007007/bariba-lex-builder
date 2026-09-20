@@ -40,7 +40,7 @@ void main() {
     ),
     'Handunia Wasa': (
       screen: () => const HanduniaWasaScreen(),
-      anchor: 'Handunia Wasa',
+      anchor: 'Le fil',
     ),
   };
 
@@ -232,7 +232,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Handunia premium shell is stable before opening a place', (
+  testWidgets('Handunia consultation feed is stable on entry', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(360, 640);
@@ -244,13 +244,14 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('Handunia Wasa'), findsWidgets);
-    expect(find.textContaining('Le monde vivant Bàátɔ̀nú'), findsOneWidget);
-    expect(find.text('Entrer dans le monde'), findsOneWidget);
+    expect(find.text('Le fil'), findsOneWidget);
+    expect(find.text('Autour de moi'), findsOneWidget);
+    expect(find.text('Ma lignée'), findsOneWidget);
+    expect(find.text('Tout'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Handunia route owns a Material ancestor for text inputs', (
+  testWidgets('Handunia consultation route owns Material interactions', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -282,19 +283,13 @@ void main() {
     await tester.tap(find.text('Ouvrir Handunia'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
-    await tester.tap(find.text('Entrer dans le monde'));
-    await tester.pump();
 
-    expect(find.byType(TextField), findsWidgets);
-    expect(find.text('Rechercher un lieu…'), findsOneWidget);
-
-    final worldFeed = find.byTooltip('Fil du monde');
-    expect(worldFeed, findsOneWidget);
-    expect(tester.takeException(), isNull);
+    expect(find.text('Le fil'), findsOneWidget);
+    expect(find.byType(ChoiceChip), findsNWidgets(3));
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Handunia opens from the creation hub without Material errors', (
+  testWidgets('Handunia opens from the creation hub into consultation', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -311,19 +306,13 @@ void main() {
     await tester.tap(find.text('Handunia Wasa'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
-    expect(tester.takeException(), isNull);
 
-    final enter = find.text('Entrer dans le monde');
-    await tester.ensureVisible(enter);
-    await tester.tap(enter);
-    await tester.pump();
-
-    expect(find.text('Rechercher un lieu…'), findsOneWidget);
-    expect(find.byType(TextField), findsWidgets);
+    expect(find.text('Le fil'), findsOneWidget);
+    expect(find.text('Autour de moi'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Handunia Wasa exposes its offline continuity path', (
+  testWidgets('Handunia Wasa exposes consultation without social counters', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -334,13 +323,10 @@ void main() {
     await tester.pumpWidget(phoneApp(const HanduniaWasaScreen()));
     await tester.pump(const Duration(milliseconds: 500));
 
-    final enter = find.text('Entrer dans le monde');
-    await tester.ensureVisible(enter);
-    await tester.tap(enter);
-    await tester.pump();
-
-    expect(find.text('Marché de Nikki'), findsOneWidget);
-    expect(find.textContaining('Mode hors ligne'), findsOneWidget);
+    expect(find.text('Le fil'), findsOneWidget);
+    expect(find.text('J’aime'), findsNothing);
+    expect(find.text('Partager'), findsNothing);
+    expect(find.text('vues'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }
