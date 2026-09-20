@@ -22455,8 +22455,7 @@ class _LiveGriotScreenState extends State<LiveGriotScreen> {
                   ),
                 ),
                 Text(
-                  (host?.isNotEmpty == true ? host! : 'Griot Fitila') +
-                      ' · $viewers auditeur(s)',
+                  '${host?.isNotEmpty == true ? host! : 'Griot Fitila'} · $viewers auditeur(s)',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -23216,9 +23215,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                     TextSpan(
                       children: [
                         TextSpan(
-                          text:
-                              (message['display_name']?.toString() ?? 'Griot') +
-                                  '  ',
+                          text: '${message['display_name']?.toString() ?? 'Griot'}  ',
                           style: const TextStyle(
                             color: FitilaReferenceUi.gold,
                             fontSize: 10.5,
@@ -25723,8 +25720,7 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
                 const ReferenceLabel('Corpus communautaire', dark: true),
                 const SizedBox(height: 4),
                 Text(
-                  _communityCount.toString() +
-                      ' phrase(s) Bariba corrigée(s) ce mois-ci',
+                  '$_communityCount phrase(s) Bariba corrigée(s) ce mois-ci',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 13,
@@ -26006,7 +26002,6 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         _lieuxError = null;
         _backendUnavailable = true;
         _loadingLieux = false;
-        _syncingOffline = false;
       });
     }
   }
@@ -26835,8 +26830,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           if (_syncedOfflineCount > 0) ...[
             const SizedBox(height: 8),
             Text(
-              _syncedOfflineCount.toString() +
-                  ' souvenir(s) hors ligne synchronisé(s).',
+              '$_syncedOfflineCount souvenir(s) hors ligne synchronisé(s).',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: .46),
