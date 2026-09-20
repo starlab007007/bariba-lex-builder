@@ -61,11 +61,35 @@ Widget _handuniaHeader(
               onPressed: () => Navigator.maybePop(context),
               icon: const Icon(Icons.arrow_back_outlined),
               color: HanduniaTokens.ivoire,
+              style: IconButton.styleFrom(
+                backgroundColor: HanduniaTokens.nuitPortee,
+                foregroundColor: HanduniaTokens.ivoire,
+                side: const BorderSide(color: HanduniaTokens.bordureForte),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
             ),
           ),
         ),
         Expanded(child: Text(title, style: _frauncesRoute(size: 27))),
-        ...actions,
+        if (actions.isNotEmpty)
+          IconButtonTheme(
+            data: IconButtonThemeData(
+              style: IconButton.styleFrom(
+                backgroundColor: HanduniaTokens.nuitPortee,
+                foregroundColor: HanduniaTokens.ivoire,
+                side: const BorderSide(color: HanduniaTokens.bordureForte),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: actions,
+            ),
+          ),
       ],
     ),
   );
@@ -954,6 +978,16 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                         ),
                         icon: const Icon(Icons.arrow_forward_outlined),
                         color: HanduniaTokens.braise,
+                        style: IconButton.styleFrom(
+                          backgroundColor: HanduniaTokens.nuit,
+                          foregroundColor: HanduniaTokens.braise,
+                          side: const BorderSide(
+                            color: HanduniaTokens.bordureForte,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                        ),
                       ),
                     ),
                   ],
