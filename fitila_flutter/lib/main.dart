@@ -24,6 +24,7 @@ import 'core/fitila_media.dart';
 import 'core/foncier_rag.dart';
 import 'core/signature_theme.dart';
 import 'core/web_parity_models.dart';
+import 'ui/reference_creation_ui.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
