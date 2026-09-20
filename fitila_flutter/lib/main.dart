@@ -27500,7 +27500,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       (total, value) => total + value,
     );
     final statusLabel = _backendUnavailable
-        ? 'Mode hors ligne'
+        ? 'Local · hors connexion'
         : _syncingOffline
         ? 'Synchronisation…'
         : _syncedOfflineCount > 0
