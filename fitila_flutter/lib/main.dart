@@ -21473,7 +21473,7 @@ class _EchoSonScreenState extends State<EchoSonScreen> {
   // de nouvelles routes, pour ne rien changer à la navigation partagée.
   // 0 = accueil (choisir voix ou texte) · 1 = enregistrement en cours ·
   // 2 = aperçu / édition · 3 = publication en cours (traitement réel).
-  int _step = 0;
+  int _step = 5;
   Timer? _recTimer;
   int _recElapsedSeconds = 0;
 
@@ -25904,7 +25904,15 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   @override
   void initState() {
     super.initState();
-    _loadLieux();
+    unawaited(_bootstrapConsultation());
+  }
+
+  Future<void> _bootstrapConsultation() async {
+    await _loadLieux();
+    if (!mounted) {
+      return;
+    }
+    await _openWorldFeed();
   }
 
   @override
@@ -26677,69 +26685,31 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     }
   }
 
-  // "J'aime" réellement écrit en base — jamais un compteur local
-  // seulement affiché côté app. La liste affichée (fil du lieu ou fil
-  // du monde) est mise à jour optimistement puis resynchronisée.
-  Future<void> _toggleLike(
-    Map<String, dynamic> fragment,
-    List<Map<String, dynamic>> list,
-    void Function(void Function()) apply,
-  ) async {
-    final id = fragment['id'] as String;
-    final liked = fragment['liked_by_me'] == true;
-    apply(() {
-      fragment['liked_by_me'] = !liked;
-      fragment['like_count'] =
-          ((fragment['like_count'] as int?) ?? 0) + (liked ? -1 : 1);
-    });
-    try {
-      await FitilaBackend.toggleHanduniaFragmentLike(
-        fragmentId: id,
-        like: !liked,
-      );
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      apply(() {
-        fragment['liked_by_me'] = liked;
-        fragment['like_count'] =
-            ((fragment['like_count'] as int?) ?? 0) + (liked ? 1 : -1);
-      });
-    }
-  }
-
   Widget _buildFragmentTile(
     Map<String, dynamic> fragment,
     List<Map<String, dynamic>> list, {
     bool showLieu = false,
   }) {
-    final likeCount = (fragment['like_count'] as int?) ?? 0;
-    final liked = fragment['liked_by_me'] == true;
     final localOnly = fragment['local_only'] == true;
     final displayName =
         fragment['display_name']?.toString().trim().isNotEmpty == true
         ? fragment['display_name'].toString().trim()
-        : 'Griot Fitila';
+        : 'Handunia Wasa';
+    final voices = (fragment['voice_count'] as num?)?.toInt() ?? 1;
+    final initials = handuniaInitials(displayName);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF151D2C), Color(0xFF0D141F)],
+        color: localOnly
+            ? const Color(0xFFC96A3F).withValues(alpha: .10)
+            : const Color(0xFF151A24),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: localOnly
+              ? const Color(0xFFC96A3F)
+              : const Color(0xFF2E3848),
         ),
-        border: Border.all(color: const Color(0x1FFFFFFF)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x22000000),
-            blurRadius: 20,
-            offset: Offset(0, 10),
-            spreadRadius: -12,
-          ),
-        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -26750,17 +26720,15 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF8FE3CF), Color(0xFF4A3B78)],
-              ),
-              border: Border.all(color: Colors.white.withValues(alpha: .14)),
+              border: Border.all(color: const Color(0xFF2E3848)),
             ),
             child: Text(
-              _initialLetter(displayName),
+              initials,
               style: const TextStyle(
-                color: Color(0xFF071018),
-                fontWeight: FontWeight.w900,
-                fontSize: 13,
+                fontFamily: 'Fraunces',
+                color: Color(0xFFF3EFE6),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
               ),
             ),
           ),
@@ -26769,89 +26737,56 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        displayName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 12.5,
-                        ),
-                      ),
-                    ),
-                    if (localOnly)
-                      const _HanduniaTinyBadge(
-                        icon: Icons.cloud_off_rounded,
-                        label: 'local',
-                      )
-                    else if (fragment['ai_generated'] == true)
-                      const _HanduniaTinyBadge(
-                        icon: Icons.auto_awesome_rounded,
-                        label: 'assisté IA',
-                      ),
-                  ],
-                ),
-                if (showLieu) ...[
-                  const SizedBox(height: 3),
+                if (showLieu &&
+                    fragment['lieu_name']?.toString().trim().isNotEmpty == true)
                   Text(
-                    '${fragment['lieu_icon'] ?? '📍'} ${fragment['lieu_name'] ?? ''}',
+                    fragment['lieu_name'].toString(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 10.5,
-                      color: Color(0xFF8FE3CF),
+                      fontFamily: 'Karla',
+                      fontSize: 11.5,
+                      color: Color(0xFFE0A03C),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                ],
-                const SizedBox(height: 7),
                 Text(
                   fragment['text']?.toString() ?? '',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: .86),
-                    fontSize: 12.5,
-                    height: 1.42,
+                  style: const TextStyle(
+                    fontFamily: 'Fraunces',
+                    color: Color(0xFFF3EFE6),
+                    fontSize: 15,
+                    height: 1.55,
+                    fontWeight: FontWeight.w600,
                   ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    if (localOnly)
+                      const Text(
+                        'À envoyer',
+                        style: TextStyle(
+                          fontFamily: 'Karla',
+                          fontSize: 11.5,
+                          color: Color(0xFFC96A3F),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    const Spacer(),
+                    Text(
+                      voices == 1 ? '1 voix' : '$voices voix',
+                      style: const TextStyle(
+                        fontFamily: 'Fraunces',
+                        fontSize: 13,
+                        color: Color(0xFFE0A03C),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 6),
-          Column(
-            children: [
-              IconButton(
-                tooltip: localOnly
-                    ? 'Synchronisation requise avant de pouvoir aimer'
-                    : liked
-                    ? 'Retirer le j’aime'
-                    : 'J’aime',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
-                icon: Icon(
-                  liked
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
-                  size: 19,
-                  color: liked
-                      ? const Color(0xFFFF7F73)
-                      : Colors.white.withValues(alpha: .46),
-                ),
-                onPressed: localOnly
-                    ? null
-                    : () => _toggleLike(fragment, list, setState),
-              ),
-              Text(
-                '$likeCount',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.white.withValues(alpha: .48),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -27423,9 +27358,9 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     );
   }
 
-  // 6 — Fil du monde : le geste social qui manquait — voir, à travers
-  // tous les lieux, les souvenirs récemment tissés par la communauté,
-  // avec leur auteur réel et la possibilité de les aimer.
+  // Fil Handunia : consultation seulement. L'ordre vient des données
+  // (proximité, corroboration récente, lacune comblée), jamais de
+  // l'engagement. Les contributions locales restent en tête.
   Widget _buildWorldFeedStep() {
     return HanduniaFilView(
       items: _worldFeed,
@@ -27436,7 +27371,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       pendingCount: _worldFeed
           .where((item) => item['local_only'] == true)
           .length,
-      onBack: () => setState(() => _step = 1),
+      onBack: () => Navigator.of(context).maybePop(),
       onRefresh: _openWorldFeed,
       onFilterChanged: _changeWorldFeedFilter,
       onOpenMemory: _openWorldMemory,
