@@ -542,6 +542,14 @@ class HanduniaConsultationExtendedData {
     required String fragmentId,
     required List<Map<String, double>> points,
     DateTime? capturedAt,
+    String routeMode = 'legacy',
+    String? startName,
+    String? endName,
+    double? distanceM,
+    double? durationS,
+    String? provider,
+    bool roadMatched = false,
+    String geometryType = 'normalized',
   }) async {
     final user = _client.auth.currentUser;
     if (user == null) {
@@ -551,6 +559,14 @@ class HanduniaConsultationExtendedData {
       'fragment_id': fragmentId,
       'user_id': user.id,
       'path_points': points,
+      'route_mode': routeMode,
+      'start_name': startName,
+      'end_name': endName,
+      'distance_m': distanceM,
+      'duration_s': durationS,
+      'provider': provider,
+      'road_matched': roadMatched,
+      'geometry_type': geometryType,
       if (capturedAt != null)
         'captured_at': capturedAt.toUtc().toIso8601String(),
     });
