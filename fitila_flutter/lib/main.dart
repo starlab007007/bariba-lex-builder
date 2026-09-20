@@ -26053,6 +26053,8 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             lieuId: lieuId,
             text: text,
             aiGenerated: false,
+            aiAssisted: false,
+            scopeLevel: 'community',
           );
           synced += 1;
         } catch (_) {
@@ -26256,8 +26258,8 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     }
   }
 
-  // "Tisser dans le monde vivant" — volontairement PAS une publication
-  // dans le fil : le souvenir rejoint uniquement la mémoire du lieu.
+  // Publication Handunia : le témoignage rejoint la mémoire du lieu ET
+  // le Fil. En mode hors ligne il reste visible localement jusqu'à synchro.
   Future<void> _weaveFragment() async {
     final lieu = _selectedLieu;
     final text = _fragmentController.text.trim();
@@ -26282,7 +26284,9 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         await FitilaBackend.weaveHanduniaFragment(
           lieuId: lieu['id'] as String,
           text: text,
-          aiGenerated: _aiAssisted,
+          aiGenerated: false,
+          aiAssisted: _aiAssisted,
+          scopeLevel: 'community',
         );
       }
       if (!mounted) {
@@ -26293,14 +26297,14 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           content: Text(
             savedLocally
                 ? 'Souvenir conservé sur cet appareil. Il sera synchronisé automatiquement lorsque le service communautaire sera de nouveau disponible.'
-                : 'Votre souvenir a rejoint le monde vivant.',
+                : 'Publié dans le Fil Handunia Wasa.',
           ),
         ),
       );
       setState(() {
         _fragmentController.clear();
         _aiAssisted = false;
-        _step = 1;
+        _worldFeedFilter = HanduniaFeedFilter.all;
       });
       if (savedLocally) {
         setState(() {
@@ -26308,7 +26312,10 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           _density = {..._density, id: (_density[id] ?? 0) + 1};
         });
       } else {
-        _loadLieux();
+        await _loadLieux();
+      }
+      if (mounted) {
+        await _openWorldFeed();
       }
     } catch (_) {
       if (!mounted) {
@@ -27087,8 +27094,8 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     );
   }
 
-  // 4/4 — Le bouton n'est pas "Publier"  // 4/4 — Le bouton n'est pas "Publier" : le geste est cadré comme un
-  // tissage collectif, pas une publication individuelle dans le fil.
+  // 4/4 — Publication communautaire : le récit reste une mémoire du lieu
+  // et devient immédiatement visible dans le Fil selon sa portée.
   Widget _buildWeaveStep() {
     final lieu = _selectedLieu;
     return ListView(
@@ -27214,14 +27221,14 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           ),
         ),
         ReferenceGoldButton(
-          label: 'Tisser dans le monde vivant',
-          icon: Icons.auto_awesome_mosaic_rounded,
+          label: 'PUBLIER DANS LE FIL',
+          icon: Icons.publish_outlined,
           busy: _weaving,
           onPressed: _weaving ? null : _weaveFragment,
         ),
         const SizedBox(height: 8),
         Text(
-          "Ce geste n'est pas une publication individuelle : le souvenir rejoint la mémoire collective du lieu.",
+          "Votre récit rejoint la mémoire du lieu et apparaît dans le Fil Handunia Wasa.",
           textAlign: TextAlign.center,
           style: TextStyle(
             color: HanduniaTokens.cendre,
