@@ -833,7 +833,7 @@ class ReferenceVideoMock extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (child != null) child!,
+          ?child,
           Positioned(
             top: 12,
             left: 12,
