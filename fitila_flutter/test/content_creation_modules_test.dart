@@ -208,6 +208,24 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Handunia premium shell is stable before opening a place', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(phoneApp(const HanduniaWasaScreen()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('Handunia Wasa'), findsWidgets);
+    expect(find.text('Monde vivant · mémoire collective'), findsOneWidget);
+    expect(find.text('Entrer dans le monde'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Handunia route owns a Material ancestor for text inputs', (
     tester,
   ) async {
