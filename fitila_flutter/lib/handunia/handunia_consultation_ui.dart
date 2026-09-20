@@ -69,6 +69,8 @@ class _HaloDensiteState extends State<HaloDensite>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   bool _reduceMotion = false;
+  bool? _lacunaMode;
+  Duration? _appliedDuration;
 
   @override
   void initState() {
@@ -97,16 +99,26 @@ class _HaloDensiteState extends State<HaloDensite>
       return;
     }
 
-    _controller.stop();
-    if (value <= 0 && !widget.loading) {
-      _controller.duration = const Duration(seconds: 14);
-      _controller.repeat();
+    final lacuna = value <= 0 && !widget.loading;
+    final duration = lacuna
+        ? const Duration(seconds: 14)
+        : Duration(milliseconds: (7000 - 2000 * value).round());
+    if (_controller.isAnimating &&
+        _lacunaMode == lacuna &&
+        _appliedDuration == duration) {
       return;
     }
 
-    final millis = (7000 - 2000 * value).round();
-    _controller.duration = Duration(milliseconds: millis);
-    _controller.repeat(reverse: true);
+    _lacunaMode = lacuna;
+    _appliedDuration = duration;
+    _controller
+      ..stop()
+      ..duration = duration;
+    if (lacuna) {
+      _controller.repeat();
+    } else {
+      _controller.repeat(reverse: true);
+    }
   }
 
   @override
@@ -180,11 +192,13 @@ class _HaloPainter extends CustomPainter {
       paint.color = HanduniaTokens.braise.withValues(alpha: 0.12);
       canvas.drawCircle(center, radius * 0.7, paint);
     }
-    canvas.drawCircle(
-      center,
-      4 + 4 * density,
-      Paint()..color = live ? HanduniaTokens.braise : HanduniaTokens.cendre,
-    );
+    if (live) {
+      canvas.drawCircle(
+        center,
+        4 + 4 * density,
+        Paint()..color = HanduniaTokens.braise,
+      );
+    }
   }
 
   @override
