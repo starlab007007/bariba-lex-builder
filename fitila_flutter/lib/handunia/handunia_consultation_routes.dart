@@ -2188,7 +2188,7 @@ class _HanduniaFoyerRouteState extends State<HanduniaFoyerRoute>
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          data['volume'].toString() + ' mémoires locales',
+                          '${data['volume'] ?? 0} mémoires locales',
                           textAlign: TextAlign.center,
                           style: _frauncesRoute(
                             size: 17,
