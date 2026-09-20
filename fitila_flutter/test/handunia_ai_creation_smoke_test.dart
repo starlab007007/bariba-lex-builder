@@ -28,4 +28,31 @@ void main() {
     expect(find.byIcon(Icons.light_mode_outlined), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('Lumiere IA remains readable with larger text', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MediaQuery(
+          data: MediaQueryData(
+            textScaler: TextScaler.linear(1.25),
+          ),
+          child: HanduniaAiCreationRoute(
+            lieu: <String, dynamic>{'id': 'nikki', 'name': 'Nikki'},
+            voiceCount: 34,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('COMMENCER AVEC LUMIÈRE IA'), findsOneWidget);
+    expect(find.text('Enregistrer directement'), findsOneWidget);
+    expect(find.text('Commencer'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
 }
