@@ -1252,20 +1252,36 @@ class _PlaceBody extends StatelessWidget {
               child: SizedBox(
                 height: 48,
                 child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => HanduniaTraceRoute(
-                        fragmentId: oldest?['id']?.toString(),
-                      ),
-                    ),
-                  ),
+                  onPressed: oldest?['id']?.toString().isNotEmpty == true
+                      ? () async {
+                          final completed =
+                              await Navigator.of(context).push<bool>(
+                            MaterialPageRoute<bool>(
+                              builder: (_) => HanduniaTraceRoute(
+                                fragmentId: oldest!['id'].toString(),
+                              ),
+                            ),
+                          );
+                          if (!mounted || completed != true) {
+                            return;
+                          }
+                          await Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => HanduniaTimelineRoute(
+                                lieuId: data['id'].toString(),
+                              ),
+                            ),
+                          );
+                        }
+                      : null,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: HanduniaTokens.braise,
+                    disabledForegroundColor: HanduniaTokens.cendre,
                     side: const BorderSide(
                       color: HanduniaTokens.bordureForte,
                     ),
                   ),
-                  child: const Text('Le geste'),
+                  child: const Text('Tracer le mouvement'),
                 ),
               ),
             ),
