@@ -118,6 +118,11 @@ class HanduniaMapData {
               (route['steps'] as List).whereType<Map>(),
             )
           : const <Map<String, dynamic>>[],
+      'places': route['places'] is List
+          ? List<Map<String, dynamic>>.from(
+              (route['places'] as List).whereType<Map>(),
+            )
+          : const <Map<String, dynamic>>[],
       'provider': data['provider']?.toString() ?? 'osrm-osm',
     };
   }
@@ -132,6 +137,7 @@ class HanduniaMapData {
     double? durationS,
     required String provider,
     required bool roadMatched,
+    List<Map<String, dynamic>> routePlaces = const <Map<String, dynamic>>[],
   }) async {
     final capturedAt = DateTime.now().toUtc();
     try {
@@ -147,6 +153,7 @@ class HanduniaMapData {
         provider: provider,
         roadMatched: roadMatched,
         geometryType: 'latlng',
+        routePlaces: routePlaces,
       );
       return true;
     } catch (_) {
@@ -165,6 +172,7 @@ class HanduniaMapData {
           'duration_s': durationS,
           'provider': provider,
           'road_matched': roadMatched,
+          'route_places': routePlaces,
         }),
       );
       await preferences.setStringList(_pendingKey, pending);
@@ -234,6 +242,11 @@ class HanduniaMapData {
           provider: item['provider']?.toString(),
           roadMatched: item['road_matched'] == true,
           geometryType: 'latlng',
+          routePlaces: item['route_places'] is List
+              ? List<Map<String, dynamic>>.from(
+                  (item['route_places'] as List).whereType<Map>(),
+                )
+              : const <Map<String, dynamic>>[],
         );
         synced += 1;
       } catch (_) {
