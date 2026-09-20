@@ -30,28 +30,7 @@ class HanduniaConsultationData {
     double? longitude,
     HanduniaFeedFilter filter = HanduniaFeedFilter.all,
   }) async {
-    List<Map<String, dynamic>> fragments;
-    try {
-      final rows = await _client
-          .from('handunia_fragments')
-          .select(
-            'id, text, transcript_text, audio_url, audio_duration_ms, '
-            'audio_codec, audio_bitrate_kbps, period_label, scope_level, '
-            'seal_hash, sealed_at, lineage_key, latitude, longitude, '
-            'lacuna_filled, synchronized_at, withdrawn_at, ai_generated, '
-            'created_at, user_id, lieu_id',
-          )
-          .order('created_at', ascending: false)
-          .limit(limit * 2);
-      fragments = List<Map<String, dynamic>>.from(rows as List);
-    } on PostgrestException {
-      final rows = await _client
-          .from('handunia_fragments')
-          .select('id, text, ai_generated, created_at, user_id, lieu_id')
-          .order('created_at', ascending: false)
-          .limit(limit * 2);
-      fragments = List<Map<String, dynamic>>.from(rows as List);
-    }
+    final fragments = await _fetchFragmentCandidates();
 
     if (fragments.isEmpty) {
       return const [];
@@ -234,6 +213,51 @@ class HanduniaConsultationData {
       },
       onConflict: 'fragment_id,user_id',
     );
+  }
+
+  static Future<List<Map<String, dynamic>>> _fetchFragmentCandidates() async {
+    const pageSize = 250;
+    final fragments = <Map<String, dynamic>>[];
+    var offset = 0;
+    var legacySchema = false;
+
+    while (true) {
+      dynamic rows;
+      if (!legacySchema) {
+        try {
+          rows = await _client
+              .from('handunia_fragments')
+              .select(
+                'id, text, transcript_text, audio_url, audio_duration_ms, '
+                'audio_codec, audio_bitrate_kbps, period_label, scope_level, '
+                'seal_hash, sealed_at, lineage_key, latitude, longitude, '
+                'lacuna_filled, synchronized_at, withdrawn_at, ai_generated, '
+                'created_at, user_id, lieu_id',
+              )
+              .order('created_at', ascending: false)
+              .range(offset, offset + pageSize - 1);
+        } on PostgrestException {
+          legacySchema = true;
+        }
+      }
+
+      if (legacySchema) {
+        rows = await _client
+            .from('handunia_fragments')
+            .select('id, text, ai_generated, created_at, user_id, lieu_id')
+            .order('created_at', ascending: false)
+            .range(offset, offset + pageSize - 1);
+      }
+
+      final page = List<Map<String, dynamic>>.from(rows as List);
+      fragments.addAll(page);
+      if (page.length < pageSize) {
+        break;
+      }
+      offset += pageSize;
+    }
+
+    return fragments;
   }
 
   static double _distanceMeters(
