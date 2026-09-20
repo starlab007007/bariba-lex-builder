@@ -1328,6 +1328,7 @@ class _HanduniaTimelineRouteState extends State<HanduniaTimelineRoute> {
   List<Map<String, dynamic>> _periods = const [];
   int _index = 0;
   bool _loading = true;
+  String? _notice;
 
   @override
   void initState() {
@@ -1341,7 +1342,14 @@ class _HanduniaTimelineRouteState extends State<HanduniaTimelineRoute> {
         widget.lieuId,
       );
       if (mounted) {
-        setState(() => _periods = periods);
+        setState(() {
+          _periods = periods;
+          _notice = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _notice = 'En attente de réseau');
       }
     } finally {
       if (mounted) {
@@ -1356,11 +1364,25 @@ class _HanduniaTimelineRouteState extends State<HanduniaTimelineRoute> {
     final voices = (period?['voice_count'] as num?)?.toInt() ?? 0;
 
     return Scaffold(
-      backgroundColor: HanduniaTokens.nuit,
+      backgroundColor: voices == 0
+          ? const Color(0xFF080A0F)
+          : HanduniaTokens.nuit,
       body: SafeArea(
         child: Column(
           children: [
             _handuniaHeader(context, 'Le temps'),
+            if (_notice != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  _notice!,
+                  style: _karlaRoute(
+                    size: 11.5,
+                    color: HanduniaTokens.terre,
+                    weight: FontWeight.w600,
+                  ),
+                ),
+              ),
             Expanded(
               child: _loading
                   ? const _ConsultationState(
@@ -1387,39 +1409,52 @@ class _HanduniaTimelineRouteState extends State<HanduniaTimelineRoute> {
                         padding: const EdgeInsets.all(18),
                         child: Column(
                           children: [
-                            const Spacer(),
-                            HaloDensite(
-                              valeur: (voices / 12).clamp(0.0, 1.0),
-                              size: 150,
-                            ),
-                            const SizedBox(height: 14),
-                            Text(
-                              period!['label'].toString(),
-                              style: _frauncesRoute(size: 27),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              voices == 0
-                                  ? 'Aucune voix ici.'
-                                  : '$voices voix',
-                              style: _frauncesRoute(
-                                size: 17,
-                                color: voices == 0
-                                    ? HanduniaTokens.cendre
-                                    : HanduniaTokens.braise,
+                            if (voices == 0) ...[
+                              const Spacer(),
+                              Text(
+                                'Cette période reste dans l’ombre.',
+                                textAlign: TextAlign.center,
+                                style: _frauncesRoute(
+                                  size: 17,
+                                  color: HanduniaTokens.cendre,
+                                  height: 1.55,
+                                ),
                               ),
-                            ),
-                            const Spacer(),
-                            Slider(
-                              value: _index.toDouble(),
-                              min: 0,
-                              max: 4,
-                              divisions: 4,
-                              label: period['label'].toString(),
-                              activeColor: HanduniaTokens.braise,
-                              inactiveColor: HanduniaTokens.bordureForte,
-                              onChanged: (value) =>
-                                  setState(() => _index = value.round()),
+                              const Spacer(),
+                            ] else ...[
+                              const Spacer(),
+                              HaloDensite(
+                                valeur: (voices / 12).clamp(0.0, 1.0),
+                                size: 150,
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                period!['label'].toString(),
+                                style: _frauncesRoute(size: 27),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '$voices voix',
+                                style: _frauncesRoute(
+                                  size: 17,
+                                  color: HanduniaTokens.braise,
+                                ),
+                              ),
+                              const Spacer(),
+                            ],
+                            Semantics(
+                              label: 'Traverser les générations',
+                              child: Slider(
+                                value: _index.toDouble(),
+                                min: 0,
+                                max: 4,
+                                divisions: 4,
+                                label: period!['label'].toString(),
+                                activeColor: HanduniaTokens.braise,
+                                inactiveColor: HanduniaTokens.bordureForte,
+                                onChanged: (value) =>
+                                    setState(() => _index = value.round()),
+                              ),
                             ),
                             if (voices == 0)
                               SizedBox(
@@ -1472,6 +1507,7 @@ class _HanduniaDivergencesRouteState
     extends State<HanduniaDivergencesRoute> {
   List<Map<String, dynamic>> _items = const [];
   bool _loading = true;
+  String? _notice;
 
   @override
   void initState() {
@@ -1485,7 +1521,14 @@ class _HanduniaDivergencesRouteState
         lieuId: widget.lieuId,
       );
       if (mounted) {
-        setState(() => _items = items);
+        setState(() {
+          _items = items;
+          _notice = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _notice = 'En attente de réseau');
       }
     } finally {
       if (mounted) {
@@ -1502,6 +1545,18 @@ class _HanduniaDivergencesRouteState
         child: Column(
           children: [
             _handuniaHeader(context, 'Divergences'),
+            if (_notice != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  _notice!,
+                  style: _karlaRoute(
+                    size: 11.5,
+                    color: HanduniaTokens.terre,
+                    weight: FontWeight.w600,
+                  ),
+                ),
+              ),
             Expanded(
               child: _loading
                   ? const _ConsultationState(
@@ -1571,6 +1626,29 @@ class _DivergenceDetail extends StatelessWidget {
           textAlign: TextAlign.center,
           style: _karlaRoute(size: 11.5, color: HanduniaTokens.cendre),
         ),
+        const SizedBox(height: 12),
+        Semantics(
+          label: 'Conseil des gardiens disponible',
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.groups_outlined,
+                size: 18,
+                color: HanduniaTokens.terre,
+              ),
+              const SizedBox(width: 7),
+              Text(
+                'Conseil des gardiens disponible',
+                style: _karlaRoute(
+                  size: 11.5,
+                  weight: FontWeight.w600,
+                  color: HanduniaTokens.terre,
+                ),
+              ),
+            ],
+          ),
+        ),
         if (opinions.isNotEmpty) ...[
           const SizedBox(height: 16),
           Container(
@@ -1580,9 +1658,23 @@ class _DivergenceDetail extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: HanduniaTokens.bordureForte),
             ),
-            child: Text(
-              opinions.first['opinion']?.toString() ?? '',
-              style: _frauncesRoute(size: 15, height: 1.5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Avis des gardiens',
+                  style: _karlaRoute(
+                    size: 11.5,
+                    weight: FontWeight.w700,
+                    color: HanduniaTokens.terre,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  opinions.first['opinion']?.toString() ?? '',
+                  style: _frauncesRoute(size: 15, height: 1.5),
+                ),
+              ],
             ),
           ),
         ],
