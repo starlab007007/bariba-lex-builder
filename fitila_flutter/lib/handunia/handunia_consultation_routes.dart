@@ -348,7 +348,7 @@ class _OpenMemoryBodyState extends State<_OpenMemoryBody> {
         const SizedBox(height: 16),
         if (_textMode) ...[
           Text(
-            '“' + visibleText + '”',
+            '“$visibleText”',
             style: _frauncesRoute(size: 17, height: 1.58),
           ),
           const SizedBox(height: 7),
@@ -418,7 +418,7 @@ class _OpenMemoryBodyState extends State<_OpenMemoryBody> {
                 child: Text(
                   versions.length == 1
                       ? '1 autre version'
-                      : versions.length.toString() + ' autres versions',
+                      : '${versions.length} autres versions',
                 ),
               ),
             ),
@@ -494,7 +494,7 @@ class _MemoryPlaybackOrbState extends State<_MemoryPlaybackOrb> {
   bool _playing = false;
   bool _prepared = false;
 
-  String get _storageKey => 'handunia_memory_position_' + widget.id;
+  String get _storageKey => 'handunia_memory_position_${widget.id}';
 
   @override
   void initState() {
@@ -565,9 +565,7 @@ class _MemoryPlaybackOrbState extends State<_MemoryPlaybackOrb> {
   }
 
   String _clock(Duration duration) {
-    return duration.inMinutes.toString() +
-        ':' +
-        (duration.inSeconds % 60).toString().padLeft(2, '0');
+    return '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}';
   }
 
   @override
@@ -624,7 +622,7 @@ class _MemoryPlaybackOrbState extends State<_MemoryPlaybackOrb> {
           child: OndeAudio(progression: progress, actif: _playing),
         ),
         Text(
-          _clock(_position) + ' / ' + _clock(_duration),
+          '${_clock(_position)} / ${_clock(_duration)}',
           style: _karlaRoute(size: 11.5, color: HanduniaTokens.cendre),
         ),
       ],
@@ -873,7 +871,7 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                       ),
                     ),
                     Text(
-                      (selected['voice_count'] ?? 0).toString() + ' voix',
+                      '${selected['voice_count'] ?? 0} voix',
                       style: _frauncesRoute(
                         size: 15,
                         color: HanduniaTokens.braise,
@@ -933,10 +931,7 @@ class _MapPlaceNode extends StatelessWidget {
       child: Semantics(
         button: true,
         label:
-            (place['name']?.toString() ?? '') +
-            ', ' +
-            voices.toString() +
-            ' voix',
+            '${place['name']?.toString() ?? ''}, $voices voix',
         child: GestureDetector(
           onTap: onTap,
           child: Container(
@@ -1406,7 +1401,7 @@ class _HanduniaTimelineRouteState extends State<HanduniaTimelineRoute> {
                             Text(
                               voices == 0
                                   ? 'Aucune voix ici.'
-                                  : voices.toString() + ' voix',
+                                  : '$voices voix',
                               style: _frauncesRoute(
                                 size: 17,
                                 color: voices == 0
@@ -1633,12 +1628,12 @@ class _VersionPanel extends StatelessWidget {
           const SizedBox(height: 16),
           Expanded(
             child: Text(
-              '“' + text + '”',
+              '“$text”',
               style: _frauncesRoute(size: 17, height: 1.55),
             ),
           ),
           Text(
-            (memory['voice_count'] ?? 1).toString() + ' voix',
+            '${memory['voice_count'] ?? 1} voix',
             style: _frauncesRoute(
               size: 15,
               color: HanduniaTokens.braise,
