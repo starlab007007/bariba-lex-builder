@@ -109,6 +109,12 @@ void main() {
         'local_only': true,
         'created_at': '2026-09-20T11:00:00Z',
       },
+      {
+        'id': 'div-1',
+        'item_type': 'divergence',
+        'subject': 'Déplacement du marché',
+        'created_at': '2026-09-20T12:00:00Z',
+      },
     ];
 
     await tester.pumpWidget(
@@ -134,9 +140,61 @@ void main() {
     expect(find.text('Tout'), findsOneWidget);
     expect(find.text('7 voix'), findsOneWidget);
     expect(find.text('1 à envoyer'), findsOneWidget);
+    expect(find.text('Une mémoire se sépare en deux'), findsOneWidget);
+    expect(find.text('Déplacement du marché'), findsOneWidget);
     expect(find.text('J’aime'), findsNothing);
     expect(find.text('Partager'), findsNothing);
     expect(find.text('vues'), findsNothing);
+    expect(find.byIcon(Icons.favorite_rounded), findsNothing);
+    expect(find.byIcon(Icons.favorite_border_rounded), findsNothing);
+
+    final pendingTop = tester.getTopLeft(
+      find.text('Votre voix attend le réseau.'),
+    ).dy;
+    final remoteTop = tester.getTopLeft(
+      find.text('“La voix traversait la place avant le marché.”'),
+    ).dy;
+    expect(pendingTop, lessThan(remoteTop));
+  });
+
+  testWidgets('Handunia divergence stays readable with animations disabled', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(disableAnimations: true),
+        child: MaterialApp(
+          home: HanduniaFilView(
+            items: const [
+              {
+                'id': 'div-static',
+                'item_type': 'divergence',
+                'subject': 'Deux mémoires du même départ',
+              },
+            ],
+            loading: false,
+            offline: false,
+            filter: HanduniaFeedFilter.all,
+            pendingCount: 0,
+            onBack: () {},
+            onRefresh: () async {},
+            onFilterChanged: (_) {},
+            onOpenMemory: (_) {},
+            onFindMissingVoice: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Une mémoire se sépare en deux'), findsOneWidget);
+    expect(find.text('Deux mémoires du même départ'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Handunia access denied is not rendered as a lacuna', (
