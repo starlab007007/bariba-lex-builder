@@ -157,7 +157,7 @@ export default function SasaraIA() {
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
     try {
-      const { count } = await (supabase as any)
+      const { count } = await supabase
         .from('corpus_contributions')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', user.id)
@@ -314,7 +314,7 @@ export default function SasaraIA() {
     }
     if (!sourceText.trim() || !translatedText.trim()) return true;
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from('corpus_contributions')
       .insert({
         user_id: user.id,
