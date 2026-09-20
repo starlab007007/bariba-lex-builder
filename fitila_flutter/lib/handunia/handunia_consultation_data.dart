@@ -8,7 +8,7 @@ import 'handunia_consultation_model.dart';
 class HanduniaConsultationData {
   static SupabaseClient get _client => FitilaBackend.client;
 
-  static Future<String?> _currentLineageKey() async {
+  static Future<String?> resolveCurrentLineageKey() async {
     if (!FitilaBackend.configured) {
       return null;
     }
@@ -51,7 +51,7 @@ class HanduniaConsultationData {
       return const [];
     }
 
-    final lineage = await _currentLineageKey();
+    final lineage = await resolveCurrentLineageKey();
     if (filter == HanduniaFeedFilter.lineage && lineage == null) {
       return const [];
     }
