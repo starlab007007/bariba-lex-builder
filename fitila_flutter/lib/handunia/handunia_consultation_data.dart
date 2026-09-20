@@ -87,7 +87,7 @@ class HanduniaConsultationData {
         final rows = await _client
             .from('tamtam_profiles')
             .select('user_id, username, display_name')
-            .filter('user_id', 'in', '(' + userIds.join(',') + ')');
+            .filter('user_id', 'in', '(${userIds.join(',')})');
         profiles = List<Map<String, dynamic>>.from(rows as List);
       } catch (_) {
         profiles = const [];
@@ -105,7 +105,7 @@ class HanduniaConsultationData {
         final rows = await _client
             .from('handunia_corroborations')
             .select('fragment_id, user_id, created_at')
-            .filter('fragment_id', 'in', '(' + fragmentIds.join(',') + ')');
+            .filter('fragment_id', 'in', '(${fragmentIds.join(',')})');
         corroborations = List<Map<String, dynamic>>.from(rows as List);
       } catch (_) {
         corroborations = const [];

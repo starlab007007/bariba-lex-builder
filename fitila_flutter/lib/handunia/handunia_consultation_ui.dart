@@ -335,7 +335,7 @@ class PastilleSource extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Témoin ' + temoin + ', ' + annee,
+      label: 'Témoin $temoin, $annee',
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
         decoration: BoxDecoration(
@@ -343,7 +343,7 @@ class PastilleSource extends StatelessWidget {
           border: Border.all(color: HanduniaTokens.bordureForte),
         ),
         child: Text(
-          temoin + ' · ' + annee,
+          '$temoin · $annee',
           style: _karla(
             size: 11.5,
             weight: FontWeight.w600,
@@ -419,7 +419,7 @@ class CercleDePortee extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Portée ' + _scopeLabel(niveau),
+      label: 'Portée ${_scopeLabel(niveau)}',
       child: CustomPaint(
         size: Size.square(size),
         painter: _ScopePainter(level: _level),
@@ -606,7 +606,7 @@ class CarteBraise extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            quote.isEmpty ? 'Voix sans transcription.' : '“' + quote + '”',
+            quote.isEmpty ? 'Voix sans transcription.' : '“$quote”',
             maxLines: 5,
             overflow: TextOverflow.ellipsis,
             style: _fraunces(size: 17, height: 1.58),
@@ -669,7 +669,7 @@ class CarteBraise extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                voices == 1 ? '1 voix' : voices.toString() + ' voix',
+                voices == 1 ? '1 voix' : '$voices voix',
                 style: _fraunces(size: 15, color: HanduniaTokens.braise),
               ),
             ],
@@ -720,7 +720,7 @@ class _HanduniaAudioReaderState extends State<_HanduniaAudioReader> {
   bool _playing = false;
   bool _prepared = false;
 
-  String get _storageKey => 'handunia_audio_position_' + widget.id;
+  String get _storageKey => 'handunia_audio_position_${widget.id}';
 
   @override
   void initState() {
@@ -802,7 +802,7 @@ class _HanduniaAudioReaderState extends State<_HanduniaAudioReader> {
     final total = duration.inSeconds;
     final minutes = total ~/ 60;
     final seconds = total % 60;
-    return minutes.toString() + ':' + seconds.toString().padLeft(2, '0');
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -855,7 +855,7 @@ class _HanduniaAudioReaderState extends State<_HanduniaAudioReader> {
         ),
         const SizedBox(width: 8),
         Text(
-          _clock(_position) + '/' + _clock(_duration),
+          '${_clock(_position)}/${_clock(_duration)}',
           style: _karla(size: 11.5, color: HanduniaTokens.cendre),
         ),
       ],
@@ -940,7 +940,7 @@ class HanduniaFilView extends StatelessWidget {
                         border: Border.all(color: HanduniaTokens.terre),
                       ),
                       child: Text(
-                        pendingCount.toString() + ' à envoyer',
+                        '$pendingCount à envoyer',
                         style: _karla(
                           size: 11.5,
                           weight: FontWeight.w700,
@@ -1038,10 +1038,10 @@ class HanduniaFilView extends StatelessWidget {
             const SizedBox(height: 6),
             Expanded(
               child: ordered.isEmpty && loading
-                  ? const Center(
+                  ? Center(
                       child: Semantics(
                         label: 'Chargement de la mémoire',
-                        child: HaloDensite(
+                        child: const HaloDensite(
                           valeur: 0.5,
                           size: 92,
                           loading: true,

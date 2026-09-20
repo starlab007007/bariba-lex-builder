@@ -26625,7 +26625,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   ) async {
     try {
       final cacheRoot = await getApplicationSupportDirectory();
-      final dir = Directory(cacheRoot.path + '/handunia_wasa_audio');
+      final dir = Directory('${cacheRoot.path}/handunia_wasa_audio');
       await dir.create(recursive: true);
       var changed = false;
       for (final item in items.take(8)) {
@@ -26635,7 +26635,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           continue;
         }
         final safeId = id.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
-        final file = File(dir.path + '/' + safeId + '.opus');
+        final file = File('${dir.path}/$safeId.opus');
         if (!await file.exists()) {
           final response = await http
               .get(Uri.parse(url))
