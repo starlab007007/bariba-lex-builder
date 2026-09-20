@@ -73,6 +73,69 @@ async function fetchJson(url: string, timeoutMs = 16000) {
   }
 }
 
+async function reverseRoutePlace(lat: number, lon: number) {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lon: String(lon),
+    lang: "fr",
+    limit: "1",
+  });
+  try {
+    const data = await fetchJson(`https://photon.komoot.io/reverse?${params}`, 9000);
+    const feature = Array.isArray(data?.features) ? data.features[0] : null;
+    if (!feature) return null;
+    const p = feature?.properties ?? {};
+    const name =
+      clean(p.name) ||
+      clean(p.locality) ||
+      clean(p.district) ||
+      clean(p.city) ||
+      clean(p.county) ||
+      clean(p.state);
+    const displayName = featureName(feature) || name;
+    if (!displayName) return null;
+    return {
+      name: name || displayName,
+      display_name: displayName,
+      latitude: lat,
+      longitude: lon,
+      type: clean(p.type || p.osm_value),
+      city: clean(p.city),
+      district: clean(p.district),
+      state: clean(p.state),
+      osm_id: p.osm_id ?? null,
+      osm_type: clean(p.osm_type),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function routePlaces(points: Array<{ latitude: number; longitude: number }>) {
+  if (points.length < 2) return [];
+  const indexes = [
+    0,
+    Math.round((points.length - 1) * 0.25),
+    Math.round((points.length - 1) * 0.5),
+    Math.round((points.length - 1) * 0.75),
+    points.length - 1,
+  ];
+  const uniqueIndexes = [...new Set(indexes)];
+  const places: any[] = [];
+  const seen = new Set<string>();
+  for (const index of uniqueIndexes) {
+    const point = points[index];
+    if (!point) continue;
+    const place = await reverseRoutePlace(point.latitude, point.longitude);
+    if (!place) continue;
+    const key = clean(place.display_name).toLocaleLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    places.push(place);
+  }
+  return places;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -236,6 +299,10 @@ Deno.serve(async (req: Request) => {
           )
         : [];
 
+      const places = await routePlaces(
+        coordinates as Array<{ latitude: number; longitude: number }>,
+      );
+
       return jsonResponse({
         state: "ready",
         provider: "osrm-osm",
@@ -244,6 +311,7 @@ Deno.serve(async (req: Request) => {
           duration_s: asNumber(route?.duration) ?? 0,
           points: coordinates,
           steps,
+          places,
         },
       });
     }
