@@ -173,7 +173,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     await _renderPlaces();
     final selected = _selected;
     if (selected != null) {
-      await _focus(selected, zoom: 13.2);
+      await _focus(selected);
     }
   }
 
@@ -205,17 +205,27 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     }
   }
 
-  Future<void> _focus(
-    Map<String, dynamic> place, {
-    double zoom = 12.8,
-  }) async {
+  double _zoomFor(Map<String, dynamic> place) {
+    final hint = _geoDouble(place['zoom_hint']);
+    if (hint != null) return hint.clamp(5.0, 18.0);
+    if (_geoText(place, 'village_quartier').isNotEmpty) return 14.2;
+    if (_geoText(place, 'arrondissement').isNotEmpty) return 12.2;
+    if (_geoText(place, 'commune').isNotEmpty) return 10.2;
+    if (_geoText(place, 'department').isNotEmpty) return 8.0;
+    return 12.8;
+  }
+
+  Future<void> _focus(Map<String, dynamic> place, {double? zoom}) async {
     final controller = _controller;
     final lat = _geoDouble(place['latitude']);
     final lon = _geoDouble(place['longitude']);
     if (controller == null || lat == null || lon == null) return;
     await controller.animateCamera(
       CameraUpdate.newCameraPosition(
-        CameraPosition(target: LatLng(lat, lon), zoom: zoom),
+        CameraPosition(
+          target: LatLng(lat, lon),
+          zoom: zoom ?? _zoomFor(place),
+        ),
       ),
     );
   }
