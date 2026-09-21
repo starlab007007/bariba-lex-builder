@@ -21,8 +21,36 @@ serve(async (req) => {
   }
 
   try {
-    const formData = await req.formData();
-    const audioFile = (formData.get('file') || formData.get('audio')) as File | null;
+    const contentType = req.headers.get('content-type') || '';
+    let audioFile: File | null = null;
+    let languageCode = 'fr';
+
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await req.formData();
+      audioFile = (formData.get('file') || formData.get('audio')) as File | null;
+      languageCode = String(formData.get('languageCode') || 'fr').toLowerCase();
+    } else {
+      const body = await req.json().catch(() => ({}));
+      languageCode = String(body?.languageCode || 'fr').toLowerCase();
+      const raw = String(body?.audio || '').trim();
+      if (raw) {
+        const dataMatch = raw.match(/^data:([^;]+);base64,(.+)$/s);
+        const mimeType = String(
+          body?.mimeType || dataMatch?.[1] || 'audio/mp4',
+        );
+        const encoded = (dataMatch?.[2] || raw).replace(/\s+/g, '');
+        const binary = atob(encoded);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        audioFile = new File(
+          [bytes],
+          String(body?.fileName || 'fitila-voice.m4a'),
+          { type: mimeType },
+        );
+      }
+    }
 
     if (!audioFile) {
       return new Response(
@@ -31,7 +59,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[transcribe-audio] Received audio: ${audioFile.name}, size: ${audioFile.size}, type: ${audioFile.type}`);
+    console.log(`[transcribe-audio] Received audio: ${audioFile.name}, size: ${audioFile.size}, type: ${audioFile.type}, language=${languageCode}`);
 
     const MISTRAL_API_KEY = Deno.env.get('MISTRAL_API_KEY');
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -39,7 +67,11 @@ serve(async (req) => {
     // Try Mistral Voxtral Mini STT first
     if (MISTRAL_API_KEY) {
       try {
-        const result = await transcribeWithMistral(audioFile, MISTRAL_API_KEY);
+        const result = await transcribeWithMistral(
+          audioFile,
+          MISTRAL_API_KEY,
+          languageCode,
+        );
         if (result && result.text && result.text.trim().length > 0) {
           console.log(`[transcribe-audio] Mistral success: ${result.text.length} chars`);
           return new Response(
@@ -61,7 +93,12 @@ serve(async (req) => {
         const audioBytes = await audioFile.arrayBuffer();
         const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioBytes)));
         
-        const result = await transcribeWithGemini(base64Audio, audioFile.type, LOVABLE_API_KEY);
+        const result = await transcribeWithGemini(
+          base64Audio,
+          audioFile.type,
+          LOVABLE_API_KEY,
+          languageCode,
+        );
         if (result && result.text && result.text.trim().length > 0) {
           console.log(`[transcribe-audio] Gemini fallback success: ${result.text.length} chars`);
           return new Response(
@@ -101,12 +138,13 @@ serve(async (req) => {
  */
 async function transcribeWithMistral(
   audioFile: File,
-  apiKey: string
+  apiKey: string,
+  languageCode: string,
 ): Promise<{ text: string; words: Array<{ text: string; start: number; end: number }>; language: string }> {
   const formData = new FormData();
   formData.append('file', audioFile);
   formData.append('model', 'voxtral-mini-latest');
-  formData.append('language', 'fr');
+  formData.append('language', languageCode === 'fr' ? 'fr' : languageCode);
   formData.append('timestamp_granularities', 'word');
 
   console.log('[transcribe-audio] Calling Mistral Voxtral Mini STT...');
@@ -144,7 +182,8 @@ async function transcribeWithMistral(
 async function transcribeWithGemini(
   base64Audio: string,
   mimeType: string,
-  apiKey: string
+  apiKey: string,
+  languageCode: string,
 ): Promise<{ text: string; words: never[]; language: string }> {
   console.log('[transcribe-audio] Calling Gemini for audio transcription...');
 
@@ -169,7 +208,9 @@ async function transcribeWithGemini(
             },
             {
               type: 'text',
-              text: `Transcris cet audio en français mot à mot. L'audio contient un conte ou une histoire racontée à voix haute. Retourne UNIQUEMENT le texte transcrit, sans commentaire, sans guillemets, sans formatage spécial. Si tu ne comprends pas certains mots, fais de ton mieux pour les transcrire phonétiquement.`,
+              text: languageCode === 'fr'
+                ? `Transcris cet audio en français mot à mot. Retourne UNIQUEMENT le texte transcrit, sans commentaire, sans guillemets, sans formatage spécial. Si tu ne comprends pas certains mots, fais de ton mieux pour les transcrire phonétiquement.`
+                : `Transcris cet audio mot à mot dans la langue parlée. Retourne UNIQUEMENT le texte transcrit, sans commentaire ni formatage.`,
             },
           ],
         },
@@ -189,6 +230,6 @@ async function transcribeWithGemini(
   return {
     text: text.trim(),
     words: [],
-    language: 'fra',
+    language: languageCode === 'fr' ? 'fra' : languageCode,
   };
 }
