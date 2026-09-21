@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
@@ -10,6 +11,11 @@ import 'handunia_map_data.dart';
 const String handuniaMapStyleUrl =
     'https://tiles.openfreemap.org/styles/liberty';
 const LatLng handuniaBeninCenter = LatLng(9.3077, 2.3158);
+
+bool get handuniaNativeMapAvailable =>
+    kIsWeb ||
+    defaultTargetPlatform == TargetPlatform.android ||
+    defaultTargetPlatform == TargetPlatform.iOS;
 
 double? _geoDouble(dynamic value) {
   if (value is num) return value.toDouble();
@@ -282,19 +288,31 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
         child: Stack(
           children: [
             Positioned.fill(
-              child: MapLibreMap(
-                styleString: handuniaMapStyleUrl,
-                initialCameraPosition: CameraPosition(
-                  target: handuniaBeninCenter,
-                  zoom: widget.initialZoom,
-                ),
-                minMaxZoomPreference: const MinMaxZoomPreference(5, 18),
-                rotateGesturesEnabled: false,
-                tiltGesturesEnabled: false,
-                onMapCreated: (controller) => _controller = controller,
-                onStyleLoadedCallback: _onStyleLoaded,
-                onMapClick: (point, latLng) => _onMapTap(latLng),
-              ),
+              child: handuniaNativeMapAvailable
+                  ? MapLibreMap(
+                      styleString: handuniaMapStyleUrl,
+                      initialCameraPosition: CameraPosition(
+                        target: handuniaBeninCenter,
+                        zoom: widget.initialZoom,
+                      ),
+                      minMaxZoomPreference:
+                          const MinMaxZoomPreference(5, 18),
+                      rotateGesturesEnabled: false,
+                      tiltGesturesEnabled: false,
+                      onMapCreated: (controller) => _controller = controller,
+                      onStyleLoadedCallback: _onStyleLoaded,
+                      onMapClick: (point, latLng) => _onMapTap(latLng),
+                    )
+                  : const ColoredBox(
+                      color: HanduniaTokens.nuitPortee,
+                      child: Center(
+                        child: Icon(
+                          Icons.map_rounded,
+                          size: 72,
+                          color: HanduniaTokens.bordureForte,
+                        ),
+                      ),
+                    ),
             ),
             Positioned(
               left: 10,
@@ -387,19 +405,36 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                     borderRadius: BorderRadius.circular(999),
                     child: const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-                      child: Text(
-                        'Touchez un lieu pour ouvrir sa mémoire. · Pincer pour zoomer · déplacer pour explorer',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: 'Karla',
-                          fontSize: 10.5,
-                          color: HanduniaTokens.cendre,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Touchez un lieu pour ouvrir sa mémoire.',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: 'Karla',
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: HanduniaTokens.ivoire,
+                            ),
+                          ),
+                          Text(
+                            'Pincer pour zoomer · déplacer pour explorer',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: 'Karla',
+                              fontSize: 10,
+                              color: HanduniaTokens.cendre,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  if (selected == null && quickPlaces.isNotEmpty) ...[
+                  if (quickPlaces.isNotEmpty) ...[
                     const SizedBox(height: 7),
                     SizedBox(
                       height: 36,
