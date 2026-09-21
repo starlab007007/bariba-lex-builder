@@ -6,6 +6,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../core/fitila_media.dart';
+import '../ui/reference_creation_ui.dart';
 import 'handunia_consultation_extended_data.dart';
 import 'handunia_consultation_ui.dart';
 import 'handunia_map_data.dart';
@@ -664,6 +665,7 @@ class _HanduniaAiHeritageGuideRouteState
     final routeReady = _routePoints.length >= 2;
     return Scaffold(
       backgroundColor: HanduniaTokens.nuit,
+      bottomNavigationBar: const FitilaBridgedBottomNav(selectedIndex: 0),
       body: SafeArea(
         child: Column(
           children: [
