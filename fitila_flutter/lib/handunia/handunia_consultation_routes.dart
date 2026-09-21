@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/fitila_media.dart';
 import 'handunia_consultation_extended_data.dart';
 import 'handunia_consultation_ui.dart';
+import 'handunia_ai_guide_route.dart';
 import 'handunia_geo_trace_route.dart';
 import 'handunia_unified_map.dart';
 import 'handunia_territory_picker_route.dart';
@@ -950,6 +951,18 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
               'Carte vivante',
               actions: [
                 IconButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => HanduniaAiGuideRoute(
+                        initialPlace: selected,
+                        initialPlaces: _places,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.explore_rounded),
+                  color: HanduniaTokens.braise,
+                ),
+                IconButton(
                   onPressed: _openTerritoryExplorer,
                   icon: const Icon(Icons.account_tree_outlined),
                   color: HanduniaTokens.braise,
@@ -1175,6 +1188,33 @@ class _HanduniaPlaceRouteState extends State<HanduniaPlaceRoute> {
                   ? data!['name'].toString()
                   : 'Le lieu',
               actions: [
+                IconButton(
+                  onPressed: data == null
+                      ? null
+                      : () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => HanduniaAiGuideRoute(
+                                initialPlace: data,
+                              ),
+                            ),
+                          ),
+                  icon: const Icon(Icons.explore_rounded),
+                  color: HanduniaTokens.braise,
+                ),
+                IconButton(
+                  onPressed: data == null
+                      ? null
+                      : () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => HanduniaMemoryAnswerRoute(
+                                lieuId: widget.lieuId,
+                                lieuName: data['name']?.toString(),
+                              ),
+                            ),
+                          ),
+                  icon: const Icon(Icons.question_answer_outlined),
+                  color: HanduniaTokens.cendre,
+                ),
                 IconButton(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
@@ -2067,7 +2107,14 @@ class _DivergenceThreadsPainter extends CustomPainter {
 }
 
 class HanduniaMemoryAnswerRoute extends StatefulWidget {
-  const HanduniaMemoryAnswerRoute({super.key});
+  const HanduniaMemoryAnswerRoute({
+    super.key,
+    this.lieuId,
+    this.lieuName,
+  });
+
+  final String? lieuId;
+  final String? lieuName;
 
   @override
   State<HanduniaMemoryAnswerRoute> createState() =>
@@ -2095,8 +2142,10 @@ class _HanduniaMemoryAnswerRouteState
       _notice = null;
     });
     try {
-      final answer =
-          await HanduniaConsultationExtendedData.askMemory(question);
+      final answer = await HanduniaConsultationExtendedData.askMemory(
+        question,
+        lieuId: widget.lieuId,
+      );
       if (mounted) {
         setState(() {
           _answer = answer;
@@ -2181,7 +2230,36 @@ class _HanduniaMemoryAnswerRouteState
       body: SafeArea(
         child: Column(
           children: [
-            _handuniaHeader(context, 'La mémoire répond'),
+            _handuniaHeader(
+              context,
+              widget.lieuName?.trim().isNotEmpty == true
+                  ? 'Mémoire · ${widget.lieuName}'
+                  : 'La mémoire répond',
+            ),
+            if (widget.lieuName?.trim().isNotEmpty == true)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 17,
+                      color: HanduniaTokens.braise,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Réponses limitées aux voix de ${widget.lieuName}.',
+                        style: _karlaRoute(
+                          size: 11.5,
+                          color: HanduniaTokens.cendre,
+                          weight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             if (_notice != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
