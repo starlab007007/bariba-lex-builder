@@ -1,0 +1,80 @@
+name: Handunia Lot 3 Android
+
+on:
+  push:
+    branches:
+      - feat/handunia-lot3-ai-heritage-guide
+  pull_request:
+    branches:
+      - release/fitila-flutter-android-v1.8.1-build12-web-parity
+    paths:
+      - 'fitila_flutter/**'
+      - 'supabase/functions/handunia-map-service/**'
+      - '.github/workflows/handunia-lot3-android.yml'
+      - '.github/workflows/flutter-web-parity-validation.yml'
+      - '.github/workflows/flutter-web-parity-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: fitila_flutter
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Verify Lot 3 release metadata
+        run: grep -q '^version: 1.8.3+14$' pubspec.yaml
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Lot 3 focused tests
+        run: flutter test test/handunia_lot3_ai_guide_test.dart --reporter compact
+
+      - name: Full Flutter tests
+        run: flutter test --reporter compact
+
+      - name: Build debug APK
+        run: flutter build apk --debug
+
+      - name: Prepare Lot 3 artifact
+        run: |
+          test -s build/app/outputs/flutter-apk/app-debug.apk
+          mkdir -p build/lot3-output
+          cp build/app/outputs/flutter-apk/app-debug.apk \
+            build/lot3-output/FITILA-Android-v1.8.3-build14-handunia-lot3-qa-debug.apk
+          cd build/lot3-output
+          sha256sum FITILA-Android-v1.8.3-build14-handunia-lot3-qa-debug.apk | tee SHA256SUMS.txt
+          ls -lh FITILA-Android-v1.8.3-build14-handunia-lot3-qa-debug.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FITILA-Android-v1.8.3-build14-handunia-lot3-qa-debug
+          path: fitila_flutter/build/lot3-output/
+          if-no-files-found: error
+          retention-days: 14
