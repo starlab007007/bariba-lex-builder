@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'handunia_consultation_extended_data.dart';
 import 'handunia_consultation_ui.dart';
 import 'handunia_map_data.dart';
+import 'handunia_territory_picker_route.dart';
 import 'handunia_unified_map.dart';
 
 enum HanduniaTravelMode { walking, bicycle, horse }
@@ -61,12 +62,23 @@ class _HanduniaPremiumGuideRouteState
   bool _loadingGuide = false;
   bool _speaking = false;
   bool _perspective = true;
+  final List<Map<String, dynamic>> _extraPlaces = <Map<String, dynamic>>[];
 
-  List<Map<String, dynamic>> get _located => widget.places
-      .where((place) =>
-          _asDouble(place['latitude']) != null &&
-          _asDouble(place['longitude']) != null)
-      .toList(growable: false);
+  List<Map<String, dynamic>> get _located {
+    final all = <Map<String, dynamic>>[
+      ...widget.places,
+      ..._extraPlaces,
+    ];
+    final seen = <String>{};
+    return all.where((place) {
+      final lat = _asDouble(place['latitude']);
+      final lon = _asDouble(place['longitude']);
+      if (lat == null || lon == null) return false;
+      final key =
+          place['id']?.toString() ?? '${lat.toStringAsFixed(5)},${lon.toStringAsFixed(5)}';
+      return seen.add(key);
+    }).toList(growable: false);
+  }
 
   @override
   void initState() {
@@ -111,6 +123,55 @@ class _HanduniaPremiumGuideRouteState
       if (place['id']?.toString() == id) return place;
     }
     return null;
+  }
+
+  Future<void> _pickTerritoryPoint({required bool asOrigin}) async {
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute<Map<String, dynamic>>(
+        builder: (_) => const HanduniaTerritoryPickerRoute(),
+      ),
+    );
+    if (!mounted || result == null) return;
+    final lat = _asDouble(result['latitude']);
+    final lon = _asDouble(result['longitude']);
+    if (lat == null || lon == null) {
+      setState(() {
+        _notice =
+            'Ce territoire n’a pas encore de point cartographique précis. '
+            'Choisissez un village/quartier ou un lieu résolu sur la carte.';
+      });
+      return;
+    }
+
+    final id = asOrigin ? '__journey_origin__' : '__journey_destination__';
+    final segments = handuniaTerritorySegments(result);
+    final point = <String, dynamic>{
+      ...result,
+      'id': id,
+      'name': result['name']?.toString().trim().isNotEmpty == true
+          ? result['name']
+          : segments.last,
+      'can_open': false,
+      'memory_count': 0,
+      'voice_count': 0,
+      'journey_point': true,
+    };
+    setState(() {
+      _extraPlaces.removeWhere((place) => place['id']?.toString() == id);
+      _extraPlaces.add(point);
+      if (asOrigin) {
+        _originId = id;
+        if (_destinationId == id) _destinationId = null;
+      } else {
+        _destinationId = id;
+      }
+      _route = null;
+      _guide = '';
+      _notice = 'Point de voyage positionné sur la carte réelle.';
+    });
+    if (_originId != null && _destinationId != null) {
+      unawaited(_loadRoute());
+    }
   }
 
   String? _bestDestination(String? originId) {
@@ -301,9 +362,46 @@ class _HanduniaPremiumGuideRouteState
             Expanded(
               child: _located.isEmpty
                   ? Center(
-                      child: Text(
-                        'Aucun lieu géolocalisé n’est encore disponible.',
-                        style: _karla(color: HanduniaTokens.cendre),
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.travel_explore_rounded,
+                              size: 52,
+                              color: HanduniaTokens.braise,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Aucun lieu mémoire n’est encore géolocalisé.',
+                              textAlign: TextAlign.center,
+                              style: _karla(
+                                weight: FontWeight.w800,
+                                color: HanduniaTokens.ivoire,
+                              ),
+                            ),
+                            const SizedBox(height: 7),
+                            Text(
+                              'Choisissez un point réel du Bénin pour démarrer '
+                              'un parcours sans inventer la position des lieux historiques.',
+                              textAlign: TextAlign.center,
+                              style: _karla(
+                                size: 12.5,
+                                color: HanduniaTokens.cendre,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            FilledButton.icon(
+                              onPressed: () =>
+                                  _pickTerritoryPoint(asOrigin: true),
+                              icon: const Icon(
+                                Icons.add_location_alt_outlined,
+                              ),
+                              label: const Text('Choisir le départ'),
+                            ),
+                          ],
+                        ),
                       ),
                     )
                   : SingleChildScrollView(
@@ -396,6 +494,13 @@ class _HanduniaPremiumGuideRouteState
             ),
           ),
           IconButton(
+            onPressed: () => _pickTerritoryPoint(
+              asOrigin: _originId == null,
+            ),
+            icon: const Icon(Icons.add_location_alt_outlined),
+            color: HanduniaTokens.braise,
+          ),
+          IconButton(
             onPressed: () => setState(() => _perspective = !_perspective),
             icon: Icon(
               _perspective ? Icons.view_in_ar_outlined : Icons.map_outlined,
@@ -430,6 +535,7 @@ class _HanduniaPremiumGuideRouteState
           _placeSelector(
             label: 'Départ',
             value: _originId,
+            isOrigin: true,
             onChanged: (value) {
               setState(() {
                 _originId = value;
@@ -445,6 +551,7 @@ class _HanduniaPremiumGuideRouteState
           _placeSelector(
             label: 'Destination',
             value: _destinationId,
+            isOrigin: false,
             excludeId: _originId,
             onChanged: (value) {
               setState(() {
@@ -671,6 +778,7 @@ class _HanduniaPremiumGuideRouteState
     required String label,
     required String? value,
     required ValueChanged<String?> onChanged,
+    required bool isOrigin,
     String? excludeId,
   }) {
     final options = _located
@@ -724,6 +832,11 @@ class _HanduniaPremiumGuideRouteState
                 onChanged: onChanged,
               ),
             ),
+          ),
+          IconButton(
+            onPressed: () => _pickTerritoryPoint(asOrigin: isOrigin),
+            icon: const Icon(Icons.add_location_alt_outlined),
+            color: HanduniaTokens.braise,
           ),
         ],
       ),
