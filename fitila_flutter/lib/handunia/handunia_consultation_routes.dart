@@ -1480,7 +1480,13 @@ class _HanduniaTimelineRouteState extends State<HanduniaTimelineRoute> {
   @override
   void initState() {
     super.initState();
-    unawaited(_load());
+    final initial = widget.initialPeriods;
+    if (initial != null) {
+      _periods = List<Map<String, dynamic>>.from(initial);
+      _loading = false;
+    } else {
+      unawaited(_load());
+    }
   }
 
   Future<void> _load() async {
