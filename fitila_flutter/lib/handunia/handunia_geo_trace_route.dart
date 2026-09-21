@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
+import '../ui/reference_creation_ui.dart';
 import 'handunia_consultation_ui.dart';
 import 'handunia_map_data.dart';
 import 'handunia_unified_map.dart';
@@ -506,6 +507,7 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
 
     return Scaffold(
       backgroundColor: HanduniaTokens.nuit,
+      bottomNavigationBar: const FitilaBridgedBottomNav(selectedIndex: 0),
       body: SafeArea(
         child: Stack(
           children: [
