@@ -1132,10 +1132,55 @@ class _PlaceBody extends StatelessWidget {
     final missing = (data['missing_axes'] as List? ?? const <dynamic>[])
         .map((value) => value.toString())
         .toList(growable: false);
+    final hasCoordinates =
+        data['latitude'] is num && data['longitude'] is num;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
       children: [
+        if (hasCoordinates) ...[
+          HanduniaUnifiedMap(
+            places: <Map<String, dynamic>>[data],
+            selectedPlaceId: data['id']?.toString(),
+            height: 270,
+            showSelectionCard: false,
+            initialZoom: 13.2,
+          ),
+          const SizedBox(height: 10),
+          HanduniaTerritoryPath(place: data),
+          const SizedBox(height: 16),
+        ] else ...[
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: HanduniaTokens.terre.withValues(alpha: .08),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: HanduniaTokens.terre.withValues(alpha: .50),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.location_off_outlined,
+                  color: HanduniaTokens.terre,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Ce lieu ancien n’a pas encore de position vérifiée. '
+                    'Aucune coordonnée n’est inventée.',
+                    style: _karlaRoute(
+                      size: 12.5,
+                      color: HanduniaTokens.cendre,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
         Center(child: _DensityRing(memories: memories, voices: voices)),
         const SizedBox(height: 14),
         if (oldest != null)
