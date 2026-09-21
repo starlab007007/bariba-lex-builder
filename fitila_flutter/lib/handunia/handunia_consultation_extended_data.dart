@@ -250,7 +250,11 @@ class HanduniaConsultationExtendedData {
   static Future<List<Map<String, dynamic>>> fetchLivingMap() async {
     final lieuxRaw = await _client
         .from('handunia_lieux')
-        .select('id, name, description, sort_order, latitude, longitude')
+        .select(
+          'id, name, icon, description, sort_order, latitude, longitude, '
+          'department, commune, arrondissement, village_quartier, '
+          'osm_id, osm_type, geo_provider',
+        )
         .order('sort_order');
     final lieux = List<Map<String, dynamic>>.from(lieuxRaw as List);
     final fragmentsRaw = await _client
