@@ -5,6 +5,7 @@ import 'package:audioplayers/audioplayers.dart' as audio;
 import 'package:flutter/material.dart';
 
 import '../core/fitila_media.dart';
+import '../ui/reference_creation_ui.dart';
 import 'handunia_consultation_ui.dart';
 import 'handunia_geo_trace_route.dart';
 import 'handunia_creation_ai_data.dart';
@@ -22,11 +23,15 @@ class HanduniaAiCreationRoute extends StatefulWidget {
     required this.lieu,
     this.voiceCount = 0,
     this.onSaved,
+    this.onPlatformNav,
+    this.onPlatformCreate,
   });
 
   final Map<String, dynamic> lieu;
   final int voiceCount;
   final Future<void> Function()? onSaved;
+  final ValueChanged<int>? onPlatformNav;
+  final VoidCallback? onPlatformCreate;
 
   @override
   State<HanduniaAiCreationRoute> createState() =>
@@ -100,7 +105,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
     final base = Theme.of(context);
     final scheme = ColorScheme.fromSeed(
       seedColor: HanduniaTokens.braise,
-      brightness: Brightness.dark,
+      brightness: Brightness.light,
       surface: HanduniaTokens.nuitPortee,
     ).copyWith(
       primary: HanduniaTokens.braise,
@@ -737,6 +742,14 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
       data: _readableTheme(context),
       child: Scaffold(
         backgroundColor: HanduniaTokens.nuit,
+        bottomNavigationBar:
+            widget.onPlatformNav == null && widget.onPlatformCreate == null
+            ? null
+            : FitilaPremiumBottomNav(
+                selectedIndex: -1,
+                onSelected: (index) => widget.onPlatformNav?.call(index),
+                onCreate: () => widget.onPlatformCreate?.call(),
+              ),
         body: SafeArea(
           child: Column(
             children: [
