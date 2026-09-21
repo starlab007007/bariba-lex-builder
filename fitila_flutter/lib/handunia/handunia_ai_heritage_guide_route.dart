@@ -86,7 +86,7 @@ class _HanduniaAiHeritageGuideRouteState
   @override
   void initState() {
     super.initState();
-    _configureTts();
+    unawaited(_configureTts());
     final initial = widget.initialPlaces;
     if (initial != null) {
       _memoryPlaces = List<Map<String, dynamic>>.from(initial);
@@ -286,6 +286,8 @@ class _HanduniaAiHeritageGuideRouteState
     final start = _start;
     final end = _end;
     if (!_hasCoordinates(start) || !_hasCoordinates(end) || _routing) return;
+    final startPlace = start!;
+    final endPlace = end!;
     setState(() {
       _routing = true;
       _notice = 'Calcul du parcours réel sur OpenStreetMap…';
@@ -294,10 +296,10 @@ class _HanduniaAiHeritageGuideRouteState
     });
     try {
       final result = await HanduniaMapData.route(
-        fromLatitude: _double(start!['latitude'])!,
-        fromLongitude: _double(start['longitude'])!,
-        toLatitude: _double(end!['latitude'])!,
-        toLongitude: _double(end['longitude'])!,
+        fromLatitude: _double(startPlace['latitude'])!,
+        fromLongitude: _double(startPlace['longitude'])!,
+        toLatitude: _double(endPlace['latitude'])!,
+        toLongitude: _double(endPlace['longitude'])!,
         mode: _mode.serviceMode,
       );
       if (!mounted) return;
