@@ -263,6 +263,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
   @override
   Widget build(BuildContext context) {
     final selected = _selected;
+    final quickPlaces = _located.take(6).toList(growable: false);
     final unlocated = widget.places.length - _located.length;
     return SizedBox(
       height: widget.height,
@@ -331,7 +332,6 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                     color: HanduniaTokens.nuitPortee.withValues(alpha: .94),
                     shape: const CircleBorder(),
                     child: IconButton(
-                      tooltip: 'Revenir au Bénin',
                       onPressed: _focusBenin,
                       icon: const Icon(Icons.public_rounded),
                       color: HanduniaTokens.braise,
@@ -366,21 +366,69 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
               ),
             Positioned(
               left: 10,
+              right: 10,
               bottom: selected != null && widget.showSelectionCard ? 110 : 10,
-              child: Material(
-                color: HanduniaTokens.nuitPortee.withValues(alpha: .90),
-                borderRadius: BorderRadius.circular(999),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-                  child: Text(
-                    'Pincer pour zoomer · déplacer pour explorer',
-                    style: TextStyle(
-                      fontFamily: 'Karla',
-                      fontSize: 10.5,
-                      color: HanduniaTokens.cendre,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Material(
+                    color: HanduniaTokens.nuitPortee.withValues(alpha: .90),
+                    borderRadius: BorderRadius.circular(999),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                      child: Text(
+                        'Touchez un lieu pour ouvrir sa mémoire. · Pincer pour zoomer · déplacer pour explorer',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Karla',
+                          fontSize: 10.5,
+                          color: HanduniaTokens.cendre,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  if (selected == null && quickPlaces.isNotEmpty) ...[
+                    const SizedBox(height: 7),
+                    SizedBox(
+                      height: 36,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: quickPlaces.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 6),
+                        itemBuilder: (context, index) {
+                          final place = quickPlaces[index];
+                          return ActionChip(
+                            visualDensity: VisualDensity.compact,
+                            avatar: const Icon(
+                              Icons.location_on_rounded,
+                              size: 16,
+                              color: HanduniaTokens.braise,
+                            ),
+                            label: Text(
+                              place['name']?.toString() ?? 'Lieu mémoire',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: 'Karla',
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: HanduniaTokens.ivoire,
+                              ),
+                            ),
+                            backgroundColor:
+                                HanduniaTokens.nuitPortee.withValues(alpha: .94),
+                            side: const BorderSide(
+                              color: HanduniaTokens.bordureForte,
+                            ),
+                            onPressed: () => _select(place),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             if (selected != null && widget.showSelectionCard)
@@ -463,7 +511,6 @@ class _SelectedPlaceCard extends StatelessWidget {
             ),
             if (onOpen != null)
               IconButton(
-                tooltip: 'Ouvrir le lieu mémoire',
                 onPressed: onOpen,
                 icon: const Icon(Icons.arrow_forward_rounded),
                 color: HanduniaTokens.braise,
@@ -645,7 +692,6 @@ class _HanduniaLocationPickerRouteState
                       Row(
                         children: [
                           IconButton(
-                            tooltip: 'Retour',
                             onPressed: () => Navigator.of(context).maybePop(),
                             icon: const Icon(Icons.arrow_back_rounded),
                             color: HanduniaTokens.ivoire,
