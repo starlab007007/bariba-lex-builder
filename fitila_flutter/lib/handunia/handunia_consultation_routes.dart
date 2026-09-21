@@ -13,6 +13,7 @@ import '../core/fitila_media.dart';
 import 'handunia_consultation_extended_data.dart';
 import 'handunia_consultation_ui.dart';
 import 'handunia_geo_trace_route.dart';
+import 'handunia_premium_guide_route.dart';
 import 'handunia_unified_map.dart';
 import 'handunia_territory_picker_route.dart';
 
@@ -924,6 +925,17 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
     );
   }
 
+  void _openPremiumJourney() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => HanduniaPremiumGuideRoute(
+          places: List<Map<String, dynamic>>.from(_places),
+          initialPlaceId: _selectedId,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final visible = _visiblePlaces;
@@ -949,6 +961,11 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
               context,
               'Carte vivante',
               actions: [
+                IconButton(
+                  onPressed: _openPremiumJourney,
+                  icon: const Icon(Icons.explore_rounded),
+                  color: HanduniaTokens.braise,
+                ),
                 IconButton(
                   onPressed: _openTerritoryExplorer,
                   icon: const Icon(Icons.account_tree_outlined),
