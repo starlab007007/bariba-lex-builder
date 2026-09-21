@@ -529,7 +529,6 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
                 Row(
                   children: [
                     IconButton(
-                      tooltip: 'Retour',
                       onPressed: () => Navigator.of(context).maybePop(),
                       icon: const Icon(Icons.arrow_back_outlined),
                       color: HanduniaTokens.ivoire,
@@ -541,7 +540,6 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Recommencer',
                       onPressed: _reset,
                       icon: const Icon(Icons.restart_alt_outlined),
                       color: HanduniaTokens.cendre,
@@ -755,7 +753,6 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
                   ),
                   if (_historicalPoints.isNotEmpty)
                     IconButton(
-                      tooltip: 'Annuler le dernier point',
                       onPressed: _undoHistoricalPoint,
                       icon: const Icon(Icons.undo_outlined),
                       color: HanduniaTokens.cendre,
