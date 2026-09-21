@@ -724,22 +724,34 @@ class _HanduniaLocationPickerRouteState
         child: Stack(
           children: [
             Positioned.fill(
-              child: MapLibreMap(
-                styleString: handuniaMapStyleUrl,
-                initialCameraPosition: const CameraPosition(
-                  target: handuniaBeninCenter,
-                  zoom: 6.4,
-                ),
-                minMaxZoomPreference: const MinMaxZoomPreference(5, 18),
-                rotateGesturesEnabled: false,
-                tiltGesturesEnabled: false,
-                onMapCreated: (controller) => _controller = controller,
-                onStyleLoadedCallback: () async {
-                  _styleLoaded = true;
-                  await _renderSelected();
-                },
-                onMapClick: (point, latLng) => _onMapTap(latLng),
-              ),
+              child: handuniaNativeMapAvailable
+                  ? MapLibreMap(
+                      styleString: handuniaMapStyleUrl,
+                      initialCameraPosition: const CameraPosition(
+                        target: handuniaBeninCenter,
+                        zoom: 6.4,
+                      ),
+                      minMaxZoomPreference:
+                          const MinMaxZoomPreference(5, 18),
+                      rotateGesturesEnabled: false,
+                      tiltGesturesEnabled: false,
+                      onMapCreated: (controller) => _controller = controller,
+                      onStyleLoadedCallback: () async {
+                        _styleLoaded = true;
+                        await _renderSelected();
+                      },
+                      onMapClick: (point, latLng) => _onMapTap(latLng),
+                    )
+                  : const ColoredBox(
+                      color: HanduniaTokens.nuitPortee,
+                      child: Center(
+                        child: Icon(
+                          Icons.add_location_alt_rounded,
+                          size: 72,
+                          color: HanduniaTokens.bordureForte,
+                        ),
+                      ),
+                    ),
             ),
             Positioned(
               left: 10,
