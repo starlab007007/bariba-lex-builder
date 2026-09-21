@@ -1538,7 +1538,8 @@ class _HanduniaTimelineRouteState extends State<HanduniaTimelineRoute> {
                       onHorizontalDragEnd: (details) {
                         final velocity =
                             details.primaryVelocity ?? 0;
-                        if (velocity < 0 && _index < 4) {
+                        if (velocity < 0 &&
+                            _index < _periods.length - 1) {
                           setState(() => _index++);
                         } else if (velocity > 0 && _index > 0) {
                           setState(() => _index--);
@@ -1548,6 +1549,42 @@ class _HanduniaTimelineRouteState extends State<HanduniaTimelineRoute> {
                         padding: const EdgeInsets.all(18),
                         child: Column(
                           children: [
+                            SizedBox(
+                              height: 42,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: _periods.length,
+                                separatorBuilder: (_, _) =>
+                                    const SizedBox(width: 7),
+                                itemBuilder: (context, index) {
+                                  final selected = index == _index;
+                                  return ChoiceChip(
+                                    selected: selected,
+                                    showCheckmark: false,
+                                    label: Text(
+                                      _periods[index]['label'].toString(),
+                                    ),
+                                    onSelected: (_) =>
+                                        setState(() => _index = index),
+                                    backgroundColor: HanduniaTokens.nuitPortee,
+                                    selectedColor: HanduniaTokens.braise,
+                                    side: BorderSide(
+                                      color: selected
+                                          ? HanduniaTokens.braise
+                                          : HanduniaTokens.bordureForte,
+                                    ),
+                                    labelStyle: _karlaRoute(
+                                      size: 12.5,
+                                      color: selected
+                                          ? HanduniaTokens.encre
+                                          : HanduniaTokens.ivoire,
+                                      weight: FontWeight.w700,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 12),
                             if (voices == 0) ...[
                               const Spacer(),
                               Text(
@@ -1586,8 +1623,8 @@ class _HanduniaTimelineRouteState extends State<HanduniaTimelineRoute> {
                               child: Slider(
                                 value: _index.toDouble(),
                                 min: 0,
-                                max: 4,
-                                divisions: 4,
+                                max: math.max(1, _periods.length - 1).toDouble(),
+                                divisions: math.max(1, _periods.length - 1),
                                 label: period!['label'].toString(),
                                 activeColor: HanduniaTokens.braise,
                                 inactiveColor: HanduniaTokens.bordureForte,
