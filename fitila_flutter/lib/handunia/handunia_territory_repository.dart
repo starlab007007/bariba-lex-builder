@@ -188,10 +188,7 @@ class HanduniaTerritoryRepository {
     if (value.isEmpty) return value;
     final apostrophe = value.indexOf("'");
     if (apostrophe == 1 && value.length > 2) {
-      return value[0].toUpperCase() +
-          "'" +
-          value[2].toUpperCase() +
-          value.substring(3);
+      return "${value[0].toUpperCase()}'${value[2].toUpperCase()}${value.substring(3)}";
     }
     return value[0].toUpperCase() + value.substring(1);
   }
