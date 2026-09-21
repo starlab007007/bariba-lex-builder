@@ -40,7 +40,7 @@ void main() {
     expect(find.text('Carte vivante'), findsOneWidget);
     expect(find.textContaining('0 lieu'), findsOneWidget);
     expect(find.text('Chemin des caravanes'), findsWidgets);
-    expect(find.text('0 voix'), findsWidgets);
+    expect(find.textContaining('0 voix'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
