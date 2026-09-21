@@ -87,7 +87,7 @@ class HanduniaGuideData {
       return const <Map<String, dynamic>>[];
     }
 
-    Map<String, dynamic>? start;
+    late Map<String, dynamic> start;
     final initialId = initialPlace?['id']?.toString();
     if (initialPlace != null && hasCoordinates(initialPlace)) {
       start = Map<String, dynamic>.from(initialPlace);
