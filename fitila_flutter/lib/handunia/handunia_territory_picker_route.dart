@@ -131,6 +131,13 @@ class _HanduniaTerritoryPickerRouteState
         'voice_count': 0,
         'can_open': false,
         'territory_focus': true,
+        'zoom_hint': selection.villageQuartier != null
+            ? 14.2
+            : selection.arrondissement != null
+                ? 12.2
+                : selection.commune != null
+                    ? 10.2
+                    : 8.0,
       };
 
       if (results.isNotEmpty) {
