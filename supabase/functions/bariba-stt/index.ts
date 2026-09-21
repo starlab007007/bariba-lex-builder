@@ -13,7 +13,7 @@ const corsHeaders = {
 
 const SPACE_URL = "https://zimesongbian-baatonum-asr-stt-api-v001-improve.hf.space";
 
-const MAX_AUDIO_BASE64_LEN = 500_000;
+const MAX_AUDIO_BASE64_LEN = 2_500_000;
 const HF_UPLOAD_TIMEOUT_MS = 30_000;
 const HF_CALL_TIMEOUT_MS = 30_000;
 const HF_SSE_TIMEOUT_MS = 60_000;
@@ -23,6 +23,7 @@ interface STTRequest {
   audio: string;
   robustMode?: boolean;
   speakerType?: "Auto" | "Enfant" | "Femme" | "Homme" | "PersonneAgee";
+  languageCode?: "ba" | "fr";
 }
 
 function isValidTranscription(text: unknown): text is string {
@@ -419,13 +420,19 @@ serve(async (req: Request) => {
 
   try {
     const body = (await req.json()) as STTRequest;
-    const { audio, robustMode = true, speakerType = "Auto" } = body;
+    const {
+      audio,
+      robustMode = true,
+      speakerType = "Auto",
+      languageCode = "ba",
+    } = body;
 
     // Health check sans authentification
     if (!audio || audio === "test" || audio.length < 20) {
       console.log("🏥 Health check");
       return new Response(
         JSON.stringify({
+          state: "ready",
           status: "ok",
           service: "bariba-stt",
           message: "Service disponible",
@@ -438,8 +445,10 @@ serve(async (req: Request) => {
     if (audio.length > MAX_AUDIO_BASE64_LEN) {
       return new Response(
         JSON.stringify({
+          state: "unavailable",
+          message: "Enregistrement trop long.",
           error: "Audio too large",
-          details: "L'enregistrement est trop long. Limitez à ~30 secondes maximum.",
+          details: "L'enregistrement dépasse la taille acceptée pour la transcription.",
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
@@ -449,6 +458,8 @@ serve(async (req: Request) => {
     if (!HF_TOKEN) {
       return new Response(
         JSON.stringify({
+          state: "unavailable",
+          message: "Transcription momentanément indisponible.",
           error: "Configuration serveur manquante",
           details: "HuggingFace token non configuré",
         }),
@@ -497,45 +508,53 @@ serve(async (req: Request) => {
         );
       }
 
-      let finalTranscription = applyLocalBaribaCorrections(rawTranscription);
+      let finalTranscription =
+        languageCode === "ba"
+          ? applyLocalBaribaCorrections(rawTranscription)
+          : normalizeBaribaText(rawTranscription);
       let refined = false;
       let refineMeta: { confidence?: number; changes?: string[]; error?: string } = {};
 
-      // ─── RAFFINAGE via refine-bariba (non-bloquant) ───
-      const refineResult = await refineWithSupabase({
-        req,
-        transcription: finalTranscription,
-      });
+      if (languageCode === "ba") {
+        const refineResult = await refineWithSupabase({
+          req,
+          transcription: finalTranscription,
+        });
 
-      if (refineResult.refined && isValidTranscription(refineResult.refined)) {
-        finalTranscription = applyLocalBaribaCorrections(refineResult.refined);
-        refined = true;
-        refineMeta = {
-          confidence: refineResult.confidence,
-          changes: refineResult.changes || [],
-        };
-        console.log(
-          `🔧 STT Refined: "${finalTranscription.substring(0, 80)}" (${refineResult.changes?.length || 0} changes)`,
-        );
-      } else if (refineResult.error) {
-        refineMeta = { error: refineResult.error };
-        console.warn(`⚠️ STT Refine skipped: ${refineResult.error}`);
+        if (refineResult.refined && isValidTranscription(refineResult.refined)) {
+          finalTranscription = applyLocalBaribaCorrections(refineResult.refined);
+          refined = true;
+          refineMeta = {
+            confidence: refineResult.confidence,
+            changes: refineResult.changes || [],
+          };
+          console.log(
+            `🔧 STT Refined: "${finalTranscription.substring(0, 80)}" (${refineResult.changes?.length || 0} changes)`,
+          );
+        } else if (refineResult.error) {
+          refineMeta = { error: refineResult.error };
+          console.warn(`⚠️ STT Refine skipped: ${refineResult.error}`);
+        }
       }
 
       const hasBaribaChars = /[ɔɛɑãɛ̃ĩɔ̃ũ̀́]/u.test(finalTranscription);
       const confidence = Math.min(
         97,
-        84 + (hasBaribaChars ? 4 : 0) + (refined ? 4 : 0),
+        84 +
+          (languageCode === "ba" && hasBaribaChars ? 4 : 0) +
+          (refined ? 4 : 0),
       );
 
       console.log(`✅ STT Success in ${Date.now() - startTime}ms: "${finalTranscription.substring(0, 80)}"`);
 
       return new Response(
         JSON.stringify({
+          state: "ready",
+          transcript: finalTranscription,
           transcription: finalTranscription,
           confidence,
           duration: Date.now() - startTime,
-          language: "bariba",
+          language: languageCode === "fr" ? "fr" : "ba",
           refined,
           refinement: refineMeta,
         }),
@@ -552,6 +571,10 @@ serve(async (req: Request) => {
 
       return new Response(
         JSON.stringify({
+          state: "unavailable",
+          message: isSleeping
+            ? "Le service se réveille. Réessayez dans quelques secondes."
+            : "Transcription momentanément indisponible.",
           error: isSleeping
             ? "Service en veille"
             : isTimeout
