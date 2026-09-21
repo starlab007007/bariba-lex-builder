@@ -9,15 +9,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'handunia_consultation_model.dart';
 
 abstract final class HanduniaTokens {
-  static const nuit = Color(0xFF0D1018);
-  static const nuitPortee = Color(0xFF171D28);
-  static const bordure = Color(0xFF354052);
-  static const bordureForte = Color(0xFF4A5870);
-  static const braise = Color(0xFFE6AA4A);
-  static const terre = Color(0xFFDF8058);
-  static const ivoire = Color(0xFFFAF7F0);
-  static const cendre = Color(0xFFC7C0B4);
-  static const encre = Color(0xFF14100A);
+  // Palette Handunia claire et cohérente avec le design system FITILA.
+  // Les noms historiques sont conservés pour éviter de casser les parcours,
+  // mais leur rôle est désormais sémantique : fond, surface, bordure, accent,
+  // texte principal et texte secondaire.
+  static const nuit = Color(0xFFF7F5EC);
+  static const nuitPortee = Color(0xFFFFFFFF);
+  static const bordure = Color(0xFFE4DFCC);
+  static const bordureForte = Color(0xFFD3CCBC);
+  static const braise = Color(0xFFC99530);
+  static const terre = Color(0xFFB54E33);
+  static const ivoire = Color(0xFF241F2E);
+  static const cendre = Color(0xFF746D5C);
+  static const encre = Color(0xFF241F2E);
+  static const orClair = Color(0xFFF3E3B9);
+  static const violet = Color(0xFF514578);
 }
 
 TextStyle _fraunces({
@@ -979,7 +985,7 @@ class HanduniaFilView extends StatelessWidget {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
               child: Row(
                 children: [
                   Semantics(
@@ -998,7 +1004,10 @@ class HanduniaFilView extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'Fil Handunia Wasa',
-                      style: _fraunces(size: 27),
+                      style: _fraunces(
+                        size: 25,
+                        color: HanduniaTokens.ivoire,
+                      ),
                     ),
                   ),
                   if (pendingCount > 0)
