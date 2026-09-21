@@ -9,6 +9,13 @@ import 'handunia_consultation_ui.dart';
 import 'handunia_geo_trace_route.dart';
 import 'handunia_creation_ai_data.dart';
 
+enum HanduniaTranscriptionState {
+  idle,
+  transcribing,
+  ready,
+  failed,
+}
+
 class HanduniaAiCreationRoute extends StatefulWidget {
   const HanduniaAiCreationRoute({
     super.key,
@@ -46,6 +53,15 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
   int _durationMs = 0;
   DateTime? _recordingStartedAt;
   Timer? _recordingTimer;
+  HanduniaTranscriptionState _transcriptionState =
+      HanduniaTranscriptionState.idle;
+  String? _transcriptionError;
+  bool _originalPlaying = false;
+  Duration _originalPosition = Duration.zero;
+  Duration _originalDuration = Duration.zero;
+  StreamSubscription<audio.PlayerState>? _playerStateSubscription;
+  StreamSubscription<Duration>? _playerPositionSubscription;
+  StreamSubscription<Duration>? _playerDurationSubscription;
   Map<String, dynamic> _analysis = <String, dynamic>{};
   Map<String, dynamic> _comparison = <String, dynamic>{
     'relation': 'new',
@@ -119,12 +135,30 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
   @override
   void initState() {
     super.initState();
+    _playerStateSubscription =
+        _proofPlayer.onPlayerStateChanged.listen((state) {
+      if (!mounted) return;
+      setState(() => _originalPlaying = state == audio.PlayerState.playing);
+    });
+    _playerPositionSubscription =
+        _proofPlayer.onPositionChanged.listen((position) {
+      if (!mounted) return;
+      setState(() => _originalPosition = position);
+    });
+    _playerDurationSubscription =
+        _proofPlayer.onDurationChanged.listen((duration) {
+      if (!mounted) return;
+      setState(() => _originalDuration = duration);
+    });
     unawaited(_syncPending());
   }
 
   @override
   void dispose() {
     _recordingTimer?.cancel();
+    unawaited(_playerStateSubscription?.cancel());
+    unawaited(_playerPositionSubscription?.cancel());
+    unawaited(_playerDurationSubscription?.cancel());
     unawaited(_media.dispose());
     unawaited(_proofPlayer.dispose());
     _transcriptController.dispose();
@@ -284,46 +318,16 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         throw StateError('Aucune voix enregistrée.');
       }
       _asset = asset;
-      String transcript = '';
-      try {
-        transcript = await HanduniaAiCreationData.transcribe(asset);
-      } catch (_) {
-        _notice =
-            'Transcription indisponible. La voix originale reste conservée.';
-      }
-      _transcriptController.text = transcript;
-      if (transcript.isNotEmpty) {
-        try {
-          _analysis = await HanduniaAiCreationData.analyze(
-            transcript: transcript,
-            lieuName: _lieuName,
-            languageCode: _languageCode,
-            durationMs: _durationMs,
-          );
-          _selectedScope =
-              _analysis['suggested_scope']?.toString() ?? 'community';
-        } catch (_) {
-          _analysis = <String, dynamic>{};
-          _notice =
-              'Analyse IA indisponible. Vérifiez le texte puis continuez.';
-        }
-        try {
-          _comparison = await HanduniaAiCreationData.compare(
-            transcript: transcript,
-            lieuId: _lieuId,
-          );
-        } catch (_) {
-          _comparison = <String, dynamic>{
-            'relation': 'new',
-            'target_fragment_id': null,
-            'confidence': 0.0,
-            'reason': 'Comparaison momentanément indisponible.',
-          };
-        }
-      }
       if (mounted) {
-        setState(() => _stage = 3);
+        setState(() {
+          _stage = 3;
+          _transcriptionState = HanduniaTranscriptionState.transcribing;
+          _transcriptionError = null;
+          _notice = null;
+        });
       }
+      await _transcribeRecordedAudio();
+
     } catch (error) {
       if (mounted) {
         setState(() {
@@ -338,6 +342,130 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
     }
   }
 
+  Future<void> _transcribeRecordedAudio() async {
+    final asset = _asset;
+    if (asset == null) {
+      return;
+    }
+    if (mounted) {
+      setState(() {
+        _transcriptionState = HanduniaTranscriptionState.transcribing;
+        _transcriptionError = null;
+      });
+    }
+    try {
+      final transcript = await HanduniaAiCreationData.transcribe(
+        asset,
+        languageCode: _languageCode,
+      );
+      _transcriptController.text = transcript;
+      if (mounted) {
+        setState(() {
+          _transcriptionState = HanduniaTranscriptionState.ready;
+          _transcriptionError = null;
+        });
+      }
+      await _analyzeTranscript(transcript);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _transcriptionState = HanduniaTranscriptionState.failed;
+        _transcriptionError = error
+            .toString()
+            .replaceFirst('Bad state: ', '')
+            .replaceFirst('Exception: ', '');
+        _analysis = <String, dynamic>{};
+      });
+    }
+  }
+
+  Future<void> _analyzeTranscript(String transcript) async {
+    if (transcript.trim().isEmpty) {
+      return;
+    }
+    try {
+      final analysis = await HanduniaAiCreationData.analyze(
+        transcript: transcript,
+        lieuName: _lieuName,
+        languageCode: _languageCode,
+        durationMs: _durationMs,
+      );
+      if (mounted) {
+        setState(() {
+          _analysis = analysis;
+          _selectedScope =
+              analysis['suggested_scope']?.toString() ?? 'community';
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _analysis = <String, dynamic>{});
+      }
+    }
+    try {
+      final comparison = await HanduniaAiCreationData.compare(
+        transcript: transcript,
+        lieuId: _lieuId,
+      );
+      if (mounted) {
+        setState(() => _comparison = comparison);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _comparison = <String, dynamic>{
+            'relation': 'new',
+            'target_fragment_id': null,
+            'confidence': 0.0,
+            'reason': 'Comparaison momentanément indisponible.',
+          };
+        });
+      }
+    }
+  }
+
+  Future<void> _retryTranscription() async {
+    if (_processing || _transcriptionState == HanduniaTranscriptionState.transcribing) {
+      return;
+    }
+    setState(() => _processing = true);
+    try {
+      await _transcribeRecordedAudio();
+    } finally {
+      if (mounted) {
+        setState(() => _processing = false);
+      }
+    }
+  }
+
+  Future<void> _toggleOriginalVoice() async {
+    final asset = _asset;
+    if (asset == null) {
+      return;
+    }
+    try {
+      if (_originalPlaying) {
+        await _proofPlayer.pause();
+      } else {
+        if (_originalDuration > Duration.zero &&
+            _originalPosition >= _originalDuration) {
+          await _proofPlayer.seek(Duration.zero);
+        }
+        if (_proofPlayer.state == audio.PlayerState.paused) {
+          await _proofPlayer.resume();
+        } else {
+          await _proofPlayer.play(audio.DeviceFileSource(asset.path));
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _notice = 'Lecture de la voix indisponible.');
+      }
+    }
+  }
+
   Future<void> _cancelRecording() async {
     _recordingTimer?.cancel();
     await _media.cancelAudio();
@@ -347,6 +475,9 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
     setState(() {
       _recording = false;
       _durationMs = 0;
+      _asset = null;
+      _transcriptionState = HanduniaTranscriptionState.idle;
+      _transcriptionError = null;
       _stage = 1;
     });
   }
@@ -934,101 +1065,175 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
 
   Widget _understandingStage() {
     final entities = _entities;
+    final transcriptReady =
+        _transcriptionState == HanduniaTranscriptionState.ready;
+    final transcriptionBusy =
+        _transcriptionState == HanduniaTranscriptionState.transcribing;
+    final transcriptFailed =
+        _transcriptionState == HanduniaTranscriptionState.failed;
+    final duration = _originalDuration > Duration.zero
+        ? _originalDuration
+        : Duration(milliseconds: _durationMs);
+    final maxMs = math.max(1, duration.inMilliseconds);
+    final currentMs =
+        _originalPosition.inMilliseconds.clamp(0, maxMs).toDouble();
+
     return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 30),
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 30),
       children: [
-        Text(
-          'Voici ce que\nj’ai entendu.',
-          style: _fraunces(size: 29),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Vérifiez avant de continuer.',
-          style: _karla(color: HanduniaTokens.cendre),
+        Text('Vérifier', style: _fraunces(size: 30)),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+          decoration: BoxDecoration(
+            color: HanduniaTokens.nuitPortee,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: HanduniaTokens.bordureForte),
+          ),
+          child: Row(
+            children: [
+              IconButton(
+                tooltip: _originalPlaying ? 'Pause' : 'Écouter la voix',
+                onPressed: _asset == null ? null : _toggleOriginalVoice,
+                icon: Icon(
+                  _originalPlaying
+                      ? Icons.pause_circle_filled
+                      : Icons.play_circle_fill,
+                  size: 34,
+                ),
+                color: HanduniaTokens.braise,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Voix originale',
+                      style: _karla(size: 15, weight: FontWeight.w700),
+                    ),
+                    Slider(
+                      value: currentMs,
+                      min: 0,
+                      max: maxMs.toDouble(),
+                      activeColor: HanduniaTokens.braise,
+                      inactiveColor: HanduniaTokens.bordureForte,
+                      onChanged: _asset == null
+                          ? null
+                          : (value) async {
+                              final target =
+                                  Duration(milliseconds: value.round());
+                              await _proofPlayer.seek(target);
+                              if (mounted) {
+                                setState(() => _originalPosition = target);
+                              }
+                            },
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                _timeLabel(duration.inMilliseconds),
+                style: _karla(size: 12.5, color: HanduniaTokens.cendre),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 18),
-        if (_processing)
+        if (transcriptionBusy) ...[
           const Center(
-            child: HaloDensite(valeur: .5, loading: true, size: 76),
+            child: HaloDensite(valeur: .5, loading: true, size: 64),
           ),
-        Text(
-          'Votre transcription',
-          style: _karla(
-            size: 13,
-            color: HanduniaTokens.braise,
-            weight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _transcriptController,
-          maxLines: 7,
-          minLines: 4,
-          style: _karla(size: 15.5, height: 1.5),
-          decoration: _inputDecoration(
-            'Écoutez, relisez et corrigez si nécessaire',
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'La voix originale reste la référence.',
-          style: _karla(size: 12.5, color: HanduniaTokens.cendre),
-        ),
-        const SizedBox(height: 16),
-        if (entities.isEmpty)
-          _stateCard(
-            title: 'Voix originale conservée',
-            subtitle: _transcriptController.text.trim().isEmpty
-                ? 'Transcription indisponible'
-                : 'Aucune donnée certaine à confirmer',
-            color: HanduniaTokens.cendre,
-          )
-        else
-          Theme(
-            data: Theme.of(context).copyWith(
-              dividerColor: Colors.transparent,
+          const SizedBox(height: 8),
+          Text(
+            'Transcription en cours…',
+            textAlign: TextAlign.center,
+            style: _karla(
+              size: 14,
+              color: HanduniaTokens.cendre,
+              weight: FontWeight.w700,
             ),
+          ),
+        ] else if (transcriptFailed) ...[
+          _stateCard(
+            title: 'Transcription indisponible',
+            subtitle: _transcriptionError ?? 'Réessayez.',
+            color: HanduniaTokens.terre,
+          ),
+          const SizedBox(height: 10),
+          _outlineButton(
+            label: 'RÉESSAYER LA TRANSCRIPTION',
+            icon: Icons.refresh_outlined,
+            onPressed: _processing ? null : _retryTranscription,
+          ),
+        ] else if (transcriptReady) ...[
+          Text(
+            'Transcription',
+            style: _karla(
+              size: 13,
+              color: HanduniaTokens.braise,
+              weight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 7),
+          TextField(
+            controller: _transcriptController,
+            maxLines: 6,
+            minLines: 3,
+            style: _karla(size: 15.5, height: 1.45),
+            decoration: _inputDecoration('Corriger si nécessaire'),
+          ),
+        ],
+        if (entities.isNotEmpty && transcriptReady) ...[
+          const SizedBox(height: 10),
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
-              initiallyExpanded: entities.length <= 3,
-              tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+              initiallyExpanded: false,
+              tilePadding: EdgeInsets.zero,
               childrenPadding: EdgeInsets.zero,
               iconColor: HanduniaTokens.braise,
               collapsedIconColor: HanduniaTokens.cendre,
               title: Text(
                 'Données détectées · ${entities.length}',
-                style: _karla(size: 15, weight: FontWeight.w700),
-              ),
-              subtitle: Text(
-                'Touchez pour vérifier ou corriger',
-                style: _karla(size: 12.5, color: HanduniaTokens.cendre),
+                style: _karla(size: 14.5, weight: FontWeight.w700),
               ),
               children: [
                 for (var i = 0; i < entities.length; i++) ...[
                   _entityCard(entities[i], i),
-                  const SizedBox(height: 9),
+                  const SizedBox(height: 8),
                 ],
               ],
             ),
           ),
+        ],
         const SizedBox(height: 20),
         _primaryButton(
-          label: _processing ? 'ANALYSE…' : 'CONTINUER',
+          label: transcriptFailed
+              ? 'CONTINUER AVEC LA VOIX'
+              : transcriptionBusy
+              ? 'TRANSCRIPTION…'
+              : 'CONTINUER',
           icon: Icons.arrow_forward_outlined,
-          onPressed: _processing
+          onPressed: transcriptionBusy
               ? null
               : () async {
-                  await _reanalyzeIfNeeded();
+                  if (transcriptReady) {
+                    await _reanalyzeIfNeeded();
+                  }
                   if (mounted) {
                     setState(() => _stage = 6);
                   }
                 },
         ),
-        const SizedBox(height: 8),
-        TextButton.icon(
-          onPressed: _processing ? null : () => setState(() => _stage = 4),
-          icon: const Icon(Icons.account_tree_outlined, size: 19),
-          label: const Text('Voir les liens détectés'),
-        ),
+        if (transcriptReady && entities.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          TextButton.icon(
+            onPressed: _processing ? null : () => setState(() => _stage = 4),
+            icon: const Icon(Icons.account_tree_outlined, size: 18),
+            label: const Text('Voir les liens'),
+          ),
+        ],
       ],
     );
   }
