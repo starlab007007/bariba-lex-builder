@@ -54,6 +54,7 @@ serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const question = clean(body?.question);
     const requestedScope = clean(body?.requested_scope);
+    const lieuId = clean(body?.lieu_id);
     if (!question) {
       return new Response(
         JSON.stringify({ state: "invalid", message: "Question requise" }),
@@ -88,19 +89,24 @@ serve(async (req: Request) => {
       );
     }
 
-    if (
-      requestedScope === "elders" &&
-      user.user_metadata?.handunia_guardian !== true
-    ) {
-      return new Response(
-        JSON.stringify({
-          state: "refusal",
-          protocol: "Portée Anciens — accès gardien requis",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+    if (requestedScope === "elders") {
+      const guardianResult = await client
+        .from("handunia_guardians")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .eq("active", true)
+        .maybeSingle();
+      if (guardianResult.error || !guardianResult.data) {
+        return new Response(
+          JSON.stringify({
+            state: "refusal",
+            protocol: "Portée Anciens — accès gardien requis",
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
     }
 
     // Le filtrage d'accès a lieu AVANT toute vectorisation.
@@ -115,6 +121,7 @@ serve(async (req: Request) => {
       .order("created_at", { ascending: false })
       .limit(80);
     if (requestedScope) query = query.eq("scope_level", requestedScope);
+    if (lieuId) query = query.eq("lieu_id", lieuId);
     const accessibleResult = await query;
     if (accessibleResult.error) throw accessibleResult.error;
     const accessible = accessibleResult.data ?? [];
