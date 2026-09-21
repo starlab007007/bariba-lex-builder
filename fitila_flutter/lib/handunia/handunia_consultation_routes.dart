@@ -13,6 +13,7 @@ import '../core/fitila_media.dart';
 import 'handunia_consultation_extended_data.dart';
 import 'handunia_consultation_ui.dart';
 import 'handunia_geo_trace_route.dart';
+import 'handunia_unified_map.dart';
 
 TextStyle _frauncesRoute({
   double size = 18,
@@ -769,8 +770,9 @@ class HanduniaLivingMapRoute extends StatefulWidget {
 }
 
 class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
+  final TextEditingController _query = TextEditingController();
   List<Map<String, dynamic>> _places = const [];
-  int _selectedIndex = 0;
+  String? _selectedId;
   bool _loading = true;
   String? _notice;
 
@@ -780,25 +782,27 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
     final initialPlaces = widget.initialPlaces;
     if (initialPlaces != null) {
       _places = List<Map<String, dynamic>>.from(initialPlaces);
-      _selectedIndex = 0;
+      _selectedId = _places.isEmpty ? null : _places.first['id']?.toString();
       _loading = false;
     } else {
       unawaited(_load());
     }
   }
 
+  @override
+  void dispose() {
+    _query.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
       final places = await HanduniaConsultationExtendedData.fetchLivingMap();
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _places = places;
-        _selectedIndex = places.isEmpty
-            ? 0
-            : _selectedIndex.clamp(0, places.length - 1);
+        _selectedId ??= places.isEmpty ? null : places.first['id']?.toString();
         _notice = null;
       });
     } catch (_) {
@@ -806,55 +810,58 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
         setState(() => _notice = 'En attente de réseau');
       }
     } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  Alignment _placeAlignment(int index) {
-    final located = <Map<String, dynamic>>[
-      for (final place in _places)
-        if (place['latitude'] is num && place['longitude'] is num) place,
-    ];
-    final place = _places[index];
-    final lat = (place['latitude'] as num?)?.toDouble();
-    final lng = (place['longitude'] as num?)?.toDouble();
-
-    if (lat != null && lng != null && located.isNotEmpty) {
-      final lats = located
-          .map((item) => (item['latitude'] as num).toDouble())
-          .toList(growable: false);
-      final lngs = located
-          .map((item) => (item['longitude'] as num).toDouble())
-          .toList(growable: false);
-      final minLat = lats.reduce(math.min);
-      final maxLat = lats.reduce(math.max);
-      final minLng = lngs.reduce(math.min);
-      final maxLng = lngs.reduce(math.max);
-      final latSpan = math.max(maxLat - minLat, 0.00001);
-      final lngSpan = math.max(maxLng - minLng, 0.00001);
-      final x = ((lng - minLng) / lngSpan).clamp(0.0, 1.0).toDouble();
-      final y =
-          (1 - (lat - minLat) / latSpan).clamp(0.0, 1.0).toDouble();
-      return Alignment(x * 1.4 - .7, y * 1.36 - .68);
+  List<Map<String, dynamic>> get _visiblePlaces {
+    final query = _query.text.trim().toLowerCase();
+    if (query.isEmpty) return _places;
+    bool matches(Map<String, dynamic> place) {
+      for (final key in <String>[
+        'name',
+        'department',
+        'commune',
+        'arrondissement',
+        'village_quartier',
+      ]) {
+        if ((place[key]?.toString() ?? '').toLowerCase().contains(query)) {
+          return true;
+        }
+      }
+      return false;
     }
 
-    const fallback = <Alignment>[
-      Alignment(-.66, -.68),
-      Alignment(.54, -.64),
-      Alignment(-.14, -.10),
-      Alignment(.62, .08),
-      Alignment(-.56, .56),
-      Alignment(.16, .66),
-      Alignment(.60, .58),
-    ];
-    return fallback[index % fallback.length];
+    return _places.where(matches).toList(growable: false);
+  }
+
+  Map<String, dynamic>? get _selectedPlace {
+    final id = _selectedId;
+    if (id == null) return null;
+    for (final place in _places) {
+      if (place['id']?.toString() == id) return place;
+    }
+    return null;
+  }
+
+  bool _hasCoordinates(Map<String, dynamic> place) =>
+      place['latitude'] is num && place['longitude'] is num;
+
+  void _openPlace(Map<String, dynamic> place) {
+    final id = place['id']?.toString();
+    if (id == null || id.isEmpty) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => HanduniaPlaceRoute(lieuId: id),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final selected = _places.isEmpty ? null : _places[_selectedIndex];
+    final visible = _visiblePlaces;
+    final unlocated = visible.where((place) => !_hasCoordinates(place)).toList();
+    final selected = _selectedPlace;
     return Scaffold(
       backgroundColor: HanduniaTokens.nuit,
       body: SafeArea(
@@ -888,9 +895,53 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                 ),
               ],
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: TextField(
+                controller: _query,
+                onChanged: (_) => setState(() {}),
+                style: _karlaRoute(),
+                decoration: InputDecoration(
+                  hintText:
+                      'Rechercher lieu, département, commune, arrondissement…',
+                  hintStyle: _karlaRoute(
+                    size: 12.5,
+                    color: HanduniaTokens.cendre,
+                  ),
+                  prefixIcon: const Icon(Icons.search_outlined),
+                  suffixIcon: _query.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Effacer',
+                          onPressed: () {
+                            _query.clear();
+                            setState(() {});
+                          },
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                  filled: true,
+                  fillColor: HanduniaTokens.nuitPortee,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide:
+                        const BorderSide(color: HanduniaTokens.bordureForte),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide:
+                        const BorderSide(color: HanduniaTokens.bordureForte),
+                  ),
+                ),
+              ),
+            ),
+            if (selected != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: HanduniaTerritoryPath(place: selected, compact: true),
+              ),
             if (_notice != null)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
                 child: Text(
                   _notice!,
                   textAlign: TextAlign.center,
@@ -901,18 +952,6 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                   ),
                 ),
               ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 2, 18, 6),
-              child: Text(
-                'Touchez un lieu pour ouvrir sa mémoire.',
-                textAlign: TextAlign.center,
-                style: _karlaRoute(
-                  size: 13,
-                  color: HanduniaTokens.cendre,
-                  weight: FontWeight.w600,
-                ),
-              ),
-            ),
             Expanded(
               child: _loading && _places.isEmpty
                   ? const _ConsultationState(
@@ -920,192 +959,60 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                       color: HanduniaTokens.braise,
                       loading: true,
                     )
-                  : _places.isEmpty
-                  ? const _ConsultationState(
+                  : visible.isEmpty
+                  ? _ConsultationState(
                       title: 'Aucun lieu',
-                      subtitle: 'Une zone d’ombre',
+                      subtitle: _query.text.trim().isEmpty
+                          ? 'Une zone d’ombre'
+                          : 'Aucun lieu ne correspond à cette recherche.',
                     )
-                  : Stack(
+                  : Column(
                       children: [
-                        for (var i = 0; i < _places.length; i++)
-                          _MapPlaceNode(
-                            alignment: _placeAlignment(i),
-                            place: _places[i],
-                            selected: i == _selectedIndex,
-                            onTap: () {
-                              setState(() => _selectedIndex = i);
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => HanduniaPlaceRoute(
-                                    lieuId: _places[i]['id'].toString(),
+                        Expanded(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) =>
+                                HanduniaUnifiedMap(
+                                  places: visible,
+                                  selectedPlaceId: _selectedId,
+                                  height: constraints.maxHeight,
+                                  onSelected: (place) => setState(
+                                    () => _selectedId =
+                                        place['id']?.toString(),
                                   ),
+                                  onOpen: _openPlace,
                                 ),
-                              );
-                            },
+                          ),
+                        ),
+                        if (unlocated.isNotEmpty)
+                          SizedBox(
+                            height: 58,
+                            child: ListView.separated(
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 7, 16, 7),
+                              scrollDirection: Axis.horizontal,
+                              itemCount: unlocated.length,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(width: 7),
+                              itemBuilder: (context, index) {
+                                final place = unlocated[index];
+                                return ActionChip(
+                                  avatar: const Icon(
+                                    Icons.location_off_outlined,
+                                    size: 17,
+                                  ),
+                                  label: Text(
+                                    place['name']?.toString() ??
+                                        'Lieu à positionner',
+                                  ),
+                                  onPressed: () => _openPlace(place),
+                                );
+                              },
+                            ),
                           ),
                       ],
                     ),
             ),
-            if (selected != null)
-              Container(
-                margin: const EdgeInsets.fromLTRB(16, 8, 16, 18),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: HanduniaTokens.nuitPortee,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: HanduniaTokens.bordureForte),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        selected['name']?.toString() ?? '',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: _frauncesRoute(size: 19),
-                      ),
-                    ),
-                    Text(
-                      '${selected['voice_count'] ?? 0} voix',
-                      style: _frauncesRoute(
-                        size: 16,
-                        color: HanduniaTokens.braise,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    SizedBox(
-                      width: 44,
-                      height: 44,
-                      child: IconButton(
-                        tooltip: 'Ouvrir le lieu',
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => HanduniaPlaceRoute(
-                              lieuId: selected['id'].toString(),
-                            ),
-                          ),
-                        ),
-                        icon: const Icon(Icons.arrow_forward_outlined),
-                        color: HanduniaTokens.braise,
-                        style: IconButton.styleFrom(
-                          backgroundColor: HanduniaTokens.nuit,
-                          foregroundColor: HanduniaTokens.braise,
-                          side: const BorderSide(
-                            color: HanduniaTokens.bordureForte,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(13),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MapPlaceNode extends StatelessWidget {
-  const _MapPlaceNode({
-    required this.alignment,
-    required this.place,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final Alignment alignment;
-  final Map<String, dynamic> place;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final voices = (place['voice_count'] as num?)?.toInt() ?? 0;
-    final name = place['name']?.toString().trim() ?? '';
-    return Align(
-      alignment: alignment,
-      child: Semantics(
-        button: true,
-        label: '$name, $voices voix',
-        child: GestureDetector(
-          onTap: onTap,
-          child: SizedBox(
-            width: 148,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 76,
-                  height: 76,
-                  alignment: Alignment.center,
-                  decoration: selected
-                      ? BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: HanduniaTokens.ivoire,
-                            width: 1.6,
-                          ),
-                        )
-                      : null,
-                  child: HaloDensite(
-                    valeur: (voices / 12).clamp(0.0, 1.0),
-                    size: 66,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  constraints: const BoxConstraints(minHeight: 34),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: HanduniaTokens.nuitPortee.withValues(alpha: .96),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: selected
-                          ? HanduniaTokens.braise
-                          : HanduniaTokens.bordureForte,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        name.isEmpty ? 'Lieu sans nom' : name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: _karlaRoute(
-                          size: 13,
-                          color: HanduniaTokens.ivoire,
-                          weight: FontWeight.w700,
-                          height: 1.15,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '$voices voix',
-                        textAlign: TextAlign.center,
-                        style: _karlaRoute(
-                          size: 12.5,
-                          color: voices > 0
-                              ? HanduniaTokens.braise
-                              : HanduniaTokens.cendre,
-                          weight: FontWeight.w700,
-                          height: 1.1,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );
