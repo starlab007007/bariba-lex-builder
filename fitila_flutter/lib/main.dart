@@ -2322,6 +2322,21 @@ class _ImmersiveFeedDeckState extends State<_ImmersiveFeedDeck> {
                 scrollDirection: Axis.horizontal,
                 children: [
                   _CategoryFilterChip(
+                    emoji: _feedCategoryStyles[FitilaFeedCategory.handuniaWasa]!.emoji,
+                    label: _feedCategoryStyles[FitilaFeedCategory.handuniaWasa]!.label,
+                    selected: false,
+                    colorA: _feedCategoryStyles[FitilaFeedCategory.handuniaWasa]!.colorA,
+                    colorB: _feedCategoryStyles[FitilaFeedCategory.handuniaWasa]!.colorB,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const HanduniaWasaScreen(
+                          entryMode: HanduniaWasaEntryMode.feed,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _CategoryFilterChip(
                     emoji: '✨',
                     label: 'Pour toi',
                     selected: _filter == null,
@@ -2330,7 +2345,8 @@ class _ImmersiveFeedDeckState extends State<_ImmersiveFeedDeck> {
                     onTap: () => setState(() => _filter = null),
                   ),
                   for (final category in FitilaFeedCategory.values)
-                    if (category != FitilaFeedCategory.general)
+                    if (category != FitilaFeedCategory.general &&
+                        category != FitilaFeedCategory.handuniaWasa)
                       Padding(
                         padding: const EdgeInsets.only(left: 8),
                         child: _CategoryFilterChip(
@@ -2339,19 +2355,7 @@ class _ImmersiveFeedDeckState extends State<_ImmersiveFeedDeck> {
                           selected: _filter == category,
                           colorA: _feedCategoryStyles[category]!.colorA,
                           colorB: _feedCategoryStyles[category]!.colorB,
-                          onTap: () {
-                            if (category == FitilaFeedCategory.handuniaWasa) {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const HanduniaWasaScreen(
-                                    entryMode: HanduniaWasaEntryMode.feed,
-                                  ),
-                                ),
-                              );
-                              return;
-                            }
-                            setState(() => _filter = category);
-                          },
+                          onTap: () => setState(() => _filter = category),
                         ),
                       ),
                 ],
@@ -25963,7 +25967,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     super.initState();
     _step = switch (widget.entryMode) {
       HanduniaWasaEntryMode.feed => 5,
-      HanduniaWasaEntryMode.publish => 3,
+      HanduniaWasaEntryMode.publish => 1,
       HanduniaWasaEntryMode.explore => 0,
     };
     unawaited(_bootstrapConsultation());
@@ -26923,7 +26927,9 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           title: 'Lieux vivants',
           subtitle: '${_lieux.length} lieux tissés par la communauté',
           leading: const Text('🌌', style: TextStyle(fontSize: 15)),
-          onBack: () => setState(() => _step = 0),
+          onBack: widget.entryMode == HanduniaWasaEntryMode.publish
+              ? () => Navigator.maybePop(context)
+              : () => setState(() => _step = 0),
           child: _buildLieuxStep(),
         );
       case 2:
@@ -26937,14 +26943,10 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       case 3:
         return ReferenceCreationShell(
           dark: true,
-          title: widget.entryMode == HanduniaWasaEntryMode.publish
-              ? 'Publier un souvenir'
-              : 'Tisser un souvenir',
+          title: 'Tisser un souvenir',
           subtitle: 'Il rejoint Handunia Wasa',
           leading: const Text('🧵', style: TextStyle(fontSize: 15)),
-          onBack: widget.entryMode == HanduniaWasaEntryMode.publish
-              ? () => Navigator.maybePop(context)
-              : () => setState(() => _step = 2),
+          onBack: () => setState(() => _step = 2),
           child: _buildWeaveStep(),
         );
       case 4:
@@ -27333,89 +27335,6 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     );
   }
 
-  Widget _buildPublishLieuSelector() {
-    if (_loadingLieux) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        child: Center(
-          child: CircularProgressIndicator(
-            color: FitilaReferenceUi.wasaGlow,
-          ),
-        ),
-      );
-    }
-    final selectedId = _selectedLieu?['id']?.toString();
-    final hasSelected = selectedId != null &&
-        _lieux.any((lieu) => lieu['id']?.toString() == selectedId);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .07),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: .14)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'LIEU DU SOUVENIR',
-            style: TextStyle(
-              color: HanduniaTokens.braise,
-              fontFamily: 'Karla',
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: .8,
-            ),
-          ),
-          const SizedBox(height: 6),
-          DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: hasSelected ? selectedId : null,
-              isExpanded: true,
-              dropdownColor: HanduniaTokens.nuitPortee,
-              iconEnabledColor: HanduniaTokens.braise,
-              hint: const Text(
-                'Choisir le lieu du souvenir',
-                style: TextStyle(
-                  color: HanduniaTokens.cendre,
-                  fontFamily: 'Karla',
-                  fontSize: 14,
-                ),
-              ),
-              items: [
-                for (final lieu in _lieux)
-                  DropdownMenuItem<String>(
-                    value: lieu['id']?.toString(),
-                    child: Text(
-                      '${lieu['icon']?.toString() ?? '📍'}  ${lieu['name']?.toString() ?? 'Lieu'}',
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: HanduniaTokens.ivoire,
-                        fontFamily: 'Karla',
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-              ],
-              onChanged: (id) {
-                if (id == null) {
-                  return;
-                }
-                final lieu = _lieux.firstWhere(
-                  (item) => item['id']?.toString() == id,
-                );
-                setState(() {
-                  _selectedLieu = Map<String, dynamic>.from(lieu);
-                  _aiAssisted = false;
-                });
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildPublishSuccessStep() {
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 18),
@@ -27461,7 +27380,12 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         ReferenceGhostDarkButton(
           label: 'Publier un autre souvenir',
           icon: Icons.add_outlined,
-          onPressed: () => setState(() => _step = 3),
+          onPressed: () {
+            setState(() {
+              _selectedLieu = null;
+              _step = 1;
+            });
+          },
         ),
       ],
     );
@@ -27474,8 +27398,6 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        _buildPublishLieuSelector(),
-        const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
