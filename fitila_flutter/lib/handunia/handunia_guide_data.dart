@@ -318,7 +318,9 @@ class HanduniaGuideData {
       return answer;
     } catch (_) {
       final raw = preferences.getString(key);
-      if (raw == null || raw.isEmpty) rethrow;
+      if (raw == null || raw.isEmpty) {
+        rethrow;
+      }
       final decoded = jsonDecode(raw);
       if (decoded is! Map) {\n        rethrow;\n      }
       return <String, dynamic>{
