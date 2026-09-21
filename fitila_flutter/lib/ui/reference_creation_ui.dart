@@ -55,6 +55,82 @@ abstract final class FitilaReferenceUi {
 /// Barre de navigation FITILA partagée entre le shell principal et les
 /// expériences immersives (dont Handunia Wasa). Un seul composant garantit
 /// la même hauteur, les mêmes icônes et les mêmes états partout.
+
+/// Pont de navigation utilisé par les routes Handunia poussées au-dessus du
+/// shell principal. Les callbacks sont capturés avant la fermeture de la pile
+/// Handunia afin que la barre FITILA reste fonctionnelle à toute profondeur.
+abstract final class FitilaBridgedNavigation {
+  static const handuniaRouteName = '/fitila/handunia';
+
+  static Object? _owner;
+  static ValueChanged<int>? _onSelected;
+  static VoidCallback? _onCreate;
+
+  static bool get available => _onSelected != null || _onCreate != null;
+
+  static void attach({
+    required Object owner,
+    ValueChanged<int>? onSelected,
+    VoidCallback? onCreate,
+  }) {
+    _owner = owner;
+    _onSelected = onSelected;
+    _onCreate = onCreate;
+  }
+
+  static void detach(Object owner) {
+    if (!identical(_owner, owner)) return;
+    _owner = null;
+    _onSelected = null;
+    _onCreate = null;
+  }
+
+  static ValueChanged<int>? get onSelected => _onSelected;
+  static VoidCallback? get onCreate => _onCreate;
+}
+
+class FitilaBridgedBottomNav extends StatelessWidget {
+  const FitilaBridgedBottomNav({
+    super.key,
+    this.selectedIndex = 0,
+  });
+
+  final int selectedIndex;
+
+  void _closeHanduniaStack(BuildContext context, VoidCallback action) {
+    final navigator = Navigator.of(context);
+    navigator.popUntil(
+      (route) =>
+          route.settings.name == FitilaBridgedNavigation.handuniaRouteName ||
+          route.isFirst,
+    );
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => action());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!FitilaBridgedNavigation.available) {
+      return const SizedBox.shrink();
+    }
+    return FitilaPremiumBottomNav(
+      selectedIndex: selectedIndex,
+      onSelected: (index) {
+        final action = FitilaBridgedNavigation.onSelected;
+        if (action == null) return;
+        _closeHanduniaStack(context, () => action(index));
+      },
+      onCreate: () {
+        final action = FitilaBridgedNavigation.onCreate;
+        if (action == null) return;
+        _closeHanduniaStack(context, action);
+      },
+    );
+  }
+}
+
 class FitilaPremiumBottomNav extends StatelessWidget {
   const FitilaPremiumBottomNav({
     super.key,
