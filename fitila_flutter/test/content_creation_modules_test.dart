@@ -307,7 +307,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
-    expect(find.text('Tisser un souvenir'), findsOneWidget);
+    expect(find.text('Lieux vivants'), findsOneWidget);
+    expect(find.text('Explorez les mémoires du Bénin'), findsWidgets);
     expect(find.text('Fil Handunia Wasa'), findsNothing);
     expect(tester.takeException(), isNull);
   });
