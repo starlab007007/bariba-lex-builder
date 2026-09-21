@@ -29,6 +29,7 @@ import 'handunia/handunia_consultation_extended_data.dart';
 import 'handunia/handunia_consultation_model.dart';
 import 'handunia/handunia_consultation_routes.dart';
 import 'handunia/handunia_creation_ai_route.dart';
+import 'handunia/handunia_unified_map.dart';
 import 'handunia/handunia_consultation_ui.dart';
 import 'ui/reference_creation_ui.dart';
 
@@ -25891,6 +25892,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   final _newLieuName = TextEditingController();
   final _newLieuIcon = TextEditingController(text: '📍');
   final _newLieuDescription = TextEditingController();
+  Map<String, dynamic>? _newLieuGeo;
   bool _suggestingLieu = false;
   bool _creatingLieu = false;
 
@@ -26345,6 +26347,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     _newLieuName.clear();
     _newLieuIcon.text = '📍';
     _newLieuDescription.clear();
+    _newLieuGeo = null;
     setState(() => _step = 4);
   }
 
