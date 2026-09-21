@@ -11,6 +11,31 @@ import 'handunia_map_data.dart';
 
 const String handuniaMapStyleUrl =
     'https://tiles.openfreemap.org/styles/liberty';
+const String handuniaSatelliteMapStyle = '''
+{
+  "version": 8,
+  "name": "FITILA Satellite",
+  "sources": {
+    "satellite": {
+      "type": "raster",
+      "tiles": [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+      ],
+      "tileSize": 256,
+      "attribution": "Tiles © Esri"
+    }
+  },
+  "layers": [
+    {
+      "id": "satellite",
+      "type": "raster",
+      "source": "satellite",
+      "minzoom": 0,
+      "maxzoom": 20
+    }
+  ]
+}
+''';
 const LatLng handuniaBeninCenter = LatLng(9.3077, 2.3158);
 
 bool get handuniaNativeMapAvailable {
@@ -32,11 +57,13 @@ String _geoText(Map<String, dynamic> place, String key) =>
 List<String> handuniaTerritorySegments(Map<String, dynamic>? place) {
   if (place == null) return const <String>['Bénin'];
   final values = <String>[
-    'Bénin',
-    _geoText(place, 'department'),
-    _geoText(place, 'commune'),
-    _geoText(place, 'arrondissement'),
     _geoText(place, 'village_quartier'),
+    _geoText(place, 'locality'),
+    _geoText(place, 'arrondissement'),
+    _geoText(place, 'commune'),
+    _geoText(place, 'city'),
+    _geoText(place, 'department'),
+    'Bénin',
   ];
   final result = <String>[];
   for (final value in values) {
@@ -150,7 +177,12 @@ class HanduniaUnifiedMap extends StatefulWidget {
 class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
   MapLibreMapController? _controller;
   bool _styleLoaded = false;
+  bool _satellite = false;
   String? _selectedId;
+  String? _activeTerritory;
+
+  String get _activeStyle =>
+      _satellite ? handuniaSatelliteMapStyle : handuniaMapStyleUrl;
 
   @override
   void initState() {
@@ -298,11 +330,154 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
   double _zoomFor(Map<String, dynamic> place) {
     final hint = _geoDouble(place['zoom_hint']);
     if (hint != null) return hint.clamp(5.0, 18.0).toDouble();
-    if (_geoText(place, 'village_quartier').isNotEmpty) return 14.2;
-    if (_geoText(place, 'arrondissement').isNotEmpty) return 12.2;
-    if (_geoText(place, 'commune').isNotEmpty) return 10.2;
+    if (_geoText(place, 'village_quartier').isNotEmpty) return 16.0;
+    if (_geoText(place, 'locality').isNotEmpty) return 15.2;
+    if (_geoText(place, 'arrondissement').isNotEmpty) return 13.0;
+    if (_geoText(place, 'commune').isNotEmpty) return 10.8;
+    if (_geoText(place, 'city').isNotEmpty) return 9.8;
     if (_geoText(place, 'department').isNotEmpty) return 8.0;
-    return 12.8;
+    return 14.8;
+  }
+
+  List<({String kind, String label, double zoom})> _territoryLevels(
+    Map<String, dynamic> place,
+  ) {
+    final candidates = <({String kind, String label, double zoom})>[
+      if (_geoText(place, 'village_quartier').isNotEmpty)
+        (
+          kind: 'Quartier / village',
+          label: _geoText(place, 'village_quartier'),
+          zoom: 16.0,
+        ),
+      if (_geoText(place, 'locality').isNotEmpty)
+        (
+          kind: 'Localité',
+          label: _geoText(place, 'locality'),
+          zoom: 15.0,
+        ),
+      if (_geoText(place, 'arrondissement').isNotEmpty)
+        (
+          kind: 'Arrondissement',
+          label: _geoText(place, 'arrondissement'),
+          zoom: 13.0,
+        ),
+      if (_geoText(place, 'commune').isNotEmpty)
+        (
+          kind: 'Commune',
+          label: _geoText(place, 'commune'),
+          zoom: 10.8,
+        ),
+      if (_geoText(place, 'city').isNotEmpty)
+        (
+          kind: 'Ville',
+          label: _geoText(place, 'city'),
+          zoom: 9.8,
+        ),
+      if (_geoText(place, 'department').isNotEmpty)
+        (
+          kind: 'Département',
+          label: _geoText(place, 'department'),
+          zoom: 8.0,
+        ),
+      (kind: 'Pays', label: 'Bénin', zoom: 6.2),
+    ];
+    final result = <({String kind, String label, double zoom})>[];
+    final seen = <String>{};
+    for (final item in candidates) {
+      final key = item.label.trim().toLowerCase();
+      if (key.isEmpty || !seen.add(key)) continue;
+      result.add(item);
+    }
+    return result;
+  }
+
+  Future<void> _focusTerritory(
+    Map<String, dynamic> place,
+    ({String kind, String label, double zoom}) level,
+  ) async {
+    setState(() => _activeTerritory = level.label);
+    if (level.label.toLowerCase() == 'bénin') {
+      await _focusBenin();
+      return;
+    }
+    await _focus(place, zoom: level.zoom);
+  }
+
+  void _toggleSatellite() {
+    setState(() {
+      _satellite = !_satellite;
+      _styleLoaded = false;
+      _controller = null;
+    });
+  }
+
+  Widget _territoryZoomRail(Map<String, dynamic> place) {
+    final levels = _territoryLevels(place);
+    return Material(
+      color: HanduniaTokens.nuitPortee.withValues(alpha: .96),
+      borderRadius: BorderRadius.circular(16),
+      elevation: 1,
+      child: SizedBox(
+        height: 46,
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
+          scrollDirection: Axis.horizontal,
+          itemCount: levels.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 6),
+          itemBuilder: (context, index) {
+            final level = levels[index];
+            final active =
+                (_activeTerritory ?? levels.first.label).toLowerCase() ==
+                level.label.toLowerCase();
+            return InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: () => _focusTerritory(place, level),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: active
+                      ? HanduniaTokens.braise.withValues(alpha: .18)
+                      : HanduniaTokens.nuit,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: active
+                        ? HanduniaTokens.braise
+                        : HanduniaTokens.bordureForte,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      active
+                          ? Icons.location_on_rounded
+                          : Icons.zoom_out_map_rounded,
+                      size: 14,
+                      color: active
+                          ? HanduniaTokens.braise
+                          : HanduniaTokens.cendre,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      '${level.kind} · ${level.label}',
+                      style: TextStyle(
+                        fontFamily: 'Karla',
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        color: active
+                            ? HanduniaTokens.braise
+                            : HanduniaTokens.ivoire,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _focus(Map<String, dynamic> place, {double? zoom}) async {
@@ -336,7 +511,11 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
   }
 
   Future<void> _select(Map<String, dynamic> place) async {
-    setState(() => _selectedId = place['id']?.toString());
+    final levels = _territoryLevels(place);
+    setState(() {
+      _selectedId = place['id']?.toString();
+      _activeTerritory = levels.isEmpty ? null : levels.first.label;
+    });
     await _renderPlaces();
     await _focus(place);
     widget.onSelected?.call(place);
@@ -392,7 +571,8 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
               Positioned.fill(
                 child: handuniaNativeMapAvailable
                     ? MapLibreMap(
-                        styleString: handuniaMapStyleUrl,
+                        key: ValueKey(_satellite),
+                        styleString: _activeStyle,
                         initialCameraPosition: CameraPosition(
                           target: handuniaBeninCenter,
                           zoom: widget.initialZoom,
@@ -420,58 +600,93 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
               if (widget.showChrome)
                 Positioned(
                   left: 10,
-                  top: 10,
-                  child: Material(
-                    color: HanduniaTokens.nuitPortee.withValues(alpha: .95),
-                    borderRadius: BorderRadius.circular(999),
-                    elevation: 1,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 11,
-                        vertical: 8,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.map_outlined,
-                            size: 17,
-                            color: HanduniaTokens.braise,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            widget.routeLabel?.trim().isNotEmpty == true
-                                ? widget.routeLabel!
-                                : '$locatedCount lieu${locatedCount > 1 ? 'x' : ''} sur la carte',
-                            style: const TextStyle(
-                              fontFamily: 'Karla',
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w800,
-                              color: HanduniaTokens.ivoire,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              if (widget.showChrome)
-                Positioned(
                   right: 10,
                   top: 10,
-                  child: Material(
-                    color: HanduniaTokens.nuitPortee.withValues(alpha: .96),
-                    shape: const CircleBorder(),
-                    elevation: 1,
-                    child: IconButton(
-                      tooltip: 'Voir tout le Bénin',
-                      onPressed: _focusBenin,
-                      icon: const Icon(Icons.public_rounded),
-                      color: HanduniaTokens.braise,
-                    ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Material(
+                          color: HanduniaTokens.nuitPortee.withValues(alpha: .95),
+                          borderRadius: BorderRadius.circular(999),
+                          elevation: 1,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 11,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _satellite
+                                      ? Icons.satellite_alt_rounded
+                                      : Icons.map_outlined,
+                                  size: 17,
+                                  color: HanduniaTokens.braise,
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    widget.routeLabel?.trim().isNotEmpty == true
+                                        ? widget.routeLabel!
+                                        : '$locatedCount lieu${locatedCount > 1 ? 'x' : ''} · ${_satellite ? 'Satellite' : 'Plan'}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontFamily: 'Karla',
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: HanduniaTokens.ivoire,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Material(
+                        color: HanduniaTokens.nuitPortee.withValues(alpha: .96),
+                        shape: const CircleBorder(),
+                        elevation: 1,
+                        child: IconButton(
+                          tooltip: _satellite
+                              ? 'Afficher le plan'
+                              : 'Afficher le satellite',
+                          onPressed: _toggleSatellite,
+                          icon: Icon(
+                            _satellite
+                                ? Icons.layers_rounded
+                                : Icons.satellite_alt_rounded,
+                          ),
+                          color: HanduniaTokens.braise,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Material(
+                        color: HanduniaTokens.nuitPortee.withValues(alpha: .96),
+                        shape: const CircleBorder(),
+                        elevation: 1,
+                        child: IconButton(
+                          tooltip: 'Voir tout le Bénin',
+                          onPressed: _focusBenin,
+                          icon: const Icon(Icons.public_rounded),
+                          color: HanduniaTokens.braise,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+              if (widget.showChrome && selected != null)
+                Positioned(
+                  left: 10,
+                  right: 10,
+                  top: 62,
+                  child: _territoryZoomRail(selected),
+                ),
               if (widget.showChrome &&
+                  selected == null &&
                   widget.immersive &&
                   widget.places.isNotEmpty)
                 Positioned(
@@ -573,7 +788,9 @@ class _SelectedPlaceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final voices = (place['voice_count'] as num?)?.toInt() ?? 0;
     final memories = (place['memory_count'] as num?)?.toInt() ?? 0;
-    final territory = handuniaTerritorySegments(place).skip(1).join(' › ');
+    final territory = handuniaTerritorySegments(place)
+        .where((segment) => segment.toLowerCase() != 'bénin')
+        .join(' › ');
     final description = place['description']?.toString().trim() ?? '';
     return Material(
       color: HanduniaTokens.nuitPortee.withValues(alpha: .98),
@@ -711,6 +928,7 @@ class _HanduniaLocationPickerRouteState
   final TextEditingController _query = TextEditingController();
   MapLibreMapController? _controller;
   bool _styleLoaded = false;
+  bool _satellite = false;
   bool _searching = false;
   bool _resolving = false;
   String? _notice;
@@ -771,7 +989,7 @@ class _HanduniaLocationPickerRouteState
     if (_controller != null && lat != null && lon != null) {
       await _controller!.animateCamera(
         CameraUpdate.newCameraPosition(
-          CameraPosition(target: LatLng(lat, lon), zoom: 14),
+          CameraPosition(target: LatLng(lat, lon), zoom: 16.0),
         ),
       );
     }
@@ -834,7 +1052,10 @@ class _HanduniaLocationPickerRouteState
             Positioned.fill(
               child: handuniaNativeMapAvailable
                   ? MapLibreMap(
-                      styleString: handuniaMapStyleUrl,
+                      key: ValueKey(_satellite),
+                      styleString: _satellite
+                          ? handuniaSatelliteMapStyle
+                          : handuniaMapStyleUrl,
                       initialCameraPosition: const CameraPosition(
                         target: handuniaBeninCenter,
                         zoom: 6.4,
@@ -890,6 +1111,24 @@ class _HanduniaLocationPickerRouteState
                                 color: HanduniaTokens.ivoire,
                               ),
                             ),
+                          ),
+                          IconButton(
+                            tooltip: _satellite
+                                ? 'Afficher le plan'
+                                : 'Afficher le satellite',
+                            onPressed: () {
+                              setState(() {
+                                _satellite = !_satellite;
+                                _styleLoaded = false;
+                                _controller = null;
+                              });
+                            },
+                            icon: Icon(
+                              _satellite
+                                  ? Icons.layers_rounded
+                                  : Icons.satellite_alt_rounded,
+                            ),
+                            color: HanduniaTokens.braise,
                           ),
                         ],
                       ),
