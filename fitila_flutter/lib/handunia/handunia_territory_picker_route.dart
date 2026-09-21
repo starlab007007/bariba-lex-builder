@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../ui/reference_creation_ui.dart';
 import 'handunia_consultation_ui.dart';
 import 'handunia_map_data.dart';
 import 'handunia_territory_repository.dart';
@@ -189,6 +190,7 @@ class _HanduniaTerritoryPickerRouteState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: HanduniaTokens.nuit,
+      bottomNavigationBar: const FitilaBridgedBottomNav(selectedIndex: 0),
       body: SafeArea(
         child: Column(
           children: [
