@@ -438,7 +438,8 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                 bottom: 10,
                 child: _SelectedPlaceCard(
                   place: selected,
-                  onOpen: widget.onOpen == null
+                  onOpen:
+                      widget.onOpen == null || selected['can_open'] == false
                       ? null
                       : () => widget.onOpen!(selected),
                 ),
