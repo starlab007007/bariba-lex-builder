@@ -63,9 +63,13 @@ class HanduniaGuideData {
       return places;
     } catch (_) {
       final raw = preferences.getString(_placesCacheKey);
-      if (raw == null || raw.isEmpty) {\n        rethrow;\n      }
+      if (raw == null || raw.isEmpty) {
+        rethrow;
+      }
       final decoded = jsonDecode(raw);
-      if (decoded is! List) {\n        rethrow;\n      }
+      if (decoded is! List) {
+        rethrow;
+      }
       return decoded
           .whereType<Map>()
           .map((item) => Map<String, dynamic>.from(item))
@@ -322,7 +326,9 @@ class HanduniaGuideData {
         rethrow;
       }
       final decoded = jsonDecode(raw);
-      if (decoded is! Map) {\n        rethrow;\n      }
+      if (decoded is! Map) {
+        rethrow;
+      }
       return <String, dynamic>{
         ...Map<String, dynamic>.from(decoded),
         'offline': true,
