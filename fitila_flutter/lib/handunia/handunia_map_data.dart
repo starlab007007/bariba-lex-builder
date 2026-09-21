@@ -68,6 +68,7 @@ class HanduniaMapData {
     required double fromLongitude,
     required double toLatitude,
     required double toLongitude,
+    String travelMode = 'driving',
   }) async {
     final response = await FitilaBackend.client.functions.invoke(
       'handunia-map-service',
@@ -77,6 +78,7 @@ class HanduniaMapData {
         'from_longitude': fromLongitude,
         'to_latitude': toLatitude,
         'to_longitude': toLongitude,
+        'travel_mode': travelMode,
       },
     );
     final data = _map(response.data);
@@ -123,8 +125,50 @@ class HanduniaMapData {
               (route['places'] as List).whereType<Map>(),
             )
           : const <Map<String, dynamic>>[],
-      'provider': data['provider']?.toString() ?? 'osrm-osm',
+      'provider': data['provider']?.toString() ?? 'valhalla-osm',
+      'travel_mode': route['travel_mode']?.toString() ?? travelMode,
+      'route_profile': route['route_profile']?.toString() ?? travelMode,
+      'advisory': route['advisory']?.toString() ?? '',
+      'road_matched': route['road_matched'] != false,
     };
+  }
+
+  static Future<Map<String, dynamic>> routeWithCache({
+    required double fromLatitude,
+    required double fromLongitude,
+    required double toLatitude,
+    required double toLongitude,
+    required String travelMode,
+  }) async {
+    final preferences = await SharedPreferences.getInstance();
+    final cacheKey = [
+      'handunia_route_v1',
+      travelMode,
+      fromLatitude.toStringAsFixed(4),
+      fromLongitude.toStringAsFixed(4),
+      toLatitude.toStringAsFixed(4),
+      toLongitude.toStringAsFixed(4),
+    ].join('_');
+    try {
+      final value = await route(
+        fromLatitude: fromLatitude,
+        fromLongitude: fromLongitude,
+        toLatitude: toLatitude,
+        toLongitude: toLongitude,
+        travelMode: travelMode,
+      );
+      await preferences.setString(cacheKey, jsonEncode(value));
+      return <String, dynamic>{...value, 'cached': false};
+    } catch (_) {
+      final raw = preferences.getString(cacheKey);
+      if (raw == null || raw.isEmpty) rethrow;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) rethrow;
+      return <String, dynamic>{
+        ...Map<String, dynamic>.from(decoded),
+        'cached': true,
+      };
+    }
   }
 
   static Future<bool> saveOrQueuePath({

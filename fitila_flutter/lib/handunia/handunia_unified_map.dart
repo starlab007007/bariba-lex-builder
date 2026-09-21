@@ -122,6 +122,8 @@ class HanduniaUnifiedMap extends StatefulWidget {
     this.height = 430,
     this.showSelectionCard = true,
     this.initialZoom = 6.4,
+    this.routePoints = const <Map<String, double>>[],
+    this.perspective = false,
   });
 
   final List<Map<String, dynamic>> places;
@@ -131,6 +133,8 @@ class HanduniaUnifiedMap extends StatefulWidget {
   final double height;
   final bool showSelectionCard;
   final double initialZoom;
+  final List<Map<String, double>> routePoints;
+  final bool perspective;
 
   @override
   State<HanduniaUnifiedMap> createState() => _HanduniaUnifiedMapState();
@@ -158,6 +162,9 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
             widget.selectedPlaceId != oldWidget.selectedPlaceId)) {
       unawaited(_renderPlaces());
     }
+    if (_styleLoaded && widget.routePoints != oldWidget.routePoints) {
+      unawaited(_renderRoute());
+    }
   }
 
   List<Map<String, dynamic>> get _located => widget.places
@@ -180,6 +187,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
   Future<void> _onStyleLoaded() async {
     _styleLoaded = true;
     await _renderPlaces();
+    await _renderRoute();
     final selected = _selected;
     if (selected != null) {
       await _focus(selected);
@@ -212,6 +220,29 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     if (options.isNotEmpty) {
       await controller.addCircles(options);
     }
+  }
+
+  Future<void> _renderRoute() async {
+    final controller = _controller;
+    if (controller == null || !_styleLoaded) return;
+    await controller.clearLines();
+    final geometry = widget.routePoints
+        .map((point) {
+          final lat = _geoDouble(point['latitude']);
+          final lon = _geoDouble(point['longitude']);
+          return lat == null || lon == null ? null : LatLng(lat, lon);
+        })
+        .whereType<LatLng>()
+        .toList(growable: false);
+    if (geometry.length < 2) return;
+    await controller.addLine(
+      LineOptions(
+        geometry: geometry,
+        lineColor: '#E6AA4A',
+        lineWidth: 5.5,
+        lineOpacity: .92,
+      ),
+    );
   }
 
   double _zoomFor(Map<String, dynamic> place) {
@@ -297,11 +328,13 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                       initialCameraPosition: CameraPosition(
                         target: handuniaBeninCenter,
                         zoom: widget.initialZoom,
+                        bearing: widget.perspective ? 24 : 0,
+                        tilt: widget.perspective ? 48 : 0,
                       ),
                       minMaxZoomPreference:
                           const MinMaxZoomPreference(5, 18),
-                      rotateGesturesEnabled: false,
-                      tiltGesturesEnabled: false,
+                      rotateGesturesEnabled: widget.perspective,
+                      tiltGesturesEnabled: widget.perspective,
                       onMapCreated: (controller) => _controller = controller,
                       onStyleLoadedCallback: _onStyleLoaded,
                       onMapClick: (point, latLng) => _onMapTap(latLng),
