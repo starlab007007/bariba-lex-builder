@@ -2072,6 +2072,15 @@ class FitilaBackend {
     required String name,
     required String icon,
     required String description,
+    required double latitude,
+    required double longitude,
+    String? department,
+    String? commune,
+    String? arrondissement,
+    String? villageQuartier,
+    String? osmId,
+    String? osmType,
+    String? geoProvider,
   }) async {
     final user = client.auth.currentUser;
     if (user == null) {
@@ -2080,6 +2089,12 @@ class FitilaBackend {
     final cleanName = name.trim();
     if (cleanName.isEmpty) {
       throw StateError('Le nom du lieu est requis.');
+    }
+    if (latitude < 6.10 ||
+        latitude > 12.55 ||
+        longitude < 0.70 ||
+        longitude > 3.95) {
+      throw StateError('La position doit se trouver au Bénin.');
     }
     final id = _slugifyHanduniaLieu(cleanName, user.id);
     try {
@@ -2091,6 +2106,18 @@ class FitilaBackend {
             'icon': icon.trim().isEmpty ? '📍' : icon.trim(),
             'description': description.trim(),
             'created_by': user.id,
+            'latitude': latitude,
+            'longitude': longitude,
+            'department': department?.trim(),
+            'commune': commune?.trim(),
+            'arrondissement': arrondissement?.trim(),
+            'village_quartier': villageQuartier?.trim(),
+            'osm_id': osmId?.trim(),
+            'osm_type': osmType?.trim(),
+            'geo_provider': geoProvider?.trim().isNotEmpty == true
+                ? geoProvider!.trim()
+                : 'photon-osm',
+            'geo_verified_at': DateTime.now().toUtc().toIso8601String(),
           })
           .select()
           .single();
