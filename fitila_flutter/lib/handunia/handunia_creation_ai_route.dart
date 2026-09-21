@@ -1548,6 +1548,19 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
     );
   }
 
+  void _selectGap(Map<String, dynamic> gap) {
+    final value = gap['value']?.toString().trim() ?? '';
+    if (value.isEmpty) {
+      return;
+    }
+    setState(() {
+      _stage = 1;
+      _question = 'Qui peut encore raconter $value à $_lieuName ?';
+      _questionReason = 'Période ou voix manquante sélectionnée';
+      _notice = null;
+    });
+  }
+
   Widget _gapsStage() {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
@@ -1574,24 +1587,14 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           )
         else
           for (final gap in _gaps.take(5)) ...[
-            _gapCard(gap),
+            _gapCard(gap, onTap: () => _selectGap(gap)),
             const SizedBox(height: 10),
           ],
         const SizedBox(height: 18),
         _primaryButton(
           label: 'ALLER CHERCHER CES VOIX',
           icon: Icons.record_voice_over_outlined,
-          onPressed: () {
-            setState(() {
-              _stage = 1;
-              if (_gaps.isNotEmpty) {
-                final value = _gaps.first['value']?.toString() ?? '';
-                _question =
-                    'Qui peut encore raconter $value à $_lieuName ?';
-                _questionReason = 'Lacune de mémoire détectée';
-              }
-            });
-          },
+          onPressed: _gaps.isEmpty ? null : () => _selectGap(_gaps.first),
         ),
       ],
     );
@@ -1720,37 +1723,50 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
     );
   }
 
-  Widget _gapCard(Map<String, dynamic> gap) {
+  Widget _gapCard(
+    Map<String, dynamic> gap, {
+    required VoidCallback onTap,
+  }) {
     final value = gap['value']?.toString() ?? 'Voix non documentée';
     final count = (gap['source_count'] as num?)?.toInt() ?? 0;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: HanduniaTokens.nuitPortee,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: HanduniaTokens.bordure),
-      ),
-      child: Row(
-        children: [
-          const HaloDensite(valeur: 0, size: 54),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value, style: _fraunces(size: 18)),
-                const SizedBox(height: 3),
-                Text(
-                  count == 0 ? 'aucune voix' : '$count voix seulement',
-                  style: _karla(
-                    size: 12.5,
-                    color: HanduniaTokens.cendre,
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: HanduniaTokens.nuitPortee,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: HanduniaTokens.bordure),
+        ),
+        child: Row(
+          children: [
+            const HaloDensite(valeur: 0, size: 54),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(value, style: _fraunces(size: 18)),
+                  const SizedBox(height: 3),
+                  Text(
+                    count == 0 ? 'aucune voix' : '$count voix seulement',
+                    style: _karla(
+                      size: 12.5,
+                      color: HanduniaTokens.cendre,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 18,
+              color: HanduniaTokens.braise,
+            ),
+          ],
+        ),
       ),
     );
   }
