@@ -40,7 +40,7 @@ void main() {
     ),
     'Handunia Wasa': (
       screen: () => const HanduniaWasaScreen(),
-      anchor: 'Le fil',
+      anchor: 'Fil Handunia Wasa',
     ),
   };
 
@@ -244,7 +244,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('Le fil'), findsOneWidget);
+    expect(find.text('Fil Handunia Wasa'), findsOneWidget);
     expect(find.text('Autour de moi'), findsOneWidget);
     expect(find.text('Ma lignée'), findsOneWidget);
     expect(find.text('Tout'), findsOneWidget);
@@ -284,12 +284,12 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
-    expect(find.text('Le fil'), findsOneWidget);
+    expect(find.text('Fil Handunia Wasa'), findsOneWidget);
     expect(find.byType(ChoiceChip), findsNWidgets(3));
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Handunia opens from the creation hub into consultation', (
+  testWidgets('Handunia opens from the creation hub into publish flow', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -307,8 +307,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
-    expect(find.text('Le fil'), findsOneWidget);
-    expect(find.text('Autour de moi'), findsOneWidget);
+    expect(find.text('Tisser un souvenir'), findsOneWidget);
+    expect(find.text('Fil Handunia Wasa'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -323,7 +323,7 @@ void main() {
     await tester.pumpWidget(phoneApp(const HanduniaWasaScreen()));
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('Le fil'), findsOneWidget);
+    expect(find.text('Fil Handunia Wasa'), findsOneWidget);
     expect(find.text('J’aime'), findsNothing);
     expect(find.text('Partager'), findsNothing);
     expect(find.text('vues'), findsNothing);
