@@ -3379,11 +3379,11 @@ class ContentCreatorScreen extends StatefulWidget {
   const ContentCreatorScreen({
     super.key,
     required this.onPostCreated,
-    required this.onOpenHanduniaFeed,
+    this.onOpenHanduniaFeed,
   });
 
   final ValueChanged<FeedPost> onPostCreated;
-  final VoidCallback onOpenHanduniaFeed;
+  final VoidCallback? onOpenHanduniaFeed;
 
   @override
   State<ContentCreatorScreen> createState() => _ContentCreatorScreenState();
@@ -3505,7 +3505,7 @@ class _ContentCreatorScreenState extends State<ContentCreatorScreen> {
                           ),
                         );
                         if (viewFeed == true && context.mounted) {
-                          widget.onOpenHanduniaFeed();
+                          widget.onOpenHanduniaFeed?.call();
                         }
                       },
                     ),
