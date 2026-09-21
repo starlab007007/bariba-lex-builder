@@ -1675,6 +1675,9 @@ class _FitilaShellState extends State<FitilaShell> {
   Future<bool?> _openHandunia(HanduniaWasaEntryMode mode) {
     return Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
+        settings: const RouteSettings(
+          name: FitilaBridgedNavigation.handuniaRouteName,
+        ),
         builder: (_) => HanduniaWasaScreen(
           entryMode: mode,
           onPlatformNav: _selectBottomDestination,
@@ -25999,6 +26002,13 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.onPlatformNav != null || widget.onPlatformCreate != null) {
+      FitilaBridgedNavigation.attach(
+        owner: this,
+        onSelected: widget.onPlatformNav,
+        onCreate: widget.onPlatformCreate,
+      );
+    }
     _step = switch (widget.entryMode) {
       HanduniaWasaEntryMode.feed => 5,
       HanduniaWasaEntryMode.publish => 1,
@@ -26019,6 +26029,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
 
   @override
   void dispose() {
+    FitilaBridgedNavigation.detach(this);
     _fragmentController.dispose();
     _askController.dispose();
     _lieuxQuery.dispose();
