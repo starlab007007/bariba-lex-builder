@@ -21,6 +21,7 @@ import 'package:video_player/video_player.dart';
 import 'core/fitila_backend.dart';
 import 'core/fitila_live.dart';
 import 'core/fitila_media.dart';
+import 'core/fitila_translation_audio.dart';
 import 'core/foncier_rag.dart';
 import 'core/signature_theme.dart';
 import 'core/web_parity_models.dart';
@@ -544,11 +545,14 @@ class FitilaServices {
         for (final endpoint in const [
           'ai-translate',
           'byt5-bariba-translate',
+          'ai-translate-lovable',
         ]) {
           try {
-            final timeout = endpoint == 'ai-translate'
-                ? const Duration(seconds: 8)
-                : const Duration(seconds: 55);
+            final timeout = switch (endpoint) {
+              'ai-translate' => const Duration(seconds: 14),
+              'byt5-bariba-translate' => const Duration(seconds: 30),
+              _ => const Duration(seconds: 14),
+            };
             final response = await transport
                 .post(
                   Uri.parse('$_supabaseUrl/functions/v1/$endpoint'),
@@ -8110,13 +8114,19 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
   bool _autoDetect = true;
   bool _conversationMode = true;
   bool _busy = false;
+  bool _voiceRecording = false;
+  bool _speaking = false;
   String? _detectedLanguage;
+  final _voiceMedia = FitilaMediaController();
+  final _voicePlayer = audio.AudioPlayer();
   final List<({String source, String result})> _history = [];
 
   @override
   void dispose() {
     _input.dispose();
     _output.dispose();
+    _voiceMedia.dispose();
+    _voicePlayer.dispose();
     super.dispose();
   }
 
@@ -8219,6 +8229,102 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
       if (mounted) {
         setState(() => _busy = false);
       }
+    }
+  }
+
+  Future<void> _toggleVoiceCapture() async {
+    if (_busy) return;
+    if (!_voiceRecording) {
+      try {
+        await _voiceMedia.startAudio();
+        if (!mounted) return;
+        setState(() {
+          _mode = 'Voix';
+          _voiceRecording = true;
+        });
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Micro indisponible : $error')),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _voiceRecording = false;
+      _busy = true;
+    });
+    try {
+      final asset = await _voiceMedia.stopAudio();
+      if (asset == null) {
+        throw StateError('Aucun enregistrement audio exploitable.');
+      }
+      final sourceIsBariba =
+          _direction == TranslationDirection.baribaToFrench;
+      final transcript = await FitilaTranslationAudio.transcribe(
+        asset: asset,
+        sourceIsBariba: sourceIsBariba,
+      );
+      if (!mounted) return;
+      setState(() {
+        _input.text = transcript;
+        _detectedLanguage = sourceIsBariba ? 'Bàátɔ̀nú' : 'Français';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is StateError
+                ? error.message
+                : 'Transcription vocale indisponible. Réessayez.',
+          ),
+        ),
+      );
+      return;
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    await _translate();
+  }
+
+  Future<void> _speakText(
+    String text, {
+    required bool bariba,
+  }) async {
+    final value = text.trim();
+    if (value.isEmpty || _speaking) return;
+    setState(() => _speaking = true);
+    try {
+      await _voicePlayer.stop();
+      final generated = await FitilaTranslationAudio.synthesize(
+        text: value,
+        bariba: bariba,
+      );
+      final url = generated.url?.trim() ?? '';
+      if (url.isNotEmpty) {
+        await _voicePlayer.play(audio.UrlSource(url));
+      } else {
+        final path = await generated.materialize();
+        if (path == null || path.isEmpty) {
+          throw StateError('Audio non disponible.');
+        }
+        await _voicePlayer.play(audio.DeviceFileSource(path));
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is StateError
+                ? error.message
+                : 'Lecture vocale momentanément indisponible.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _speaking = false);
     }
   }
 
@@ -8617,7 +8723,7 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                if (_mode == 'Voix')
+                if (_mode == 'Voix') ...[
                   Container(
                     padding: const EdgeInsets.all(22),
                     decoration: BoxDecoration(
@@ -8627,46 +8733,126 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
                     ),
                     child: Column(
                       children: [
-                        const Icon(
-                          Icons.mic_rounded,
-                          color: _fitilaClay,
-                          size: 42,
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _voiceRecording
+                                ? _fitilaClay.withValues(alpha: .14)
+                                : _fitilaPrimarySoft,
+                          ),
+                          child: Icon(
+                            _voiceRecording
+                                ? Icons.graphic_eq_rounded
+                                : Icons.mic_rounded,
+                            color: _voiceRecording
+                                ? _fitilaClay
+                                : _fitilaGoldDeep,
+                            size: 38,
+                          ),
                         ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Mode vocal',
-                          style: TextStyle(
+                        const SizedBox(height: 10),
+                        Text(
+                          _voiceRecording
+                              ? 'Je vous écoute…'
+                              : 'Traduction vocale directe',
+                          style: const TextStyle(
                             color: _fitilaInk,
                             fontSize: 17,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Parlez en $_sourceLabel. La transcription Bariba STT reste disponible via Voice Lab.',
+                          _voiceRecording
+                              ? 'Parlez en $_sourceLabel puis appuyez pour terminer.'
+                              : 'Parlez en $_sourceLabel : FITILA transcrit, traduit et permet d’écouter le résultat.',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: _fitilaMuted,
                             height: 1.4,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        FilledButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Ouvrez Voice Lab pour une dictée audio complète.',
-                                ),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.graphic_eq_rounded),
-                          label: const Text('Démarrer la voix'),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: FilledButton.icon(
+                            onPressed: _busy ? null : _toggleVoiceCapture,
+                            icon: _busy
+                                ? const SizedBox.square(
+                                    dimension: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Icon(
+                                    _voiceRecording
+                                        ? Icons.stop_circle_rounded
+                                        : Icons.mic_rounded,
+                                  ),
+                            label: Text(
+                              _voiceRecording
+                                  ? 'Terminer et traduire'
+                                  : 'Parler et traduire',
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                  )
+                  ),
+                  if (_input.text.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _TextPanel(
+                      title: _sourceLabel,
+                      controller: _input,
+                      hint: 'Transcription',
+                      readOnly: false,
+                      maxLines: 6,
+                    ),
+                  ],
+                  if (_output.text.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    _TextPanel(
+                      title: _targetLabel,
+                      controller: _output,
+                      hint: 'Traduction',
+                      readOnly: true,
+                      maxLines: 6,
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _speaking
+                              ? null
+                              : () => _speakText(
+                                    _input.text,
+                                    bariba: _direction ==
+                                        TranslationDirection.baribaToFrench,
+                                  ),
+                          icon: const Icon(Icons.hearing_rounded),
+                          label: const Text('Écouter source'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _speaking
+                              ? null
+                              : () => _speakText(
+                                    _output.text,
+                                    bariba: _direction ==
+                                        TranslationDirection.frenchToBariba,
+                                  ),
+                          icon: const Icon(Icons.volume_up_rounded),
+                          label: const Text('Écouter traduction'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ]
                 else ...[
                   Container(
                     padding: const EdgeInsets.all(15),
@@ -8734,8 +8920,32 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
                       maxLines: 7,
                     ),
                     const SizedBox(height: 8),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
+                        OutlinedButton.icon(
+                          onPressed: _speaking
+                              ? null
+                              : () => _speakText(
+                                    _input.text,
+                                    bariba: _direction ==
+                                        TranslationDirection.baribaToFrench,
+                                  ),
+                          icon: const Icon(Icons.hearing_rounded),
+                          label: const Text('Source'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _speaking
+                              ? null
+                              : () => _speakText(
+                                    _output.text,
+                                    bariba: _direction ==
+                                        TranslationDirection.frenchToBariba,
+                                  ),
+                          icon: const Icon(Icons.volume_up_rounded),
+                          label: const Text('Traduction'),
+                        ),
                         OutlinedButton.icon(
                           onPressed: () async {
                             final messenger = ScaffoldMessenger.of(context);
@@ -8754,7 +8964,6 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
                           icon: const Icon(Icons.copy_rounded),
                           label: const Text('Copier'),
                         ),
-                        const SizedBox(width: 8),
                         OutlinedButton.icon(
                           onPressed: () {
                             setState(() {
