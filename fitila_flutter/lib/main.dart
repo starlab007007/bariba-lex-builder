@@ -27585,16 +27585,16 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             child: Text(
               _memoryAnswer,
               style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11.5,
-                height: 1.4,
+                color: FitilaReferenceUi.inkSoft,
+                fontSize: 12.5,
+                height: 1.45,
               ),
             ),
           ),
         ],
         if (_lieuFragments.isNotEmpty) ...[
           const SizedBox(height: 5),
-          const ReferenceLabel('Souvenirs du lieu', dark: true),
+          const ReferenceLabel('Souvenirs du lieu'),
           const SizedBox(height: 7),
           for (final fragment in _lieuFragments.take(3))
             _buildFragmentTile(fragment),
@@ -27606,10 +27606,22 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           onPressed: _generateFragment,
         ),
         const SizedBox(height: 8),
-        ReferenceGhostDarkButton(
-          label: 'Écrire sans IA',
-          icon: Icons.edit_note_outlined,
-          onPressed: () => setState(() => _step = 3),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => setState(() => _step = 3),
+            icon: const Icon(Icons.edit_note_outlined),
+            label: const Text('Écrire sans IA'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: FitilaReferenceUi.ink,
+              side: const BorderSide(color: FitilaReferenceUi.hairline),
+              backgroundColor: FitilaReferenceUi.surface,
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
         ),
         const SizedBox(height: 12),
       ],
@@ -27658,15 +27670,27 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           onPressed: () => Navigator.of(context).pop(true),
         ),
         const SizedBox(height: 10),
-        ReferenceGhostDarkButton(
-          label: 'Publier un autre souvenir',
-          icon: Icons.add_outlined,
-          onPressed: () {
-            setState(() {
-              _selectedLieu = null;
-              _step = 1;
-            });
-          },
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              setState(() {
+                _selectedLieu = null;
+                _step = 1;
+              });
+            },
+            icon: const Icon(Icons.add_outlined),
+            label: const Text('Publier un autre souvenir'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: FitilaReferenceUi.ink,
+              side: const BorderSide(color: FitilaReferenceUi.hairline),
+              backgroundColor: FitilaReferenceUi.surface,
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -27682,9 +27706,17 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .07),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withValues(alpha: .14)),
+            color: FitilaReferenceUi.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: FitilaReferenceUi.hairline),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x10241F2E),
+                blurRadius: 18,
+                offset: Offset(0, 8),
+                spreadRadius: -10,
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -28151,14 +28183,14 @@ class _HanduniaMetric extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .055),
+        color: FitilaReferenceUi.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: .08)),
+        border: Border.all(color: FitilaReferenceUi.hairline),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: const Color(0xFF8FE3CF)),
+          Icon(icon, size: 14, color: FitilaReferenceUi.goldDeep),
           const SizedBox(width: 6),
           Text(
             value,
@@ -28195,14 +28227,14 @@ class _HanduniaPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .07),
+        color: FitilaReferenceUi.surface,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: .09)),
+        border: Border.all(color: FitilaReferenceUi.hairline),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: const Color(0xFF8FE3CF)),
+          Icon(icon, size: 13, color: FitilaReferenceUi.goldDeep),
           const SizedBox(width: 6),
           Text(
             label,
@@ -28230,16 +28262,16 @@ class _HanduniaTinyBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFF8FE3CF).withValues(alpha: .08),
+        color: FitilaReferenceUi.goldDeep.withValues(alpha: .08),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: const Color(0xFF8FE3CF).withValues(alpha: .18),
+          color: FitilaReferenceUi.goldDeep.withValues(alpha: .18),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 10, color: const Color(0xFF8FE3CF)),
+          Icon(icon, size: 10, color: FitilaReferenceUi.goldDeep),
           const SizedBox(width: 4),
           Text(
             label,
