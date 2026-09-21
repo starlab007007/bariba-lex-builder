@@ -140,6 +140,32 @@ async function fetchJson(url: string, timeoutMs = 16000) {
   }
 }
 
+
+async function postJson(url: string, body: unknown, timeoutMs = 22000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "X-Client-Id": "fitila.bj-handunia",
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(
+        clean(payload?.message || payload?.error || `HTTP ${response.status}`),
+      );
+    }
+    return payload;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 async function reverseRoutePlace(lat: number, lon: number) {
   const params = new URLSearchParams({
     lat: String(lat),
@@ -313,33 +339,87 @@ Deno.serve(async (req: Request) => {
         return jsonResponse({ error: "route_coordinates_invalid" }, 400);
       }
 
-      const coords = `${fromLon},${fromLat};${toLon},${toLat}`;
-      const params = new URLSearchParams({
-        overview: "full",
-        geometries: "geojson",
-        steps: "true",
-        alternatives: "false",
-        annotations: "false",
-      });
-      const data = await fetchJson(
-        `https://router.project-osrm.org/route/v1/driving/${coords}?${params}`,
-        22000,
-      );
-      if (data?.code !== "Ok" || !Array.isArray(data?.routes) || !data.routes.length) {
-        return jsonResponse({ state: "no_route", message: "Aucune route carrossable trouvée." }, 404);
+      const requestedMode = clean(body?.travel_mode || "walking").toLowerCase();
+      const mode = ["walk", "walking", "pedestrian"].includes(requestedMode)
+        ? "walking"
+        : ["bike", "bicycle", "cycling"].includes(requestedMode)
+          ? "bicycle"
+          : ["horse", "horseback", "equestrian"].includes(requestedMode)
+            ? "horse"
+            : ["car", "auto", "driving"].includes(requestedMode)
+              ? "driving"
+              : "";
+      if (!mode) {
+        return jsonResponse({ error: "unsupported_travel_mode" }, 400);
       }
-      const route = data.routes[0];
-      const coordinates = Array.isArray(route?.geometry?.coordinates)
+
+      const costing = mode === "bicycle"
+        ? "bicycle"
+        : mode === "driving"
+          ? "auto"
+          : "pedestrian";
+      const advisory = mode === "horse"
+        ? "Tracé patrimonial indicatif calculé sur le réseau piéton OSM. Vérifiez localement l’accès et la praticabilité pour un cheval."
+        : "";
+
+      const valhallaBody: Record<string, unknown> = {
+        locations: [
+          { lat: fromLat, lon: fromLon, type: "break" },
+          { lat: toLat, lon: toLon, type: "break" },
+        ],
+        costing,
+        format: "osrm",
+        shape_format: "geojson",
+        directions_type: "instructions",
+        language: "fr-FR",
+      };
+      if (mode === "horse") {
+        valhallaBody.costing_options = {
+          pedestrian: {
+            walking_speed: 8.0,
+            use_ferry: 0.2,
+          },
+        };
+      }
+
+      const data = await postJson(
+        "https://valhalla1.openstreetmap.de/route",
+        valhallaBody,
+        24000,
+      );
+      const routes = Array.isArray(data?.routes) ? data.routes : [];
+      if (!routes.length) {
+        return jsonResponse(
+          {
+            state: "no_route",
+            message: mode === "horse"
+              ? "Aucun tracé patrimonial praticable n’a été trouvé entre ces points."
+              : "Aucun itinéraire n’a été trouvé entre ces points.",
+          },
+          404,
+        );
+      }
+
+      const route = routes[0];
+      const rawCoordinates = Array.isArray(route?.geometry?.coordinates)
         ? route.geometry.coordinates
-            .map((pair: unknown[]) => {
-              const lon = asNumber(pair?.[0]);
-              const lat = asNumber(pair?.[1]);
-              return lon == null || lat == null
-                ? null
-                : { latitude: lat, longitude: lon };
-            })
-            .filter(Boolean)
         : [];
+      const coordinates = rawCoordinates
+        .map((pair: unknown[]) => {
+          const lon = asNumber(pair?.[0]);
+          const lat = asNumber(pair?.[1]);
+          return lon == null || lat == null
+            ? null
+            : { latitude: lat, longitude: lon };
+        })
+        .filter(Boolean);
+
+      if (coordinates.length < 2) {
+        return jsonResponse(
+          { state: "no_route", message: "Géométrie d’itinéraire indisponible." },
+          404,
+        );
+      }
 
       const steps = Array.isArray(route?.legs)
         ? route.legs.flatMap((leg: any) =>
@@ -348,7 +428,10 @@ Deno.serve(async (req: Request) => {
                   name: clean(step?.name),
                   distance_m: asNumber(step?.distance) ?? 0,
                   duration_s: asNumber(step?.duration) ?? 0,
-                  instruction: clean(step?.maneuver?.type),
+                  instruction:
+                    clean(step?.maneuver?.instruction) ||
+                    clean(step?.maneuver?.type) ||
+                    clean(step?.name),
                 }))
               : []
           )
@@ -360,13 +443,17 @@ Deno.serve(async (req: Request) => {
 
       return jsonResponse({
         state: "ready",
-        provider: "osrm-osm",
+        provider: "valhalla-osm",
         route: {
           distance_m: asNumber(route?.distance) ?? 0,
           duration_s: asNumber(route?.duration) ?? 0,
           points: coordinates,
           steps,
           places,
+          travel_mode: mode,
+          route_profile: costing,
+          advisory,
+          road_matched: true,
         },
       });
     }
