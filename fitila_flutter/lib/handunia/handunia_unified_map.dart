@@ -122,6 +122,7 @@ class HanduniaUnifiedMap extends StatefulWidget {
     this.height = 430,
     this.showSelectionCard = true,
     this.initialZoom = 6.4,
+    this.routePoints = const <Map<String, double>>[],
   });
 
   final List<Map<String, dynamic>> places;
@@ -131,6 +132,7 @@ class HanduniaUnifiedMap extends StatefulWidget {
   final double height;
   final bool showSelectionCard;
   final double initialZoom;
+  final List<Map<String, double>> routePoints;
 
   @override
   State<HanduniaUnifiedMap> createState() => _HanduniaUnifiedMapState();
@@ -155,7 +157,8 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     }
     if (_styleLoaded &&
         (widget.places != oldWidget.places ||
-            widget.selectedPlaceId != oldWidget.selectedPlaceId)) {
+            widget.selectedPlaceId != oldWidget.selectedPlaceId ||
+            widget.routePoints != oldWidget.routePoints)) {
       unawaited(_renderPlaces());
     }
   }
@@ -190,6 +193,25 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     final controller = _controller;
     if (controller == null || !_styleLoaded) return;
     await controller.clearCircles();
+    await controller.clearLines();
+    if (widget.routePoints.length >= 2) {
+      await controller.addLine(
+        LineOptions(
+          geometry: widget.routePoints
+              .map(
+                (point) => LatLng(
+                  point['latitude']!,
+                  point['longitude']!,
+                ),
+              )
+              .toList(growable: false),
+          lineColor: '#E6AA4A',
+          lineWidth: 5.0,
+          lineOpacity: .92,
+          lineJoin: 'round',
+        ),
+      );
+    }
     final options = <CircleOptions>[];
     for (final place in _located) {
       final lat = _geoDouble(place['latitude'])!;
