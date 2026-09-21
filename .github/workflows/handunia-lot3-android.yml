@@ -1,0 +1,70 @@
+name: Handunia Lot 3 Android
+
+on:
+  push:
+    branches:
+      - feat/handunia-lot3-premium-guide
+  pull_request:
+    branches:
+      - release/fitila-flutter-android-v1.8.1-build12-web-parity
+    paths:
+      - 'fitila_flutter/**'
+      - 'supabase/functions/handunia-map-service/**'
+      - 'supabase/migrations/**'
+      - 'fitila_flutter/lib/handunia/handunia_premium_guide_route.dart'
+      - '.github/workflows/handunia-lot3-android.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: fitila_flutter
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Flutter stable
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      - name: Build debug APK
+        run: flutter build apk --debug
+
+      - name: APK checksum
+        run: |
+          sha256sum build/app/outputs/flutter-apk/app-debug.apk | tee build/app/outputs/flutter-apk/app-debug.apk.sha256
+          ls -lh build/app/outputs/flutter-apk/app-debug.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FITILA-Handunia-Lot3-v1.8.3-build14-debug
+          path: |
+            fitila_flutter/build/app/outputs/flutter-apk/app-debug.apk
+            fitila_flutter/build/app/outputs/flutter-apk/app-debug.apk.sha256
+          if-no-files-found: error
+          retention-days: 14
