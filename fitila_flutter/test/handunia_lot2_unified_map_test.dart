@@ -13,7 +13,7 @@ void main() {
       'village_quartier': 'Tasso',
     });
 
-    expect(segments, <String>['Bénin', 'Borgou', 'Nikki', 'Tasso']);
+    expect(segments, <String>['Tasso', 'Nikki', 'Borgou', 'Bénin']);
   });
 
   test('Handunia Lot 2 keeps Benin as the root without invented levels', () {
