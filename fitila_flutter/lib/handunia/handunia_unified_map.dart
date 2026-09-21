@@ -122,6 +122,10 @@ class HanduniaUnifiedMap extends StatefulWidget {
     this.height = 430,
     this.showSelectionCard = true,
     this.initialZoom = 6.4,
+    this.routePoints = const <Map<String, double>>[],
+    this.routeProgress,
+    this.routeLabel,
+    this.immersive = false,
   });
 
   final List<Map<String, dynamic>> places;
@@ -131,6 +135,10 @@ class HanduniaUnifiedMap extends StatefulWidget {
   final double height;
   final bool showSelectionCard;
   final double initialZoom;
+  final List<Map<String, double>> routePoints;
+  final double? routeProgress;
+  final String? routeLabel;
+  final bool immersive;
 
   @override
   State<HanduniaUnifiedMap> createState() => _HanduniaUnifiedMapState();
@@ -155,7 +163,10 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     }
     if (_styleLoaded &&
         (widget.places != oldWidget.places ||
-            widget.selectedPlaceId != oldWidget.selectedPlaceId)) {
+            widget.selectedPlaceId != oldWidget.selectedPlaceId ||
+            widget.routePoints != oldWidget.routePoints ||
+            widget.routeProgress != oldWidget.routeProgress ||
+            widget.immersive != oldWidget.immersive)) {
       unawaited(_renderPlaces());
     }
   }
@@ -186,10 +197,65 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     }
   }
 
+  LatLng? _routeCursor() {
+    final progress = widget.routeProgress;
+    final points = widget.routePoints;
+    if (progress == null || points.length < 2) return null;
+    final clamped = progress.clamp(0.0, 1.0).toDouble();
+    var total = 0.0;
+    final distances = <double>[];
+    for (var i = 1; i < points.length; i++) {
+      final distance = HanduniaMapData.distanceMeters(
+        points[i - 1]['latitude']!,
+        points[i - 1]['longitude']!,
+        points[i]['latitude']!,
+        points[i]['longitude']!,
+      );
+      distances.add(distance);
+      total += distance;
+    }
+    if (total <= 0) {
+      return LatLng(points.first['latitude']!, points.first['longitude']!);
+    }
+    var remaining = total * clamped;
+    for (var i = 0; i < distances.length; i++) {
+      final segment = distances[i];
+      if (remaining <= segment || i == distances.length - 1) {
+        final ratio = segment <= 0 ? 0.0 : (remaining / segment).clamp(0.0, 1.0);
+        final from = points[i];
+        final to = points[i + 1];
+        return LatLng(
+          from['latitude']! + (to['latitude']! - from['latitude']!) * ratio,
+          from['longitude']! + (to['longitude']! - from['longitude']!) * ratio,
+        );
+      }
+      remaining -= segment;
+    }
+    return LatLng(points.last['latitude']!, points.last['longitude']!);
+  }
+
   Future<void> _renderPlaces() async {
     final controller = _controller;
     if (controller == null || !_styleLoaded) return;
     await controller.clearCircles();
+    await controller.clearLines();
+    if (widget.routePoints.length >= 2) {
+      await controller.addLine(
+        LineOptions(
+          geometry: widget.routePoints
+              .map(
+                (point) => LatLng(
+                  point['latitude']!,
+                  point['longitude']!,
+                ),
+              )
+              .toList(growable: false),
+          lineColor: '#E6AA4A',
+          lineWidth: widget.immersive ? 6 : 4.5,
+          lineOpacity: .92,
+        ),
+      );
+    }
     final options = <CircleOptions>[];
     for (final place in _located) {
       final lat = _geoDouble(place['latitude'])!;
@@ -206,6 +272,18 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
           circleColor: selected ? '#F3EFE6' : '#E6AA4A',
           circleStrokeColor: selected ? '#E6AA4A' : '#15202B',
           circleStrokeWidth: selected ? 4 : 2,
+        ),
+      );
+    }
+    final cursor = _routeCursor();
+    if (cursor != null) {
+      options.add(
+        CircleOptions(
+          geometry: cursor,
+          circleRadius: widget.immersive ? 10 : 8,
+          circleColor: '#F3EFE6',
+          circleStrokeColor: '#E6AA4A',
+          circleStrokeWidth: 4,
         ),
       );
     }
@@ -234,6 +312,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
         CameraPosition(
           target: LatLng(lat, lon),
           zoom: zoom ?? _zoomFor(place),
+          tilt: widget.immersive ? 42 : 0,
         ),
       ),
     );
@@ -244,7 +323,11 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     if (controller == null) return;
     await controller.animateCamera(
       CameraUpdate.newCameraPosition(
-        CameraPosition(target: handuniaBeninCenter, zoom: widget.initialZoom),
+        CameraPosition(
+          target: handuniaBeninCenter,
+          zoom: widget.initialZoom,
+          tilt: widget.immersive ? 42 : 0,
+        ),
       ),
     );
   }
@@ -297,11 +380,12 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                       initialCameraPosition: CameraPosition(
                         target: handuniaBeninCenter,
                         zoom: widget.initialZoom,
+                        tilt: widget.immersive ? 42 : 0,
                       ),
                       minMaxZoomPreference:
                           const MinMaxZoomPreference(5, 18),
                       rotateGesturesEnabled: false,
-                      tiltGesturesEnabled: false,
+                      tiltGesturesEnabled: widget.immersive,
                       onMapCreated: (controller) => _controller = controller,
                       onStyleLoadedCallback: _onStyleLoaded,
                       onMapClick: (point, latLng) => _onMapTap(latLng),
@@ -342,7 +426,9 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                             const SizedBox(width: 7),
                             Expanded(
                               child: Text(
-                                '${_located.length} lieux géolocalisés · carte réelle du Bénin',
+                                widget.routeLabel?.trim().isNotEmpty == true
+                                    ? widget.routeLabel!
+                                    : '${_located.length} lieux géolocalisés · carte réelle du Bénin',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(

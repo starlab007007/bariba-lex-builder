@@ -68,6 +68,7 @@ class HanduniaMapData {
     required double fromLongitude,
     required double toLatitude,
     required double toLongitude,
+    String mode = 'auto',
   }) async {
     final response = await FitilaBackend.client.functions.invoke(
       'handunia-map-service',
@@ -77,6 +78,7 @@ class HanduniaMapData {
         'from_longitude': fromLongitude,
         'to_latitude': toLatitude,
         'to_longitude': toLongitude,
+        'mode': mode,
       },
     );
     final data = _map(response.data);
@@ -123,7 +125,11 @@ class HanduniaMapData {
               (route['places'] as List).whereType<Map>(),
             )
           : const <Map<String, dynamic>>[],
-      'provider': data['provider']?.toString() ?? 'osrm-osm',
+      'provider': data['provider']?.toString() ?? 'valhalla-osm',
+      'travel_mode': route['travel_mode']?.toString() ?? mode,
+      'route_profile': route['route_profile']?.toString() ?? mode,
+      'duration_is_estimate': route['duration_is_estimate'] == true,
+      'warning': route['warning']?.toString(),
     };
   }
 

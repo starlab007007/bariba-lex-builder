@@ -208,6 +208,145 @@ async function routePlaces(points: Array<{ latitude: number; longitude: number }
   return places;
 }
 
+
+function decodePolyline6(encoded: string) {
+  const points: Array<{ latitude: number; longitude: number }> = [];
+  let index = 0;
+  let lat = 0;
+  let lon = 0;
+  while (index < encoded.length) {
+    let shift = 0;
+    let result = 0;
+    let byte = 0;
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20 && index < encoded.length);
+    const deltaLat = (result & 1) ? ~(result >> 1) : result >> 1;
+    lat += deltaLat;
+
+    shift = 0;
+    result = 0;
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20 && index < encoded.length);
+    const deltaLon = (result & 1) ? ~(result >> 1) : result >> 1;
+    lon += deltaLon;
+
+    points.push({
+      latitude: lat / 1e6,
+      longitude: lon / 1e6,
+    });
+  }
+  return points;
+}
+
+async function fetchValhallaRoute(args: {
+  fromLat: number;
+  fromLon: number;
+  toLat: number;
+  toLon: number;
+  requestedMode: string;
+}) {
+  const costing =
+    args.requestedMode === "bicycle"
+      ? "bicycle"
+      : args.requestedMode === "walking" || args.requestedMode === "horse"
+        ? "pedestrian"
+        : "auto";
+  const baseUrl =
+    (Deno.env.get("VALHALLA_BASE_URL") ?? "https://valhalla1.openstreetmap.de")
+      .replace(/\/$/, "");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 22000);
+  try {
+    const response = await fetch(`${baseUrl}/route`, {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "X-Client-Id": "fitila.bj-handunia",
+        "User-Agent": "FITILA-Handunia/1.8.3 (heritage guide; Benin)",
+      },
+      body: JSON.stringify({
+        locations: [
+          { lat: args.fromLat, lon: args.fromLon, type: "break" },
+          { lat: args.toLat, lon: args.toLon, type: "break" },
+        ],
+        costing,
+        shape_format: "polyline6",
+        directions_options: {
+          units: "kilometers",
+          language: "fr-FR",
+        },
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(`Valhalla HTTP ${response.status}`);
+    }
+    const data = await response.json();
+    const legs = Array.isArray(data?.trip?.legs) ? data.trip.legs : [];
+    if (!legs.length) throw new Error("Valhalla route vide");
+
+    const points: Array<{ latitude: number; longitude: number }> = [];
+    const steps: any[] = [];
+    for (const leg of legs) {
+      const legPoints = decodePolyline6(clean(leg?.shape));
+      for (const point of legPoints) {
+        const previous = points[points.length - 1];
+        if (
+          previous &&
+          Math.abs(previous.latitude - point.latitude) < 1e-8 &&
+          Math.abs(previous.longitude - point.longitude) < 1e-8
+        ) {
+          continue;
+        }
+        points.push(point);
+      }
+      for (const maneuver of Array.isArray(leg?.maneuvers) ? leg.maneuvers : []) {
+        steps.push({
+          name: clean(maneuver?.street_names?.[0]),
+          distance_m: (asNumber(maneuver?.length) ?? 0) * 1000,
+          duration_s: asNumber(maneuver?.time) ?? 0,
+          instruction: clean(maneuver?.instruction),
+          verbal_instruction:
+            clean(maneuver?.verbal_pre_transition_instruction) ||
+            clean(maneuver?.verbal_transition_alert_instruction),
+        });
+      }
+    }
+    if (points.length < 2) throw new Error("Valhalla géométrie vide");
+
+    const distanceM = (asNumber(data?.trip?.summary?.length) ?? 0) * 1000;
+    const durationS = asNumber(data?.trip?.summary?.time) ?? 0;
+    const places = await routePlaces(points);
+    const horse = args.requestedMode === "horse";
+
+    return {
+      provider: "valhalla-osm",
+      route: {
+        distance_m: distanceM,
+        duration_s: durationS,
+        points,
+        steps,
+        places,
+        travel_mode: args.requestedMode,
+        route_profile: horse ? "pedestrian-heritage-proxy" : costing,
+        duration_is_estimate: horse,
+        warning: horse
+          ? "Parcours cheval indicatif calculé sur le réseau piéton OSM. Vérifier localement l’accessibilité, l’état des pistes et les autorisations avant départ."
+          : "",
+      },
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -302,15 +441,53 @@ Deno.serve(async (req: Request) => {
       const fromLon = asNumber(body?.from_longitude);
       const toLat = asNumber(body?.to_latitude);
       const toLon = asNumber(body?.to_longitude);
+      const requestedMode = clean(body?.mode || "auto").toLowerCase();
+      const allowedModes = new Set(["auto", "walking", "bicycle", "horse"]);
       if (
         fromLat == null ||
         fromLon == null ||
         toLat == null ||
         toLon == null ||
         !inBenin(fromLon, fromLat) ||
-        !inBenin(toLon, toLat)
+        !inBenin(toLon, toLat) ||
+        !allowedModes.has(requestedMode)
       ) {
-        return jsonResponse({ error: "route_coordinates_invalid" }, 400);
+        return jsonResponse({ error: "route_coordinates_or_mode_invalid" }, 400);
+      }
+
+      try {
+        const routed = await fetchValhallaRoute({
+          fromLat,
+          fromLon,
+          toLat,
+          toLon,
+          requestedMode,
+        });
+        return jsonResponse({
+          state: "ready",
+          provider: routed.provider,
+          route: routed.route,
+        });
+      } catch (valhallaError) {
+        // Le service public Valhalla reste remplaçable via VALHALLA_BASE_URL.
+        // Pour l'automobile uniquement, on conserve OSRM comme repli afin
+        // d'éviter une régression du lot 2.
+        if (requestedMode !== "auto") {
+          return jsonResponse(
+            {
+              state: "unavailable",
+              message:
+                requestedMode === "horse"
+                  ? "Parcours patrimonial indisponible. Le mode cheval reste indicatif et doit être confirmé localement."
+                  : "Itinéraire momentanément indisponible.",
+              detail:
+                valhallaError instanceof Error
+                  ? valhallaError.message
+                  : "valhalla_error",
+            },
+            503,
+          );
+        }
       }
 
       const coords = `${fromLon},${fromLat};${toLon},${toLat}`;
@@ -367,6 +544,10 @@ Deno.serve(async (req: Request) => {
           points: coordinates,
           steps,
           places,
+          travel_mode: "auto",
+          route_profile: "driving",
+          duration_is_estimate: false,
+          warning: "",
         },
       });
     }
