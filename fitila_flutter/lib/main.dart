@@ -21826,6 +21826,29 @@ class _EchoSonScreenState extends State<EchoSonScreen> {
           _audio = asset;
           _step = 2;
         });
+        if (asset != null) {
+          try {
+            final transcript = await FitilaTranslationAudio.transcribe(
+              asset: asset,
+              sourceIsBariba:
+                  _direction == TranslationDirection.baribaToFrench,
+            );
+            if (!mounted) return;
+            setState(() => _textController.text = transcript);
+            await _translate();
+          } catch (error) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  error is StateError
+                      ? error.message
+                      : 'Transcription automatique impossible. Vous pouvez corriger le texte manuellement.',
+                ),
+              ),
+            );
+          }
+        }
       } else {
         await _startRecordingStep();
       }
@@ -22152,7 +22175,7 @@ class _EchoSonScreenState extends State<EchoSonScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'TRANSCRIPTION EN DIRECT',
+                'TRANSCRIPTION AUTOMATIQUE',
                 style: TextStyle(
                   color: FitilaReferenceUi.gold,
                   fontSize: 9.5,
@@ -22174,7 +22197,7 @@ class _EchoSonScreenState extends State<EchoSonScreen> {
               if (liveText.isEmpty) ...[
                 const SizedBox(height: 5),
                 Text(
-                  'La transcription automatique en direct n’est pas encore active sur cet écran.',
+                  'La transcription puis la traduction démarrent automatiquement dès que vous terminez l’enregistrement.',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: .38),
                     fontSize: 9.5,
@@ -25417,6 +25440,8 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
   int _communityCount = 0;
   int _sasaraUiStep = 0;
   bool _sasaraPreviewBariba = true;
+  bool _sasaraSpeaking = false;
+  final _sasaraPlayer = audio.AudioPlayer();
 
   @override
   void initState() {
@@ -25433,6 +25458,7 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
     for (final c in _lineControllers) {
       c.dispose();
     }
+    _sasaraPlayer.dispose();
     super.dispose();
   }
 
@@ -25521,6 +25547,42 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
       if (mounted) {
         setState(() => _translating = false);
       }
+    }
+  }
+
+  Future<void> _speakSasara(String text, {required bool bariba}) async {
+    final value = text.trim();
+    if (value.isEmpty || _sasaraSpeaking) return;
+    setState(() => _sasaraSpeaking = true);
+    try {
+      await _sasaraPlayer.stop();
+      final generated = await FitilaTranslationAudio.synthesize(
+        text: value,
+        bariba: bariba,
+      );
+      final url = generated.url?.trim() ?? '';
+      if (url.isNotEmpty) {
+        await _sasaraPlayer.play(audio.UrlSource(url));
+      } else {
+        final path = await generated.materialize();
+        if (path == null || path.isEmpty) {
+          throw StateError('Audio non disponible.');
+        }
+        await _sasaraPlayer.play(audio.DeviceFileSource(path));
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is StateError
+                ? error.message
+                : 'Lecture vocale momentanément indisponible.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _sasaraSpeaking = false);
     }
   }
 
@@ -25912,7 +25974,7 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
               ),
             ),
             child: const Text(
-              '🔜 Doublage vocal complet : disponible lorsque le modèle de voix Bariba sera entraîné sur le corpus communautaire.',
+              '🔊 Lecture vocale active : choisissez les sous-titres Bariba ou Français puis utilisez Écouter.',
               style: TextStyle(
                 color: FitilaReferenceUi.inkSoft,
                 fontSize: 10.5,
@@ -25925,19 +25987,26 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    final text = _sasaraPreviewBariba ? bariba : french;
-                    if (text.isEmpty) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Utilisez le bouton d’écoute disponible dans le module pour lire la traduction.',
-                        ),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.volume_up_rounded, size: 16),
-                  label: const Text('Écouter'),
+                  onPressed: _sasaraSpeaking
+                      ? null
+                      : () {
+                          final text =
+                              _sasaraPreviewBariba ? bariba : french;
+                          if (text.isEmpty) return;
+                          _speakSasara(
+                            text,
+                            bariba: _sasaraPreviewBariba,
+                          );
+                        },
+                  icon: _sasaraSpeaking
+                      ? const SizedBox.square(
+                          dimension: 15,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.volume_up_rounded, size: 16),
+                  label: Text(
+                    _sasaraSpeaking ? 'Préparation…' : 'Écouter',
+                  ),
                 ),
               ),
             ],
