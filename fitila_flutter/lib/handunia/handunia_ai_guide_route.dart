@@ -651,6 +651,8 @@ class _CurrentStopCard extends StatelessWidget {
     final memories = (place['memory_count'] as num?)?.toInt() ?? 0;
     final voices = (place['voice_count'] as num?)?.toInt() ?? 0;
     final leg = (place['leg_distance_m'] as num?) ?? 0;
+    final legLabel =
+        index == 0 ? '' : ' · ${HanduniaGuideData.distanceLabel(leg)}';
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -687,8 +689,7 @@ class _CurrentStopCard extends StatelessWidget {
           HanduniaTerritoryPath(place: place, compact: true),
           const SizedBox(height: 9),
           Text(
-            '$memories souvenirs · $voices voix'
-            '${index == 0 ? '' : ' · ' + HanduniaGuideData.distanceLabel(leg)}',
+            '$memories souvenirs · $voices voix$legLabel',
             style: const TextStyle(
               fontFamily: 'Karla',
               fontSize: 12.5,
