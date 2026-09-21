@@ -997,7 +997,7 @@ class HanduniaFilView extends StatelessWidget {
                   ),
                   Expanded(
                     child: Text(
-                      'Le fil',
+                      'Fil Handunia Wasa',
                       style: _fraunces(size: 27),
                     ),
                   ),
