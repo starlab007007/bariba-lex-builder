@@ -6,6 +6,7 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 
 import 'handunia_consultation_ui.dart';
 import 'handunia_map_data.dart';
+import 'handunia_unified_map.dart';
 
 typedef HanduniaMapBuilder = Widget Function(ValueChanged<LatLng> onTap);
 
@@ -477,19 +478,31 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
   @override
   Widget build(BuildContext context) {
     final map = widget.mapBuilder?.call(_onMapTap) ??
-        MapLibreMap(
-          styleString: _styleUrl,
-          initialCameraPosition: const CameraPosition(
-            target: _beninCenter,
-            zoom: 6.4,
-          ),
-          minMaxZoomPreference: const MinMaxZoomPreference(5, 18),
-          rotateGesturesEnabled: false,
-          tiltGesturesEnabled: false,
-          onMapCreated: (controller) => _mapController = controller,
-          onStyleLoadedCallback: _onStyleLoaded,
-          onMapClick: (point, latLng) => _onMapTap(latLng),
-        );
+        (handuniaNativeMapAvailable
+            ? MapLibreMap(
+                styleString: _styleUrl,
+                initialCameraPosition: const CameraPosition(
+                  target: _beninCenter,
+                  zoom: 6.4,
+                ),
+                minMaxZoomPreference:
+                    const MinMaxZoomPreference(5, 18),
+                rotateGesturesEnabled: false,
+                tiltGesturesEnabled: false,
+                onMapCreated: (controller) => _mapController = controller,
+                onStyleLoadedCallback: _onStyleLoaded,
+                onMapClick: (point, latLng) => _onMapTap(latLng),
+              )
+            : const ColoredBox(
+                color: HanduniaTokens.nuitPortee,
+                child: Center(
+                  child: Icon(
+                    Icons.route_rounded,
+                    size: 72,
+                    color: HanduniaTokens.bordureForte,
+                  ),
+                ),
+              ));
 
     return Scaffold(
       backgroundColor: HanduniaTokens.nuit,
