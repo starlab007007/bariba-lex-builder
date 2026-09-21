@@ -26418,12 +26418,37 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     }
   }
 
+  Future<void> _pickNewLieuLocation() async {
+    final selected = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute<Map<String, dynamic>>(
+        builder: (_) => HanduniaLocationPickerRoute(
+          initialQuery: _newLieuName.text.trim(),
+        ),
+      ),
+    );
+    if (!mounted || selected == null) return;
+    setState(() => _newLieuGeo = Map<String, dynamic>.from(selected));
+  }
+
   Future<void> _submitNewLieu() async {
     final name = _newLieuName.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Donnez un nom à ce lieu.')));
+      return;
+    }
+    final geo = _newLieuGeo;
+    final latitude = geo?['latitude'];
+    final longitude = geo?['longitude'];
+    if (geo == null || latitude is! num || longitude is! num) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Positionnez ce lieu sur la carte du Bénin avant de le créer.',
+          ),
+        ),
+      );
       return;
     }
     final similar = _findSimilarLieu(name);
@@ -26442,6 +26467,15 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         name: name,
         icon: _newLieuIcon.text,
         description: _newLieuDescription.text,
+        latitude: latitude.toDouble(),
+        longitude: longitude.toDouble(),
+        department: geo['department']?.toString(),
+        commune: geo['commune']?.toString(),
+        arrondissement: geo['arrondissement']?.toString(),
+        villageQuartier: geo['village_quartier']?.toString(),
+        osmId: geo['osm_id']?.toString(),
+        osmType: geo['osm_type']?.toString(),
+        geoProvider: geo['geo_provider']?.toString(),
       );
       if (!mounted) {
         return;
