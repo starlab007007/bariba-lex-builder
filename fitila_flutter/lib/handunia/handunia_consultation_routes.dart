@@ -255,14 +255,9 @@ class _HanduniaMemoryRouteState extends State<HanduniaMemoryRoute> {
     final memory = _memory;
     return Scaffold(
       backgroundColor: HanduniaTokens.nuit,
-      bottomNavigationBar:
-          widget.onPlatformNav == null && widget.onPlatformCreate == null
-          ? null
-          : FitilaPremiumBottomNav(
-              selectedIndex: 0,
-              onSelected: (index) => widget.onPlatformNav?.call(index),
-              onCreate: () => widget.onPlatformCreate?.call(),
-            ),
+      bottomNavigationBar: const FitilaBridgedBottomNav(
+        selectedIndex: 0,
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -960,14 +955,9 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
     final selected = _selectedPlace;
     return Scaffold(
       backgroundColor: HanduniaTokens.nuit,
-      bottomNavigationBar:
-          widget.onPlatformNav == null && widget.onPlatformCreate == null
-          ? null
-          : FitilaPremiumBottomNav(
-              selectedIndex: 0,
-              onSelected: (index) => widget.onPlatformNav?.call(index),
-              onCreate: () => widget.onPlatformCreate?.call(),
-            ),
+      bottomNavigationBar: const FitilaBridgedBottomNav(
+        selectedIndex: 0,
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -1207,6 +1197,9 @@ class _HanduniaPlaceRouteState extends State<HanduniaPlaceRoute> {
     final data = _data;
     return Scaffold(
       backgroundColor: HanduniaTokens.nuit,
+      bottomNavigationBar: const FitilaBridgedBottomNav(
+        selectedIndex: 0,
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -1600,9 +1593,10 @@ class _HanduniaTimelineRouteState extends State<HanduniaTimelineRoute> {
     final voices = (period?['voice_count'] as num?)?.toInt() ?? 0;
 
     return Scaffold(
-      backgroundColor: voices == 0
-          ? const Color(0xFF080A0F)
-          : HanduniaTokens.nuit,
+      backgroundColor: HanduniaTokens.nuit,
+      bottomNavigationBar: const FitilaBridgedBottomNav(
+        selectedIndex: 0,
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -1814,6 +1808,9 @@ class _HanduniaDivergencesRouteState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: HanduniaTokens.nuit,
+      bottomNavigationBar: const FitilaBridgedBottomNav(
+        selectedIndex: 0,
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -2219,6 +2216,9 @@ class _HanduniaMemoryAnswerRouteState
 
     return Scaffold(
       backgroundColor: HanduniaTokens.nuit,
+      bottomNavigationBar: const FitilaBridgedBottomNav(
+        selectedIndex: 0,
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -2498,6 +2498,9 @@ class _HanduniaFoyerRouteState extends State<HanduniaFoyerRoute>
     final data = _data;
     return Scaffold(
       backgroundColor: HanduniaTokens.nuit,
+      bottomNavigationBar: const FitilaBridgedBottomNav(
+        selectedIndex: 0,
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -2939,6 +2942,9 @@ class _HanduniaTraceRouteState extends State<HanduniaTraceRoute>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: HanduniaTokens.nuit,
+      bottomNavigationBar: const FitilaBridgedBottomNav(
+        selectedIndex: 0,
+      ),
       body: SafeArea(
         child: Column(
           children: [
