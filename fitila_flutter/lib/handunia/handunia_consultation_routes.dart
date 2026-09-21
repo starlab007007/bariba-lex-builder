@@ -1132,7 +1132,13 @@ class _HanduniaPlaceRouteState extends State<HanduniaPlaceRoute> {
   @override
   void initState() {
     super.initState();
-    unawaited(_load());
+    final initial = widget.initialPeriods;
+    if (initial != null) {
+      _periods = List<Map<String, dynamic>>.from(initial);
+      _loading = false;
+    } else {
+      unawaited(_load());
+    }
   }
 
   Future<void> _load() async {
@@ -1455,9 +1461,11 @@ class HanduniaTimelineRoute extends StatefulWidget {
   const HanduniaTimelineRoute({
     super.key,
     required this.lieuId,
+    this.initialPeriods,
   });
 
   final String lieuId;
+  final List<Map<String, dynamic>>? initialPeriods;
 
   @override
   State<HanduniaTimelineRoute> createState() => _HanduniaTimelineRouteState();
