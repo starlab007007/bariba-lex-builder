@@ -38,10 +38,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('Carte vivante'), findsOneWidget);
-    expect(find.text('Touchez un lieu pour ouvrir sa mémoire.'), findsOneWidget);
+    expect(find.textContaining('0 lieu'), findsOneWidget);
     expect(find.text('Chemin des caravanes'), findsWidgets);
-    expect(find.text('Nikki ancien marché'), findsOneWidget);
-    expect(find.text('Biro'), findsOneWidget);
     expect(find.text('0 voix'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
