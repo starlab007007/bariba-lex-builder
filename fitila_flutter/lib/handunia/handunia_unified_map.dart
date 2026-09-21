@@ -207,7 +207,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
 
   double _zoomFor(Map<String, dynamic> place) {
     final hint = _geoDouble(place['zoom_hint']);
-    if (hint != null) return hint.clamp(5.0, 18.0);
+    if (hint != null) return hint.clamp(5.0, 18.0).toDouble();
     if (_geoText(place, 'village_quartier').isNotEmpty) return 14.2;
     if (_geoText(place, 'arrondissement').isNotEmpty) return 12.2;
     if (_geoText(place, 'commune').isNotEmpty) return 10.2;
