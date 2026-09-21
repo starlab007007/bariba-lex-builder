@@ -1132,13 +1132,7 @@ class _HanduniaPlaceRouteState extends State<HanduniaPlaceRoute> {
   @override
   void initState() {
     super.initState();
-    final initial = widget.initialPeriods;
-    if (initial != null) {
-      _periods = List<Map<String, dynamic>>.from(initial);
-      _loading = false;
-    } else {
-      unawaited(_load());
-    }
+    unawaited(_load());
   }
 
   Future<void> _load() async {
