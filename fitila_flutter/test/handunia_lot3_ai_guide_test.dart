@@ -187,7 +187,10 @@ void main() {
     expect(find.textContaining('Avant 1960'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.text('RECONSTITUER DEPUIS LES VOIX'));
+    final reconstruct = find.text('RECONSTITUER DEPUIS LES VOIX');
+    await tester.ensureVisible(reconstruct);
+    await tester.pumpAndSettle();
+    await tester.tap(reconstruct);
     await tester.pumpAndSettle();
 
     expect(
