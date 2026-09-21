@@ -69,18 +69,33 @@ class HanduniaAiCreationData {
     return _mapResponse(response.data);
   }
 
-  static Future<String> transcribe(FitilaMediaAsset asset) async {
+  static Future<String> transcribe(
+    FitilaMediaAsset asset, {
+    String languageCode = 'ba',
+  }) async {
     final bytes = await asset.readBytes();
+    if (bytes.length < 256) {
+      throw StateError('Enregistrement audio trop court.');
+    }
     final response = await _client.functions.invoke(
       'bariba-stt',
       body: <String, dynamic>{
         'audio': 'data:audio/opus;base64,${base64Encode(bytes)}',
         'robustMode': true,
         'speakerType': 'Auto',
+        'languageCode': languageCode,
       },
     );
     final data = _mapResponse(response.data);
-    for (final key in const ['transcription', 'refined', 'text']) {
+    final state = data['state']?.toString();
+    if (state == 'unavailable') {
+      throw StateError(
+        data['message']?.toString().trim().isNotEmpty == true
+            ? data['message'].toString()
+            : 'Transcription momentanément indisponible.',
+      );
+    }
+    for (final key in const ['transcript', 'transcription', 'refined', 'text']) {
       final value = data[key]?.toString().trim() ?? '';
       if (value.isNotEmpty) {
         return value;
