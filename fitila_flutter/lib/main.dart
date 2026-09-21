@@ -1655,6 +1655,25 @@ class _FitilaShellState extends State<FitilaShell> {
     });
   }
 
+  void _openHanduniaFeedFromCreator() {
+    setState(() {
+      _page = FitilaPage.feed;
+      _visited.add(FitilaPage.feed);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const HanduniaWasaScreen(
+            entryMode: HanduniaWasaEntryMode.feed,
+          ),
+        ),
+      );
+    });
+  }
+
   int get _destination => switch (_page) {
     FitilaPage.feed => 0,
     FitilaPage.learn => 1,
@@ -1791,6 +1810,7 @@ class _FitilaShellState extends State<FitilaShell> {
             _page = FitilaPage.feed;
           });
         },
+        onOpenHanduniaFeed: _openHanduniaFeedFromCreator,
       ),
       FitilaPage.templates => TemplatesScreen(
         onUseTemplate: (_) => setState(() => _page = FitilaPage.creator),
@@ -2319,7 +2339,19 @@ class _ImmersiveFeedDeckState extends State<_ImmersiveFeedDeck> {
                           selected: _filter == category,
                           colorA: _feedCategoryStyles[category]!.colorA,
                           colorB: _feedCategoryStyles[category]!.colorB,
-                          onTap: () => setState(() => _filter = category),
+                          onTap: () {
+                            if (category == FitilaFeedCategory.handuniaWasa) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const HanduniaWasaScreen(
+                                    entryMode: HanduniaWasaEntryMode.feed,
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            setState(() => _filter = category);
+                          },
                         ),
                       ),
                 ],
@@ -3344,9 +3376,14 @@ class _PremiumStoryRow extends StatelessWidget {
 }
 
 class ContentCreatorScreen extends StatefulWidget {
-  const ContentCreatorScreen({super.key, required this.onPostCreated});
+  const ContentCreatorScreen({
+    super.key,
+    required this.onPostCreated,
+    required this.onOpenHanduniaFeed,
+  });
 
   final ValueChanged<FeedPost> onPostCreated;
+  final VoidCallback onOpenHanduniaFeed;
 
   @override
   State<ContentCreatorScreen> createState() => _ContentCreatorScreenState();
@@ -3458,12 +3495,19 @@ class _ContentCreatorScreenState extends State<ContentCreatorScreen> {
                       subtitle: 'Monde vivant, souvenirs et mémoire collective.',
                       colorA: const Color(0xFF4A3B78),
                       colorB: const Color(0xFF14111C),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const HanduniaWasaScreen(),
-                        ),
-                      ),
+                      onTap: () async {
+                        final viewFeed = await Navigator.push<bool>(
+                          context,
+                          MaterialPageRoute<bool>(
+                            builder: (_) => const HanduniaWasaScreen(
+                              entryMode: HanduniaWasaEntryMode.publish,
+                            ),
+                          ),
+                        );
+                        if (viewFeed == true && context.mounted) {
+                          widget.onOpenHanduniaFeed();
+                        }
+                      },
                     ),
                   ],
                 );
@@ -25790,8 +25834,15 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
 // ─────────────────────────────────────────────────────────────────
 // 6. Handunia Wasa — monde vivant, avec continuité locale hors ligne
 // ─────────────────────────────────────────────────────────────────
+enum HanduniaWasaEntryMode { feed, publish, explore }
+
 class HanduniaWasaScreen extends StatefulWidget {
-  const HanduniaWasaScreen({super.key});
+  const HanduniaWasaScreen({
+    super.key,
+    this.entryMode = HanduniaWasaEntryMode.feed,
+  });
+
+  final HanduniaWasaEntryMode entryMode;
 
   @override
   State<HanduniaWasaScreen> createState() => _HanduniaWasaScreenState();
@@ -25857,9 +25908,10 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     },
   ];
 
-  // Parcours en 6 écrans — les 4 premiers repris À L'IDENTIQUE de la
-  // maquette validée, complétés par deux briques qui rendent le monde
-  // dynamique et social plutôt que limité à une liste fermée de lieux :
+  // Handunia possède désormais des points d’entrée explicites :
+  // Fil = consultation du vrai Fil Handunia ; Création = publication directe.
+  // Le mode explore conserve les écrans historiques de lieux/mémoire sans
+  // réintroduire un second fil dans le parcours de création.
   // 0 = portail d'entrée · 1 = carte des lieux vivants (densité réelle,
   // recherche, tri, création libre) · 2 = présence dans un lieu généré
   // (scène + mémoire collective + souvenirs de la communauté, IA
@@ -25888,6 +25940,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   bool _weaving = false;
   bool _generating = false;
   bool _aiAssisted = false;
+  bool _lastPublishWasLocal = false;
 
   final _newLieuName = TextEditingController();
   final _newLieuIcon = TextEditingController(text: '📍');
@@ -25908,6 +25961,11 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   @override
   void initState() {
     super.initState();
+    _step = switch (widget.entryMode) {
+      HanduniaWasaEntryMode.feed => 5,
+      HanduniaWasaEntryMode.publish => 3,
+      HanduniaWasaEntryMode.explore => 0,
+    };
     unawaited(_bootstrapConsultation());
   }
 
@@ -25916,7 +25974,9 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     if (!mounted) {
       return;
     }
-    await _openWorldFeed();
+    if (widget.entryMode == HanduniaWasaEntryMode.feed) {
+      await _openWorldFeed();
+    }
   }
 
   @override
@@ -26234,12 +26294,20 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
 
   Future<void> _generateFragment() async {
     final lieu = _selectedLieu;
-    if (lieu == null || _generating) {
+    if (lieu == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Choisissez d’abord le lieu du souvenir.'),
+        ),
+      );
+      return;
+    }
+    if (_generating) {
       return;
     }
     setState(() => _generating = true);
     try {
-      await Navigator.of(context).push<bool>(
+      final viewFeed = await Navigator.of(context).push<bool>(
         MaterialPageRoute<bool>(
           builder: (_) => HanduniaAiCreationRoute(
             lieu: Map<String, dynamic>.from(lieu),
@@ -26251,7 +26319,10 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       if (!mounted) {
         return;
       }
-      await _openWorldFeed();
+      if (viewFeed == true &&
+          widget.entryMode == HanduniaWasaEntryMode.publish) {
+        Navigator.of(context).pop(true);
+      }
     } finally {
       if (mounted) {
         setState(() => _generating = false);
@@ -26265,6 +26336,11 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     final lieu = _selectedLieu;
     final text = _fragmentController.text.trim();
     if (lieu == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Choisissez d’abord le lieu du souvenir.'),
+        ),
+      );
       return;
     }
     if (text.isEmpty) {
@@ -26311,6 +26387,8 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         _fragmentController.clear();
         _aiAssisted = false;
         _worldFeedFilter = HanduniaFeedFilter.all;
+        _lastPublishWasLocal = savedLocally;
+        _step = 6;
       });
       if (savedLocally) {
         setState(() {
@@ -26319,9 +26397,6 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         });
       } else {
         await _loadLieux();
-      }
-      if (mounted) {
-        await _openWorldFeed();
       }
     } catch (_) {
       if (!mounted) {
@@ -26862,10 +26937,14 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       case 3:
         return ReferenceCreationShell(
           dark: true,
-          title: 'Tisser un souvenir',
+          title: widget.entryMode == HanduniaWasaEntryMode.publish
+              ? 'Publier un souvenir'
+              : 'Tisser un souvenir',
           subtitle: 'Il rejoint Handunia Wasa',
           leading: const Text('🧵', style: TextStyle(fontSize: 15)),
-          onBack: () => setState(() => _step = 2),
+          onBack: widget.entryMode == HanduniaWasaEntryMode.publish
+              ? () => Navigator.maybePop(context)
+              : () => setState(() => _step = 2),
           child: _buildWeaveStep(),
         );
       case 4:
@@ -26878,6 +26957,23 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         );
       case 5:
         return _buildWorldFeedStep();
+      case 6:
+        return ReferenceCreationShell(
+          dark: true,
+          title: _lastPublishWasLocal
+              ? 'Souvenir enregistré'
+              : 'Souvenir publié',
+          subtitle: _lastPublishWasLocal
+              ? 'Synchronisation automatique au retour du réseau'
+              : 'Il est maintenant dans Handunia Wasa',
+          leading: const Icon(
+            Icons.check_circle_outline,
+            color: FitilaReferenceUi.wasaGlow,
+            size: 20,
+          ),
+          onBack: () => Navigator.maybePop(context),
+          child: _buildPublishSuccessStep(),
+        );
       case 0:
       default:
         return ReferenceCreationShell(
@@ -27237,13 +27333,149 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     );
   }
 
-  // 4/4 — Publication communautaire : le récit reste une mémoire du lieu
-  // et devient immédiatement visible dans le Fil selon sa portée.
+  Widget _buildPublishLieuSelector() {
+    if (_loadingLieux) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(
+          child: CircularProgressIndicator(
+            color: FitilaReferenceUi.wasaGlow,
+          ),
+        ),
+      );
+    }
+    final selectedId = _selectedLieu?['id']?.toString();
+    final hasSelected = selectedId != null &&
+        _lieux.any((lieu) => lieu['id']?.toString() == selectedId);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .07),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: .14)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'LIEU DU SOUVENIR',
+            style: TextStyle(
+              color: HanduniaTokens.braise,
+              fontFamily: 'Karla',
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .8,
+            ),
+          ),
+          const SizedBox(height: 6),
+          DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: hasSelected ? selectedId : null,
+              isExpanded: true,
+              dropdownColor: HanduniaTokens.nuitPortee,
+              iconEnabledColor: HanduniaTokens.braise,
+              hint: const Text(
+                'Choisir le lieu du souvenir',
+                style: TextStyle(
+                  color: HanduniaTokens.cendre,
+                  fontFamily: 'Karla',
+                  fontSize: 14,
+                ),
+              ),
+              items: [
+                for (final lieu in _lieux)
+                  DropdownMenuItem<String>(
+                    value: lieu['id']?.toString(),
+                    child: Text(
+                      '${lieu['icon']?.toString() ?? '📍'}  ${lieu['name']?.toString() ?? 'Lieu'}',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: HanduniaTokens.ivoire,
+                        fontFamily: 'Karla',
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+              ],
+              onChanged: (id) {
+                if (id == null) {
+                  return;
+                }
+                final lieu = _lieux.firstWhere(
+                  (item) => item['id']?.toString() == id,
+                );
+                setState(() {
+                  _selectedLieu = Map<String, dynamic>.from(lieu);
+                  _aiAssisted = false;
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPublishSuccessStep() {
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      children: [
+        const Icon(
+          Icons.check_circle_rounded,
+          color: FitilaReferenceUi.wasaGlow,
+          size: 72,
+        ),
+        const SizedBox(height: 18),
+        Text(
+          _lastPublishWasLocal
+              ? 'Votre souvenir est conservé sur cet appareil.'
+              : 'Votre souvenir a rejoint la mémoire collective.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: HanduniaTokens.ivoire,
+            fontFamily: 'Fraunces',
+            fontSize: 22,
+            height: 1.3,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          _lastPublishWasLocal
+              ? 'Il apparaîtra dans le Fil Handunia Wasa et sera synchronisé automatiquement dès que le réseau sera disponible.'
+              : 'Consultez-le maintenant dans Fil → Handunia Wasa.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: HanduniaTokens.cendre,
+            fontFamily: 'Karla',
+            fontSize: 13.5,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 24),
+        ReferenceGoldButton(
+          label: 'VOIR DANS LE FIL',
+          icon: Icons.dynamic_feed_outlined,
+          onPressed: () => Navigator.of(context).pop(true),
+        ),
+        const SizedBox(height: 10),
+        ReferenceGhostDarkButton(
+          label: 'Publier un autre souvenir',
+          icon: Icons.add_outlined,
+          onPressed: () => setState(() => _step = 3),
+        ),
+      ],
+    );
+  }
+
+  // Publication communautaire : le récit reste une mémoire du lieu et
+  // devient immédiatement visible dans le vrai Fil Handunia de la plateforme.
   Widget _buildWeaveStep() {
     final lieu = _selectedLieu;
     return ListView(
       padding: EdgeInsets.zero,
       children: [
+        _buildPublishLieuSelector(),
+        const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
@@ -27605,23 +27837,12 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       pendingCount: _worldFeed
           .where((item) => item['local_only'] == true)
           .length,
-      onBack: () => setState(() => _step = 1),
+      onBack: widget.entryMode == HanduniaWasaEntryMode.feed
+          ? () => Navigator.maybePop(context)
+          : () => setState(() => _step = 1),
       onRefresh: _openWorldFeed,
       onFilterChanged: _changeWorldFeedFilter,
       onOpenMemory: _openWorldMemory,
-      onPublish: () {
-        setState(() {
-          _step = 1;
-          _selectedLieu = null;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Choisissez un lieu, puis publiez votre souvenir.',
-            ),
-          ),
-        );
-      },
       onFindMissingVoice: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => HanduniaLivingMapRoute(
