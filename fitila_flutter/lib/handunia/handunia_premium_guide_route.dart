@@ -199,23 +199,13 @@ class _HanduniaPremiumGuideRouteState
     final name = place['name']?.toString() ?? 'ce lieu';
     final territory = handuniaTerritorySegments(place).join(' → ');
     final question = reconstruction
-        ? 'À partir uniquement des souvenirs et sources de la mémoire Handunia pour ' +
-            name +
-            ' (' +
-            territory +
-            '), reconstitue une scène courte et sensorielle de 4 à 6 phrases. '
-                'Distingue clairement ce qui est attesté de ce qui reste incertain. '
-                'N’ajoute aucune connaissance extérieure.'
-        : 'À partir uniquement des souvenirs et sources de la mémoire Handunia pour ' +
-            name +
-            ' (' +
-            territory +
-            '), fais un guide de visite bref de 5 à 7 phrases : ce qu’il faut '
-                'observer, écouter et comprendre sur place. Signale les lacunes '
-                'de mémoire au lieu de les inventer.';
-    final cacheKey = 'handunia_lot3_' +
-        (reconstruction ? 'scene_' : 'guide_') +
-        (place['id']?.toString() ?? 'unknown');
+        ? 'À partir uniquement des souvenirs et sources de la mémoire Handunia pour $name ($territory), reconstitue une scène courte et sensorielle de 4 à 6 phrases. '
+            'Distingue clairement ce qui est attesté de ce qui reste incertain. '
+            'N’ajoute aucune connaissance extérieure.'
+        : 'À partir uniquement des souvenirs et sources de la mémoire Handunia pour $name ($territory), fais un guide de visite bref de 5 à 7 phrases : ce qu’il faut '
+            'observer, écouter et comprendre sur place. Signale les lacunes '
+            'de mémoire au lieu de les inventer.';
+    final cacheKey = 'handunia_lot3_${reconstruction ? 'scene' : 'guide'}_${place['id']?.toString() ?? 'unknown'}';
 
     setState(() {
       _loadingGuide = true;
@@ -323,7 +313,7 @@ class _HanduniaPremiumGuideRouteState
                         children: [
                           HanduniaUnifiedMap(
                             places: <Map<String, dynamic>>[
-                              if (origin != null) origin,
+                              ?origin,
                               if (destination != null &&
                                   destination['id'] != origin?['id'])
                                 destination,
@@ -623,11 +613,7 @@ class _HanduniaPremiumGuideRouteState
                   ActionChip(
                     avatar: const Icon(Icons.place_outlined, size: 17),
                     label: Text(
-                      (place['name']?.toString() ?? 'Lieu') +
-                          ' · ' +
-                          _distanceLabel(
-                            _asDouble(place['__distance_m']) ?? 0,
-                          ),
+                      '${place['name']?.toString() ?? 'Lieu'} · ${_distanceLabel(_asDouble(place['__distance_m']) ?? 0)}',
                     ),
                     onPressed: () {
                       setState(() {
@@ -825,17 +811,15 @@ double? _asDouble(dynamic value) {
 }
 
 String _distanceLabel(double meters) {
-  if (meters < 1000) return meters.round().toString() + ' m';
-  return (meters / 1000).toStringAsFixed(1) + ' km';
+  if (meters < 1000) return '${meters.round()} m';
+  return '${(meters / 1000).toStringAsFixed(1)} km';
 }
 
 String _durationLabel(double seconds) {
   if (seconds <= 0) return 'durée —';
   final minutes = (seconds / 60).round();
-  if (minutes < 60) return minutes.toString() + ' min';
+  if (minutes < 60) return '$minutes min';
   final hours = minutes ~/ 60;
   final rest = minutes % 60;
-  return rest == 0
-      ? hours.toString() + ' h'
-      : hours.toString() + ' h ' + rest.toString();
+  return rest == 0 ? '$hours h' : '$hours h $rest';
 }
