@@ -101,24 +101,29 @@ class _HanduniaAiHeritageGuideRouteState
   }
 
   Future<void> _configureTts() async {
-    await _tts.setLanguage('fr-FR');
-    await _tts.setSpeechRate(.44);
-    await _tts.setPitch(1.0);
-    _tts.setCompletionHandler(() {
-      if (mounted) setState(() => _speaking = false);
-    });
-    _tts.setCancelHandler(() {
-      if (mounted) setState(() => _speaking = false);
-    });
-    _tts.setErrorHandler((_) {
-      if (mounted) setState(() => _speaking = false);
-    });
+    try {
+      await _tts.setLanguage('fr-FR');
+      await _tts.setSpeechRate(.44);
+      await _tts.setPitch(1.0);
+      _tts.setCompletionHandler(() {
+        if (mounted) setState(() => _speaking = false);
+      });
+      _tts.setCancelHandler(() {
+        if (mounted) setState(() => _speaking = false);
+      });
+      _tts.setErrorHandler((_) {
+        if (mounted) setState(() => _speaking = false);
+      });
+    } catch (_) {
+      // La visite textuelle reste disponible si le moteur TTS du terminal
+      // n'est pas exposé sur la plateforme courante.
+    }
   }
 
   @override
   void dispose() {
     _replayTimer?.cancel();
-    unawaited(_tts.stop());
+    unawaited(_tts.stop().then<void>((_) {}));
     _media.dispose();
     super.dispose();
   }
@@ -1057,7 +1062,7 @@ class _HanduniaPlaceSearchSheetState extends State<_HanduniaPlaceSearchSheet> {
           16 + MediaQuery.viewInsetsOf(context).bottom,
         ),
         child: SizedBox(
-          height: math.min(MediaQuery.sizeOf(context).height * .72, 620),
+          height: math.min(MediaQuery.sizeOf(context).height * .72, 620.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
