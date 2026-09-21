@@ -464,12 +464,14 @@ class HanduniaConsultationExtendedData {
   static Future<Map<String, dynamic>> askMemory(
     String question, {
     String? requestedScope,
+    String? lieuId,
   }) async {
     final response = await _client.functions.invoke(
       'handunia-memory-query',
       body: <String, dynamic>{
         'question': question.trim(),
         'requested_scope': ?requestedScope,
+        'lieu_id': ?lieuId,
       },
     );
     final data = response.data;
