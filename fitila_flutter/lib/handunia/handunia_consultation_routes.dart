@@ -818,8 +818,10 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
 
   List<Map<String, dynamic>> get _visiblePlaces {
     final query = _query.text.trim().toLowerCase();
-    if (query.isEmpty) return _places;
-    bool matches(Map<String, dynamic> place) {
+    final territory = _territoryFocus;
+
+    bool matchesQuery(Map<String, dynamic> place) {
+      if (query.isEmpty) return true;
       for (final key in <String>[
         'name',
         'department',
@@ -834,7 +836,32 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
       return false;
     }
 
-    return _places.where(matches).toList(growable: false);
+    bool matchesTerritory(Map<String, dynamic> place) {
+      if (territory == null) return true;
+      for (final key in <String>[
+        'department',
+        'commune',
+        'arrondissement',
+      ]) {
+        final expected = territory[key]?.toString().trim().toLowerCase() ?? '';
+        if (expected.isEmpty) continue;
+        final actual = place[key]?.toString().trim().toLowerCase() ?? '';
+        if (actual != expected) return false;
+      }
+      final village =
+          territory['village_quartier']?.toString().trim().toLowerCase() ?? '';
+      if (village.isNotEmpty) {
+        final actual =
+            place['village_quartier']?.toString().trim().toLowerCase() ?? '';
+        final name = place['name']?.toString().trim().toLowerCase() ?? '';
+        if (actual != village && !name.contains(village)) return false;
+      }
+      return true;
+    }
+
+    return _places
+        .where((place) => matchesTerritory(place) && matchesQuery(place))
+        .toList(growable: false);
   }
 
   Map<String, dynamic>? get _selectedPlace {
