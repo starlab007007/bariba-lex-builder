@@ -1989,13 +1989,18 @@ class _HanduniaMemoryAnswerRouteState
   bool _busy = false;
   bool _recording = false;
   String? _notice;
+  String? _lastQuestion;
 
   Future<void> _ask([String? provided]) async {
     final question = (provided ?? _questionController.text).trim();
     if (question.isEmpty || _busy) {
       return;
     }
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _lastQuestion = question;
+      _notice = null;
+    });
     try {
       final answer =
           await HanduniaConsultationExtendedData.askMemory(question);
@@ -2007,7 +2012,13 @@ class _HanduniaMemoryAnswerRouteState
       }
     } catch (_) {
       if (mounted) {
-        setState(() => _notice = 'En attente de réseau');
+        setState(() {
+          _answer = <String, dynamic>{
+            'state': 'unavailable',
+            'answer': 'Mémoire momentanément inaccessible.',
+          };
+          _notice = 'Connexion ou service indisponible.';
+        });
       }
     } finally {
       if (mounted) {
@@ -2038,12 +2049,21 @@ class _HanduniaMemoryAnswerRouteState
     if (asset == null) {
       return;
     }
-    final transcript = await HanduniaConsultationExtendedData.transcribeBariba(
-      await asset.readBytes(),
-    );
-    if (transcript != null && mounted) {
-      _questionController.text = transcript;
-      await _ask(transcript);
+    try {
+      final transcript =
+          await HanduniaConsultationExtendedData.transcribeBariba(
+        await asset.readBytes(),
+      );
+      if (transcript != null && mounted) {
+        _questionController.text = transcript;
+        await _ask(transcript);
+      } else if (mounted) {
+        setState(() => _notice = 'Transcription vocale indisponible.');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _notice = 'Transcription vocale indisponible.');
+      }
     }
   }
 
@@ -2111,6 +2131,41 @@ class _HanduniaMemoryAnswerRouteState
                         ),
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final prompt in const <String>[
+                        'Comment ?',
+                        'Quand ?',
+                        'Qui ?',
+                      ])
+                        ActionChip(
+                          label: Text(prompt),
+                          onPressed: _busy
+                              ? null
+                              : () {
+                                  final base =
+                                      _questionController.text.trim();
+                                  final question = base.isEmpty
+                                      ? prompt
+                                      : '$prompt $base';
+                                  _questionController.text = question;
+                                  _ask(question);
+                                },
+                          backgroundColor: HanduniaTokens.nuitPortee,
+                          side: const BorderSide(
+                            color: HanduniaTokens.bordureForte,
+                          ),
+                          labelStyle: _karlaRoute(
+                            size: 12.5,
+                            color: HanduniaTokens.ivoire,
+                            weight: FontWeight.w700,
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 10),
                   Row(
@@ -2214,6 +2269,24 @@ class _HanduniaMemoryAnswerRouteState
                         ],
                       ),
                     ),
+                    if (state == 'unavailable' && _lastQuestion != null) ...[
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: OutlinedButton.icon(
+                          onPressed: _busy ? null : () => _ask(_lastQuestion),
+                          icon: const Icon(Icons.refresh_outlined),
+                          label: const Text('RÉESSAYER'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: HanduniaTokens.ivoire,
+                            side: const BorderSide(
+                              color: HanduniaTokens.bordureForte,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ],
               ),
