@@ -452,7 +452,14 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                               ActionChip(
                                 visualDensity: VisualDensity.compact,
                                 avatar: Icon(
-                                  _hasCoordinates(quickPlaces[index])
+                                  _geoDouble(
+                                                quickPlaces[index]['latitude'],
+                                              ) !=
+                                              null &&
+                                          _geoDouble(
+                                                quickPlaces[index]['longitude'],
+                                              ) !=
+                                              null
                                       ? Icons.location_on_rounded
                                       : Icons.location_off_outlined,
                                   size: 16,
