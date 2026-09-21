@@ -1655,6 +1655,35 @@ class _FitilaShellState extends State<FitilaShell> {
     });
   }
 
+  void _selectBottomDestination(int index) {
+    switch (index) {
+      case 0:
+        _navigate(FitilaPage.feed);
+      case 1:
+        _navigate(FitilaPage.learn);
+      case 2:
+        _navigate(FitilaPage.classe);
+      case 3:
+        _navigate(FitilaPage.dictionary);
+      case 4:
+        _navigate(FitilaPage.translator);
+      case 5:
+        _navigate(FitilaPage.ia);
+    }
+  }
+
+  Future<bool?> _openHandunia(HanduniaWasaEntryMode mode) {
+    return Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => HanduniaWasaScreen(
+          entryMode: mode,
+          onPlatformNav: _selectBottomDestination,
+          onPlatformCreate: () => _navigate(FitilaPage.creator),
+        ),
+      ),
+    );
+  }
+
   void _openHanduniaFeedFromCreator() {
     setState(() {
       _page = FitilaPage.feed;
@@ -1664,13 +1693,7 @@ class _FitilaShellState extends State<FitilaShell> {
       if (!mounted) {
         return;
       }
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => const HanduniaWasaScreen(
-            entryMode: HanduniaWasaEntryMode.feed,
-          ),
-        ),
-      );
+      unawaited(_openHandunia(HanduniaWasaEntryMode.feed));
     });
   }
 
@@ -1802,6 +1825,8 @@ class _FitilaShellState extends State<FitilaShell> {
         error: _feedError,
         onRetry: _loadFeed,
         onPersistPost: widget.session.accessToken.isEmpty ? null : _persistPost,
+        onOpenHanduniaFeed: () =>
+            unawaited(_openHandunia(HanduniaWasaEntryMode.feed)),
       ),
       FitilaPage.creator => ContentCreatorScreen(
         onPostCreated: (post) {
@@ -1811,6 +1836,8 @@ class _FitilaShellState extends State<FitilaShell> {
           });
         },
         onOpenHanduniaFeed: _openHanduniaFeedFromCreator,
+        onOpenHanduniaPublish: () =>
+            _openHandunia(HanduniaWasaEntryMode.publish),
       ),
       FitilaPage.templates => TemplatesScreen(
         onUseTemplate: (_) => setState(() => _page = FitilaPage.creator),
@@ -1935,24 +1962,9 @@ class _FitilaShellState extends State<FitilaShell> {
             ),
             bottomNavigationBar: wide
                 ? null
-                : _PremiumBottomNav(
+                : FitilaPremiumBottomNav(
                     selectedIndex: _destination,
-                    onSelected: (index) {
-                      switch (index) {
-                        case 0:
-                          _navigate(FitilaPage.feed);
-                        case 1:
-                          _navigate(FitilaPage.learn);
-                        case 2:
-                          _navigate(FitilaPage.classe);
-                        case 3:
-                          _navigate(FitilaPage.dictionary);
-                        case 4:
-                          _navigate(FitilaPage.translator);
-                        case 5:
-                          _navigate(FitilaPage.ia);
-                      }
-                    },
+                    onSelected: _selectBottomDestination,
                     onCreate: () => _navigate(FitilaPage.creator),
                   ),
             // Le bouton "+" flottant a été retiré : le fil et le studio de
@@ -2083,6 +2095,7 @@ class FeedScreen extends StatefulWidget {
     this.error,
     this.onRetry,
     this.onPersistPost,
+    this.onOpenHanduniaFeed,
   });
 
   final List<FeedPost> posts;
@@ -2091,6 +2104,7 @@ class FeedScreen extends StatefulWidget {
   final String? error;
   final VoidCallback? onRetry;
   final Future<FeedPost?> Function(FeedPost draft)? onPersistPost;
+  final VoidCallback? onOpenHanduniaFeed;
 
   static Future<void> showComposer(
     BuildContext context, {
@@ -2129,6 +2143,7 @@ class _FeedScreenState extends State<FeedScreen> {
           loading: widget.loading,
           error: widget.error,
           onRetry: widget.onRetry,
+          onOpenHanduniaFeed: widget.onOpenHanduniaFeed,
         ),
       ),
     );
@@ -2147,12 +2162,14 @@ class _ImmersiveFeedDeck extends StatefulWidget {
     required this.loading,
     required this.error,
     required this.onRetry,
+    this.onOpenHanduniaFeed,
   });
 
   final List<FeedPost> posts;
   final bool loading;
   final String? error;
   final VoidCallback? onRetry;
+  final VoidCallback? onOpenHanduniaFeed;
 
   @override
   State<_ImmersiveFeedDeck> createState() => _ImmersiveFeedDeckState();
@@ -2327,13 +2344,20 @@ class _ImmersiveFeedDeckState extends State<_ImmersiveFeedDeck> {
                     selected: false,
                     colorA: _feedCategoryStyles[FitilaFeedCategory.handuniaWasa]!.colorA,
                     colorB: _feedCategoryStyles[FitilaFeedCategory.handuniaWasa]!.colorB,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const HanduniaWasaScreen(
-                          entryMode: HanduniaWasaEntryMode.feed,
+                    onTap: () {
+                      final open = widget.onOpenHanduniaFeed;
+                      if (open != null) {
+                        open();
+                        return;
+                      }
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const HanduniaWasaScreen(
+                            entryMode: HanduniaWasaEntryMode.feed,
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                   const SizedBox(width: 8),
                   _CategoryFilterChip(
@@ -3384,10 +3408,12 @@ class ContentCreatorScreen extends StatefulWidget {
     super.key,
     required this.onPostCreated,
     this.onOpenHanduniaFeed,
+    this.onOpenHanduniaPublish,
   });
 
   final ValueChanged<FeedPost> onPostCreated;
   final VoidCallback? onOpenHanduniaFeed;
+  final Future<bool?> Function()? onOpenHanduniaPublish;
 
   @override
   State<ContentCreatorScreen> createState() => _ContentCreatorScreenState();
@@ -3500,14 +3526,17 @@ class _ContentCreatorScreenState extends State<ContentCreatorScreen> {
                       colorA: const Color(0xFF4A3B78),
                       colorB: const Color(0xFF14111C),
                       onTap: () async {
-                        final viewFeed = await Navigator.push<bool>(
-                          context,
-                          MaterialPageRoute<bool>(
-                            builder: (_) => const HanduniaWasaScreen(
-                              entryMode: HanduniaWasaEntryMode.publish,
-                            ),
-                          ),
-                        );
+                        final openPublish = widget.onOpenHanduniaPublish;
+                        final viewFeed = openPublish != null
+                            ? await openPublish()
+                            : await Navigator.push<bool>(
+                                context,
+                                MaterialPageRoute<bool>(
+                                  builder: (_) => const HanduniaWasaScreen(
+                                    entryMode: HanduniaWasaEntryMode.publish,
+                                  ),
+                                ),
+                              );
                         if (viewFeed == true && context.mounted) {
                           widget.onOpenHanduniaFeed?.call();
                         }
@@ -25844,9 +25873,13 @@ class HanduniaWasaScreen extends StatefulWidget {
   const HanduniaWasaScreen({
     super.key,
     this.entryMode = HanduniaWasaEntryMode.feed,
+    this.onPlatformNav,
+    this.onPlatformCreate,
   });
 
   final HanduniaWasaEntryMode entryMode;
+  final ValueChanged<int>? onPlatformNav;
+  final VoidCallback? onPlatformCreate;
 
   @override
   State<HanduniaWasaScreen> createState() => _HanduniaWasaScreenState();
@@ -25931,6 +25964,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   Map<String, int> _density = const {};
   final _lieuxQuery = TextEditingController();
   final bool _sortByPopular = true;
+  bool _lieuxListMode = false;
 
   Map<String, dynamic>? _selectedLieu;
   bool _loadingScene = false;
@@ -26317,6 +26351,20 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             lieu: Map<String, dynamic>.from(lieu),
             voiceCount: _density[lieu['id']?.toString() ?? ''] ?? 0,
             onSaved: _loadLieux,
+            onPlatformNav: (index) {
+              if (!mounted) return;
+              Navigator.of(context).pop();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _leaveForPlatform(index);
+              });
+            },
+            onPlatformCreate: () {
+              if (!mounted) return;
+              Navigator.of(context).pop();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _leaveForCreator();
+              });
+            },
           ),
         ),
       );
@@ -26918,75 +26966,109 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     );
   }
 
+  void _leaveForPlatform(int index) {
+    if (widget.onPlatformNav == null) {
+      if (index == 0) {
+        Navigator.of(context).maybePop();
+      }
+      return;
+    }
+    Navigator.of(context).pop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onPlatformNav?.call(index);
+    });
+  }
+
+  void _leaveForCreator() {
+    if (widget.entryMode == HanduniaWasaEntryMode.publish) {
+      return;
+    }
+    if (widget.onPlatformCreate == null) {
+      return;
+    }
+    Navigator.of(context).pop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onPlatformCreate?.call();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    switch (_step) {
-      case 1:
-        return ReferenceCreationShell(
-          dark: true,
-          title: 'Lieux vivants',
-          subtitle: '${_lieux.length} lieux tissés par la communauté',
-          leading: const Text('🌌', style: TextStyle(fontSize: 15)),
-          onBack: widget.entryMode == HanduniaWasaEntryMode.publish
-              ? () => Navigator.maybePop(context)
-              : () => setState(() => _step = 0),
-          child: _buildLieuxStep(),
-        );
-      case 2:
-        return ReferenceCreationShell(
-          dark: true,
-          title: _selectedLieu?['name']?.toString() ?? 'Lieu vivant',
-          subtitle: 'Reconstitué par la mémoire collective',
-          onBack: () => setState(() => _step = 1),
-          child: _buildSceneStep(),
-        );
-      case 3:
-        return ReferenceCreationShell(
-          dark: true,
-          title: 'Tisser un souvenir',
-          subtitle: 'Il rejoint Handunia Wasa',
-          leading: const Text('🧵', style: TextStyle(fontSize: 15)),
-          onBack: () => setState(() => _step = 2),
-          child: _buildWeaveStep(),
-        );
-      case 4:
-        return ReferenceCreationShell(
-          dark: true,
-          title: 'Tisser un nouveau lieu',
-          subtitle: 'Le monde vivant grandit avec la communauté',
-          onBack: () => setState(() => _step = 1),
-          child: _buildCreateLieuStep(),
-        );
-      case 5:
-        return _buildWorldFeedStep();
-      case 6:
-        return ReferenceCreationShell(
-          dark: true,
-          title: _lastPublishWasLocal
-              ? 'Souvenir enregistré'
-              : 'Souvenir publié',
-          subtitle: _lastPublishWasLocal
-              ? 'Synchronisation automatique au retour du réseau'
-              : 'Il est maintenant dans Handunia Wasa',
-          leading: const Icon(
-            Icons.check_circle_outline,
-            color: FitilaReferenceUi.wasaGlow,
-            size: 20,
-          ),
-          onBack: () => Navigator.maybePop(context),
-          child: _buildPublishSuccessStep(),
-        );
-      case 0:
-      default:
-        return ReferenceCreationShell(
-          dark: true,
-          showTopBar: false,
-          bodyPadding: EdgeInsets.zero,
-          child: ReferencePortalStage(
-            onEnter: () => setState(() => _step = 1),
-          ),
-        );
+    final content = switch (_step) {
+      1 => ReferenceCreationShell(
+        dark: false,
+        title: 'Lieux vivants',
+        subtitle: 'Explorez les mémoires du Bénin',
+        leading: const Text('🌌', style: TextStyle(fontSize: 15)),
+        onBack: widget.entryMode == HanduniaWasaEntryMode.publish
+            ? () => Navigator.maybePop(context)
+            : () => setState(() => _step = 0),
+        child: _buildLieuxStep(),
+      ),
+      2 => ReferenceCreationShell(
+        dark: false,
+        title: _selectedLieu?['name']?.toString() ?? 'Lieu vivant',
+        subtitle: 'Reconstitué par la mémoire collective',
+        onBack: () => setState(() => _step = 1),
+        child: _buildSceneStep(),
+      ),
+      3 => ReferenceCreationShell(
+        dark: false,
+        title: 'Tisser un souvenir',
+        subtitle: 'Il rejoint Handunia Wasa',
+        leading: const Text('🧵', style: TextStyle(fontSize: 15)),
+        onBack: () => setState(() => _step = 2),
+        child: _buildWeaveStep(),
+      ),
+      4 => ReferenceCreationShell(
+        dark: false,
+        title: 'Tisser un nouveau lieu',
+        subtitle: 'Le monde vivant grandit avec la communauté',
+        onBack: () => setState(() => _step = 1),
+        child: _buildCreateLieuStep(),
+      ),
+      5 => _buildWorldFeedStep(),
+      6 => ReferenceCreationShell(
+        dark: false,
+        title: _lastPublishWasLocal
+            ? 'Souvenir enregistré'
+            : 'Souvenir publié',
+        subtitle: _lastPublishWasLocal
+            ? 'Synchronisation automatique au retour du réseau'
+            : 'Il est maintenant dans Handunia Wasa',
+        leading: const Icon(
+          Icons.check_circle_outline,
+          color: FitilaReferenceUi.goldDeep,
+          size: 20,
+        ),
+        onBack: () => Navigator.maybePop(context),
+        child: _buildPublishSuccessStep(),
+      ),
+      _ => ReferenceCreationShell(
+        dark: false,
+        showTopBar: false,
+        bodyPadding: EdgeInsets.zero,
+        child: ReferencePortalStage(
+          onEnter: () => setState(() => _step = 1),
+        ),
+      ),
+    };
+
+    final showPlatformNavigation =
+        widget.onPlatformNav != null || widget.onPlatformCreate != null;
+    if (!showPlatformNavigation) {
+      return content;
     }
+    return Scaffold(
+      backgroundColor: FitilaReferenceUi.appBg,
+      body: content,
+      bottomNavigationBar: FitilaPremiumBottomNav(
+        selectedIndex:
+            widget.entryMode == HanduniaWasaEntryMode.feed ? 0 : -1,
+        onSelected: _leaveForPlatform,
+        onCreate: _leaveForCreator,
+      ),
+    );
   }
 
   Widget _buildPortalStep() {
@@ -27001,33 +27083,36 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   Widget _buildLieuxStep() {
     if (_loadingLieux) {
       return const Center(
-        child: CircularProgressIndicator(color: FitilaReferenceUi.wasaGlow),
+        child: CircularProgressIndicator(color: FitilaReferenceUi.goldDeep),
       );
     }
     if (_lieuxError != null) {
       return Center(
         child: ReferenceCard(
-          dark: true,
+          dark: false,
           margin: EdgeInsets.zero,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(
                 Icons.cloud_off_rounded,
-                color: Color(0xFFFFC768),
+                color: FitilaReferenceUi.clay,
                 size: 32,
               ),
               const SizedBox(height: 10),
               Text(
                 _lieuxError!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white70, fontSize: 11.5),
+                style: const TextStyle(
+                  color: FitilaReferenceUi.inkSoft,
+                  fontSize: 12.5,
+                ),
               ),
               const SizedBox(height: 10),
-              ReferenceGhostDarkButton(
-                label: 'Réessayer',
-                icon: Icons.refresh_rounded,
+              OutlinedButton.icon(
                 onPressed: _loadLieux,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Réessayer'),
               ),
             ],
           ),
@@ -27045,112 +27130,290 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           },
         )
         .toList(growable: false);
+    final located = mappedVisible
+        .where(
+          (place) =>
+              place['latitude'] is num && place['longitude'] is num,
+        )
+        .toList(growable: false);
     final unlocated = mappedVisible
         .where(
           (place) =>
               place['latitude'] is! num || place['longitude'] is! num,
         )
         .toList(growable: false);
+
+    Widget stat(String value, String label, IconData icon) {
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            color: FitilaReferenceUi.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: FitilaReferenceUi.hairline),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 17, color: FitilaReferenceUi.goldDeep),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        color: FitilaReferenceUi.ink,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: FitilaReferenceUi.muted,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return RefreshIndicator(
-      color: FitilaReferenceUi.wasaGlow,
+      color: FitilaReferenceUi.gold,
       onRefresh: _loadLieux,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
-          HanduniaUnifiedMap(
-            places: mappedVisible,
-            selectedPlaceId: _selectedLieu?['id']?.toString(),
-            height: 410,
-            onSelected: (place) => setState(() => _selectedLieu = place),
-            onOpen: _openLieu,
+          Text(
+            'Explorez les mémoires du Bénin',
+            style: FitilaReferenceUi.serif(
+              size: 17,
+              color: FitilaReferenceUi.ink,
+            ),
           ),
-          if (unlocated.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 48,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: unlocated.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 7),
-                itemBuilder: (context, index) {
-                  final place = unlocated[index];
-                  return ActionChip(
-                    avatar: const Icon(
-                      Icons.location_off_outlined,
-                      size: 17,
-                    ),
-                    label: Text(
-                      place['name']?.toString() ?? 'Lieu à positionner',
-                    ),
-                    onPressed: () => _openLieu(place),
-                  );
-                },
-              ),
+          const SizedBox(height: 4),
+          const Text(
+            'Recherchez un lieu, choisissez-le sur la carte ou passez en liste.',
+            style: TextStyle(
+              color: FitilaReferenceUi.muted,
+              fontSize: 12.5,
+              height: 1.4,
             ),
-          ],
-          if (_backendUnavailable)
-            Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF59E0B).withValues(alpha: .10),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color(0xFFF59E0B).withValues(alpha: .22),
-                ),
-              ),
-              child: const Text(
-                'Mode hors ligne : les lieux de départ restent accessibles et les souvenirs sont synchronisés au retour du réseau.',
-                style: TextStyle(
-                  color: Color(0xFFFFDCA0),
-                  fontSize: 10.5,
-                  height: 1.4,
-                ),
-              ),
-            ),
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                child: _HanduniaTextField(
+                child: TextField(
                   controller: _lieuxQuery,
                   onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
+                  style: const TextStyle(
+                    color: FitilaReferenceUi.ink,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
                     hintText: 'Rechercher un lieu…',
-                    prefixIcon: Icon(Icons.search_rounded, size: 18),
+                    hintStyle: const TextStyle(color: FitilaReferenceUi.muted),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: FitilaReferenceUi.goldDeep,
+                    ),
+                    filled: true,
+                    fillColor: FitilaReferenceUi.surface,
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(
+                        color: FitilaReferenceUi.hairline,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(
+                        color: FitilaReferenceUi.hairline,
+                      ),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               IconButton.filledTonal(
                 tooltip: 'Nouveau lieu',
-                onPressed: _backendUnavailable
-                    ? null
-                    : _openCreateLieuStep,
+                onPressed: _backendUnavailable ? null : _openCreateLieuStep,
                 icon: const Icon(Icons.add_location_alt_rounded),
-              ),
-              IconButton(
-                tooltip: 'Fil du monde',
-                onPressed: _backendUnavailable ? null : _openWorldFeed,
-                icon: const Icon(
-                  Icons.dynamic_feed_rounded,
-                  color: FitilaReferenceUi.wasaGlow,
-                ),
               ),
             ],
           ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              ChoiceChip(
+                selected: !_lieuxListMode,
+                onSelected: (_) => setState(() => _lieuxListMode = false),
+                avatar: const Icon(Icons.map_outlined, size: 17),
+                label: const Text('Carte'),
+              ),
+              const SizedBox(width: 8),
+              ChoiceChip(
+                selected: _lieuxListMode,
+                onSelected: (_) => setState(() => _lieuxListMode = true),
+                avatar: const Icon(Icons.view_list_rounded, size: 17),
+                label: const Text('Liste'),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: widget.entryMode == HanduniaWasaEntryMode.feed
+                    ? null
+                    : _openWorldFeed,
+                icon: const Icon(Icons.dynamic_feed_outlined, size: 17),
+                label: const Text('Fil'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              stat('${mappedVisible.length}', 'lieux', Icons.place_outlined),
+              const SizedBox(width: 7),
+              stat('${located.length}', 'localisés', Icons.gps_fixed_rounded),
+              const SizedBox(width: 7),
+              stat(
+                '${unlocated.length}',
+                'à positionner',
+                Icons.location_off_outlined,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (!_lieuxListMode)
+            HanduniaUnifiedMap(
+              places: mappedVisible,
+              selectedPlaceId: _selectedLieu?['id']?.toString(),
+              height: 360,
+              onSelected: (place) => setState(() => _selectedLieu = place),
+              onOpen: _openLieu,
+            )
+          else
+            for (final place in mappedVisible) ...[
+              Card(
+                elevation: 0,
+                color: FitilaReferenceUi.surface,
+                margin: const EdgeInsets.only(bottom: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  side: const BorderSide(color: FitilaReferenceUi.hairline),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
+                  leading: CircleAvatar(
+                    backgroundColor: FitilaReferenceUi.goldTint,
+                    child: Text(
+                      place['icon']?.toString() ?? '📍',
+                      style: const TextStyle(fontSize: 18),
+                    ),
+                  ),
+                  title: Text(
+                    place['name']?.toString() ?? 'Lieu mémoire',
+                    style: const TextStyle(
+                      color: FitilaReferenceUi.ink,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  subtitle: Text(
+                    place['latitude'] is num && place['longitude'] is num
+                        ? '${place['memory_count'] ?? 0} souvenirs · position réelle disponible'
+                        : '${place['memory_count'] ?? 0} souvenirs · position à compléter',
+                    style: const TextStyle(
+                      color: FitilaReferenceUi.muted,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 15,
+                    color: FitilaReferenceUi.goldDeep,
+                  ),
+                  onTap: () => _openLieu(place),
+                ),
+              ),
+            ],
+          if (unlocated.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: FitilaReferenceUi.goldTint.withValues(alpha: .55),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: FitilaReferenceUi.gold.withValues(alpha: .35),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.location_searching_rounded,
+                    color: FitilaReferenceUi.goldDeep,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '${unlocated.length} lieu${unlocated.length > 1 ? 'x' : ''} attend${unlocated.length > 1 ? 'ent' : ''} encore une position précise.',
+                      style: const TextStyle(
+                        color: FitilaReferenceUi.inkSoft,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (_backendUnavailable) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(11),
+              decoration: BoxDecoration(
+                color: FitilaReferenceUi.clayTint.withValues(alpha: .58),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: FitilaReferenceUi.clay.withValues(alpha: .25),
+                ),
+              ),
+              child: const Text(
+                'Mode hors ligne : les lieux disponibles restent consultables. '
+                'Les souvenirs seront synchronisés au retour du réseau.',
+                style: TextStyle(
+                  color: FitilaReferenceUi.inkSoft,
+                  fontSize: 11.5,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
           if (_syncedOfflineCount > 0) ...[
             const SizedBox(height: 8),
             Text(
               '$_syncedOfflineCount souvenir(s) hors ligne synchronisé(s).',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: .46),
-                fontSize: 9.5,
+              style: const TextStyle(
+                color: FitilaReferenceUi.muted,
+                fontSize: 10.5,
               ),
             ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
         ],
       ),
     );
@@ -27195,7 +27458,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           HanduniaTerritoryPath(place: lieu, compact: true),
           const SizedBox(height: 10),
           ReferenceCard(
-            dark: true,
+            dark: false,
             margin: EdgeInsets.zero,
             child: Text(
               _scene.isNotEmpty
@@ -27211,7 +27474,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           ),
         ] else ...[
           ReferenceCard(
-            dark: true,
+            dark: false,
             margin: EdgeInsets.zero,
             child: Column(
               children: [
@@ -27300,7 +27563,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         if (_memoryAnswer.isNotEmpty) ...[
           const SizedBox(height: 8),
           ReferenceCard(
-            dark: true,
+            dark: false,
             child: Text(
               _memoryAnswer,
               style: const TextStyle(
