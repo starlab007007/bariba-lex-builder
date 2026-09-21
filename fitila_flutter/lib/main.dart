@@ -27078,13 +27078,76 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
               ),
             ),
           )
-        else
-          ReferenceSceneStage(
-            emoji: lieu['icon']?.toString() ?? '🌍',
-            caption: _scene.isNotEmpty
-                ? _scene
-                : (lieu['description']?.toString() ?? ''),
+        else if (lieu['latitude'] is num && lieu['longitude'] is num) ...[
+          HanduniaUnifiedMap(
+            places: <Map<String, dynamic>>[
+              <String, dynamic>{
+                ...lieu,
+                'memory_count':
+                    _density[lieu['id']?.toString() ?? ''] ?? 0,
+                'voice_count': lieu['voice_count'] ?? 0,
+              },
+            ],
+            selectedPlaceId: lieu['id']?.toString(),
+            height: 285,
+            showSelectionCard: false,
+            initialZoom: 13.4,
           ),
+          const SizedBox(height: 8),
+          HanduniaTerritoryPath(place: lieu, compact: true),
+          const SizedBox(height: 10),
+          ReferenceCard(
+            dark: true,
+            margin: EdgeInsets.zero,
+            child: Text(
+              _scene.isNotEmpty
+                  ? _scene
+                  : (lieu['description']?.toString() ?? ''),
+              style: const TextStyle(
+                fontFamily: 'Fraunces',
+                color: HanduniaTokens.ivoire,
+                fontSize: 14.5,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ] else ...[
+          ReferenceCard(
+            dark: true,
+            margin: EdgeInsets.zero,
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.location_off_outlined,
+                  color: HanduniaTokens.terre,
+                  size: 28,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Ce lieu historique n’a pas encore de position vérifiée.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Karla',
+                    color: HanduniaTokens.cendre,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (_scene.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    _scene,
+                    style: const TextStyle(
+                      fontFamily: 'Fraunces',
+                      color: HanduniaTokens.ivoire,
+                      fontSize: 14.5,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         Row(
           children: [
