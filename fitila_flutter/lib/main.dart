@@ -25,6 +25,7 @@ import 'core/foncier_rag.dart';
 import 'core/signature_theme.dart';
 import 'core/web_parity_models.dart';
 import 'handunia/handunia_consultation_data.dart';
+import 'handunia/handunia_consultation_extended_data.dart';
 import 'handunia/handunia_consultation_model.dart';
 import 'handunia/handunia_consultation_routes.dart';
 import 'handunia/handunia_creation_ai_route.dart';
@@ -26184,8 +26185,8 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   // "Demander à la mémoire collective" : un vrai mini-RAG — la réponse
   // vient uniquement des souvenirs réellement tissés pour ce lieu,
   // jamais d'une connaissance générale inventée pour l'occasion.
-  Future<void> _askCollectiveMemory() async {
-    final question = _askController.text.trim();
+  Future<void> _askCollectiveMemory([String? provided]) async {
+    final question = (provided ?? _askController.text).trim();
     final lieu = _selectedLieu;
     if (question.isEmpty || lieu == null || _asking) {
       return;
@@ -26195,23 +26196,21 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       _memoryAnswer = '';
     });
     try {
-      final name = lieu['name']?.toString() ?? 'ce lieu';
-      if (_lieuFragments.isEmpty) {
-        setState(() {
-          _memoryAnswer =
-              "Aucun souvenir communautaire n'a encore été partagé pour $name — soyez le premier à en tisser un, pour que la mémoire collective puisse un jour répondre.";
-        });
-        return;
-      }
-      final memories = _lieuFragments
-          .take(8)
-          .map((f) => '- ${f['text']}')
-          .join('\n');
-      final prompt =
-          'En te basant UNIQUEMENT sur les souvenirs communautaires réels suivants à propos de "$name" :\n$memories\n\n'
-          'Réponds à cette question : "$question". '
-          'Si ces souvenirs ne suffisent pas pour répondre, dis-le honnêtement plutôt que d\'inventer.';
-      final answer = await FitilaBackend.askFitilaIa(prompt);
+      final result = await HanduniaConsultationExtendedData.askMemory(
+        question,
+        lieuId: lieu['id']?.toString(),
+      );
+      final state = result['state']?.toString();
+      final answer = switch (state) {
+        'sourced' => result['answer']?.toString() ?? '',
+        'refusal' => result['protocol']?.toString() ?? 'Accès réservé.',
+        'void' => result['answer']?.toString() ??
+            'La communauté ne l’a pas encore raconté.',
+        'unavailable' => result['message']?.toString() ??
+            'La mémoire est momentanément indisponible.',
+        _ => result['answer']?.toString() ??
+            'La mémoire est momentanément indisponible.',
+      };
       if (!mounted) {
         return;
       }
@@ -26222,7 +26221,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       }
       setState(
         () => _memoryAnswer =
-            'La mémoire collective est momentanément indisponible.',
+            'La mémoire est momentanément indisponible. Réessayez.',
       );
     } finally {
       if (mounted) {
@@ -27040,7 +27039,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
               child: _HanduniaTextField(
                 controller: _askController,
                 decoration: const InputDecoration(
-                  hintText: '💬 Demander à la mémoire collective…',
+                  hintText: 'Demander à la mémoire…',
                 ),
                 onSubmitted: (_) => _askCollectiveMemory(),
               ),
@@ -27059,6 +27058,29 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                     )
                   : const Icon(Icons.send_rounded),
             ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final prompt in const <String>[
+              'Comment ?',
+              'Quand ?',
+              'Qui ?',
+            ])
+              ActionChip(
+                label: Text(prompt),
+                onPressed: _asking
+                    ? null
+                    : () {
+                        final base = _askController.text.trim();
+                        final question = base.isEmpty ? prompt : '$prompt $base';
+                        _askController.text = question;
+                        _askCollectiveMemory(question);
+                      },
+              ),
           ],
         ),
         if (_memoryAnswer.isNotEmpty) ...[
