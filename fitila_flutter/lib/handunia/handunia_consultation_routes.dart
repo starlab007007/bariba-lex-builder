@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/fitila_media.dart';
+import '../ui/reference_creation_ui.dart';
 import 'handunia_consultation_extended_data.dart';
 import 'handunia_consultation_ui.dart';
 import 'handunia_ai_heritage_guide_route.dart';
@@ -152,10 +153,14 @@ class HanduniaMemoryRoute extends StatefulWidget {
     super.key,
     required this.memoryId,
     this.seed,
+    this.onPlatformNav,
+    this.onPlatformCreate,
   });
 
   final String memoryId;
   final Map<String, dynamic>? seed;
+  final ValueChanged<int>? onPlatformNav;
+  final VoidCallback? onPlatformCreate;
 
   @override
   State<HanduniaMemoryRoute> createState() => _HanduniaMemoryRouteState();
@@ -250,6 +255,14 @@ class _HanduniaMemoryRouteState extends State<HanduniaMemoryRoute> {
     final memory = _memory;
     return Scaffold(
       backgroundColor: HanduniaTokens.nuit,
+      bottomNavigationBar:
+          widget.onPlatformNav == null && widget.onPlatformCreate == null
+          ? null
+          : FitilaPremiumBottomNav(
+              selectedIndex: 0,
+              onSelected: (index) => widget.onPlatformNav?.call(index),
+              onCreate: () => widget.onPlatformCreate?.call(),
+            ),
       body: SafeArea(
         child: Column(
           children: [
@@ -762,10 +775,14 @@ class HanduniaLivingMapRoute extends StatefulWidget {
     super.key,
     this.pendingLocal = 0,
     this.initialPlaces,
+    this.onPlatformNav,
+    this.onPlatformCreate,
   });
 
   final int pendingLocal;
   final List<Map<String, dynamic>>? initialPlaces;
+  final ValueChanged<int>? onPlatformNav;
+  final VoidCallback? onPlatformCreate;
 
   @override
   State<HanduniaLivingMapRoute> createState() => _HanduniaLivingMapRouteState();
@@ -943,6 +960,14 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
     final selected = _selectedPlace;
     return Scaffold(
       backgroundColor: HanduniaTokens.nuit,
+      bottomNavigationBar:
+          widget.onPlatformNav == null && widget.onPlatformCreate == null
+          ? null
+          : FitilaPremiumBottomNav(
+              selectedIndex: 0,
+              onSelected: (index) => widget.onPlatformNav?.call(index),
+              onCreate: () => widget.onPlatformCreate?.call(),
+            ),
       body: SafeArea(
         child: Column(
           children: [
