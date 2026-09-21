@@ -470,6 +470,44 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                     ),
                   ),
                 ),
+              if (widget.showChrome &&
+                  widget.immersive &&
+                  widget.places.isNotEmpty)
+                Positioned(
+                  left: 56,
+                  right: 56,
+                  top: 58,
+                  child: Center(
+                    child: Material(
+                      color: HanduniaTokens.nuitPortee.withValues(alpha: .92),
+                      borderRadius: BorderRadius.circular(999),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        child: Text(
+                          widget.places
+                              .take(4)
+                              .map(
+                                (place) =>
+                                    place['name']?.toString() ?? 'Lieu',
+                              )
+                              .join(' • '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontFamily: 'Karla',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: HanduniaTokens.cendre,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               if (widget.showChrome && selected == null)
                 Positioned(
                   left: 12,
