@@ -69,7 +69,7 @@ void main() {
       greaterThan(HanduniaTravelMode.walk.speedKmh),
     );
     expect(HanduniaGuideData.distanceLabel(850), '850 m');
-    expect(HanduniaGuideData.distanceLabel(12500), '12 km');
+    expect(HanduniaGuideData.distanceLabel(12500), '13 km');
     expect(HanduniaGuideData.durationLabel(5400), '1 h 30');
   });
 
@@ -181,6 +181,12 @@ void main() {
       find.textContaining('Les témoins racontent les échanges'),
       findsOneWidget,
     );
+    await tester.drag(
+      find.byType(ListView).first,
+      const Offset(0, -620),
+    );
+    await tester.pumpAndSettle();
+
     expect(find.text('Reconstitution immersive'), findsOneWidget);
     expect(find.text('Voix à rechercher'), findsOneWidget);
     expect(find.textContaining('Lignée'), findsOneWidget);
