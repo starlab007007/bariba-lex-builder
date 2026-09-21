@@ -188,13 +188,13 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
       final voices = (place['voice_count'] as num?)?.toInt() ?? 0;
       final memories = (place['memory_count'] as num?)?.toInt() ?? 0;
       final selected = place['id']?.toString() == _selectedId;
-      final weight = math.max(voices, memories).clamp(0, 20);
+      final weight =
+          math.max(voices, memories).clamp(0, 20).toDouble();
       options.add(
         CircleOptions(
           geometry: LatLng(lat, lon),
           circleRadius: selected ? 12 : 7.5 + weight * .22,
           circleColor: selected ? '#F3EFE6' : '#E6AA4A',
-          circleOpacity: selected ? .98 : .90,
           circleStrokeColor: selected ? '#E6AA4A' : '#15202B',
           circleStrokeWidth: selected ? 4 : 2,
         ),
@@ -567,14 +567,16 @@ class _HanduniaLocationPickerRouteState
     final lon = _geoDouble(selected['longitude']);
     if (lat == null || lon == null) return;
     await controller.clearCircles();
-    await controller.addCircle(
-      CircleOptions(
-        geometry: LatLng(lat, lon),
-        circleRadius: 11,
-        circleColor: '#E6AA4A',
-        circleStrokeColor: '#FFFFFF',
-        circleStrokeWidth: 4,
-      ),
+    await controller.addCircles(
+      <CircleOptions>[
+        CircleOptions(
+          geometry: LatLng(lat, lon),
+          circleRadius: 11,
+          circleColor: '#E6AA4A',
+          circleStrokeColor: '#FFFFFF',
+          circleStrokeWidth: 4,
+        ),
+      ],
     );
   }
 
