@@ -14,6 +14,7 @@ import 'handunia_consultation_extended_data.dart';
 import 'handunia_consultation_ui.dart';
 import 'handunia_geo_trace_route.dart';
 import 'handunia_unified_map.dart';
+import 'handunia_territory_picker_route.dart';
 
 TextStyle _frauncesRoute({
   double size = 18,
@@ -772,6 +773,7 @@ class HanduniaLivingMapRoute extends StatefulWidget {
 class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
   final TextEditingController _query = TextEditingController();
   List<Map<String, dynamic>> _places = const [];
+  Map<String, dynamic>? _territoryFocus;
   String? _selectedId;
   bool _loading = true;
   String? _notice;
@@ -838,10 +840,43 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
   Map<String, dynamic>? get _selectedPlace {
     final id = _selectedId;
     if (id == null) return null;
+    final territoryFocus = _territoryFocus;
+    if (territoryFocus != null &&
+        territoryFocus['id']?.toString() == id) {
+      return territoryFocus;
+    }
     for (final place in _places) {
       if (place['id']?.toString() == id) return place;
     }
     return null;
+  }
+
+  Future<void> _openTerritoryExplorer() async {
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute<Map<String, dynamic>>(
+        builder: (_) => const HanduniaTerritoryPickerRoute(),
+      ),
+    );
+    if (!mounted || result == null) return;
+    _query.clear();
+    setState(() {
+      _territoryFocus = result;
+      _selectedId = result['id']?.toString();
+      _notice = result['geo_unresolved'] == true
+          ? 'Territoire sélectionné · centrage cartographique à préciser.'
+          : 'Territoire positionné sur la carte réelle.';
+    });
+  }
+
+  void _clearTerritoryFocus() {
+    final focusId = _territoryFocus?['id']?.toString();
+    setState(() {
+      _territoryFocus = null;
+      if (_selectedId == focusId) {
+        _selectedId = _places.isEmpty ? null : _places.first['id']?.toString();
+      }
+      _notice = null;
+    });
   }
 
   bool _hasCoordinates(Map<String, dynamic> place) =>
@@ -849,7 +884,12 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
 
   void _openPlace(Map<String, dynamic> place) {
     final id = place['id']?.toString();
-    if (id == null || id.isEmpty) return;
+    if (id == null ||
+        id.isEmpty ||
+        place['can_open'] == false ||
+        id.startsWith('__territory_')) {
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => HanduniaPlaceRoute(lieuId: id),
@@ -860,6 +900,17 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
   @override
   Widget build(BuildContext context) {
     final visible = _visiblePlaces;
+    final territoryFocus = _territoryFocus;
+    final mapPlaces = <Map<String, dynamic>>[
+      ...visible,
+      if (territoryFocus != null &&
+          !visible.any(
+            (place) =>
+                place['id']?.toString() ==
+                territoryFocus['id']?.toString(),
+          ))
+        territoryFocus,
+    ];
     final unlocated = visible.where((place) => !_hasCoordinates(place)).toList();
     final selected = _selectedPlace;
     return Scaffold(
@@ -871,6 +922,11 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
               context,
               'Carte vivante',
               actions: [
+                IconButton(
+                  onPressed: _openTerritoryExplorer,
+                  icon: const Icon(Icons.account_tree_outlined),
+                  color: HanduniaTokens.braise,
+                ),
                 IconButton(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
@@ -933,8 +989,25 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
             ),
             if (selected != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: HanduniaTerritoryPath(place: selected, compact: true),
+                padding: const EdgeInsets.fromLTRB(16, 0, 12, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: HanduniaTerritoryPath(
+                        place: selected,
+                        compact: true,
+                      ),
+                    ),
+                    if (_territoryFocus != null) ...[
+                      const SizedBox(width: 4),
+                      IconButton(
+                        onPressed: _clearTerritoryFocus,
+                        icon: const Icon(Icons.public_rounded),
+                        color: HanduniaTokens.braise,
+                      ),
+                    ],
+                  ],
+                ),
               ),
             if (_notice != null)
               Padding(
@@ -956,7 +1029,7 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                       color: HanduniaTokens.braise,
                       loading: true,
                     )
-                  : visible.isEmpty
+                  : mapPlaces.isEmpty
                   ? _ConsultationState(
                       title: 'Aucun lieu',
                       subtitle: _query.text.trim().isEmpty
@@ -969,7 +1042,7 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                           child: LayoutBuilder(
                             builder: (context, constraints) =>
                                 HanduniaUnifiedMap(
-                                  places: visible,
+                                  places: mapPlaces,
                                   selectedPlaceId: _selectedId,
                                   height: constraints.maxHeight,
                                   onSelected: (place) => setState(
