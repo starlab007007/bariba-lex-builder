@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('Handunia publication CTA remains visible in the feed', (
+  testWidgets('Handunia component CTA remains available when explicitly injected', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -35,7 +35,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Le fil'), findsOneWidget);
+    expect(find.text('Fil Handunia Wasa'), findsOneWidget);
     expect(find.text('PUBLIER UN SOUVENIR'), findsOneWidget);
     await tester.tap(find.text('PUBLIER UN SOUVENIR'));
     await tester.pump();
