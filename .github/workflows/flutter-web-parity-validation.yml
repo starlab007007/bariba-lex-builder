@@ -42,7 +42,7 @@ jobs:
       - name: Verify validation metadata
         run: |
           flutter --version
-          grep -q '^version: 1.8.2+13$' pubspec.yaml
+          grep -q '^version: 1.8.3+14$' pubspec.yaml
           grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
 
       - name: Prepare server configuration
@@ -208,15 +208,15 @@ jobs:
           test -s build/app/outputs/flutter-apk/app-debug.apk
           mkdir -p build/qa-output
           cp build/app/outputs/flutter-apk/app-debug.apk \
-            build/qa-output/FITILA-Android-v1.8.2-build13-handunia-lot2-qa-debug.apk
+            build/qa-output/FITILA-Android-v1.8.3-build14-handunia-lot3-qa-debug.apk
           cd build/qa-output
-          sha256sum FITILA-Android-v1.8.2-build13-handunia-lot2-qa-debug.apk | tee SHA256SUMS.txt
-          ls -lh FITILA-Android-v1.8.2-build13-handunia-lot2-qa-debug.apk
+          sha256sum FITILA-Android-v1.8.3-build14-handunia-lot3-qa-debug.apk | tee SHA256SUMS.txt
+          ls -lh FITILA-Android-v1.8.3-build14-handunia-lot3-qa-debug.apk
 
       - name: Upload QA APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FITILA-Android-v1.8.2-build13-handunia-lot2-qa-debug
+          name: FITILA-Android-v1.8.3-build14-handunia-lot3-qa-debug
           path: fitila_flutter/build/qa-output/
           if-no-files-found: error
           retention-days: 14
