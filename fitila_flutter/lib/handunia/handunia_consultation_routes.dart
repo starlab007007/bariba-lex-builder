@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/fitila_media.dart';
 import 'handunia_consultation_extended_data.dart';
 import 'handunia_consultation_ui.dart';
+import 'handunia_ai_heritage_guide_route.dart';
 import 'handunia_geo_trace_route.dart';
 import 'handunia_unified_map.dart';
 import 'handunia_territory_picker_route.dart';
@@ -949,6 +950,21 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
               context,
               'Carte vivante',
               actions: [
+                IconButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => HanduniaAiHeritageGuideRoute(
+                        initialPlaces: _places,
+                        initialDestination:
+                            selected != null && _hasCoordinates(selected)
+                                ? selected
+                                : null,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.auto_awesome_rounded),
+                  color: HanduniaTokens.braise,
+                ),
                 IconButton(
                   onPressed: _openTerritoryExplorer,
                   icon: const Icon(Icons.account_tree_outlined),
