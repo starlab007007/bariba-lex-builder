@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
+import '../ui/reference_creation_ui.dart';
 import 'handunia_consultation_ui.dart';
 import 'handunia_map_data.dart';
 
@@ -826,6 +827,7 @@ class _HanduniaLocationPickerRouteState
     final selected = _selected;
     return Scaffold(
       backgroundColor: HanduniaTokens.nuit,
+      bottomNavigationBar: const FitilaBridgedBottomNav(selectedIndex: 0),
       body: SafeArea(
         child: Stack(
           children: [
