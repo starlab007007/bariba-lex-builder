@@ -27311,6 +27311,18 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   // départ. Fitila IA peut aider à proposer une icône et une description,
   // mais rien n'est publié tant que l'utilisateur n'a pas validé.
   Widget _buildCreateLieuStep() {
+    final geo = _newLieuGeo;
+    final draftGeo = geo == null
+        ? null
+        : <String, dynamic>{
+            ...geo,
+            'id': 'draft-new-lieu',
+            'name': _newLieuName.text.trim().isEmpty
+                ? (geo['name']?.toString() ?? 'Nouveau lieu')
+                : _newLieuName.text.trim(),
+            'voice_count': 0,
+            'memory_count': 0,
+          };
     return ListView(
       children: [
         Row(
@@ -27355,6 +27367,67 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                     border: OutlineInputBorder(),
                   ),
                 ),
+                const SizedBox(height: 14),
+                const Text(
+                  'POSITION RÉELLE SUR LA CARTE *',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                    letterSpacing: .5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _pickNewLieuLocation,
+                    icon: Icon(
+                      geo == null
+                          ? Icons.add_location_alt_outlined
+                          : Icons.edit_location_alt_outlined,
+                    ),
+                    label: Text(
+                      geo == null
+                          ? 'Positionner sur la carte du Bénin'
+                          : 'Modifier la position',
+                    ),
+                  ),
+                ),
+                if (draftGeo != null) ...[
+                  const SizedBox(height: 10),
+                  HanduniaUnifiedMap(
+                    places: <Map<String, dynamic>>[draftGeo],
+                    selectedPlaceId: 'draft-new-lieu',
+                    height: 210,
+                    showSelectionCard: false,
+                    initialZoom: 13.4,
+                  ),
+                  const SizedBox(height: 8),
+                  HanduniaTerritoryPath(place: draftGeo, compact: true),
+                  const SizedBox(height: 5),
+                  Text(
+                    draftGeo['display_name']?.toString() ??
+                        draftGeo['name']?.toString() ??
+                        '',
+                    style: const TextStyle(
+                      fontFamily: 'Karla',
+                      fontSize: 11.5,
+                      color: HanduniaTokens.cendre,
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Obligatoire : recherchez le village/quartier ou touchez '
+                    'directement la carte. Aucune coordonnée ne sera inventée.',
+                    style: TextStyle(
+                      fontFamily: 'Karla',
+                      fontSize: 11.5,
+                      height: 1.35,
+                      color: HanduniaTokens.cendre,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 14),
                 const Text(
                   'ICÔNE',
