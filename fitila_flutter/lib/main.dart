@@ -26938,6 +26938,21 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     }
 
     final visible = _visibleLieux;
+    final mappedVisible = visible
+        .map(
+          (place) => <String, dynamic>{
+            ...place,
+            'memory_count': _density[place['id']?.toString() ?? ''] ?? 0,
+            'voice_count': place['voice_count'] ?? 0,
+          },
+        )
+        .toList(growable: false);
+    final unlocated = mappedVisible
+        .where(
+          (place) =>
+              place['latitude'] is! num || place['longitude'] is! num,
+        )
+        .toList(growable: false);
     return RefreshIndicator(
       color: FitilaReferenceUi.wasaGlow,
       onRefresh: _loadLieux,
@@ -26945,23 +26960,37 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
-          SizedBox(
-            height: 320,
-            child: Stack(
-              children: [
-                for (var i = 0; i < math.min(visible.length, 7); i++)
-                  Align(
-                    alignment: _handuniaNodeAlignment(i),
-                    child: ReferenceWorldNode(
-                      emoji: visible[i]['icon']?.toString() ?? '📍',
-                      label: visible[i]['name']?.toString() ?? 'Lieu vivant',
-                      density: _densityPercent(visible[i]['id'].toString()),
-                      onTap: () => _openLieu(visible[i]),
-                    ),
-                  ),
-              ],
-            ),
+          HanduniaUnifiedMap(
+            places: mappedVisible,
+            selectedPlaceId: _selectedLieu?['id']?.toString(),
+            height: 410,
+            onSelected: (place) => setState(() => _selectedLieu = place),
+            onOpen: _openLieu,
           ),
+          if (unlocated.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 48,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: unlocated.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 7),
+                itemBuilder: (context, index) {
+                  final place = unlocated[index];
+                  return ActionChip(
+                    avatar: const Icon(
+                      Icons.location_off_outlined,
+                      size: 17,
+                    ),
+                    label: Text(
+                      place['name']?.toString() ?? 'Lieu à positionner',
+                    ),
+                    onPressed: () => _openLieu(place),
+                  );
+                },
+              ),
+            ),
+          ],
           if (_backendUnavailable)
             Container(
               margin: const EdgeInsets.only(bottom: 10),
@@ -27027,19 +27056,6 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         ],
       ),
     );
-  }
-
-  Alignment _handuniaNodeAlignment(int index) {
-    const positions = [
-      Alignment(-.72, -.82),
-      Alignment(.48, -.88),
-      Alignment(-.18, -.12),
-      Alignment(.73, .02),
-      Alignment(-.62, .78),
-      Alignment(.20, .86),
-      Alignment(.78, .72),
-    ];
-    return positions[index % positions.length];
   }
 
   // 3/4 — Présence dans un lieu généré  // 3/4 — Présence dans un lieu généré  // 3/4 — Présence dans un lieu généré : scène abstraite tissée à
