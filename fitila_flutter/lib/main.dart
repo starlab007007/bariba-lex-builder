@@ -26851,7 +26851,24 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     }
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => HanduniaMemoryRoute(memoryId: id, seed: memory),
+        builder: (_) => HanduniaMemoryRoute(
+          memoryId: id,
+          seed: memory,
+          onPlatformNav: (index) {
+            if (!mounted) return;
+            Navigator.of(context).pop();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _leaveForPlatform(index);
+            });
+          },
+          onPlatformCreate: () {
+            if (!mounted) return;
+            Navigator.of(context).pop();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _leaveForCreator();
+            });
+          },
+        ),
       ),
     );
     if (mounted) {
@@ -26876,7 +26893,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       decoration: BoxDecoration(
         color: localOnly
             ? const Color(0xFFC96A3F).withValues(alpha: .10)
-            : const Color(0xFF151A24),
+            : FitilaReferenceUi.surface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: localOnly
@@ -27452,6 +27469,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             selectedPlaceId: lieu['id']?.toString(),
             height: 285,
             showSelectionCard: false,
+            showChrome: false,
             initialZoom: 13.4,
           ),
           const SizedBox(height: 8),
@@ -27896,6 +27914,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                     selectedPlaceId: 'draft-new-lieu',
                     height: 210,
                     showSelectionCard: false,
+                    showChrome: false,
                     initialZoom: 13.4,
                   ),
                   const SizedBox(height: 8),
@@ -28034,6 +28053,20 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             pendingLocal: _worldFeed
                 .where((item) => item['local_only'] == true)
                 .length,
+            onPlatformNav: (index) {
+              if (!mounted) return;
+              Navigator.of(context).pop();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _leaveForPlatform(index);
+              });
+            },
+            onPlatformCreate: () {
+              if (!mounted) return;
+              Navigator.of(context).pop();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _leaveForCreator();
+              });
+            },
           ),
         ),
       ),
@@ -28301,7 +28334,7 @@ class _CreationIaTile extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: Colors.white70,
+                color: FitilaReferenceUi.inkSoft,
                 fontSize: 10.5,
                 height: 1.2,
               ),
