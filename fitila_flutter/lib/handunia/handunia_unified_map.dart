@@ -465,17 +465,32 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                                   size: 16,
                                   color: HanduniaTokens.braise,
                                 ),
-                                label: Text(
-                                  quickPlaces[index]['name']?.toString() ??
-                                      'Lieu mémoire',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontFamily: 'Karla',
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: HanduniaTokens.ivoire,
-                                  ),
+                                label: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      quickPlaces[index]['name']?.toString() ??
+                                          'Lieu mémoire',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontFamily: 'Karla',
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: HanduniaTokens.ivoire,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      '${quickPlaces[index]['voice_count'] ?? 0} voix',
+                                      maxLines: 1,
+                                      style: const TextStyle(
+                                        fontFamily: 'Karla',
+                                        fontSize: 10,
+                                        color: HanduniaTokens.cendre,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 backgroundColor: HanduniaTokens.nuitPortee
                                     .withValues(alpha: .94),
