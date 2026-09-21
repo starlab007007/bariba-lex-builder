@@ -1,0 +1,1009 @@
+{
+  "schema_version": 1,
+  "scope": "Bénin",
+  "levels": [
+    "department",
+    "commune",
+    "arrondissement"
+  ],
+  "counts": {
+    "departments": 12,
+    "communes": 77,
+    "arrondissements": 546
+  },
+  "source_note": "Hiérarchie technique hors ligne issue du jeu MIT decoupage-territorial-benin (Goldy98), limitée aux niveaux dont les décomptes concordent avec le découpage territorial publié par le MDGL. Les villages/quartiers ne sont pas embarqués car le jeu communautaire ne concorde pas avec le total officiel actuel.",
+  "source_url": "https://github.com/Goldy98/decoupage-territorial-benin",
+  "departments": [
+    {
+      "name": "ALIBORI",
+      "communes": [
+        {
+          "name": "BANIKOARA",
+          "arrondissements": [
+            "FOUNOUGO",
+            "GOMPAROU",
+            "GOUMORI",
+            "KOKEY",
+            "KOKIBOROU",
+            "OUNET",
+            "SOMPEROUKOU",
+            "SOROKO",
+            "TOURA",
+            "BANIKOARA"
+          ]
+        },
+        {
+          "name": "GOGOUNOU",
+          "arrondissements": [
+            "BAGOU",
+            "GOUNAROU",
+            "SORI",
+            "SOUGOU-KPAN-TROSSI",
+            "WARA",
+            "GOGOUNOU"
+          ]
+        },
+        {
+          "name": "KANDI",
+          "arrondissements": [
+            "ANGARADEBOU",
+            "BENSEKOU",
+            "DONWARI",
+            "KASSAKOU",
+            "SAAH",
+            "SAM",
+            "SONSORO",
+            "KANDI 1",
+            "KANDI 2",
+            "KANDI 3"
+          ]
+        },
+        {
+          "name": "KARIMAMA",
+          "arrondissements": [
+            "BIRNI LAFIA",
+            "BOGO-BOGO",
+            "KOMPA",
+            "MONSEY",
+            "KARIMAMA"
+          ]
+        },
+        {
+          "name": "MALANVILLE",
+          "arrondissements": [
+            "GAROU",
+            "GUENE",
+            "MADECALI",
+            "TOUMBOUTOU",
+            "MALANVILLE"
+          ]
+        },
+        {
+          "name": "SEGBANA",
+          "arrondissements": [
+            "LIBANTE",
+            "LIBOUSSOU",
+            "LOUGOU",
+            "SOKOTINDJI",
+            "SEGBANA"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ATACORA",
+      "communes": [
+        {
+          "name": "BOUKOUMBE",
+          "arrondissements": [
+            "DIPOLI",
+            "KORONTIERE",
+            "KOUSSOUCOINGOU",
+            "MANTA",
+            "NATA",
+            "TABOTA",
+            "BOUKOUMBE"
+          ]
+        },
+        {
+          "name": "COBLY",
+          "arrondissements": [
+            "DATORI",
+            "KOUNTORI",
+            "TAPOGA",
+            "COBLY"
+          ]
+        },
+        {
+          "name": "KEROU",
+          "arrondissements": [
+            "BRIGNAMARO",
+            "FIROU",
+            "KAOBAGOU",
+            "KEROU"
+          ]
+        },
+        {
+          "name": "KOUANDE",
+          "arrondissements": [
+            "BIRNI",
+            "CHABI-COUMA",
+            "FOO-TANCE",
+            "GUILMARO",
+            "OROUKAYO",
+            "KOUANDE"
+          ]
+        },
+        {
+          "name": "MATERI",
+          "arrondissements": [
+            "DASSARI",
+            "GOUANDE",
+            "NODI",
+            "TANTEGA",
+            "TCHANHOUNCOSSI",
+            "MATERI"
+          ]
+        },
+        {
+          "name": "NATITINGOU",
+          "arrondissements": [
+            "KOTOPOUNGA",
+            "KOUABA",
+            "KOUANDATA",
+            "PERMA",
+            "TCHOUMI-TCHOUMI",
+            "NATITINGOU I",
+            "NATITINGOU II",
+            "NATITINGOU III",
+            "PEPORIYAKOU"
+          ]
+        },
+        {
+          "name": "OUASSA-PEHUNCO",
+          "arrondissements": [
+            "GNEMASSON",
+            "TOBRE",
+            "PEHUNCO"
+          ]
+        },
+        {
+          "name": "TANGUIETA",
+          "arrondissements": [
+            "COTIAKOU",
+            "N'DAHONTA",
+            "TAIACOU",
+            "TANONGOU",
+            "TANGUIETA"
+          ]
+        },
+        {
+          "name": "TOUKOUNTOUNA",
+          "arrondissements": [
+            "KOUARFA",
+            "TAMPEGRE",
+            "TOUKOUNTOUNA"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ATLANTIQUE",
+      "communes": [
+        {
+          "name": "ABOMEY-CALAVI",
+          "arrondissements": [
+            "AKASSATO",
+            "GODOMEY",
+            "GOLO-DJIGBE",
+            "HEVIE",
+            "KPANROUN",
+            "OUEDO",
+            "TOGBA",
+            "ZINVIE",
+            "ABOMEY-CALAVI"
+          ]
+        },
+        {
+          "name": "ALLADA",
+          "arrondissements": [
+            "AGBANOU",
+            "AHOUANNONZOUN",
+            "ATTOGON",
+            "AVAKPA",
+            "AYOU",
+            "HINVI",
+            "LISSEGAZOUN",
+            "LON-AGONMEY",
+            "SEKOU",
+            "TOKPA",
+            "ALLADA CENTRE",
+            "TOGOUDO"
+          ]
+        },
+        {
+          "name": "KPOMASSE",
+          "arrondissements": [
+            "AGANMALOME",
+            "AGBANTO",
+            "AGONKANME",
+            "DEDOME",
+            "DEKANME",
+            "SEGBEYA",
+            "SEGBOHOUE",
+            "TOKPA-DOME",
+            "KPOMASSE CENTRE"
+          ]
+        },
+        {
+          "name": "OUIDAH",
+          "arrondissements": [
+            "AVLEKETE",
+            "DJEGBADJI",
+            "GAKPE",
+            "HOUAKPE-DAHO",
+            "PAHOU",
+            "SAVI",
+            "OUIDAH I",
+            "OUIDAH II",
+            "OUIDAH III",
+            "OUIDAH IV"
+          ]
+        },
+        {
+          "name": "SO-AVA",
+          "arrondissements": [
+            "AHOMEY-LOKPO",
+            "DEKANMEY",
+            "GANVIE 1",
+            "GANVIE 2",
+            "HOUEDO-AGUEKON",
+            "VEKKY",
+            "SO-AVA"
+          ]
+        },
+        {
+          "name": "TOFFO",
+          "arrondissements": [
+            "AGUE",
+            "COLLI",
+            "COUSSI",
+            "DAME",
+            "DJANGLANME",
+            "HOUEGBO",
+            "KPOME",
+            "SEHOUE",
+            "SEY",
+            "TOFFO"
+          ]
+        },
+        {
+          "name": "TORI-BOSSITO",
+          "arrondissements": [
+            "AVAME",
+            "AZOHOUE-ALIHO",
+            "AZOHOUE-CADA",
+            "TORI-CADA",
+            "TORI-GARE",
+            "TORI-BOSSITO"
+          ]
+        },
+        {
+          "name": "ZE",
+          "arrondissements": [
+            "ADJAN",
+            "DAWE",
+            "DJIGBE",
+            "DODJI-BATA",
+            "HEKANME",
+            "KOUNDOKPOE",
+            "SEDJE-DENOU",
+            "SEDJE-HOUEGOUDO",
+            "TANGBO",
+            "YOKPO",
+            "ZE"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "BORGOU",
+      "communes": [
+        {
+          "name": "BEMBEREKE",
+          "arrondissements": [
+            "BEROUBOUAY",
+            "BOUANRI",
+            "GAMIA",
+            "INA",
+            "BEMBEREKE"
+          ]
+        },
+        {
+          "name": "KALALE",
+          "arrondissements": [
+            "BASSO",
+            "BOUCA",
+            "DERASSI",
+            "DUNKASSA",
+            "PEONGA",
+            "KALALE"
+          ]
+        },
+        {
+          "name": "N'DALI",
+          "arrondissements": [
+            "BORI",
+            "GBEGOUROU",
+            "OUENOU",
+            "SIRAROU",
+            "N'DALI"
+          ]
+        },
+        {
+          "name": "NIKKI",
+          "arrondissements": [
+            "BIRO",
+            "GNONKOUROKALI",
+            "OUENOU",
+            "SEREKALI",
+            "SUYA",
+            "TASSO",
+            "NIKKI"
+          ]
+        },
+        {
+          "name": "PARAKOU",
+          "arrondissements": [
+            "1ER ARRONDISSEMENT",
+            "2EME ARRONDISSEMENT",
+            "3EME ARRONDISSEMENT"
+          ]
+        },
+        {
+          "name": "PERERE",
+          "arrondissements": [
+            "GNINSY",
+            "GUINAGOUROU",
+            "KPEBIE",
+            "PANE",
+            "SONTOU",
+            "PERERE"
+          ]
+        },
+        {
+          "name": "SINENDE",
+          "arrondissements": [
+            "FO-BOURE",
+            "SEKERE",
+            "SIKKI",
+            "SINENDE"
+          ]
+        },
+        {
+          "name": "TCHAOUROU",
+          "arrondissements": [
+            "ALAFIAROU",
+            "BETEROU",
+            "GORO",
+            "KIKA",
+            "SANSON",
+            "TCHATCHOU",
+            "TCHAOUROU"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "COLLINES",
+      "communes": [
+        {
+          "name": "BANTE",
+          "arrondissements": [
+            "AGOUA",
+            "AKPASSI",
+            "ATOKOLIBE",
+            "BOBE",
+            "GOUKA",
+            "KOKO",
+            "LOUGBA",
+            "PIRA",
+            "BANTE"
+          ]
+        },
+        {
+          "name": "DASSA-ZOUME",
+          "arrondissements": [
+            "AKOFFODJOULE",
+            "GBAFFO",
+            "KERE",
+            "KPINGNI",
+            "LEMA",
+            "PAOUINGNAN",
+            "SOCLOGBO",
+            "TRE",
+            "DASSA I",
+            "DASSA II"
+          ]
+        },
+        {
+          "name": "GLAZOUE",
+          "arrondissements": [
+            "AKLAMPA",
+            "ASSANTE",
+            "GOME",
+            "KPAKPAZA",
+            "MAGOUMI",
+            "OUEDEME",
+            "SOKPONTA",
+            "THIO",
+            "ZAFFE",
+            "GLAZOUE"
+          ]
+        },
+        {
+          "name": "OUESSE",
+          "arrondissements": [
+            "CHALLA-OGOI",
+            "DJEGBE",
+            "GBANLIN",
+            "IKEMON",
+            "KILIBO",
+            "LAMINOU",
+            "ODOUGBA",
+            "TOUI",
+            "OUESSE"
+          ]
+        },
+        {
+          "name": "SAVALOU",
+          "arrondissements": [
+            "DJALLOUKOU",
+            "DOUME",
+            "GOBADA",
+            "KPATABA",
+            "LAHOTAN",
+            "LEMA",
+            "LOGOZOHE",
+            "MONKPA",
+            "OTTOLA",
+            "OUESSE",
+            "TCHETTI",
+            "SAVALOU-AGA",
+            "SAVALOU-AGBADO",
+            "SAVALOU-ATTAKE"
+          ]
+        },
+        {
+          "name": "SAVE",
+          "arrondissements": [
+            "BESSE",
+            "KABOUA",
+            "OFFE",
+            "OKPARA",
+            "SAKIN",
+            "ADIDO",
+            "BONI",
+            "PLATEAU"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "COUFFO",
+      "communes": [
+        {
+          "name": "APLAHOUE",
+          "arrondissements": [
+            "ATOMEY",
+            "AZOVE",
+            "DEKPO-CENTRE",
+            "GODOHOU",
+            "KISSAMEY",
+            "LONKLY",
+            "APLAHOUE"
+          ]
+        },
+        {
+          "name": "DJAKOTOMEY",
+          "arrondissements": [
+            "ADJINTIMEY",
+            "BETOUMEY",
+            "GOHOMEY",
+            "HOUEGAMEY",
+            "KINKINHOUE",
+            "KOKOHOUE",
+            "KPOBA",
+            "SOKOUHOUE",
+            "DJAKOTOMEY I",
+            "DJAKOTOMEY II"
+          ]
+        },
+        {
+          "name": "DOGBO",
+          "arrondissements": [
+            "AYOMI",
+            "DEVE",
+            "HONTON",
+            "LOKOGOHOUE",
+            "MADJRE",
+            "TOTCHANGNI CENTRE",
+            "TOTA"
+          ]
+        },
+        {
+          "name": "KLOUEKANMEY",
+          "arrondissements": [
+            "ADJAHONME",
+            "AHOGBEYA",
+            "AYAHOHOUE",
+            "DJOTTO",
+            "HONDJIN",
+            "LANTA",
+            "TCHIKPE",
+            "KLOUEKANME"
+          ]
+        },
+        {
+          "name": "LALO",
+          "arrondissements": [
+            "ADOUKANDJI",
+            "AHODJINNAKO",
+            "AHOMADEGBE",
+            "BANIGBE",
+            "GNIZOUNME",
+            "HLASSAME",
+            "LOKOGBA",
+            "TCHITO",
+            "TOHOU",
+            "ZALLI",
+            "LALO"
+          ]
+        },
+        {
+          "name": "TOVIKLIN",
+          "arrondissements": [
+            "ADJIDO",
+            "AVEDJIN",
+            "DOKO",
+            "HOUEDOGLI",
+            "MISSINKO",
+            "TANNOU-GOLA",
+            "TOVIKLIN"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DONGA",
+      "communes": [
+        {
+          "name": "BASSILA",
+          "arrondissements": [
+            "ALEDJO",
+            "MANIGRI",
+            "PENESSOULOU",
+            "BASSILA"
+          ]
+        },
+        {
+          "name": "COPARGO",
+          "arrondissements": [
+            "ANANDANA",
+            "PABEGOU",
+            "SINGRE",
+            "COPARGO"
+          ]
+        },
+        {
+          "name": "DJOUGOU",
+          "arrondissements": [
+            "BAREI",
+            "BARIENOU",
+            "BELLEFOUNGOU",
+            "BOUGOU",
+            "KOLOCONDE",
+            "ONKLOU",
+            "PARTAGO",
+            "PELEBINA",
+            "SEROU",
+            "DJOUGOU I",
+            "DJOUGOU II",
+            "DJOUGOU III"
+          ]
+        },
+        {
+          "name": "OUAKE",
+          "arrondissements": [
+            "BADJOUDE",
+            "KOMDE",
+            "SEMERE 1",
+            "SEMERE 2",
+            "TCHALINGA",
+            "OUAKE"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "LITTORAL",
+      "communes": [
+        {
+          "name": "COTONOU",
+          "arrondissements": [
+            "1ER ARRONDISSEMENT",
+            "2EME ARRONDISSEMENT",
+            "3EME ARRONDISSEMENT",
+            "4EME ARRONDISSEMENT",
+            "5EME ARRONDISSEMENT",
+            "6EME ARRONDISSEMENT",
+            "7EME ARRONDISSEMENT",
+            "8EME ARRONDISSEMENT",
+            "9EME ARRONDISSEMENT",
+            "10EME ARRONDISSEMENT",
+            "11EME ARRONDISSEMENT",
+            "12EME ARRONDISSEMENT",
+            "13EME ARRONDISSEMENT"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "MONO",
+      "communes": [
+        {
+          "name": "ATHIEME",
+          "arrondissements": [
+            "ADOHOUN",
+            "ATCHANNOU",
+            "DEDEKPOE",
+            "KPINNOU",
+            "ATHIEME"
+          ]
+        },
+        {
+          "name": "BOPA",
+          "arrondissements": [
+            "AGBODJI",
+            "BADAZOUIN",
+            "GBAKPODJI",
+            "LOBOGO",
+            "POSSOTOME",
+            "YEGODOE",
+            "BOPA"
+          ]
+        },
+        {
+          "name": "COME",
+          "arrondissements": [
+            "AGATOGBO",
+            "AKODEHA",
+            "OUEDEME-PEDAH",
+            "OUMAKO",
+            "COME"
+          ]
+        },
+        {
+          "name": "GRAND-POPO",
+          "arrondissements": [
+            "ADJAHA",
+            "AGOUE",
+            "AVLO",
+            "DJANGLANMEY",
+            "GBEHOUE",
+            "SAZUE",
+            "GRAND-POPO"
+          ]
+        },
+        {
+          "name": "HOUEYOGBE",
+          "arrondissements": [
+            "DAHE",
+            "DOUTOU",
+            "HONHOUE",
+            "ZOUNGBONOU",
+            "HOUEYOGBE",
+            "SE"
+          ]
+        },
+        {
+          "name": "LOKOSSA",
+          "arrondissements": [
+            "AGAME",
+            "HOUIN",
+            "KOUDO",
+            "OUEDEME-ADJA",
+            "LOKOSSA"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "OUEME",
+      "communes": [
+        {
+          "name": "ADJARRA",
+          "arrondissements": [
+            "AGLOGBE",
+            "HONVIE",
+            "MALANHOUI",
+            "MEDEDJONOU",
+            "ADJARRA 1",
+            "ADJARRA 2"
+          ]
+        },
+        {
+          "name": "ADJOHOUN",
+          "arrondissements": [
+            "AKPADANOU",
+            "AWONOU",
+            "AZOWLISSE",
+            "DEME",
+            "GANGBAN",
+            "KODE",
+            "TOGBOTA",
+            "ADJOHOUN"
+          ]
+        },
+        {
+          "name": "AGUEGUES",
+          "arrondissements": [
+            "AVAGBODJI",
+            "HOUEDOME",
+            "ZOUNGAME"
+          ]
+        },
+        {
+          "name": "AKPRO-MISSERETE",
+          "arrondissements": [
+            "GOME-SOTA",
+            "KATAGON",
+            "VAKON",
+            "ZOUNGBOME",
+            "AKPRO-MISSERETE"
+          ]
+        },
+        {
+          "name": "AVRANKOU",
+          "arrondissements": [
+            "ATCHOUKPA",
+            "DJOMON",
+            "GBOZOUME",
+            "KOUTI",
+            "OUANHO",
+            "SADO",
+            "AVRANKOU"
+          ]
+        },
+        {
+          "name": "BONOU",
+          "arrondissements": [
+            "AFFAME",
+            "ATCHONSA",
+            "DAME-WOGON",
+            "HOUNVIGUE",
+            "BONOU"
+          ]
+        },
+        {
+          "name": "DANGBO",
+          "arrondissements": [
+            "DEKIN",
+            "GBEKO",
+            "HOUEDOMEY",
+            "HOZIN",
+            "KESSOUNOU",
+            "ZOUNGUE",
+            "DANGBO"
+          ]
+        },
+        {
+          "name": "PORTO-NOVO",
+          "arrondissements": [
+            "1ER ARRONDISSEMENT",
+            "2EME ARRONDISSEMENT",
+            "3EME ARRONDISSEMENT",
+            "4EME ARRONDISSEMENT",
+            "5EME ARRONDISSEMENT"
+          ]
+        },
+        {
+          "name": "SEME-PODJI",
+          "arrondissements": [
+            "AGBLANGANDAN",
+            "AHOLOUYEME",
+            "DJEREGBE",
+            "EKPE",
+            "TOHOUE",
+            "SEME-PODJI"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "PLATEAU",
+      "communes": [
+        {
+          "name": "ADJA-OUERE",
+          "arrondissements": [
+            "IKPINLE",
+            "KPOULOU",
+            "MASSE",
+            "OKO-AKARE",
+            "TATONNONKON",
+            "ADJA-OUERE"
+          ]
+        },
+        {
+          "name": "IFANGNI",
+          "arrondissements": [
+            "BANIGBE",
+            "DAAGBE",
+            "KO-KOUMOLOU",
+            "LAGBE",
+            "TCHAADA",
+            "IFANGNI"
+          ]
+        },
+        {
+          "name": "KETOU",
+          "arrondissements": [
+            "ADAKPLAME",
+            "IDIGNY",
+            "KPANKOU",
+            "ODOMETA",
+            "OKPOMETA",
+            "KETOU"
+          ]
+        },
+        {
+          "name": "POBE",
+          "arrondissements": [
+            "AHOYEYE",
+            "IGANA",
+            "ISSABA",
+            "TOWE",
+            "POBE"
+          ]
+        },
+        {
+          "name": "SAKETE",
+          "arrondissements": [
+            "AGUIDI",
+            "ITA-DJEBOU",
+            "TAKON",
+            "YOKO",
+            "SAKETE 1",
+            "SAKETE 2"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ZOU",
+      "communes": [
+        {
+          "name": "ABOMEY",
+          "arrondissements": [
+            "AGBOKPA",
+            "DETOHOU",
+            "SEHOUN",
+            "ZOUNZONME",
+            "DJEGBE",
+            "HOUNLI",
+            "VIDOLE"
+          ]
+        },
+        {
+          "name": "AGBANGNIZOUN",
+          "arrondissements": [
+            "ADANHONDJIGO",
+            "ADINGNIGON",
+            "KINTA",
+            "KPOTA",
+            "LISSAZOUNME",
+            "SAHE",
+            "SINWE",
+            "TANVE",
+            "ZOUNGOUNDO",
+            "AGBANGNIZOUN"
+          ]
+        },
+        {
+          "name": "BOHICON",
+          "arrondissements": [
+            "AGONGOINTO",
+            "AVOGBANNA",
+            "GNIDJAZOUN",
+            "LISSEZOUN",
+            "OUASSAHO",
+            "PASSAGON",
+            "SACLO",
+            "SODOHOME",
+            "BOHICON I",
+            "BOHICON II"
+          ]
+        },
+        {
+          "name": "COVE",
+          "arrondissements": [
+            "HOUEKO",
+            "ADOGBE",
+            "GOUNLI",
+            "HOUIN-HOUNSO",
+            "LAINTA-COGBE",
+            "NAOGON",
+            "SOLI",
+            "ZOGBA"
+          ]
+        },
+        {
+          "name": "DJIDJA",
+          "arrondissements": [
+            "AGONDJI",
+            "AGOUNA",
+            "DAN",
+            "DOHOUIME",
+            "GOBAIX",
+            "HOUTO",
+            "MONSOUROU",
+            "MOUGNON",
+            "OUMBEGAME",
+            "SETTO",
+            "ZOUNKON",
+            "DJIDJA CENTRE"
+          ]
+        },
+        {
+          "name": "OUINHI",
+          "arrondissements": [
+            "DASSO",
+            "SAGON",
+            "TOHOUES",
+            "OUINHI CENTRE"
+          ]
+        },
+        {
+          "name": "ZAGNANADO",
+          "arrondissements": [
+            "AGONLIN-HOUEGBO",
+            "BANAME",
+            "DON-TAN",
+            "DOVI",
+            "KPEDEKPO",
+            "ZAGNANADO CENTRE"
+          ]
+        },
+        {
+          "name": "ZA-KPOTA",
+          "arrondissements": [
+            "ALLAHE",
+            "ASSANLIN",
+            "HOUNGOME",
+            "KPAKPAME",
+            "KPOZOUN",
+            "ZA-TANTA",
+            "ZEKO",
+            "ZA-KPOTA"
+          ]
+        },
+        {
+          "name": "ZOGBODOMEY",
+          "arrondissements": [
+            "AKIZA",
+            "AVLAME",
+            "CANA I",
+            "CANA II",
+            "DOME",
+            "KOUSSOUKPA",
+            "KPOKISSA",
+            "MASSI",
+            "TANWE-HESSOU",
+            "ZOUKOU",
+            "ZOGBODOMEY CENTRE"
+          ]
+        }
+      ]
+    }
+  ]
+}

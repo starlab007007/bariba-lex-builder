@@ -29,6 +29,7 @@ import 'handunia/handunia_consultation_extended_data.dart';
 import 'handunia/handunia_consultation_model.dart';
 import 'handunia/handunia_consultation_routes.dart';
 import 'handunia/handunia_creation_ai_route.dart';
+import 'handunia/handunia_unified_map.dart';
 import 'handunia/handunia_consultation_ui.dart';
 import 'ui/reference_creation_ui.dart';
 
@@ -25891,6 +25892,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   final _newLieuName = TextEditingController();
   final _newLieuIcon = TextEditingController(text: '📍');
   final _newLieuDescription = TextEditingController();
+  Map<String, dynamic>? _newLieuGeo;
   bool _suggestingLieu = false;
   bool _creatingLieu = false;
 
@@ -26345,6 +26347,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     _newLieuName.clear();
     _newLieuIcon.text = '📍';
     _newLieuDescription.clear();
+    _newLieuGeo = null;
     setState(() => _step = 4);
   }
 
@@ -26415,12 +26418,37 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     }
   }
 
+  Future<void> _pickNewLieuLocation() async {
+    final selected = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute<Map<String, dynamic>>(
+        builder: (_) => HanduniaLocationPickerRoute(
+          initialQuery: _newLieuName.text.trim(),
+        ),
+      ),
+    );
+    if (!mounted || selected == null) return;
+    setState(() => _newLieuGeo = Map<String, dynamic>.from(selected));
+  }
+
   Future<void> _submitNewLieu() async {
     final name = _newLieuName.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Donnez un nom à ce lieu.')));
+      return;
+    }
+    final geo = _newLieuGeo;
+    final latitude = geo?['latitude'];
+    final longitude = geo?['longitude'];
+    if (geo == null || latitude is! num || longitude is! num) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Positionnez ce lieu sur la carte du Bénin avant de le créer.',
+          ),
+        ),
+      );
       return;
     }
     final similar = _findSimilarLieu(name);
@@ -26439,6 +26467,15 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         name: name,
         icon: _newLieuIcon.text,
         description: _newLieuDescription.text,
+        latitude: latitude.toDouble(),
+        longitude: longitude.toDouble(),
+        department: geo['department']?.toString(),
+        commune: geo['commune']?.toString(),
+        arrondissement: geo['arrondissement']?.toString(),
+        villageQuartier: geo['village_quartier']?.toString(),
+        osmId: geo['osm_id']?.toString(),
+        osmType: geo['osm_type']?.toString(),
+        geoProvider: geo['geo_provider']?.toString(),
       );
       if (!mounted) {
         return;
@@ -26901,6 +26938,21 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     }
 
     final visible = _visibleLieux;
+    final mappedVisible = visible
+        .map(
+          (place) => <String, dynamic>{
+            ...place,
+            'memory_count': _density[place['id']?.toString() ?? ''] ?? 0,
+            'voice_count': place['voice_count'] ?? 0,
+          },
+        )
+        .toList(growable: false);
+    final unlocated = mappedVisible
+        .where(
+          (place) =>
+              place['latitude'] is! num || place['longitude'] is! num,
+        )
+        .toList(growable: false);
     return RefreshIndicator(
       color: FitilaReferenceUi.wasaGlow,
       onRefresh: _loadLieux,
@@ -26908,23 +26960,37 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
-          SizedBox(
-            height: 320,
-            child: Stack(
-              children: [
-                for (var i = 0; i < math.min(visible.length, 7); i++)
-                  Align(
-                    alignment: _handuniaNodeAlignment(i),
-                    child: ReferenceWorldNode(
-                      emoji: visible[i]['icon']?.toString() ?? '📍',
-                      label: visible[i]['name']?.toString() ?? 'Lieu vivant',
-                      density: _densityPercent(visible[i]['id'].toString()),
-                      onTap: () => _openLieu(visible[i]),
-                    ),
-                  ),
-              ],
-            ),
+          HanduniaUnifiedMap(
+            places: mappedVisible,
+            selectedPlaceId: _selectedLieu?['id']?.toString(),
+            height: 410,
+            onSelected: (place) => setState(() => _selectedLieu = place),
+            onOpen: _openLieu,
           ),
+          if (unlocated.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 48,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: unlocated.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 7),
+                itemBuilder: (context, index) {
+                  final place = unlocated[index];
+                  return ActionChip(
+                    avatar: const Icon(
+                      Icons.location_off_outlined,
+                      size: 17,
+                    ),
+                    label: Text(
+                      place['name']?.toString() ?? 'Lieu à positionner',
+                    ),
+                    onPressed: () => _openLieu(place),
+                  );
+                },
+              ),
+            ),
+          ],
           if (_backendUnavailable)
             Container(
               margin: const EdgeInsets.only(bottom: 10),
@@ -26992,19 +27058,6 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     );
   }
 
-  Alignment _handuniaNodeAlignment(int index) {
-    const positions = [
-      Alignment(-.72, -.82),
-      Alignment(.48, -.88),
-      Alignment(-.18, -.12),
-      Alignment(.73, .02),
-      Alignment(-.62, .78),
-      Alignment(.20, .86),
-      Alignment(.78, .72),
-    ];
-    return positions[index % positions.length];
-  }
-
   // 3/4 — Présence dans un lieu généré  // 3/4 — Présence dans un lieu généré  // 3/4 — Présence dans un lieu généré : scène abstraite tissée à
   // partir de récits réels ; l'IA est la présence gardienne de la
   // mémoire — jamais une personne précise inventée.
@@ -27025,13 +27078,76 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
               ),
             ),
           )
-        else
-          ReferenceSceneStage(
-            emoji: lieu['icon']?.toString() ?? '🌍',
-            caption: _scene.isNotEmpty
-                ? _scene
-                : (lieu['description']?.toString() ?? ''),
+        else if (lieu['latitude'] is num && lieu['longitude'] is num) ...[
+          HanduniaUnifiedMap(
+            places: <Map<String, dynamic>>[
+              <String, dynamic>{
+                ...lieu,
+                'memory_count':
+                    _density[lieu['id']?.toString() ?? ''] ?? 0,
+                'voice_count': lieu['voice_count'] ?? 0,
+              },
+            ],
+            selectedPlaceId: lieu['id']?.toString(),
+            height: 285,
+            showSelectionCard: false,
+            initialZoom: 13.4,
           ),
+          const SizedBox(height: 8),
+          HanduniaTerritoryPath(place: lieu, compact: true),
+          const SizedBox(height: 10),
+          ReferenceCard(
+            dark: true,
+            margin: EdgeInsets.zero,
+            child: Text(
+              _scene.isNotEmpty
+                  ? _scene
+                  : (lieu['description']?.toString() ?? ''),
+              style: const TextStyle(
+                fontFamily: 'Fraunces',
+                color: HanduniaTokens.ivoire,
+                fontSize: 14.5,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ] else ...[
+          ReferenceCard(
+            dark: true,
+            margin: EdgeInsets.zero,
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.location_off_outlined,
+                  color: HanduniaTokens.terre,
+                  size: 28,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Ce lieu historique n’a pas encore de position vérifiée.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Karla',
+                    color: HanduniaTokens.cendre,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (_scene.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    _scene,
+                    style: const TextStyle(
+                      fontFamily: 'Fraunces',
+                      color: HanduniaTokens.ivoire,
+                      fontSize: 14.5,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         Row(
           children: [
@@ -27274,6 +27390,18 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   // départ. Fitila IA peut aider à proposer une icône et une description,
   // mais rien n'est publié tant que l'utilisateur n'a pas validé.
   Widget _buildCreateLieuStep() {
+    final geo = _newLieuGeo;
+    final draftGeo = geo == null
+        ? null
+        : <String, dynamic>{
+            ...geo,
+            'id': 'draft-new-lieu',
+            'name': _newLieuName.text.trim().isEmpty
+                ? (geo['name']?.toString() ?? 'Nouveau lieu')
+                : _newLieuName.text.trim(),
+            'voice_count': 0,
+            'memory_count': 0,
+          };
     return ListView(
       children: [
         Row(
@@ -27318,6 +27446,67 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                     border: OutlineInputBorder(),
                   ),
                 ),
+                const SizedBox(height: 14),
+                const Text(
+                  'POSITION RÉELLE SUR LA CARTE *',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                    letterSpacing: .5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _pickNewLieuLocation,
+                    icon: Icon(
+                      geo == null
+                          ? Icons.add_location_alt_outlined
+                          : Icons.edit_location_alt_outlined,
+                    ),
+                    label: Text(
+                      geo == null
+                          ? 'Positionner sur la carte du Bénin'
+                          : 'Modifier la position',
+                    ),
+                  ),
+                ),
+                if (draftGeo != null) ...[
+                  const SizedBox(height: 10),
+                  HanduniaUnifiedMap(
+                    places: <Map<String, dynamic>>[draftGeo],
+                    selectedPlaceId: 'draft-new-lieu',
+                    height: 210,
+                    showSelectionCard: false,
+                    initialZoom: 13.4,
+                  ),
+                  const SizedBox(height: 8),
+                  HanduniaTerritoryPath(place: draftGeo, compact: true),
+                  const SizedBox(height: 5),
+                  Text(
+                    draftGeo['display_name']?.toString() ??
+                        draftGeo['name']?.toString() ??
+                        '',
+                    style: const TextStyle(
+                      fontFamily: 'Karla',
+                      fontSize: 11.5,
+                      color: HanduniaTokens.cendre,
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Obligatoire : recherchez le village/quartier ou touchez '
+                    'directement la carte. Aucune coordonnée ne sera inventée.',
+                    style: TextStyle(
+                      fontFamily: 'Karla',
+                      fontSize: 11.5,
+                      height: 1.35,
+                      color: HanduniaTokens.cendre,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 14),
                 const Text(
                   'ICÔNE',

@@ -53,6 +53,73 @@ function featureName(feature: any): string {
   return [...new Set(parts)].slice(0, 4).join(" · ");
 }
 
+function hierarchyFromProperties(p: any) {
+  const department = clean(p?.state);
+  const commune = clean(p?.county) || clean(p?.city);
+  const arrondissement = clean(p?.district);
+  const locality = clean(p?.locality);
+  const name = clean(p?.name);
+  const rawType = clean(p?.type || p?.osm_value).toLowerCase();
+  const villageQuartier =
+    locality ||
+    (["village", "hamlet", "suburb", "neighbourhood", "quarter"].includes(rawType)
+      ? name
+      : "");
+
+  return {
+    department,
+    commune,
+    arrondissement,
+    village_quartier: villageQuartier,
+  };
+}
+
+function normalizedFeature(
+  feature: any,
+  latitudeOverride?: number,
+  longitudeOverride?: number,
+) {
+  const p = feature?.properties ?? {};
+  const coords = feature?.geometry?.coordinates;
+  const lon = longitudeOverride ?? asNumber(coords?.[0]);
+  const lat = latitudeOverride ?? asNumber(coords?.[1]);
+  if (lon == null || lat == null || !inBenin(lon, lat)) return null;
+
+  const name =
+    clean(p.name) ||
+    clean(p.locality) ||
+    clean(p.district) ||
+    clean(p.city) ||
+    clean(p.county) ||
+    clean(p.state);
+  const displayName = featureName(feature) || name;
+  const extent = Array.isArray(feature?.properties?.extent)
+    ? feature.properties.extent
+    : Array.isArray(feature?.bbox)
+      ? feature.bbox
+      : null;
+
+  return {
+    name: name || displayName || `${lat.toFixed(5)}, ${lon.toFixed(5)}`,
+    display_name:
+      displayName || name || `${lat.toFixed(5)}, ${lon.toFixed(5)}`,
+    latitude: lat,
+    longitude: lon,
+    type: clean(p.type || p.osm_value),
+    city: clean(p.city),
+    district: clean(p.district),
+    state: clean(p.state),
+    county: clean(p.county),
+    locality: clean(p.locality),
+    country: clean(p.country) || "Bénin",
+    osm_id: p.osm_id == null ? null : String(p.osm_id),
+    osm_type: clean(p.osm_type),
+    geo_provider: "photon-osm",
+    ...hierarchyFromProperties(p),
+    extent,
+  };
+}
+
 async function fetchJson(url: string, timeoutMs = 16000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -103,8 +170,13 @@ async function reverseRoutePlace(lat: number, lon: number) {
       city: clean(p.city),
       district: clean(p.district),
       state: clean(p.state),
-      osm_id: p.osm_id ?? null,
+      county: clean(p.county),
+      locality: clean(p.locality),
+      country: clean(p.country) || "Bénin",
+      osm_id: p.osm_id == null ? null : String(p.osm_id),
       osm_type: clean(p.osm_type),
+      geo_provider: "photon-osm",
+      ...hierarchyFromProperties(p),
     };
   } catch {
     return null;
@@ -178,26 +250,7 @@ Deno.serve(async (req: Request) => {
       const data = await fetchJson(`https://photon.komoot.io/api/?${params}`);
       const features = Array.isArray(data?.features) ? data.features : [];
       const results = features
-        .map((feature: any) => {
-          const coords = feature?.geometry?.coordinates;
-          const lon = asNumber(coords?.[0]);
-          const lat = asNumber(coords?.[1]);
-          if (lon == null || lat == null || !inBenin(lon, lat)) return null;
-          const p = feature?.properties ?? {};
-          return {
-            name: clean(p.name) || featureName(feature) || query,
-            display_name: featureName(feature) || clean(p.name) || query,
-            latitude: lat,
-            longitude: lon,
-            type: clean(p.type || p.osm_value),
-            city: clean(p.city),
-            district: clean(p.district),
-            state: clean(p.state),
-            country: clean(p.country) || "Bénin",
-            osm_id: p.osm_id ?? null,
-            osm_type: clean(p.osm_type),
-          };
-        })
+        .map((feature: any) => normalizedFeature(feature))
         .filter(Boolean)
         .slice(0, 8);
       return jsonResponse({
@@ -225,19 +278,21 @@ Deno.serve(async (req: Request) => {
         state: "ready",
         provider: "photon-osm",
         place: feature
-          ? {
-              name: clean(feature?.properties?.name) || featureName(feature),
-              display_name: featureName(feature),
-              latitude: lat,
-              longitude: lon,
-              type: clean(feature?.properties?.type || feature?.properties?.osm_value),
-            }
+          ? normalizedFeature(feature, lat, lon)
           : {
               name: `${lat.toFixed(5)}, ${lon.toFixed(5)}`,
               display_name: `${lat.toFixed(5)}, ${lon.toFixed(5)}`,
               latitude: lat,
               longitude: lon,
               type: "coordinate",
+              country: "Bénin",
+              department: "",
+              commune: "",
+              arrondissement: "",
+              village_quartier: "",
+              osm_id: null,
+              osm_type: "",
+              geo_provider: "coordinate",
             },
       });
     }
