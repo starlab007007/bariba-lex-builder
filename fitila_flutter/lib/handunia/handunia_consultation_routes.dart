@@ -872,7 +872,6 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
               'Carte vivante',
               actions: [
                 IconButton(
-                  tooltip: 'Interroger',
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => const HanduniaMemoryAnswerRoute(),
@@ -882,7 +881,6 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                   color: HanduniaTokens.cendre,
                 ),
                 IconButton(
-                  tooltip: 'Foyer',
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => HanduniaFoyerRoute(
@@ -912,7 +910,6 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                   suffixIcon: _query.text.isEmpty
                       ? null
                       : IconButton(
-                          tooltip: 'Effacer',
                           onPressed: () {
                             _query.clear();
                             setState(() {});
@@ -1079,7 +1076,6 @@ class _HanduniaPlaceRouteState extends State<HanduniaPlaceRoute> {
                   : 'Le lieu',
               actions: [
                 IconButton(
-                  tooltip: 'Divergences',
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => HanduniaDivergencesRoute(
