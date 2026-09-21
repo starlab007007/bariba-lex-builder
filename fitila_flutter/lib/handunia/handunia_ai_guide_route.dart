@@ -76,9 +76,17 @@ class _HanduniaAiGuideRouteState extends State<HanduniaAiGuideRoute> {
     }
   }
 
+  Future<void> _safeStopTts() async {
+    try {
+      await _tts.stop();
+    } catch (_) {
+      // Plugin TTS absent en test ou sur plateforme non prise en charge.
+    }
+  }
+
   @override
   void dispose() {
-    unawaited(_tts.stop());
+    unawaited(_safeStopTts());
     super.dispose();
   }
 
@@ -112,7 +120,7 @@ class _HanduniaAiGuideRouteState extends State<HanduniaAiGuideRoute> {
   Map<String, dynamic>? get _currentStop {
     final stops = _stops;
     if (stops.isEmpty) return null;
-    final index = _currentIndex.clamp(0, stops.length - 1);
+    final index = _currentIndex.clamp(0, stops.length - 1).toInt();
     return stops[index];
   }
 
@@ -257,7 +265,7 @@ class _HanduniaAiGuideRouteState extends State<HanduniaAiGuideRoute> {
 
   Future<void> _selectStop(int index) async {
     if (index < 0 || index >= _stops.length || index == _currentIndex) return;
-    await _tts.stop();
+    await _safeStopTts();
     if (!mounted) return;
     setState(() {
       _currentIndex = index;
