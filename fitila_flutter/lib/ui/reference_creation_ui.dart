@@ -51,6 +51,199 @@ abstract final class FitilaReferenceUi {
       );
 }
 
+
+/// Barre de navigation FITILA partagée entre le shell principal et les
+/// expériences immersives (dont Handunia Wasa). Un seul composant garantit
+/// la même hauteur, les mêmes icônes et les mêmes états partout.
+class FitilaPremiumBottomNav extends StatelessWidget {
+  const FitilaPremiumBottomNav({
+    super.key,
+    required this.selectedIndex,
+    required this.onSelected,
+    required this.onCreate,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+      child: Container(
+        height: 68,
+        decoration: BoxDecoration(
+          color: FitilaReferenceUi.surface.withValues(alpha: .97),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: FitilaReferenceUi.hairline),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x29241F2E),
+              blurRadius: 28,
+              offset: Offset(0, 14),
+              spreadRadius: -16,
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: _FitilaPremiumBottomItem(
+                icon: Icons.dynamic_feed_outlined,
+                activeIcon: Icons.dynamic_feed_rounded,
+                label: 'Fil',
+                active: selectedIndex == 0,
+                onTap: () => onSelected(0),
+              ),
+            ),
+            Expanded(
+              child: _FitilaPremiumBottomItem(
+                icon: Icons.school_outlined,
+                activeIcon: Icons.school_rounded,
+                label: 'Apprendre',
+                active: selectedIndex == 1,
+                onTap: () => onSelected(1),
+              ),
+            ),
+            Expanded(
+              child: _FitilaPremiumBottomItem(
+                icon: Icons.assignment_outlined,
+                activeIcon: Icons.assignment_rounded,
+                label: 'Classe',
+                active: selectedIndex == 2,
+                onTap: () => onSelected(2),
+              ),
+            ),
+            Expanded(
+              child: Transform.translate(
+                offset: const Offset(0, -14),
+                child: Semantics(
+                  button: true,
+                  label: 'Création',
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: onCreate,
+                    child: Container(
+                      width: 52,
+                      height: 52,
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            FitilaReferenceUi.gold,
+                            Color(0xFFA6721F),
+                          ],
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x739C6B1D),
+                            blurRadius: 22,
+                            offset: Offset(0, 12),
+                            spreadRadius: -8,
+                          ),
+                        ],
+                        border: selectedIndex == -1
+                            ? Border.all(
+                                color: FitilaReferenceUi.goldDeep,
+                                width: 2,
+                              )
+                            : null,
+                      ),
+                      child: const Icon(
+                        Icons.add_rounded,
+                        color: Color(0xFF2B2110),
+                        size: 26,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: _FitilaPremiumBottomItem(
+                icon: Icons.menu_book_outlined,
+                activeIcon: Icons.menu_book_rounded,
+                label: 'Dico',
+                active: selectedIndex == 3,
+                onTap: () => onSelected(3),
+              ),
+            ),
+            Expanded(
+              child: _FitilaPremiumBottomItem(
+                icon: Icons.translate_outlined,
+                activeIcon: Icons.translate_rounded,
+                label: 'Traduc.',
+                active: selectedIndex == 4,
+                onTap: () => onSelected(4),
+              ),
+            ),
+            Expanded(
+              child: _FitilaPremiumBottomItem(
+                icon: Icons.auto_awesome_outlined,
+                activeIcon: Icons.auto_awesome_rounded,
+                label: 'Fitila IA',
+                active: selectedIndex == 5,
+                onTap: () => onSelected(5),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FitilaPremiumBottomItem extends StatelessWidget {
+  const _FitilaPremiumBottomItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color =
+        active ? FitilaReferenceUi.goldDeep : FitilaReferenceUi.muted;
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(active ? activeIcon : icon, color: color, size: 22),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.fade,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class ReferenceCreationShell extends StatelessWidget {
   const ReferenceCreationShell({
     super.key,
@@ -967,11 +1160,15 @@ class ReferenceScoreRing extends StatelessWidget {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    '\${value.round()}%',
-                    style: FitilaReferenceUi.serif(
-                      size: 28,
-                      color: Colors.white,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '${value.round()} %',
+                      maxLines: 1,
+                      style: FitilaReferenceUi.serif(
+                        size: 28,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                   Text(
