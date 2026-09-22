@@ -79,7 +79,7 @@ void main() {
     );
   });
 
-  testWidgets('Handunia feed shows voices without social engagement', (
+  testWidgets('Handunia immersive feed loops and exposes animated social actions', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -95,7 +95,10 @@ void main() {
         'lieu_name': 'Marché de Nikki',
         'period_label': 'années 1970',
         'author_initials': 'AS',
+        'display_name': 'Awa S.',
         'voice_count': 7,
+        'like_count': 12,
+        'liked_by_me': false,
         'scope_level': 'community',
         'created_at': '2026-09-20T10:00:00Z',
       },
@@ -118,6 +121,8 @@ void main() {
       },
     ];
 
+    String? likedId;
+    bool? likedValue;
     await tester.pumpWidget(
       MaterialApp(
         home: HanduniaFilView(
@@ -131,6 +136,10 @@ void main() {
           onFilterChanged: (_) {},
           onOpenMemory: (_) {},
           onFindMissingVoice: () {},
+          onLikeChanged: (id, liked) async {
+            likedId = id;
+            likedValue = liked;
+          },
         ),
       ),
     );
@@ -139,23 +148,31 @@ void main() {
     expect(find.text('Autour de moi'), findsOneWidget);
     expect(find.text('Ma lignée'), findsOneWidget);
     expect(find.text('Tout'), findsOneWidget);
-    expect(find.text('7 voix'), findsOneWidget);
-    expect(find.text('1 à envoyer'), findsOneWidget);
-    expect(find.text('Une mémoire se sépare en deux'), findsOneWidget);
-    expect(find.text('Déplacement du marché'), findsOneWidget);
-    expect(find.text('J’aime'), findsNothing);
-    expect(find.text('Partager'), findsNothing);
-    expect(find.text('vues'), findsNothing);
-    expect(find.byIcon(Icons.favorite_rounded), findsNothing);
-    expect(find.byIcon(Icons.favorite_border_rounded), findsNothing);
-
-    final pendingTop = tester.getTopLeft(
+    expect(find.byType(PageView), findsOneWidget);
+    expect(
       find.textContaining('Votre voix attend le réseau.'),
-    ).dy;
-    final remoteTop = tester.getTopLeft(
-      find.text('“La voix traversait la place avant le marché.”'),
-    ).dy;
-    expect(pendingTop, lessThan(remoteTop));
+      findsOneWidget,
+    );
+    expect(find.text('Partager'), findsOneWidget);
+    expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget);
+
+    await tester.drag(find.byType(PageView), const Offset(0, -620));
+    await tester.pump(const Duration(milliseconds: 450));
+
+    expect(
+      find.textContaining('La voix traversait la place avant le marché.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('7 voix'), findsOneWidget);
+    expect(find.text('12'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+    await tester.pump(const Duration(milliseconds: 220));
+    expect(likedId, 'memory-1');
+    expect(likedValue, isTrue);
+    expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
+    expect(find.text('13'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Handunia divergence stays readable with animations disabled', (
