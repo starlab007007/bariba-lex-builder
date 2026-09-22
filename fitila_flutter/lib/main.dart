@@ -28431,7 +28431,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                   bottom: 12,
                   child: _HanduniaStatusPill(
                     icon: hasLocation
-                        ? Icons.verified_location_rounded
+                        ? Icons.location_on_rounded
                         : Icons.warning_amber_rounded,
                     label: hasLocation ? 'Position vérifiée' : 'À confirmer',
                     warning: !hasLocation,
@@ -29357,7 +29357,6 @@ class _HanduniaTextField extends StatelessWidget {
   const _HanduniaTextField({
     required this.controller,
     this.onChanged,
-    this.onSubmitted,
     this.decoration,
     this.maxLines = 1,
     this.maxLength,
@@ -29365,7 +29364,6 @@ class _HanduniaTextField extends StatelessWidget {
 
   final TextEditingController controller;
   final ValueChanged<String>? onChanged;
-  final ValueChanged<String>? onSubmitted;
   final InputDecoration? decoration;
   final int? maxLines;
   final int? maxLength;
@@ -29378,7 +29376,6 @@ class _HanduniaTextField extends StatelessWidget {
       child: TextField(
         controller: controller,
         onChanged: onChanged,
-        onSubmitted: onSubmitted,
         decoration: base.copyWith(
           filled: true,
           fillColor: HanduniaTokens.nuitPortee,
