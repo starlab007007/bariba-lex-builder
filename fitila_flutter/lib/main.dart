@@ -27979,6 +27979,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       final name = place['name']?.toString() ?? 'Lieu vivant';
       final memoryCount = (place['memory_count'] as num?)?.toInt() ?? 0;
       final category = place['category']?.toString().trim();
+      final cover = _lieuCoverUrl(place);
       final label = category?.isNotEmpty == true
           ? category!
           : name.toLowerCase().contains('march')
@@ -27990,7 +27991,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                       ? 'Mémoire'
                       : 'Lieu';
       return SizedBox(
-        width: 190,
+        width: 206,
         child: Material(
           color: FitilaReferenceUi.surface,
           borderRadius: BorderRadius.circular(18),
@@ -27998,24 +27999,49 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             borderRadius: BorderRadius.circular(18),
             onTap: () => _openLieu(place),
             child: Container(
-              padding: const EdgeInsets.all(11),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: FitilaReferenceUi.hairline),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0D241F2E),
+                    blurRadius: 14,
+                    offset: Offset(0, 7),
+                    spreadRadius: -10,
+                  ),
+                ],
               ),
               child: Row(
                 children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: FitilaReferenceUi.goldTint,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Text(
-                      place['icon']?.toString() ?? '📍',
-                      style: const TextStyle(fontSize: 22),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(13),
+                    child: SizedBox(
+                      width: 54,
+                      height: 54,
+                      child: cover == null
+                          ? ColoredBox(
+                              color: FitilaReferenceUi.goldTint,
+                              child: Center(
+                                child: Text(
+                                  place['icon']?.toString() ?? '📍',
+                                  style: const TextStyle(fontSize: 23),
+                                ),
+                              ),
+                            )
+                          : Image.network(
+                              cover,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => ColoredBox(
+                                color: FitilaReferenceUi.goldTint,
+                                child: Center(
+                                  child: Text(
+                                    place['icon']?.toString() ?? '📍',
+                                    style: const TextStyle(fontSize: 23),
+                                  ),
+                                ),
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(width: 9),
@@ -28035,15 +28061,27 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                             height: 1.15,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: FitilaReferenceUi.goldDeep,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w700,
+                        const SizedBox(height: 5),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: FitilaReferenceUi.goldTint,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            memoryCount > 0
+                                ? '$label · $memoryCount'
+                                : label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: FitilaReferenceUi.goldDeep,
+                              fontSize: 9.8,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                       ],
@@ -28127,21 +28165,38 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              SizedBox(
-                width: 54,
-                height: 54,
-                child: FilledButton(
-                  onPressed:
-                      _backendUnavailable ? null : _openCreateLieuStep,
-                  style: FilledButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    backgroundColor: FitilaReferenceUi.gold,
-                    foregroundColor: FitilaReferenceUi.ink,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
+              Semantics(
+                button: true,
+                label: 'Ajouter un lieu',
+                child: SizedBox(
+                  width: 64,
+                  height: 54,
+                  child: FilledButton(
+                    onPressed:
+                        _backendUnavailable ? null : _openCreateLieuStep,
+                    style: FilledButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      backgroundColor: FitilaReferenceUi.gold,
+                      foregroundColor: FitilaReferenceUi.ink,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_location_alt_rounded, size: 20),
+                        SizedBox(height: 1),
+                        Text(
+                          'Ajouter',
+                          style: TextStyle(
+                            fontSize: 8.8,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: const Icon(Icons.add_location_alt_rounded),
                 ),
               ),
             ],
@@ -28658,16 +28713,16 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                 Icons.groups_rounded,
                 'Mémoire collective',
                 memoryCount > 0
-                    ? '$memoryCount souvenir(s) déjà partagés'
-                    : 'Les premières histoires peuvent commencer ici',
+                    ? '$memoryCount souvenir(s)'
+                    : 'À raconter',
               ),
               const SizedBox(width: 7),
               insightCard(
                 Icons.favorite_rounded,
                 memoryCount > 0 ? 'Souvenirs vivants' : 'À tisser',
                 memoryCount > 0
-                    ? 'Écouter, lire et transmettre'
-                    : 'Ajoutez le premier souvenir',
+                    ? 'Lire · écouter'
+                    : 'Premier souvenir',
               ),
             ],
           ),
@@ -28893,54 +28948,124 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                             true
                         ? fragment['display_name'].toString().trim()
                         : 'Communauté';
+                String? mediaUrl;
+                for (final key in const [
+                  'cover_url',
+                  'photo_url',
+                  'image_url',
+                  'media_url',
+                ]) {
+                  final candidate =
+                      fragment[key]?.toString().trim() ?? '';
+                  if (candidate.startsWith('http://') ||
+                      candidate.startsWith('https://')) {
+                    mediaUrl = candidate;
+                    break;
+                  }
+                }
+                final hasAudio =
+                    (fragment['audio_url']?.toString().trim().isNotEmpty ??
+                        false);
                 return Container(
-                  width: 180,
-                  padding: const EdgeInsets.all(12),
+                  width: 196,
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: FitilaReferenceUi.surface,
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: FitilaReferenceUi.hairline),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x0D241F2E),
+                        blurRadius: 14,
+                        offset: Offset(0, 7),
+                        spreadRadius: -10,
+                      ),
+                    ],
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Expanded(
-                        child: Text(
-                          _compactText(
-                            fragment['text']?.toString() ?? '',
-                            max: 72,
-                          ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: FitilaReferenceUi.ink,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            height: 1.3,
-                          ),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(13),
+                        child: SizedBox(
+                          width: 58,
+                          height: double.infinity,
+                          child: mediaUrl == null
+                              ? ColoredBox(
+                                  color: FitilaReferenceUi.goldTint,
+                                  child: Center(
+                                    child: Icon(
+                                      hasAudio
+                                          ? Icons.graphic_eq_rounded
+                                          : Icons.auto_stories_rounded,
+                                      color: FitilaReferenceUi.goldDeep,
+                                      size: 24,
+                                    ),
+                                  ),
+                                )
+                              : Image.network(
+                                  mediaUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) =>
+                                      const ColoredBox(
+                                    color: FitilaReferenceUi.goldTint,
+                                    child: Center(
+                                      child: Icon(
+                                        Icons.auto_stories_rounded,
+                                        color: FitilaReferenceUi.goldDeep,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                         ),
                       ),
-                      const SizedBox(height: 7),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.person_rounded,
-                            size: 14,
-                            color: FitilaReferenceUi.goldDeep,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              author,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: FitilaReferenceUi.muted,
-                                fontSize: 10.5,
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _compactText(
+                                  fragment['text']?.toString() ?? '',
+                                  max: 64,
+                                ),
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: FitilaReferenceUi.ink,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.25,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 5),
+                            Row(
+                              children: [
+                                Icon(
+                                  hasAudio
+                                      ? Icons.volume_up_rounded
+                                      : Icons.person_rounded,
+                                  size: 13,
+                                  color: FitilaReferenceUi.goldDeep,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    author,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: FitilaReferenceUi.muted,
+                                      fontSize: 9.8,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
