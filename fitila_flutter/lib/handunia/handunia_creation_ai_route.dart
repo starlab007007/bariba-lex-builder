@@ -836,29 +836,24 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.gesture_rounded,
-                      size: 16,
-                      color: HanduniaTokens.braise,
-                    ),
                     Text(
-                      'Tisser un souvenir',
+                      'Tisser',
                       textAlign: TextAlign.center,
                       maxLines: 1,
-                      style: _fraunces(size: 23, height: 1.05),
+                      style: _fraunces(size: 24, height: 1.02),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Text(
-                      '$_flowLabel · $_lieuName',
+                      _lieuName,
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.fade,
                       style: _karla(
-                        size: 9.2,
+                        size: 10,
                         color: HanduniaTokens.cendre,
                         weight: FontWeight.w800,
                         height: 1,
-                      ).copyWith(letterSpacing: .65),
+                      ),
                     ),
                   ],
                 ),
@@ -880,53 +875,54 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
     final density =
         (widget.voiceCount / 20).clamp(0.0, 1.0).toDouble();
     return ListView(
-      padding: const EdgeInsets.fromLTRB(22, 36, 22, 28),
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       children: [
         Center(
-          child: HaloDensite(
-            valeur: density,
-            size: 154,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              HaloDensite(valeur: density, size: 170),
+              Semantics(
+                label: 'Parler et tisser un souvenir',
+                button: true,
+                child: IconButton.filled(
+                  onPressed: _startRecording,
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(82, 82),
+                    backgroundColor: HanduniaTokens.braise,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.mic_rounded, size: 38),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 14),
         Text(
           _lieuName,
           textAlign: TextAlign.center,
-          style: _karla(
-            size: 12,
-            color: HanduniaTokens.braise,
-            weight: FontWeight.w700,
-          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: _fraunces(size: 22),
         ),
-        const SizedBox(height: 10),
-        Text(
-          'Une voix peut encore\néclairer ce lieu.',
-          textAlign: TextAlign.center,
-          style: _fraunces(size: 30, height: 1.15),
-        ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
         Text(
           '${widget.voiceCount} voix',
           textAlign: TextAlign.center,
-          style: _karla(color: HanduniaTokens.cendre),
-        ),
-        const SizedBox(height: 34),
-        _primaryButton(
-          label: 'TISSER PAR LA VOIX',
-          icon: Icons.mic_none_outlined,
-          onPressed: _startRecording,
-        ),
-        const SizedBox(height: 10),
-        _outlineButton(
-          label: 'ÊTRE GUIDÉ PAR LUMIÈRE IA',
-          icon: Icons.light_mode_outlined,
-          onPressed: _enterAi,
+          style: _karla(size: 12, color: HanduniaTokens.cendre),
         ),
         const SizedBox(height: 24),
-        Text(
-          'Votre voix reste la source. Lumière IA relie et éclaire la mémoire sans jamais inventer votre témoignage.',
-          textAlign: TextAlign.center,
-          style: _karla(size: 13, color: HanduniaTokens.cendre),
+        _primaryButton(
+          label: 'PARLER',
+          icon: Icons.mic_rounded,
+          onPressed: _startRecording,
+        ),
+        const SizedBox(height: 9),
+        _outlineButton(
+          label: 'AIDE IA',
+          icon: Icons.light_mode_rounded,
+          onPressed: _enterAi,
         ),
       ],
     );
@@ -934,7 +930,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
 
   Widget _questionStage() {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(22, 28, 22, 28),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
       children: [
         Center(
           child: Stack(
@@ -944,54 +940,42 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
                 valeur: widget.voiceCount == 0
                     ? 0
                     : (widget.voiceCount / 20).clamp(0.0, 1.0).toDouble(),
-                size: 164,
+                size: 146,
                 loading: _loadingQuestion,
               ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _lieuName,
-                    style: _karla(
-                      size: 12,
-                      color: HanduniaTokens.braise,
-                      weight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${widget.voiceCount} voix',
-                    style: _fraunces(size: 22),
-                  ),
-                ],
+              const Icon(
+                Icons.hearing_rounded,
+                size: 38,
+                color: HanduniaTokens.braise,
               ),
             ],
           ),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: 20),
         Text(
-          _loadingQuestion ? 'La mémoire se lit…' : _question,
+          _loadingQuestion ? '…' : _question,
+          maxLines: 4,
+          overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
-          style: _fraunces(size: 26, height: 1.25),
+          style: _fraunces(size: 24, height: 1.20),
         ),
-        if (_questionReason.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Text(
-            _questionReason,
-            textAlign: TextAlign.center,
-            style: _karla(size: 13, color: HanduniaTokens.cendre),
-          ),
-        ],
-        const SizedBox(height: 30),
+        const SizedBox(height: 26),
         _primaryButton(
-          label: 'RÉPONDRE PAR LA VOIX',
-          icon: Icons.mic_none_outlined,
+          label: 'PARLER',
+          icon: Icons.mic_rounded,
           onPressed: _loadingQuestion ? null : _startRecording,
         ),
-        const SizedBox(height: 8),
-        TextButton(
-          onPressed: _loadingQuestion ? null : _anotherQuestion,
-          child: Text('Changer de question', style: _karla(weight: FontWeight.w700)),
+        const SizedBox(height: 10),
+        Center(
+          child: Semantics(
+            button: true,
+            label: 'Changer de question',
+            child: IconButton.outlined(
+              onPressed: _loadingQuestion ? null : _anotherQuestion,
+              icon: const Icon(Icons.refresh_rounded),
+              color: HanduniaTokens.braise,
+            ),
+          ),
         ),
       ],
     );
@@ -1005,7 +989,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
       padding: const EdgeInsets.fromLTRB(22, 42, 22, 28),
       children: [
         Text(
-          _recording ? 'Je vous écoute' : 'Prêt à enregistrer',
+          _recording ? 'Écoute' : 'Prêt',
           textAlign: TextAlign.center,
           style: _karla(
             size: 12,
@@ -1056,13 +1040,13 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         const SizedBox(height: 28),
         if (_recording)
           _primaryButton(
-            label: 'TERMINER L’ENREGISTREMENT',
+            label: 'STOP',
             icon: Icons.stop_circle_outlined,
             onPressed: _stopRecording,
           )
         else
           _primaryButton(
-            label: 'COMMENCER L’ENREGISTREMENT',
+            label: 'PARLER',
             icon: Icons.mic_none_outlined,
             onPressed: _startRecording,
           ),
@@ -1076,12 +1060,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
             ),
           ),
         ],
-        const SizedBox(height: 22),
-        Text(
-          'Original intact · Opus 16 kbps',
-          textAlign: TextAlign.center,
-          style: _karla(size: 12.5, color: HanduniaTokens.cendre),
-        ),
+        const SizedBox(height: 8),
       ],
     );
   }
@@ -1104,7 +1083,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 30),
       children: [
-        Text('Vérifier', style: _fraunces(size: 30)),
+        Text('Vérifier', style: _fraunces(size: 26)),
         const SizedBox(height: 14),
         Container(
           padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
@@ -1132,7 +1111,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Voix originale',
+                      'Voix',
                       style: _karla(size: 15, weight: FontWeight.w700),
                     ),
                     Slider(
@@ -1169,7 +1148,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Transcription en cours…',
+            '…',
             textAlign: TextAlign.center,
             style: _karla(
               size: 14,
@@ -1185,7 +1164,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           ),
           const SizedBox(height: 10),
           _outlineButton(
-            label: 'RÉESSAYER LA TRANSCRIPTION',
+            label: 'RÉESSAYER',
             icon: Icons.refresh_outlined,
             onPressed: _processing ? null : _retryTranscription,
           ),
@@ -1233,10 +1212,10 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         const SizedBox(height: 20),
         _primaryButton(
           label: transcriptFailed
-              ? 'RELIER LA VOIX À LA MÉMOIRE'
+              ? 'RELIER'
               : transcriptionBusy
               ? 'TRANSCRIPTION…'
-              : 'RELIER À LA MÉMOIRE COLLECTIVE',
+              : 'RELIER',
           icon: Icons.account_tree_outlined,
           onPressed: transcriptionBusy
               ? null
@@ -1342,14 +1321,13 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 20, 18, 28),
       children: [
-        Text('Votre voix rejoint\nla mémoire.', style: _fraunces(size: 29)),
+        Text('Mémoire', style: _fraunces(size: 27)),
         const SizedBox(height: 10),
-        Text(
-          nodes.isEmpty
-              ? 'Aucun lien n’est affirmé sans validation.'
-              : '${nodes.length} liens validés',
-          style: _karla(color: HanduniaTokens.cendre),
-        ),
+        if (nodes.isNotEmpty)
+          Text(
+            '${nodes.length} lien${nodes.length > 1 ? 's' : ''}',
+            style: _karla(color: HanduniaTokens.cendre),
+          ),
         const SizedBox(height: 22),
         SizedBox(
           height: 360,
@@ -1360,7 +1338,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         ),
         const SizedBox(height: 18),
         _primaryButton(
-          label: 'COMPARER AVEC LES AUTRES VOIX',
+          label: 'COMPARER',
           icon: Icons.compare_arrows_outlined,
           onPressed: () => setState(() => _stage = 5),
         ),
@@ -1372,15 +1350,15 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
     final relation = _comparison['relation']?.toString() ?? 'new';
     final reason = _comparison['reason']?.toString() ?? '';
     final label = switch (relation) {
-      'corroborates' => 'Des voix se rejoignent.',
-      'nuances' => 'Une autre voix nuance ceci.',
-      'diverges' => 'Deux versions existent.',
-      _ => 'Cette voix ouvre une nouvelle trace.',
+      'corroborates' => 'Même récit',
+      'nuances' => 'Nuance',
+      'diverges' => 'Deux versions',
+      _ => 'Nouvelle trace',
     };
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
       children: [
-        Text('Écouter les écarts.', style: _fraunces(size: 29)),
+        Text('Comparer', style: _fraunces(size: 27)),
         const SizedBox(height: 30),
         SizedBox(
           height: 220,
@@ -1399,19 +1377,16 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
                 : HanduniaTokens.ivoire,
           ),
         ),
-        if (reason.isNotEmpty) ...[
-          const SizedBox(height: 9),
-          Text(
-            reason,
-            textAlign: TextAlign.center,
-            style: _karla(color: HanduniaTokens.cendre),
+        if (reason.isNotEmpty)
+          Semantics(
+            label: reason,
+            child: const SizedBox.shrink(),
           ),
-        ],
         const SizedBox(height: 30),
         _primaryButton(
           label: relation == 'diverges'
-              ? 'CONSERVER LES DEUX'
-              : 'CONTINUER',
+              ? 'GARDER 2'
+              : 'SUIVANT',
           icon: Icons.arrow_forward_outlined,
           onPressed: () => setState(() => _stage = 6),
         ),
@@ -1432,7 +1407,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
       children: [
-        Text('Qui peut entendre\ncette voix ?', style: _fraunces(size: 29)),
+        Text('Portée', style: _fraunces(size: 27)),
         const SizedBox(height: 24),
         for (final scope in scopes) ...[
           _scopeTile(
@@ -1443,18 +1418,14 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           const SizedBox(height: 9),
         ],
         _relationSummary(),
-        const SizedBox(height: 14),
-        if (reason.isNotEmpty) ...[
-          _stateCard(
-            title: 'Suggestion de portée',
-            subtitle: reason,
-            color: HanduniaTokens.terre,
+        if (reason.isNotEmpty)
+          Semantics(
+            label: 'Suggestion IA : $reason',
+            child: const SizedBox.shrink(),
           ),
-          const SizedBox(height: 12),
-        ],
-        const SizedBox(height: 22),
+        const SizedBox(height: 18),
         _primaryButton(
-          label: _saving ? 'SCELLEMENT…' : 'SCELLER ET TISSER LA VOIX',
+          label: _saving ? 'SCELLEMENT…' : 'TISSER',
           icon: Icons.verified_user_outlined,
           onPressed: _saving ? null : _seal,
         ),
@@ -1462,7 +1433,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         TextButton(
           onPressed: _saving ? null : () => Navigator.of(context).maybePop(),
           child: Text(
-            'Ne pas conserver',
+            'Annuler',
             style: _karla(
               color: HanduniaTokens.terre,
               weight: FontWeight.w700,
@@ -1513,14 +1484,12 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         ),
         const SizedBox(height: 8),
         Text(
-          _savedOffline
-              ? 'Votre voix est conservée et rejoindra la mémoire collective dès la synchronisation.'
-              : 'Votre voix est maintenant tissée à la mémoire collective de ce lieu.',
+          _savedOffline ? 'À synchroniser' : 'Tissé',
           textAlign: TextAlign.center,
           style: _karla(
-            size: 13,
-            color: HanduniaTokens.cendre,
-            height: 1.4,
+            size: 15,
+            color: HanduniaTokens.braise,
+            weight: FontWeight.w900,
           ),
         ),
         const SizedBox(height: 24),
@@ -1542,7 +1511,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         const SizedBox(height: 30),
         if (hasMovement)
           _outlineButton(
-            label: 'Tracer ce chemin',
+            label: 'TRACER',
             icon: Icons.route_outlined,
             onPressed: fragmentId == null
                 ? null
@@ -1561,7 +1530,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           ),
         if (hasMovement) const SizedBox(height: 10),
         _primaryButton(
-          label: 'VOIR LES VOIX MANQUANTES',
+          label: 'VOIX MANQUANTES',
           icon: Icons.radio_button_unchecked,
           onPressed: _loadGaps,
         ),
@@ -1575,7 +1544,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
             size: 19,
           ),
           label: Text(
-            _savedOffline ? 'Terminer' : 'VOIR DANS LE FIL',
+            _savedOffline ? 'OK' : 'FIL',
             style: _karla(weight: FontWeight.w700),
           ),
         ),
@@ -1600,7 +1569,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
       children: [
-        Text('Les voix qui\nmanquent.', style: _fraunces(size: 29)),
+        Text('Voix manquantes', style: _fraunces(size: 27)),
         const SizedBox(height: 8),
         Text(
           _lieuName,
@@ -1616,8 +1585,8 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           )
         else if (_gaps.isEmpty)
           _stateCard(
-            title: 'Aucune lacune certaine',
-            subtitle: 'La mémoire continue de se construire.',
+            title: 'Complet',
+            subtitle: '',
             color: HanduniaTokens.cendre,
           )
         else
@@ -1627,7 +1596,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           ],
         const SizedBox(height: 18),
         _primaryButton(
-          label: 'ALLER CHERCHER CES VOIX',
+          label: 'PARLER',
           icon: Icons.record_voice_over_outlined,
           onPressed: _gaps.isEmpty ? null : () => _selectGap(_gaps.first),
         ),
@@ -1649,10 +1618,10 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
   Widget _relationSummary() {
     final relation = _comparison['relation']?.toString() ?? 'new';
     final label = switch (relation) {
-      'corroborates' => 'Cette voix rejoint un témoignage existant.',
-      'nuances' => 'Cette voix apporte une nuance.',
-      'diverges' => 'Deux versions sont conservées.',
-      _ => 'Cette voix apporte une nouvelle trace.',
+      'corroborates' => 'Confirme',
+      'nuances' => 'Nuance',
+      'diverges' => 'Deux versions',
+      _ => 'Nouvelle trace',
     };
     final color = relation == 'diverges'
         ? HanduniaTokens.terre
@@ -1674,9 +1643,14 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
               style: _karla(size: 13.5, weight: FontWeight.w600),
             ),
           ),
-          TextButton(
-            onPressed: () => setState(() => _stage = 5),
-            child: const Text('Détail'),
+          Semantics(
+            button: true,
+            label: 'Voir le détail',
+            child: IconButton(
+              onPressed: () => setState(() => _stage = 5),
+              icon: const Icon(Icons.info_outline_rounded),
+              color: color,
+            ),
           ),
         ],
       ),
@@ -1689,70 +1663,72 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
     required bool suggested,
   }) {
     final selected = _selectedScope == value;
-    final description = switch (value) {
-      'elders' => 'Réservé aux gardiens et anciens',
-      'lineage' => 'Visible par votre lignée',
-      'all' => 'Visible à tous les utilisateurs',
-      _ => 'Visible par la communauté Handunia',
+    final icon = switch (value) {
+      'elders' => Icons.elderly_rounded,
+      'lineage' => Icons.account_tree_rounded,
+      'all' => Icons.public_rounded,
+      _ => Icons.groups_2_rounded,
     };
-    return InkWell(
-      borderRadius: BorderRadius.circular(18),
-      onTap: () => setState(() => _selectedScope = value),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 64),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: HanduniaTokens.nuitPortee,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
+    final semantics = switch (value) {
+      'elders' => 'Anciens seulement',
+      'lineage' => 'Votre lignée',
+      'all' => 'Tout le monde',
+      _ => 'Communauté Handunia',
+    };
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '$label. $semantics${suggested ? '. Suggéré' : ''}',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => setState(() => _selectedScope = value),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 58),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
             color: selected
-                ? HanduniaTokens.braise
-                : HanduniaTokens.bordure,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              selected
-                  ? Icons.radio_button_checked
-                  : Icons.radio_button_unchecked,
+                ? HanduniaTokens.orClair
+                : HanduniaTokens.nuitPortee,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
               color: selected
                   ? HanduniaTokens.braise
-                  : HanduniaTokens.cendre,
+                  : HanduniaTokens.bordure,
+              width: selected ? 1.5 : 1,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: _karla(
-                      size: 16,
-                      weight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    description,
-                    style: _karla(
-                      size: 12.5,
-                      color: HanduniaTokens.cendre,
-                    ),
-                  ),
-                ],
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 25,
+                color: selected
+                    ? HanduniaTokens.braise
+                    : HanduniaTokens.cendre,
               ),
-            ),
-            if (suggested)
-              Text(
-                'suggéré',
-                style: _karla(
-                  size: 12,
-                  color: HanduniaTokens.terre,
-                  weight: FontWeight.w700,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: _karla(size: 16, weight: FontWeight.w800),
                 ),
               ),
-          ],
+              if (suggested)
+                const Icon(
+                  Icons.star_rounded,
+                  size: 18,
+                  color: HanduniaTokens.braise,
+                ),
+              if (selected) ...[
+                const SizedBox(width: 5),
+                const Icon(
+                  Icons.check_circle_rounded,
+                  size: 19,
+                  color: HanduniaTokens.braise,
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -1864,7 +1840,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: 54,
       child: FilledButton.icon(
         onPressed: onPressed,
         style: FilledButton.styleFrom(
@@ -1875,7 +1851,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           elevation: 0,
           shape: const StadiumBorder(),
         ),
-        icon: Icon(icon, size: 19),
+        icon: Icon(icon, size: 22),
         label: Text(
           label,
           style: _karla(
@@ -1895,7 +1871,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 48,
+      height: 52,
       child: OutlinedButton.icon(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
@@ -1905,7 +1881,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           elevation: 0,
           shape: const StadiumBorder(),
         ),
-        icon: Icon(icon, size: 18),
+        icon: Icon(icon, size: 21),
         label: Text(
           label,
           style: _karla(size: 13.2, weight: FontWeight.w800),
