@@ -53,90 +53,40 @@ Widget _handuniaHeader(
   List<Widget> actions = const <Widget>[],
 }) {
   return Padding(
-    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+    padding: const EdgeInsets.fromLTRB(10, 7, 10, 8),
     child: Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Semantics(
           button: true,
           label: 'Retour',
-          child: SizedBox(
-            width: 44,
-            height: 44,
-            child: IconButton(
-              onPressed: () => Navigator.maybePop(context),
-              icon: const Icon(Icons.arrow_back_rounded, size: 23),
-              color: HanduniaTokens.ivoire,
-              style: IconButton.styleFrom(
-                backgroundColor: HanduniaTokens.nuitPortee,
-                foregroundColor: HanduniaTokens.ivoire,
-                side: const BorderSide(color: HanduniaTokens.bordureForte),
-                shadowColor: const Color(0x216B4A22),
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
+          child: IconButton(
+            onPressed: () => Navigator.maybePop(context),
+            icon: const Icon(Icons.arrow_back_rounded, size: 23),
+            color: HanduniaTokens.ivoire,
+            style: IconButton.styleFrom(
+              minimumSize: const Size(44, 44),
+              backgroundColor: HanduniaTokens.nuitPortee,
+              side: const BorderSide(color: HanduniaTokens.bordureForte),
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 7),
         Expanded(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.workspace_premium_rounded,
-                color: HanduniaTokens.braise,
-                size: 16,
-              ),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.fade,
-                style: _frauncesRoute(size: 23, height: 1.05),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                'HANDUNIA WASA · NOS RACINES, NOS HISTOIRES',
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.fade,
-                style: _karlaRoute(
-                  size: 8.2,
-                  color: HanduniaTokens.cendre,
-                  weight: FontWeight.w700,
-                  height: 1,
-                ).copyWith(letterSpacing: 1.15),
-              ),
-            ],
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.fade,
+            style: _frauncesRoute(size: 21, height: 1.05),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 7),
         if (actions.isEmpty)
           const SizedBox(width: 44, height: 44)
         else
-          IconButtonTheme(
-            data: IconButtonThemeData(
-              style: IconButton.styleFrom(
-                minimumSize: const Size(40, 40),
-                maximumSize: const Size(40, 40),
-                padding: EdgeInsets.zero,
-                backgroundColor: HanduniaTokens.nuitPortee,
-                foregroundColor: HanduniaTokens.ivoire,
-                side: const BorderSide(color: HanduniaTokens.bordureForte),
-                shadowColor: const Color(0x216B4A22),
-                elevation: 1,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: actions,
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: actions,
           ),
       ],
     ),
@@ -446,9 +396,15 @@ class _OpenMemoryBodyState extends State<_OpenMemoryBody> {
             style: _karlaRoute(size: 12.5, color: HanduniaTokens.cendre),
           ),
         ] else
-          Text(
-            'La voix originale fait foi.',
-            style: _frauncesRoute(size: 17, height: 1.55),
+          const Center(
+            child: Semantics(
+              label: 'La voix originale fait foi',
+              child: Icon(
+                Icons.verified_rounded,
+                color: HanduniaTokens.braise,
+                size: 24,
+              ),
+            ),
           ),
         const SizedBox(height: 18),
         Container(
@@ -502,10 +458,13 @@ class _OpenMemoryBodyState extends State<_OpenMemoryBody> {
                   foregroundColor: HanduniaTokens.braise,
                   side: const BorderSide(color: HanduniaTokens.bordureForte),
                 ),
-                child: Text(
-                  versions.length == 1
-                      ? '1 autre version'
-                      : '${versions.length} autres versions',
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.fork_right_rounded, size: 20),
+                    const SizedBox(width: 5),
+                    Text('${versions.length}'),
+                  ],
                 ),
               ),
             ),
@@ -513,32 +472,33 @@ class _OpenMemoryBodyState extends State<_OpenMemoryBody> {
         ],
         const SizedBox(height: 18),
         Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Expanded(
-              child: SizedBox(
-                height: 48,
-                child: FilledButton(
-                  onPressed: widget.busy ? null : widget.onCorroborate,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: HanduniaTokens.braise,
-                    foregroundColor: HanduniaTokens.encre,
-                  ),
-                  child: const Text('Corroborer'),
+            Semantics(
+              button: true,
+              label: 'Corroborer ce souvenir',
+              child: IconButton.filled(
+                onPressed: widget.busy ? null : widget.onCorroborate,
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(58, 58),
+                  backgroundColor: HanduniaTokens.braise,
+                  foregroundColor: HanduniaTokens.encre,
                 ),
+                icon: const Icon(Icons.check_rounded, size: 27),
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: SizedBox(
-                height: 48,
-                child: OutlinedButton(
-                  onPressed: widget.busy ? null : widget.onNuance,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: HanduniaTokens.terre,
-                    side: const BorderSide(color: HanduniaTokens.terre),
-                  ),
-                  child: const Text('Nuancer'),
+            const SizedBox(width: 18),
+            Semantics(
+              button: true,
+              label: 'Ajouter une nuance',
+              child: IconButton.outlined(
+                onPressed: widget.busy ? null : widget.onNuance,
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(58, 58),
+                  foregroundColor: HanduniaTokens.terre,
+                  side: const BorderSide(color: HanduniaTokens.terre),
                 ),
+                icon: const Icon(Icons.mic_none_rounded, size: 27),
               ),
             ),
           ],
@@ -776,43 +736,59 @@ class _HoldToSpeakState extends State<_HoldToSpeak> {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Maintenir pour parler',
-      child: GestureDetector(
-        onLongPressStart: (_) => _start(),
-        onLongPressEnd: (_) => _stop(),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 54),
-          decoration: BoxDecoration(
-            color: _recording
-                ? HanduniaTokens.terre.withValues(alpha: .12)
-                : HanduniaTokens.nuitPortee,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: _recording
-                  ? HanduniaTokens.terre
-                  : HanduniaTokens.bordureForte,
-            ),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            _sending
-                ? 'Scellement…'
-                : _recording
-                ? 'Parlez'
-                : 'Maintenir pour parler',
-            style: _karlaRoute(
-              weight: FontWeight.w700,
+    return Center(
+      child: Semantics(
+        button: true,
+        label: _sending
+            ? 'Enregistrement en cours de scellement'
+            : _recording
+            ? 'Relâchez pour envoyer la voix'
+            : 'Maintenir pour parler',
+        child: GestureDetector(
+          onLongPressStart: (_) => _start(),
+          onLongPressEnd: (_) => _stop(),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            width: 70,
+            height: 70,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
               color: _recording
                   ? HanduniaTokens.terre
                   : HanduniaTokens.braise,
+              boxShadow: [
+                BoxShadow(
+                  color: (_recording
+                          ? HanduniaTokens.terre
+                          : HanduniaTokens.braise)
+                      .withValues(alpha: .24),
+                  blurRadius: 18,
+                ),
+              ],
             ),
+            alignment: Alignment.center,
+            child: _sending
+                ? const SizedBox(
+                    width: 25,
+                    height: 25,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
+                  )
+                : Icon(
+                    _recording
+                        ? Icons.stop_rounded
+                        : Icons.mic_rounded,
+                    size: 32,
+                    color: Colors.white,
+                  ),
           ),
         ),
       ),
     );
   }
+
 }
 
 class HanduniaLivingMapRoute extends StatefulWidget {
@@ -1016,6 +992,7 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
               'Carte vivante',
               actions: [
                 IconButton(
+                  tooltip: 'Guide IA',
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => HanduniaAiHeritageGuideRoute(
@@ -1030,30 +1007,52 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                   icon: const Icon(Icons.auto_awesome_rounded),
                   color: HanduniaTokens.braise,
                 ),
-                IconButton(
-                  onPressed: _openTerritoryExplorer,
-                  icon: const Icon(Icons.account_tree_outlined),
-                  color: HanduniaTokens.braise,
-                ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const HanduniaMemoryAnswerRoute(),
-                    ),
-                  ),
-                  icon: const Icon(Icons.question_answer_outlined),
-                  color: HanduniaTokens.cendre,
-                ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => HanduniaFoyerRoute(
-                        pendingLocal: widget.pendingLocal,
+                PopupMenuButton<String>(
+                  tooltip: 'Plus',
+                  icon: const Icon(Icons.more_horiz_rounded),
+                  color: HanduniaTokens.nuitPortee,
+                  onSelected: (value) {
+                    if (value == 'territory') {
+                      _openTerritoryExplorer();
+                    } else if (value == 'ask') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const HanduniaMemoryAnswerRoute(),
+                        ),
+                      );
+                    } else if (value == 'foyer') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => HanduniaFoyerRoute(
+                            pendingLocal: widget.pendingLocal,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem<String>(
+                      value: 'territory',
+                      child: ListTile(
+                        leading: Icon(Icons.account_tree_rounded),
+                        title: Text('Territoire'),
                       ),
                     ),
-                  ),
-                  icon: const Icon(Icons.local_fire_department_outlined),
-                  color: HanduniaTokens.cendre,
+                    PopupMenuItem<String>(
+                      value: 'ask',
+                      child: ListTile(
+                        leading: Icon(Icons.mic_none_rounded),
+                        title: Text('Question'),
+                      ),
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'foyer',
+                      child: ListTile(
+                        leading: Icon(Icons.local_fire_department_rounded),
+                        title: Text('Foyer'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1065,7 +1064,7 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                 style: _karlaRoute(),
                 decoration: InputDecoration(
                   hintText:
-                      'Rechercher lieu, département, commune, arrondissement…',
+                      'Chercher un lieu',
                   hintStyle: _karlaRoute(
                     size: 12.5,
                     color: HanduniaTokens.cendre,
@@ -1729,7 +1728,7 @@ class _HanduniaTimelineRouteState extends State<HanduniaTimelineRoute> {
                             if (voices == 0) ...[
                               const Spacer(),
                               Text(
-                                'Cette période reste dans l’ombre.',
+                                'Aucune voix',
                                 textAlign: TextAlign.center,
                                 style: _frauncesRoute(
                                   size: 17,
@@ -1791,7 +1790,7 @@ class _HanduniaTimelineRouteState extends State<HanduniaTimelineRoute> {
                                     ),
                                   ),
                                   child: const Text(
-                                    'Aller chercher ces voix',
+                                    'PARLER',
                                   ),
                                 ),
                               ),
@@ -1942,13 +1941,13 @@ class _DivergenceDetail extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Text(
-          'Glisser entre les versions',
+          'Versions',
           textAlign: TextAlign.center,
           style: _karlaRoute(size: 12.5, color: HanduniaTokens.cendre),
         ),
         const SizedBox(height: 12),
         Semantics(
-          label: 'Conseil des gardiens disponible',
+          label: 'Gardiens',
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -1959,7 +1958,7 @@ class _DivergenceDetail extends StatelessWidget {
               ),
               const SizedBox(width: 7),
               Text(
-                'Conseil des gardiens disponible',
+                'Gardiens',
                 style: _karlaRoute(
                   size: 12.5,
                   weight: FontWeight.w600,
@@ -1982,7 +1981,7 @@ class _DivergenceDetail extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Avis des gardiens',
+                  'Avis',
                   style: _karlaRoute(
                     size: 12.5,
                     weight: FontWeight.w700,
@@ -2266,76 +2265,94 @@ class _HanduniaMemoryAnswerRouteState
 
     return Scaffold(
       backgroundColor: HanduniaTokens.nuit,
-      bottomNavigationBar: const FitilaBridgedBottomNav(
-        selectedIndex: 0,
-      ),
+      bottomNavigationBar: const FitilaBridgedBottomNav(selectedIndex: 0),
       body: SafeArea(
         child: Column(
           children: [
-            _handuniaHeader(context, 'La mémoire répond'),
-            if (_notice != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  _notice!,
-                  style: _karlaRoute(
-                    size: 12.5,
-                    color: HanduniaTokens.terre,
-                    weight: FontWeight.w600,
-                  ),
-                ),
-              ),
+            _handuniaHeader(context, 'Question'),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
                 children: [
+                  Center(
+                    child: Semantics(
+                      button: true,
+                      label: _recording
+                          ? 'Relâchez pour envoyer la question'
+                          : 'Maintenir pour poser une question par la voix',
+                      child: GestureDetector(
+                        onLongPressStart: (_) => _startVoice(),
+                        onLongPressEnd: (_) => _stopVoice(),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 160),
+                          width: 82,
+                          height: 82,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _recording
+                                ? HanduniaTokens.terre
+                                : HanduniaTokens.braise,
+                          ),
+                          child: Icon(
+                            _recording
+                                ? Icons.stop_rounded
+                                : Icons.mic_rounded,
+                            size: 37,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   TextField(
                     controller: _questionController,
                     minLines: 1,
-                    maxLines: 4,
+                    maxLines: 2,
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => _ask(),
                     style: _karlaRoute(),
                     decoration: InputDecoration(
-                      labelText: 'Question',
-                      labelStyle:
-                          _karlaRoute(color: HanduniaTokens.cendre),
+                      hintText: 'Écrire…',
+                      prefixIcon: const Icon(Icons.edit_rounded),
+                      suffixIcon: IconButton(
+                        tooltip: 'Envoyer',
+                        onPressed: _busy ? null : _ask,
+                        icon: const Icon(Icons.send_rounded),
+                      ),
                       filled: true,
                       fillColor: HanduniaTokens.nuitPortee,
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(16),
                         borderSide: const BorderSide(
                           color: HanduniaTokens.bordureForte,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(16),
                         borderSide: const BorderSide(
                           color: HanduniaTokens.braise,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                  const SizedBox(height: 9),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       for (final prompt in const <String>[
                         'Comment ?',
                         'Quand ?',
                         'Qui ?',
-                      ])
+                      ]) ...[
                         ActionChip(
                           label: Text(prompt),
                           onPressed: _busy
                               ? null
                               : () {
-                                  final base =
-                                      _questionController.text.trim();
-                                  final question = base.isEmpty
-                                      ? prompt
-                                      : '$prompt $base';
+                                  final base = _questionController.text.trim();
+                                  final question =
+                                      base.isEmpty ? prompt : '$prompt $base';
                                   _questionController.text = question;
                                   _ask(question);
                                 },
@@ -2344,72 +2361,40 @@ class _HanduniaMemoryAnswerRouteState
                             color: HanduniaTokens.bordureForte,
                           ),
                           labelStyle: _karlaRoute(
-                            size: 12.5,
+                            size: 11.5,
                             color: HanduniaTokens.ivoire,
                             weight: FontWeight.w700,
                           ),
                         ),
+                        const SizedBox(width: 6),
+                      ],
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          height: 48,
-                          child: FilledButton(
-                            onPressed: _busy ? null : _ask,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: HanduniaTokens.braise,
-                              foregroundColor: HanduniaTokens.encre,
-                            ),
-                            child: const Text('Interroger'),
-                          ),
-                        ),
+                  if (_notice != null) ...[
+                    const SizedBox(height: 8),
+                    Semantics(
+                      label: _notice!,
+                      child: const Icon(
+                        Icons.cloud_off_rounded,
+                        color: HanduniaTokens.terre,
+                        size: 18,
                       ),
-                      const SizedBox(width: 10),
-                      Semantics(
-                        button: true,
-                        label: 'Maintenir pour poser la question',
-                        child: GestureDetector(
-                          onLongPressStart: (_) => _startVoice(),
-                          onLongPressEnd: (_) => _stopVoice(),
-                          child: Container(
-                            width: 54,
-                            height: 54,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: _recording
-                                    ? HanduniaTokens.terre
-                                    : HanduniaTokens.bordureForte,
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.mic_none_outlined,
-                              color: _recording
-                                  ? HanduniaTokens.terre
-                                  : HanduniaTokens.braise,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                   if (_busy) ...[
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 22),
                     const Center(
                       child: HaloDensite(
                         valeur: .5,
                         loading: true,
-                        size: 74,
+                        size: 68,
                       ),
                     ),
                   ],
                   if (_answer != null && !_busy) ...[
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: state == 'sourced'
                             ? HanduniaTokens.braise.withValues(alpha: .08)
@@ -2419,54 +2404,45 @@ class _HanduniaMemoryAnswerRouteState
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(color: color),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (state == 'sourced')
-                            HanduniaSourcedAnswer(
-                              answer:
-                                  _answer!['answer']?.toString() ??
-                                  'La communauté ne l’a pas encore raconté.',
-                              sources:
-                                  (_answer!['sources'] as List? ??
-                                          const <dynamic>[])
-                                      .whereType<Map>()
-                                      .map(
-                                        (source) =>
-                                            Map<String, dynamic>.from(source),
-                                      )
-                                      .toList(growable: false),
+                      child: state == 'sourced'
+                          ? HanduniaSourcedAnswer(
+                              answer: _answer!['answer']?.toString() ??
+                                  'Pas encore raconté.',
+                              sources: (_answer!['sources'] as List? ??
+                                      const <dynamic>[])
+                                  .whereType<Map>()
+                                  .map(
+                                    (source) =>
+                                        Map<String, dynamic>.from(source),
+                                  )
+                                  .toList(growable: false),
                             )
-                          else
-                            Text(
+                          : Text(
                               state == 'refusal'
                                   ? _answer!['protocol']?.toString() ??
-                                        'Accès refusé'
+                                      'Accès refusé'
                                   : _answer!['answer']?.toString() ??
-                                        'La communauté ne l’a pas encore raconté.',
+                                      'Pas encore raconté.',
+                              maxLines: 5,
+                              overflow: TextOverflow.ellipsis,
                               style: _frauncesRoute(
                                 size: 17,
                                 color: color,
-                                height: 1.55,
+                                height: 1.45,
                               ),
                             ),
-                        ],
-                      ),
                     ),
                     if (state == 'unavailable' && _lastQuestion != null) ...[
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 46,
-                        child: OutlinedButton.icon(
-                          onPressed: _busy ? null : () => _ask(_lastQuestion),
-                          icon: const Icon(Icons.refresh_outlined),
-                          label: const Text('RÉESSAYER'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: HanduniaTokens.ivoire,
-                            side: const BorderSide(
-                              color: HanduniaTokens.bordureForte,
-                            ),
+                      const SizedBox(height: 9),
+                      Center(
+                        child: Semantics(
+                          button: true,
+                          label: 'Réessayer',
+                          child: IconButton.outlined(
+                            onPressed:
+                                _busy ? null : () => _ask(_lastQuestion),
+                            icon: const Icon(Icons.refresh_rounded),
+                            color: HanduniaTokens.braise,
                           ),
                         ),
                       ),
@@ -2480,6 +2456,7 @@ class _HanduniaMemoryAnswerRouteState
       ),
     );
   }
+
 }
 
 class HanduniaFoyerRoute extends StatefulWidget {
@@ -2619,7 +2596,7 @@ class _HanduniaFoyerRouteState extends State<HanduniaFoyerRoute>
                         ),
                         const SizedBox(height: 18),
                         Text(
-                          'Rendu au village',
+                          'Village',
                           style: _frauncesRoute(size: 17),
                         ),
                         const SizedBox(height: 8),
@@ -2680,7 +2657,7 @@ class _HanduniaFoyerRouteState extends State<HanduniaFoyerRoute>
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Désignés par la communauté',
+                          'Communauté',
                           style: _karlaRoute(
                             size: 12.5,
                             color: HanduniaTokens.cendre,
