@@ -28891,193 +28891,130 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             'voice_count': 0,
             'memory_count': 0,
           };
+
     return ListView(
+      padding: EdgeInsets.zero,
       children: [
+        const HanduniaArchitectureMap(
+          active: HanduniaArchitectureLayer.memory,
+          compact: true,
+        ),
+        const SizedBox(height: 12),
         Row(
           children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back_rounded),
-              onPressed: () => setState(() => _step = 1),
+            Expanded(
+              child: _HanduniaTextField(
+                controller: _newLieuName,
+                decoration: const InputDecoration(
+                  hintText: 'Nom',
+                  prefixIcon: Icon(Icons.place_rounded),
+                ),
+              ),
             ),
-            const Expanded(
-              child: Text(
-                'Tisser un nouveau lieu',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 64,
+              child: _HanduniaTextField(
+                controller: _newLieuIcon,
+                maxLength: 4,
+                decoration: const InputDecoration(
+                  hintText: '📍',
+                  counterText: '',
+                ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          "Le monde vivant ne se limite pas aux lieux d'origine : proposez un lieu et il rejoint la carte pour toute la communauté.",
-          style: TextStyle(color: _fitilaMuted, fontSize: 12, height: 1.4),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'NOM DU LIEU',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
-                    letterSpacing: .5,
-                  ),
+        const SizedBox(height: 10),
+        Semantics(
+          button: true,
+          label: geo == null
+              ? 'Positionner le lieu sur la carte'
+              : 'Modifier la position du lieu',
+          child: SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: OutlinedButton(
+              onPressed: _pickNewLieuLocation,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: FitilaReferenceUi.goldDeep,
+                side: const BorderSide(color: FitilaReferenceUi.hairline),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
                 ),
-                const SizedBox(height: 8),
-                _HanduniaTextField(
-                  controller: _newLieuName,
-                  decoration: const InputDecoration(
-                    hintText: 'Ex : Rive du fleuve Alibori',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'POSITION RÉELLE SUR LA CARTE *',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
-                    letterSpacing: .5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _pickNewLieuLocation,
-                    icon: Icon(
-                      geo == null
-                          ? Icons.add_location_alt_outlined
-                          : Icons.edit_location_alt_outlined,
-                    ),
-                    label: Text(
-                      geo == null
-                          ? 'Positionner sur la carte du Bénin'
-                          : 'Modifier la position',
-                    ),
-                  ),
-                ),
-                if (draftGeo != null) ...[
-                  const SizedBox(height: 10),
-                  HanduniaUnifiedMap(
-                    places: <Map<String, dynamic>>[draftGeo],
-                    selectedPlaceId: 'draft-new-lieu',
-                    height: 210,
-                    showSelectionCard: false,
-                    showChrome: false,
-                    initialZoom: 13.4,
-                  ),
-                  const SizedBox(height: 8),
-                  HanduniaTerritoryPath(place: draftGeo, compact: true),
-                  const SizedBox(height: 5),
-                  Text(
-                    draftGeo['display_name']?.toString() ??
-                        draftGeo['name']?.toString() ??
-                        '',
-                    style: const TextStyle(
-                      fontFamily: 'Karla',
-                      fontSize: 11.5,
-                      color: HanduniaTokens.cendre,
-                    ),
-                  ),
-                ] else ...[
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Obligatoire : recherchez le village/quartier ou touchez '
-                    'directement la carte. Aucune coordonnée ne sera inventée.',
-                    style: TextStyle(
-                      fontFamily: 'Karla',
-                      fontSize: 11.5,
-                      height: 1.35,
-                      color: HanduniaTokens.cendre,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 14),
-                const Text(
-                  'ICÔNE',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
-                    letterSpacing: .5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _HanduniaTextField(
-                  controller: _newLieuIcon,
-                  maxLength: 4,
-                  decoration: const InputDecoration(
-                    hintText: '📍',
-                    border: OutlineInputBorder(),
-                    counterText: '',
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'DESCRIPTION',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
-                    letterSpacing: .5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _HanduniaTextField(
-                  controller: _newLieuDescription,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    hintText:
-                        'Ce qui se vit dans ce lieu, ce qui donne envie d\'y déposer un souvenir…',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  onPressed: _suggestingLieu ? null : _suggestLieuDetails,
-                  icon: _suggestingLieu
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.auto_awesome_rounded, size: 16),
-                  label: const Text('Suggérer avec Fitila IA'),
-                ),
-              ],
+              ),
+              child: Icon(
+                geo == null
+                    ? Icons.add_location_alt_rounded
+                    : Icons.edit_location_alt_rounded,
+                size: 27,
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: _creatingLieu ? null : _submitNewLieu,
-            icon: _creatingLieu
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.add_location_alt_rounded),
-            label: const Text('Créer ce lieu'),
+        if (draftGeo != null) ...[
+          const SizedBox(height: 10),
+          HanduniaUnifiedMap(
+            places: <Map<String, dynamic>>[draftGeo],
+            selectedPlaceId: 'draft-new-lieu',
+            height: 210,
+            showSelectionCard: false,
+            showChrome: false,
+            initialZoom: 13.4,
+          ),
+          const SizedBox(height: 6),
+          HanduniaTerritoryPath(place: draftGeo, compact: true),
+        ],
+        const SizedBox(height: 10),
+        _HanduniaTextField(
+          controller: _newLieuDescription,
+          maxLines: 2,
+          decoration: InputDecoration(
+            hintText: 'Description',
+            prefixIcon: const Icon(Icons.notes_rounded),
+            suffixIcon: IconButton(
+              tooltip: 'Aide IA',
+              onPressed: _suggestingLieu ? null : _suggestLieuDetails,
+              icon: _suggestingLieu
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.light_mode_rounded),
+            ),
           ),
         ),
-        const SizedBox(height: 6),
-        Center(
-          child: Text(
-            "Un lieu du même nom existe déjà ? Vous serez redirigé vers celui-ci plutôt que d'en créer un doublon.",
-            textAlign: TextAlign.center,
-            style: TextStyle(color: _fitilaMuted, fontSize: 10.5),
+        const SizedBox(height: 14),
+        Semantics(
+          button: true,
+          label: 'Ajouter ce lieu à Handunia',
+          child: SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: FilledButton(
+              onPressed: _creatingLieu ? null : _submitNewLieu,
+              style: FilledButton.styleFrom(
+                backgroundColor: FitilaReferenceUi.gold,
+                foregroundColor: FitilaReferenceUi.ink,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+              child: _creatingLieu
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: FitilaReferenceUi.ink,
+                      ),
+                    )
+                  : const Icon(Icons.check_rounded, size: 29),
+            ),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 18),
       ],
     );
   }
