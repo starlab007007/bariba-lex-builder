@@ -1423,6 +1423,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
   }
 
   Widget _actionButton({
+    Key? key,
     required IconData icon,
     required String label,
     required VoidCallback onTap,
@@ -1434,6 +1435,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
       button: true,
       label: label,
       child: InkWell(
+        key: key,
         customBorder: const CircleBorder(),
         onTap: onTap,
         child: Column(
@@ -1574,18 +1576,16 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                KeyedSubtree(
+                _actionButton(
                   key: ValueKey<String>('handunia-like-$id'),
-                  child: _actionButton(
-                    icon: liked
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
-                    label: _compactCount(likes),
-                    color: liked ? const Color(0xFFFF5864) : Colors.white,
-                    filled: liked,
-                    pulse: _pulseLikeId == id,
-                    onTap: () => _toggleLike(item),
-                  ),
+                  icon: liked
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  label: _compactCount(likes),
+                  color: liked ? const Color(0xFFFF5864) : Colors.white,
+                  filled: liked,
+                  pulse: _pulseLikeId == id,
+                  onTap: () => _toggleLike(item),
                 ),
                 const SizedBox(height: 14),
                 _actionButton(
