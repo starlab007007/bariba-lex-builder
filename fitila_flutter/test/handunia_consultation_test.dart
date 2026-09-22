@@ -169,9 +169,12 @@ void main() {
     expect(find.textContaining('7 voix'), findsOneWidget);
     expect(find.text('12'), findsOneWidget);
 
-    await tester.tap(
-      find.byKey(const ValueKey<String>('handunia-like-memory-1')),
+    final memoryLike = find.byKey(
+      const ValueKey<String>('handunia-like-memory-1'),
     );
+    await tester.ensureVisible(memoryLike);
+    await tester.pumpAndSettle(const Duration(milliseconds: 120));
+    await tester.tap(memoryLike);
     await tester.pump(const Duration(milliseconds: 220));
     expect(likedId, 'memory-1');
     expect(likedValue, isTrue);
