@@ -1862,8 +1862,10 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  widget.notice ??
-                      'Explorez la carte ou revenez bientôt : Handunia se construit avec les voix de la communauté.',
+                  widget.notice == 'Accès réservé'
+                      ? 'Portée non autorisée'
+                      : widget.notice ??
+                          'Explorez la carte ou revenez bientôt : Handunia se construit avec les voix de la communauté.',
                   textAlign: TextAlign.center,
                   style: _karla(
                     size: 14,
