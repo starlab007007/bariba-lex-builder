@@ -1820,9 +1820,6 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
     final text = _memoryText(item);
     final summaryBusy = _busyInsightId == 'summary:$id';
     final translateBusy = _busyInsightId == 'translate:$id';
-    final transitionLabel =
-        item['_handunia_transition_label']?.toString().trim() ?? '';
-
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onDoubleTap: () => _toggleLike(item),
@@ -2470,7 +2467,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Semantics(
+                      Semantics(
                         label: 'Balayez vers le haut pour continuer',
                         child: Icon(
                           Icons.keyboard_arrow_down_rounded,

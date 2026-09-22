@@ -396,7 +396,7 @@ class _OpenMemoryBodyState extends State<_OpenMemoryBody> {
             style: _karlaRoute(size: 12.5, color: HanduniaTokens.cendre),
           ),
         ] else
-          const Center(
+          Center(
             child: Semantics(
               label: 'La voix originale fait foi',
               child: Icon(

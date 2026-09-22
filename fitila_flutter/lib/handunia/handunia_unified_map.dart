@@ -1348,7 +1348,7 @@ class _HanduniaLocationPickerRouteState
                 child: Padding(
                   padding: const EdgeInsets.all(9),
                   child: selected == null
-                      ? const Semantics(
+                      ? Semantics(
                           label:
                               'Touchez la carte ou recherchez un lieu',
                           child: Center(

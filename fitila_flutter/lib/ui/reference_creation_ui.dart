@@ -1587,16 +1587,18 @@ class _ReferencePortalStageState extends State<ReferencePortalStage>
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    widget.subtitle,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: .62),
-                      fontSize: 11.5,
-                      height: 1.5,
+                  if (widget.subtitle.trim().isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      widget.subtitle,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: .62),
+                        fontSize: 11.5,
+                        height: 1.5,
+                      ),
                     ),
-                  ),
+                  ],
                   if (widget.architecture != null) ...[
                     const SizedBox(height: 16),
                     widget.architecture!,
@@ -1604,7 +1606,7 @@ class _ReferencePortalStageState extends State<ReferencePortalStage>
                   ] else
                     const SizedBox(height: 22),
                   ReferenceGhostDarkButton(
-                    label: 'Entrer dans le monde',
+                    label: 'ENTRER',
                     onPressed: widget.onEnter,
                   ),
                 ],

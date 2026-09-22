@@ -795,7 +795,7 @@ class _HanduniaAiHeritageGuideRouteState
                   ),
                   if (_mode.requiresLocalValidation) ...[
                     const SizedBox(height: 5),
-                    const Semantics(
+                    Semantics(
                       label:
                           'Cheval : itinéraire indicatif. Confirmer localement les pistes et autorisations.',
                       child: Icon(
@@ -826,7 +826,7 @@ class _HanduniaAiHeritageGuideRouteState
                         borderRadius: BorderRadius.circular(22),
                         border: Border.all(color: HanduniaTokens.bordureForte),
                       ),
-                      child: const Semantics(
+                      child: Semantics(
                         label: 'Choisissez un départ et une arrivée',
                         child: Icon(
                           Icons.route_rounded,

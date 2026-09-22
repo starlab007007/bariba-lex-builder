@@ -27869,6 +27869,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         bodyPadding: EdgeInsets.zero,
         child: ReferencePortalStage(
           onEnter: () => setState(() => _step = 1),
+          subtitle: '',
           architecture: const HanduniaArchitectureMap(
             dark: true,
             compact: true,
@@ -27902,6 +27903,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   Widget _buildPortalStep() {
     return ReferencePortalStage(
       onEnter: () => setState(() => _step = 1),
+      subtitle: '',
       architecture: const HanduniaArchitectureMap(
         dark: true,
         compact: true,
@@ -28227,7 +28229,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                   ),
                 if (_backendUnavailable) ...[
                   const SizedBox(width: 10),
-                  const Semantics(
+                  Semantics(
                     label: 'Mode hors ligne',
                     child: Icon(
                       Icons.cloud_off_rounded,
@@ -28654,7 +28656,6 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   // Publication communautaire : le récit reste une mémoire du lieu et
   // devient immédiatement visible dans le vrai Fil Handunia de la plateforme.
   Widget _buildWeaveStep() {
-    final lieu = _selectedLieu;
     const periods = <String>[
       'Je ne sais pas',
       'Avant 1960',
@@ -28851,7 +28852,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         ),
         if (_aiAssisted) ...[
           const SizedBox(height: 8),
-          const Center(
+          Center(
             child: Semantics(
               label: 'Texte assisté par Lumière IA',
               child: Icon(
@@ -29071,50 +29072,6 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
 /// Petit trait tissé entre un point d'ancrage et un nouveau point —
 /// purement décoratif (comme le tracé animé de la maquette), pour
 /// symboliser un souvenir qui rejoint le tissage collectif.
-
-class _HanduniaStatusPill extends StatelessWidget {
-  const _HanduniaStatusPill({
-    required this.icon,
-    required this.label,
-    this.warning = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool warning;
-
-  @override
-  Widget build(BuildContext context) {
-    final color =
-        warning ? FitilaReferenceUi.clay : FitilaReferenceUi.goldDeep;
-    final background = warning
-        ? FitilaReferenceUi.clayTint
-        : FitilaReferenceUi.goldTint;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: background.withValues(alpha: .95),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: .35)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15, color: color),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 10.5,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _HanduniaCollectionLine extends StatelessWidget {
   const _HanduniaCollectionLine({

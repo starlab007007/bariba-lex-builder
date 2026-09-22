@@ -383,22 +383,3 @@ class _HanduniaTerritoryPickerRouteState
     );
   }
 }
-
-class _TerritoryInfoCard extends StatelessWidget {
-  const _TerritoryInfoCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Semantics(
-      label:
-          'Référentiel territorial du Bénin : départements, communes, arrondissements, villages et quartiers',
-      child: Center(
-        child: Icon(
-          Icons.account_tree_rounded,
-          color: HanduniaTokens.braise,
-          size: 26,
-        ),
-      ),
-    );
-  }
-}

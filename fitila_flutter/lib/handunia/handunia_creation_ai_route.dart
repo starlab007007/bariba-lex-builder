@@ -91,12 +91,6 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
     _ => HanduniaArchitectureLayer.collection,
   };
 
-  String get _flowLabel => switch (_architectureLayer) {
-    HanduniaArchitectureLayer.collection => 'Collecte humaine',
-    HanduniaArchitectureLayer.memory => 'Mémoire collective',
-    HanduniaArchitectureLayer.discovery => 'Découverte immersive',
-  };
-
   ThemeData _readableTheme(BuildContext context) {
     final base = Theme.of(context);
     final scheme = ColorScheme.fromSeed(
