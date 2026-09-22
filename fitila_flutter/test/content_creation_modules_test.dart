@@ -40,7 +40,7 @@ void main() {
     ),
     'Handunia Wasa': (
       screen: () => const HanduniaWasaScreen(),
-      anchor: 'Fil Handunia Wasa',
+      anchor: 'Handunia',
     ),
   };
 
@@ -244,10 +244,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('Fil Handunia Wasa'), findsOneWidget);
-    expect(find.text('Autour de moi'), findsOneWidget);
-    expect(find.text('Ma lignée'), findsOneWidget);
-    expect(find.text('Tout'), findsOneWidget);
+    expect(find.text('Handunia'), findsOneWidget);
+    expect(find.bySemanticsLabel('Autour de moi'), findsOneWidget);
+    expect(find.bySemanticsLabel('Ma lignée'), findsOneWidget);
+    expect(find.bySemanticsLabel('Tout'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -284,10 +284,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
-    expect(find.text('Fil Handunia Wasa'), findsOneWidget);
-    expect(find.text('Autour de moi'), findsOneWidget);
-    expect(find.text('Ma lignée'), findsOneWidget);
-    expect(find.text('Tout'), findsOneWidget);
+    expect(find.text('Handunia'), findsOneWidget);
+    expect(find.bySemanticsLabel('Autour de moi'), findsOneWidget);
+    expect(find.bySemanticsLabel('Ma lignée'), findsOneWidget);
+    expect(find.bySemanticsLabel('Tout'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -309,8 +309,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
-    expect(find.text('Lieux vivants'), findsOneWidget);
-    expect(find.text('Explorez les mémoires du Bénin'), findsWidgets);
+    expect(find.text('Carte'), findsOneWidget);
+    expect(find.text('Voix'), findsOneWidget);
+    expect(find.text('Mémoire'), findsOneWidget);
+    expect(find.text('Explorer'), findsOneWidget);
     expect(find.text('Fil Handunia Wasa'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -326,7 +328,7 @@ void main() {
     await tester.pumpWidget(phoneApp(const HanduniaWasaScreen()));
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('Fil Handunia Wasa'), findsOneWidget);
+    expect(find.text('Handunia'), findsOneWidget);
     expect(find.text('J’aime'), findsNothing);
     expect(find.text('Partager'), findsNothing);
     expect(find.text('vues'), findsNothing);

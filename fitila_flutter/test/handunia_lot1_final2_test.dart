@@ -65,8 +65,8 @@ void main() {
     await tester.tap(find.text('1960–1979'));
     await tester.pump();
 
-    expect(find.text('Cette période reste dans l’ombre.'), findsOneWidget);
-    expect(find.text('Aller chercher ces voix'), findsOneWidget);
+    expect(find.text('Aucune voix'), findsOneWidget);
+    expect(find.text('PARLER'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

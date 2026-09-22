@@ -146,15 +146,19 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Autour de moi'), findsOneWidget);
-    expect(find.text('Ma lignée'), findsOneWidget);
-    expect(find.text('Tout'), findsOneWidget);
+    expect(find.text('Autour de moi'), findsNothing);
+    expect(find.text('Ma lignée'), findsNothing);
+    expect(find.text('Tout'), findsNothing);
+    expect(find.bySemanticsLabel('Autour de moi'), findsOneWidget);
+    expect(find.bySemanticsLabel('Ma lignée'), findsOneWidget);
+    expect(find.bySemanticsLabel('Tout'), findsOneWidget);
     expect(find.byType(PageView), findsOneWidget);
     expect(
       find.textContaining('Votre voix attend le réseau.'),
       findsOneWidget,
     );
-    expect(find.text('Partager'), findsOneWidget);
+    expect(find.text('Partager'), findsNothing);
+    expect(find.bySemanticsLabel('Partager'), findsOneWidget);
     expect(
       find.byKey(const ValueKey<String>('handunia-like-local-1')),
       findsOneWidget,
@@ -255,8 +259,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('Accès réservé'), findsWidgets);
-    expect(find.text('Portée non autorisée'), findsOneWidget);
     expect(find.text('Aucune voix ici'), findsNothing);
+    expect(find.byIcon(Icons.lock_outline_rounded), findsOneWidget);
   });
   testWidgets('Handunia memory answer exposes keyboard and voice entry', (
     tester,
@@ -271,11 +275,13 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('La mémoire répond'), findsOneWidget);
     expect(find.text('Question'), findsOneWidget);
-    expect(find.text('Interroger'), findsOneWidget);
+    expect(find.text('Interroger'), findsNothing);
+    expect(find.byIcon(Icons.send_rounded), findsOneWidget);
     expect(
-      find.bySemanticsLabel('Maintenir pour poser la question'),
+      find.bySemanticsLabel(
+        'Maintenir pour poser une question par la voix',
+      ),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
@@ -349,18 +355,15 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Tisser un souvenir'), findsOneWidget);
-    expect(find.text('Nikki'), findsOneWidget);
+    expect(find.text('Tisser'), findsOneWidget);
+    expect(find.text('Nikki'), findsWidgets);
     expect(find.text('34 voix'), findsOneWidget);
-    expect(find.text('TISSER PAR LA VOIX'), findsOneWidget);
-    expect(find.text('ÊTRE GUIDÉ PAR LUMIÈRE IA'), findsOneWidget);
-    expect(find.text('Collecte humaine'), findsWidgets);
-    expect(find.text('Mémoire collective'), findsOneWidget);
-    expect(find.text('Découverte immersive'), findsOneWidget);
-    expect(
-      find.textContaining('Votre voix reste la source.'),
-      findsOneWidget,
-    );
+    expect(find.text('PARLER'), findsOneWidget);
+    expect(find.text('AIDE IA'), findsOneWidget);
+    expect(find.text('Voix'), findsOneWidget);
+    expect(find.text('Mémoire'), findsOneWidget);
+    expect(find.text('Explorer'), findsOneWidget);
+    expect(find.textContaining('Votre voix reste la source.'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -537,8 +540,10 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('PUBLIER UN SOUVENIR'), findsOneWidget);
-    await tester.tap(find.text('PUBLIER UN SOUVENIR'));
+    expect(find.text('PUBLIER UN SOUVENIR'), findsNothing);
+    final publishAction = find.bySemanticsLabel('Tisser un souvenir');
+    expect(publishAction, findsOneWidget);
+    await tester.tap(publishAction);
     await tester.pump();
 
     expect(published, isTrue);
@@ -562,7 +567,7 @@ void main() {
     expect(find.text('Comment ?'), findsOneWidget);
     expect(find.text('Quand ?'), findsOneWidget);
     expect(find.text('Qui ?'), findsOneWidget);
-    expect(find.text('Interroger'), findsOneWidget);
+    expect(find.byIcon(Icons.send_rounded), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -616,8 +621,8 @@ void main() {
     await tester.tap(find.text('1960–1979'));
     await tester.pump();
 
-    expect(find.text('Cette période reste dans l’ombre.'), findsOneWidget);
-    expect(find.text('Aller chercher ces voix'), findsOneWidget);
+    expect(find.text('Aucune voix'), findsOneWidget);
+    expect(find.text('PARLER'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -722,9 +727,13 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Handunia cherche une voix'), findsOneWidget);
+    expect(find.text('Handunia cherche une voix'), findsNothing);
     expect(find.textContaining('Avant 1960'), findsOneWidget);
-    await tester.tap(find.text('Aider à compléter cette mémoire'));
+    final helpAction = find.bySemanticsLabel(
+      'Aider à compléter cette mémoire par la voix',
+    );
+    expect(helpAction, findsOneWidget);
+    await tester.tap(helpAction);
     await tester.pump();
     expect(called, isTrue);
     expect(tester.takeException(), isNull);
@@ -754,10 +763,10 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Collecte humaine'), findsOneWidget);
-    expect(find.text('Mémoire collective'), findsOneWidget);
-    expect(find.text('Découverte immersive'), findsOneWidget);
-    expect(find.textContaining('LUMIÈRE IA'), findsOneWidget);
+    expect(find.text('Voix'), findsOneWidget);
+    expect(find.text('Mémoire'), findsOneWidget);
+    expect(find.text('Explorer'), findsOneWidget);
+    expect(find.text('IA'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

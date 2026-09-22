@@ -19,13 +19,12 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('TISSER PAR LA VOIX'), findsOneWidget);
-    expect(find.text('ÊTRE GUIDÉ PAR LUMIÈRE IA'), findsOneWidget);
-    expect(
-      find.textContaining('Votre voix reste la source.'),
-      findsOneWidget,
-    );
-    expect(find.byIcon(Icons.light_mode_outlined), findsWidgets);
+    expect(find.text('PARLER'), findsOneWidget);
+    expect(find.text('AIDE IA'), findsOneWidget);
+    expect(find.text('Voix'), findsOneWidget);
+    expect(find.text('Mémoire'), findsOneWidget);
+    expect(find.text('Explorer'), findsOneWidget);
+    expect(find.byIcon(Icons.light_mode_rounded), findsWidgets);
     expect(tester.takeException(), isNull);
   });
   testWidgets('Lumiere IA remains readable with larger text', (tester) async {
@@ -49,9 +48,11 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('TISSER PAR LA VOIX'), findsOneWidget);
-    expect(find.text('ÊTRE GUIDÉ PAR LUMIÈRE IA'), findsOneWidget);
-    expect(find.text('Collecte humaine'), findsWidgets);
+    expect(find.text('PARLER'), findsOneWidget);
+    expect(find.text('AIDE IA'), findsOneWidget);
+    expect(find.text('Voix'), findsOneWidget);
+    expect(find.text('Mémoire'), findsOneWidget);
+    expect(find.text('Explorer'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
