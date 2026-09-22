@@ -14,9 +14,12 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Comment ?'), findsOneWidget);
-    expect(find.text('Quand ?'), findsOneWidget);
-    expect(find.text('Qui ?'), findsOneWidget);
+    expect(find.text('Comment ?'), findsNothing);
+    expect(find.text('Quand ?'), findsNothing);
+    expect(find.text('Qui ?'), findsNothing);
+    expect(find.bySemanticsLabel('Comment ?'), findsOneWidget);
+    expect(find.bySemanticsLabel('Quand ?'), findsOneWidget);
+    expect(find.bySemanticsLabel('Qui ?'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

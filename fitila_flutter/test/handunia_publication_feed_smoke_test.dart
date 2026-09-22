@@ -35,9 +35,11 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Fil Handunia Wasa'), findsOneWidget);
-    expect(find.text('PUBLIER UN SOUVENIR'), findsOneWidget);
-    await tester.tap(find.text('PUBLIER UN SOUVENIR'));
+    expect(find.text('Handunia'), findsOneWidget);
+    expect(find.text('PUBLIER UN SOUVENIR'), findsNothing);
+    final publishAction = find.bySemanticsLabel('Tisser un souvenir');
+    expect(publishAction, findsOneWidget);
+    await tester.tap(publishAction);
     await tester.pump();
     expect(tapped, isTrue);
     expect(tester.takeException(), isNull);

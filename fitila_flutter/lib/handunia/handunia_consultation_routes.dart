@@ -2340,33 +2340,38 @@ class _HanduniaMemoryAnswerRouteState
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      for (final prompt in const <String>[
-                        'Comment ?',
-                        'Quand ?',
-                        'Qui ?',
+                      for (final item in const <(String, IconData)>[
+                        ('Comment ?', Icons.help_outline_rounded),
+                        ('Quand ?', Icons.calendar_month_rounded),
+                        ('Qui ?', Icons.person_outline_rounded),
                       ]) ...[
-                        ActionChip(
-                          label: Text(prompt),
-                          onPressed: _busy
-                              ? null
-                              : () {
-                                  final base = _questionController.text.trim();
-                                  final question =
-                                      base.isEmpty ? prompt : '$prompt $base';
-                                  _questionController.text = question;
-                                  _ask(question);
-                                },
-                          backgroundColor: HanduniaTokens.nuitPortee,
-                          side: const BorderSide(
-                            color: HanduniaTokens.bordureForte,
-                          ),
-                          labelStyle: _karlaRoute(
-                            size: 11.5,
-                            color: HanduniaTokens.ivoire,
-                            weight: FontWeight.w700,
+                        Semantics(
+                          button: true,
+                          label: item.$1,
+                          excludeSemantics: true,
+                          child: IconButton.outlined(
+                            onPressed: _busy
+                                ? null
+                                : () {
+                                    final base =
+                                        _questionController.text.trim();
+                                    final question = base.isEmpty
+                                        ? item.$1
+                                        : '${item.$1} $base';
+                                    _questionController.text = question;
+                                    _ask(question);
+                                  },
+                            style: IconButton.styleFrom(
+                              minimumSize: const Size(48, 48),
+                              foregroundColor: HanduniaTokens.braise,
+                              side: const BorderSide(
+                                color: HanduniaTokens.bordureForte,
+                              ),
+                            ),
+                            icon: Icon(item.$2, size: 21),
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                       ],
                     ],
                   ),
