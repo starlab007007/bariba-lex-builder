@@ -7478,6 +7478,8 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   String _inputMode = 'Clavier';
   bool _baribaToFrench = true;
   bool _showChars = false;
+  bool _voiceRecording = false;
+  final _voiceMedia = FitilaMediaController();
   DictionaryEntry? _selectedEntry;
 
   @override
@@ -7494,7 +7496,57 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   @override
   void dispose() {
     _query.dispose();
+    _voiceMedia.dispose();
     super.dispose();
+  }
+
+  Future<void> _toggleVoiceSearch() async {
+    if (_voiceRecording) {
+      setState(() => _voiceRecording = false);
+      try {
+        final asset = await _voiceMedia.stopAudio();
+        if (asset == null) return;
+        String transcript;
+        try {
+          transcript = await FitilaTranslationAudio.transcribe(
+            asset: asset,
+            sourceIsBariba: _baribaToFrench,
+          );
+        } catch (_) {
+          transcript = await FitilaTranslationAudio.transcribe(
+            asset: asset,
+            sourceIsBariba: !_baribaToFrench,
+          );
+        }
+        if (!mounted) return;
+        setState(() {
+          _query.text = transcript;
+          _query.selection = TextSelection.collapsed(offset: transcript.length);
+          _inputMode = 'Clavier';
+        });
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error is StateError
+                  ? error.message
+                  : 'Recherche vocale indisponible.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    try {
+      await _voiceMedia.startAudio();
+      if (mounted) setState(() => _voiceRecording = true);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Micro indisponible.')),
+      );
+    }
   }
 
   List<DictionaryEntry> _matches(List<DictionaryEntry> entries) {
@@ -7970,17 +8022,17 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                       ),
                       const SizedBox(height: 14),
                       FilledButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Le moteur STT est disponible dans Voice Lab; intégration directe en cours de parité.',
-                              ),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.mic_rounded),
-                        label: const Text('Parler maintenant'),
+                        onPressed: _toggleVoiceSearch,
+                        icon: Icon(
+                          _voiceRecording
+                              ? Icons.stop_circle_rounded
+                              : Icons.mic_rounded,
+                        ),
+                        label: Text(
+                          _voiceRecording
+                              ? 'Terminer la recherche'
+                              : 'Parler maintenant',
+                        ),
                       ),
                     ],
                   ),
