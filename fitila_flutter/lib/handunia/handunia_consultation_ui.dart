@@ -1574,13 +1574,18 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _actionButton(
-                  icon: liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                  label: _compactCount(likes),
-                  color: liked ? const Color(0xFFFF5864) : Colors.white,
-                  filled: liked,
-                  pulse: _pulseLikeId == id,
-                  onTap: () => _toggleLike(item),
+                KeyedSubtree(
+                  key: ValueKey<String>('handunia-like-$id'),
+                  child: _actionButton(
+                    icon: liked
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    label: _compactCount(likes),
+                    color: liked ? const Color(0xFFFF5864) : Colors.white,
+                    filled: liked,
+                    pulse: _pulseLikeId == id,
+                    onTap: () => _toggleLike(item),
+                  ),
                 ),
                 const SizedBox(height: 14),
                 _actionButton(
