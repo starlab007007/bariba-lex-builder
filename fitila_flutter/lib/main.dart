@@ -26246,6 +26246,13 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   final _lieuxQuery = TextEditingController();
   final bool _sortByPopular = true;
   bool _lieuxListMode = false;
+  String _lieuxSmartFilter = 'all';
+  bool _locatingLieux = false;
+  bool _lieuxVoiceRecording = false;
+  bool _memoryVoiceRecording = false;
+  bool _handuniaSpeaking = false;
+  final _handuniaVoiceMedia = FitilaMediaController();
+  final _handuniaVoicePlayer = audio.AudioPlayer();
 
   Map<String, dynamic>? _selectedLieu;
   bool _loadingScene = false;
@@ -26314,6 +26321,8 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     _newLieuName.dispose();
     _newLieuIcon.dispose();
     _newLieuDescription.dispose();
+    _handuniaVoiceMedia.dispose();
+    _handuniaVoicePlayer.dispose();
     super.dispose();
   }
 
@@ -26322,32 +26331,307 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   // deux tris réellement calculés, jamais un ordre figé.
   List<Map<String, dynamic>> get _visibleLieux {
     final query = _lieuxQuery.text.trim().toLowerCase();
-    var list = query.isEmpty
-        ? _lieux
-        : _lieux
-              .where(
-                (l) =>
-                    (l['name']?.toString() ?? '').toLowerCase().contains(query),
-              )
-              .toList();
-    list = List<Map<String, dynamic>>.from(list);
-    if (_sortByPopular) {
+
+    bool matchesText(Map<String, dynamic> lieu) {
+      if (query.isEmpty) return true;
+      final values = <dynamic>[
+        lieu['name'],
+        lieu['description'],
+        lieu['category'],
+        lieu['village_quartier'],
+        lieu['locality'],
+        lieu['arrondissement'],
+        lieu['commune'],
+        lieu['city'],
+        lieu['department'],
+      ];
+      return values.any(
+        (value) => (value?.toString() ?? '').toLowerCase().contains(query),
+      );
+    }
+
+    bool matchesFilter(Map<String, dynamic> lieu) {
+      final haystack = <dynamic>[
+        lieu['name'],
+        lieu['description'],
+        lieu['category'],
+        lieu['village_quartier'],
+        lieu['locality'],
+      ].map((value) => value?.toString().toLowerCase() ?? '').join(' ');
+      switch (_lieuxSmartFilter) {
+        case 'nearby':
+          final position = _worldPosition;
+          final lat = (lieu['latitude'] as num?)?.toDouble();
+          final lon = (lieu['longitude'] as num?)?.toDouble();
+          if (position == null || lat == null || lon == null) return true;
+          return Geolocator.distanceBetween(
+                position.latitude,
+                position.longitude,
+                lat,
+                lon,
+              ) <=
+              120000;
+        case 'markets':
+          return haystack.contains('march');
+        case 'villages':
+          return (lieu['village_quartier']?.toString().trim().isNotEmpty ??
+                  false) ||
+              haystack.contains('village');
+        case 'stories':
+          return (_density[lieu['id']?.toString() ?? ''] ?? 0) > 0;
+        default:
+          return true;
+      }
+    }
+
+    final list = _lieux
+        .where((lieu) => matchesText(lieu) && matchesFilter(lieu))
+        .map((lieu) => Map<String, dynamic>.from(lieu))
+        .toList();
+
+    if (_lieuxSmartFilter == 'nearby' && _worldPosition != null) {
+      final position = _worldPosition!;
+      list.sort((a, b) {
+        double distance(Map<String, dynamic> lieu) {
+          final lat = (lieu['latitude'] as num?)?.toDouble();
+          final lon = (lieu['longitude'] as num?)?.toDouble();
+          if (lat == null || lon == null) return double.infinity;
+          return Geolocator.distanceBetween(
+            position.latitude,
+            position.longitude,
+            lat,
+            lon,
+          );
+        }
+
+        return distance(a).compareTo(distance(b));
+      });
+    } else if (_sortByPopular) {
       list.sort(
         (a, b) => (_density[b['id']] ?? 0).compareTo(_density[a['id']] ?? 0),
       );
-    } else {
-      list.sort((a, b) {
-        final da =
-            DateTime.tryParse(a['created_at']?.toString() ?? '') ??
-            DateTime(2000);
-        final db =
-            DateTime.tryParse(b['created_at']?.toString() ?? '') ??
-            DateTime(2000);
-        return db.compareTo(da);
-      });
     }
     return list;
   }
+
+  Future<void> _setLieuSmartFilter(String filter) async {
+    if (filter == 'nearby' && _worldPosition == null) {
+      setState(() => _locatingLieux = true);
+      try {
+        if (await Geolocator.isLocationServiceEnabled()) {
+          var permission = await Geolocator.checkPermission();
+          if (permission == LocationPermission.denied) {
+            permission = await Geolocator.requestPermission();
+          }
+          if (permission != LocationPermission.denied &&
+              permission != LocationPermission.deniedForever) {
+            _worldPosition = await Geolocator.getCurrentPosition(
+              locationSettings: const LocationSettings(
+                accuracy: LocationAccuracy.medium,
+                timeLimit: Duration(seconds: 6),
+              ),
+            );
+          }
+        }
+      } catch (_) {
+        // Le filtre reste utilisable sans géolocalisation.
+      } finally {
+        if (mounted) setState(() => _locatingLieux = false);
+      }
+    }
+    if (mounted) setState(() => _lieuxSmartFilter = filter);
+  }
+
+  Future<void> _toggleLieuVoiceSearch() async {
+    if (_lieuxVoiceRecording) {
+      setState(() => _lieuxVoiceRecording = false);
+      try {
+        final asset = await _handuniaVoiceMedia.stopAudio();
+        if (asset == null) return;
+        String transcript;
+        try {
+          transcript = await FitilaTranslationAudio.transcribe(
+            asset: asset,
+            sourceIsBariba: false,
+          );
+        } catch (_) {
+          transcript = await FitilaTranslationAudio.transcribe(
+            asset: asset,
+            sourceIsBariba: true,
+          );
+        }
+        if (!mounted) return;
+        setState(() {
+          _lieuxQuery.text = transcript;
+          _lieuxQuery.selection = TextSelection.collapsed(
+            offset: transcript.length,
+          );
+        });
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error is StateError
+                  ? error.message
+                  : 'Recherche vocale indisponible.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    try {
+      await _handuniaVoiceMedia.startAudio();
+      if (mounted) setState(() => _lieuxVoiceRecording = true);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Micro indisponible.')),
+      );
+    }
+  }
+
+  Future<void> _toggleMemoryVoiceQuestion() async {
+    if (_memoryVoiceRecording) {
+      setState(() => _memoryVoiceRecording = false);
+      try {
+        final asset = await _handuniaVoiceMedia.stopAudio();
+        if (asset == null) return;
+        final transcript = await FitilaTranslationAudio.transcribe(
+          asset: asset,
+          sourceIsBariba: false,
+        );
+        if (!mounted) return;
+        setState(() => _askController.text = transcript);
+        await _askCollectiveMemory(transcript);
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error is StateError
+                  ? error.message
+                  : 'Question vocale indisponible.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    try {
+      await _handuniaVoiceMedia.startAudio();
+      if (mounted) setState(() => _memoryVoiceRecording = true);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Micro indisponible.')),
+      );
+    }
+  }
+
+  Future<void> _speakCurrentLieu() async {
+    final lieu = _selectedLieu;
+    if (lieu == null || _handuniaSpeaking) return;
+    final text = (_memoryAnswer.isNotEmpty
+            ? _memoryAnswer
+            : (_scene.isNotEmpty
+                  ? _scene
+                  : lieu['description']?.toString() ?? ''))
+        .trim();
+    if (text.isEmpty) return;
+    setState(() => _handuniaSpeaking = true);
+    try {
+      await _handuniaVoicePlayer.stop();
+      final generated = await FitilaTranslationAudio.synthesize(
+        text: text,
+        bariba: false,
+      );
+      final url = generated.url?.trim() ?? '';
+      if (url.isNotEmpty) {
+        await _handuniaVoicePlayer.play(audio.UrlSource(url));
+      } else {
+        final localPath = await generated.materialize();
+        if (localPath == null || localPath.isEmpty) {
+          throw StateError('Audio indisponible.');
+        }
+        await _handuniaVoicePlayer.play(audio.DeviceFileSource(localPath));
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is StateError
+                ? error.message
+                : 'Lecture vocale indisponible.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _handuniaSpeaking = false);
+    }
+  }
+
+  String? _lieuCoverUrl(Map<String, dynamic> lieu) {
+    for (final key in const [
+      'cover_url',
+      'photo_url',
+      'image_url',
+      'media_url',
+    ]) {
+      final value = lieu[key]?.toString().trim() ?? '';
+      if (value.startsWith('http://') || value.startsWith('https://')) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  String _compactText(String value, {int max = 72}) {
+    final clean = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (clean.length <= max) return clean;
+    return '${clean.substring(0, max).trimRight()}…';
+  }
+
+  Future<void> _enrichMissingLieuCoordinates() async {
+    if (!FitilaBackend.configured || _lieux.isEmpty) return;
+    final updated = _lieux
+        .map((lieu) => Map<String, dynamic>.from(lieu))
+        .toList(growable: false);
+    var changed = false;
+    for (var index = 0; index < updated.length && index < 12; index++) {
+      final lieu = updated[index];
+      if (lieu['latitude'] is num && lieu['longitude'] is num) continue;
+      final name = lieu['name']?.toString().trim() ?? '';
+      if (name.length < 2) continue;
+      try {
+        final results = await HanduniaMapData.searchPlaces(name);
+        if (results.isEmpty) continue;
+        final place = results.first;
+        updated[index] = <String, dynamic>{
+          ...lieu,
+          'latitude': place['latitude'],
+          'longitude': place['longitude'],
+          'department': lieu['department'] ?? place['department'],
+          'commune': lieu['commune'] ?? place['commune'],
+          'arrondissement':
+              lieu['arrondissement'] ?? place['arrondissement'],
+          'village_quartier':
+              lieu['village_quartier'] ?? place['village_quartier'],
+          'locality': lieu['locality'] ?? place['locality'],
+          'city': lieu['city'] ?? place['city'],
+          'geo_provider': lieu['geo_provider'] ?? place['geo_provider'],
+          'geo_inferred': true,
+        };
+        changed = true;
+      } catch (_) {
+        // L'enrichissement ne bloque jamais la consultation.
+      }
+    }
+    if (changed && mounted) setState(() => _lieux = updated);
+  }
+
 
   Future<void> _loadLieux() async {
     setState(() {
@@ -26386,6 +26670,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         _loadingLieux = false;
         _syncedOfflineCount = synced;
       });
+      unawaited(_enrichMissingLieuCoordinates());
       if (synced > 0) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
@@ -26413,6 +26698,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         _backendUnavailable = true;
         _loadingLieux = false;
       });
+      unawaited(_enrichMissingLieuCoordinates());
     }
   }
 
