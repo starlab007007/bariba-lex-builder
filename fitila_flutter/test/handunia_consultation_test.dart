@@ -154,7 +154,10 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Partager'), findsOneWidget);
-    expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('handunia-like-local-1')),
+      findsOneWidget,
+    );
 
     await tester.drag(find.byType(PageView), const Offset(0, -620));
     await tester.pump(const Duration(milliseconds: 450));
@@ -166,7 +169,9 @@ void main() {
     expect(find.textContaining('7 voix'), findsOneWidget);
     expect(find.text('12'), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+    await tester.tap(
+      find.byKey(const ValueKey<String>('handunia-like-memory-1')),
+    );
     await tester.pump(const Duration(milliseconds: 220));
     expect(likedId, 'memory-1');
     expect(likedValue, isTrue);
