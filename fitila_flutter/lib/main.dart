@@ -28,6 +28,7 @@ import 'core/web_parity_models.dart';
 import 'handunia/handunia_consultation_data.dart';
 import 'handunia/handunia_consultation_extended_data.dart';
 import 'handunia/handunia_consultation_model.dart';
+import 'handunia/handunia_ai_copilot.dart';
 import 'handunia/handunia_consultation_routes.dart';
 import 'handunia/handunia_creation_ai_route.dart';
 import 'handunia/handunia_map_data.dart';
@@ -26190,6 +26191,81 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFFF0ECFF),
+                  Color(0xFFEAFBF7),
+                  Color(0xFFFFF6DD),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFE2DBFF)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x14704BFF),
+                  blurRadius: 22,
+                  offset: Offset(0, 10),
+                  spreadRadius: -12,
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: SweepGradient(
+                      colors: [
+                        Color(0xFF6F4BFF),
+                        Color(0xFF28CFC1),
+                        Color(0xFFF0B84B),
+                        Color(0xFF6F4BFF),
+                      ],
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Vision IA',
+                        style: TextStyle(
+                          color: Color(0xFF171427),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Touchez un lieu ou demandez à Lumière IA de vous guider.',
+                        style: TextStyle(
+                          color: Color(0xFF6F687D),
+                          fontSize: 11.5,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.bolt_rounded,
+                  color: Color(0xFF6F4BFF),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -27687,7 +27763,25 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     );
   }
 
-  void _leaveForPlatform(int index) {
+  HanduniaAiContext get _embeddedAiContext {
+    final screen = switch (_step) {
+      1 => 'lieux',
+      2 => 'lieu',
+      3 => 'publier',
+      4 => 'lieux',
+      5 => 'fil',
+      6 => 'publier',
+      _ => 'handunia',
+    };
+    return HanduniaAiContext(
+      screen: screen,
+      place: _selectedLieu,
+      visiblePlaces: _lieux.length,
+      offline: _backendUnavailable,
+    );
+  }
+
+$leaveAnchor
     if (widget.onPlatformNav == null) {
       if (index == 0) {
         Navigator.of(context).maybePop();
@@ -27719,7 +27813,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       1 => ReferenceCreationShell(
         dark: false,
         title: 'Lieux vivants',
-        subtitle: 'Explorez les mémoires du Bénin',
+        subtitle: 'FITILA B • Exploration immersive IA',
         leading: const Text('🌌', style: TextStyle(fontSize: 15)),
         onBack: widget.entryMode == HanduniaWasaEntryMode.publish
             ? () => Navigator.maybePop(context)
@@ -27783,6 +27877,13 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     return Scaffold(
       backgroundColor: FitilaReferenceUi.appBg,
       body: content,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: HanduniaAiCopilotButton(
+          contextData: _embeddedAiContext,
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: FitilaPremiumBottomNav(
         selectedIndex:
             widget.entryMode == HanduniaWasaEntryMode.feed ? 0 : -1,
@@ -28241,7 +28342,11 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             HanduniaUnifiedMap(
               places: mappedVisible,
               selectedPlaceId: _selectedLieu?['id']?.toString(),
-              height: 420,
+              height: 440,
+              immersive: true,
+              routeLabel: _selectedLieu == null
+                  ? 'Vision IA • Bénin vivant'
+                  : 'Vision IA • ${_selectedLieu?['name'] ?? 'lieu'}',
               onSelected: (place) => setState(() => _selectedLieu = place),
               onOpen: _openLieu,
             ),
