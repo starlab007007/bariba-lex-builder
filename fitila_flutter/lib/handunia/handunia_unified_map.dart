@@ -180,6 +180,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
   bool _satellite = false;
   String? _selectedId;
   String? _activeTerritory;
+  late double _manualZoom;
 
   String get _activeStyle =>
       _satellite ? handuniaSatelliteMapStyle : handuniaMapStyleUrl;
@@ -188,6 +189,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
   void initState() {
     super.initState();
     _selectedId = widget.selectedPlaceId;
+    _manualZoom = widget.initialZoom;
   }
 
   @override
@@ -395,6 +397,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     Map<String, dynamic> place,
     ({String kind, String label, double zoom}) level,
   ) async {
+    _manualZoom = level.zoom;
     setState(() => _activeTerritory = level.label);
     if (level.label.toLowerCase() == 'bénin') {
       await _focusBenin();
@@ -499,11 +502,43 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
   Future<void> _focusBenin() async {
     final controller = _controller;
     if (controller == null) return;
+    _manualZoom = widget.initialZoom;
     await controller.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(
           target: handuniaBeninCenter,
-          zoom: widget.initialZoom,
+          zoom: _manualZoom,
+          tilt: widget.immersive ? 42 : 0,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _recenter() async {
+    final selected = _selected;
+    if (selected != null) {
+      _manualZoom = _zoomFor(selected);
+      await _focus(selected, zoom: _manualZoom);
+      return;
+    }
+    await _focusBenin();
+  }
+
+  Future<void> _changeZoom(double delta) async {
+    final controller = _controller;
+    if (controller == null) return;
+    _manualZoom = (_manualZoom + delta).clamp(5.0, 18.0).toDouble();
+    final selected = _selected;
+    final lat = selected == null ? null : _geoDouble(selected['latitude']);
+    final lon = selected == null ? null : _geoDouble(selected['longitude']);
+    final target = lat != null && lon != null
+        ? LatLng(lat, lon)
+        : handuniaBeninCenter;
+    await controller.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: target,
+          zoom: _manualZoom,
           tilt: widget.immersive ? 42 : 0,
         ),
       ),
@@ -512,6 +547,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
 
   Future<void> _select(Map<String, dynamic> place) async {
     final levels = _territoryLevels(place);
+    _manualZoom = _zoomFor(place);
     setState(() {
       _selectedId = place['id']?.toString();
       _activeTerritory = levels.isEmpty ? null : levels.first.label;
@@ -754,6 +790,35 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                     ),
                   ),
                 ),
+              if (widget.showChrome)
+                Positioned(
+                  right: 10,
+                  bottom: selected != null && widget.showSelectionCard
+                      ? 146
+                      : 58,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _MapRoundAction(
+                        tooltip: 'Me centrer',
+                        icon: Icons.my_location_rounded,
+                        onTap: _recenter,
+                      ),
+                      const SizedBox(height: 7),
+                      _MapRoundAction(
+                        tooltip: 'Zoomer',
+                        icon: Icons.add_rounded,
+                        onTap: () => _changeZoom(1),
+                      ),
+                      const SizedBox(height: 7),
+                      _MapRoundAction(
+                        tooltip: 'Dézoomer',
+                        icon: Icons.remove_rounded,
+                        onTap: () => _changeZoom(-1),
+                      ),
+                    ],
+                  ),
+                ),
               if (selected != null && widget.showSelectionCard)
                 Positioned(
                   left: 10,
@@ -770,6 +835,36 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+class _MapRoundAction extends StatelessWidget {
+  const _MapRoundAction({
+    required this.tooltip,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: HanduniaTokens.nuitPortee.withValues(alpha: .97),
+      shape: const CircleBorder(),
+      elevation: 2,
+      shadowColor: const Color(0x22241F2E),
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onTap,
+        icon: Icon(icon),
+        color: HanduniaTokens.ivoire,
+        iconSize: 20,
       ),
     );
   }
