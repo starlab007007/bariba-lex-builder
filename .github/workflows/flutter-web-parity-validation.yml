@@ -12,6 +12,10 @@ on:
       - release/fitila-flutter-android-v1.8.1-build12-web-parity
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
