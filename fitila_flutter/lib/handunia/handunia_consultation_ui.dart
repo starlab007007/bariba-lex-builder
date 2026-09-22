@@ -988,7 +988,6 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
   final Set<String> _saved = <String>{};
   String? _pulseLikeId;
   String? _busyInsightId;
-  int _absolutePage = 0;
 
   @override
   void initState() {
@@ -1004,7 +1003,6 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
     _syncSocialState();
     if (oldWidget.filter != widget.filter ||
         oldWidget.items.length != widget.items.length) {
-      _absolutePage = 0;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _pageController.hasClients) {
           _pageController.jumpToPage(0);
@@ -1924,10 +1922,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                   ),
                   allowImplicitScrolling: true,
                   itemCount: canLoop ? null : items.length,
-                  onPageChanged: (index) {
-                    _absolutePage = index;
-                    HapticFeedback.selectionClick();
-                  },
+                  onPageChanged: (_) => HapticFeedback.selectionClick(),
                   itemBuilder: (context, index) {
                     final item = items[index % items.length];
                     return _storyPage(item);
@@ -2072,48 +2067,6 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
             backgroundColor: Colors.black.withValues(alpha: .30),
             side: BorderSide(color: Colors.white.withValues(alpha: .30)),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HanduniaAccessDenied extends StatelessWidget {
-  const _HanduniaAccessDenied();
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: 'Accès réservé. Portée non autorisée.',
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: HanduniaTokens.terre.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: HanduniaTokens.terre.withValues(alpha: 0.62),
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.lock_outline,
-              color: HanduniaTokens.terre,
-              size: 26,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Accès réservé',
-              style: _fraunces(size: 17, color: HanduniaTokens.terre),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Portée non autorisée',
-              style: _karla(size: 12.5, color: HanduniaTokens.cendre),
-            ),
-          ],
         ),
       ),
     );
