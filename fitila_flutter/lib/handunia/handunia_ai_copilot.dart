@@ -497,7 +497,7 @@ Règles:
                     ),
                     const SizedBox(width: 8),
                     IconButton.filled(
-                      onPressed: _busy ? null : _ask,
+                      onPressed: _busy ? null : () => _ask(),
                       style: IconButton.styleFrom(backgroundColor: _violet),
                       icon: const Icon(Icons.arrow_upward_rounded),
                     ),
