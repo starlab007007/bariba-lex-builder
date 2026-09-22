@@ -1030,15 +1030,24 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
   }
 
   Future<void> _restoreSaved() async {
-    final prefs = await SharedPreferences.getInstance();
-    final ids = prefs.getStringList(_savedKey) ?? const <String>[];
-    if (!mounted) return;
-    setState(() => _saved.addAll(ids));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final ids = prefs.getStringList(_savedKey) ?? const <String>[];
+      if (!mounted) return;
+      setState(() => _saved.addAll(ids));
+    } catch (_) {
+      // La sauvegarde locale enrichit le fil mais ne doit jamais empêcher
+      // son rendu (notamment sur un appareil fraîchement installé).
+    }
   }
 
   Future<void> _persistSaved() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_savedKey, _saved.toList(growable: false));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_savedKey, _saved.toList(growable: false));
+    } catch (_) {
+      // Le geste reste instantané même si le stockage local est indisponible.
+    }
   }
 
   List<Map<String, dynamic>> get _smartItems {
