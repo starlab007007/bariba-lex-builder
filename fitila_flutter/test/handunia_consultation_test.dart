@@ -349,7 +349,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Handunia Wasa'), findsOneWidget);
+    expect(find.text('Tisser un souvenir'), findsOneWidget);
     expect(find.text('Nikki'), findsOneWidget);
     expect(find.text('34 voix'), findsOneWidget);
     expect(find.text('TISSER PAR LA VOIX'), findsOneWidget);

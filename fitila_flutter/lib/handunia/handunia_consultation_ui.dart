@@ -92,7 +92,7 @@ class HanduniaArchitectureMap extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            height: compact ? 92 : 112,
+            height: compact ? 112 : 124,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

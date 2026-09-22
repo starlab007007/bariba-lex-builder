@@ -19,10 +19,10 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('COMMENCER AVEC LUMIÈRE IA'), findsOneWidget);
-    expect(find.text('Enregistrer directement'), findsOneWidget);
+    expect(find.text('TISSER PAR LA VOIX'), findsOneWidget);
+    expect(find.text('ÊTRE GUIDÉ PAR LUMIÈRE IA'), findsOneWidget);
     expect(
-      find.text('L’IA éclaire la mémoire. Elle ne l’invente pas.'),
+      find.textContaining('Votre voix reste la source.'),
       findsOneWidget,
     );
     expect(find.byIcon(Icons.light_mode_outlined), findsOneWidget);
@@ -49,9 +49,9 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('COMMENCER AVEC LUMIÈRE IA'), findsOneWidget);
-    expect(find.text('Enregistrer directement'), findsOneWidget);
-    expect(find.text('Commencer'), findsOneWidget);
+    expect(find.text('TISSER PAR LA VOIX'), findsOneWidget);
+    expect(find.text('ÊTRE GUIDÉ PAR LUMIÈRE IA'), findsOneWidget);
+    expect(find.text('Collecte humaine'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
