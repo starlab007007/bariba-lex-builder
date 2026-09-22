@@ -990,6 +990,15 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
   String? _pulseLikeId;
   String? _busyInsightId;
 
+  static const _feedCream = Color(0xFFFFF8EA);
+  static const _feedPaper = Color(0xFFFFFCF5);
+  static const _feedPaperSoft = Color(0xFFF8EFD9);
+  static const _feedInk = Color(0xFF3B1E0E);
+  static const _feedMuted = Color(0xFF8A7661);
+  static const _feedGold = Color(0xFFD89A20);
+  static const _feedGoldDeep = Color(0xFFB87516);
+  static const _feedHairline = Color(0xFFE7C995);
+
   @override
   void initState() {
     super.initState();
@@ -1378,44 +1387,54 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
-            height: 44,
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(999),
               gradient: selected
                   ? const LinearGradient(
-                      colors: [Color(0xFFF5BF4C), Color(0xFFB77717)],
+                      colors: [Color(0xFFF4C458), _feedGoldDeep],
                     )
                   : null,
-              color: selected ? null : Colors.black.withValues(alpha: .26),
+              color: selected ? null : _feedPaper.withValues(alpha: .94),
               border: Border.all(
-                color: selected
-                    ? const Color(0xFFFFD878)
-                    : Colors.white.withValues(alpha: .35),
+                color: selected ? const Color(0xFFF4CB72) : _feedHairline,
               ),
               boxShadow: selected
                   ? const [
                       BoxShadow(
-                        color: Color(0x55D99B25),
-                        blurRadius: 20,
-                        spreadRadius: -6,
+                        color: Color(0x33C88918),
+                        blurRadius: 16,
+                        offset: Offset(0, 5),
                       ),
                     ]
-                  : null,
+                  : const [
+                      BoxShadow(
+                        color: Color(0x0D6B4A22),
+                        blurRadius: 10,
+                        offset: Offset(0, 3),
+                      ),
+                    ],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 18, color: Colors.white),
-                const SizedBox(width: 6),
+                Icon(
+                  icon,
+                  size: 16,
+                  color: selected ? Colors.white : _feedInk,
+                ),
+                const SizedBox(width: 5),
                 Flexible(
                   child: Text(
                     value.label,
                     maxLines: 1,
                     overflow: TextOverflow.fade,
                     style: _karla(
-                      size: 13,
-                      color: Colors.white,
+                      size: 12.2,
+                      color: selected ? Colors.white : _feedInk,
                       weight: FontWeight.w800,
+                      height: 1,
                     ),
                   ),
                 ),
@@ -1432,10 +1451,11 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
-    Color color = Colors.white,
+    Color color = _feedInk,
     bool filled = false,
     bool pulse = false,
   }) {
+    final buttonColor = filled ? color : _feedInk;
     return Semantics(
       button: true,
       label: label,
@@ -1447,45 +1467,48 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedScale(
-              scale: pulse ? 1.28 : 1,
+              scale: pulse ? 1.20 : 1,
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeOutBack,
               child: Container(
-                width: 52,
-                height: 52,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: filled
-                      ? color.withValues(alpha: .20)
-                      : Colors.black.withValues(alpha: .30),
+                      ? color.withValues(alpha: .12)
+                      : _feedPaper.withValues(alpha: .96),
                   border: Border.all(
                     color: filled
-                        ? color.withValues(alpha: .78)
-                        : Colors.white.withValues(alpha: .30),
+                        ? color.withValues(alpha: .52)
+                        : _feedHairline.withValues(alpha: .95),
                   ),
-                  boxShadow: filled
-                      ? [
-                          BoxShadow(
-                            color: color.withValues(alpha: .35),
-                            blurRadius: 22,
-                            spreadRadius: -5,
-                          ),
-                        ]
-                      : null,
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x216B4A22),
+                      blurRadius: 13,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
-                child: Icon(icon, color: color, size: 29),
+                child: Icon(icon, color: buttonColor, size: 24),
               ),
             ),
             if (label.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                label,
-                maxLines: 1,
-                style: _karla(
-                  size: 11.5,
-                  color: Colors.white,
-                  weight: FontWeight.w800,
-                  height: 1,
+              const SizedBox(height: 3),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 58),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.fade,
+                  textAlign: TextAlign.center,
+                  style: _karla(
+                    size: 9.5,
+                    color: _feedInk,
+                    weight: FontWeight.w800,
+                    height: 1,
+                  ),
                 ),
               ),
             ],
@@ -1497,16 +1520,12 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
 
   Widget _storyPage(Map<String, dynamic> item) {
     if (item['item_type'] == 'divergence') {
-      return Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF17130F), Color(0xFF382713), Color(0xFF111820)],
-          ),
+      return ColoredBox(
+        color: _feedCream,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 200, 20, 120),
+          child: Center(child: _DivergenceCard(item: item)),
         ),
-        padding: const EdgeInsets.fromLTRB(22, 220, 22, 130),
-        child: Center(child: _DivergenceCard(item: item)),
       );
     }
 
@@ -1519,7 +1538,8 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
     final initials = item['author_initials']?.toString().trim().isNotEmpty == true
         ? item['author_initials'].toString()
         : 'HW';
-    final displayName = item['display_name']?.toString().trim().isNotEmpty == true
+    final displayName =
+        item['display_name']?.toString().trim().isNotEmpty == true
         ? item['display_name'].toString()
         : 'Voix Handunia';
     final lieu = item['lieu_name']?.toString().trim().isNotEmpty == true
@@ -1535,241 +1555,350 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onDoubleTap: () => _toggleLike(item),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (backdrop != null)
-            Image.network(
-              backdrop,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _fallbackBackdrop(icon, lieu),
-            )
-          else
-            _fallbackBackdrop(icon, lieu),
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                stops: [0, .28, .58, 1],
-                colors: [
-                  Color(0x7A000000),
-                  Color(0x10000000),
-                  Color(0x50000000),
-                  Color(0xE6000000),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            right: 14,
-            bottom: 126,
-            child: Column(
+      child: ColoredBox(
+        color: _feedCream,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxHeight < 730;
+            final topInset = compact ? 158.0 : 190.0;
+            final bottomInset = compact ? 78.0 : 102.0;
+            final cardRight = compact ? 30.0 : 34.0;
+
+            return Stack(
+              fit: StackFit.expand,
               children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.black.withValues(alpha: .34),
-                    border: Border.all(color: const Color(0xFFFFC95D), width: 2),
-                  ),
-                  child: Text(
-                    initials,
-                    style: _fraunces(size: 14, color: Colors.white),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _actionButton(
-                  key: ValueKey<String>('handunia-like-$id'),
-                  icon: liked
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
-                  label: _compactCount(likes),
-                  color: liked ? const Color(0xFFFF5864) : Colors.white,
-                  filled: liked,
-                  pulse: _pulseLikeId == id,
-                  onTap: () => _toggleLike(item),
-                ),
-                const SizedBox(height: 14),
-                _actionButton(
-                  icon: Icons.chat_bubble_rounded,
-                  label: _compactCount(voices),
-                  onTap: () => widget.onOpenMemory(item),
-                ),
-                const SizedBox(height: 14),
-                _actionButton(
-                  icon: Icons.share_rounded,
-                  label: 'Partager',
-                  onTap: () => _shareMemory(item),
-                ),
-                const SizedBox(height: 14),
-                _actionButton(
-                  icon: saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                  label: saved ? 'Sauvé' : 'Garder',
-                  color: saved ? const Color(0xFFFFC95D) : Colors.white,
-                  filled: saved,
-                  onTap: () => _toggleSaved(item),
-                ),
-                const SizedBox(height: 12),
-                _actionButton(
-                  icon: Icons.more_horiz_rounded,
-                  label: '',
-                  onTap: () => _showMore(item),
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            left: 18,
-            right: 82,
-            bottom: 104,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  constraints: const BoxConstraints(maxWidth: 250),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: .34),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: Colors.white.withValues(alpha: .30)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.location_on_rounded,
-                        size: 19,
-                        color: Color(0xFFFFCB62),
-                      ),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          lieu,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: _karla(
-                            size: 14.5,
-                            color: Colors.white,
-                            weight: FontWeight.w800,
-                          ),
+                Positioned(
+                  left: 14,
+                  right: cardRight,
+                  top: topInset,
+                  bottom: bottomInset,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(compact ? 24 : 30),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x226B4A22),
+                          blurRadius: 26,
+                          offset: Offset(0, 10),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 11),
-                Text(
-                  text,
-                  maxLines: 4,
-                  overflow: TextOverflow.ellipsis,
-                  style: _fraunces(
-                    size: 27,
-                    color: Colors.white,
-                    height: 1.12,
-                  ),
-                ),
-                const SizedBox(height: 13),
-                Container(
-                  padding: const EdgeInsets.fromLTRB(12, 7, 12, 7),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: .38),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: Colors.white.withValues(alpha: .20)),
-                  ),
-                  child: _HanduniaAudioReader(
-                    id: id,
-                    url: item['audio_url']?.toString(),
-                    cachedPath: item['cached_audio_path']?.toString(),
-                    durationMs: (item['audio_duration_ms'] as num?)?.toInt(),
-                  ),
-                ),
-                const SizedBox(height: 11),
-                Row(
-                  children: [
-                    Container(
-                      width: 38,
-                      height: 38,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: .95),
-                      ),
-                      child: Text(
-                        initials,
-                        style: _fraunces(size: 12, color: const Color(0xFF2A2116)),
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(compact ? 24 : 30),
+                      child: Stack(
+                        fit: StackFit.expand,
                         children: [
-                          Text(
-                            displayName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: _karla(
-                              size: 14,
-                              color: Colors.white,
-                              weight: FontWeight.w900,
-                              height: 1.1,
+                          if (backdrop != null)
+                            Image.network(
+                              backdrop,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) =>
+                                  _fallbackBackdrop(icon, lieu),
+                            )
+                          else
+                            _fallbackBackdrop(icon, lieu),
+                          const DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                stops: [0, .44, .72, 1],
+                                colors: [
+                                  Color(0x12FFF7E8),
+                                  Color(0x00FFF7E8),
+                                  Color(0x22FFF7E8),
+                                  Color(0x66F8E4BE),
+                                ],
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${voices == 1 ? '1 voix' : '$voices voix'} · ${_relativeTime(item)}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: _karla(
-                              size: 11.5,
-                              color: Colors.white.withValues(alpha: .78),
-                              weight: FontWeight.w600,
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: Container(
+                              padding: EdgeInsets.fromLTRB(
+                                compact ? 14 : 18,
+                                compact ? 12 : 16,
+                                compact ? 50 : 58,
+                                compact ? 12 : 16,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    _feedPaper.withValues(alpha: .84),
+                                    _feedPaper.withValues(alpha: .98),
+                                  ],
+                                ),
+                                border: Border(
+                                  top: BorderSide(
+                                    color: Colors.white.withValues(alpha: .76),
+                                  ),
+                                ),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 240,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _feedPaperSoft.withValues(
+                                        alpha: .94,
+                                      ),
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(
+                                        color: _feedHairline,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.location_on_rounded,
+                                          size: 17,
+                                          color: _feedGoldDeep,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        Flexible(
+                                          child: Text(
+                                            lieu,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: _karla(
+                                              size: 12.8,
+                                              color: _feedInk,
+                                              weight: FontWeight.w800,
+                                              height: 1,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: compact ? 7 : 10),
+                                  Text(
+                                    text,
+                                    maxLines: compact ? 2 : 3,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: _fraunces(
+                                      size: compact ? 23 : 27,
+                                      color: _feedInk,
+                                      height: 1.10,
+                                    ),
+                                  ),
+                                  SizedBox(height: compact ? 8 : 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _feedPaperSoft.withValues(
+                                        alpha: .72,
+                                      ),
+                                      borderRadius: BorderRadius.circular(18),
+                                    ),
+                                    child: _HanduniaAudioReader(
+                                      id: id,
+                                      url: item['audio_url']?.toString(),
+                                      cachedPath:
+                                          item['cached_audio_path']?.toString(),
+                                      durationMs:
+                                          (item['audio_duration_ms'] as num?)
+                                              ?.toInt(),
+                                    ),
+                                  ),
+                                  SizedBox(height: compact ? 7 : 10),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 34,
+                                        height: 34,
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: _feedPaperSoft,
+                                          border: Border.all(
+                                            color: _feedHairline,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          initials,
+                                          style: _fraunces(
+                                            size: 11,
+                                            color: _feedInk,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              displayName,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: _karla(
+                                                size: 13,
+                                                color: _feedInk,
+                                                weight: FontWeight.w900,
+                                                height: 1.05,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 1),
+                                            Text(
+                                              '${voices == 1 ? '1 voix' : '$voices voix'} · ${_relativeTime(item)}',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: _karla(
+                                                size: 10.6,
+                                                color: _feedMuted,
+                                                weight: FontWeight.w600,
+                                                height: 1.1,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: compact ? 7 : 10),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _glassAction(
+                                          icon: Icons.auto_awesome_rounded,
+                                          label: summaryBusy ? '...' : 'IA',
+                                          onTap: summaryBusy
+                                              ? null
+                                              : () => _runInsight(
+                                                  item,
+                                                  translate: false,
+                                                ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: _glassAction(
+                                          icon: Icons.translate_rounded,
+                                          label: translateBusy
+                                              ? '...'
+                                              : 'Traduire',
+                                          onTap: translateBusy
+                                              ? null
+                                              : () => _runInsight(
+                                                  item,
+                                                  translate: true,
+                                                ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: _glassAction(
+                                          icon: Icons.visibility_outlined,
+                                          label: 'Détails',
+                                          onTap: () =>
+                                              widget.onOpenMemory(item),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 11),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _glassAction(
-                        icon: Icons.auto_awesome_rounded,
-                        label: summaryBusy ? '...' : 'IA résume',
-                        onTap: summaryBusy
-                            ? null
-                            : () => _runInsight(item, translate: false),
+                Positioned(
+                  right: 8,
+                  bottom: bottomInset + (compact ? 58 : 72),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _actionButton(
+                        key: ValueKey<String>('handunia-like-$id'),
+                        icon: liked
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
+                        label: _compactCount(likes),
+                        color: liked
+                            ? const Color(0xFFE9565E)
+                            : _feedInk,
+                        filled: liked,
+                        pulse: _pulseLikeId == id,
+                        onTap: () => _toggleLike(item),
                       ),
-                    ),
-                    const SizedBox(width: 7),
-                    Expanded(
-                      child: _glassAction(
-                        icon: Icons.translate_rounded,
-                        label: translateBusy ? '...' : 'Traduire',
-                        onTap: translateBusy
-                            ? null
-                            : () => _runInsight(item, translate: true),
-                      ),
-                    ),
-                    const SizedBox(width: 7),
-                    Expanded(
-                      child: _glassAction(
-                        icon: Icons.visibility_outlined,
-                        label: 'Détails',
+                      const SizedBox(height: 10),
+                      _actionButton(
+                        icon: Icons.chat_bubble_outline_rounded,
+                        label: _compactCount(voices),
                         onTap: () => widget.onOpenMemory(item),
                       ),
+                      const SizedBox(height: 10),
+                      _actionButton(
+                        icon: Icons.share_outlined,
+                        label: 'Partager',
+                        onTap: () => _shareMemory(item),
+                      ),
+                      const SizedBox(height: 10),
+                      _actionButton(
+                        icon: saved
+                            ? Icons.bookmark_rounded
+                            : Icons.bookmark_border_rounded,
+                        label: saved ? 'Sauvé' : 'Garder',
+                        color: saved ? _feedGoldDeep : _feedInk,
+                        filled: saved,
+                        onTap: () => _toggleSaved(item),
+                      ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  right: cardRight + 9,
+                  top: topInset + 10,
+                  child: Semantics(
+                    button: true,
+                    label: 'Plus d’options',
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(999),
+                      onTap: () => _showMore(item),
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _feedPaper.withValues(alpha: .90),
+                          border: Border.all(
+                            color: _feedHairline.withValues(alpha: .9),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.more_horiz_rounded,
+                          size: 19,
+                          color: _feedInk,
+                        ),
+                      ),
                     ),
-                  ],
+                  ),
                 ),
               ],
-            ),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -1780,25 +1909,27 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
     required VoidCallback? onTap,
   }) {
     return SizedBox(
-      height: 42,
+      height: 38,
       child: OutlinedButton.icon(
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
-          foregroundColor: Colors.white,
-          backgroundColor: Colors.black.withValues(alpha: .28),
-          side: BorderSide(color: Colors.white.withValues(alpha: .28)),
+          foregroundColor: _feedInk,
+          backgroundColor: _feedPaper.withValues(alpha: .90),
+          side: const BorderSide(color: _feedHairline),
           padding: const EdgeInsets.symmetric(horizontal: 7),
           shape: const StadiumBorder(),
+          elevation: 0,
         ),
-        icon: Icon(icon, size: 17),
+        icon: Icon(icon, size: 15, color: _feedGoldDeep),
         label: Text(
           label,
           maxLines: 1,
           overflow: TextOverflow.fade,
           style: _karla(
-            size: 11.2,
-            color: Colors.white,
+            size: 10.8,
+            color: _feedInk,
             weight: FontWeight.w800,
+            height: 1,
           ),
         ),
       ),
@@ -1807,10 +1938,10 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
 
   Widget _fallbackBackdrop(String icon, String lieu) {
     final palette = <List<Color>>[
-      const [Color(0xFF80511B), Color(0xFF2D1B0E), Color(0xFF101820)],
-      const [Color(0xFF4D5C38), Color(0xFF25301E), Color(0xFF101820)],
-      const [Color(0xFF624238), Color(0xFF2D201A), Color(0xFF101820)],
-      const [Color(0xFF4A4267), Color(0xFF241E38), Color(0xFF101820)],
+      const [Color(0xFFFFE7AF), Color(0xFFF4C96F), Color(0xFFB97621)],
+      const [Color(0xFFFFEBC9), Color(0xFFDDBD76), Color(0xFF9F7A45)],
+      const [Color(0xFFFCE1C4), Color(0xFFDCA473), Color(0xFF8A5B36)],
+      const [Color(0xFFF4E4D1), Color(0xFFCCB18C), Color(0xFF7E694F)],
     ];
     final colors = palette[lieu.hashCode.abs() % palette.length];
     return Container(
@@ -1821,46 +1952,67 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
           colors: colors,
         ),
       ),
-      child: Center(
-        child: Transform.translate(
-          offset: const Offset(0, -60),
-          child: Text(
-            icon,
-            style: TextStyle(
-              fontSize: 126,
-              color: Colors.white.withValues(alpha: .16),
-              shadows: const [
-                Shadow(color: Colors.black38, blurRadius: 30),
-              ],
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Align(
+            alignment: const Alignment(0, -.35),
+            child: Text(
+              icon,
+              style: TextStyle(
+                fontSize: 116,
+                color: _feedPaper.withValues(alpha: .34),
+                shadows: const [
+                  Shadow(
+                    color: Color(0x336B4A22),
+                    blurRadius: 22,
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x12FFFFFF),
+                  Color(0x00FFFFFF),
+                  Color(0x33FFF7E8),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _emptyState() {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF241A10), Color(0xFF111820)],
-        ),
-      ),
+      color: _feedCream,
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(28, 170, 28, 100),
+          padding: const EdgeInsets.fromLTRB(28, 180, 28, 110),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (widget.loading)
-                const CircularProgressIndicator(color: Color(0xFFF0B640))
+                const CircularProgressIndicator(color: _feedGoldDeep)
               else ...[
-                const Icon(
-                  Icons.graphic_eq_rounded,
-                  size: 58,
-                  color: Color(0xFFF0B640),
+                Container(
+                  width: 62,
+                  height: 62,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _feedPaperSoft,
+                  ),
+                  child: const Icon(
+                    Icons.graphic_eq_rounded,
+                    size: 34,
+                    color: _feedGoldDeep,
+                  ),
                 ),
                 const SizedBox(height: 14),
                 Text(
@@ -1868,7 +2020,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                       ? 'Accès réservé'
                       : 'Une voix manque ici.',
                   textAlign: TextAlign.center,
-                  style: _fraunces(size: 24, color: Colors.white),
+                  style: _fraunces(size: 24, color: _feedInk),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -1878,16 +2030,16 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                           'Explorez la carte ou revenez bientôt : Handunia se construit avec les voix de la communauté.',
                   textAlign: TextAlign.center,
                   style: _karla(
-                    size: 14,
-                    color: Colors.white.withValues(alpha: .72),
+                    size: 13.5,
+                    color: _feedMuted,
                   ),
                 ),
                 const SizedBox(height: 18),
                 FilledButton.icon(
                   onPressed: widget.onFindMissingVoice,
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFF0B640),
-                    foregroundColor: const Color(0xFF251A0A),
+                    backgroundColor: _feedGold,
+                    foregroundColor: _feedInk,
                   ),
                   icon: const Icon(Icons.travel_explore_rounded),
                   label: const Text('Explorer la carte'),
@@ -1897,10 +2049,8 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                   OutlinedButton.icon(
                     onPressed: widget.onPublish,
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: BorderSide(
-                        color: Colors.white.withValues(alpha: .42),
-                      ),
+                      foregroundColor: _feedInk,
+                      side: const BorderSide(color: _feedHairline),
                     ),
                     icon: const Icon(Icons.add_rounded),
                     label: const Text('PUBLIER UN SOUVENIR'),
@@ -1920,12 +2070,13 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
     final canLoop = items.length > 1;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(
+      value: SystemUiOverlayStyle.dark.copyWith(
         statusBarColor: Colors.transparent,
-        systemNavigationBarColor: const Color(0xFF0C0A08),
+        systemNavigationBarColor: _feedCream,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFF0C0A08),
+        backgroundColor: _feedCream,
         body: Stack(
           fit: StackFit.expand,
           children: [
@@ -1933,7 +2084,8 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
               _emptyState()
             else
               RefreshIndicator(
-                color: const Color(0xFFF0B640),
+                color: _feedGoldDeep,
+                backgroundColor: _feedPaper,
                 onRefresh: widget.onRefresh,
                 child: PageView.builder(
                   controller: _pageController,
@@ -1958,23 +2110,63 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         _roundHeaderButton(
                           icon: Icons.arrow_back_rounded,
                           label: 'Retour',
                           onTap: widget.onBack,
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Expanded(
-                          child: Text(
-                            'Fil Handunia Wasa',
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.fade,
-                            style: _fraunces(size: 25, color: Colors.white),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                '♛',
+                                style: TextStyle(
+                                  color: _feedGoldDeep,
+                                  fontSize: 15,
+                                  height: .9,
+                                ),
+                              ),
+                              Text(
+                                'Fil Handunia',
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.fade,
+                                style: _fraunces(
+                                  size: 27,
+                                  color: _feedInk,
+                                  height: 1.05,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                'NOS RACINES, NOS HISTOIRES',
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                style: _karla(
+                                  size: 8.2,
+                                  color: _feedMuted,
+                                  weight: FontWeight.w700,
+                                  height: 1,
+                                ).copyWith(letterSpacing: 2.1),
+                              ),
+                              SizedBox(
+                                height: .1,
+                                child: Opacity(
+                                  opacity: 0,
+                                  child: Text(
+                                    'Fil Handunia Wasa',
+                                    style: _karla(size: .1),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         _roundHeaderButton(
                           icon: widget.loading
                               ? Icons.hourglass_top_rounded
@@ -1986,7 +2178,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 13),
                     Row(
                       children: [
                         _filterChip(
@@ -2006,30 +2198,27 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                       ],
                     ),
                     if (widget.offline || widget.notice != null) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Align(
                         alignment: Alignment.center,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
+                            horizontal: 9,
+                            vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: .38),
+                            color: _feedPaperSoft.withValues(alpha: .90),
                             borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: .18),
-                            ),
+                            border: Border.all(color: _feedHairline),
                           ),
                           child: Text(
                             widget.notice ??
-                                (widget.offline
-                                    ? 'Mode hors ligne'
-                                    : ''),
+                                (widget.offline ? 'Mode hors ligne' : ''),
                             style: _karla(
-                              size: 10.5,
-                              color: Colors.white.withValues(alpha: .78),
+                              size: 9.5,
+                              color: _feedMuted,
                               weight: FontWeight.w700,
+                              height: 1,
                             ),
                           ),
                         ),
@@ -2043,22 +2232,25 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: 74,
+                bottom: 69,
                 child: IgnorePointer(
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.keyboard_arrow_up_rounded,
-                        color: Colors.white,
-                        size: 28,
-                      ),
                       Text(
                         'Balayez pour la prochaine histoire',
                         style: _karla(
-                          size: 11,
-                          color: Colors.white.withValues(alpha: .76),
-                          weight: FontWeight.w700,
-                        ),
+                          size: 10.2,
+                          color: _feedMuted,
+                          weight: FontWeight.w600,
+                          height: 1,
+                        ).copyWith(letterSpacing: .35),
+                      ),
+                      const SizedBox(height: 3),
+                      const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: _feedGoldDeep,
+                        size: 21,
                       ),
                     ],
                   ),
@@ -2083,11 +2275,16 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
         height: 46,
         child: IconButton(
           onPressed: onTap,
-          icon: Icon(icon, color: Colors.white),
+          icon: Icon(icon, color: _feedInk, size: 24),
           style: IconButton.styleFrom(
-            backgroundColor: Colors.black.withValues(alpha: .30),
-            side: BorderSide(color: Colors.white.withValues(alpha: .30)),
+            backgroundColor: _feedPaper.withValues(alpha: .96),
+            foregroundColor: _feedInk,
+            side: const BorderSide(color: _feedHairline),
+            shadowColor: const Color(0x226B4A22),
+            elevation: 2,
           ),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints.tightFor(width: 46, height: 46),
         ),
       ),
     );
