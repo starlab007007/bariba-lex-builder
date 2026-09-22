@@ -173,7 +173,9 @@ void main() {
       const ValueKey<String>('handunia-like-memory-1'),
     );
     await tester.ensureVisible(memoryLike);
-    await tester.pumpAndSettle(const Duration(milliseconds: 120));
+    // The immersive feed intentionally keeps subtle looping animations
+    // alive, so pumpAndSettle would never become idle in this test.
+    await tester.pump(const Duration(milliseconds: 360));
     await tester.tap(memoryLike);
     await tester.pump(const Duration(milliseconds: 220));
     expect(likedId, 'memory-1');
