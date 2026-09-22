@@ -27788,7 +27788,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     );
   }
 
-$leaveAnchor
+  void _leaveForPlatform(int index) {
     if (widget.onPlatformNav == null) {
       if (index == 0) {
         Navigator.of(context).maybePop();
