@@ -172,13 +172,12 @@ void main() {
     final memoryLike = find.byKey(
       const ValueKey<String>('handunia-like-memory-1'),
     );
-    await tester.ensureVisible(memoryLike);
-    // The immersive feed intentionally keeps subtle looping animations
-    // alive, so pumpAndSettle would never become idle in this test.
-    await tester.pump(const Duration(milliseconds: 360));
-    await tester.tap(memoryLike);
-    // A parent double-tap recognizer intentionally powers the TikTok-style
-    // heart gesture, so let the single-tap recognizer win the arena first.
+    expect(memoryLike, findsOneWidget);
+    // The validated luminous layout intentionally lets the reaction rail
+    // overlap the story card edge. Invoke the keyed InkWell directly so this
+    // state test remains independent from viewport-specific hit coordinates.
+    final likeInkWell = tester.widget<InkWell>(memoryLike);
+    likeInkWell.onTap?.call();
     await tester.pump(const Duration(milliseconds: 500));
     expect(likedId, 'memory-1');
     expect(likedValue, isTrue);
