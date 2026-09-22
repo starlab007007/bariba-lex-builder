@@ -285,7 +285,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
 
     expect(find.text('Fil Handunia Wasa'), findsOneWidget);
-    expect(find.byType(ChoiceChip), findsNWidgets(3));
+    expect(find.text('Autour de moi'), findsOneWidget);
+    expect(find.text('Ma lignée'), findsOneWidget);
+    expect(find.text('Tout'), findsOneWidget);
+    expect(find.byType(PageView), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
