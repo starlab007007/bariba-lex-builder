@@ -9960,7 +9960,9 @@ class TemIaScreen extends StatefulWidget {
 
 class _TemIaScreenState extends State<TemIaScreen> {
   final _query = TextEditingController();
+  final _voiceMedia = FitilaMediaController();
   bool _busy = false;
+  bool _voiceRecording = false;
   final List<({String role, String text, List<FoncierSource> sources})>
   _messages = [];
 
@@ -9973,7 +9975,46 @@ class _TemIaScreenState extends State<TemIaScreen> {
   @override
   void dispose() {
     _query.dispose();
+    _voiceMedia.dispose();
     super.dispose();
+  }
+
+  Future<void> _toggleVoiceQuery() async {
+    if (_voiceRecording) {
+      setState(() => _voiceRecording = false);
+      try {
+        final asset = await _voiceMedia.stopAudio();
+        if (asset == null) return;
+        final transcript = await FitilaTranslationAudio.transcribe(
+          asset: asset,
+          sourceIsBariba: true,
+        );
+        if (!mounted) return;
+        setState(() => _query.text = transcript);
+        await _send(transcript);
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error is StateError
+                  ? error.message
+                  : 'Dictée Bàátɔ̀nú indisponible.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    try {
+      await _voiceMedia.startAudio();
+      if (mounted) setState(() => _voiceRecording = true);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Micro indisponible.')),
+      );
+    }
   }
 
   Future<void> _send([String? preset]) async {
@@ -10325,17 +10366,14 @@ class _TemIaScreenState extends State<TemIaScreen> {
                     ),
                     const SizedBox(width: 6),
                     IconButton(
-                      tooltip: 'Voix',
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Dictée vocale disponible via Voice Lab.',
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.mic_rounded),
+                      tooltip: _voiceRecording ? 'Terminer' : 'Voix',
+                      onPressed: _busy ? null : _toggleVoiceQuery,
+                      icon: Icon(
+                        _voiceRecording
+                            ? Icons.stop_circle_rounded
+                            : Icons.mic_rounded,
+                        color: _voiceRecording ? _fitilaClay : null,
+                      ),
                     ),
                     const SizedBox(width: 6),
                     IconButton.filled(
