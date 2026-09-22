@@ -220,39 +220,15 @@ class _HanduniaTerritoryPickerRouteState
                   ),
                   const SizedBox(width: 8),
                   const Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.workspace_premium_rounded,
-                          size: 16,
-                          color: HanduniaTokens.braise,
-                        ),
-                        Text(
-                          'Explorer le Bénin',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: 'Fraunces',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 23,
-                            height: 1.05,
-                            color: HanduniaTokens.ivoire,
-                          ),
-                        ),
-                        SizedBox(height: 3),
-                        Text(
-                          'HANDUNIA WASA · CHOISIR UN TERRITOIRE',
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          style: TextStyle(
-                            fontFamily: 'Karla',
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.1,
-                            color: HanduniaTokens.cendre,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      'Territoire',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Fraunces',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 22,
+                        color: HanduniaTokens.ivoire,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 52),
@@ -269,8 +245,7 @@ class _HanduniaTerritoryPickerRouteState
                   : ListView(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                       children: [
-                        const _TerritoryInfoCard(),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 2),
                         DropdownButtonFormField<String>(
                           initialValue: _department,
                           isExpanded: true,
@@ -280,7 +255,7 @@ class _HanduniaTerritoryPickerRouteState
                             color: HanduniaTokens.ivoire,
                             fontWeight: FontWeight.w700,
                           ),
-                          decoration: _decoration('1. Département'),
+                          decoration: _decoration('Département'),
                           items: _departments
                               .map(
                                 (value) => DropdownMenuItem<String>(
@@ -301,7 +276,7 @@ class _HanduniaTerritoryPickerRouteState
                             color: HanduniaTokens.ivoire,
                             fontWeight: FontWeight.w700,
                           ),
-                          decoration: _decoration('2. Commune'),
+                          decoration: _decoration('Commune'),
                           items: _communes
                               .map(
                                 (value) => DropdownMenuItem<String>(
@@ -323,7 +298,7 @@ class _HanduniaTerritoryPickerRouteState
                             color: HanduniaTokens.ivoire,
                             fontWeight: FontWeight.w700,
                           ),
-                          decoration: _decoration('3. Arrondissement'),
+                          decoration: _decoration('Arrondissement'),
                           items: _arrondissements
                               .map(
                                 (value) => DropdownMenuItem<String>(
@@ -346,9 +321,9 @@ class _HanduniaTerritoryPickerRouteState
                             fontWeight: FontWeight.w700,
                           ),
                           decoration: _decoration(
-                            '4. Village / quartier (facultatif)',
+                            'Village / quartier',
                           ).copyWith(
-                            hintText: 'Ex. Tasso, Banigourou…',
+                            hintText: 'Nom…',
                             hintStyle: const TextStyle(
                               fontFamily: 'Karla',
                               color: HanduniaTokens.cendre,
@@ -357,15 +332,15 @@ class _HanduniaTerritoryPickerRouteState
                           ),
                         ),
                         if (_notice != null) ...[
-                          const SizedBox(height: 12),
-                          Text(
-                            _notice!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontFamily: 'Karla',
-                              color: HanduniaTokens.cendre,
-                              fontSize: 12.5,
-                              height: 1.35,
+                          const SizedBox(height: 8),
+                          Semantics(
+                            label: _notice!,
+                            child: const Center(
+                              child: Icon(
+                                Icons.info_outline_rounded,
+                                size: 18,
+                                color: HanduniaTokens.cendre,
+                              ),
                             ),
                           ),
                         ],
@@ -391,12 +366,10 @@ class _HanduniaTerritoryPickerRouteState
                                   )
                                 : const Icon(Icons.map_rounded),
                             label: Text(
-                              _resolving
-                                  ? 'POSITIONNEMENT…'
-                                  : 'AFFICHER SUR LA CARTE',
+                              _resolving ? '…' : 'CARTE',
                               style: const TextStyle(
                                 fontFamily: 'Karla',
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w900,
                               ),
                             ),
                           ),
@@ -416,39 +389,15 @@ class _TerritoryInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: HanduniaTokens.nuitPortee,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: HanduniaTokens.bordureForte),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x146B4A22),
-            blurRadius: 18,
-            offset: Offset(0, 7),
-          ),
-        ],
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.account_tree_rounded, color: HanduniaTokens.braise),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Référentiel embarqué : 12 départements, 77 communes et '
-              '546 arrondissements. Le village ou quartier est ensuite '
-              'positionné sur la carte réelle.',
-              style: TextStyle(
-                fontFamily: 'Karla',
-                color: HanduniaTokens.cendre,
-                fontSize: 12.5,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
+    return const Semantics(
+      label:
+          'Référentiel territorial du Bénin : départements, communes, arrondissements, villages et quartiers',
+      child: Center(
+        child: Icon(
+          Icons.account_tree_rounded,
+          color: HanduniaTokens.braise,
+          size: 26,
+        ),
       ),
     );
   }
