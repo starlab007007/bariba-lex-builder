@@ -27823,7 +27823,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       1 => ReferenceCreationShell(
         dark: false,
         title: 'Lieux vivants',
-        subtitle: '2. Mémoire collective · lieux, temps et voix',
+        subtitle: 'Explorez les mémoires du Bénin',
         leading: const Text('🌌', style: TextStyle(fontSize: 15)),
         onBack: widget.entryMode == HanduniaWasaEntryMode.publish
             ? () => Navigator.maybePop(context)
