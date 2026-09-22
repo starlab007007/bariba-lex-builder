@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:audioplayers/audioplayers.dart' as audio;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'handunia_consultation_model.dart';
@@ -939,7 +940,7 @@ class _HanduniaAudioReaderState extends State<_HanduniaAudioReader> {
   }
 }
 
-class HanduniaFilView extends StatelessWidget {
+class HanduniaFilView extends StatefulWidget {
   const HanduniaFilView({
     super.key,
     required this.items,
@@ -953,6 +954,9 @@ class HanduniaFilView extends StatelessWidget {
     required this.onOpenMemory,
     required this.onFindMissingVoice,
     this.onPublish,
+    this.onLikeChanged,
+    this.onAiSummary,
+    this.onTranslate,
     this.notice,
   });
 
@@ -968,191 +972,1039 @@ class HanduniaFilView extends StatelessWidget {
   final ValueChanged<Map<String, dynamic>> onOpenMemory;
   final VoidCallback onFindMissingVoice;
   final VoidCallback? onPublish;
+  final Future<void> Function(String fragmentId, bool like)? onLikeChanged;
+  final Future<String?> Function(Map<String, dynamic> item)? onAiSummary;
+  final Future<String?> Function(Map<String, dynamic> item)? onTranslate;
 
   @override
-  Widget build(BuildContext context) {
-    final pending = items
+  State<HanduniaFilView> createState() => _HanduniaFilViewState();
+}
+
+class _HanduniaFilViewState extends State<HanduniaFilView> {
+  static const _savedKey = 'handunia_immersive_saved_ids_v1';
+  late final PageController _pageController;
+  final Map<String, bool> _liked = <String, bool>{};
+  final Map<String, int> _likeCounts = <String, int>{};
+  final Set<String> _saved = <String>{};
+  String? _pulseLikeId;
+  String? _busyInsightId;
+  int _absolutePage = 10000;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _absolutePage);
+    _syncSocialState();
+    unawaited(_restoreSaved());
+  }
+
+  @override
+  void didUpdateWidget(covariant HanduniaFilView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncSocialState();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _syncSocialState() {
+    for (final item in widget.items) {
+      final id = item['id']?.toString() ?? '';
+      if (id.isEmpty) continue;
+      _liked.putIfAbsent(id, () => item['liked_by_me'] == true);
+      _likeCounts.putIfAbsent(
+        id,
+        () => (item['like_count'] as num?)?.toInt() ?? 0,
+      );
+    }
+  }
+
+  Future<void> _restoreSaved() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ids = prefs.getStringList(_savedKey) ?? const <String>[];
+    if (!mounted) return;
+    setState(() => _saved.addAll(ids));
+  }
+
+  Future<void> _persistSaved() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_savedKey, _saved.toList(growable: false));
+  }
+
+  List<Map<String, dynamic>> get _smartItems {
+    final deduped = <String, Map<String, dynamic>>{};
+    for (final item in widget.items) {
+      final id = item['id']?.toString().trim();
+      final key = id?.isNotEmpty == true
+          ? id!
+          : '${item['lieu_id'] ?? ''}|${item['created_at'] ?? ''}|${item['text'] ?? ''}';
+      deduped.putIfAbsent(key, () => item);
+    }
+
+    final pending = deduped.values
         .where((item) => item['local_only'] == true)
         .toList(growable: false);
-    final remote = items
+    final remote = deduped.values
         .where((item) => item['local_only'] != true)
-        .toList(growable: false);
-    final ordered = <Map<String, dynamic>>[...pending, ...remote];
+        .toList();
 
-    return Scaffold(
-      backgroundColor: HanduniaTokens.nuit,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-              child: Row(
-                children: [
-                  Semantics(
-                    button: true,
-                    label: 'Retour',
-                    child: SizedBox(
-                      width: 44,
-                      height: 44,
-                      child: IconButton(
-                        onPressed: onBack,
-                        icon: const Icon(Icons.arrow_back_outlined),
-                        color: HanduniaTokens.ivoire,
-                      ),
+    final originalRank = <String, int>{};
+    for (var i = 0; i < remote.length; i++) {
+      originalRank[remote[i]['id']?.toString() ?? 'row-$i'] = i;
+    }
+
+    double score(Map<String, dynamic> item) {
+      final id = item['id']?.toString() ?? '';
+      final baseRank = originalRank[id] ?? remote.length;
+      var value = math.max(0, remote.length - baseRank) * 5.0;
+
+      final created = DateTime.tryParse(item['created_at']?.toString() ?? '');
+      if (created != null) {
+        final hours = DateTime.now().difference(created).inHours.clamp(0, 720);
+        value += math.max(0, 120 - hours) * 0.7;
+      }
+
+      final voices = (item['voice_count'] as num?)?.toInt() ?? 1;
+      value += math.log(math.max(1, voices) + 1) * 12;
+
+      final likes = (item['like_count'] as num?)?.toInt() ?? 0;
+      value += math.log(likes + 1) * 3;
+
+      final distance = (item['distance_m'] as num?)?.toDouble();
+      if (widget.filter == HanduniaFeedFilter.around && distance != null) {
+        value += math.max(0, 80 - distance / 2000);
+      }
+
+      if (item['lacuna_filled'] == true) value += 8;
+      if ((item['audio_url']?.toString().trim().isNotEmpty ?? false)) {
+        value += 14;
+      }
+      if (_backdropUrl(item) != null) value += 10;
+      return value;
+    }
+
+    remote.sort((a, b) => score(b).compareTo(score(a)));
+
+    // Diversification : évite plusieurs souvenirs successifs du même auteur
+    // ou du même lieu, tout en conservant les meilleurs candidats en tête.
+    final diversified = <Map<String, dynamic>>[];
+    final pool = List<Map<String, dynamic>>.from(remote);
+    while (pool.isNotEmpty) {
+      var pick = 0;
+      if (diversified.isNotEmpty) {
+        final last = diversified.last;
+        final lastUser = last['user_id']?.toString();
+        final lastLieu = last['lieu_id']?.toString();
+        final searchUntil = math.min(6, pool.length);
+        for (var i = 0; i < searchUntil; i++) {
+          final candidate = pool[i];
+          if (candidate['user_id']?.toString() != lastUser &&
+              candidate['lieu_id']?.toString() != lastLieu) {
+            pick = i;
+            break;
+          }
+        }
+      }
+      diversified.add(pool.removeAt(pick));
+    }
+    return <Map<String, dynamic>>[...pending, ...diversified];
+  }
+
+  String? _backdropUrl(Map<String, dynamic> item) {
+    for (final key in const <String>[
+      'lieu_cover_url',
+      'image_url',
+      'photo_url',
+      'thumbnail_url',
+      'media_url',
+    ]) {
+      final value = item[key]?.toString().trim() ?? '';
+      if (value.startsWith('https://') || value.startsWith('http://')) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  String _memoryText(Map<String, dynamic> item) {
+    for (final key in const <String>['transcript_text', 'text']) {
+      final value = item[key]?.toString().trim() ?? '';
+      if (value.isNotEmpty) return value;
+    }
+    return 'Voix non transcrite.';
+  }
+
+  String _relativeTime(Map<String, dynamic> item) {
+    final date = DateTime.tryParse(item['created_at']?.toString() ?? '');
+    if (date == null) return '';
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 1) return 'À l’instant';
+    if (diff.inHours < 1) return 'Il y a ${diff.inMinutes} min';
+    if (diff.inDays < 1) return 'Il y a ${diff.inHours} h';
+    if (diff.inDays < 7) return 'Il y a ${diff.inDays} j';
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
+  }
+
+  String _compactCount(int value) {
+    if (value < 1000) return '$value';
+    if (value < 1000000) {
+      final k = value / 1000;
+      return '${k.toStringAsFixed(k < 10 ? 1 : 0)}K';
+    }
+    final m = value / 1000000;
+    return '${m.toStringAsFixed(m < 10 ? 1 : 0)}M';
+  }
+
+  Future<void> _toggleLike(Map<String, dynamic> item) async {
+    final id = item['id']?.toString() ?? '';
+    if (id.isEmpty || item['local_only'] == true) return;
+    final before = _liked[id] ?? item['liked_by_me'] == true;
+    final beforeCount =
+        _likeCounts[id] ?? (item['like_count'] as num?)?.toInt() ?? 0;
+    final next = !before;
+
+    HapticFeedback.lightImpact();
+    setState(() {
+      _liked[id] = next;
+      _likeCounts[id] = math.max(0, beforeCount + (next ? 1 : -1));
+      _pulseLikeId = next ? id : null;
+    });
+
+    if (next) {
+      Future<void>.delayed(const Duration(milliseconds: 360), () {
+        if (mounted && _pulseLikeId == id) {
+          setState(() => _pulseLikeId = null);
+        }
+      });
+    }
+
+    final callback = widget.onLikeChanged;
+    if (callback == null) return;
+    try {
+      await callback(id, next);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _liked[id] = before;
+        _likeCounts[id] = beforeCount;
+        _pulseLikeId = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Réaction non synchronisée. Réessayez.')),
+      );
+    }
+  }
+
+  Future<void> _toggleSaved(Map<String, dynamic> item) async {
+    final id = item['id']?.toString() ?? '';
+    if (id.isEmpty) return;
+    HapticFeedback.selectionClick();
+    setState(() {
+      if (!_saved.add(id)) _saved.remove(id);
+    });
+    await _persistSaved();
+  }
+
+  Future<void> _shareMemory(Map<String, dynamic> item) async {
+    final place = item['lieu_name']?.toString().trim() ?? '';
+    final text = _memoryText(item);
+    final payload = place.isEmpty
+        ? 'Handunia Wasa — $text'
+        : 'Handunia Wasa · $place\n$text';
+    await Clipboard.setData(ClipboardData(text: payload));
+    if (!mounted) return;
+    HapticFeedback.selectionClick();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Souvenir copié, prêt à être partagé.')),
+    );
+  }
+
+  Future<void> _runInsight(
+    Map<String, dynamic> item, {
+    required bool translate,
+  }) async {
+    final callback = translate ? widget.onTranslate : widget.onAiSummary;
+    if (callback == null) {
+      widget.onOpenMemory(item);
+      return;
+    }
+    final id = item['id']?.toString() ?? '';
+    setState(() => _busyInsightId = '${translate ? 'translate' : 'summary'}:$id');
+    try {
+      final result = await callback(item);
+      if (!mounted || result == null || result.trim().isEmpty) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        backgroundColor: const Color(0xFF17130F),
+        builder: (context) => SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 4, 22, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      translate
+                          ? Icons.translate_rounded
+                          : Icons.auto_awesome_rounded,
+                      color: const Color(0xFFF0B640),
                     ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'Fil Handunia Wasa',
-                      style: _fraunces(
-                        size: 25,
-                        color: HanduniaTokens.ivoire,
-                      ),
+                    const SizedBox(width: 9),
+                    Text(
+                      translate ? 'Traduction' : 'Lumière IA',
+                      style: _fraunces(size: 21, color: Colors.white),
                     ),
-                  ),
-                  if (pendingCount > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: HanduniaTokens.terre),
-                      ),
-                      child: Text(
-                        '$pendingCount à envoyer',
-                        style: _karla(
-                          size: 12.5,
-                          weight: FontWeight.w700,
-                          color: HanduniaTokens.terre,
-                        ),
-                      ),
-                    ),
-                  if (loading) ...[
-                    const SizedBox(width: 8),
-                    const HaloDensite(
-                      valeur: 0.45,
-                      size: 38,
-                      loading: true,
-                    ),
-                  ] else
-                    Semantics(
-                      button: true,
-                      label: 'Actualiser le fil',
-                      child: SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: IconButton(
-                          onPressed: onRefresh,
-                          icon: const Icon(Icons.refresh_outlined),
-                          color: HanduniaTokens.cendre,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  result.trim(),
+                  style: _karla(size: 16, color: Colors.white, height: 1.55),
+                ),
+              ],
             ),
-            if (onPublish != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 46,
-                  child: FilledButton.icon(
-                    onPressed: onPublish,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: HanduniaTokens.braise,
-                      foregroundColor: HanduniaTokens.encre,
-                      shape: const StadiumBorder(),
-                    ),
-                    icon: const Icon(Icons.add_outlined, size: 20),
-                    label: Text(
-                      'PUBLIER UN SOUVENIR',
-                      style: _karla(
-                        size: 14,
-                        color: HanduniaTokens.encre,
-                        weight: FontWeight.w700,
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            translate
+                ? 'Traduction momentanément indisponible.'
+                : 'Lumière IA momentanément indisponible.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busyInsightId = null);
+    }
+  }
+
+  void _showMore(Map<String, dynamic> item) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: const Color(0xFF17130F),
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.visibility_outlined, color: Colors.white),
+                title: const Text(
+                  'Voir le souvenir',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onOpenMemory(item);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.travel_explore_rounded, color: Colors.white),
+                title: const Text(
+                  'Trouver une voix sur la carte',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onFindMissingVoice();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.refresh_rounded, color: Colors.white),
+                title: const Text(
+                  'Actualiser le fil',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  unawaited(widget.onRefresh());
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _filterChip(HanduniaFeedFilter value, IconData icon) {
+    final selected = widget.filter == value;
+    return Expanded(
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: value.label,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            widget.onFilterChanged(value);
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            height: 44,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              gradient: selected
+                  ? const LinearGradient(
+                      colors: [Color(0xFFF5BF4C), Color(0xFFB77717)],
+                    )
+                  : null,
+              color: selected ? null : Colors.black.withValues(alpha: .26),
+              border: Border.all(
+                color: selected
+                    ? const Color(0xFFFFD878)
+                    : Colors.white.withValues(alpha: .35),
+              ),
+              boxShadow: selected
+                  ? const [
+                      BoxShadow(
+                        color: Color(0x55D99B25),
+                        blurRadius: 20,
+                        spreadRadius: -6,
                       ),
+                    ]
+                  : null,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 18, color: Colors.white),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    value.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.fade,
+                    style: _karla(
+                      size: 13,
+                      color: Colors.white,
+                      weight: FontWeight.w800,
                     ),
                   ),
                 ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _actionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color color = Colors.white,
+    bool filled = false,
+    bool pulse = false,
+  }) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedScale(
+              scale: pulse ? 1.28 : 1,
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutBack,
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: filled
+                      ? color.withValues(alpha: .20)
+                      : Colors.black.withValues(alpha: .30),
+                  border: Border.all(
+                    color: filled
+                        ? color.withValues(alpha: .78)
+                        : Colors.white.withValues(alpha: .30),
+                  ),
+                  boxShadow: filled
+                      ? [
+                          BoxShadow(
+                            color: color.withValues(alpha: .35),
+                            blurRadius: 22,
+                            spreadRadius: -5,
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Icon(icon, color: color, size: 29),
               ),
-            if (offline || notice != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
+            ),
+            if (label.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                style: _karla(
+                  size: 11.5,
+                  color: Colors.white,
+                  weight: FontWeight.w800,
+                  height: 1,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _storyPage(Map<String, dynamic> item) {
+    if (item['item_type'] == 'divergence') {
+      return Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF17130F), Color(0xFF382713), Color(0xFF111820)],
+          ),
+        ),
+        padding: const EdgeInsets.fromLTRB(22, 220, 22, 130),
+        child: Center(child: _DivergenceCard(item: item)),
+      );
+    }
+
+    final id = item['id']?.toString() ?? '';
+    final backdrop = _backdropUrl(item);
+    final liked = _liked[id] ?? item['liked_by_me'] == true;
+    final likes = _likeCounts[id] ?? (item['like_count'] as num?)?.toInt() ?? 0;
+    final voices = (item['voice_count'] as num?)?.toInt() ?? 1;
+    final saved = _saved.contains(id);
+    final initials = item['author_initials']?.toString().trim().isNotEmpty == true
+        ? item['author_initials'].toString()
+        : 'HW';
+    final displayName = item['display_name']?.toString().trim().isNotEmpty == true
+        ? item['display_name'].toString()
+        : 'Voix Handunia';
+    final lieu = item['lieu_name']?.toString().trim().isNotEmpty == true
+        ? item['lieu_name'].toString()
+        : 'Handunia Wasa';
+    final icon = item['lieu_icon']?.toString().trim().isNotEmpty == true
+        ? item['lieu_icon'].toString()
+        : '📍';
+    final text = _memoryText(item);
+    final summaryBusy = _busyInsightId == 'summary:$id';
+    final translateBusy = _busyInsightId == 'translate:$id';
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onDoubleTap: () => _toggleLike(item),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (backdrop != null)
+            Image.network(
+              backdrop,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => _fallbackBackdrop(icon, lieu),
+            )
+          else
+            _fallbackBackdrop(icon, lieu),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: [0, .28, .58, 1],
+                colors: [
+                  Color(0x7A000000),
+                  Color(0x10000000),
+                  Color(0x50000000),
+                  Color(0xE6000000),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            right: 14,
+            bottom: 126,
+            child: Column(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.black.withValues(alpha: .34),
+                    border: Border.all(color: const Color(0xFFFFC95D), width: 2),
+                  ),
+                  child: Text(
+                    initials,
+                    style: _fraunces(size: 14, color: Colors.white),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _actionButton(
+                  icon: liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                  label: _compactCount(likes),
+                  color: liked ? const Color(0xFFFF5864) : Colors.white,
+                  filled: liked,
+                  pulse: _pulseLikeId == id,
+                  onTap: () => _toggleLike(item),
+                ),
+                const SizedBox(height: 14),
+                _actionButton(
+                  icon: Icons.chat_bubble_rounded,
+                  label: _compactCount(voices),
+                  onTap: () => widget.onOpenMemory(item),
+                ),
+                const SizedBox(height: 14),
+                _actionButton(
+                  icon: Icons.share_rounded,
+                  label: 'Partager',
+                  onTap: () => _shareMemory(item),
+                ),
+                const SizedBox(height: 14),
+                _actionButton(
+                  icon: saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                  label: saved ? 'Sauvé' : 'Garder',
+                  color: saved ? const Color(0xFFFFC95D) : Colors.white,
+                  filled: saved,
+                  onTap: () => _toggleSaved(item),
+                ),
+                const SizedBox(height: 12),
+                _actionButton(
+                  icon: Icons.more_horiz_rounded,
+                  label: '',
+                  onTap: () => _showMore(item),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            left: 18,
+            right: 82,
+            bottom: 104,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  constraints: const BoxConstraints(maxWidth: 250),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: .34),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: Colors.white.withValues(alpha: .30)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.location_on_rounded,
+                        size: 19,
+                        color: Color(0xFFFFCB62),
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          lieu,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: _karla(
+                            size: 14.5,
+                            color: Colors.white,
+                            weight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 11),
+                Text(
+                  text,
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                  style: _fraunces(
+                    size: 27,
+                    color: Colors.white,
+                    height: 1.12,
+                  ),
+                ),
+                const SizedBox(height: 13),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(12, 7, 12, 7),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: .38),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: Colors.white.withValues(alpha: .20)),
+                  ),
+                  child: _HanduniaAudioReader(
+                    id: id,
+                    url: item['audio_url']?.toString(),
+                    cachedPath: item['cached_audio_path']?.toString(),
+                    durationMs: (item['audio_duration_ms'] as num?)?.toInt(),
+                  ),
+                ),
+                const SizedBox(height: 11),
+                Row(
                   children: [
-                    Icon(
-                      offline ? Icons.cloud_off_outlined : Icons.info_outline,
-                      size: 16,
-                      color: offline
-                          ? HanduniaTokens.terre
-                          : HanduniaTokens.cendre,
+                    Container(
+                      width: 38,
+                      height: 38,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: .95),
+                      ),
+                      child: Text(
+                        initials,
+                        style: _fraunces(size: 12, color: const Color(0xFF2A2116)),
+                      ),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      notice ?? 'En attente de réseau',
-                      style: _karla(
-                        size: 12.5,
-                        weight: FontWeight.w600,
-                        color: offline
-                            ? HanduniaTokens.terre
-                            : HanduniaTokens.cendre,
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: _karla(
+                              size: 14,
+                              color: Colors.white,
+                              weight: FontWeight.w900,
+                              height: 1.1,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${voices == 1 ? '1 voix' : '$voices voix'} · ${_relativeTime(item)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: _karla(
+                              size: 11.5,
+                              color: Colors.white.withValues(alpha: .78),
+                              weight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(
-                height: 48,
-                child: Row(
+                const SizedBox(height: 11),
+                Row(
                   children: [
-                    for (var index = 0;
-                        index < HanduniaFeedFilter.values.length;
-                        index++) ...[
-                      if (index > 0) const SizedBox(width: 7),
-                      Expanded(
-                        child: SizedBox(
-                          height: 44,
-                          child: ChoiceChip(
-                            selected:
-                                HanduniaFeedFilter.values[index] == filter,
-                            label: SizedBox(
-                              width: double.infinity,
-                              child: Text(
-                                HanduniaFeedFilter.values[index].label,
-                                maxLines: 1,
-                                textAlign: TextAlign.center,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                    Expanded(
+                      child: _glassAction(
+                        icon: Icons.auto_awesome_rounded,
+                        label: summaryBusy ? '...' : 'IA résume',
+                        onTap: summaryBusy
+                            ? null
+                            : () => _runInsight(item, translate: false),
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: _glassAction(
+                        icon: Icons.translate_rounded,
+                        label: translateBusy ? '...' : 'Traduire',
+                        onTap: translateBusy
+                            ? null
+                            : () => _runInsight(item, translate: true),
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: _glassAction(
+                        icon: Icons.visibility_outlined,
+                        label: 'Détails',
+                        onTap: () => widget.onOpenMemory(item),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _glassAction({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onTap,
+  }) {
+    return SizedBox(
+      height: 42,
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.white,
+          backgroundColor: Colors.black.withValues(alpha: .28),
+          side: BorderSide(color: Colors.white.withValues(alpha: .28)),
+          padding: const EdgeInsets.symmetric(horizontal: 7),
+          shape: const StadiumBorder(),
+        ),
+        icon: Icon(icon, size: 17),
+        label: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.fade,
+          style: _karla(
+            size: 11.2,
+            color: Colors.white,
+            weight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _fallbackBackdrop(String icon, String lieu) {
+    final palette = <List<Color>>[
+      const [Color(0xFF80511B), Color(0xFF2D1B0E), Color(0xFF101820)],
+      const [Color(0xFF4D5C38), Color(0xFF25301E), Color(0xFF101820)],
+      const [Color(0xFF624238), Color(0xFF2D201A), Color(0xFF101820)],
+      const [Color(0xFF4A4267), Color(0xFF241E38), Color(0xFF101820)],
+    ];
+    final colors = palette[lieu.hashCode.abs() % palette.length];
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: colors,
+        ),
+      ),
+      child: Center(
+        child: Transform.translate(
+          offset: const Offset(0, -60),
+          child: Text(
+            icon,
+            style: TextStyle(
+              fontSize: 126,
+              color: Colors.white.withValues(alpha: .16),
+              shadows: const [
+                Shadow(color: Colors.black38, blurRadius: 30),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyState() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF241A10), Color(0xFF111820)],
+        ),
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 170, 28, 100),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (widget.loading)
+                const CircularProgressIndicator(color: Color(0xFFF0B640))
+              else ...[
+                const Icon(
+                  Icons.graphic_eq_rounded,
+                  size: 58,
+                  color: Color(0xFFF0B640),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  widget.notice == 'Accès réservé'
+                      ? 'Accès réservé'
+                      : 'Une voix manque ici.',
+                  textAlign: TextAlign.center,
+                  style: _fraunces(size: 24, color: Colors.white),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  widget.notice ??
+                      'Explorez la carte ou revenez bientôt : Handunia se construit avec les voix de la communauté.',
+                  textAlign: TextAlign.center,
+                  style: _karla(
+                    size: 14,
+                    color: Colors.white.withValues(alpha: .72),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                FilledButton.icon(
+                  onPressed: widget.onFindMissingVoice,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFF0B640),
+                    foregroundColor: const Color(0xFF251A0A),
+                  ),
+                  icon: const Icon(Icons.travel_explore_rounded),
+                  label: const Text('Explorer la carte'),
+                ),
+                if (widget.onPublish != null) ...[
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: widget.onPublish,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: .42),
+                      ),
+                    ),
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('PUBLIER UN SOUVENIR'),
+                  ),
+                ],
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = _smartItems;
+    final canLoop = items.length > 1;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: const Color(0xFF0C0A08),
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0C0A08),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (items.isEmpty)
+              _emptyState()
+            else
+              RefreshIndicator(
+                color: const Color(0xFFF0B640),
+                onRefresh: widget.onRefresh,
+                child: PageView.builder(
+                  controller: _pageController,
+                  scrollDirection: Axis.vertical,
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  allowImplicitScrolling: true,
+                  itemCount: canLoop ? null : items.length,
+                  onPageChanged: (index) {
+                    _absolutePage = index;
+                    HapticFeedback.selectionClick();
+                  },
+                  itemBuilder: (context, index) {
+                    final item = items[index % items.length];
+                    return _storyPage(item);
+                  },
+                ),
+              ),
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        _roundHeaderButton(
+                          icon: Icons.arrow_back_rounded,
+                          label: 'Retour',
+                          onTap: widget.onBack,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Fil Handunia Wasa',
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.fade,
+                            style: _fraunces(size: 25, color: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        _roundHeaderButton(
+                          icon: widget.loading
+                              ? Icons.hourglass_top_rounded
+                              : Icons.refresh_rounded,
+                          label: 'Actualiser',
+                          onTap: widget.loading
+                              ? null
+                              : () => unawaited(widget.onRefresh()),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _filterChip(
+                          HanduniaFeedFilter.around,
+                          Icons.location_on_rounded,
+                        ),
+                        const SizedBox(width: 7),
+                        _filterChip(
+                          HanduniaFeedFilter.lineage,
+                          Icons.groups_rounded,
+                        ),
+                        const SizedBox(width: 7),
+                        _filterChip(
+                          HanduniaFeedFilter.all,
+                          Icons.public_rounded,
+                        ),
+                      ],
+                    ),
+                    if (widget.offline || widget.notice != null) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.center,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: .38),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: .18),
                             ),
-                            onSelected: (_) => onFilterChanged(
-                              HanduniaFeedFilter.values[index],
-                            ),
-                            showCheckmark: false,
-                            labelPadding: const EdgeInsets.symmetric(
-                              horizontal: 2,
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            side: BorderSide(
-                              color:
-                                  HanduniaFeedFilter.values[index] == filter
-                                  ? HanduniaTokens.braise
-                                  : HanduniaTokens.bordureForte,
-                            ),
-                            backgroundColor: HanduniaTokens.nuit,
-                            selectedColor: HanduniaTokens.braise,
-                            labelStyle: _karla(
-                              size: 12.5,
+                          ),
+                          child: Text(
+                            widget.notice ??
+                                (widget.offline
+                                    ? 'Mode hors ligne'
+                                    : ''),
+                            style: _karla(
+                              size: 10.5,
+                              color: Colors.white.withValues(alpha: .78),
                               weight: FontWeight.w700,
-                              color:
-                                  HanduniaFeedFilter.values[index] == filter
-                                  ? HanduniaTokens.encre
-                                  : HanduniaTokens.ivoire,
                             ),
                           ),
                         ),
@@ -1162,59 +2014,55 @@ class HanduniaFilView extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 6),
-            Expanded(
-              child: ordered.isEmpty && loading
-                  ? Center(
-                      child: Semantics(
-                        label: 'Chargement de la mémoire',
-                        child: const HaloDensite(
-                          valeur: 0.5,
-                          size: 92,
-                          loading: true,
+            if (items.isNotEmpty)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 74,
+                child: IgnorePointer(
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.keyboard_arrow_up_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                      Text(
+                        'Balayez pour la prochaine histoire',
+                        style: _karla(
+                          size: 11,
+                          color: Colors.white.withValues(alpha: .76),
+                          weight: FontWeight.w700,
                         ),
                       ),
-                    )
-                  : ordered.isEmpty && notice == 'Accès réservé'
-                  ? const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(child: _HanduniaAccessDenied()),
-                    )
-                  : ordered.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Center(
-                        child: EncartLacune(
-                          axes: const ['Aucune voix ici'],
-                          onPressed: onFindMissingVoice,
-                          actionLabel: 'Aller la chercher',
-                        ),
-                      ),
-                    )
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                      children: [
-                        for (final item in ordered) ...[
-                          if (item['item_type'] == 'divergence')
-                            _DivergenceCard(item: item)
-                          else
-                            CarteBraise(
-                              souvenir: item,
-                              onOpen: item['local_only'] == true
-                                  ? null
-                                  : () => onOpenMemory(item),
-                            ),
-                          const SizedBox(height: 12),
-                        ],
-                        EncartLacune(
-                          axes: const ['Une voix manque ici.'],
-                          onPressed: onFindMissingVoice,
-                          actionLabel: 'Aller la chercher',
-                        ),
-                      ],
-                    ),
-            ),
+                    ],
+                  ),
+                ),
+              ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _roundHeaderButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onTap,
+  }) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: SizedBox(
+        width: 46,
+        height: 46,
+        child: IconButton(
+          onPressed: onTap,
+          icon: Icon(icon, color: Colors.white),
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.black.withValues(alpha: .30),
+            side: BorderSide(color: Colors.white.withValues(alpha: .30)),
+          ),
         ),
       ),
     );
