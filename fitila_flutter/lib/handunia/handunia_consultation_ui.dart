@@ -988,12 +988,12 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
   final Set<String> _saved = <String>{};
   String? _pulseLikeId;
   String? _busyInsightId;
-  int _absolutePage = 10000;
+  int _absolutePage = 0;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: _absolutePage);
+    _pageController = PageController(initialPage: 0);
     _syncSocialState();
     unawaited(_restoreSaved());
   }
@@ -1002,6 +1002,15 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
   void didUpdateWidget(covariant HanduniaFilView oldWidget) {
     super.didUpdateWidget(oldWidget);
     _syncSocialState();
+    if (oldWidget.filter != widget.filter ||
+        oldWidget.items.length != widget.items.length) {
+      _absolutePage = 0;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _pageController.hasClients) {
+          _pageController.jumpToPage(0);
+        }
+      });
+    }
   }
 
   @override
