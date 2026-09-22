@@ -59,9 +59,9 @@ abstract final class HanduniaHeritageFeed {
       }
 
       final selected = pool.removeAt(bestIndex);
-      final previous = journey.isEmpty ? null : journey.last;
-      if (previous != null &&
-          _clean(previous['lieu_id']) == _clean(selected['lieu_id']) &&
+      final prior = journey.isEmpty ? null : journey.last;
+      if (prior != null &&
+          _clean(prior['lieu_id']) == _clean(selected['lieu_id']) &&
           _clean(selected['lieu_id']).isNotEmpty) {
         samePlaceStreak += 1;
       } else {
@@ -69,7 +69,7 @@ abstract final class HanduniaHeritageFeed {
       }
 
       selected['_handunia_transition_reason'] = _transitionReason(
-        previous,
+        prior,
         selected,
       );
       selected['_handunia_transition_label'] = transitionLabel(

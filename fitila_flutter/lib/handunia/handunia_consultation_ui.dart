@@ -1548,7 +1548,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                 Text(
                   gap == null || gap.isEmpty
                       ? 'Une partie de cette mémoire n’a pas encore de témoin.'
-                      : 'Il manque encore des voix pour documenter : ' + gap + '.',
+                      : 'Il manque encore des voix pour documenter : $gap.',
                   textAlign: TextAlign.center,
                   style: _karla(
                     size: 15,
@@ -1560,11 +1560,8 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                 if (sourceCount > 0) ...[
                   const SizedBox(height: 7),
                   Text(
-                    sourceCount.toString() +
-                        ' source' +
-                        (sourceCount > 1 ? 's' : '') +
-                        ' déjà reliée' +
-                        (sourceCount > 1 ? 's' : ''),
+                    '$sourceCount source${sourceCount > 1 ? 's' : ''} '
+                    'déjà reliée${sourceCount > 1 ? 's' : ''}',
                     style: _karla(size: 11.5, color: _feedMuted),
                   ),
                 ],
@@ -1630,9 +1627,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
               _memoryContextLine(Icons.schedule_rounded, period),
               _memoryContextLine(
                 Icons.groups_2_outlined,
-                voices.toString() +
-                    ' voix humaine' +
-                    (voices > 1 ? 's' : ''),
+                '$voices voix humaine${voices > 1 ? 's' : ''}',
               ),
               if (item['lacuna_filled'] == true)
                 _memoryContextLine(
