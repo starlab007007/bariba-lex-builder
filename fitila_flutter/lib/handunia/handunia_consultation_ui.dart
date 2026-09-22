@@ -986,6 +986,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
   final Map<String, bool> _liked = <String, bool>{};
   final Map<String, int> _likeCounts = <String, int>{};
   final Set<String> _saved = <String>{};
+  Timer? _likePulseTimer;
   String? _pulseLikeId;
   String? _busyInsightId;
 
@@ -1013,6 +1014,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
 
   @override
   void dispose() {
+    _likePulseTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
@@ -1189,8 +1191,11 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
       _pulseLikeId = next ? id : null;
     });
 
+    _likePulseTimer?.cancel();
+    _likePulseTimer = null;
     if (next) {
-      Future<void>.delayed(const Duration(milliseconds: 360), () {
+      _likePulseTimer = Timer(const Duration(milliseconds: 360), () {
+        _likePulseTimer = null;
         if (mounted && _pulseLikeId == id) {
           setState(() => _pulseLikeId = null);
         }
