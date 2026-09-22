@@ -695,30 +695,10 @@ class _HanduniaAiHeritageGuideRouteState
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.workspace_premium_rounded,
-                          size: 16,
-                          color: HanduniaTokens.braise,
-                        ),
-                        Text(
-                          'Guide IA patrimonial',
-                          textAlign: TextAlign.center,
-                          style: _fraunces(size: 22, height: 1.05),
-                        ),
-                        Text(
-                          'HANDUNIA WASA · VISITE RACONTÉE',
-                          textAlign: TextAlign.center,
-                          style: _karla(
-                            size: 8.2,
-                            color: HanduniaTokens.cendre,
-                            weight: FontWeight.w800,
-                            height: 1,
-                          ).copyWith(letterSpacing: 1.1),
-                        ),
-                      ],
+                    child: Text(
+                      'Guide IA',
+                      textAlign: TextAlign.center,
+                      style: _fraunces(size: 22, height: 1.05),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -784,8 +764,10 @@ class _HanduniaAiHeritageGuideRouteState
                       for (final mode in HanduniaTravelMode.values)
                         ButtonSegment<HanduniaTravelMode>(
                           value: mode,
-                          icon: Icon(mode.icon, size: 18),
-                          label: Text(mode.label),
+                          icon: Tooltip(
+                            message: mode.label,
+                            child: Icon(mode.icon, size: 20),
+                          ),
                         ),
                     ],
                     selected: <HanduniaTravelMode>{_mode},
@@ -812,13 +794,14 @@ class _HanduniaAiHeritageGuideRouteState
                     ),
                   ),
                   if (_mode.requiresLocalValidation) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Cheval : tracé indicatif calculé sur le réseau piéton OSM. Accessibilité, état des pistes et autorisations à confirmer localement.',
-                      style: _karla(
-                        size: 11.5,
+                    const SizedBox(height: 5),
+                    const Semantics(
+                      label:
+                          'Cheval : itinéraire indicatif. Confirmer localement les pistes et autorisations.',
+                      child: Icon(
+                        Icons.warning_amber_rounded,
                         color: HanduniaTokens.terre,
-                        weight: FontWeight.w700,
+                        size: 18,
                       ),
                     ),
                   ],
@@ -843,20 +826,25 @@ class _HanduniaAiHeritageGuideRouteState
                         borderRadius: BorderRadius.circular(22),
                         border: Border.all(color: HanduniaTokens.bordureForte),
                       ),
-                      child: Text(
-                        'Choisissez un départ et une arrivée.',
-                        style: _karla(color: HanduniaTokens.cendre),
+                      child: const Semantics(
+                        label: 'Choisissez un départ et une arrivée',
+                        child: Icon(
+                          Icons.route_rounded,
+                          size: 54,
+                          color: HanduniaTokens.cendre,
+                        ),
                       ),
                     ),
                   if (_notice != null) ...[
-                    const SizedBox(height: 9),
-                    Text(
-                      _notice!,
-                      textAlign: TextAlign.center,
-                      style: _karla(
-                        size: 12.5,
-                        color: HanduniaTokens.terre,
-                        weight: FontWeight.w700,
+                    const SizedBox(height: 7),
+                    Semantics(
+                      label: _notice!,
+                      child: const Center(
+                        child: Icon(
+                          Icons.info_outline_rounded,
+                          color: HanduniaTokens.terre,
+                          size: 18,
+                        ),
                       ),
                     ),
                   ],
@@ -905,61 +893,46 @@ class _HanduniaAiHeritageGuideRouteState
                           ],
                           const SizedBox(height: 10),
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
+                              Semantics(
+                                button: true,
+                                label: _replayTimer == null
+                                    ? 'Rejouer le trajet'
+                                    : 'Mettre le trajet en pause',
+                                child: IconButton.outlined(
                                   onPressed: _toggleReplay,
                                   icon: Icon(
                                     _replayTimer == null
                                         ? Icons.play_arrow_rounded
                                         : Icons.pause_rounded,
                                   ),
-                                  label: Text(
-                                    _replayTimer == null
-                                        ? 'Rejouer le trajet'
-                                        : 'Pause',
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: HanduniaTokens.braise,
-                                    side: const BorderSide(
-                                      color: HanduniaTokens.bordureForte,
-                                    ),
-                                  ),
+                                  color: HanduniaTokens.braise,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: FilledButton.icon(
+                              Semantics(
+                                button: true,
+                                label: 'Raconter le trajet',
+                                child: IconButton.filled(
                                   onPressed: _asking ? null : () => _askGuide(),
-                                  icon: const Icon(Icons.auto_awesome_rounded),
-                                  label: const Text('Raconter'),
-                                  style: FilledButton.styleFrom(
+                                  style: IconButton.styleFrom(
                                     backgroundColor: HanduniaTokens.braise,
                                     foregroundColor: HanduniaTokens.encre,
                                   ),
+                                  icon: const Icon(Icons.auto_awesome_rounded),
                                 ),
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
+                              Semantics(
+                                button: true,
+                                label: 'Reconstituer le trajet',
+                                child: IconButton.outlined(
                                   onPressed: _asking
                                       ? null
                                       : () => _askGuide(reconstruction: true),
-                                  icon: const Icon(Icons.history_edu_outlined),
-                                  label: const Text('Reconstituer'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: HanduniaTokens.ivoire,
-                                    side: const BorderSide(
-                                      color: HanduniaTokens.bordureForte,
-                                    ),
-                                  ),
+                                  icon: const Icon(Icons.history_edu_rounded),
+                                  color: HanduniaTokens.ivoire,
                                 ),
                               ),
-                              const SizedBox(width: 8),
                               Semantics(
                                 button: true,
                                 label: 'Maintenir pour parler au guide',
@@ -967,13 +940,13 @@ class _HanduniaAiHeritageGuideRouteState
                                   onLongPressStart: (_) => _startVoiceQuestion(),
                                   onLongPressEnd: (_) => _stopVoiceQuestion(),
                                   child: Container(
-                                    width: 52,
+                                    width: 48,
                                     height: 48,
                                     decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
                                       color: _recording
-                                          ? HanduniaTokens.terre.withValues(alpha: .14)
+                                          ? HanduniaTokens.terre
                                           : HanduniaTokens.nuit,
-                                      borderRadius: BorderRadius.circular(14),
                                       border: Border.all(
                                         color: _recording
                                             ? HanduniaTokens.terre
@@ -981,9 +954,11 @@ class _HanduniaAiHeritageGuideRouteState
                                       ),
                                     ),
                                     child: Icon(
-                                      Icons.mic_none_rounded,
+                                      _recording
+                                          ? Icons.stop_rounded
+                                          : Icons.mic_rounded,
                                       color: _recording
-                                          ? HanduniaTokens.terre
+                                          ? Colors.white
                                           : HanduniaTokens.braise,
                                     ),
                                   ),
@@ -997,7 +972,7 @@ class _HanduniaAiHeritageGuideRouteState
                   ],
                   if (recommendations.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    Text('Étapes mémoire proches', style: _fraunces(size: 17)),
+                    Text('À voir', style: _fraunces(size: 17)),
                     const SizedBox(height: 8),
                     for (final place in recommendations)
                       Padding(
@@ -1021,15 +996,22 @@ class _HanduniaAiHeritageGuideRouteState
                                 color: HanduniaTokens.cendre,
                               ),
                             ),
-                            trailing: TextButton(
-                              onPressed: () {
-                                setState(() {
-                                  _end = Map<String, dynamic>.from(place);
-                                  _clearRoute(keepEndpoints: true);
-                                });
-                                unawaited(_calculateRouteIfReady());
-                              },
-                              child: const Text('VISITER'),
+                            trailing: Semantics(
+                              button: true,
+                              label: 'Visiter ce lieu',
+                              child: IconButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _end = Map<String, dynamic>.from(place);
+                                    _clearRoute(keepEndpoints: true);
+                                  });
+                                  unawaited(_calculateRouteIfReady());
+                                },
+                                icon: const Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: HanduniaTokens.braise,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -1137,7 +1119,7 @@ class _HanduniaPlaceSearchSheetState extends State<_HanduniaPlaceSearchSheet> {
                   color: HanduniaTokens.ivoire,
                 ),
                 decoration: InputDecoration(
-                  hintText: 'Ville, village, quartier, lieu…',
+                  hintText: 'Lieu…',
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: IconButton(
                     onPressed: _search,
