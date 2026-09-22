@@ -30,6 +30,7 @@ import 'handunia/handunia_consultation_extended_data.dart';
 import 'handunia/handunia_consultation_model.dart';
 import 'handunia/handunia_consultation_routes.dart';
 import 'handunia/handunia_creation_ai_route.dart';
+import 'handunia/handunia_map_data.dart';
 import 'handunia/handunia_unified_map.dart';
 import 'handunia/handunia_consultation_ui.dart';
 import 'ui/reference_creation_ui.dart';
@@ -28195,6 +28196,30 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                   onTap: () => _openLieu(place),
                 ),
               ),
+          ],
+          if (_syncedOfflineCount > 0) ...[
+            const SizedBox(height: 9),
+            Align(
+              alignment: Alignment.center,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: FitilaReferenceUi.goldTint,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '✓ $_syncedOfflineCount souvenir(s) synchronisé(s)',
+                  style: const TextStyle(
+                    color: FitilaReferenceUi.goldDeep,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
           ],
           if (_backendUnavailable) ...[
             const SizedBox(height: 9),
