@@ -1,0 +1,307 @@
+name: FITILA B Futuristic AI Release
+# Build trigger for validated application commit 3b7c32e9719a81aa2c7ac126b8ddf824f4c61a2c.
+
+on:
+  push:
+    branches:
+      - feature/fitila-B-futuristic-ai
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fitila_flutter
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          channel: stable
+          cache: true
+
+      - name: Verify release metadata
+        run: |
+          flutter --version
+          grep -q '^version: 1.8.3+14$' pubspec.yaml
+          grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
+
+      - name: Prepare server configuration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          env_path = Path('../.env')
+          if not env_path.exists():
+              raise SystemExit('FITILA server configuration file ../.env is missing')
+
+          env = {}
+          for raw in env_path.read_text(encoding='utf-8').splitlines():
+              line = raw.strip()
+              if not line or line.startswith('#') or '=' not in line:
+                  continue
+              key, value = line.split('=', 1)
+              env[key.strip()] = value.strip().strip('"').strip("'")
+
+          url = env.get('SUPABASE_URL') or env.get('VITE_SUPABASE_URL') or ''
+          key = (
+              env.get('SUPABASE_ANON_KEY')
+              or env.get('SUPABASE_PUBLISHABLE_KEY')
+              or env.get('VITE_SUPABASE_PUBLISHABLE_KEY')
+              or ''
+          )
+
+          if not url or not key:
+              raise SystemExit('FITILA server URL or publishable key is missing')
+
+          Path('.ci-dart-defines.json').write_text(
+              json.dumps({
+                  'SUPABASE_URL': url,
+                  'SUPABASE_ANON_KEY': key,
+              }),
+              encoding='utf-8',
+          )
+          print('FITILA server configuration prepared.')
+          PY
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Static analysis
+        run: flutter analyze
+
+      - name: Full Flutter tests
+        run: flutter test --dart-define-from-file=.ci-dart-defines.json --reporter compact
+
+      - name: Validate content-module backend schema
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.error import HTTPError
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+          import json
+
+          env = {}
+          for raw in Path('../.env').read_text(encoding='utf-8').splitlines():
+              line = raw.strip()
+              if line and not line.startswith('#') and '=' in line:
+                  key, value = line.split('=', 1)
+                  env[key.strip()] = value.strip().strip('"').strip("'")
+
+          url = env.get('SUPABASE_URL') or env.get('VITE_SUPABASE_URL')
+          key = (
+              env.get('SUPABASE_ANON_KEY')
+              or env.get('SUPABASE_PUBLISHABLE_KEY')
+              or env.get('VITE_SUPABASE_PUBLISHABLE_KEY')
+          )
+          tables = {
+              'battle_responses': 'id,user_id,challenge_id,score,xp_awarded',
+              'battle_response_votes': 'response_id,user_id',
+              'corpus_contributions': 'id,user_id,source_lang,target_lang',
+              'handunia_lieux': 'id,name,created_by,created_at',
+              'handunia_fragments': 'id,user_id,lieu_id,ai_generated',
+              'handunia_fragment_likes': 'fragment_id,user_id',
+              'tamtam_lives': 'id,host_id,description,language,room_name,source_module',
+              'tamtam_live_viewers': 'id,live_id,user_id',
+              'tamtam_live_chat_messages': 'id,live_id,user_id,message',
+              'tamtam_live_signals': 'id,live_id,from_user,to_user,signal_type,payload',
+          }
+          private_tables = {'tamtam_live_signals'}
+          missing = []
+          for table, columns in tables.items():
+              request = Request(
+                  f'{url}/rest/v1/{table}?' + urlencode({'select': columns, 'limit': 1}),
+                  headers={'apikey': key, 'Authorization': f'Bearer {key}'},
+              )
+              try:
+                  with urlopen(request, timeout=20) as response:
+                      if response.status != 200:
+                          missing.append(f'{table} (HTTP {response.status})')
+              except HTTPError as error:
+                  if not (table in private_tables and error.code in (401, 403)):
+                      missing.append(f'{table} (HTTP {error.code})')
+
+          version_request = Request(
+              f'{url}/rest/v1/rpc/fitila_content_modules_schema_version',
+              data=b'{}',
+              method='POST',
+              headers={
+                  'apikey': key,
+                  'Authorization': f'Bearer {key}',
+                  'Content-Type': 'application/json',
+              },
+          )
+          try:
+              with urlopen(version_request, timeout=20) as response:
+                  version = json.loads(response.read().decode('utf-8'))
+              if version != '20260919.3':
+                  missing.append(f'schema version {version!r}')
+          except HTTPError as error:
+              missing.append(f'schema version RPC (HTTP {error.code})')
+
+          turn_request = Request(
+              f'{url}/functions/v1/live-turn-credentials',
+              data=b'{}',
+              method='POST',
+              headers={
+                  'apikey': key,
+                  'Authorization': f'Bearer {key}',
+                  'Content-Type': 'application/json',
+              },
+          )
+          try:
+              with urlopen(turn_request, timeout=20) as response:
+                  if response.status not in (200, 401):
+                      missing.append(f'live-turn-credentials (HTTP {response.status})')
+          except HTTPError as error:
+              if error.code != 401:
+                  missing.append(f'live-turn-credentials (HTTP {error.code})')
+
+          if missing:
+              raise SystemExit(
+                  'Deploy the pending Supabase migrations before release: '
+                  + ', '.join(missing)
+              )
+          print('All content-module backend tables are available.')
+          PY
+
+      - name: Prepare Android release signing
+        env:
+          FITILA_KEYSTORE_BASE64: ${{ secrets.FITILA_KEYSTORE_BASE64 }}
+          FITILA_KEYSTORE_PASSWORD: ${{ secrets.FITILA_KEYSTORE_PASSWORD }}
+          FITILA_KEY_ALIAS: ${{ secrets.FITILA_KEY_ALIAS }}
+          FITILA_KEY_PASSWORD: ${{ secrets.FITILA_KEY_PASSWORD }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64
+          import os
+          import secrets
+          import subprocess
+
+          names = (
+              'FITILA_KEYSTORE_BASE64',
+              'FITILA_KEYSTORE_PASSWORD',
+              'FITILA_KEY_ALIAS',
+              'FITILA_KEY_PASSWORD',
+          )
+          required = {name: os.environ.get(name, '') for name in names}
+          production_ready = all(required.values())
+
+          if production_ready:
+              keystore = Path('android/app/fitila-release.jks')
+              keystore.write_bytes(
+                  base64.b64decode(required['FITILA_KEYSTORE_BASE64'])
+              )
+              store_password = required['FITILA_KEYSTORE_PASSWORD']
+              key_alias = required['FITILA_KEY_ALIAS']
+              key_password = required['FITILA_KEY_PASSWORD']
+              signing_mode = 'production'
+          else:
+              # Installable optimized release candidate for QA/direct APK delivery.
+              # This certificate is intentionally NOT a Google Play production key.
+              keystore = Path('android/app/fitila-ci-release.jks')
+              store_password = secrets.token_urlsafe(24)
+              key_password = store_password
+              key_alias = 'fitila-ci'
+              subprocess.run(
+                  [
+                      'keytool',
+                      '-genkeypair',
+                      '-noprompt',
+                      '-keystore', str(keystore),
+                      '-storepass', store_password,
+                      '-keypass', key_password,
+                      '-alias', key_alias,
+                      '-keyalg', 'RSA',
+                      '-keysize', '2048',
+                      '-validity', '3650',
+                      '-dname', 'CN=FITILA CI Release,O=FITILA,C=BJ',
+                  ],
+                  check=True,
+              )
+              signing_mode = 'ci-ephemeral'
+              print(
+                  'Production signing secrets are absent; '
+                  'using an ephemeral FITILA CI release certificate.'
+              )
+
+          Path('android/key.properties').write_text(
+              '\n'.join([
+                  f'storeFile=app/{keystore.name}',
+                  f'storePassword={store_password}',
+                  f'keyAlias={key_alias}',
+                  f'keyPassword={key_password}',
+                  '',
+              ]),
+              encoding='utf-8',
+          )
+          Path('build').mkdir(exist_ok=True)
+          Path('build/SIGNING_MODE.txt').write_text(
+              signing_mode + '\n',
+              encoding='utf-8',
+          )
+          with Path(os.environ['GITHUB_ENV']).open('a', encoding='utf-8') as env:
+              env.write(f'FITILA_SIGNING_MODE={signing_mode}\n')
+          PY
+
+      - name: Build optimized release APK
+        run: |
+          flutter build apk --release \
+            --dart-define-from-file=.ci-dart-defines.json \
+            --obfuscate \
+            --split-debug-info=build/symbols
+
+      - name: Validate APK integrity
+        run: |
+          test -s build/app/outputs/flutter-apk/app-release.apk
+          unzip -t build/app/outputs/flutter-apk/app-release.apk
+          file build/app/outputs/flutter-apk/app-release.apk
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          test -n "$APKSIGNER"
+          CERT_INFO="$($APKSIGNER verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk)"
+          echo "$CERT_INFO"
+          if echo "$CERT_INFO" | grep -q 'CN=Android Debug'; then
+            echo 'Refusing debug-signed release APK.' >&2
+            exit 1
+          fi
+
+      - name: Prepare named artifact
+        run: |
+          mkdir -p build/release-output
+          cp build/app/outputs/flutter-apk/app-release.apk \
+            build/release-output/FITILA-B-v1.8.3-build14-futuristic-ai.apk
+          cp -R build/symbols build/release-output/symbols
+          cp build/SIGNING_MODE.txt build/release-output/SIGNING_MODE.txt
+          cd build/release-output
+          sha256sum FITILA-B-v1.8.3-build14-futuristic-ai.apk | tee SHA256SUMS.txt
+          ls -lh FITILA-B-v1.8.3-build14-futuristic-ai.apk
+          echo "Signing mode: $FITILA_SIGNING_MODE"
+
+      - name: Upload optimized APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FITILA-B-v1.8.3-build14-futuristic-ai
+          path: fitila_flutter/build/release-output/
+          if-no-files-found: error
+          retention-days: 14
