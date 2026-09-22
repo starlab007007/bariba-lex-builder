@@ -2,6 +2,7 @@ import 'package:fitila_native/handunia/handunia_consultation_model.dart';
 import 'package:fitila_native/handunia/handunia_consultation_routes.dart';
 import 'package:fitila_native/handunia/handunia_consultation_ui.dart';
 import 'package:fitila_native/handunia/handunia_creation_ai_route.dart';
+import 'package:fitila_native/handunia/handunia_heritage_feed.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -614,6 +615,115 @@ void main() {
 
     expect(find.text('Cette période reste dans l’ombre.'), findsOneWidget);
     expect(find.text('Aller chercher ces voix'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+
+  test('Handunia heritage ranking never uses likes as historical value', () {
+    final base = <String, dynamic>{
+      'id': 'memory',
+      'distance_m': 700.0,
+      'voice_count': 4,
+      'lacuna_filled': true,
+      'audio_url': 'https://example.test/memory.opus',
+      'period_label': '1960–1979',
+      'theme_key': 'marche',
+      'created_at': '2026-09-20T10:00:00Z',
+    };
+    final withoutLikes = HanduniaHeritageFeed.score(
+      {...base, 'like_count': 0},
+      filter: HanduniaFeedFilter.all,
+    );
+    final viral = HanduniaHeritageFeed.score(
+      {...base, 'like_count': 1000000},
+      filter: HanduniaFeedFilter.all,
+    );
+
+    expect(viral, withoutLikes);
+  });
+
+  test('Handunia journey favors cultural continuity without author repetition', () {
+    final journey = HanduniaHeritageFeed.buildJourney(
+      <Map<String, dynamic>>[
+        {
+          'id': 'a',
+          'lieu_id': 'nikki',
+          'user_id': 'u1',
+          'period_label': '1960–1979',
+          'theme_key': 'marche',
+          'voice_count': 5,
+          'distance_m': 100,
+        },
+        {
+          'id': 'b',
+          'lieu_id': 'nikki',
+          'user_id': 'u2',
+          'period_label': '1980–1999',
+          'theme_key': 'marche',
+          'voice_count': 4,
+          'distance_m': 120,
+        },
+        {
+          'id': 'c',
+          'lieu_id': 'nikki',
+          'user_id': 'u1',
+          'period_label': '1980–1999',
+          'theme_key': 'marche',
+          'voice_count': 4,
+          'distance_m': 115,
+        },
+      ],
+      filter: HanduniaFeedFilter.all,
+    );
+
+    expect(journey.length, 3);
+    expect(
+      journey[1]['_handunia_transition_label'],
+      anyOf('Même lieu · autre époque', 'Même thème · autre voix'),
+    );
+    expect(journey[1]['user_id'], isNot(journey[0]['user_id']));
+  });
+
+  testWidgets('Handunia feed renders memory gaps as calls for human voices', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    var called = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HanduniaFilView(
+          items: const <Map<String, dynamic>>[
+            <String, dynamic>{
+              'id': 'gap:1',
+              'item_type': 'memory_gap',
+              'lieu_name': 'Marché de Nikki',
+              'gap_value': 'Avant 1960',
+              'source_count': 0,
+            },
+          ],
+          loading: false,
+          offline: false,
+          filter: HanduniaFeedFilter.all,
+          pendingCount: 0,
+          onBack: () {},
+          onRefresh: () async {},
+          onFilterChanged: (_) {},
+          onOpenMemory: (_) {},
+          onFindMissingVoice: () => called = true,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Handunia cherche une voix'), findsOneWidget);
+    expect(find.textContaining('Avant 1960'), findsOneWidget);
+    await tester.tap(find.text('Aider à compléter cette mémoire'));
+    await tester.pump();
+    expect(called, isTrue);
     expect(tester.takeException(), isNull);
   });
 

@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'handunia_consultation_model.dart';
+import 'handunia_heritage_feed.dart';
 
 abstract final class HanduniaTokens {
   // Palette Handunia claire et cohérente avec le design system FITILA.
@@ -1067,77 +1068,44 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
       final id = item['id']?.toString().trim();
       final key = id?.isNotEmpty == true
           ? id!
-          : '${item['lieu_id'] ?? ''}|${item['created_at'] ?? ''}|${item['text'] ?? ''}';
+          : '${item['item_type'] ?? ''}|${item['lieu_id'] ?? ''}|${item['created_at'] ?? ''}|${item['text'] ?? item['subject'] ?? item['gap_value'] ?? ''}';
       deduped.putIfAbsent(key, () => item);
     }
 
     final pending = deduped.values
         .where((item) => item['local_only'] == true)
         .toList(growable: false);
-    final remote = deduped.values
-        .where((item) => item['local_only'] != true)
-        .toList();
+    final contextCards = deduped.values
+        .where(
+          (item) =>
+              item['local_only'] != true &&
+              (item['item_type'] == 'divergence' ||
+                  item['item_type'] == 'memory_gap'),
+        )
+        .map(Map<String, dynamic>.from)
+        .toList(growable: false);
+    final memories = deduped.values
+        .where(
+          (item) =>
+              item['local_only'] != true &&
+              item['item_type'] != 'divergence' &&
+              item['item_type'] != 'memory_gap',
+        )
+        .map(Map<String, dynamic>.from)
+        .toList(growable: false);
 
-    final originalRank = <String, int>{};
-    for (var i = 0; i < remote.length; i++) {
-      originalRank[remote[i]['id']?.toString() ?? 'row-$i'] = i;
+    final journey = HanduniaHeritageFeed.buildJourney(
+      memories,
+      filter: widget.filter,
+    );
+
+    var insertion = math.min(2, journey.length);
+    for (final card in contextCards) {
+      journey.insert(insertion, card);
+      insertion = math.min(insertion + 3, journey.length);
     }
 
-    double score(Map<String, dynamic> item) {
-      final id = item['id']?.toString() ?? '';
-      final baseRank = originalRank[id] ?? remote.length;
-      var value = math.max(0, remote.length - baseRank) * 5.0;
-
-      final created = DateTime.tryParse(item['created_at']?.toString() ?? '');
-      if (created != null) {
-        final hours = DateTime.now().difference(created).inHours.clamp(0, 720);
-        value += math.max(0, 120 - hours) * 0.7;
-      }
-
-      final voices = (item['voice_count'] as num?)?.toInt() ?? 1;
-      value += math.log(math.max(1, voices) + 1) * 12;
-
-      final likes = (item['like_count'] as num?)?.toInt() ?? 0;
-      value += math.log(likes + 1) * 3;
-
-      final distance = (item['distance_m'] as num?)?.toDouble();
-      if (widget.filter == HanduniaFeedFilter.around && distance != null) {
-        value += math.max(0, 80 - distance / 2000);
-      }
-
-      if (item['lacuna_filled'] == true) value += 8;
-      if ((item['audio_url']?.toString().trim().isNotEmpty ?? false)) {
-        value += 14;
-      }
-      if (_backdropUrl(item) != null) value += 10;
-      return value;
-    }
-
-    remote.sort((a, b) => score(b).compareTo(score(a)));
-
-    // Diversification : évite plusieurs souvenirs successifs du même auteur
-    // ou du même lieu, tout en conservant les meilleurs candidats en tête.
-    final diversified = <Map<String, dynamic>>[];
-    final pool = List<Map<String, dynamic>>.from(remote);
-    while (pool.isNotEmpty) {
-      var pick = 0;
-      if (diversified.isNotEmpty) {
-        final last = diversified.last;
-        final lastUser = last['user_id']?.toString();
-        final lastLieu = last['lieu_id']?.toString();
-        final searchUntil = math.min(6, pool.length);
-        for (var i = 0; i < searchUntil; i++) {
-          final candidate = pool[i];
-          if (candidate['user_id']?.toString() != lastUser &&
-              candidate['lieu_id']?.toString() != lastLieu) {
-            pick = i;
-            break;
-          }
-        }
-      }
-      diversified.add(pool.removeAt(pick));
-    }
-    return <Map<String, dynamic>>[...pending, ...diversified];
+    return <Map<String, dynamic>>[...pending, ...journey];
   }
 
   String? _backdropUrl(Map<String, dynamic> item) {
@@ -1518,7 +1486,220 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
     );
   }
 
+  Widget _memoryGapPage(Map<String, dynamic> item) {
+    final lieu = item['lieu_name']?.toString().trim();
+    final gap = item['gap_value']?.toString().trim();
+    final sourceCount = (item['source_count'] as num?)?.toInt() ?? 0;
+
+    return ColoredBox(
+      color: _feedCream,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(22, 190, 22, 118),
+        child: Center(
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+            decoration: BoxDecoration(
+              color: _feedPaper,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: _feedHairline),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x176B4A22),
+                  blurRadius: 26,
+                  offset: Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _feedPaperSoft,
+                  ),
+                  child: const Icon(
+                    Icons.local_fire_department_outlined,
+                    color: _feedGoldDeep,
+                    size: 29,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Handunia cherche une voix',
+                  textAlign: TextAlign.center,
+                  style: _fraunces(size: 24, color: _feedInk),
+                ),
+                const SizedBox(height: 8),
+                if (lieu != null && lieu.isNotEmpty)
+                  Text(
+                    lieu,
+                    textAlign: TextAlign.center,
+                    style: _karla(
+                      size: 12.5,
+                      color: _feedGoldDeep,
+                      weight: FontWeight.w800,
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                Text(
+                  gap == null || gap.isEmpty
+                      ? 'Une partie de cette mémoire n’a pas encore de témoin.'
+                      : 'Il manque encore des voix pour documenter : ' + gap + '.',
+                  textAlign: TextAlign.center,
+                  style: _karla(
+                    size: 15,
+                    color: _feedInk,
+                    height: 1.42,
+                    weight: FontWeight.w700,
+                  ),
+                ),
+                if (sourceCount > 0) ...[
+                  const SizedBox(height: 7),
+                  Text(
+                    sourceCount.toString() +
+                        ' source' +
+                        (sourceCount > 1 ? 's' : '') +
+                        ' déjà reliée' +
+                        (sourceCount > 1 ? 's' : ''),
+                    style: _karla(size: 11.5, color: _feedMuted),
+                  ),
+                ],
+                const SizedBox(height: 17),
+                FilledButton.icon(
+                  onPressed: widget.onFindMissingVoice,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _feedGold,
+                    foregroundColor: _feedInk,
+                    elevation: 0,
+                    shape: const StadiumBorder(),
+                  ),
+                  icon: const Icon(Icons.mic_none_rounded, size: 18),
+                  label: const Text('Aider à compléter cette mémoire'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showMemoryContext(Map<String, dynamic> item) async {
+    final voices = (item['voice_count'] as num?)?.toInt() ?? 1;
+    final lieu = item['lieu_name']?.toString().trim() ?? 'Handunia Wasa';
+    final period =
+        item['period_label']?.toString().trim().isNotEmpty == true
+        ? item['period_label'].toString()
+        : (item['period_year']?.toString() ?? 'Période non précisée');
+    final reason =
+        item['_handunia_transition_label']?.toString().trim().isNotEmpty == true
+        ? item['_handunia_transition_label'].toString()
+        : 'Mémoire du territoire';
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: _feedPaper,
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Pourquoi cette mémoire ?',
+                style: _fraunces(size: 22, color: _feedInk),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                reason,
+                style: _karla(
+                  size: 13,
+                  color: _feedGoldDeep,
+                  weight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _memoryContextLine(Icons.location_on_rounded, lieu),
+              _memoryContextLine(Icons.schedule_rounded, period),
+              _memoryContextLine(
+                Icons.groups_2_outlined,
+                voices.toString() +
+                    ' voix humaine' +
+                    (voices > 1 ? 's' : ''),
+              ),
+              if (item['lacuna_filled'] == true)
+                _memoryContextLine(
+                  Icons.auto_awesome_rounded,
+                  'Cette contribution comble une lacune documentaire',
+                ),
+              const SizedBox(height: 10),
+              Text(
+                'Les appréciations servent à réagir. Elles ne déterminent jamais la valeur historique ni l’ordre patrimonial.',
+                style: _karla(
+                  size: 11.5,
+                  color: _feedMuted,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.of(sheetContext).pop();
+                    widget.onOpenMemory(item);
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _feedGold,
+                    foregroundColor: _feedInk,
+                    elevation: 0,
+                    shape: const StadiumBorder(),
+                  ),
+                  icon: const Icon(Icons.account_tree_outlined, size: 19),
+                  label: const Text('Ouvrir la mémoire'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _memoryContextLine(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: _feedGoldDeep),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              text,
+              style: _karla(
+                size: 13.2,
+                color: _feedInk,
+                weight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _storyPage(Map<String, dynamic> item) {
+    if (item['item_type'] == 'memory_gap') {
+      return _memoryGapPage(item);
+    }
     if (item['item_type'] == 'divergence') {
       return ColoredBox(
         color: _feedCream,
@@ -1551,6 +1732,8 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
     final text = _memoryText(item);
     final summaryBusy = _busyInsightId == 'summary:$id';
     final translateBusy = _busyInsightId == 'translate:$id';
+    final transitionLabel =
+        item['_handunia_transition_label']?.toString().trim() ?? '';
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -1684,6 +1867,20 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                                       ],
                                     ),
                                   ),
+                                  if (transitionLabel.isNotEmpty) ...[
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      transitionLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.fade,
+                                      style: _karla(
+                                        size: 10.5,
+                                        color: _feedGoldDeep,
+                                        weight: FontWeight.w800,
+                                        height: 1,
+                                      ).copyWith(letterSpacing: .15),
+                                    ),
+                                  ],
                                   SizedBox(height: compact ? 7 : 10),
                                   Text(
                                     text,
@@ -1806,10 +2003,10 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                                       const SizedBox(width: 6),
                                       Expanded(
                                         child: _glassAction(
-                                          icon: Icons.visibility_outlined,
-                                          label: 'Détails',
+                                          icon: Icons.account_tree_outlined,
+                                          label: 'Mémoire',
                                           onTap: () =>
-                                              widget.onOpenMemory(item),
+                                              _showMemoryContext(item),
                                         ),
                                       ),
                                     ],
@@ -1844,9 +2041,9 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                       ),
                       const SizedBox(height: 10),
                       _actionButton(
-                        icon: Icons.chat_bubble_outline_rounded,
-                        label: _compactCount(voices),
-                        onTap: () => widget.onOpenMemory(item),
+                        icon: Icons.groups_2_outlined,
+                        label: '${_compactCount(voices)} voix',
+                        onTap: () => _showMemoryContext(item),
                       ),
                       const SizedBox(height: 10),
                       _actionButton(

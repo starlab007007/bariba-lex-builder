@@ -241,6 +241,36 @@ class HanduniaConsultationData {
       visible.removeRange(limit, visible.length);
     }
 
+    if (filter != HanduniaFeedFilter.lineage) {
+      try {
+        final rows = await _client
+            .from('handunia_memory_gaps')
+            .select(
+              'id, lieu_id, gap_type, gap_value, severity, source_count, '
+              'detected_at, resolved_at',
+            )
+            .isFilter('resolved_at', null)
+            .order('severity', ascending: false)
+            .limit(1);
+        final gaps = List<Map<String, dynamic>>.from(rows as List);
+        if (gaps.isNotEmpty) {
+          final gap = gaps.first;
+          final lieu = lieuMap[gap['lieu_id']?.toString()];
+          final insertAt = visible.isEmpty ? 0 : math.min(4, visible.length);
+          visible.insert(insertAt, <String, dynamic>{
+            ...gap,
+            'id': 'gap:${gap['id']}',
+            'item_type': 'memory_gap',
+            'lieu_name': lieu?['name']?.toString() ?? '',
+            'lieu_icon': lieu?['icon']?.toString() ?? '🕯️',
+            'created_at': gap['detected_at'],
+          });
+        }
+      } catch (_) {
+        // Une migration ancienne ne doit jamais empêcher la consultation.
+      }
+    }
+
     try {
       final rows = await _client
           .from('handunia_divergences')
@@ -297,9 +327,11 @@ class HanduniaConsultationData {
               .from('handunia_fragments')
               .select(
                 'id, text, transcript_text, audio_url, audio_duration_ms, '
-                'audio_codec, audio_bitrate_kbps, period_label, scope_level, '
-                'seal_hash, sealed_at, lineage_key, latitude, longitude, '
-                'lacuna_filled, synchronized_at, withdrawn_at, ai_generated, '
+                'audio_codec, audio_bitrate_kbps, period_label, period_year, '
+                'scope_level, seal_hash, sealed_at, lineage_key, latitude, '
+                'longitude, lacuna_filled, synchronized_at, withdrawn_at, '
+                'ai_generated, ai_assisted, review_status, memory_state, '
+                'witness_gender, theme_key, transcript_reviewed_by_guardian, '
                 'created_at, user_id, lieu_id',
               )
               .order('created_at', ascending: false)
