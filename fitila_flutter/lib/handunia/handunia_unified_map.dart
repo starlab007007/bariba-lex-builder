@@ -463,7 +463,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      '${level.kind} · ${level.label}',
+                      level.label,
                       style: TextStyle(
                         fontFamily: 'Karla',
                         fontSize: 10.5,
@@ -886,115 +886,115 @@ class _SelectedPlaceCard extends StatelessWidget {
     final territory = handuniaTerritorySegments(place)
         .where((segment) => segment.toLowerCase() != 'bénin')
         .join(' › ');
-    final description = place['description']?.toString().trim() ?? '';
+
     return Material(
       color: HanduniaTokens.nuitPortee.withValues(alpha: .98),
-      borderRadius: BorderRadius.circular(20),
-      elevation: 4,
+      borderRadius: BorderRadius.circular(18),
+      elevation: 3,
       shadowColor: const Color(0x22241F2E),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        padding: const EdgeInsets.fromLTRB(10, 9, 8, 9),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: HanduniaTokens.bordure),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: HanduniaTokens.orClair,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    place['icon']?.toString() ?? '📍',
-                    style: const TextStyle(fontSize: 19),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        place['name']?.toString() ?? 'Lieu mémoire',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: 'Fraunces',
-                          fontWeight: FontWeight.w600,
-                          fontSize: 17,
-                          color: HanduniaTokens.ivoire,
-                        ),
-                      ),
-                      if (territory.isNotEmpty)
-                        Text(
-                          territory,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: 'Karla',
-                            fontSize: 10.5,
-                            color: HanduniaTokens.cendre,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                Text(
-                  '$memories souvenir${memories > 1 ? 's' : ''} · $voices voix',
-                  style: const TextStyle(
-                    fontFamily: 'Karla',
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    color: HanduniaTokens.cendre,
-                  ),
-                ),
-              ],
-            ),
-            if (description.isNotEmpty) ...[
-              const SizedBox(height: 7),
-              Text(
-                description,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: 'Karla',
-                  fontSize: 11.5,
-                  height: 1.35,
-                  color: HanduniaTokens.cendre,
-                ),
+            Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: HanduniaTokens.orClair,
               ),
-            ],
-            if (onOpen != null) ...[
-              const SizedBox(height: 9),
-              SizedBox(
-                width: double.infinity,
-                height: 40,
-                child: FilledButton.icon(
-                  onPressed: onOpen,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: HanduniaTokens.braise,
-                    foregroundColor: HanduniaTokens.encre,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(13),
+              child: Text(
+                place['icon']?.toString() ?? '📍',
+                style: const TextStyle(fontSize: 20),
+              ),
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    place['name']?.toString() ?? 'Lieu',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Fraunces',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: HanduniaTokens.ivoire,
                     ),
                   ),
-                  icon: const Icon(Icons.auto_stories_outlined, size: 17),
-                  label: const Text(
-                    'Voir la mémoire',
-                    style: TextStyle(
-                      fontFamily: 'Karla',
+                  if (territory.isNotEmpty)
+                    Text(
+                      territory,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Karla',
+                        fontSize: 9.8,
+                        color: HanduniaTokens.cendre,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Semantics(
+              label: '$memories souvenirs, $voices voix',
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.auto_stories_rounded,
+                    size: 15,
+                    color: HanduniaTokens.cendre,
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    '$memories',
+                    style: const TextStyle(
+                      color: HanduniaTokens.cendre,
+                      fontSize: 10,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
+                  const SizedBox(width: 6),
+                  const Icon(
+                    Icons.graphic_eq_rounded,
+                    size: 15,
+                    color: HanduniaTokens.braise,
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    '$voices',
+                    style: const TextStyle(
+                      color: HanduniaTokens.braise,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (onOpen != null) ...[
+              const SizedBox(width: 5),
+              Semantics(
+                button: true,
+                label: 'Ouvrir la mémoire',
+                child: IconButton.filled(
+                  onPressed: onOpen,
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(42, 42),
+                    backgroundColor: HanduniaTokens.braise,
+                    foregroundColor: HanduniaTokens.encre,
+                  ),
+                  icon: const Icon(Icons.chevron_right_rounded, size: 24),
                 ),
               ),
             ],
@@ -1184,58 +1184,36 @@ class _HanduniaLocationPickerRouteState
               child: Material(
                 color: HanduniaTokens.nuitPortee.withValues(alpha: .96),
                 elevation: 3,
-                shadowColor: const Color(0x216B4A22),
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(20),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(6, 7, 7, 7),
+                  padding: const EdgeInsets.fromLTRB(5, 5, 5, 7),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
                         children: [
                           IconButton(
+                            tooltip: 'Retour',
                             onPressed: () => Navigator.of(context).maybePop(),
                             icon: const Icon(Icons.arrow_back_rounded),
                             color: HanduniaTokens.ivoire,
                           ),
                           const Expanded(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.workspace_premium_rounded,
-                                  size: 15,
-                                  color: HanduniaTokens.braise,
-                                ),
-                                Text(
-                                  'Positionner le lieu',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontFamily: 'Fraunces',
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 20,
-                                    height: 1.05,
-                                    color: HanduniaTokens.ivoire,
-                                  ),
-                                ),
-                                Text(
-                                  'HANDUNIA WASA · CARTE VIVANTE',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontFamily: 'Karla',
-                                    fontSize: 8.2,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 1.1,
-                                    color: HanduniaTokens.cendre,
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              'Lieu',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: 'Fraunces',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 20,
+                                color: HanduniaTokens.ivoire,
+                              ),
                             ),
                           ),
                           IconButton(
                             tooltip: _satellite
-                                ? 'Afficher le plan'
-                                : 'Afficher le satellite',
+                                ? 'Plan'
+                                : 'Satellite',
                             onPressed: () {
                               setState(() {
                                 _satellite = !_satellite;
@@ -1263,16 +1241,15 @@ class _HanduniaLocationPickerRouteState
                                 color: HanduniaTokens.ivoire,
                               ),
                               decoration: InputDecoration(
-                                hintText: 'Village, quartier, ville…',
-                                hintStyle: const TextStyle(
-                                  color: HanduniaTokens.cendre,
-                                ),
-                                prefixIcon: const Icon(Icons.search_rounded),
+                                hintText: 'Lieu…',
+                                prefixIcon:
+                                    const Icon(Icons.search_rounded),
                                 filled: true,
-                                fillColor: HanduniaTokens.orClair.withValues(alpha: .38),
+                                fillColor: HanduniaTokens.orClair
+                                    .withValues(alpha: .34),
                                 isDense: true,
                                 border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(18),
+                                  borderRadius: BorderRadius.circular(16),
                                   borderSide: const BorderSide(
                                     color: HanduniaTokens.bordureForte,
                                   ),
@@ -1280,8 +1257,9 @@ class _HanduniaLocationPickerRouteState
                               ),
                             ),
                           ),
-                          const SizedBox(width: 7),
+                          const SizedBox(width: 6),
                           IconButton.filled(
+                            tooltip: 'Chercher',
                             onPressed: _searching ? null : _search,
                             style: IconButton.styleFrom(
                               backgroundColor: HanduniaTokens.braise,
@@ -1302,28 +1280,24 @@ class _HanduniaLocationPickerRouteState
                       ),
                       if (_results.isNotEmpty)
                         ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 220),
-                          child: ListView.separated(
+                          constraints: const BoxConstraints(maxHeight: 180),
+                          child: ListView.builder(
                             shrinkWrap: true,
-                            padding: const EdgeInsets.only(top: 7),
+                            padding: const EdgeInsets.only(top: 5),
                             itemCount: _results.length,
-                            separatorBuilder: (_, _) => const Divider(
-                              height: 1,
-                              color: HanduniaTokens.bordureForte,
-                            ),
                             itemBuilder: (context, index) {
                               final place = _results[index];
                               return ListTile(
                                 dense: true,
                                 leading: const Icon(
-                                  Icons.location_on_outlined,
+                                  Icons.location_on_rounded,
                                   color: HanduniaTokens.braise,
                                 ),
                                 title: Text(
                                   place['display_name']?.toString() ??
                                       place['name']?.toString() ??
                                       '',
-                                  maxLines: 2,
+                                  maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     fontFamily: 'Karla',
@@ -1343,28 +1317,22 @@ class _HanduniaLocationPickerRouteState
             ),
             if (_notice != null)
               Positioned(
-                left: 14,
-                right: 14,
-                top: 150,
-                child: IgnorePointer(
-                  child: Center(
-                    child: Material(
-                      color: HanduniaTokens.nuitPortee.withValues(alpha: .94),
-                      borderRadius: BorderRadius.circular(999),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 7,
-                        ),
-                        child: Text(
-                          _notice!,
-                          style: const TextStyle(
-                            fontFamily: 'Karla',
-                            color: HanduniaTokens.cendre,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                          ),
-                        ),
+                left: 70,
+                right: 70,
+                top: 128,
+                child: Semantics(
+                  label: _notice!,
+                  child: Material(
+                    color: HanduniaTokens.nuitPortee.withValues(alpha: .93),
+                    borderRadius: BorderRadius.circular(999),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 7),
+                      child: Icon(
+                        _resolving
+                            ? Icons.sync_rounded
+                            : Icons.info_outline_rounded,
+                        size: 18,
+                        color: HanduniaTokens.cendre,
                       ),
                     ),
                   ),
@@ -1378,51 +1346,57 @@ class _HanduniaLocationPickerRouteState
                 color: HanduniaTokens.nuitPortee.withValues(alpha: .97),
                 borderRadius: BorderRadius.circular(18),
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(9),
                   child: selected == null
-                      ? const Text(
-                          'Recherchez un lieu ou touchez directement la carte. '
-                          'La position réelle sera enregistrée après validation.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: 'Karla',
-                            color: HanduniaTokens.cendre,
-                            fontSize: 12.5,
-                            height: 1.35,
+                      ? const Semantics(
+                          label:
+                              'Touchez la carte ou recherchez un lieu',
+                          child: Center(
+                            child: Icon(
+                              Icons.touch_app_rounded,
+                              size: 30,
+                              color: HanduniaTokens.braise,
+                            ),
                           ),
                         )
-                      : Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      : Row(
                           children: [
-                            Text(
-                              selected['display_name']?.toString() ??
-                                  selected['name']?.toString() ??
-                                  'Lieu sélectionné',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontFamily: 'Fraunces',
-                                fontWeight: FontWeight.w600,
-                                fontSize: 17,
-                                color: HanduniaTokens.ivoire,
+                            const Icon(
+                              Icons.location_on_rounded,
+                              color: HanduniaTokens.braise,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                selected['name']?.toString() ??
+                                    selected['display_name']?.toString() ??
+                                    'Lieu',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontFamily: 'Fraunces',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                  color: HanduniaTokens.ivoire,
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 7),
-                            HanduniaTerritoryPath(place: selected, compact: true),
-                            const SizedBox(height: 10),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 46,
-                              child: FilledButton.icon(
+                            Semantics(
+                              button: true,
+                              label: 'Valider cet emplacement',
+                              child: IconButton.filled(
                                 onPressed: () =>
                                     Navigator.of(context).pop(selected),
-                                style: FilledButton.styleFrom(
+                                style: IconButton.styleFrom(
+                                  minimumSize: const Size(50, 50),
                                   backgroundColor: HanduniaTokens.braise,
                                   foregroundColor: HanduniaTokens.encre,
                                 ),
-                                icon: const Icon(Icons.check_rounded),
-                                label: const Text('VALIDER CET EMPLACEMENT'),
+                                icon: const Icon(
+                                  Icons.check_rounded,
+                                  size: 26,
+                                ),
                               ),
                             ),
                           ],
@@ -1435,4 +1409,5 @@ class _HanduniaLocationPickerRouteState
       ),
     );
   }
+
 }
