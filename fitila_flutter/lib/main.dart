@@ -96,7 +96,7 @@ class FitilaApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'FITILA',
+      title: 'FITILA B',
       theme: SignatureTheme.light(),
       home: AuthGate(demoMode: demoMode),
     );
@@ -1976,11 +1976,18 @@ class _FitilaShellState extends State<FitilaShell> {
                     onSelected: _selectBottomDestination,
                     onCreate: () => _navigate(FitilaPage.creator),
                   ),
-            // Le bouton "+" flottant a été retiré : le fil et le studio de
-            // création sont volontairement épurés (style Kuaishou plein
-            // écran) et la création reste accessible via l'onglet dédié
-            // de la barre de navigation basse.
-            floatingActionButton: null,
+            floatingActionButton: wide
+                ? null
+                : Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: HanduniaAiCopilotButton(
+                      contextData: HanduniaAiContext(
+                        screen: 'plateforme-${_page.name}',
+                      ),
+                    ),
+                  ),
+            floatingActionButtonLocation:
+                FloatingActionButtonLocation.endFloat,
           ),
         );
       },
