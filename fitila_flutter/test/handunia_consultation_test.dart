@@ -177,7 +177,9 @@ void main() {
     // alive, so pumpAndSettle would never become idle in this test.
     await tester.pump(const Duration(milliseconds: 360));
     await tester.tap(memoryLike);
-    await tester.pump(const Duration(milliseconds: 220));
+    // A parent double-tap recognizer intentionally powers the TikTok-style
+    // heart gesture, so let the single-tap recognizer win the arena first.
+    await tester.pump(const Duration(milliseconds: 500));
     expect(likedId, 'memory-1');
     expect(likedValue, isTrue);
     expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
