@@ -1094,9 +1094,11 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
         .map(Map<String, dynamic>.from)
         .toList(growable: false);
 
-    final journey = HanduniaHeritageFeed.buildJourney(
-      memories,
-      filter: widget.filter,
+    final journey = List<Map<String, dynamic>>.from(
+      HanduniaHeritageFeed.buildJourney(
+        memories,
+        filter: widget.filter,
+      ),
     );
 
     var insertion = math.min(2, journey.length);
@@ -2037,7 +2039,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                       const SizedBox(height: 10),
                       _actionButton(
                         icon: Icons.groups_2_outlined,
-                        label: '${_compactCount(voices)} voix',
+                        label: _compactCount(voices),
                         onTap: () => _showMemoryContext(item),
                       ),
                       const SizedBox(height: 10),
