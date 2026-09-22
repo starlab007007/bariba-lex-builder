@@ -9311,9 +9311,11 @@ class _AiChatMessage {
 class _AiScreenState extends State<AiScreen> {
   final _message = TextEditingController();
   final List<_AiChatMessage> _messages = [];
+  final _voiceMedia = FitilaMediaController();
   List<DictionaryEntry> _dictionary = const [];
   bool _busy = false;
   bool _showKeyboard = false;
+  bool _voiceRecording = false;
 
   @override
   void initState() {
@@ -9335,6 +9337,7 @@ class _AiScreenState extends State<AiScreen> {
   @override
   void dispose() {
     _message.dispose();
+    _voiceMedia.dispose();
     super.dispose();
   }
 
@@ -9395,6 +9398,44 @@ class _AiScreenState extends State<AiScreen> {
       text: text.replaceRange(start, end, char),
       selection: TextSelection.collapsed(offset: start + char.length),
     );
+  }
+
+  Future<void> _toggleVoiceMessage() async {
+    if (_voiceRecording) {
+      setState(() => _voiceRecording = false);
+      try {
+        final asset = await _voiceMedia.stopAudio();
+        if (asset == null) return;
+        final transcript = await FitilaTranslationAudio.transcribe(
+          asset: asset,
+          sourceIsBariba: true,
+        );
+        if (!mounted) return;
+        setState(() => _message.text = transcript);
+        await _send(transcript);
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error is StateError
+                  ? error.message
+                  : 'Dictée Bàátɔ̀nú indisponible.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    try {
+      await _voiceMedia.startAudio();
+      if (mounted) setState(() => _voiceRecording = true);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Micro indisponible.')),
+      );
+    }
   }
 
   Future<void> _send([String? preset]) async {
@@ -9771,17 +9812,14 @@ class _AiScreenState extends State<AiScreen> {
                 ),
                 const SizedBox(width: 6),
                 IconButton(
-                  tooltip: 'Voix',
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'La dictée Bariba est accessible depuis Voice Lab.',
-                        ),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.mic_rounded),
+                  tooltip: _voiceRecording ? 'Terminer' : 'Voix',
+                  onPressed: _busy ? null : _toggleVoiceMessage,
+                  icon: Icon(
+                    _voiceRecording
+                        ? Icons.stop_circle_rounded
+                        : Icons.mic_rounded,
+                    color: _voiceRecording ? _fitilaClay : null,
+                  ),
                 ),
                 const SizedBox(width: 6),
                 IconButton.filled(
