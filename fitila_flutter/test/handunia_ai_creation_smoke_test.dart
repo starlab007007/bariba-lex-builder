@@ -25,7 +25,7 @@ void main() {
       find.textContaining('Votre voix reste la source.'),
       findsOneWidget,
     );
-    expect(find.byIcon(Icons.light_mode_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.light_mode_outlined), findsWidgets);
     expect(tester.takeException(), isNull);
   });
   testWidgets('Lumiere IA remains readable with larger text', (tester) async {

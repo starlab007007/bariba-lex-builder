@@ -754,9 +754,9 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Collecte\nhumaine'), findsOneWidget);
-    expect(find.text('Mémoire\ncollective'), findsOneWidget);
-    expect(find.text('Découverte\nimmersive'), findsOneWidget);
+    expect(find.text('Collecte humaine'), findsOneWidget);
+    expect(find.text('Mémoire collective'), findsOneWidget);
+    expect(find.text('Découverte immersive'), findsOneWidget);
     expect(find.textContaining('LUMIÈRE IA'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
