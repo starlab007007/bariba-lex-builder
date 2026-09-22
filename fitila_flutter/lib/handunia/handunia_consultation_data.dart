@@ -106,15 +106,48 @@ class HanduniaConsultationData {
       }
     }
 
+    final likeCounts = <String, int>{};
+    final likedByMe = <String>{};
+    if (fragmentIds.isNotEmpty) {
+      try {
+        final rows = await _client
+            .from('handunia_fragment_likes')
+            .select('fragment_id, user_id')
+            .filter('fragment_id', 'in', '(${fragmentIds.join(',')})');
+        final currentUserId = _client.auth.currentUser?.id;
+        for (final row in List<Map<String, dynamic>>.from(rows as List)) {
+          final fragmentId = row['fragment_id']?.toString() ?? '';
+          if (fragmentId.isEmpty) continue;
+          likeCounts[fragmentId] = (likeCounts[fragmentId] ?? 0) + 1;
+          if (currentUserId != null &&
+              row['user_id']?.toString() == currentUserId) {
+            likedByMe.add(fragmentId);
+          }
+        }
+      } catch (_) {
+        // Le fil reste consultable même si les réactions sont indisponibles.
+      }
+    }
+
     var lieux = <Map<String, dynamic>>[];
     try {
       final rows = await _client
           .from('handunia_lieux')
-          .select('id, name, latitude, longitude');
+          .select(
+            'id, name, icon, latitude, longitude, cover_url, photo_url, '
+            'image_url, media_url',
+          );
       lieux = List<Map<String, dynamic>>.from(rows as List);
     } catch (_) {
-      final rows = await _client.from('handunia_lieux').select('id, name');
-      lieux = List<Map<String, dynamic>>.from(rows as List);
+      try {
+        final rows = await _client
+            .from('handunia_lieux')
+            .select('id, name, icon, latitude, longitude');
+        lieux = List<Map<String, dynamic>>.from(rows as List);
+      } catch (_) {
+        final rows = await _client.from('handunia_lieux').select('id, name');
+        lieux = List<Map<String, dynamic>>.from(rows as List);
+      }
     }
     final lieuMap = <String, Map<String, dynamic>>{
       for (final lieu in lieux)
@@ -168,15 +201,35 @@ class HanduniaConsultationData {
       }
 
       final withdrawn = fragment['withdrawn_at'] != null;
+      String? lieuCoverUrl;
+      for (final key in const <String>[
+        'cover_url',
+        'photo_url',
+        'image_url',
+        'media_url',
+      ]) {
+        final candidate = lieu?[key]?.toString().trim() ?? '';
+        if (candidate.startsWith('https://') ||
+            candidate.startsWith('http://')) {
+          lieuCoverUrl = candidate;
+          break;
+        }
+      }
+
       visible.add(<String, dynamic>{
         ...fragment,
         'item_type': withdrawn ? 'withdrawn' : 'memory',
         'lieu_name': lieu?['name']?.toString() ?? '',
+        'lieu_icon': lieu?['icon']?.toString() ?? '📍',
+        'lieu_cover_url': lieuCoverUrl,
+        'display_name': displayName.isEmpty ? 'Voix Handunia' : displayName,
         'author_initials': handuniaInitials(displayName),
         'voice_count': handuniaDistinctVoiceCount(
           fragment['user_id']?.toString(),
           voices[id] ?? const <String>{},
         ),
+        'like_count': likeCounts[id] ?? 0,
+        'liked_by_me': likedByMe.contains(id),
         'latest_corroboration_at':
             latest[id]?.toIso8601String() ?? fragment['created_at'],
         'distance_m': distance,
