@@ -27417,6 +27417,52 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     await _openWorldFeed();
   }
 
+  Future<void> _toggleWorldFeedLike(
+    String fragmentId,
+    bool like,
+  ) async {
+    await FitilaBackend.toggleHanduniaFragmentLike(
+      fragmentId: fragmentId,
+      like: like,
+    );
+  }
+
+  Future<String?> _summarizeWorldMemory(
+    Map<String, dynamic> memory,
+  ) async {
+    final text =
+        memory['transcript_text']?.toString().trim().isNotEmpty == true
+        ? memory['transcript_text'].toString().trim()
+        : memory['text']?.toString().trim() ?? '';
+    if (text.isEmpty) {
+      return 'Cette voix n’est pas encore transcrite. Écoutez-la pour découvrir le souvenir.';
+    }
+    final place = memory['lieu_name']?.toString().trim() ?? '';
+    return FitilaBackend.askFitilaIa(
+      'Résume ce souvenir Handunia Wasa en français très simple, accessible '
+      'à une personne peu à l’aise avec la lecture. Maximum 2 phrases courtes, '
+      'sans inventer de faits. Lieu: "$place". Souvenir: "$text".',
+    );
+  }
+
+  Future<String?> _translateWorldMemory(
+    Map<String, dynamic> memory,
+  ) async {
+    final text =
+        memory['transcript_text']?.toString().trim().isNotEmpty == true
+        ? memory['transcript_text'].toString().trim()
+        : memory['text']?.toString().trim() ?? '';
+    if (text.isEmpty) {
+      return 'Aucun texte à traduire pour cette voix.';
+    }
+    return FitilaBackend.askFitilaIa(
+      'Traduis fidèlement le texte suivant entre français et Bàátɔ̀nú : '
+      'si le texte est principalement en français, traduis-le en Bàátɔ̀nú ; '
+      'sinon traduis-le en français. Garde les noms propres et le sens culturel. '
+      'Retourne uniquement la traduction, sans explication. Texte: "$text".',
+    );
+  }
+
   Future<Position?> _resolveWorldPosition() async {
     if (_worldPosition != null) {
       return _worldPosition;
@@ -27781,13 +27827,18 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       return content;
     }
     return Scaffold(
-      backgroundColor: FitilaReferenceUi.appBg,
+      backgroundColor:
+          _step == 5 ? const Color(0xFF0C0A08) : FitilaReferenceUi.appBg,
+      extendBody: _step == 5,
       body: content,
-      bottomNavigationBar: FitilaPremiumBottomNav(
-        selectedIndex:
-            widget.entryMode == HanduniaWasaEntryMode.feed ? 0 : -1,
-        onSelected: _leaveForPlatform,
-        onCreate: _leaveForCreator,
+      bottomNavigationBar: Opacity(
+        opacity: _step == 5 ? .94 : 1,
+        child: FitilaPremiumBottomNav(
+          selectedIndex:
+              widget.entryMode == HanduniaWasaEntryMode.feed ? 0 : -1,
+          onSelected: _leaveForPlatform,
+          onCreate: _leaveForCreator,
+        ),
       ),
     );
   }
@@ -29531,6 +29582,9 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       onRefresh: _openWorldFeed,
       onFilterChanged: _changeWorldFeedFilter,
       onOpenMemory: _openWorldMemory,
+      onLikeChanged: _toggleWorldFeedLike,
+      onAiSummary: _summarizeWorldMemory,
+      onTranslate: _translateWorldMemory,
       onFindMissingVoice: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => HanduniaLivingMapRoute(
