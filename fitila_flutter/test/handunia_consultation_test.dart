@@ -352,10 +352,13 @@ void main() {
     expect(find.text('Handunia Wasa'), findsOneWidget);
     expect(find.text('Nikki'), findsOneWidget);
     expect(find.text('34 voix'), findsOneWidget);
-    expect(find.text('COMMENCER AVEC LUMIÈRE IA'), findsOneWidget);
-    expect(find.text('Enregistrer directement'), findsOneWidget);
+    expect(find.text('TISSER PAR LA VOIX'), findsOneWidget);
+    expect(find.text('ÊTRE GUIDÉ PAR LUMIÈRE IA'), findsOneWidget);
+    expect(find.text('Collecte humaine'), findsWidgets);
+    expect(find.text('Mémoire collective'), findsOneWidget);
+    expect(find.text('Découverte immersive'), findsOneWidget);
     expect(
-      find.text('L’IA éclaire la mémoire. Elle ne l’invente pas.'),
+      find.textContaining('Votre voix reste la source.'),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
@@ -724,6 +727,37 @@ void main() {
     await tester.tap(find.text('Aider à compléter cette mémoire'));
     await tester.pump();
     expect(called, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+
+  testWidgets('Handunia architecture is visible as three connected layers', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Padding(
+            padding: EdgeInsets.all(16),
+            child: HanduniaArchitectureMap(
+              active: HanduniaArchitectureLayer.memory,
+              compact: true,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Collecte\nhumaine'), findsOneWidget);
+    expect(find.text('Mémoire\ncollective'), findsOneWidget);
+    expect(find.text('Découverte\nimmersive'), findsOneWidget);
+    expect(find.textContaining('LUMIÈRE IA'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

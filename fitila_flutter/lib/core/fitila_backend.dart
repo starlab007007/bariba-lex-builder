@@ -2290,26 +2290,32 @@ class FitilaBackend {
     bool aiGenerated = false,
     bool aiAssisted = false,
     String scopeLevel = 'community',
+    String? periodLabel,
   }) async {
     final user = client.auth.currentUser;
     if (user == null) {
       throw const AuthException('Connexion requise.');
     }
     final now = DateTime.now().toUtc().toIso8601String();
+    final payload = <String, dynamic>{
+      'user_id': user.id,
+      'lieu_id': lieuId,
+      'text': text.trim(),
+      'ai_generated': aiGenerated,
+      'ai_assisted': aiAssisted,
+      'scope_level': scopeLevel,
+      'sealed_at': now,
+      'synchronized_at': now,
+      'memory_state': 'sealed',
+      'review_status': 'user_validated',
+    };
+    final cleanPeriod = periodLabel?.trim() ?? '';
+    if (cleanPeriod.isNotEmpty && cleanPeriod != 'Je ne sais pas') {
+      payload['period_label'] = cleanPeriod;
+    }
     final data = await client
         .from('handunia_fragments')
-        .insert(<String, dynamic>{
-          'user_id': user.id,
-          'lieu_id': lieuId,
-          'text': text.trim(),
-          'ai_generated': aiGenerated,
-          'ai_assisted': aiAssisted,
-          'scope_level': scopeLevel,
-          'sealed_at': now,
-          'synchronized_at': now,
-          'memory_state': 'sealed',
-          'review_status': 'user_validated',
-        })
+        .insert(payload)
         .select()
         .single();
     return Map<String, dynamic>.from(data);

@@ -1476,11 +1476,13 @@ class ReferencePortalStage extends StatefulWidget {
     this.title = 'Handunia Wasa',
     this.subtitle =
         'Le monde vivant Bàátɔ̀nú, tissé par chaque voix, chaque souvenir, chaque récit.',
+    this.architecture,
   });
 
   final VoidCallback onEnter;
   final String title;
   final String subtitle;
+  final Widget? architecture;
 
   @override
   State<ReferencePortalStage> createState() => _ReferencePortalStageState();
@@ -1595,7 +1597,12 @@ class _ReferencePortalStageState extends State<ReferencePortalStage>
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 22),
+                  if (widget.architecture != null) ...[
+                    const SizedBox(height: 16),
+                    widget.architecture!,
+                    const SizedBox(height: 16),
+                  ] else
+                    const SizedBox(height: 22),
                   ReferenceGhostDarkButton(
                     label: 'Entrer dans le monde',
                     onPressed: widget.onEnter,

@@ -26396,6 +26396,8 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   bool _generating = false;
   bool _aiAssisted = false;
   bool _lastPublishWasLocal = false;
+  String _weavePeriodLabel = 'Je ne sais pas';
+  String _weaveScope = 'community';
 
   final _newLieuName = TextEditingController();
   final _newLieuIcon = TextEditingController(text: '📍');
@@ -26852,18 +26854,27 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         continue;
       }
       final remaining = <String>[];
-      for (final text in pending) {
+      for (final raw in pending) {
+        final payload = _decodeLocalFragmentPayload(raw);
+        final text = payload['text']?.toString().trim() ?? '';
+        if (text.isEmpty) {
+          continue;
+        }
         try {
           await FitilaBackend.weaveHanduniaFragment(
             lieuId: lieuId,
             text: text,
             aiGenerated: false,
-            aiAssisted: false,
-            scopeLevel: 'community',
+            aiAssisted: payload['ai_assisted'] == true,
+            scopeLevel:
+                payload['scope_level']?.toString().trim().isNotEmpty == true
+                ? payload['scope_level'].toString()
+                : 'community',
+            periodLabel: payload['period_label']?.toString(),
           );
           synced += 1;
         } catch (_) {
-          remaining.add(text);
+          remaining.add(raw);
         }
       }
       if (remaining.isEmpty) {
@@ -26878,32 +26889,66 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   String _localFragmentKey(String lieuId) =>
       'handunia_wasa_local_fragments_$lieuId';
 
+  Map<String, dynamic> _decodeLocalFragmentPayload(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded);
+      }
+    } catch (_) {
+      // Compatibilité avec les anciens brouillons stockés comme texte brut.
+    }
+    return <String, dynamic>{
+      'text': raw,
+      'scope_level': 'community',
+      'period_label': 'Je ne sais pas',
+      'ai_assisted': false,
+    };
+  }
+
   Future<List<Map<String, dynamic>>> _readLocalFragments(String lieuId) async {
     try {
       final preferences = await SharedPreferences.getInstance();
       final values = preferences.getStringList(_localFragmentKey(lieuId)) ?? [];
-      return values.reversed
-          .map(
-            (text) => <String, dynamic>{
-              'id': 'local-${text.hashCode}',
-              'text': text,
-              'display_name': 'Sur cet appareil',
-              'like_count': 0,
-              'liked_by_me': false,
-              'local_only': true,
-            },
-          )
-          .toList(growable: false);
+      return values.reversed.map((raw) {
+        final payload = _decodeLocalFragmentPayload(raw);
+        final text = payload['text']?.toString() ?? '';
+        return <String, dynamic>{
+          ...payload,
+          'id': 'local-${raw.hashCode}',
+          'text': text,
+          'display_name': 'Sur cet appareil',
+          'like_count': 0,
+          'liked_by_me': false,
+          'local_only': true,
+        };
+      }).toList(growable: false);
     } catch (_) {
       return const [];
     }
   }
 
-  Future<void> _saveLocalFragment(String lieuId, String text) async {
+  Future<void> _saveLocalFragment(
+    String lieuId,
+    String text, {
+    required String periodLabel,
+    required String scopeLevel,
+    required bool aiAssisted,
+  }) async {
     final preferences = await SharedPreferences.getInstance();
     final key = _localFragmentKey(lieuId);
-    final values = preferences.getStringList(key) ?? <String>[];
-    values.add(text);
+    final values = List<String>.from(
+      preferences.getStringList(key) ?? const <String>[],
+    );
+    values.add(
+      jsonEncode(<String, dynamic>{
+        'text': text,
+        'period_label': periodLabel,
+        'scope_level': scopeLevel,
+        'ai_assisted': aiAssisted,
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+      }),
+    );
     await preferences.setStringList(key, values);
   }
 
@@ -27111,7 +27156,13 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     var savedLocally = false;
     try {
       if (!FitilaBackend.configured) {
-        await _saveLocalFragment(lieu['id'] as String, text);
+        await _saveLocalFragment(
+          lieu['id'] as String,
+          text,
+          periodLabel: _weavePeriodLabel,
+          scopeLevel: _weaveScope,
+          aiAssisted: _aiAssisted,
+        );
         savedLocally = true;
       } else {
         try {
@@ -27120,10 +27171,17 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             text: text,
             aiGenerated: false,
             aiAssisted: _aiAssisted,
-            scopeLevel: 'community',
+            scopeLevel: _weaveScope,
+            periodLabel: _weavePeriodLabel,
           );
         } catch (_) {
-          await _saveLocalFragment(lieu['id'] as String, text);
+          await _saveLocalFragment(
+            lieu['id'] as String,
+            text,
+            periodLabel: _weavePeriodLabel,
+            scopeLevel: _weaveScope,
+            aiAssisted: _aiAssisted,
+          );
           savedLocally = true;
         }
       }
@@ -27135,7 +27193,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           content: Text(
             savedLocally
                 ? 'Souvenir conservé sur cet appareil. Il sera synchronisé automatiquement lorsque le service communautaire sera de nouveau disponible.'
-                : 'Publié dans le Fil Handunia Wasa.',
+                : 'Souvenir tissé : il rejoint la mémoire du lieu et le Fil Handunia Wasa.',
           ),
         ),
       );
@@ -27765,7 +27823,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       1 => ReferenceCreationShell(
         dark: false,
         title: 'Lieux vivants',
-        subtitle: 'Explorez les mémoires du Bénin',
+        subtitle: '2. Mémoire collective · lieux, temps et voix',
         leading: const Text('🌌', style: TextStyle(fontSize: 15)),
         onBack: widget.entryMode == HanduniaWasaEntryMode.publish
             ? () => Navigator.maybePop(context)
@@ -27775,14 +27833,14 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       2 => ReferenceCreationShell(
         dark: false,
         title: _selectedLieu?['name']?.toString() ?? 'Lieu vivant',
-        subtitle: 'Reconstitué par la mémoire collective',
+        subtitle: '2. Mémoire collective · voix reliées à ce lieu',
         onBack: () => setState(() => _step = 1),
         child: _buildSceneStep(),
       ),
       3 => ReferenceCreationShell(
         dark: false,
         title: 'Tisser un souvenir',
-        subtitle: 'Il rejoint Handunia Wasa',
+        subtitle: '1. Collecte humaine · puis mémoire collective',
         leading: const Text('🧵', style: TextStyle(fontSize: 15)),
         onBack: () => setState(() => _step = 2),
         child: _buildWeaveStep(),
@@ -27798,11 +27856,11 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       6 => ReferenceCreationShell(
         dark: false,
         title: _lastPublishWasLocal
-            ? 'Souvenir enregistré'
-            : 'Souvenir publié',
+            ? 'Souvenir conservé'
+            : 'Souvenir tissé',
         subtitle: _lastPublishWasLocal
             ? 'Synchronisation automatique au retour du réseau'
-            : 'Il est maintenant dans Handunia Wasa',
+            : '3. Découverte immersive · il vit désormais dans Handunia',
         leading: const Icon(
           Icons.check_circle_outline,
           color: FitilaReferenceUi.goldDeep,
@@ -27817,6 +27875,10 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         bodyPadding: EdgeInsets.zero,
         child: ReferencePortalStage(
           onEnter: () => setState(() => _step = 1),
+          architecture: const HanduniaArchitectureMap(
+            dark: true,
+            compact: true,
+          ),
         ),
       ),
     };
@@ -27828,7 +27890,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     }
     return Scaffold(
       backgroundColor:
-          _step == 5 ? const Color(0xFF0C0A08) : FitilaReferenceUi.appBg,
+          _step == 5 ? HanduniaTokens.nuit : FitilaReferenceUi.appBg,
       extendBody: _step == 5,
       body: content,
       bottomNavigationBar: Opacity(
@@ -27846,6 +27908,10 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   Widget _buildPortalStep() {
     return ReferencePortalStage(
       onEnter: () => setState(() => _step = 1),
+      architecture: const HanduniaArchitectureMap(
+        dark: true,
+        compact: true,
+      ),
     );
   }
 
@@ -28158,6 +28224,13 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
+          HanduniaArchitectureMap(
+            active: widget.entryMode == HanduniaWasaEntryMode.publish
+                ? HanduniaArchitectureLayer.collection
+                : HanduniaArchitectureLayer.memory,
+            compact: true,
+          ),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
@@ -28746,6 +28819,11 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
+        const HanduniaArchitectureMap(
+          active: HanduniaArchitectureLayer.memory,
+          compact: true,
+        ),
+        const SizedBox(height: 14),
         hero(),
         const SizedBox(height: 12),
         IntrinsicHeight(
@@ -28911,7 +28989,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         ],
         const SizedBox(height: 12),
         ReferenceGoldButton(
-          label: 'Créer avec Lumière IA',
+          label: 'Tisser avec Lumière IA',
           icon: Icons.light_mode_outlined,
           onPressed: _generateFragment,
         ),
@@ -28922,7 +29000,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
               child: OutlinedButton.icon(
                 onPressed: () => setState(() => _step = 3),
                 icon: const Icon(Icons.edit_note_outlined),
-                label: const Text('Écrire sans IA'),
+                label: const Text('Tisser par le texte'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: FitilaReferenceUi.ink,
                   side: const BorderSide(color: FitilaReferenceUi.hairline),
@@ -29135,16 +29213,21 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 18),
       children: [
+        const HanduniaArchitectureMap(
+          active: HanduniaArchitectureLayer.discovery,
+          compact: true,
+        ),
+        const SizedBox(height: 22),
         const Icon(
           Icons.check_circle_rounded,
           color: FitilaReferenceUi.wasaGlow,
-          size: 72,
+          size: 62,
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
         Text(
           _lastPublishWasLocal
               ? 'Votre souvenir est conservé sur cet appareil.'
-              : 'Votre souvenir a rejoint la mémoire collective.',
+              : 'Votre souvenir est tissé à la mémoire collective.',
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: HanduniaTokens.ivoire,
@@ -29156,20 +29239,20 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         const SizedBox(height: 10),
         Text(
           _lastPublishWasLocal
-              ? 'Il apparaîtra dans le Fil Handunia Wasa et sera synchronisé automatiquement dès que le réseau sera disponible.'
-              : 'Consultez-le maintenant dans Fil → Handunia Wasa.',
+              ? 'Collecte humaine terminée. La mémoire sera reliée et apparaîtra dans la découverte immersive après synchronisation.'
+              : 'Collecte humaine → mémoire collective → découverte immersive : votre contribution peut maintenant être retrouvée par le lieu, la période et le Fil Handunia.',
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: HanduniaTokens.cendre,
             fontFamily: 'Karla',
-            fontSize: 13.5,
+            fontSize: 13,
             height: 1.5,
           ),
         ),
         const SizedBox(height: 24),
         ReferenceGoldButton(
           label: 'VOIR DANS LE FIL',
-          icon: Icons.dynamic_feed_outlined,
+          icon: Icons.travel_explore_rounded,
           onPressed: () => Navigator.of(context).pop(true),
         ),
         const SizedBox(height: 10),
@@ -29179,11 +29262,13 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             onPressed: () {
               setState(() {
                 _selectedLieu = null;
+                _weavePeriodLabel = 'Je ne sais pas';
+                _weaveScope = 'community';
                 _step = 1;
               });
             },
-            icon: const Icon(Icons.add_outlined),
-            label: const Text('Publier un autre souvenir'),
+            icon: const Icon(Icons.gesture_rounded),
+            label: const Text('Tisser un autre souvenir'),
             style: OutlinedButton.styleFrom(
               foregroundColor: FitilaReferenceUi.ink,
               side: const BorderSide(color: FitilaReferenceUi.hairline),
@@ -29203,14 +29288,65 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   // devient immédiatement visible dans le vrai Fil Handunia de la plateforme.
   Widget _buildWeaveStep() {
     final lieu = _selectedLieu;
+    final authenticated = FitilaBackend.configured &&
+        FitilaBackend.client.auth.currentUser != null;
+    const periods = <String>[
+      'Je ne sais pas',
+      'Avant 1960',
+      '1960–1979',
+      '1980–1999',
+      '2000–2019',
+      'Depuis 2020',
+    ];
+    const scopes = <(String, String)>[
+      ('elders', 'Anciens'),
+      ('lineage', 'Lignée'),
+      ('community', 'Communauté'),
+      ('all', 'Tous'),
+    ];
+
     return ListView(
       padding: EdgeInsets.zero,
       children: [
+        const HanduniaArchitectureMap(
+          active: HanduniaArchitectureLayer.collection,
+          compact: true,
+        ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: FitilaReferenceUi.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: FitilaReferenceUi.hairline),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _HanduniaCollectionLine(
+                icon: Icons.location_on_rounded,
+                label: 'Lieu',
+                value: lieu?['name']?.toString() ?? 'À choisir',
+              ),
+              const SizedBox(height: 8),
+              _HanduniaCollectionLine(
+                icon: authenticated
+                    ? Icons.verified_user_outlined
+                    : Icons.person_outline_rounded,
+                label: 'Auteur',
+                value: authenticated
+                    ? 'Votre compte FITILA · témoignage humain'
+                    : 'Identité rattachée lors de la synchronisation',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: FitilaReferenceUi.surface,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(color: FitilaReferenceUi.hairline),
             boxShadow: const [
               BoxShadow(
@@ -29225,19 +29361,19 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'TON RÉCIT',
+                'VOTRE TÉMOIGNAGE',
                 style: TextStyle(
                   color: HanduniaTokens.braise,
                   fontFamily: 'Karla',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
                   letterSpacing: .8,
                 ),
               ),
               const SizedBox(height: 5),
               _HanduniaTextField(
                 controller: _fragmentController,
-                maxLines: 4,
+                maxLines: 5,
                 onChanged: (value) {
                   if (value.trim().isEmpty && _aiAssisted) {
                     setState(() => _aiAssisted = false);
@@ -29252,18 +29388,109 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                 ),
               ),
               if (_aiAssisted)
-                Text(
-                  'Assisté par Fitila IA — modifiable avant le tissage',
+                const Text(
+                  'Lumière IA a aidé à structurer le texte. Le témoignage reste le vôtre et reste modifiable.',
                   style: TextStyle(
                     color: HanduniaTokens.cendre,
                     fontFamily: 'Karla',
-                    fontSize: 12.5,
+                    fontSize: 12,
+                    height: 1.35,
                   ),
                 ),
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
+        const Text(
+          'PÉRIODE',
+          style: TextStyle(
+            color: HanduniaTokens.ivoire,
+            fontFamily: 'Karla',
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            letterSpacing: .7,
+          ),
+        ),
+        const SizedBox(height: 7),
+        Wrap(
+          spacing: 7,
+          runSpacing: 7,
+          children: [
+            for (final period in periods)
+              ChoiceChip(
+                selected: _weavePeriodLabel == period,
+                onSelected: (_) =>
+                    setState(() => _weavePeriodLabel = period),
+                label: Text(period),
+                selectedColor: HanduniaTokens.orClair,
+                backgroundColor: HanduniaTokens.nuitPortee,
+                side: BorderSide(
+                  color: _weavePeriodLabel == period
+                      ? HanduniaTokens.braise
+                      : HanduniaTokens.bordureForte,
+                ),
+                labelStyle: TextStyle(
+                  color: HanduniaTokens.ivoire,
+                  fontFamily: 'Karla',
+                  fontSize: 11.5,
+                  fontWeight: _weavePeriodLabel == period
+                      ? FontWeight.w800
+                      : FontWeight.w600,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        const Text(
+          'PORTÉE',
+          style: TextStyle(
+            color: HanduniaTokens.ivoire,
+            fontFamily: 'Karla',
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            letterSpacing: .7,
+          ),
+        ),
+        const SizedBox(height: 7),
+        Wrap(
+          spacing: 7,
+          runSpacing: 7,
+          children: [
+            for (final scope in scopes)
+              ChoiceChip(
+                selected: _weaveScope == scope.$1,
+                onSelected: (_) => setState(() => _weaveScope = scope.$1),
+                avatar: Icon(
+                  scope.$1 == 'elders'
+                      ? Icons.elderly_outlined
+                      : scope.$1 == 'lineage'
+                      ? Icons.account_tree_outlined
+                      : scope.$1 == 'all'
+                      ? Icons.public_rounded
+                      : Icons.groups_2_outlined,
+                  size: 15,
+                  color: _weaveScope == scope.$1
+                      ? HanduniaTokens.braise
+                      : HanduniaTokens.cendre,
+                ),
+                label: Text(scope.$2),
+                selectedColor: HanduniaTokens.orClair,
+                backgroundColor: HanduniaTokens.nuitPortee,
+                side: BorderSide(
+                  color: _weaveScope == scope.$1
+                      ? HanduniaTokens.braise
+                      : HanduniaTokens.bordureForte,
+                ),
+                labelStyle: const TextStyle(
+                  color: HanduniaTokens.ivoire,
+                  fontFamily: 'Karla',
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
@@ -29279,74 +29506,35 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                   )
                 : const Icon(
                     Icons.light_mode_outlined,
-                    color: FitilaReferenceUi.wasaGlow,
-                    size: 15,
+                    color: FitilaReferenceUi.goldDeep,
+                    size: 16,
                   ),
-            label: const Text('Créer avec Lumière IA'),
+            label: const Text('Être guidé par Lumière IA'),
             style: TextButton.styleFrom(
               foregroundColor: HanduniaTokens.ivoire,
               textStyle: const TextStyle(
                 fontFamily: 'Karla',
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
         ),
         const SizedBox(height: 6),
-        SizedBox(
-          height: 190,
-          width: double.infinity,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: CustomPaint(painter: _WeaveLinePainter()),
-              ),
-              const Positioned(
-                right: 48,
-                top: 42,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Color(0x55FFFFFF),
-                    shape: BoxShape.circle,
-                  ),
-                  child: SizedBox(width: 9, height: 9),
-                ),
-              ),
-              const Positioned(
-                left: 34,
-                bottom: 26,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: FitilaReferenceUi.wasaGlow,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0xAA8FE3CF),
-                        blurRadius: 14,
-                      ),
-                    ],
-                  ),
-                  child: SizedBox(width: 13, height: 13),
-                ),
-              ),
-            ],
-          ),
-        ),
         ReferenceGoldButton(
-          label: 'PUBLIER DANS LE FIL',
-          icon: Icons.publish_outlined,
+          label: 'TISSER LE SOUVENIR',
+          icon: Icons.hub_outlined,
           busy: _weaving,
           onPressed: _weaving ? null : _weaveFragment,
         ),
         const SizedBox(height: 8),
-        Text(
-          "Votre récit rejoint la mémoire du lieu et apparaît dans le Fil Handunia Wasa.",
+        const Text(
+          'Tisser équivaut à publier dans Handunia : la contribution reste humaine, rejoint le lieu et la mémoire collective, puis devient découvrable dans le Fil.',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: HanduniaTokens.cendre,
             fontFamily: 'Karla',
-            fontSize: 12.5,
+            fontSize: 12,
             height: 1.45,
           ),
         ),
@@ -29656,6 +29844,66 @@ class _HanduniaStatusPill extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _HanduniaCollectionLine extends StatelessWidget {
+  const _HanduniaCollectionLine({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: HanduniaTokens.orClair,
+          ),
+          child: Icon(icon, size: 18, color: HanduniaTokens.braise),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label.toUpperCase(),
+                style: const TextStyle(
+                  color: HanduniaTokens.cendre,
+                  fontFamily: 'Karla',
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: .6,
+                ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                value,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: HanduniaTokens.ivoire,
+                  fontFamily: 'Karla',
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  height: 1.25,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

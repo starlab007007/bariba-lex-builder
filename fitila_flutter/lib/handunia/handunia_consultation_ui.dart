@@ -57,6 +57,257 @@ TextStyle _karla({
   );
 }
 
+
+enum HanduniaArchitectureLayer { collection, memory, discovery }
+
+class HanduniaArchitectureMap extends StatelessWidget {
+  const HanduniaArchitectureMap({
+    super.key,
+    this.active,
+    this.dark = false,
+    this.compact = false,
+    this.showIa = true,
+  });
+
+  final HanduniaArchitectureLayer? active;
+  final bool dark;
+  final bool compact;
+  final bool showIa;
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = dark
+        ? Colors.white.withValues(alpha: .62)
+        : HanduniaTokens.cendre;
+    final connector = dark
+        ? Colors.white.withValues(alpha: .28)
+        : HanduniaTokens.bordureForte;
+
+    return Semantics(
+      container: true,
+      label:
+          'Architecture Handunia Wasa : collecte humaine, mémoire collective, '
+          'découverte immersive. Lumière IA relie et éclaire sans inventer.',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: compact ? 92 : 112,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: _pillar(
+                    layer: HanduniaArchitectureLayer.collection,
+                    number: '1',
+                    icon: Icons.mic_none_rounded,
+                    title: 'Collecte\nhumaine',
+                    details: 'voix · texte\nlieu · période\nauteur · portée',
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    size: compact ? 14 : 18,
+                    color: connector,
+                  ),
+                ),
+                Expanded(
+                  child: _pillar(
+                    layer: HanduniaArchitectureLayer.memory,
+                    number: '2',
+                    icon: Icons.account_tree_outlined,
+                    title: 'Mémoire\ncollective',
+                    details: 'lieux · temps\ncorroborations\ndivergences · lacunes',
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    size: compact ? 14 : 18,
+                    color: connector,
+                  ),
+                ),
+                Expanded(
+                  child: _pillar(
+                    layer: HanduniaArchitectureLayer.discovery,
+                    number: '3',
+                    icon: Icons.travel_explore_rounded,
+                    title: 'Découverte\nimmersive',
+                    details: 'feed vertical\nparcours · carte\nrecommandations',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (showIa) ...[
+            SizedBox(height: compact ? 7 : 10),
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 10 : 12,
+                vertical: compact ? 7 : 9,
+              ),
+              decoration: BoxDecoration(
+                color: dark
+                    ? Colors.white.withValues(alpha: .07)
+                    : HanduniaTokens.orClair.withValues(alpha: .72),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: dark
+                      ? Colors.white.withValues(alpha: .16)
+                      : HanduniaTokens.bordureForte,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.light_mode_outlined,
+                    size: 15,
+                    color: HanduniaTokens.braise,
+                  ),
+                  const SizedBox(width: 7),
+                  Flexible(
+                    child: Text(
+                      'LUMIÈRE IA · relie et éclaire · n’invente pas',
+                      maxLines: 1,
+                      overflow: TextOverflow.fade,
+                      textAlign: TextAlign.center,
+                      style: _karla(
+                        size: compact ? 9.2 : 10.4,
+                        color: muted,
+                        weight: FontWeight.w800,
+                        height: 1,
+                      ).copyWith(letterSpacing: .35),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _pillar({
+    required HanduniaArchitectureLayer layer,
+    required String number,
+    required IconData icon,
+    required String title,
+    required String details,
+  }) {
+    final selected = active == null || active == layer;
+    final fg = dark ? Colors.white : HanduniaTokens.ivoire;
+    final muted = dark
+        ? Colors.white.withValues(alpha: selected ? .68 : .42)
+        : HanduniaTokens.cendre.withValues(alpha: selected ? 1 : .62);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: EdgeInsets.fromLTRB(
+        compact ? 7 : 9,
+        compact ? 7 : 9,
+        compact ? 7 : 9,
+        compact ? 6 : 8,
+      ),
+      decoration: BoxDecoration(
+        color: selected
+            ? (dark
+                  ? Colors.white.withValues(alpha: .09)
+                  : HanduniaTokens.nuitPortee)
+            : (dark
+                  ? Colors.white.withValues(alpha: .035)
+                  : HanduniaTokens.nuitPortee.withValues(alpha: .45)),
+        borderRadius: BorderRadius.circular(compact ? 16 : 19),
+        border: Border.all(
+          color: active == layer
+              ? HanduniaTokens.braise
+              : (dark
+                    ? Colors.white.withValues(alpha: .13)
+                    : HanduniaTokens.bordure),
+          width: active == layer ? 1.4 : 1,
+        ),
+        boxShadow: active == layer && !dark
+            ? const [
+                BoxShadow(
+                  color: Color(0x1FD89A20),
+                  blurRadius: 14,
+                  offset: Offset(0, 5),
+                ),
+              ]
+            : const [],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: compact ? 18 : 20,
+                height: compact ? 18 : 20,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: active == layer
+                      ? HanduniaTokens.braise
+                      : HanduniaTokens.orClair.withValues(alpha: dark ? .16 : .9),
+                ),
+                child: Text(
+                  number,
+                  style: _karla(
+                    size: compact ? 8.3 : 9,
+                    color: active == layer
+                        ? Colors.white
+                        : (dark ? Colors.white : HanduniaTokens.ivoire),
+                    weight: FontWeight.w900,
+                    height: 1,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                icon,
+                size: compact ? 14 : 16,
+                color: active == layer
+                    ? HanduniaTokens.braise
+                    : muted,
+              ),
+            ],
+          ),
+          SizedBox(height: compact ? 3 : 5),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            style: _fraunces(
+              size: compact ? 10.7 : 12,
+              color: selected ? fg : muted,
+              height: 1.02,
+            ),
+          ),
+          SizedBox(height: compact ? 3 : 5),
+          Text(
+            details,
+            textAlign: TextAlign.center,
+            maxLines: 3,
+            style: _karla(
+              size: compact ? 7.6 : 8.7,
+              color: muted,
+              weight: FontWeight.w600,
+              height: 1.18,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class HaloDensite extends StatefulWidget {
   const HaloDensite({
     super.key,
@@ -2337,7 +2588,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                               ),
                               const SizedBox(height: 3),
                               Text(
-                                'NOS RACINES, NOS HISTOIRES',
+                                '3 · DÉCOUVERTE IMMERSIVE · MÉMOIRE VIVANTE',
                                 textAlign: TextAlign.center,
                                 maxLines: 1,
                                 style: _karla(
