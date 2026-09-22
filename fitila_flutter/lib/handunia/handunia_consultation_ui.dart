@@ -14,17 +14,17 @@ abstract final class HanduniaTokens {
   // Les noms historiques sont conservés pour éviter de casser les parcours,
   // mais leur rôle est désormais sémantique : fond, surface, bordure, accent,
   // texte principal et texte secondaire.
-  static const nuit = Color(0xFFF7F5EC);
-  static const nuitPortee = Color(0xFFFFFFFF);
-  static const bordure = Color(0xFFE4DFCC);
-  static const bordureForte = Color(0xFFD3CCBC);
-  static const braise = Color(0xFFC99530);
-  static const terre = Color(0xFFB54E33);
-  static const ivoire = Color(0xFF241F2E);
-  static const cendre = Color(0xFF746D5C);
-  static const encre = Color(0xFF241F2E);
-  static const orClair = Color(0xFFF3E3B9);
-  static const violet = Color(0xFF514578);
+  static const nuit = Color(0xFFFFF8EA);
+  static const nuitPortee = Color(0xFFFFFCF5);
+  static const bordure = Color(0xFFF1DFC0);
+  static const bordureForte = Color(0xFFE7C995);
+  static const braise = Color(0xFFD89A20);
+  static const terre = Color(0xFFB45B3C);
+  static const ivoire = Color(0xFF3B1E0E);
+  static const cendre = Color(0xFF8A7661);
+  static const encre = Color(0xFF3B1E0E);
+  static const orClair = Color(0xFFF8EFD9);
+  static const violet = Color(0xFF6A557D);
 }
 
 TextStyle _fraunces({

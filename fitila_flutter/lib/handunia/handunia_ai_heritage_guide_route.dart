@@ -533,9 +533,9 @@ class _HanduniaAiHeritageGuideRouteState
   }) {
     return Material(
       color: HanduniaTokens.nuitPortee,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(22),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(22),
         onTap: onPick,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(13, 11, 9, 11),
@@ -596,7 +596,7 @@ class _HanduniaAiHeritageGuideRouteState
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: HanduniaTokens.nuitPortee,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: color),
       ),
       child: Column(
@@ -670,38 +670,85 @@ class _HanduniaAiHeritageGuideRouteState
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 6, 10, 6),
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
               child: Row(
                 children: [
-                  IconButton(
-                    onPressed: () => Navigator.maybePop(context),
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    color: HanduniaTokens.ivoire,
+                  SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: IconButton(
+                      onPressed: () => Navigator.maybePop(context),
+                      icon: const Icon(Icons.arrow_back_rounded, size: 23),
+                      color: HanduniaTokens.ivoire,
+                      style: IconButton.styleFrom(
+                        backgroundColor: HanduniaTokens.nuitPortee,
+                        side: const BorderSide(
+                          color: HanduniaTokens.bordureForte,
+                        ),
+                        elevation: 2,
+                        shadowColor: const Color(0x216B4A22),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('Guide IA patrimonial', style: _fraunces(size: 24)),
+                        const Icon(
+                          Icons.workspace_premium_rounded,
+                          size: 16,
+                          color: HanduniaTokens.braise,
+                        ),
                         Text(
-                          'Carte réelle · mémoire sourcée · visite racontée',
-                          style: _karla(size: 11.5, color: HanduniaTokens.cendre),
+                          'Guide IA patrimonial',
+                          textAlign: TextAlign.center,
+                          style: _fraunces(size: 22, height: 1.05),
+                        ),
+                        Text(
+                          'HANDUNIA WASA · VISITE RACONTÉE',
+                          textAlign: TextAlign.center,
+                          style: _karla(
+                            size: 8.2,
+                            color: HanduniaTokens.cendre,
+                            weight: FontWeight.w800,
+                            height: 1,
+                          ).copyWith(letterSpacing: 1.1),
                         ),
                       ],
                     ),
                   ),
-                  IconButton(
-                    onPressed: routeReady
-                        ? () => setState(() => _immersive = !_immersive)
-                        : null,
-                    icon: Icon(
-                      _immersive
-                          ? Icons.view_in_ar_rounded
-                          : Icons.threed_rotation_rounded,
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: IconButton(
+                      onPressed: routeReady
+                          ? () => setState(() => _immersive = !_immersive)
+                          : null,
+                      icon: Icon(
+                        _immersive
+                            ? Icons.view_in_ar_rounded
+                            : Icons.threed_rotation_rounded,
+                        size: 21,
+                      ),
+                      color: _immersive
+                          ? HanduniaTokens.braise
+                          : HanduniaTokens.cendre,
+                      style: IconButton.styleFrom(
+                        backgroundColor: HanduniaTokens.nuitPortee,
+                        side: const BorderSide(
+                          color: HanduniaTokens.bordureForte,
+                        ),
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
                     ),
-                    color: _immersive
-                        ? HanduniaTokens.braise
-                        : HanduniaTokens.cendre,
                   ),
                 ],
               ),
@@ -825,7 +872,7 @@ class _HanduniaAiHeritageGuideRouteState
                       padding: const EdgeInsets.all(13),
                       decoration: BoxDecoration(
                         color: HanduniaTokens.nuitPortee,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(22),
                         border: Border.all(color: HanduniaTokens.bordureForte),
                       ),
                       child: Column(

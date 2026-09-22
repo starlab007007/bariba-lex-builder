@@ -1182,8 +1182,10 @@ class _HanduniaLocationPickerRouteState
               right: 10,
               top: 10,
               child: Material(
-                color: HanduniaTokens.nuitPortee.withValues(alpha: .97),
-                borderRadius: BorderRadius.circular(18),
+                color: HanduniaTokens.nuitPortee.withValues(alpha: .96),
+                elevation: 3,
+                shadowColor: const Color(0x216B4A22),
+                borderRadius: BorderRadius.circular(24),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(6, 7, 7, 7),
                   child: Column(
@@ -1197,14 +1199,37 @@ class _HanduniaLocationPickerRouteState
                             color: HanduniaTokens.ivoire,
                           ),
                           const Expanded(
-                            child: Text(
-                              'Positionner le lieu',
-                              style: TextStyle(
-                                fontFamily: 'Fraunces',
-                                fontWeight: FontWeight.w600,
-                                fontSize: 21,
-                                color: HanduniaTokens.ivoire,
-                              ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.workspace_premium_rounded,
+                                  size: 15,
+                                  color: HanduniaTokens.braise,
+                                ),
+                                Text(
+                                  'Positionner le lieu',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontFamily: 'Fraunces',
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 20,
+                                    height: 1.05,
+                                    color: HanduniaTokens.ivoire,
+                                  ),
+                                ),
+                                Text(
+                                  'HANDUNIA WASA · CARTE VIVANTE',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontFamily: 'Karla',
+                                    fontSize: 8.2,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.1,
+                                    color: HanduniaTokens.cendre,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           IconButton(
@@ -1244,10 +1269,10 @@ class _HanduniaLocationPickerRouteState
                                 ),
                                 prefixIcon: const Icon(Icons.search_rounded),
                                 filled: true,
-                                fillColor: HanduniaTokens.nuit,
+                                fillColor: HanduniaTokens.orClair.withValues(alpha: .38),
                                 isDense: true,
                                 border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
+                                  borderRadius: BorderRadius.circular(18),
                                   borderSide: const BorderSide(
                                     color: HanduniaTokens.bordureForte,
                                   ),

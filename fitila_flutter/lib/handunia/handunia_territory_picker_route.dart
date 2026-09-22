@@ -175,13 +175,13 @@ class _HanduniaTerritoryPickerRouteState
           color: HanduniaTokens.cendre,
         ),
         filled: true,
-        fillColor: HanduniaTokens.nuitPortee,
+        fillColor: HanduniaTokens.orClair.withValues(alpha: .38),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(color: HanduniaTokens.bordureForte),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(color: HanduniaTokens.bordureForte),
         ),
       );
@@ -195,40 +195,67 @@ class _HanduniaTerritoryPickerRouteState
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 6, 12, 4),
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
               child: Row(
                 children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    color: HanduniaTokens.ivoire,
+                  SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: IconButton(
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      icon: const Icon(Icons.arrow_back_rounded, size: 23),
+                      color: HanduniaTokens.ivoire,
+                      style: IconButton.styleFrom(
+                        backgroundColor: HanduniaTokens.nuitPortee,
+                        side: const BorderSide(
+                          color: HanduniaTokens.bordureForte,
+                        ),
+                        shadowColor: const Color(0x216B4A22),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 8),
                   const Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
+                        Icon(
+                          Icons.workspace_premium_rounded,
+                          size: 16,
+                          color: HanduniaTokens.braise,
+                        ),
                         Text(
                           'Explorer le Bénin',
+                          textAlign: TextAlign.center,
                           style: TextStyle(
                             fontFamily: 'Fraunces',
                             fontWeight: FontWeight.w600,
                             fontSize: 23,
+                            height: 1.05,
                             color: HanduniaTokens.ivoire,
                           ),
                         ),
-                        SizedBox(height: 2),
+                        SizedBox(height: 3),
                         Text(
-                          'Département → commune → arrondissement → village / quartier',
+                          'HANDUNIA WASA · CHOISIR UN TERRITOIRE',
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
                           style: TextStyle(
                             fontFamily: 'Karla',
-                            fontSize: 11.5,
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.1,
                             color: HanduniaTokens.cendre,
                           ),
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(width: 52),
                 ],
               ),
             ),
@@ -350,6 +377,8 @@ class _HanduniaTerritoryPickerRouteState
                             style: FilledButton.styleFrom(
                               backgroundColor: HanduniaTokens.braise,
                               foregroundColor: HanduniaTokens.encre,
+                              elevation: 0,
+                              shape: const StadiumBorder(),
                             ),
                             icon: _resolving
                                 ? const SizedBox(
@@ -391,8 +420,15 @@ class _TerritoryInfoCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: HanduniaTokens.nuitPortee,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: HanduniaTokens.bordureForte),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x146B4A22),
+            blurRadius: 18,
+            offset: Offset(0, 7),
+          ),
+        ],
       ),
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,

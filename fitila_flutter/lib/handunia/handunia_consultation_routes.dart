@@ -53,8 +53,9 @@ Widget _handuniaHeader(
   List<Widget> actions = const <Widget>[],
 }) {
   return Padding(
-    padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),
+    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
     child: Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Semantics(
           button: true,
@@ -64,27 +65,69 @@ Widget _handuniaHeader(
             height: 44,
             child: IconButton(
               onPressed: () => Navigator.maybePop(context),
-              icon: const Icon(Icons.arrow_back_outlined),
+              icon: const Icon(Icons.arrow_back_rounded, size: 23),
               color: HanduniaTokens.ivoire,
               style: IconButton.styleFrom(
                 backgroundColor: HanduniaTokens.nuitPortee,
                 foregroundColor: HanduniaTokens.ivoire,
                 side: const BorderSide(color: HanduniaTokens.bordureForte),
+                shadowColor: const Color(0x216B4A22),
+                elevation: 2,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
             ),
           ),
         ),
-        Expanded(child: Text(title, style: _frauncesRoute(size: 27))),
-        if (actions.isNotEmpty)
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.workspace_premium_rounded,
+                color: HanduniaTokens.braise,
+                size: 16,
+              ),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.fade,
+                style: _frauncesRoute(size: 23, height: 1.05),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                'HANDUNIA WASA · NOS RACINES, NOS HISTOIRES',
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.fade,
+                style: _karlaRoute(
+                  size: 8.2,
+                  color: HanduniaTokens.cendre,
+                  weight: FontWeight.w700,
+                  height: 1,
+                ).copyWith(letterSpacing: 1.15),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        if (actions.isEmpty)
+          const SizedBox(width: 44, height: 44)
+        else
           IconButtonTheme(
             data: IconButtonThemeData(
               style: IconButton.styleFrom(
+                minimumSize: const Size(40, 40),
+                maximumSize: const Size(40, 40),
+                padding: EdgeInsets.zero,
                 backgroundColor: HanduniaTokens.nuitPortee,
                 foregroundColor: HanduniaTokens.ivoire,
                 side: const BorderSide(color: HanduniaTokens.bordureForte),
+                shadowColor: const Color(0x216B4A22),
+                elevation: 1,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -121,8 +164,15 @@ class _ConsultationState extends StatelessWidget {
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: HanduniaTokens.nuitPortee,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: .7)),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: HanduniaTokens.bordureForte),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x166B4A22),
+              blurRadius: 22,
+              offset: Offset(0, 8),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

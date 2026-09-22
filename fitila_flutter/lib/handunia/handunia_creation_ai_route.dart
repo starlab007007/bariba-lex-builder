@@ -808,48 +808,88 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
 
   Widget _header() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 8, 16, 8),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: 44,
-            height: 44,
-            child: IconButton(
-              tooltip: 'Retour',
-              onPressed: _back,
-              icon: const Icon(Icons.arrow_back_outlined),
-              color: HanduniaTokens.ivoire,
-            ),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _stage == 0 ? 'Handunia Wasa' : 'Lumière IA',
-                  style: _fraunces(size: 24),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _flowLabel,
-                  style: _karla(
-                    size: 12.5,
-                    color: HanduniaTokens.cendre,
-                    weight: FontWeight.w700,
+          Row(
+            children: [
+              SizedBox(
+                width: 44,
+                height: 44,
+                child: IconButton(
+                  tooltip: 'Retour',
+                  onPressed: _back,
+                  icon: const Icon(Icons.arrow_back_rounded, size: 23),
+                  color: HanduniaTokens.ivoire,
+                  style: IconButton.styleFrom(
+                    backgroundColor: HanduniaTokens.nuitPortee,
+                    side: const BorderSide(
+                      color: HanduniaTokens.bordureForte,
+                    ),
+                    shadowColor: const Color(0x216B4A22),
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.workspace_premium_rounded,
+                      size: 16,
+                      color: HanduniaTokens.braise,
+                    ),
+                    Text(
+                      _stage == 0 ? 'Handunia Wasa' : 'Lumière IA',
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      style: _fraunces(size: 23, height: 1.05),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'PUBLIER UN SOUVENIR',
+                      textAlign: TextAlign.center,
+                      style: _karla(
+                        size: 8.4,
+                        color: HanduniaTokens.cendre,
+                        weight: FontWeight.w800,
+                        height: 1,
+                      ).copyWith(letterSpacing: 1.25),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _flowLabel,
+                      textAlign: TextAlign.center,
+                      style: _karla(
+                        size: 10.5,
+                        color: HanduniaTokens.braise,
+                        weight: FontWeight.w800,
+                        height: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 52),
+            ],
           ),
-          SizedBox(
-            width: 86,
+          const SizedBox(height: 9),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 54),
             child: Row(
               children: List.generate(5, (index) {
                 final active = index <= _flowStep;
                 return Expanded(
-                  child: Container(
-                    height: 4,
-                    margin: EdgeInsets.only(left: index == 0 ? 0 : 4),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    height: 3,
+                    margin: EdgeInsets.only(left: index == 0 ? 0 : 5),
                     decoration: BoxDecoration(
                       color: active
                           ? HanduniaTokens.braise
@@ -1842,23 +1882,24 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 58,
+      height: 50,
       child: FilledButton.icon(
         onPressed: onPressed,
         style: FilledButton.styleFrom(
           backgroundColor: HanduniaTokens.braise,
           foregroundColor: HanduniaTokens.encre,
           disabledBackgroundColor:
-              HanduniaTokens.braise.withValues(alpha: .35),
+              HanduniaTokens.braise.withValues(alpha: .30),
+          elevation: 0,
           shape: const StadiumBorder(),
         ),
-        icon: Icon(icon),
+        icon: Icon(icon, size: 19),
         label: Text(
           label,
           style: _karla(
-            size: 15.5,
+            size: 13.2,
             color: HanduniaTokens.encre,
-            weight: FontWeight.w700,
+            weight: FontWeight.w800,
           ),
         ),
       ),
@@ -1872,16 +1913,21 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 56,
+      height: 48,
       child: OutlinedButton.icon(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
           foregroundColor: HanduniaTokens.ivoire,
+          backgroundColor: HanduniaTokens.nuitPortee,
           side: const BorderSide(color: HanduniaTokens.bordureForte),
+          elevation: 0,
           shape: const StadiumBorder(),
         ),
-        icon: Icon(icon),
-        label: Text(label, style: _karla(size: 15, weight: FontWeight.w700)),
+        icon: Icon(icon, size: 18),
+        label: Text(
+          label,
+          style: _karla(size: 13.2, weight: FontWeight.w800),
+        ),
       ),
     );
   }
@@ -1891,14 +1937,17 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
       hintText: hint,
       hintStyle: _karla(size: 14, color: HanduniaTokens.cendre),
       filled: true,
-      fillColor: HanduniaTokens.nuitPortee,
+      fillColor: HanduniaTokens.orClair.withValues(alpha: .42),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: HanduniaTokens.bordure),
+        borderRadius: BorderRadius.circular(20),
+        borderSide: const BorderSide(color: HanduniaTokens.bordureForte),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: HanduniaTokens.braise),
+        borderRadius: BorderRadius.circular(20),
+        borderSide: const BorderSide(
+          color: HanduniaTokens.braise,
+          width: 1.4,
+        ),
       ),
     );
   }

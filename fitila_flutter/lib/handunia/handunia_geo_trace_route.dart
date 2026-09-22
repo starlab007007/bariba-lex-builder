@@ -535,8 +535,10 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Material(
-          color: HanduniaTokens.nuitPortee.withValues(alpha: .97),
-          borderRadius: BorderRadius.circular(18),
+          color: HanduniaTokens.nuitPortee.withValues(alpha: .96),
+          elevation: 3,
+          shadowColor: const Color(0x216B4A22),
+          borderRadius: BorderRadius.circular(24),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(8, 8, 10, 10),
             child: Column(
@@ -549,9 +551,30 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
                       color: HanduniaTokens.ivoire,
                     ),
                     Expanded(
-                      child: Text(
-                        'Tracer sur la carte',
-                        style: _fraunces(size: 23),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.workspace_premium_rounded,
+                            size: 15,
+                            color: HanduniaTokens.braise,
+                          ),
+                          Text(
+                            'Tracer sur la carte',
+                            textAlign: TextAlign.center,
+                            style: _fraunces(size: 21, height: 1.05),
+                          ),
+                          Text(
+                            'HANDUNIA WASA · TRAJET MÉMOIRE',
+                            textAlign: TextAlign.center,
+                            style: _karla(
+                              size: 8.2,
+                              color: HanduniaTokens.cendre,
+                              weight: FontWeight.w800,
+                              height: 1,
+                            ).copyWith(letterSpacing: 1.1),
+                          ),
+                        ],
                       ),
                     ),
                     IconButton(
@@ -576,22 +599,22 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
                           ),
                           prefixIcon: const Icon(Icons.search_outlined),
                           filled: true,
-                          fillColor: HanduniaTokens.nuit,
+                          fillColor: HanduniaTokens.orClair.withValues(alpha: .38),
                           isDense: true,
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(18),
                             borderSide: const BorderSide(
                               color: HanduniaTokens.bordureForte,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(18),
                             borderSide: const BorderSide(
                               color: HanduniaTokens.bordureForte,
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(18),
                             borderSide: const BorderSide(
                               color: HanduniaTokens.braise,
                               width: 1.5,
@@ -709,12 +732,14 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
     final startLabel = _displayName(_start);
     final endLabel = _displayName(_end);
     return Material(
-      color: HanduniaTokens.nuitPortee.withValues(alpha: .98),
-      borderRadius: BorderRadius.circular(20),
+      color: HanduniaTokens.nuitPortee.withValues(alpha: .97),
+      elevation: 3,
+      shadowColor: const Color(0x216B4A22),
+      borderRadius: BorderRadius.circular(24),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(color: HanduniaTokens.bordureForte),
         ),
         child: Column(
