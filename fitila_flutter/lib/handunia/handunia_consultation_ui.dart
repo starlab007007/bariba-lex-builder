@@ -76,112 +76,66 @@ class HanduniaArchitectureMap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final foreground = dark ? Colors.white : HanduniaTokens.ivoire;
     final muted = dark
-        ? Colors.white.withValues(alpha: .62)
+        ? Colors.white.withValues(alpha: .56)
         : HanduniaTokens.cendre;
-    final connector = dark
-        ? Colors.white.withValues(alpha: .28)
-        : HanduniaTokens.bordureForte;
 
     return Semantics(
       container: true,
       label:
-          'Architecture Handunia Wasa : collecte humaine, mémoire collective, '
-          'découverte immersive. Lumière IA relie et éclaire sans inventer.',
+          'Handunia Wasa. Étape 1 : parler ou écrire. Étape 2 : relier à la mémoire. '
+          'Étape 3 : explorer. Lumière IA aide sans inventer.',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            height: compact ? 112 : 124,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: _pillar(
-                    layer: HanduniaArchitectureLayer.collection,
-                    number: '1',
-                    icon: Icons.mic_none_rounded,
-                    title: 'Collecte humaine',
-                    details: 'voix · texte\nlieu · période\nauteur · portée',
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  child: Icon(
-                    Icons.chevron_right_rounded,
-                    size: compact ? 14 : 18,
-                    color: connector,
-                  ),
-                ),
-                Expanded(
-                  child: _pillar(
-                    layer: HanduniaArchitectureLayer.memory,
-                    number: '2',
-                    icon: Icons.account_tree_outlined,
-                    title: 'Mémoire collective',
-                    details: 'lieux · temps\ncorroborations\ndivergences · lacunes',
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  child: Icon(
-                    Icons.chevron_right_rounded,
-                    size: compact ? 14 : 18,
-                    color: connector,
-                  ),
-                ),
-                Expanded(
-                  child: _pillar(
-                    layer: HanduniaArchitectureLayer.discovery,
-                    number: '3',
-                    icon: Icons.travel_explore_rounded,
-                    title: 'Découverte immersive',
-                    details: 'feed vertical\nparcours · carte\nrecommandations',
-                  ),
-                ),
-              ],
-            ),
+          Row(
+            children: [
+              _visualStep(
+                layer: HanduniaArchitectureLayer.collection,
+                icon: Icons.mic_rounded,
+                label: 'Voix',
+                foreground: foreground,
+                muted: muted,
+              ),
+              _connector(muted),
+              _visualStep(
+                layer: HanduniaArchitectureLayer.memory,
+                icon: Icons.account_tree_rounded,
+                label: 'Mémoire',
+                foreground: foreground,
+                muted: muted,
+              ),
+              _connector(muted),
+              _visualStep(
+                layer: HanduniaArchitectureLayer.discovery,
+                icon: Icons.explore_rounded,
+                label: 'Explorer',
+                foreground: foreground,
+                muted: muted,
+              ),
+            ],
           ),
           if (showIa) ...[
-            SizedBox(height: compact ? 7 : 10),
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(
-                horizontal: compact ? 10 : 12,
-                vertical: compact ? 7 : 9,
-              ),
-              decoration: BoxDecoration(
-                color: dark
-                    ? Colors.white.withValues(alpha: .07)
-                    : HanduniaTokens.orClair.withValues(alpha: .72),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: dark
-                      ? Colors.white.withValues(alpha: .16)
-                      : HanduniaTokens.bordureForte,
-                ),
-              ),
+            SizedBox(height: compact ? 3 : 5),
+            Semantics(
+              label: 'Lumière IA relie et éclaire sans inventer',
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(
-                    Icons.light_mode_outlined,
-                    size: 15,
+                    Icons.light_mode_rounded,
+                    size: 13,
                     color: HanduniaTokens.braise,
                   ),
-                  const SizedBox(width: 7),
-                  Flexible(
-                    child: Text(
-                      'LUMIÈRE IA · relie et éclaire · n’invente pas',
-                      maxLines: 1,
-                      overflow: TextOverflow.fade,
-                      textAlign: TextAlign.center,
-                      style: _karla(
-                        size: compact ? 9.2 : 10.4,
-                        color: muted,
-                        weight: FontWeight.w800,
-                        height: 1,
-                      ).copyWith(letterSpacing: .35),
+                  const SizedBox(width: 4),
+                  Text(
+                    'IA',
+                    style: _karla(
+                      size: compact ? 9 : 10,
+                      color: muted,
+                      weight: FontWeight.w900,
+                      height: 1,
                     ),
                   ),
                 ],
@@ -193,113 +147,74 @@ class HanduniaArchitectureMap extends StatelessWidget {
     );
   }
 
-  Widget _pillar({
+  Widget _connector(Color color) => Expanded(
+        child: Container(
+          height: 1,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          color: color.withValues(alpha: .30),
+        ),
+      );
+
+  Widget _visualStep({
     required HanduniaArchitectureLayer layer,
-    required String number,
     required IconData icon,
-    required String title,
-    required String details,
+    required String label,
+    required Color foreground,
+    required Color muted,
   }) {
     final selected = active == null || active == layer;
-    final fg = dark ? Colors.white : HanduniaTokens.ivoire;
-    final muted = dark
-        ? Colors.white.withValues(alpha: selected ? .68 : .42)
-        : HanduniaTokens.cendre.withValues(alpha: selected ? 1 : .62);
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      padding: EdgeInsets.fromLTRB(
-        compact ? 7 : 9,
-        compact ? 7 : 9,
-        compact ? 7 : 9,
-        compact ? 6 : 8,
-      ),
-      decoration: BoxDecoration(
-        color: selected
-            ? (dark
-                  ? Colors.white.withValues(alpha: .09)
-                  : HanduniaTokens.nuitPortee)
-            : (dark
-                  ? Colors.white.withValues(alpha: .035)
-                  : HanduniaTokens.nuitPortee.withValues(alpha: .45)),
-        borderRadius: BorderRadius.circular(compact ? 16 : 19),
-        border: Border.all(
-          color: active == layer
-              ? HanduniaTokens.braise
-              : (dark
-                    ? Colors.white.withValues(alpha: .13)
-                    : HanduniaTokens.bordure),
-          width: active == layer ? 1.4 : 1,
-        ),
-        boxShadow: active == layer && !dark
-            ? const [
-                BoxShadow(
-                  color: Color(0x1FD89A20),
-                  blurRadius: 14,
-                  offset: Offset(0, 5),
-                ),
-              ]
-            : const [],
-      ),
+    final size = compact ? 38.0 : 44.0;
+    return Semantics(
+      selected: active == layer,
+      label: label,
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: compact ? 18 : 20,
-                height: compact ? 18 : 20,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: active == layer
-                      ? HanduniaTokens.braise
-                      : HanduniaTokens.orClair.withValues(alpha: dark ? .16 : .9),
-                ),
-                child: Text(
-                  number,
-                  style: _karla(
-                    size: compact ? 8.3 : 9,
-                    color: active == layer
-                        ? Colors.white
-                        : (dark ? Colors.white : HanduniaTokens.ivoire),
-                    weight: FontWeight.w900,
-                    height: 1,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                icon,
-                size: compact ? 14 : 16,
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: active == layer
+                  ? HanduniaTokens.braise
+                  : (dark
+                      ? Colors.white.withValues(alpha: .08)
+                      : HanduniaTokens.nuitPortee),
+              border: Border.all(
                 color: active == layer
                     ? HanduniaTokens.braise
-                    : muted,
+                    : (dark
+                        ? Colors.white.withValues(alpha: .14)
+                        : HanduniaTokens.bordureForte),
               ),
-            ],
-          ),
-          SizedBox(height: compact ? 3 : 5),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            style: _fraunces(
-              size: compact ? 10.7 : 12,
-              color: selected ? fg : muted,
-              height: 1.02,
+              boxShadow: active == layer
+                  ? const [
+                      BoxShadow(
+                        color: Color(0x2AD89A20),
+                        blurRadius: 12,
+                        offset: Offset(0, 4),
+                      ),
+                    ]
+                  : const [],
+            ),
+            child: Icon(
+              icon,
+              size: compact ? 20 : 23,
+              color: active == layer
+                  ? Colors.white
+                  : (selected ? foreground : muted),
             ),
           ),
-          SizedBox(height: compact ? 3 : 5),
+          SizedBox(height: compact ? 3 : 4),
           Text(
-            details,
-            textAlign: TextAlign.center,
-            maxLines: 3,
+            label,
+            maxLines: 1,
             style: _karla(
-              size: compact ? 7.6 : 8.7,
-              color: muted,
-              weight: FontWeight.w600,
-              height: 1.18,
+              size: compact ? 9.5 : 10.5,
+              color: selected ? foreground : muted,
+              weight: active == layer ? FontWeight.w900 : FontWeight.w700,
+              height: 1,
             ),
           ),
         ],
@@ -1149,7 +1064,7 @@ class _HanduniaAudioReaderState extends State<_HanduniaAudioReader> {
           ),
           const SizedBox(width: 7),
           Text(
-            'Voix non jointe',
+            'Voix',
             style: _karla(size: 12.5, color: HanduniaTokens.cendre),
           ),
         ],
@@ -1606,12 +1521,10 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
             widget.onFilterChanged(value);
           },
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            height: 40,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            duration: const Duration(milliseconds: 180),
+            height: 42,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(999),
+              shape: BoxShape.circle,
               gradient: selected
                   ? const LinearGradient(
                       colors: [Color(0xFFF4C458), _feedGoldDeep],
@@ -1621,45 +1534,12 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
               border: Border.all(
                 color: selected ? const Color(0xFFF4CB72) : _feedHairline,
               ),
-              boxShadow: selected
-                  ? const [
-                      BoxShadow(
-                        color: Color(0x33C88918),
-                        blurRadius: 16,
-                        offset: Offset(0, 5),
-                      ),
-                    ]
-                  : const [
-                      BoxShadow(
-                        color: Color(0x0D6B4A22),
-                        blurRadius: 10,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: 16,
-                  color: selected ? Colors.white : _feedInk,
-                ),
-                const SizedBox(width: 5),
-                Flexible(
-                  child: Text(
-                    value.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.fade,
-                    style: _karla(
-                      size: 12.2,
-                      color: selected ? Colors.white : _feedInk,
-                      weight: FontWeight.w800,
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ],
+            alignment: Alignment.center,
+            child: Icon(
+              icon,
+              size: 20,
+              color: selected ? Colors.white : _feedInk,
             ),
           ),
         ),
@@ -1677,6 +1557,1148 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
     bool pulse = false,
   }) {
     final buttonColor = filled ? color : _feedInk;
+    final showCount = RegExp(r'^\\d+(?:[.,]\\d+)?[kKmM]?
+      child: InkWell(
+        key: key,
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedScale(
+              scale: pulse ? 1.20 : 1,
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutBack,
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: filled
+                      ? color.withValues(alpha: .12)
+                      : _feedPaper.withValues(alpha: .96),
+                  border: Border.all(
+                    color: filled
+                        ? color.withValues(alpha: .52)
+                        : _feedHairline.withValues(alpha: .95),
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x216B4A22),
+                      blurRadius: 13,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Icon(icon, color: buttonColor, size: 24),
+              ),
+            ),
+            if (showCount) ...[
+              const SizedBox(height: 2),
+              Text(
+                label,
+                maxLines: 1,
+                style: _karla(
+                  size: 9.5,
+                  color: _feedInk,
+                  weight: FontWeight.w900,
+                  height: 1,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _memoryGapPage(Map<String, dynamic> item) {
+    final lieu = item['lieu_name']?.toString().trim();
+    final gap = item['gap_value']?.toString().trim();
+
+    return ColoredBox(
+      color: _feedCream,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(26, 170, 26, 110),
+        child: Center(
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: _feedPaper,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: _feedHairline),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 74,
+                  height: 74,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _feedPaperSoft,
+                  ),
+                  child: const Icon(
+                    Icons.mic_none_rounded,
+                    color: _feedGoldDeep,
+                    size: 38,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  gap?.isNotEmpty == true ? gap! : 'Une voix manque',
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: _fraunces(size: 22, color: _feedInk),
+                ),
+                if (lieu?.isNotEmpty == true) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    lieu!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _karla(
+                      size: 11.5,
+                      color: _feedMuted,
+                      weight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Semantics(
+                  button: true,
+                  label: 'Aider à compléter cette mémoire par la voix',
+                  child: SizedBox(
+                    width: 58,
+                    height: 58,
+                    child: FilledButton(
+                      onPressed: widget.onFindMissingVoice,
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        shape: const CircleBorder(),
+                        backgroundColor: _feedGold,
+                        foregroundColor: _feedInk,
+                      ),
+                      child: const Icon(Icons.mic_rounded, size: 27),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showMemoryContext(Map<String, dynamic> item) async {
+    final voices = (item['voice_count'] as num?)?.toInt() ?? 1;
+    final lieu = item['lieu_name']?.toString().trim() ?? 'Handunia Wasa';
+    final period =
+        item['period_label']?.toString().trim().isNotEmpty == true
+        ? item['period_label'].toString()
+        : (item['period_year']?.toString() ?? 'Période non précisée');
+    final reason =
+        item['_handunia_transition_label']?.toString().trim().isNotEmpty == true
+        ? item['_handunia_transition_label'].toString()
+        : 'Mémoire du territoire';
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: _feedPaper,
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Mémoire',
+                style: _fraunces(size: 22, color: _feedInk),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                reason,
+                style: _karla(
+                  size: 13,
+                  color: _feedGoldDeep,
+                  weight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _memoryContextLine(Icons.location_on_rounded, lieu),
+              _memoryContextLine(Icons.schedule_rounded, period),
+              _memoryContextLine(
+                Icons.groups_2_outlined,
+                '$voices voix humaine${voices > 1 ? 's' : ''}',
+              ),
+              if (item['lacuna_filled'] == true)
+                _memoryContextLine(
+                  Icons.auto_awesome_rounded,
+                  'Lacune comblée',
+                ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.of(sheetContext).pop();
+                    widget.onOpenMemory(item);
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _feedGold,
+                    foregroundColor: _feedInk,
+                    elevation: 0,
+                    shape: const StadiumBorder(),
+                  ),
+                  icon: const Icon(Icons.account_tree_outlined, size: 19),
+                  label: const Text('Ouvrir'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _memoryContextLine(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: _feedGoldDeep),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              text,
+              style: _karla(
+                size: 13.2,
+                color: _feedInk,
+                weight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _storyPage(Map<String, dynamic> item) {
+    if (item['item_type'] == 'memory_gap') {
+      return _memoryGapPage(item);
+    }
+    if (item['item_type'] == 'divergence') {
+      return ColoredBox(
+        color: _feedCream,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 200, 20, 120),
+          child: Center(child: _DivergenceCard(item: item)),
+        ),
+      );
+    }
+
+    final id = item['id']?.toString() ?? '';
+    final backdrop = _backdropUrl(item);
+    final liked = _liked[id] ?? item['liked_by_me'] == true;
+    final likes = _likeCounts[id] ?? (item['like_count'] as num?)?.toInt() ?? 0;
+    final voices = (item['voice_count'] as num?)?.toInt() ?? 1;
+    final saved = _saved.contains(id);
+    final initials = item['author_initials']?.toString().trim().isNotEmpty == true
+        ? item['author_initials'].toString()
+        : 'HW';
+    final displayName =
+        item['display_name']?.toString().trim().isNotEmpty == true
+        ? item['display_name'].toString()
+        : 'Voix Handunia';
+    final lieu = item['lieu_name']?.toString().trim().isNotEmpty == true
+        ? item['lieu_name'].toString()
+        : 'Handunia Wasa';
+    final icon = item['lieu_icon']?.toString().trim().isNotEmpty == true
+        ? item['lieu_icon'].toString()
+        : '📍';
+    final text = _memoryText(item);
+    final summaryBusy = _busyInsightId == 'summary:$id';
+    final translateBusy = _busyInsightId == 'translate:$id';
+    final transitionLabel =
+        item['_handunia_transition_label']?.toString().trim() ?? '';
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onDoubleTap: () => _toggleLike(item),
+      child: ColoredBox(
+        color: _feedCream,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxHeight < 730;
+            final topInset = compact ? 158.0 : 190.0;
+            final bottomInset = compact ? 78.0 : 102.0;
+            final cardRight = compact ? 30.0 : 34.0;
+
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned(
+                  left: 14,
+                  right: cardRight,
+                  top: topInset,
+                  bottom: bottomInset,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(compact ? 24 : 30),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x226B4A22),
+                          blurRadius: 26,
+                          offset: Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(compact ? 24 : 30),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (backdrop != null)
+                            Image.network(
+                              backdrop,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) =>
+                                  _fallbackBackdrop(icon, lieu),
+                            )
+                          else
+                            _fallbackBackdrop(icon, lieu),
+                          const DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                stops: [0, .44, .72, 1],
+                                colors: [
+                                  Color(0x12FFF7E8),
+                                  Color(0x00FFF7E8),
+                                  Color(0x22FFF7E8),
+                                  Color(0x66F8E4BE),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: Container(
+                              padding: EdgeInsets.fromLTRB(
+                                compact ? 14 : 18,
+                                compact ? 12 : 16,
+                                compact ? 50 : 58,
+                                compact ? 12 : 16,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    _feedPaper.withValues(alpha: .84),
+                                    _feedPaper.withValues(alpha: .98),
+                                  ],
+                                ),
+                                border: Border(
+                                  top: BorderSide(
+                                    color: Colors.white.withValues(alpha: .76),
+                                  ),
+                                ),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 240,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _feedPaperSoft.withValues(
+                                        alpha: .94,
+                                      ),
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(
+                                        color: _feedHairline,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.location_on_rounded,
+                                          size: 17,
+                                          color: _feedGoldDeep,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        Flexible(
+                                          child: Text(
+                                            lieu,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: _karla(
+                                              size: 12.8,
+                                              color: _feedInk,
+                                              weight: FontWeight.w800,
+                                              height: 1,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: compact ? 7 : 10),
+                                  Text(
+                                    text,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: _fraunces(
+                                      size: compact ? 23 : 27,
+                                      color: _feedInk,
+                                      height: 1.10,
+                                    ),
+                                  ),
+                                  SizedBox(height: compact ? 8 : 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _feedPaperSoft.withValues(
+                                        alpha: .72,
+                                      ),
+                                      borderRadius: BorderRadius.circular(18),
+                                    ),
+                                    child: _HanduniaAudioReader(
+                                      id: id,
+                                      url: item['audio_url']?.toString(),
+                                      cachedPath:
+                                          item['cached_audio_path']?.toString(),
+                                      durationMs:
+                                          (item['audio_duration_ms'] as num?)
+                                              ?.toInt(),
+                                    ),
+                                  ),
+                                  SizedBox(height: compact ? 7 : 10),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 34,
+                                        height: 34,
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: _feedPaperSoft,
+                                          border: Border.all(
+                                            color: _feedHairline,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          initials,
+                                          style: _fraunces(
+                                            size: 11,
+                                            color: _feedInk,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              displayName,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: _karla(
+                                                size: 13,
+                                                color: _feedInk,
+                                                weight: FontWeight.w900,
+                                                height: 1.05,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 1),
+                                            Text(
+                                              '${voices == 1 ? '1 voix' : '$voices voix'} · ${_relativeTime(item)}',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: _karla(
+                                                size: 10.6,
+                                                color: _feedMuted,
+                                                weight: FontWeight.w600,
+                                                height: 1.1,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: compact ? 7 : 10),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _glassAction(
+                                          icon: Icons.auto_awesome_rounded,
+                                          label: summaryBusy ? '...' : 'IA',
+                                          onTap: summaryBusy
+                                              ? null
+                                              : () => _runInsight(
+                                                  item,
+                                                  translate: false,
+                                                ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: _glassAction(
+                                          icon: Icons.translate_rounded,
+                                          label: translateBusy
+                                              ? '...'
+                                              : 'Traduire',
+                                          onTap: translateBusy
+                                              ? null
+                                              : () => _runInsight(
+                                                  item,
+                                                  translate: true,
+                                                ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: _glassAction(
+                                          icon: Icons.account_tree_outlined,
+                                          label: 'Mémoire',
+                                          onTap: () =>
+                                              _showMemoryContext(item),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 8,
+                  bottom: bottomInset + (compact ? 58 : 72),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _actionButton(
+                        key: ValueKey<String>('handunia-like-$id'),
+                        icon: liked
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
+                        label: _compactCount(likes),
+                        color: liked
+                            ? const Color(0xFFE9565E)
+                            : _feedInk,
+                        filled: liked,
+                        pulse: _pulseLikeId == id,
+                        onTap: () => _toggleLike(item),
+                      ),
+                      const SizedBox(height: 10),
+                      _actionButton(
+                        icon: Icons.groups_2_outlined,
+                        label: _compactCount(voices),
+                        onTap: () => _showMemoryContext(item),
+                      ),
+                      const SizedBox(height: 10),
+                      _actionButton(
+                        icon: Icons.share_outlined,
+                        label: 'Partager',
+                        onTap: () => _shareMemory(item),
+                      ),
+                      const SizedBox(height: 10),
+                      _actionButton(
+                        icon: saved
+                            ? Icons.bookmark_rounded
+                            : Icons.bookmark_border_rounded,
+                        label: saved ? 'Enregistré' : 'Enregistrer',
+                        color: saved ? _feedGoldDeep : _feedInk,
+                        filled: saved,
+                        onTap: () => _toggleSaved(item),
+                      ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  right: cardRight + 9,
+                  top: topInset + 10,
+                  child: Semantics(
+                    button: true,
+                    label: 'Plus d’options',
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(999),
+                      onTap: () => _showMore(item),
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _feedPaper.withValues(alpha: .90),
+                          border: Border.all(
+                            color: _feedHairline.withValues(alpha: .9),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.more_horiz_rounded,
+                          size: 19,
+                          color: _feedInk,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _glassAction({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onTap,
+  }) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: SizedBox(
+        height: 40,
+        child: OutlinedButton(
+          onPressed: onTap,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _feedInk,
+            backgroundColor: _feedPaper.withValues(alpha: .92),
+            side: const BorderSide(color: _feedHairline),
+            padding: EdgeInsets.zero,
+            shape: const StadiumBorder(),
+            elevation: 0,
+          ),
+          child: Icon(icon, size: 18, color: _feedGoldDeep),
+        ),
+      ),
+    );
+  }
+
+  Widget _fallbackBackdrop(String icon, String lieu) {
+    final palette = <List<Color>>[
+      const [Color(0xFFFFE7AF), Color(0xFFF4C96F), Color(0xFFB97621)],
+      const [Color(0xFFFFEBC9), Color(0xFFDDBD76), Color(0xFF9F7A45)],
+      const [Color(0xFFFCE1C4), Color(0xFFDCA473), Color(0xFF8A5B36)],
+      const [Color(0xFFF4E4D1), Color(0xFFCCB18C), Color(0xFF7E694F)],
+    ];
+    final colors = palette[lieu.hashCode.abs() % palette.length];
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: colors,
+        ),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Align(
+            alignment: const Alignment(0, -.35),
+            child: Text(
+              icon,
+              style: TextStyle(
+                fontSize: 116,
+                color: _feedPaper.withValues(alpha: .34),
+                shadows: const [
+                  Shadow(
+                    color: Color(0x336B4A22),
+                    blurRadius: 22,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x12FFFFFF),
+                  Color(0x00FFFFFF),
+                  Color(0x33FFF7E8),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyState() {
+    final restricted = widget.notice == 'Accès réservé';
+    return Container(
+      color: _feedCream,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 150, 28, 100),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (widget.loading)
+                const CircularProgressIndicator(color: _feedGoldDeep)
+              else ...[
+                Container(
+                  width: 76,
+                  height: 76,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _feedPaperSoft,
+                  ),
+                  child: Icon(
+                    restricted ? Icons.lock_outline_rounded : Icons.mic_none_rounded,
+                    size: 38,
+                    color: _feedGoldDeep,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  restricted ? 'Accès réservé' : 'Une voix manque',
+                  style: _fraunces(size: 23, color: _feedInk),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Semantics(
+                      button: true,
+                      label: 'Explorer la carte',
+                      child: IconButton.filled(
+                        onPressed: widget.onFindMissingVoice,
+                        style: IconButton.styleFrom(
+                          minimumSize: const Size(58, 58),
+                          backgroundColor: _feedGold,
+                          foregroundColor: _feedInk,
+                        ),
+                        icon: const Icon(Icons.map_rounded, size: 26),
+                      ),
+                    ),
+                    if (!restricted && widget.onPublish != null) ...[
+                      const SizedBox(width: 14),
+                      Semantics(
+                        button: true,
+                        label: 'Tisser un souvenir',
+                        child: IconButton.outlined(
+                          onPressed: widget.onPublish,
+                          style: IconButton.styleFrom(
+                            minimumSize: const Size(58, 58),
+                            foregroundColor: _feedGoldDeep,
+                            side: const BorderSide(color: _feedHairline),
+                          ),
+                          icon: const Icon(Icons.mic_none_rounded, size: 26),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = _smartItems;
+    final canLoop = items.length > 1;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark.copyWith(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: _feedCream,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: _feedCream,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (items.isEmpty)
+              _emptyState()
+            else
+              RefreshIndicator(
+                color: _feedGoldDeep,
+                backgroundColor: _feedPaper,
+                onRefresh: widget.onRefresh,
+                child: PageView.builder(
+                  controller: _pageController,
+                  scrollDirection: Axis.vertical,
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  allowImplicitScrolling: true,
+                  itemCount: canLoop ? null : items.length,
+                  onPageChanged: (_) => HapticFeedback.selectionClick(),
+                  itemBuilder: (context, index) {
+                    final item = items[index % items.length];
+                    return _storyPage(item);
+                  },
+                ),
+              ),
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        _roundHeaderButton(
+                          icon: Icons.arrow_back_rounded,
+                          label: 'Retour',
+                          onTap: widget.onBack,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Semantics(
+                            header: true,
+                            label: 'Fil Handunia Wasa',
+                            child: Text(
+                              'Handunia',
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              style: _fraunces(
+                                size: 25,
+                                color: _feedInk,
+                                height: 1,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _roundHeaderButton(
+                          icon: widget.loading
+                              ? Icons.hourglass_top_rounded
+                              : Icons.refresh_rounded,
+                          label: 'Actualiser',
+                          onTap: widget.loading
+                              ? null
+                              : () => unawaited(widget.onRefresh()),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 7),
+                    Row(
+                      children: [
+                        _filterChip(
+                          HanduniaFeedFilter.around,
+                          Icons.location_on_rounded,
+                        ),
+                        const SizedBox(width: 7),
+                        _filterChip(
+                          HanduniaFeedFilter.lineage,
+                          Icons.groups_rounded,
+                        ),
+                        const SizedBox(width: 7),
+                        _filterChip(
+                          HanduniaFeedFilter.all,
+                          Icons.public_rounded,
+                        ),
+                      ],
+                    ),
+                    if (widget.offline || widget.notice != null) ...[
+                      const SizedBox(height: 6),
+                      Align(
+                        alignment: Alignment.center,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _feedPaperSoft.withValues(alpha: .90),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: _feedHairline),
+                          ),
+                          child: Text(
+                            widget.notice ??
+                                (widget.offline ? 'Mode hors ligne' : ''),
+                            style: _karla(
+                              size: 9.5,
+                              color: _feedMuted,
+                              weight: FontWeight.w700,
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            if (items.isNotEmpty)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 69,
+                child: IgnorePointer(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Semantics(
+                        label: 'Balayez vers le haut pour continuer',
+                        child: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: _feedGoldDeep,
+                          size: 24,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _roundHeaderButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onTap,
+  }) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: SizedBox(
+        width: 46,
+        height: 46,
+        child: IconButton(
+          onPressed: onTap,
+          icon: Icon(icon, color: _feedInk, size: 24),
+          style: IconButton.styleFrom(
+            backgroundColor: _feedPaper.withValues(alpha: .96),
+            foregroundColor: _feedInk,
+            side: const BorderSide(color: _feedHairline),
+            shadowColor: const Color(0x226B4A22),
+            elevation: 2,
+          ),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints.tightFor(width: 46, height: 46),
+        ),
+      ),
+    );
+  }
+}
+
+class _DivergenceCard extends StatefulWidget {
+  const _DivergenceCard({required this.item});
+
+  final Map<String, dynamic> item;
+
+  @override
+  State<_DivergenceCard> createState() => _DivergenceCardState();
+}
+
+class _DivergenceCardState extends State<_DivergenceCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  bool _reduceMotion = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4500),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (_reduceMotion) {
+      _controller
+        ..stop()
+        ..value = .38;
+    } else if (!_controller.isAnimating) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final subject = widget.item['subject']?.toString().trim() ?? '';
+    return Semantics(
+      label: subject.isEmpty
+          ? 'Divergence de mémoire'
+          : 'Divergence de mémoire : $subject',
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: HanduniaTokens.nuitPortee,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: HanduniaTokens.terre),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 58,
+              height: 48,
+              child: RepaintBoundary(
+                child: AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) => CustomPaint(
+                    painter: _DivergencePainter(
+                      phase: _reduceMotion ? .38 : _controller.value,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Une mémoire se sépare en deux',
+                    style: _fraunces(
+                      size: 17,
+                      color: HanduniaTokens.terre,
+                      height: 1.35,
+                    ),
+                  ),
+                  if (subject.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subject,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: _karla(
+                        size: 12.5,
+                        color: HanduniaTokens.cendre,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DivergencePainter extends CustomPainter {
+  const _DivergencePainter({required this.phase});
+
+  final double phase;
+
+  Path _top(Size size) => Path()
+    ..moveTo(4, size.height / 2)
+    ..quadraticBezierTo(
+      size.width * .46,
+      size.height * .43,
+      size.width - 4,
+      6,
+    );
+
+  Path _bottom(Size size) => Path()
+    ..moveTo(4, size.height / 2)
+    ..quadraticBezierTo(
+      size.width * .46,
+      size.height * .57,
+      size.width - 4,
+      size.height - 6,
+    );
+
+  Offset _pointOn(Path path, double t) {
+    final metrics = path.computeMetrics().toList(growable: false);
+    if (metrics.isEmpty) {
+      return Offset.zero;
+    }
+    final metric = metrics.first;
+    final tangent = metric.getTangentForOffset(
+      metric.length * t.clamp(0.0, 1.0),
+    );
+    return tangent?.position ?? Offset.zero;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6
+      ..strokeCap = StrokeCap.round
+      ..color = HanduniaTokens.terre;
+    final top = _top(size);
+    final bottom = _bottom(size);
+    canvas.drawPath(top, line);
+    canvas.drawPath(bottom, line);
+
+    final origin = Offset(4, size.height / 2);
+    canvas.drawCircle(origin, 3.3, Paint()..color = HanduniaTokens.braise);
+
+    final spark = Paint()..color = HanduniaTokens.braise;
+    final topPoint = _pointOn(top, phase);
+    final bottomPoint = _pointOn(bottom, (phase + .5) % 1);
+    canvas.drawCircle(topPoint, 2.6, spark);
+    canvas.drawCircle(bottomPoint, 2.6, spark);
+  }
+
+  @override
+  bool shouldRepaint(covariant _DivergencePainter oldDelegate) =>
+      oldDelegate.phase != phase;
+}
+
+String _scopeLabel(String scope) {
+  return switch (scope) {
+    'elders' => 'Anciens',
+    'lineage' => 'Lignée',
+    'all' => 'Tout le monde',
+    _ => 'Communauté',
+  };
+}
+).hasMatch(label);
     return Semantics(
       button: true,
       label: label,
