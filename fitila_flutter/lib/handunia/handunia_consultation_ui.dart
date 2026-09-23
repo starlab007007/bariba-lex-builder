@@ -1125,13 +1125,7 @@ class HanduniaFilView extends StatefulWidget {
 }
 
 class _HanduniaFilViewState extends State<HanduniaFilView> {
-  static const _savedKey = 'handunia_immersive_saved_ids_v1';
   late final PageController _pageController;
-  final Map<String, bool> _liked = <String, bool>{};
-  final Map<String, int> _likeCounts = <String, int>{};
-  final Set<String> _saved = <String>{};
-  Timer? _likePulseTimer;
-  String? _pulseLikeId;
   String? _busyInsightId;
 
   static const _feedCream = Color(0xFFFFF8EA);
@@ -1147,14 +1141,11 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: 0);
-    _syncSocialState();
-    unawaited(_restoreSaved());
   }
 
   @override
   void didUpdateWidget(covariant HanduniaFilView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _syncSocialState();
     if (oldWidget.filter != widget.filter ||
         oldWidget.items.length != widget.items.length) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1167,42 +1158,8 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
 
   @override
   void dispose() {
-    _likePulseTimer?.cancel();
     _pageController.dispose();
     super.dispose();
-  }
-
-  void _syncSocialState() {
-    for (final item in widget.items) {
-      final id = item['id']?.toString() ?? '';
-      if (id.isEmpty) continue;
-      _liked.putIfAbsent(id, () => item['liked_by_me'] == true);
-      _likeCounts.putIfAbsent(
-        id,
-        () => (item['like_count'] as num?)?.toInt() ?? 0,
-      );
-    }
-  }
-
-  Future<void> _restoreSaved() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final ids = prefs.getStringList(_savedKey) ?? const <String>[];
-      if (!mounted) return;
-      setState(() => _saved.addAll(ids));
-    } catch (_) {
-      // La sauvegarde locale enrichit le fil mais ne doit jamais empêcher
-      // son rendu (notamment sur un appareil fraîchement installé).
-    }
-  }
-
-  Future<void> _persistSaved() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(_savedKey, _saved.toList(growable: false));
-    } catch (_) {
-      // Le geste reste instantané même si le stockage local est indisponible.
-    }
   }
 
   List<Map<String, dynamic>> get _smartItems {
@@ -1288,83 +1245,6 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
   }
 
-  String _compactCount(int value) {
-    if (value < 1000) return '$value';
-    if (value < 1000000) {
-      final k = value / 1000;
-      return '${k.toStringAsFixed(k < 10 ? 1 : 0)}K';
-    }
-    final m = value / 1000000;
-    return '${m.toStringAsFixed(m < 10 ? 1 : 0)}M';
-  }
-
-  Future<void> _toggleLike(Map<String, dynamic> item) async {
-    final id = item['id']?.toString() ?? '';
-    if (id.isEmpty || item['local_only'] == true) return;
-    final before = _liked[id] ?? item['liked_by_me'] == true;
-    final beforeCount =
-        _likeCounts[id] ?? (item['like_count'] as num?)?.toInt() ?? 0;
-    final next = !before;
-
-    HapticFeedback.lightImpact();
-    setState(() {
-      _liked[id] = next;
-      _likeCounts[id] = math.max(0, beforeCount + (next ? 1 : -1));
-      _pulseLikeId = next ? id : null;
-    });
-
-    _likePulseTimer?.cancel();
-    _likePulseTimer = null;
-    if (next) {
-      _likePulseTimer = Timer(const Duration(milliseconds: 360), () {
-        _likePulseTimer = null;
-        if (mounted && _pulseLikeId == id) {
-          setState(() => _pulseLikeId = null);
-        }
-      });
-    }
-
-    final callback = widget.onLikeChanged;
-    if (callback == null) return;
-    try {
-      await callback(id, next);
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _liked[id] = before;
-        _likeCounts[id] = beforeCount;
-        _pulseLikeId = null;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Réaction non synchronisée. Réessayez.')),
-      );
-    }
-  }
-
-  Future<void> _toggleSaved(Map<String, dynamic> item) async {
-    final id = item['id']?.toString() ?? '';
-    if (id.isEmpty) return;
-    HapticFeedback.selectionClick();
-    setState(() {
-      if (!_saved.add(id)) _saved.remove(id);
-    });
-    await _persistSaved();
-  }
-
-  Future<void> _shareMemory(Map<String, dynamic> item) async {
-    final place = item['lieu_name']?.toString().trim() ?? '';
-    final text = _memoryText(item);
-    final payload = place.isEmpty
-        ? 'Handunia Wasa — $text'
-        : 'Handunia Wasa · $place\n$text';
-    await Clipboard.setData(ClipboardData(text: payload));
-    if (!mounted) return;
-    HapticFeedback.selectionClick();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Souvenir copié, prêt à être partagé.')),
-    );
-  }
-
   Future<void> _runInsight(
     Map<String, dynamic> item, {
     required bool translate,
@@ -1433,6 +1313,9 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
   }
 
   void _showMore(Map<String, dynamic> item) {
+    final id = item['id']?.toString() ?? '';
+    final summaryBusy = _busyInsightId == 'summary:$id';
+    final translateBusy = _busyInsightId == 'translate:$id';
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -1445,26 +1328,38 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.visibility_outlined, color: Colors.white),
-                title: const Text(
-                  'Voir le souvenir',
-                  style: TextStyle(color: Colors.white),
+                enabled: !summaryBusy,
+                leading: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: Colors.white,
                 ),
-                onTap: () {
-                  Navigator.pop(context);
-                  widget.onOpenMemory(item);
-                },
+                title: Text(
+                  summaryBusy ? 'Lumière IA…' : 'Lumière IA',
+                  style: const TextStyle(color: Colors.white),
+                ),
+                onTap: summaryBusy
+                    ? null
+                    : () {
+                        Navigator.pop(context);
+                        unawaited(_runInsight(item, translate: false));
+                      },
               ),
               ListTile(
-                leading: const Icon(Icons.travel_explore_rounded, color: Colors.white),
-                title: const Text(
-                  'Trouver une voix sur la carte',
-                  style: TextStyle(color: Colors.white),
+                enabled: !translateBusy,
+                leading: const Icon(
+                  Icons.translate_rounded,
+                  color: Colors.white,
                 ),
-                onTap: () {
-                  Navigator.pop(context);
-                  widget.onFindMissingVoice();
-                },
+                title: Text(
+                  translateBusy ? 'Traduction…' : 'Traduire',
+                  style: const TextStyle(color: Colors.white),
+                ),
+                onTap: translateBusy
+                    ? null
+                    : () {
+                        Navigator.pop(context);
+                        unawaited(_runInsight(item, translate: true));
+                      },
               ),
               ListTile(
                 leading: const Icon(Icons.refresh_rounded, color: Colors.white),
@@ -1519,74 +1414,6 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
               color: selected ? Colors.white : _feedInk,
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _actionButton({
-    Key? key,
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    Color color = _feedInk,
-    bool filled = false,
-    bool pulse = false,
-  }) {
-    final buttonColor = filled ? color : _feedInk;
-    final showCount = RegExp(r'^\d+(?:[.,]\d+)?[kKmM]?$').hasMatch(label);
-    return Semantics(
-      button: true,
-      label: label,
-      child: InkWell(
-        key: key,
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedScale(
-              scale: pulse ? 1.20 : 1,
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOutBack,
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: filled
-                      ? color.withValues(alpha: .12)
-                      : _feedPaper.withValues(alpha: .96),
-                  border: Border.all(
-                    color: filled
-                        ? color.withValues(alpha: .52)
-                        : _feedHairline.withValues(alpha: .95),
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x216B4A22),
-                      blurRadius: 13,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Icon(icon, color: buttonColor, size: 24),
-              ),
-            ),
-            if (showCount) ...[
-              const SizedBox(height: 2),
-              Text(
-                label,
-                maxLines: 1,
-                style: _karla(
-                  size: 9.5,
-                  color: _feedInk,
-                  weight: FontWeight.w900,
-                  height: 1,
-                ),
-              ),
-            ],
-          ],
         ),
       ),
     );
@@ -1789,10 +1616,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
 
     final id = item['id']?.toString() ?? '';
     final backdrop = _backdropUrl(item);
-    final liked = _liked[id] ?? item['liked_by_me'] == true;
-    final likes = _likeCounts[id] ?? (item['like_count'] as num?)?.toInt() ?? 0;
     final voices = (item['voice_count'] as num?)?.toInt() ?? 1;
-    final saved = _saved.contains(id);
     final initials = item['author_initials']?.toString().trim().isNotEmpty == true
         ? item['author_initials'].toString()
         : 'HW';
@@ -1813,17 +1637,14 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
     final voiceLabel = voices == 1 ? '1 voix' : '$voices voix';
     final summaryBusy = _busyInsightId == 'summary:$id';
     final translateBusy = _busyInsightId == 'translate:$id';
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onDoubleTap: () => _toggleLike(item),
-      child: ColoredBox(
-        color: _feedCream,
-        child: LayoutBuilder(
+    return ColoredBox(
+      color: _feedCream,
+      child: LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxHeight < 730;
             final topInset = compact ? 158.0 : 190.0;
             final bottomInset = compact ? 78.0 : 102.0;
-            final cardRight = compact ? 30.0 : 34.0;
+            const cardRight = 14.0;
 
             return Stack(
               fit: StackFit.expand,
@@ -1881,7 +1702,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                               padding: EdgeInsets.fromLTRB(
                                 compact ? 14 : 18,
                                 compact ? 12 : 16,
-                                compact ? 50 : 58,
+                                compact ? 14 : 18,
                                 compact ? 12 : 16,
                               ),
                               decoration: BoxDecoration(
@@ -2034,38 +1855,29 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                                     children: [
                                       Expanded(
                                         child: _glassAction(
-                                          icon: Icons.auto_awesome_rounded,
-                                          label: summaryBusy ? '...' : 'IA',
-                                          onTap: summaryBusy
-                                              ? null
-                                              : () => _runInsight(
-                                                  item,
-                                                  translate: false,
-                                                ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: _glassAction(
-                                          icon: Icons.translate_rounded,
-                                          label: translateBusy
-                                              ? '...'
-                                              : 'Traduire',
-                                          onTap: translateBusy
-                                              ? null
-                                              : () => _runInsight(
-                                                  item,
-                                                  translate: true,
-                                                ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: _glassAction(
                                           icon: Icons.account_tree_outlined,
                                           label: 'Mémoire',
-                                          onTap: () =>
-                                              _showMemoryContext(item),
+                                          semanticLabel: 'Mémoire',
+                                          onTap: () => _showMemoryContext(item),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: _glassAction(
+                                          icon: Icons.visibility_outlined,
+                                          label: 'Souvenir',
+                                          semanticLabel: 'Voir le souvenir',
+                                          onTap: () => widget.onOpenMemory(item),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: _glassAction(
+                                          icon: Icons.travel_explore_rounded,
+                                          label: 'Carte',
+                                          semanticLabel:
+                                              'Trouver une voix sur la carte',
+                                          onTap: widget.onFindMissingVoice,
                                         ),
                                       ),
                                     ],
@@ -2077,50 +1889,6 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                         ],
                       ),
                     ),
-                  ),
-                ),
-                Positioned(
-                  right: 8,
-                  bottom: bottomInset + (compact ? 58 : 72),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _actionButton(
-                        key: ValueKey<String>('handunia-like-$id'),
-                        icon: liked
-                            ? Icons.favorite_rounded
-                            : Icons.favorite_border_rounded,
-                        label: _compactCount(likes),
-                        color: liked
-                            ? const Color(0xFFE9565E)
-                            : _feedInk,
-                        filled: liked,
-                        pulse: _pulseLikeId == id,
-                        onTap: () => _toggleLike(item),
-                      ),
-                      const SizedBox(height: 10),
-                      _actionButton(
-                        icon: Icons.groups_2_outlined,
-                        label: _compactCount(voices),
-                        onTap: () => _showMemoryContext(item),
-                      ),
-                      const SizedBox(height: 10),
-                      _actionButton(
-                        icon: Icons.share_outlined,
-                        label: 'Partager',
-                        onTap: () => _shareMemory(item),
-                      ),
-                      const SizedBox(height: 10),
-                      _actionButton(
-                        icon: saved
-                            ? Icons.bookmark_rounded
-                            : Icons.bookmark_border_rounded,
-                        label: saved ? 'Enregistré' : 'Enregistrer',
-                        color: saved ? _feedGoldDeep : _feedInk,
-                        filled: saved,
-                        onTap: () => _toggleSaved(item),
-                      ),
-                    ],
                   ),
                 ),
                 Positioned(
@@ -2155,7 +1923,6 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
             );
           },
         ),
-      ),
     );
   }
 
@@ -2163,23 +1930,47 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
     required IconData icon,
     required String label,
     required VoidCallback? onTap,
+    String? semanticLabel,
   }) {
     return Semantics(
       button: true,
-      label: label,
+      label: semanticLabel ?? label,
       child: SizedBox(
-        height: 40,
+        height: 34,
         child: OutlinedButton(
           onPressed: onTap,
           style: OutlinedButton.styleFrom(
-            foregroundColor: _feedInk,
-            backgroundColor: _feedPaper.withValues(alpha: .92),
-            side: const BorderSide(color: _feedHairline),
-            padding: EdgeInsets.zero,
+            foregroundColor: _feedGoldDeep,
+            backgroundColor: _feedPaper.withValues(alpha: .28),
+            side: BorderSide(
+              color: _feedGoldDeep.withValues(alpha: .34),
+              width: .9,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 5),
             shape: const StadiumBorder(),
             elevation: 0,
           ),
-          child: Icon(icon, size: 18, color: _feedGoldDeep),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 15, color: _feedGoldDeep),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _karla(
+                    size: 9.5,
+                    color: _feedGoldDeep,
+                    weight: FontWeight.w800,
+                    height: 1,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
