@@ -23972,11 +23972,16 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
   int _participantCount = 0;
   Map<String, dynamic>? _bestResponse;
   bool _communityUnavailable = false;
+  bool _loadingUserChallenges = true;
+  bool _showMyChallenges = false;
+  List<Map<String, dynamic>> _communityChallenges = const [];
+  List<Map<String, dynamic>> _myChallenges = const [];
 
   @override
   void initState() {
     super.initState();
     _load();
+    unawaited(_loadUserChallenges());
   }
 
   @override
@@ -24262,6 +24267,226 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
     }
   }
 
+  Future<void> _loadUserChallenges() async {
+    if (!FitilaBackend.configured) {
+      if (mounted) {
+        setState(() => _loadingUserChallenges = false);
+      }
+      return;
+    }
+    try {
+      final results = await Future.wait([
+        FitilaBackend.fetchBattleUserChallenges(limit: 30),
+        FitilaBackend.fetchBattleUserChallenges(mine: true, limit: 30),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _communityChallenges =
+            List<Map<String, dynamic>>.from(results[0]);
+        _myChallenges = List<Map<String, dynamic>>.from(results[1]);
+        _loadingUserChallenges = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _loadingUserChallenges = false);
+      }
+    }
+  }
+
+  Future<void> _openChallengeCreator() async {
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => const SagesseUserChallengeCreateScreen(),
+      ),
+    );
+    if (created == true && mounted) {
+      await _loadUserChallenges();
+      if (mounted) {
+        setState(() => _showMyChallenges = true);
+      }
+    }
+  }
+
+  Future<void> _openUserChallenge(Map<String, dynamic> challenge) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => SagesseUserChallengeDetailScreen(
+          challenge: challenge,
+        ),
+      ),
+    );
+    if (changed == true && mounted) {
+      await _loadUserChallenges();
+    }
+  }
+
+  Widget _challengeFilterChip({
+    required bool selected,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return ChoiceChip(
+      selected: selected,
+      onSelected: (_) => onTap(),
+      label: Text(label),
+      labelStyle: TextStyle(
+        color: selected ? Colors.white : FitilaReferenceUi.ink,
+        fontSize: 10.5,
+        fontWeight: FontWeight.w800,
+      ),
+      selectedColor: FitilaReferenceUi.goldDeep,
+      backgroundColor: FitilaReferenceUi.surface,
+      side: BorderSide(
+        color: selected
+            ? FitilaReferenceUi.goldDeep
+            : FitilaReferenceUi.hairline,
+      ),
+      shape: const StadiumBorder(),
+      showCheckmark: false,
+      visualDensity: VisualDensity.compact,
+    );
+  }
+
+  Widget _userChallengeCard(Map<String, dynamic> challenge) {
+    final title = challenge['title']?.toString() ?? 'Défi Sagesse';
+    final creator = challenge['creator_name']?.toString() ?? 'Sage Fitila';
+    final type = challenge['challenge_type']?.toString();
+    final responseCount =
+        (challenge['response_count'] as num?)?.toInt() ?? 0;
+    final rating =
+        (challenge['rating_average'] as num?)?.toDouble() ?? 0;
+    final quality =
+        (challenge['quality_score'] as num?)?.toDouble() ?? 0;
+    final isMine = challenge['is_mine'] == true;
+    final status = challenge['status']?.toString() ?? 'published';
+    final expiresAt = DateTime.tryParse(
+      challenge['expires_at']?.toString() ?? '',
+    )?.toLocal();
+    final remaining = expiresAt == null
+        ? ''
+        : expiresAt.difference(DateTime.now());
+    final timeLabel = remaining is Duration && remaining.isNegative
+        ? 'Terminé'
+        : remaining is Duration
+            ? remaining.inHours >= 24
+                ? '${(remaining.inHours / 24).ceil()} j'
+                : '${remaining.inHours.clamp(0, 99)} h'
+            : '';
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _openUserChallenge(challenge),
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
+          decoration: BoxDecoration(
+            color: FitilaReferenceUi.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: FitilaReferenceUi.hairline),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: FitilaReferenceUi.goldTint,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      type == 'interpretation'
+                          ? Icons.psychology_alt_rounded
+                          : Icons.auto_stories_rounded,
+                      color: FitilaReferenceUi.goldDeep,
+                      size: 21,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: FitilaReferenceUi.ink,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          isMine
+                              ? 'Mon défi · $status'
+                              : 'Par $creator · ${type == 'interpretation' ? 'Interprétation' : 'Proverbe'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: FitilaReferenceUi.muted,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: FitilaReferenceUi.muted,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                challenge['prompt_bariba']?.toString() ?? '',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: FitilaReferenceUi.serif(
+                  size: 13.5,
+                  color: FitilaReferenceUi.ink,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 7,
+                runSpacing: 6,
+                children: [
+                  _BattleMetricPill(
+                    icon: Icons.forum_outlined,
+                    label: '$responseCount réponses',
+                  ),
+                  _BattleMetricPill(
+                    icon: Icons.star_outline_rounded,
+                    label: rating > 0
+                        ? '${rating.toStringAsFixed(1)}/5'
+                        : 'Nouveau',
+                  ),
+                  _BattleMetricPill(
+                    icon: Icons.insights_rounded,
+                    label: 'Qualité ${quality.round()}',
+                  ),
+                  if (timeLabel.isNotEmpty)
+                    _BattleMetricPill(
+                      icon: Icons.schedule_rounded,
+                      label: timeLabel,
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _toggleVote(Map<String, dynamic> response) async {
     final id = response['id'] as String;
     final voted = response['voted_by_me'] == true;
@@ -24349,6 +24574,84 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                       ),
                       const SizedBox(height: 4),
                     ],
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Sagesse Battle',
+                                style: TextStyle(
+                                  color: FitilaReferenceUi.ink,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Défi officiel + défis de la communauté',
+                                style: TextStyle(
+                                  color: FitilaReferenceUi.muted,
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _openChallengeCreator,
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          label: const Text('Créer'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: FitilaReferenceUi.goldDeep,
+                            side: const BorderSide(
+                              color: FitilaReferenceUi.gold,
+                            ),
+                            backgroundColor: FitilaReferenceUi.goldTint,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 11,
+                              vertical: 8,
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: FitilaReferenceUi.surfaceAlt,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.verified_rounded,
+                            size: 16,
+                            color: FitilaReferenceUi.goldDeep,
+                          ),
+                          SizedBox(width: 7),
+                          Text(
+                            'Défi officiel du système',
+                            style: TextStyle(
+                              color: FitilaReferenceUi.ink,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
@@ -24433,50 +24736,32 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                         padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(18),
-                          color: widget.embeddedFeed
-                              ? FitilaReferenceUi.surface
-                              : null,
-                          gradient: widget.embeddedFeed
-                              ? null
-                              : FitilaReferenceUi.darkGradient,
-                          border: widget.embeddedFeed
-                              ? Border.all(color: FitilaReferenceUi.hairline)
-                              : null,
+                          color: FitilaReferenceUi.surface,
+                          border: Border.all(color: FitilaReferenceUi.hairline),
                         ),
                         child: Column(
                           children: [
-                            if (widget.embeddedFeed)
-                              Container(
-                                width: 74,
-                                height: 74,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: FitilaReferenceUi.goldTint,
-                                  border: Border.all(
-                                    color: FitilaReferenceUi.gold,
-                                  ),
+                            Container(
+                              width: 74,
+                              height: 74,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: FitilaReferenceUi.goldTint,
+                                border: Border.all(
+                                  color: FitilaReferenceUi.gold,
                                 ),
-                                child: const Icon(
-                                  Icons.edit_rounded,
-                                  size: 31,
-                                  color: FitilaReferenceUi.goldDeep,
-                                ),
-                              )
-                            else
-                              const ReferenceMicOrb(
-                                icon: Icons.videocam_rounded,
-                                size: 78,
-                                ringExtent: 120,
                               ),
+                              child: const Icon(
+                                Icons.edit_rounded,
+                                size: 31,
+                                color: FitilaReferenceUi.goldDeep,
+                              ),
+                            ),
                             const SizedBox(height: 8),
                             Text(
-                              widget.embeddedFeed
-                                  ? 'Votre réponse'
-                                  : 'Enregistre ta réponse',
-                              style: TextStyle(
-                                color: widget.embeddedFeed
-                                    ? FitilaReferenceUi.ink
-                                    : const Color(0xC7FFFFFF),
+                              'Votre réponse',
+                              style: const TextStyle(
+                                color: FitilaReferenceUi.ink,
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -24484,40 +24769,30 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                             const SizedBox(height: 12),
                             TextField(
                               controller: _answerController,
-                              style: TextStyle(
-                                color: widget.embeddedFeed
-                                    ? FitilaReferenceUi.ink
-                                    : Colors.white,
+                              style: const TextStyle(
+                                color: FitilaReferenceUi.ink,
                               ),
                               textAlign: TextAlign.center,
                               decoration: InputDecoration(
                                 hintText: 'Le mot manquant…',
-                                filled: widget.embeddedFeed,
-                                fillColor: widget.embeddedFeed
-                                    ? FitilaReferenceUi.surfaceAlt
-                                    : null,
-                                hintStyle: TextStyle(
-                                  color: widget.embeddedFeed
-                                      ? FitilaReferenceUi.muted
-                                      : Colors.white60,
+                                filled: true,
+                                fillColor: FitilaReferenceUi.surfaceAlt,
+                                hintStyle: const TextStyle(
+                                  color: FitilaReferenceUi.muted,
                                 ),
-                                enabledBorder: widget.embeddedFeed
-                                    ? OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                        borderSide: const BorderSide(
-                                          color: FitilaReferenceUi.hairline,
-                                        ),
-                                      )
-                                    : null,
-                                focusedBorder: widget.embeddedFeed
-                                    ? OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                        borderSide: const BorderSide(
-                                          color: FitilaReferenceUi.gold,
-                                          width: 1.4,
-                                        ),
-                                      )
-                                    : null,
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(
+                                    color: FitilaReferenceUi.hairline,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(
+                                    color: FitilaReferenceUi.gold,
+                                    width: 1.4,
+                                  ),
+                                ),
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -24536,15 +24811,8 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                         padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(18),
-                          color: widget.embeddedFeed
-                              ? FitilaReferenceUi.surface
-                              : null,
-                          gradient: widget.embeddedFeed
-                              ? null
-                              : FitilaReferenceUi.darkGradient,
-                          border: widget.embeddedFeed
-                              ? Border.all(color: FitilaReferenceUi.hairline)
-                              : null,
+                          color: FitilaReferenceUi.surface,
+                          border: Border.all(color: FitilaReferenceUi.hairline),
                         ),
                         child: Column(
                           children: [
@@ -24641,6 +24909,86 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                       ),
                     ],
                     const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Défis de la communauté',
+                            style: TextStyle(
+                              color: FitilaReferenceUi.ink,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: _openChallengeCreator,
+                          icon: const Icon(Icons.add_rounded, size: 16),
+                          label: const Text('Créer'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: FitilaReferenceUi.goldDeep,
+                            textStyle: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        _challengeFilterChip(
+                          selected: !_showMyChallenges,
+                          label: 'Communauté',
+                          onTap: () =>
+                              setState(() => _showMyChallenges = false),
+                        ),
+                        const SizedBox(width: 7),
+                        _challengeFilterChip(
+                          selected: _showMyChallenges,
+                          label: 'Mes défis',
+                          onTap: () =>
+                              setState(() => _showMyChallenges = true),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 9),
+                    if (_loadingUserChallenges)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 18),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: FitilaReferenceUi.goldDeep,
+                            strokeWidth: 2,
+                          ),
+                        ),
+                      )
+                    else if ((_showMyChallenges
+                            ? _myChallenges
+                            : _communityChallenges)
+                        .isEmpty)
+                      ReferenceCard(
+                        color: FitilaReferenceUi.surfaceAlt,
+                        child: Text(
+                          _showMyChallenges
+                              ? 'Vous n’avez pas encore publié de défi.'
+                              : 'Aucun défi communautaire actif pour le moment.',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: FitilaReferenceUi.muted,
+                            fontSize: 11,
+                          ),
+                        ),
+                      )
+                    else
+                      for (final challenge in (_showMyChallenges
+                          ? _myChallenges
+                          : _communityChallenges))
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 9),
+                          child: _userChallengeCard(challenge),
+                        ),
+                    const SizedBox(height: 14),
                     Row(
                       children: [
                         const Expanded(
@@ -24835,6 +25183,856 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
     );
   }
 
+}
+
+
+class _BattleMetricPill extends StatelessWidget {
+  const _BattleMetricPill({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: FitilaReferenceUi.surfaceAlt,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: FitilaReferenceUi.hairline),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: FitilaReferenceUi.goldDeep),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: FitilaReferenceUi.inkSoft,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SagesseUserChallengeCreateScreen extends StatefulWidget {
+  const SagesseUserChallengeCreateScreen({super.key});
+
+  @override
+  State<SagesseUserChallengeCreateScreen> createState() =>
+      _SagesseUserChallengeCreateScreenState();
+}
+
+class _SagesseUserChallengeCreateScreenState
+    extends State<SagesseUserChallengeCreateScreen> {
+  final _title = TextEditingController();
+  final _bariba = TextEditingController();
+  final _french = TextEditingController();
+  final _answer = TextEditingController();
+  final _context = TextEditingController();
+  final _theme = TextEditingController(text: 'Sagesse');
+  String _type = 'complete_proverb';
+  int _duration = 24;
+  bool _publishing = false;
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _bariba.dispose();
+    _french.dispose();
+    _answer.dispose();
+    _context.dispose();
+    _theme.dispose();
+    super.dispose();
+  }
+
+  Future<void> _publish() async {
+    if (_publishing) return;
+    if (_title.text.trim().length < 3 || _bariba.text.trim().length < 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ajoutez un titre et le contenu du défi.')),
+      );
+      return;
+    }
+    if (_type == 'complete_proverb' && _answer.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Indiquez la réponse attendue pour ce proverbe.'),
+        ),
+      );
+      return;
+    }
+    setState(() => _publishing = true);
+    try {
+      await FitilaBackend.createBattleUserChallenge(
+        title: _title.text,
+        challengeType: _type,
+        promptBariba: _bariba.text,
+        promptFrancais: _french.text,
+        answerKey: _answer.text,
+        contextText: _context.text,
+        theme: _theme.text,
+        responseMode: 'text',
+        durationHours: _duration,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _publishing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Publication impossible : $error')),
+      );
+    }
+  }
+
+  Widget _typeCard({
+    required String value,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    final selected = _type == value;
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => _type = value),
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: selected
+                ? FitilaReferenceUi.goldTint
+                : FitilaReferenceUi.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected
+                  ? FitilaReferenceUi.gold
+                  : FitilaReferenceUi.hairline,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: FitilaReferenceUi.goldDeep, size: 23),
+              const SizedBox(height: 6),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: FitilaReferenceUi.ink,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                style: const TextStyle(
+                  color: FitilaReferenceUi.muted,
+                  fontSize: 9,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ReferenceCreationShell(
+      dark: false,
+      title: 'Créer un défi',
+      subtitle: 'Sagesse Battle',
+      leading: const Icon(
+        Icons.psychology_alt_rounded,
+        color: FitilaReferenceUi.goldDeep,
+        size: 20,
+      ),
+      onBack: () => Navigator.maybePop(context),
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          const Text(
+            'Type de défi',
+            style: TextStyle(
+              color: FitilaReferenceUi.ink,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 9),
+          Row(
+            children: [
+              _typeCard(
+                value: 'complete_proverb',
+                icon: Icons.auto_stories_rounded,
+                title: 'Compléter',
+                subtitle: 'Trouver le mot ou la suite manquante.',
+              ),
+              const SizedBox(width: 9),
+              _typeCard(
+                value: 'interpretation',
+                icon: Icons.psychology_alt_rounded,
+                title: 'Interpréter',
+                subtitle: 'Expliquer le sens du proverbe.',
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _title,
+            decoration: const InputDecoration(
+              labelText: 'Titre du défi',
+              hintText: 'Ex. La sagesse du marché',
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _bariba,
+            minLines: 2,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'Défi en Bàátɔ̀nú',
+              hintText: 'Écrivez le proverbe ou la question…',
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _french,
+            minLines: 1,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Version française (optionnel)',
+            ),
+          ),
+          if (_type == 'complete_proverb') ...[
+            const SizedBox(height: 10),
+            TextField(
+              controller: _answer,
+              decoration: const InputDecoration(
+                labelText: 'Réponse attendue',
+                hintText: 'Mot ou expression correcte',
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          TextField(
+            controller: _context,
+            minLines: 2,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'Contexte / explication',
+              hintText: 'Aidez les participants à comprendre le thème.',
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _theme,
+            decoration: const InputDecoration(
+              labelText: 'Thème',
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Durée',
+            style: TextStyle(
+              color: FitilaReferenceUi.ink,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final item in const [(24, '24 h'), (48, '48 h'), (168, '7 jours')])
+                ChoiceChip(
+                  selected: _duration == item.$1,
+                  onSelected: (_) => setState(() => _duration = item.$1),
+                  label: Text(item.$2),
+                  selectedColor: FitilaReferenceUi.goldTint,
+                  side: BorderSide(
+                    color: _duration == item.$1
+                        ? FitilaReferenceUi.gold
+                        : FitilaReferenceUi.hairline,
+                  ),
+                  showCheckmark: false,
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: FitilaReferenceUi.surfaceAlt,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: FitilaReferenceUi.hairline),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  color: FitilaReferenceUi.goldDeep,
+                  size: 19,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Après publication, le défi apparaît dans le fil Sagesse Battle. '
+                    'Les réponses sont notées sur 100 et la communauté peut noter la qualité du défi sur 5.',
+                    style: TextStyle(
+                      color: FitilaReferenceUi.inkSoft,
+                      fontSize: 10.5,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          ReferenceGoldButton(
+            label: _publishing ? 'Publication…' : 'Publier le défi',
+            icon: Icons.publish_rounded,
+            busy: _publishing,
+            onPressed: _publishing ? null : _publish,
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}
+
+class SagesseUserChallengeDetailScreen extends StatefulWidget {
+  const SagesseUserChallengeDetailScreen({
+    super.key,
+    required this.challenge,
+  });
+
+  final Map<String, dynamic> challenge;
+
+  @override
+  State<SagesseUserChallengeDetailScreen> createState() =>
+      _SagesseUserChallengeDetailScreenState();
+}
+
+class _SagesseUserChallengeDetailScreenState
+    extends State<SagesseUserChallengeDetailScreen> {
+  late Map<String, dynamic> _challenge;
+  final _answer = TextEditingController();
+  bool _loading = true;
+  bool _submitting = false;
+  bool _submitted = false;
+  int _score = 0;
+  bool _scoredByAi = false;
+  List<Map<String, dynamic>> _chain = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _challenge = Map<String, dynamic>.from(widget.challenge);
+    unawaited(_load());
+  }
+
+  @override
+  void dispose() {
+    _answer.dispose();
+    super.dispose();
+  }
+
+  String _normalize(String input) {
+    return input
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^\p{L}\p{N}\s]', unicode: true), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  int _fallbackScore(String answer) {
+    final type = _challenge['challenge_type']?.toString();
+    if (type == 'complete_proverb') {
+      final expected = <String>[
+        _challenge['answer_key']?.toString() ?? '',
+        ...((_challenge['accepted_answers'] as List?) ?? const [])
+            .map((value) => value.toString()),
+      ].where((value) => value.trim().isNotEmpty);
+      final normalized = _normalize(answer);
+      for (final candidate in expected) {
+        final target = _normalize(candidate);
+        if (target == normalized) return 100;
+        if (target.isNotEmpty &&
+            (target.contains(normalized) || normalized.contains(target))) {
+          return 75;
+        }
+      }
+      return 25;
+    }
+
+    final normalized = _normalize(answer);
+    if (normalized.length < 12) return 30;
+    final reference = _normalize(
+      '${_challenge['context_text'] ?? ''} ${_challenge['prompt_francais'] ?? ''}',
+    );
+    final referenceWords = reference
+        .split(' ')
+        .where((word) => word.length >= 4)
+        .toSet();
+    final answerWords = normalized
+        .split(' ')
+        .where((word) => word.length >= 4)
+        .toSet();
+    final overlap = answerWords.intersection(referenceWords).length;
+    return (45 + overlap * 6 + normalized.length ~/ 20).clamp(35, 80);
+  }
+
+  Future<int> _scoreWithAi(String answer) async {
+    final type = _challenge['challenge_type']?.toString();
+    final expected = _challenge['answer_key']?.toString() ?? '';
+    final prompt =
+        type == 'complete_proverb'
+        ? 'Sagesse Battle. Défi : "${_challenge['prompt_bariba']}". '
+          'Réponse attendue : "$expected". Le joueur répond : "$answer". '
+          'Évalue la justesse en tolérant les variantes orthographiques raisonnables. '
+          'Réponds uniquement SCORE: N avec N de 0 à 100.'
+        : 'Sagesse Battle. Proverbe/question : "${_challenge['prompt_bariba']}". '
+          'Contexte : "${_challenge['context_text'] ?? ''}". '
+          'Interprétation du joueur : "$answer". Évalue fidélité au sens (40), '
+          'pertinence (25), clarté (20), richesse de sagesse (15). '
+          'Réponds uniquement SCORE: N avec N de 0 à 100.';
+    final result = await FitilaBackend.askFitilaIa(prompt);
+    final match = RegExp(r'SCORE\s*:\s*(\d{1,3})').firstMatch(result);
+    if (match == null) throw StateError('Notation IA invalide.');
+    return int.parse(match.group(1)!).clamp(0, 100);
+  }
+
+  Future<void> _load() async {
+    try {
+      final id = _challenge['id']?.toString() ?? '';
+      final results = await Future.wait([
+        FitilaBackend.fetchBattleChain(challengeId: id, limit: 50),
+        FitilaBackend.fetchBattleUserChallenges(
+          mine: _challenge['is_mine'] == true,
+          limit: 50,
+        ),
+      ]);
+      if (!mounted) return;
+      final refreshed = List<Map<String, dynamic>>.from(results[1] as List);
+      final match = refreshed.where((row) => row['id']?.toString() == id);
+      setState(() {
+        _chain = List<Map<String, dynamic>>.from(results[0] as List);
+        if (match.isNotEmpty) {
+          _challenge = Map<String, dynamic>.from(match.first);
+        }
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _submit() async {
+    final answer = _answer.text.trim();
+    if (answer.isEmpty || _submitting) return;
+    setState(() => _submitting = true);
+    int score;
+    var ai = false;
+    try {
+      score = await _scoreWithAi(answer);
+      ai = true;
+    } catch (_) {
+      score = _fallbackScore(answer);
+    }
+    final xp = 10 + (score * .4).round();
+    try {
+      await FitilaBackend.submitBattleResponse(
+        challengeId: _challenge['id'].toString(),
+        promptBariba: _challenge['prompt_bariba']?.toString() ?? '',
+        promptFrancais: _challenge['prompt_francais']?.toString() ?? '',
+        answerText: answer,
+        score: score,
+        xpAwarded: xp.clamp(0, 100),
+      );
+      if (!mounted) return;
+      setState(() {
+        _submitted = true;
+        _score = score;
+        _scoredByAi = ai;
+        _submitting = false;
+      });
+      await _load();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Réponse non publiée : $error')),
+      );
+    }
+  }
+
+  Future<void> _rate(int rating) async {
+    try {
+      await FitilaBackend.rateBattleUserChallenge(
+        challengeId: _challenge['id'].toString(),
+        rating: rating,
+      );
+      await _load();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Notation impossible : $error')),
+      );
+    }
+  }
+
+  Future<void> _close() async {
+    await FitilaBackend.closeBattleUserChallenge(
+      _challenge['id'].toString(),
+    );
+    if (mounted) Navigator.of(context).pop(true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final type = _challenge['challenge_type']?.toString();
+    final isMine = _challenge['is_mine'] == true;
+    final myRating = (_challenge['my_rating'] as num?)?.toInt() ?? 0;
+    final responseCount =
+        (_challenge['response_count'] as num?)?.toInt() ?? _chain.length;
+    final quality =
+        (_challenge['quality_score'] as num?)?.toDouble() ?? 0;
+
+    return ReferenceCreationShell(
+      dark: false,
+      title: _challenge['title']?.toString() ?? 'Défi Sagesse',
+      subtitle: isMine
+          ? 'Mon défi'
+          : 'Par ${_challenge['creator_name'] ?? 'Sage Fitila'}',
+      leading: const Icon(
+        Icons.psychology_alt_rounded,
+        color: FitilaReferenceUi.goldDeep,
+        size: 20,
+      ),
+      onBack: () => Navigator.of(context).pop(false),
+      child: _loading
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: FitilaReferenceUi.goldDeep,
+              ),
+            )
+          : ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: FitilaReferenceUi.surface,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: FitilaReferenceUi.hairline),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          _BattleMetricPill(
+                            icon: type == 'interpretation'
+                                ? Icons.psychology_alt_rounded
+                                : Icons.auto_stories_rounded,
+                            label: type == 'interpretation'
+                                ? 'Interprétation'
+                                : 'Compléter',
+                          ),
+                          const SizedBox(width: 6),
+                          _BattleMetricPill(
+                            icon: Icons.forum_outlined,
+                            label: '$responseCount réponses',
+                          ),
+                          const Spacer(),
+                          _BattleMetricPill(
+                            icon: Icons.insights_rounded,
+                            label: 'Q ${quality.round()}',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        _challenge['prompt_bariba']?.toString() ?? '',
+                        style: FitilaReferenceUi.serif(
+                          size: 18,
+                          color: FitilaReferenceUi.ink,
+                          height: 1.45,
+                        ),
+                      ),
+                      if ((_challenge['prompt_francais']?.toString() ?? '')
+                          .trim()
+                          .isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          _challenge['prompt_francais'].toString(),
+                          style: const TextStyle(
+                            color: FitilaReferenceUi.muted,
+                            fontSize: 11.5,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                      if ((_challenge['context_text']?.toString() ?? '')
+                          .trim()
+                          .isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          _challenge['context_text'].toString(),
+                          style: const TextStyle(
+                            color: FitilaReferenceUi.inkSoft,
+                            fontSize: 11,
+                            fontStyle: FontStyle.italic,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (!_submitted)
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: FitilaReferenceUi.surface,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: FitilaReferenceUi.hairline),
+                    ),
+                    child: Column(
+                      children: [
+                        TextField(
+                          controller: _answer,
+                          minLines: type == 'interpretation' ? 3 : 1,
+                          maxLines: type == 'interpretation' ? 6 : 3,
+                          decoration: InputDecoration(
+                            hintText: type == 'interpretation'
+                                ? 'Votre interprétation…'
+                                : 'Votre réponse…',
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        ReferenceGoldButton(
+                          label: _submitting
+                              ? 'Notation…'
+                              : 'Valider ma réponse',
+                          icon: Icons.check_rounded,
+                          busy: _submitting,
+                          onPressed: _submitting ? null : _submit,
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: FitilaReferenceUi.goldTint,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: FitilaReferenceUi.gold),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 58,
+                          height: 58,
+                          alignment: Alignment.center,
+                          decoration: const BoxDecoration(
+                            color: FitilaReferenceUi.gold,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '$_score',
+                            style: const TextStyle(
+                              color: FitilaReferenceUi.ink,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _scoredByAi
+                                ? 'Score /100 · évalué par Fitila IA'
+                                : 'Score /100 · estimation locale hors ligne',
+                            style: const TextStyle(
+                              color: FitilaReferenceUi.ink,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 14),
+                if (!isMine)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: FitilaReferenceUi.surfaceAlt,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Qualité de ce défi',
+                            style: TextStyle(
+                              color: FitilaReferenceUi.ink,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        for (var star = 1; star <= 5; star++)
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => _rate(star),
+                            icon: Icon(
+                              star <= myRating
+                                  ? Icons.star_rounded
+                                  : Icons.star_border_rounded,
+                              color: FitilaReferenceUi.goldDeep,
+                              size: 21,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                if (isMine) ...[
+                  const SizedBox(height: 4),
+                  OutlinedButton.icon(
+                    onPressed: _close,
+                    icon: const Icon(Icons.stop_circle_outlined, size: 18),
+                    label: const Text('Clôturer le défi'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: FitilaReferenceUi.clay,
+                      side: const BorderSide(color: FitilaReferenceUi.clay),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Réponses',
+                        style: TextStyle(
+                          color: FitilaReferenceUi.ink,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${_chain.length}',
+                      style: const TextStyle(
+                        color: FitilaReferenceUi.muted,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (_chain.isEmpty)
+                  const ReferenceCard(
+                    child: Text(
+                      'Aucune réponse pour le moment.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: FitilaReferenceUi.muted,
+                        fontSize: 11,
+                      ),
+                    ),
+                  )
+                else
+                  for (final entry in _chain)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(11),
+                      decoration: BoxDecoration(
+                        color: FitilaReferenceUi.surface,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: FitilaReferenceUi.hairline),
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 15,
+                            backgroundColor: FitilaReferenceUi.sageTint,
+                            child: Text(
+                              _initialLetter(
+                                entry['display_name']?.toString(),
+                              ),
+                              style: const TextStyle(
+                                color: FitilaReferenceUi.sageDeep,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 9),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  entry['display_name']?.toString() ??
+                                      'Sage Fitila',
+                                  style: const TextStyle(
+                                    color: FitilaReferenceUi.ink,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                Text(
+                                  entry['answer_text']?.toString() ?? '',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: FitilaReferenceUi.inkSoft,
+                                    fontSize: 10.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            '${entry['score'] ?? 0}',
+                            style: const TextStyle(
+                              color: FitilaReferenceUi.goldDeep,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                const SizedBox(height: 24),
+              ],
+            ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────

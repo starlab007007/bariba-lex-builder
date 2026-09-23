@@ -1966,6 +1966,254 @@ class FitilaBackend {
   }
 
   // ───────────────────────────────────────────────────────────────
+  // Sagesse Battle communautaire — défis créés par les utilisateurs.
+  // Les réponses réutilisent battle_responses afin de garder le même
+  // classement, les mêmes votes et les mêmes statistiques.
+  // ───────────────────────────────────────────────────────────────
+  static Future<Map<String, dynamic>> createBattleUserChallenge({
+    required String title,
+    required String challengeType,
+    required String promptBariba,
+    required String promptFrancais,
+    required String answerKey,
+    List<String> acceptedAnswers = const [],
+    String contextText = '',
+    String theme = 'sagesse',
+    String responseMode = 'text',
+    int durationHours = 24,
+    String visibility = 'public',
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Connexion requise pour créer un défi.');
+    }
+    final cleanTitle = title.trim();
+    final cleanBariba = promptBariba.trim();
+    if (cleanTitle.length < 3 || cleanBariba.length < 3) {
+      throw StateError('Le titre et le défi doivent être renseignés.');
+    }
+
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day);
+    final end = start.add(const Duration(days: 1));
+    final todays = await client
+        .from('battle_user_challenges')
+        .select('id')
+        .eq('created_by', user.id)
+        .gte('created_at', start.toUtc().toIso8601String())
+        .lt('created_at', end.toUtc().toIso8601String());
+    if ((todays as List).length >= 3) {
+      throw StateError('Limite atteinte : 3 défis maximum par jour.');
+    }
+
+    final data = await client
+        .from('battle_user_challenges')
+        .insert(<String, dynamic>{
+          'created_by': user.id,
+          'title': cleanTitle,
+          'challenge_type': challengeType,
+          'prompt_bariba': cleanBariba,
+          'prompt_francais': promptFrancais.trim(),
+          'answer_key': answerKey.trim().isEmpty ? null : answerKey.trim(),
+          'accepted_answers': acceptedAnswers
+              .map((value) => value.trim())
+              .where((value) => value.isNotEmpty)
+              .toList(growable: false),
+          'context_text': contextText.trim(),
+          'theme': theme.trim().isEmpty ? 'sagesse' : theme.trim(),
+          'response_mode': responseMode,
+          'duration_hours': durationHours,
+          'visibility': visibility,
+          'status': 'published',
+          'moderation_status': 'approved',
+        })
+        .select()
+        .single();
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchBattleUserChallenges({
+    bool mine = false,
+    int limit = 30,
+  }) async {
+    final user = client.auth.currentUser;
+    final rows = mine
+        ? user == null
+            ? const <Map<String, dynamic>>[]
+            : List<Map<String, dynamic>>.from(
+                await client
+                    .from('battle_user_challenges')
+                    .select()
+                    .eq('created_by', user.id)
+                    .order('created_at', ascending: false)
+                    .limit(limit) as List,
+              )
+        : List<Map<String, dynamic>>.from(
+            await client
+                .from('battle_user_challenges')
+                .select()
+                .eq('status', 'published')
+                .eq('visibility', 'public')
+                .eq('moderation_status', 'approved')
+                .gt('expires_at', DateTime.now().toUtc().toIso8601String())
+                .order('published_at', ascending: false)
+                .limit(limit) as List,
+          );
+
+    if (rows.isEmpty) {
+      return const [];
+    }
+
+    final ids = rows.map((row) => row['id'].toString()).toSet().toList();
+    final creatorIds = rows
+        .map((row) => row['created_by']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList();
+
+    final results = await Future.wait<dynamic>([
+      creatorIds.isEmpty
+          ? Future.value(<Map<String, dynamic>>[])
+          : client
+                .from('tamtam_profiles')
+                .select('user_id, username, display_name, avatar_url')
+                .filter('user_id', 'in', '(${creatorIds.join(",")})'),
+      client
+          .from('battle_responses')
+          .select('challenge_id, score')
+          .filter('challenge_id', 'in', '(${ids.join(",")})'),
+      client
+          .from('battle_challenge_ratings')
+          .select('challenge_id, user_id, rating')
+          .filter('challenge_id', 'in', '(${ids.join(",")})'),
+    ]);
+
+    final profiles = <String, Map<String, dynamic>>{
+      for (final profile
+          in List<Map<String, dynamic>>.from(results[0] as List))
+        profile['user_id'].toString(): profile,
+    };
+    final responseRows = List<Map<String, dynamic>>.from(results[1] as List);
+    final ratingRows = List<Map<String, dynamic>>.from(results[2] as List);
+
+    final responseCount = <String, int>{};
+    final scoreTotal = <String, double>{};
+    for (final response in responseRows) {
+      final id = response['challenge_id']?.toString() ?? '';
+      if (id.isEmpty) continue;
+      responseCount[id] = (responseCount[id] ?? 0) + 1;
+      scoreTotal[id] =
+          (scoreTotal[id] ?? 0) + ((response['score'] as num?)?.toDouble() ?? 0);
+    }
+
+    final ratingCount = <String, int>{};
+    final ratingTotal = <String, double>{};
+    final myRatings = <String, int>{};
+    for (final rating in ratingRows) {
+      final id = rating['challenge_id']?.toString() ?? '';
+      if (id.isEmpty) continue;
+      final value = (rating['rating'] as num?)?.toInt() ?? 0;
+      ratingCount[id] = (ratingCount[id] ?? 0) + 1;
+      ratingTotal[id] = (ratingTotal[id] ?? 0) + value;
+      if (user != null && rating['user_id']?.toString() == user.id) {
+        myRatings[id] = value;
+      }
+    }
+
+    double qualityFor(String id) {
+      final responses = responseCount[id] ?? 0;
+      final avgScore = responses == 0
+          ? 0.0
+          : (scoreTotal[id] ?? 0) / responses;
+      final ratings = ratingCount[id] ?? 0;
+      final avgRating = ratings == 0
+          ? 0.0
+          : (ratingTotal[id] ?? 0) / ratings;
+      final participation = (responses * 5).clamp(0, 100).toDouble();
+      final ratingPercent = avgRating / 5 * 100;
+      final evidence = (ratings * (10 / 3)).clamp(0, 10).toDouble();
+      return (participation * .30 +
+              avgScore * .30 +
+              ratingPercent * .30 +
+              evidence)
+          .clamp(0, 100)
+          .toDouble();
+    }
+
+    final enriched = rows.map((row) {
+      final id = row['id'].toString();
+      final creator = profiles[row['created_by']?.toString()];
+      final responses = responseCount[id] ?? 0;
+      final ratings = ratingCount[id] ?? 0;
+      final avgScore = responses == 0
+          ? 0.0
+          : (scoreTotal[id] ?? 0) / responses;
+      final avgRating = ratings == 0
+          ? 0.0
+          : (ratingTotal[id] ?? 0) / ratings;
+      return <String, dynamic>{
+        ...row,
+        'creator_name':
+            creator?['display_name']?.toString().trim().isNotEmpty == true
+            ? creator!['display_name']
+            : (creator?['username'] ?? 'Sage Fitila'),
+        'creator_avatar_url': creator?['avatar_url'],
+        'response_count': responses,
+        'avg_response_score': avgScore,
+        'rating_count': ratings,
+        'rating_average': avgRating,
+        'my_rating': myRatings[id],
+        'quality_score': qualityFor(id),
+        'is_mine': user != null && row['created_by']?.toString() == user.id,
+      };
+    }).toList(growable: false);
+
+    if (!mine) {
+      enriched.sort((a, b) {
+        final byQuality = ((b['quality_score'] as num?)?.toDouble() ?? 0)
+            .compareTo((a['quality_score'] as num?)?.toDouble() ?? 0);
+        if (byQuality != 0) return byQuality;
+        return (b['published_at']?.toString() ?? '')
+            .compareTo(a['published_at']?.toString() ?? '');
+      });
+    }
+    return enriched;
+  }
+
+  static Future<void> rateBattleUserChallenge({
+    required String challengeId,
+    required int rating,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Connexion requise pour noter un défi.');
+    }
+    if (rating < 1 || rating > 5) {
+      throw ArgumentError.value(rating, 'rating', 'Doit être compris entre 1 et 5.');
+    }
+    await client.from('battle_challenge_ratings').upsert(
+      <String, dynamic>{
+        'challenge_id': challengeId,
+        'user_id': user.id,
+        'rating': rating,
+      },
+      onConflict: 'challenge_id,user_id',
+    );
+  }
+
+  static Future<void> closeBattleUserChallenge(String challengeId) async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
+    await client
+        .from('battle_user_challenges')
+        .update(<String, dynamic>{'status': 'closed'})
+        .eq('id', challengeId)
+        .eq('created_by', user.id);
+  }
+
+  // ───────────────────────────────────────────────────────────────
   // Sasara IA — traduction bilingue (réutilise FitilaServices.translate
   // / ai-translate) + corpus communautaire strictement opt-in.
   // ───────────────────────────────────────────────────────────────
