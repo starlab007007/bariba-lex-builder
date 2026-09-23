@@ -195,7 +195,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
   String? _selectedId;
   String? _activeTerritory;
   Position? _userPosition;
-  bool _locatingUser = false;
+  Future<Position?>? _locationFuture;
   late double _manualZoom;
   LatLng _cameraTarget = handuniaBeninCenter;
 
@@ -257,71 +257,73 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     }
   }
 
-  Future<bool> _locateUser({bool focus = false}) async {
-    if (_locatingUser) return _userPosition != null;
-    _locatingUser = true;
-    try {
-      if (!await Geolocator.isLocationServiceEnabled()) return false;
+  Future<Position?> _resolveUserPosition() {
+    final pending = _locationFuture;
+    if (pending != null) return pending;
 
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        return false;
-      }
+    final future = () async {
+      try {
+        if (!await Geolocator.isLocationServiceEnabled()) return null;
 
-      final cached = await Geolocator.getLastKnownPosition();
-      if (cached != null) {
-        _userPosition = cached;
-        if (_styleLoaded) {
-          await _renderPlaces();
+        var permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
         }
-        if (focus && _controller != null) {
-          _manualZoom = 15.4;
-          _cameraTarget = LatLng(cached.latitude, cached.longitude);
-          await _controller!.animateCamera(
-            CameraUpdate.newCameraPosition(
-              CameraPosition(
-                target: _cameraTarget,
-                zoom: _manualZoom,
-                tilt: widget.immersive ? 42 : 0,
-              ),
+        if (permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever) {
+          return null;
+        }
+
+        final cached = await Geolocator.getLastKnownPosition();
+        if (cached != null) {
+          _userPosition = cached;
+          if (_styleLoaded) {
+            await _renderPlaces();
+          }
+        }
+
+        try {
+          final current = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              timeLimit: Duration(seconds: 8),
             ),
           );
+          _userPosition = current;
+          if (_styleLoaded) {
+            await _renderPlaces();
+          }
+          return current;
+        } catch (_) {
+          return cached;
         }
+      } catch (_) {
+        return _userPosition;
       }
+    }();
 
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 8),
+    _locationFuture = future.whenComplete(() => _locationFuture = null);
+    return _locationFuture!;
+  }
+
+  Future<bool> _locateUser({bool focus = false}) async {
+    final position = await _resolveUserPosition();
+    if (position == null) return false;
+
+    if (focus && _controller != null) {
+      _manualZoom = 16.2;
+      _cameraTarget = LatLng(position.latitude, position.longitude);
+      await _controller!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: _cameraTarget,
+            zoom: _manualZoom,
+            tilt: widget.immersive ? 42 : 0,
+          ),
         ),
       );
-      _userPosition = position;
-      if (_styleLoaded) {
-        await _renderPlaces();
-      }
-      if (focus && _controller != null) {
-        _manualZoom = 15.8;
-        _cameraTarget = LatLng(position.latitude, position.longitude);
-        await _controller!.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: _cameraTarget,
-              zoom: _manualZoom,
-              tilt: widget.immersive ? 42 : 0,
-            ),
-          ),
-        );
-      }
-      return true;
-    } catch (_) {
-      return false;
-    } finally {
-      _locatingUser = false;
     }
+    return true;
   }
 
   LatLng? _routeCursor() {
@@ -804,7 +806,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                         ),
                       ),
               ),
-              if (widget.showChrome)
+              if (widget.showChrome && !widget.minimalChrome)
                 Positioned(
                   left: 10,
                   right: 10,
