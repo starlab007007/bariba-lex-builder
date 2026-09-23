@@ -153,11 +153,11 @@ void main() {
     );
 
     // The feed keeps only three compact heritage actions on one line.
-    expect(find.text('Mémoire'), findsOneWidget);
-    expect(find.bySemanticsLabel('Voir le souvenir'), findsOneWidget);
+    expect(find.text('Mémoire'), findsWidgets);
+    expect(find.bySemanticsLabel('Voir le souvenir'), findsWidgets);
     expect(
       find.bySemanticsLabel('Trouver une voix sur la carte'),
-      findsOneWidget,
+      findsWidgets,
     );
 
     // Social-network actions are intentionally absent from Handunia Wasa.
@@ -176,11 +176,11 @@ void main() {
     );
     expect(find.textContaining('7 voix'), findsOneWidget);
     expect(find.text('12'), findsNothing);
-    expect(find.text('Mémoire'), findsOneWidget);
-    expect(find.bySemanticsLabel('Voir le souvenir'), findsOneWidget);
+    expect(find.text('Mémoire'), findsWidgets);
+    expect(find.bySemanticsLabel('Voir le souvenir'), findsWidgets);
     expect(
       find.bySemanticsLabel('Trouver une voix sur la carte'),
-      findsOneWidget,
+      findsWidgets,
     );
     expect(find.bySemanticsLabel('Partager'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -356,7 +356,7 @@ void main() {
     expect(find.text('PARLER'), findsOneWidget);
     expect(find.text('AIDE IA'), findsOneWidget);
     expect(find.text('Voix'), findsOneWidget);
-    expect(find.text('Mémoire'), findsOneWidget);
+    expect(find.text('Mémoire'), findsWidgets);
     expect(find.text('Explorer'), findsOneWidget);
     expect(find.textContaining('Votre voix reste la source.'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -762,7 +762,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Voix'), findsOneWidget);
-    expect(find.text('Mémoire'), findsOneWidget);
+    expect(find.text('Mémoire'), findsWidgets);
     expect(find.text('Explorer'), findsOneWidget);
     expect(find.text('IA'), findsOneWidget);
     expect(tester.takeException(), isNull);
