@@ -24521,9 +24521,13 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
     return ReferenceCreationShell(
       dark: false,
       showTopBar: !widget.embeddedFeed,
-      title: 'Défi du jour',
-      subtitle: participantLabel,
-      leading: const Text('🔥', style: TextStyle(fontSize: 15)),
+      title: 'Sagesse Battle',
+      subtitle: widget.embeddedFeed
+          ? participantLabel
+          : 'Défi officiel + communauté',
+      onBack: widget.embeddedFeed
+          ? widget.onExitEmbedded
+          : () => Navigator.maybePop(context),
       child: _loading
           ? const Center(
               child: CircularProgressIndicator(
@@ -24819,7 +24823,8 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                             ReferenceScoreRing(score: _score),
                             const SizedBox(height: 16),
                             ReferenceCard(
-                              dark: true,
+                              dark: false,
+                              color: FitilaReferenceUi.surfaceAlt,
                               margin: EdgeInsets.zero,
                               child: Text(
                                 challenge == null
@@ -24828,7 +24833,7 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                                 textAlign: TextAlign.center,
                                 style: FitilaReferenceUi.serif(
                                   size: 15,
-                                  color: Colors.white,
+                                  color: FitilaReferenceUi.ink,
                                   height: 1.5,
                                 ),
                               ),
@@ -24899,8 +24904,8 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                               _scoredByAi
                                   ? 'Noté par Fitila IA'
                                   : 'Score calculé hors ligne',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: .48),
+                              style: const TextStyle(
+                                color: FitilaReferenceUi.muted,
                                 fontSize: 10,
                               ),
                             ),
