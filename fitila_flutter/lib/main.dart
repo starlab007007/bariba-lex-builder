@@ -29197,7 +29197,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     }
     setState(() => _creatingLieu = true);
     try {
-      await FitilaBackend.createHanduniaLieu(
+      final created = await FitilaBackend.createHanduniaLieu(
         name: name,
         icon: _newLieuIcon.text,
         description: _newLieuDescription.text,
@@ -29217,7 +29217,14 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('« $name » a rejoint le monde vivant.')),
       );
-      setState(() => _step = 1);
+      if (widget.entryMode == HanduniaWasaEntryMode.publish) {
+        setState(() {
+          _selectedLieu = Map<String, dynamic>.from(created);
+          _step = 7;
+        });
+      } else {
+        setState(() => _step = 1);
+      }
       await _loadLieux();
     } on StateError catch (e) {
       if (!mounted) {
