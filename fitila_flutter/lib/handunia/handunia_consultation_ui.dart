@@ -1546,6 +1546,20 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                   },
                 ),
               ListTile(
+                leading: const Icon(
+                  Icons.travel_explore_rounded,
+                  color: Colors.white,
+                ),
+                title: const Text(
+                  'Trouver une voix sur la carte',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onFindMissingVoice();
+                },
+              ),
+              ListTile(
                 leading: const Icon(Icons.refresh_rounded, color: Colors.white),
                 title: const Text(
                   'Actualiser le fil',
@@ -1568,7 +1582,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
     final shortLabel = switch (value) {
       HanduniaFeedFilter.around => 'Autour',
       HanduniaFeedFilter.lineage => 'Lignée',
-      HanduniaFeedFilter.all => 'Tout',
+      HanduniaFeedFilter.all => 'Découvrir',
     };
     return Expanded(
       child: Semantics(
@@ -1660,11 +1674,23 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  gap?.isNotEmpty == true ? gap! : 'Une voix manque',
+                  'Handunia cherche une voix',
                   maxLines: 2,
                   textAlign: TextAlign.center,
                   overflow: TextOverflow.ellipsis,
                   style: _fraunces(size: 22, color: _feedInk),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  gap?.isNotEmpty == true
+                      ? 'Il manque encore une voix pour : $gap'
+                      : 'Cette mémoire est encore incomplète.',
+                  textAlign: TextAlign.center,
+                  style: _karla(
+                    size: 12,
+                    color: _feedInk,
+                    weight: FontWeight.w700,
+                  ),
                 ),
                 if (lieu?.isNotEmpty == true) ...[
                   const SizedBox(height: 5),
@@ -2748,7 +2774,7 @@ class _DivergenceCardState extends State<_DivergenceCard>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Une mémoire se sépare en deux',
+                    'Deux versions existent',
                     style: _fraunces(
                       size: 17,
                       color: HanduniaTokens.terre,
