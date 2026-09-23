@@ -202,7 +202,14 @@ void main() {
     expect(find.text('Créer un défi'), findsOneWidget);
     expect(find.text('Compléter'), findsOneWidget);
     expect(find.text('Interpréter'), findsOneWidget);
-    expect(find.text('Publier le défi'), findsOneWidget);
+    final publish = find.text('Publier le défi');
+    await tester.scrollUntilVisible(
+      publish,
+      280,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump();
+    expect(publish, findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
