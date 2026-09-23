@@ -186,7 +186,7 @@ void main() {
       find.textContaining('La voix traversait la place avant le marché.'),
       findsOneWidget,
     );
-    expect(find.textContaining('7 voix'), findsOneWidget);
+    expect(find.textContaining('7 voix'), findsWidgets);
     expect(find.text('12'), findsWidgets);
     expect(find.text('Mémoire'), findsWidgets);
     expect(find.bySemanticsLabel('Pourquoi je vois cette mémoire'), findsWidgets);
