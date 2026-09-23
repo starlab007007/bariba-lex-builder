@@ -382,6 +382,80 @@ class HanduniaConsultationData {
     return fragments;
   }
 
+  static Future<Map<String, dynamic>?> fetchPlaceMemorySummary(
+    String lieuId,
+  ) async {
+    if (!FitilaBackend.configured || lieuId.trim().isEmpty) return null;
+    try {
+      final rows = await _client.rpc(
+        'handunia_place_memory_summary',
+        params: {'p_lieu_id': lieuId.trim()},
+      );
+      final values = List<Map<String, dynamic>>.from(rows as List);
+      return values.isEmpty ? null : values.first;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchMemoryNeighborhood(
+    String fragmentId, {
+    int depth = 1,
+  }) async {
+    if (!FitilaBackend.configured || fragmentId.trim().isEmpty) {
+      return const [];
+    }
+    try {
+      final rows = await _client.rpc(
+        'handunia_memory_neighborhood',
+        params: {
+          'p_fragment_id': fragmentId.trim(),
+          'p_depth': depth.clamp(1, 3),
+        },
+      );
+      return List<Map<String, dynamic>>.from(rows as List);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchNextMemories(
+    String fragmentId, {
+    int limit = 8,
+  }) async {
+    if (!FitilaBackend.configured || fragmentId.trim().isEmpty) {
+      return const [];
+    }
+    try {
+      final rows = await _client.rpc(
+        'handunia_next_memory',
+        params: {
+          'p_fragment_id': fragmentId.trim(),
+          'p_limit': limit.clamp(1, 24),
+        },
+      );
+      return List<Map<String, dynamic>>.from(rows as List);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchGapPriorities({
+    int limit = 8,
+  }) async {
+    if (!FitilaBackend.configured) return const [];
+    try {
+      final rows = await _client.rpc(
+        'handunia_memory_gap_priorities',
+        params: {'p_limit': limit.clamp(1, 24)},
+      );
+      return List<Map<String, dynamic>>.from(rows as List);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+
   static double _distanceMeters(
     double lat1,
     double lon1,
