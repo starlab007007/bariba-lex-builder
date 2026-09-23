@@ -215,6 +215,8 @@ class HanduniaAiCreationData {
         .insert(<String, dynamic>{
           'user_id': user.id,
           'lieu_id': lieu['id'].toString(),
+          'latitude': _doubleOrNull(lieu['latitude']),
+          'longitude': _doubleOrNull(lieu['longitude']),
           'text': transcript.trim(),
           'transcript_text': transcript.trim(),
           'transcript_reviewed_by_guardian': false,

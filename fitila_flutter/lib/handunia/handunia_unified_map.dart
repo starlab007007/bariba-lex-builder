@@ -196,6 +196,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
   String? _activeTerritory;
   Position? _userPosition;
   Future<Position?>? _locationFuture;
+  String? _openingPlaceId;
   late double _manualZoom;
   LatLng _cameraTarget = handuniaBeninCenter;
 
@@ -363,6 +364,35 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     return LatLng(points.last['latitude']!, points.last['longitude']!);
   }
 
+  void _onMapCreated(MapLibreMapController controller) {
+    _controller = controller;
+    controller.onCircleTapped.add(_onCircleTapped);
+    controller.onSymbolTapped.add(_onSymbolTapped);
+  }
+
+  void _onCircleTapped(Circle circle) {
+    unawaited(_openAnnotation(circle.data));
+  }
+
+  void _onSymbolTapped(Symbol symbol) {
+    unawaited(_openAnnotation(symbol.data));
+  }
+
+  Future<void> _openAnnotation(Map<String, dynamic>? data) async {
+    if (data == null || data['kind'] != 'place') return;
+    final id = data['place_id']?.toString() ?? '';
+    if (id.isEmpty) return;
+    Map<String, dynamic>? place;
+    for (final item in _located) {
+      if (item['id']?.toString() == id) {
+        place = item;
+        break;
+      }
+    }
+    if (place == null) return;
+    await _selectAndMaybeOpen(place);
+  }
+
   Future<void> _renderPlaces() async {
     final controller = _controller;
     if (controller == null || !_styleLoaded) return;
@@ -387,23 +417,39 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
       );
     }
     final options = <CircleOptions>[];
+    final circleData = <Map<String, dynamic>>[];
     for (final place in _located) {
       final lat = _geoDouble(place['latitude'])!;
       final lon = _geoDouble(place['longitude'])!;
       final voices = (place['voice_count'] as num?)?.toInt() ?? 0;
       final memories = (place['memory_count'] as num?)?.toInt() ?? 0;
       final selected = place['id']?.toString() == _selectedId;
-      final weight =
-          math.max(voices, memories).clamp(0, 20).toDouble();
+      final hasMemory = memories > 0;
+      final weight = math.max(voices, memories).clamp(0, 20).toDouble();
       options.add(
         CircleOptions(
           geometry: LatLng(lat, lon),
-          circleRadius: selected ? 12 : 7.5 + weight * .22,
-          circleColor: selected ? '#F3EFE6' : '#E6AA4A',
-          circleStrokeColor: selected ? '#E6AA4A' : '#15202B',
-          circleStrokeWidth: selected ? 4 : 2,
+          circleRadius: selected
+              ? 18
+              : hasMemory
+                  ? 14 + math.min(12, memories) * .25
+                  : 5.5 + weight * .08,
+          circleColor: selected
+              ? '#FFF7E8'
+              : hasMemory
+                  ? '#E3A11B'
+                  : '#9A8C73',
+          circleOpacity: hasMemory || selected ? .98 : .58,
+          circleStrokeColor: hasMemory || selected ? '#4A260D' : '#FFF7E8',
+          circleStrokeWidth: selected ? 4 : (hasMemory ? 3 : 1.5),
         ),
       );
+      circleData.add(<String, dynamic>{
+        'kind': 'place',
+        'place_id': place['id']?.toString(),
+        'memory_count': memories,
+        'voice_count': voices,
+      });
     }
     if (widget.showUserLocation && _userPosition != null) {
       options.add(
@@ -412,12 +458,13 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
             _userPosition!.latitude,
             _userPosition!.longitude,
           ),
-          circleRadius: 8.5,
+          circleRadius: 9,
           circleColor: '#2563EB',
           circleStrokeColor: '#FFFFFF',
           circleStrokeWidth: 3,
         ),
       );
+      circleData.add(const <String, dynamic>{'kind': 'user'});
     }
 
     final cursor = _routeCursor();
@@ -431,12 +478,14 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
           circleStrokeWidth: 4,
         ),
       );
+      circleData.add(const <String, dynamic>{'kind': 'route_cursor'});
     }
     if (options.isNotEmpty) {
-      await controller.addCircles(options);
+      await controller.addCircles(options, circleData);
     }
 
     final memorySymbols = <SymbolOptions>[];
+    final memorySymbolData = <Map<String, dynamic>>[];
     for (final place in _located) {
       final memories = (place['memory_count'] as num?)?.toInt() ?? 0;
       if (memories <= 0) continue;
@@ -447,16 +496,23 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
         SymbolOptions(
           geometry: LatLng(lat, lon),
           textField: memories > 99 ? '99+' : '$memories',
-          textSize: 11,
+          textSize: 12.5,
           textColor: '#4A260D',
           textHaloColor: '#FFF7E8',
-          textHaloWidth: 2,
-          textOffset: const Offset(0, -1.7),
+          textHaloWidth: 1.6,
+          textAllowOverlap: true,
+          textIgnorePlacement: true,
+          textOffset: const Offset(0, 0),
         ),
       );
+      memorySymbolData.add(<String, dynamic>{
+        'kind': 'place',
+        'place_id': place['id']?.toString(),
+        'memory_count': memories,
+      });
     }
     if (memorySymbols.isNotEmpty) {
-      await controller.addSymbols(memorySymbols);
+      await controller.addSymbols(memorySymbols, memorySymbolData);
     }
   }
 
@@ -715,6 +771,26 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     widget.onSelected?.call(place);
   }
 
+  Future<void> _selectAndMaybeOpen(Map<String, dynamic> place) async {
+    final id = place['id']?.toString() ?? '';
+    if (id.isEmpty || _openingPlaceId == id) return;
+    _openingPlaceId = id;
+    try {
+      await _select(place);
+      if (widget.openOnMarkerTap &&
+          widget.onOpen != null &&
+          place['can_open'] != false) {
+        widget.onOpen!(place);
+      }
+    } finally {
+      Future<void>.delayed(const Duration(milliseconds: 700), () {
+        if (mounted && _openingPlaceId == id) {
+          _openingPlaceId = null;
+        }
+      });
+    }
+  }
+
   Future<void> _onMapTap(LatLng point) async {
     if (_located.isEmpty) return;
     Map<String, dynamic>? nearest;
@@ -740,12 +816,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                 ? 5000.0
                 : 1600.0;
     if (nearest != null && distance <= hitRadiusMeters) {
-      await _select(nearest);
-      if (widget.openOnMarkerTap &&
-          widget.onOpen != null &&
-          nearest['can_open'] != false) {
-        widget.onOpen!(nearest);
-      }
+      await _selectAndMaybeOpen(nearest);
     }
   }
 
@@ -787,7 +858,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                             const MinMaxZoomPreference(5, 18),
                         rotateGesturesEnabled: false,
                         tiltGesturesEnabled: widget.immersive,
-                        onMapCreated: (controller) => _controller = controller,
+                        onMapCreated: _onMapCreated,
                         onStyleLoadedCallback: _onStyleLoaded,
                         onCameraMove: (position) {
                           _cameraTarget = position.target;
@@ -960,8 +1031,8 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _MapRoundAction(
-                        tooltip: 'Me centrer',
-                        label: 'Centrer',
+                        tooltip: 'Aller à ma position',
+                        label: 'Position',
                         icon: Icons.my_location_rounded,
                         onTap: _recenter,
                       ),

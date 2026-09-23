@@ -15,6 +15,7 @@ import 'handunia_consultation_extended_data.dart';
 import 'handunia_consultation_ui.dart';
 import 'handunia_ai_heritage_guide_route.dart';
 import 'handunia_geo_trace_route.dart';
+import 'handunia_map_data.dart';
 import 'handunia_unified_map.dart';
 import 'handunia_territory_picker_route.dart';
 
@@ -853,7 +854,8 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
     if (initialPlaces != null) {
       _places = List<Map<String, dynamic>>.from(initialPlaces);
       _selectedId = null;
-      _loading = false;
+      _loading = true;
+      unawaited(_prepareInitialPlaces());
     } else {
       unawaited(_load());
     }
@@ -865,10 +867,25 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
     super.dispose();
   }
 
+  Future<void> _prepareInitialPlaces() async {
+    try {
+      final prepared = await _preparePlacesForMap(_places);
+      if (!mounted) return;
+      setState(() {
+        _places = prepared;
+        _notice = null;
+      });
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final places = await HanduniaConsultationExtendedData.fetchLivingMap();
+      final rawPlaces =
+          await HanduniaConsultationExtendedData.fetchLivingMap();
+      final places = await _preparePlacesForMap(rawPlaces);
       if (!mounted) return;
       setState(() {
         _places = places;
@@ -882,6 +899,168 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  String _geoNormalize(String value) {
+    var text = value.toLowerCase().trim();
+    const replacements = <String, String>{
+      'à': 'a',
+      'â': 'a',
+      'ä': 'a',
+      'á': 'a',
+      'é': 'e',
+      'è': 'e',
+      'ê': 'e',
+      'ë': 'e',
+      'î': 'i',
+      'ï': 'i',
+      'ô': 'o',
+      'ö': 'o',
+      'ù': 'u',
+      'û': 'u',
+      'ü': 'u',
+      'ç': 'c',
+      'œ': 'oe',
+    };
+    replacements.forEach((from, to) => text = text.replaceAll(from, to));
+    return text
+        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  Set<String> _strongGeoTokens(Map<String, dynamic> place) {
+    const ignored = <String>{
+      'de',
+      'du',
+      'des',
+      'la',
+      'le',
+      'les',
+      'un',
+      'une',
+      'marche',
+      'fete',
+      'recoltes',
+      'intronisation',
+      'veillee',
+      'contes',
+      'puits',
+      'village',
+      'chemin',
+      'caravanes',
+      'souvenir',
+      'memoire',
+    };
+    final values = <String>[
+      place['name']?.toString() ?? '',
+      place['village_quartier']?.toString() ?? '',
+      place['arrondissement']?.toString() ?? '',
+      place['commune']?.toString() ?? '',
+      place['department']?.toString() ?? '',
+    ];
+    final tokens = <String>{};
+    for (final value in values) {
+      for (final token in _geoNormalize(value).split(' ')) {
+        if (token.length >= 4 && !ignored.contains(token)) {
+          tokens.add(token);
+        }
+      }
+    }
+    return tokens;
+  }
+
+  bool _geocodeMatches(
+    Map<String, dynamic> place,
+    Map<String, dynamic> candidate,
+  ) {
+    final tokens = _strongGeoTokens(place);
+    if (tokens.isEmpty) return false;
+    final haystack = _geoNormalize(<String>[
+      candidate['name']?.toString() ?? '',
+      candidate['display_name']?.toString() ?? '',
+      candidate['city']?.toString() ?? '',
+      candidate['district']?.toString() ?? '',
+      candidate['state']?.toString() ?? '',
+      candidate['county']?.toString() ?? '',
+      candidate['locality']?.toString() ?? '',
+    ].join(' '));
+    return tokens.any(haystack.contains);
+  }
+
+  Future<Map<String, dynamic>?> _resolveMissingCoordinates(
+    Map<String, dynamic> place,
+  ) async {
+    if (_hasCoordinates(place)) return place;
+    final memories = (place['memory_count'] as num?)?.toInt() ?? 0;
+    if (memories <= 0) return null;
+
+    final parts = <String>[
+      place['name']?.toString().trim() ?? '',
+      place['village_quartier']?.toString().trim() ?? '',
+      place['arrondissement']?.toString().trim() ?? '',
+      place['commune']?.toString().trim() ?? '',
+      place['department']?.toString().trim() ?? '',
+      'Bénin',
+    ].where((value) => value.isNotEmpty).toList(growable: false);
+    final queries = <String>{
+      parts.join(', '),
+      '${place['name'] ?? ''}, Bénin',
+    }.where((value) => value.trim().length >= 2);
+
+    for (final query in queries) {
+      try {
+        final results = await HanduniaMapData.searchPlaces(query);
+        for (final candidate in results) {
+          if (!_geocodeMatches(place, candidate)) continue;
+          final latitude = candidate['latitude'];
+          final longitude = candidate['longitude'];
+          if (latitude is! num || longitude is! num) continue;
+          return <String, dynamic>{
+            ...place,
+            'latitude': latitude.toDouble(),
+            'longitude': longitude.toDouble(),
+            'department': (place['department']?.toString().trim().isNotEmpty ??
+                    false)
+                ? place['department']
+                : candidate['department'],
+            'commune':
+                (place['commune']?.toString().trim().isNotEmpty ?? false)
+                    ? place['commune']
+                    : candidate['commune'],
+            'arrondissement':
+                (place['arrondissement']?.toString().trim().isNotEmpty ?? false)
+                    ? place['arrondissement']
+                    : candidate['arrondissement'],
+            'village_quartier':
+                (place['village_quartier']?.toString().trim().isNotEmpty ??
+                        false)
+                    ? place['village_quartier']
+                    : candidate['village_quartier'],
+            'geo_provider': 'runtime_photon_osm',
+            'geo_runtime_resolved': true,
+          };
+        }
+      } catch (_) {
+        // La carte reste utilisable même si la résolution OSM est indisponible.
+      }
+    }
+    return null;
+  }
+
+  Future<List<Map<String, dynamic>>> _preparePlacesForMap(
+    List<Map<String, dynamic>> places,
+  ) async {
+    final result = <Map<String, dynamic>>[];
+    for (final place in places) {
+      if (_hasCoordinates(place)) {
+        result.add(place);
+        continue;
+      }
+      final resolved = await _resolveMissingCoordinates(place);
+      result.add(resolved ?? place);
+    }
+    return result;
   }
 
   List<Map<String, dynamic>> get _visiblePlaces {
