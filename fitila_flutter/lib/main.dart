@@ -28280,6 +28280,146 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     }
   }
 
+  Future<void> _toggleCreationVoice() async {
+    if (_creationVoiceRecording) {
+      setState(() => _creationVoiceRecording = false);
+      try {
+        final asset = await _handuniaVoiceMedia.stopAudio();
+        if (asset == null) return;
+        String transcript;
+        try {
+          transcript = await FitilaTranslationAudio.transcribe(
+            asset: asset,
+            sourceIsBariba: true,
+          );
+        } catch (_) {
+          transcript = await FitilaTranslationAudio.transcribe(
+            asset: asset,
+            sourceIsBariba: false,
+          );
+        }
+        if (!mounted) return;
+        final existing = _fragmentController.text.trim();
+        final next = existing.isEmpty
+            ? transcript.trim()
+            : '$existing\n${transcript.trim()}';
+        setState(() {
+          _fragmentController.text = next;
+          _fragmentController.selection = TextSelection.collapsed(
+            offset: next.length,
+          );
+        });
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error is StateError
+                  ? error.message
+                  : 'Enregistrement vocal indisponible.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    try {
+      await _handuniaVoiceMedia.startAudio();
+      if (mounted) setState(() => _creationVoiceRecording = true);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Micro indisponible. Vous pouvez écrire.')),
+      );
+    }
+  }
+
+  Future<void> _selectNearestPublishLieu() async {
+    if (_locatingLieux) return;
+    setState(() => _locatingLieux = true);
+    try {
+      Position? position = _worldPosition;
+      if (position == null) {
+        if (!await Geolocator.isLocationServiceEnabled()) {
+          throw StateError('Activez le GPS, ou choisissez un lieu dans la liste.');
+        }
+        var permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+        if (permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever) {
+          throw StateError('Position refusée. Choisissez un lieu dans la liste.');
+        }
+        position = await Geolocator.getLastKnownPosition();
+        position ??= await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+            timeLimit: Duration(seconds: 6),
+          ),
+        );
+        _worldPosition = position;
+      }
+
+      Map<String, dynamic>? nearest;
+      var bestDistance = double.infinity;
+      for (final lieu in _lieux) {
+        if (lieu['id']?.toString() == 'lieu-non-precise') continue;
+        final lat = (lieu['latitude'] as num?)?.toDouble();
+        final lon = (lieu['longitude'] as num?)?.toDouble();
+        if (lat == null || lon == null) continue;
+        final distance = Geolocator.distanceBetween(
+          position.latitude,
+          position.longitude,
+          lat,
+          lon,
+        );
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          nearest = Map<String, dynamic>.from(lieu);
+        }
+      }
+      if (nearest == null) {
+        throw StateError(
+          'Aucun lieu localisé hors ligne. Recherchez par nom ou continuez sans lieu précis.',
+        );
+      }
+      if (!mounted) return;
+      setState(() {
+        _selectedLieu = nearest;
+        _step = 7;
+      });
+    } on StateError catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Position non disponible. La carte n’est pas nécessaire : choisissez un lieu ou continuez sans lieu précis.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _locatingLieux = false);
+    }
+  }
+
+  void _selectUnknownPublishLieu() {
+    final existing = _lieux.where(
+      (lieu) => lieu['id']?.toString() == 'lieu-non-precise',
+    );
+    setState(() {
+      _selectedLieu = existing.isNotEmpty
+          ? Map<String, dynamic>.from(existing.first)
+          : Map<String, dynamic>.from(_fallbackLieux.last);
+      _step = 7;
+    });
+  }
+
   Future<void> _toggleMemoryVoiceQuestion() async {
     if (_memoryVoiceRecording) {
       setState(() => _memoryVoiceRecording = false);
