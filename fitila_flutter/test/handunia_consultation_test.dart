@@ -80,7 +80,7 @@ void main() {
     );
   });
 
-  testWidgets('Handunia immersive feed loops and exposes animated social actions', (
+  testWidgets('Handunia immersive feed loops with compact heritage actions', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -122,8 +122,6 @@ void main() {
       },
     ];
 
-    String? likedId;
-    bool? likedValue;
     await tester.pumpWidget(
       MaterialApp(
         home: HanduniaFilView(
@@ -137,10 +135,6 @@ void main() {
           onFilterChanged: (_) {},
           onOpenMemory: (_) {},
           onFindMissingVoice: () {},
-          onLikeChanged: (id, liked) async {
-            likedId = id;
-            likedValue = liked;
-          },
         ),
       ),
     );
@@ -157,12 +151,21 @@ void main() {
       find.textContaining('Votre voix attend le réseau.'),
       findsOneWidget,
     );
-    expect(find.text('Partager'), findsNothing);
-    expect(find.bySemanticsLabel('Partager'), findsOneWidget);
+
+    // The feed keeps only three compact heritage actions on one line.
+    expect(find.bySemanticsLabel('Mémoire'), findsOneWidget);
+    expect(find.bySemanticsLabel('Voir le souvenir'), findsOneWidget);
     expect(
-      find.byKey(const ValueKey<String>('handunia-like-local-1')),
+      find.bySemanticsLabel('Trouver une voix sur la carte'),
       findsOneWidget,
     );
+
+    // Social-network actions are intentionally absent from Handunia Wasa.
+    expect(find.bySemanticsLabel('Partager'), findsNothing);
+    expect(find.byIcon(Icons.favorite_rounded), findsNothing);
+    expect(find.byIcon(Icons.favorite_border_rounded), findsNothing);
+    expect(find.byIcon(Icons.bookmark_rounded), findsNothing);
+    expect(find.byIcon(Icons.bookmark_border_rounded), findsNothing);
 
     await tester.drag(find.byType(PageView), const Offset(0, -620));
     await tester.pump(const Duration(milliseconds: 450));
@@ -172,22 +175,14 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('7 voix'), findsOneWidget);
-    expect(find.text('12'), findsOneWidget);
-
-    final memoryLike = find.byKey(
-      const ValueKey<String>('handunia-like-memory-1'),
+    expect(find.text('12'), findsNothing);
+    expect(find.bySemanticsLabel('Mémoire'), findsOneWidget);
+    expect(find.bySemanticsLabel('Voir le souvenir'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Trouver une voix sur la carte'),
+      findsOneWidget,
     );
-    expect(memoryLike, findsOneWidget);
-    // The validated luminous layout intentionally lets the reaction rail
-    // overlap the story card edge. Invoke the keyed InkWell directly so this
-    // state test remains independent from viewport-specific hit coordinates.
-    final likeInkWell = tester.widget<InkWell>(memoryLike);
-    likeInkWell.onTap?.call();
-    await tester.pump(const Duration(milliseconds: 500));
-    expect(likedId, 'memory-1');
-    expect(likedValue, isTrue);
-    expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
-    expect(find.text('13'), findsOneWidget);
+    expect(find.bySemanticsLabel('Partager'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
