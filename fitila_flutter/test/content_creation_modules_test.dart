@@ -28,7 +28,7 @@ void main() {
     ),
     'Sagesse Battle': (
       screen: () => const SagesseBattleScreen(),
-      anchor: 'Défi du jour',
+      anchor: 'Sagesse Battle',
     ),
     'Aburu Fim IA': (
       screen: () => AburuFimScreen(onPostCreated: (_) {}),
@@ -173,7 +173,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 800));
 
-    expect(find.text('Défi du jour'), findsOneWidget);
+    expect(find.text('Sagesse Battle'), findsOneWidget);
     expect(find.textContaining('Impossible de charger'), findsNothing);
     expect(tester.takeException(), isNull);
 
@@ -184,6 +184,26 @@ void main() {
       expect(find.byType(Scrollable), findsWidgets);
       expect(tester.takeException(), isNull);
     }
+  });
+
+  testWidgets('Sagesse user challenge creator exposes publish flow', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      phoneApp(const SagesseUserChallengeCreateScreen()),
+    );
+    await tester.pump();
+
+    expect(find.text('Créer un défi'), findsOneWidget);
+    expect(find.text('Compléter'), findsOneWidget);
+    expect(find.text('Interpréter'), findsOneWidget);
+    expect(find.text('Publier le défi'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Aburu Fim follows the reference template gallery on phone', (
