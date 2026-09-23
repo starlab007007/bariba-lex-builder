@@ -1635,12 +1635,10 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
         (item['audio_url']?.toString().trim().isNotEmpty ?? false) ||
         (item['cached_audio_path']?.toString().trim().isNotEmpty ?? false);
     final voiceLabel = voices == 1 ? '1 voix' : '$voices voix';
-    final summaryBusy = _busyInsightId == 'summary:$id';
-    final translateBusy = _busyInsightId == 'translate:$id';
     return ColoredBox(
       color: _feedCream,
       child: LayoutBuilder(
-          builder: (context, constraints) {
+        builder: (context, constraints) {
             final compact = constraints.maxHeight < 730;
             final topInset = compact ? 158.0 : 190.0;
             final bottomInset = compact ? 78.0 : 102.0;
