@@ -1711,52 +1711,107 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
 
   Future<void> _showMemoryContext(Map<String, dynamic> item) async {
     final voices = (item['voice_count'] as num?)?.toInt() ?? 1;
+    final corroborations =
+        (item['corroboration_count'] as num?)?.toInt() ??
+        math.max(0, voices - 1);
     final lieu = item['lieu_name']?.toString().trim() ?? 'Handunia Wasa';
     final period =
         item['period_label']?.toString().trim().isNotEmpty == true
         ? item['period_label'].toString()
         : (item['period_year']?.toString() ?? 'Période non précisée');
-    final reason =
-        item['_handunia_transition_label']?.toString().trim().isNotEmpty == true
-        ? item['_handunia_transition_label'].toString()
-        : 'Mémoire du territoire';
+    final why = (item['_handunia_why'] as List?)
+            ?.whereType<String>()
+            .where((value) => value.trim().isNotEmpty)
+            .toList(growable: false) ??
+        HanduniaHeritageFeed.explanationFor(item);
 
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       backgroundColor: _feedPaper,
       builder: (sheetContext) => SafeArea(
         top: false,
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Mémoire',
+                'Pourquoi je vois cette mémoire ?',
                 style: _fraunces(size: 22, color: _feedInk),
               ),
-              const SizedBox(height: 7),
+              const SizedBox(height: 6),
               Text(
-                reason,
+                'Handunia relie les souvenirs pour mieux comprendre le territoire, jamais pour fabriquer une tendance.',
                 style: _karla(
-                  size: 13,
-                  color: _feedGoldDeep,
-                  weight: FontWeight.w800,
+                  size: 12.2,
+                  color: _feedMuted,
+                  height: 1.4,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 15),
+              for (final reason in why)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 22,
+                        height: 22,
+                        alignment: Alignment.center,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _feedPaperSoft,
+                        ),
+                        child: const Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 13,
+                          color: _feedGoldDeep,
+                        ),
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          reason,
+                          style: _karla(
+                            size: 13,
+                            color: _feedInk,
+                            weight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 10),
+              const Divider(color: _feedHairline),
+              const SizedBox(height: 10),
               _memoryContextLine(Icons.location_on_rounded, lieu),
               _memoryContextLine(Icons.schedule_rounded, period),
               _memoryContextLine(
                 Icons.groups_2_outlined,
                 '$voices voix humaine${voices > 1 ? 's' : ''}',
               ),
+              _memoryContextLine(
+                Icons.verified_outlined,
+                corroborations == 0
+                    ? 'Pas encore de corroboration distincte'
+                    : corroborations == 1
+                        ? '1 corroboration'
+                        : '$corroborations corroborations',
+              ),
               if (item['lacuna_filled'] == true)
                 _memoryContextLine(
-                  Icons.auto_awesome_rounded,
-                  'Lacune comblée',
+                  Icons.lightbulb_outline_rounded,
+                  'Cette voix complète une lacune documentaire',
+                ),
+              if (item['has_divergence'] == true)
+                _memoryContextLine(
+                  Icons.balance_rounded,
+                  'Une autre version documentée existe',
                 ),
               const SizedBox(height: 10),
               SizedBox(
@@ -1774,7 +1829,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                     shape: const StadiumBorder(),
                   ),
                   icon: const Icon(Icons.account_tree_outlined, size: 19),
-                  label: const Text('Ouvrir'),
+                  label: const Text('Ouvrir la mémoire'),
                 ),
               ),
             ],
