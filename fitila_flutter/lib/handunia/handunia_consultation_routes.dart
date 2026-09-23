@@ -956,10 +956,10 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
     _query.clear();
     setState(() {
       _territoryFocus = result;
-      _selectedId = result['id']?.toString();
+      _selectedId = null;
       _notice = result['geo_unresolved'] == true
-          ? 'Territoire sélectionné · centrage cartographique à préciser.'
-          : 'Territoire positionné sur la carte réelle.';
+          ? 'Territoire sélectionné · position à préciser.'
+          : null;
     });
   }
 
@@ -998,13 +998,6 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
     final territoryFocus = _territoryFocus;
     final mapPlaces = <Map<String, dynamic>>[
       ...visible,
-      if (territoryFocus != null &&
-          !visible.any(
-            (place) =>
-                place['id']?.toString() ==
-                territoryFocus['id']?.toString(),
-          ))
-        territoryFocus,
     ];
     final unlocated = visible.where((place) => !_hasCoordinates(place)).toList();
     final selected = _selectedPlace;
@@ -1123,24 +1116,6 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                 ),
               ),
             ),
-            if (_territoryFocus != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 7),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: InputChip(
-                    avatar: const Icon(Icons.place_outlined, size: 17),
-                    label: Text(
-                      _territoryFocus?['name']?.toString() ??
-                          _territoryFocus?['village_quartier']?.toString() ??
-                          'Zone sélectionnée',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onDeleted: _clearTerritoryFocus,
-                  ),
-                ),
-              ),
             if (_notice != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
@@ -1181,6 +1156,7 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                                   showTerritoryRail: false,
                                   focusUserOnOpen: true,
                                   openOnMarkerTap: true,
+                                  minimalChrome: true,
                                   onSelected: (place) => setState(
                                     () => _selectedId =
                                         place['id']?.toString(),

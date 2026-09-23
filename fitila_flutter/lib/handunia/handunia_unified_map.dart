@@ -163,6 +163,7 @@ class HanduniaUnifiedMap extends StatefulWidget {
     this.showUserLocation = true,
     this.showTerritoryRail = true,
     this.openOnMarkerTap = false,
+    this.minimalChrome = false,
   });
 
   final List<Map<String, dynamic>> places;
@@ -181,6 +182,7 @@ class HanduniaUnifiedMap extends StatefulWidget {
   final bool showUserLocation;
   final bool showTerritoryRail;
   final bool openOnMarkerTap;
+  final bool minimalChrome;
 
   @override
   State<HanduniaUnifiedMap> createState() => _HanduniaUnifiedMapState();
@@ -270,6 +272,27 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
         return false;
       }
 
+      final cached = await Geolocator.getLastKnownPosition();
+      if (cached != null) {
+        _userPosition = cached;
+        if (_styleLoaded) {
+          await _renderPlaces();
+        }
+        if (focus && _controller != null) {
+          _manualZoom = 15.4;
+          _cameraTarget = LatLng(cached.latitude, cached.longitude);
+          await _controller!.animateCamera(
+            CameraUpdate.newCameraPosition(
+              CameraPosition(
+                target: _cameraTarget,
+                zoom: _manualZoom,
+                tilt: widget.immersive ? 42 : 0,
+              ),
+            ),
+          );
+        }
+      }
+
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
@@ -281,7 +304,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
         await _renderPlaces();
       }
       if (focus && _controller != null) {
-        _manualZoom = 15.4;
+        _manualZoom = 15.8;
         _cameraTarget = LatLng(position.latitude, position.longitude);
         await _controller!.animateCamera(
           CameraUpdate.newCameraPosition(
@@ -343,6 +366,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     if (controller == null || !_styleLoaded) return;
     await controller.clearCircles();
     await controller.clearLines();
+    await controller.clearSymbols();
     if (widget.routePoints.length >= 2) {
       await controller.addLine(
         LineOptions(
@@ -408,6 +432,29 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     }
     if (options.isNotEmpty) {
       await controller.addCircles(options);
+    }
+
+    final memorySymbols = <SymbolOptions>[];
+    for (final place in _located) {
+      final memories = (place['memory_count'] as num?)?.toInt() ?? 0;
+      if (memories <= 0) continue;
+      final lat = _geoDouble(place['latitude']);
+      final lon = _geoDouble(place['longitude']);
+      if (lat == null || lon == null) continue;
+      memorySymbols.add(
+        SymbolOptions(
+          geometry: LatLng(lat, lon),
+          textField: memories > 99 ? '99+' : '$memories',
+          textSize: 11,
+          textColor: '#4A260D',
+          textHaloColor: '#FFF7E8',
+          textHaloWidth: 2,
+          textOffset: const Offset(0, -1.7),
+        ),
+      );
+    }
+    if (memorySymbols.isNotEmpty) {
+      await controller.addSymbols(memorySymbols);
     }
   }
 
@@ -764,6 +811,7 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                   top: 10,
                   child: Row(
                     children: [
+                      if (!widget.minimalChrome) ...[
                       Expanded(
                         child: Material(
                           color: HanduniaTokens.nuitPortee.withValues(alpha: .95),
@@ -807,7 +855,9 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
+                        const SizedBox(width: 6),
+                      ] else
+                        const Spacer(),
                       HanduniaNamedAction(
                         label: _satellite ? 'Plan' : 'Satellite',
                         color: HanduniaTokens.braise,
@@ -831,28 +881,31 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      HanduniaNamedAction(
-                        label: 'Bénin',
-                        color: HanduniaTokens.braise,
-                        fontSize: 7.8,
-                        maxWidth: 48,
-                        child: Material(
-                          color: HanduniaTokens.nuitPortee.withValues(alpha: .96),
-                          shape: const CircleBorder(),
-                          elevation: 1,
-                          child: IconButton(
-                            tooltip: 'Voir tout le Bénin',
-                            onPressed: _focusBenin,
-                            icon: const Icon(Icons.public_rounded),
-                            color: HanduniaTokens.braise,
+                      if (!widget.minimalChrome) ...[
+                        const SizedBox(width: 4),
+                        HanduniaNamedAction(
+                          label: 'Bénin',
+                          color: HanduniaTokens.braise,
+                          fontSize: 7.8,
+                          maxWidth: 48,
+                          child: Material(
+                            color: HanduniaTokens.nuitPortee.withValues(alpha: .96),
+                            shape: const CircleBorder(),
+                            elevation: 1,
+                            child: IconButton(
+                              tooltip: 'Voir tout le Bénin',
+                              onPressed: _focusBenin,
+                              icon: const Icon(Icons.public_rounded),
+                              color: HanduniaTokens.braise,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
               if (widget.showChrome &&
+                  !widget.minimalChrome &&
                   widget.showTerritoryRail &&
                   selected != null)
                 Positioned(
