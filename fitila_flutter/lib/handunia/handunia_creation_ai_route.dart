@@ -1872,20 +1872,6 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
     );
   }
 
-  Widget _pill(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: .6)),
-      ),
-      child: Text(
-        label,
-        style: _karla(size: 12.5, color: color, weight: FontWeight.w700),
-      ),
-    );
-  }
-
   Widget _primaryButton({
     required String label,
     required IconData icon,
@@ -1973,15 +1959,6 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
       'event' => 'Événement',
       'movement' => 'Déplacement',
       _ => 'Trace',
-    };
-  }
-
-  String _scopeLabel(String value) {
-    return switch (value) {
-      'elders' => 'Anciens',
-      'lineage' => 'Lignée',
-      'all' => 'Tous',
-      _ => 'Communauté',
     };
   }
 
