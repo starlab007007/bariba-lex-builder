@@ -2168,7 +2168,7 @@ class _FeedScreenState extends State<FeedScreen> {
                   : null,
               color: selected ? null : _fitilaCard,
               border: Border.all(
-                color: selected ? Colors.transparent : _fitilaHairline,
+                color: selected ? Colors.transparent : _fitilaBorder,
               ),
             ),
             child: Row(
@@ -2258,14 +2258,12 @@ class _ImmersiveFeedDeck extends StatefulWidget {
     required this.loading,
     required this.error,
     required this.onRetry,
-    this.onOpenHanduniaFeed,
   });
 
   final List<FeedPost> posts;
   final bool loading;
   final String? error;
   final VoidCallback? onRetry;
-  final VoidCallback? onOpenHanduniaFeed;
 
   @override
   State<_ImmersiveFeedDeck> createState() => _ImmersiveFeedDeckState();
@@ -2441,11 +2439,6 @@ class _ImmersiveFeedDeckState extends State<_ImmersiveFeedDeck> {
                     colorA: _feedCategoryStyles[FitilaFeedCategory.handuniaWasa]!.colorA,
                     colorB: _feedCategoryStyles[FitilaFeedCategory.handuniaWasa]!.colorB,
                     onTap: () {
-                      final open = widget.onOpenHanduniaFeed;
-                      if (open != null) {
-                        open();
-                        return;
-                      }
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => const HanduniaWasaScreen(
