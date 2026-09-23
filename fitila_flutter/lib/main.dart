@@ -28561,22 +28561,62 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   }
 
 
+  Future<List<Map<String, dynamic>>> _readLieuxCache() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final raw = preferences.getString(_lieuxCacheKey);
+      if (raw == null || raw.isEmpty) return const [];
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return const [];
+      return decoded
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList(growable: false);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> _writeLieuxCache(List<Map<String, dynamic>> lieux) async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString(
+        _lieuxCacheKey,
+        jsonEncode(
+          lieux.map((item) => Map<String, dynamic>.from(item)).toList(),
+        ),
+      );
+    } catch (_) {
+      // Le cache des lieux ne bloque jamais la création.
+    }
+  }
+
   Future<void> _loadLieux() async {
     setState(() {
       _loadingLieux = true;
       _lieuxError = null;
       _syncedOfflineCount = 0;
     });
+
+    final cached = await _readLieuxCache();
+    if (mounted && cached.isNotEmpty) {
+      setState(() {
+        _lieux = cached;
+        _loadingLieux = false;
+      });
+    }
+
     try {
       final results = await Future.wait([
         FitilaBackend.fetchHanduniaLieux(),
         FitilaBackend.fetchHanduniaDensity(),
       ]);
-      final serverLieux = results[0] as List<Map<String, dynamic>>;
+      final serverLieux =
+          List<Map<String, dynamic>>.from(results[0] as List);
       var serverDensity = results[1] as Map<String, int>;
 
-      if (mounted) {
-        }
+      await _writeLieuxCache(serverLieux);
+
       var synced = 0;
       try {
         synced = await _syncPendingLocalFragments(serverLieux);
@@ -28584,13 +28624,10 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           serverDensity = await FitilaBackend.fetchHanduniaDensity();
         }
       } catch (_) {
-        // La synchronisation locale est best-effort : elle ne bloque jamais
-        // l'accès au monde vivant ni les données déjà disponibles.
+        // La synchronisation locale est best-effort.
       }
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _lieux = serverLieux;
         _density = serverDensity;
@@ -28614,19 +28651,19 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         });
       }
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
+      final offline = cached.isNotEmpty
+          ? cached
+          : _fallbackLieux
+              .map((lieu) => Map<String, dynamic>.from(lieu))
+              .toList(growable: false);
       setState(() {
-        _lieux = _fallbackLieux
-            .map((lieu) => Map<String, dynamic>.from(lieu))
-            .toList(growable: false);
+        _lieux = offline;
         _density = const {};
         _lieuxError = null;
         _backendUnavailable = true;
         _loadingLieux = false;
       });
-      unawaited(_enrichMissingLieuCoordinates());
     }
   }
 
@@ -28761,6 +28798,13 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   }
 
   Future<void> _openLieu(Map<String, dynamic> lieu) async {
+    if (widget.entryMode == HanduniaWasaEntryMode.publish) {
+      setState(() {
+        _selectedLieu = Map<String, dynamic>.from(lieu);
+        _step = 7;
+      });
+      return;
+    }
     setState(() {
       _selectedLieu = lieu;
       _step = 2;
