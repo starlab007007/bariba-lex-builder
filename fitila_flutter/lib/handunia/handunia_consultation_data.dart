@@ -230,6 +230,8 @@ class HanduniaConsultationData {
         ),
         'like_count': likeCounts[id] ?? 0,
         'liked_by_me': likedByMe.contains(id),
+        'is_mine':
+            _client.auth.currentUser?.id == fragment['user_id']?.toString(),
         'latest_corroboration_at':
             latest[id]?.toIso8601String() ?? fragment['created_at'],
         'distance_m': distance,
