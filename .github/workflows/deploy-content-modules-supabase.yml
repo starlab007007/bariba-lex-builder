@@ -71,6 +71,7 @@ jobs:
           migration_paths = (
               'supabase/migrations/20260919133000_aburu_product_link_and_realtime.sql',
               'supabase/migrations/20260919161000_live_griot_runtime_cleanup.sql',
+              'supabase/migrations/20260923193000_handunia_optional_location.sql',
           )
 
           for migration_path in migration_paths:
