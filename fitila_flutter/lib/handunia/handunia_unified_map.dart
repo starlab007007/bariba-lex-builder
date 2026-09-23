@@ -723,6 +723,40 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                   top: 62,
                   child: _territoryZoomRail(selected),
                 ),
+              if (widget.showChrome &&
+                  selected == null &&
+                  widget.immersive &&
+                  widget.places.isNotEmpty)
+                Positioned(
+                  left: 76,
+                  right: 76,
+                  top: 60,
+                  child: Semantics(
+                    label: 'Parcours de ${widget.places.first['name']} à ${widget.places.last['name']}',
+                    child: Container(
+                      height: 34,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: HanduniaTokens.nuitPortee.withValues(alpha: .94),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: HanduniaTokens.bordureForte),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${widget.places.first['name'] ?? 'Lieu'} → ${widget.places.last['name'] ?? 'Lieu'}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontFamily: 'Karla',
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: HanduniaTokens.ivoire,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               if (widget.showChrome)
                 Positioned(
                   right: 10,

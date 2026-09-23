@@ -1648,20 +1648,23 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                 ],
                 const SizedBox(height: 16),
                 Semantics(
+                  container: true,
                   button: true,
                   label: 'Aider à compléter cette mémoire par la voix',
-                  child: SizedBox(
-                    width: 58,
-                    height: 58,
-                    child: FilledButton(
-                      onPressed: widget.onFindMissingVoice,
-                      style: FilledButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        shape: const CircleBorder(),
-                        backgroundColor: _feedGold,
-                        foregroundColor: _feedInk,
+                  child: ExcludeSemantics(
+                    child: SizedBox(
+                      width: 58,
+                      height: 58,
+                      child: FilledButton(
+                        onPressed: widget.onFindMissingVoice,
+                        style: FilledButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          shape: const CircleBorder(),
+                          backgroundColor: _feedGold,
+                          foregroundColor: _feedInk,
+                        ),
+                        child: const Icon(Icons.mic_rounded, size: 27),
                       ),
-                      child: const Icon(Icons.mic_rounded, size: 27),
                     ),
                   ),
                 ),
