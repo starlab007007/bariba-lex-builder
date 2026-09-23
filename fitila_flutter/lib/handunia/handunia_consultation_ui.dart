@@ -1442,6 +1442,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
         button: true,
         selected: selected,
         label: value.label,
+        excludeSemantics: true,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () {

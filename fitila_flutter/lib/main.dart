@@ -28016,7 +28016,9 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         selected: selected,
         label: label,
         child: HanduniaNamedAction(
-          label: label == 'Fil Handunia' ? 'Fil' : label,
+          label: label == 'Fil Handunia'
+              ? 'Fil'
+              : (label == 'Carte' ? 'Plan' : label),
           color: selected
               ? FitilaReferenceUi.goldDeep
               : FitilaReferenceUi.muted,
