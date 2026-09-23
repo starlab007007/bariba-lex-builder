@@ -25229,7 +25229,12 @@ class _BattleMetricPill extends StatelessWidget {
 }
 
 class SagesseUserChallengeCreateScreen extends StatefulWidget {
-  const SagesseUserChallengeCreateScreen({super.key});
+  const SagesseUserChallengeCreateScreen({
+    super.key,
+    this.challenge,
+  });
+
+  final Map<String, dynamic>? challenge;
 
   @override
   State<SagesseUserChallengeCreateScreen> createState() =>
@@ -25238,15 +25243,65 @@ class SagesseUserChallengeCreateScreen extends StatefulWidget {
 
 class _SagesseUserChallengeCreateScreenState
     extends State<SagesseUserChallengeCreateScreen> {
-  final _title = TextEditingController();
-  final _bariba = TextEditingController();
-  final _french = TextEditingController();
-  final _answer = TextEditingController();
-  final _context = TextEditingController();
-  final _theme = TextEditingController(text: 'Sagesse');
+  static const _themeSuggestions = <String>[
+    'Sagesse',
+    'Famille',
+    'Respect',
+    'Travail',
+    'Courage',
+    'Solidarité',
+    'Éducation',
+    'Tradition',
+    'Justice',
+    'Nature',
+    'Vie quotidienne',
+    'Paix',
+  ];
+
+  late final TextEditingController _title;
+  late final TextEditingController _bariba;
+  late final TextEditingController _french;
+  late final TextEditingController _answer;
+  late final TextEditingController _context;
+  String _theme = 'Sagesse';
   String _type = 'complete_proverb';
   int _duration = 24;
   bool _publishing = false;
+
+  bool get _editing => widget.challenge != null;
+
+  List<String> get _themeOptions {
+    final values = <String>[..._themeSuggestions];
+    if (_theme.trim().isNotEmpty && !values.contains(_theme)) {
+      values.insert(0, _theme);
+    }
+    return values;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final challenge = widget.challenge;
+    _title = TextEditingController(text: challenge?['title']?.toString() ?? '');
+    _bariba = TextEditingController(
+      text: challenge?['prompt_bariba']?.toString() ?? '',
+    );
+    _french = TextEditingController(
+      text: challenge?['prompt_francais']?.toString() ?? '',
+    );
+    _answer = TextEditingController(
+      text: challenge?['answer_key']?.toString() ?? '',
+    );
+    _context = TextEditingController(
+      text: challenge?['context_text']?.toString() ?? '',
+    );
+    _type = challenge?['challenge_type']?.toString() ?? 'complete_proverb';
+    _duration = (challenge?['duration_hours'] as num?)?.toInt() ?? 24;
+    final storedTheme = challenge?['theme']?.toString().trim() ?? '';
+    if (storedTheme.isNotEmpty) {
+      _theme = storedTheme;
+    }
+  }
 
   @override
   void dispose() {
@@ -25255,7 +25310,6 @@ class _SagesseUserChallengeCreateScreenState
     _french.dispose();
     _answer.dispose();
     _context.dispose();
-    _theme.dispose();
     super.dispose();
   }
 
@@ -25277,24 +25331,44 @@ class _SagesseUserChallengeCreateScreenState
     }
     setState(() => _publishing = true);
     try {
-      await FitilaBackend.createBattleUserChallenge(
-        title: _title.text,
-        challengeType: _type,
-        promptBariba: _bariba.text,
-        promptFrancais: _french.text,
-        answerKey: _answer.text,
-        contextText: _context.text,
-        theme: _theme.text,
-        responseMode: 'text',
-        durationHours: _duration,
-      );
+      if (_editing) {
+        await FitilaBackend.updateBattleUserChallenge(
+          challengeId: widget.challenge!['id'].toString(),
+          title: _title.text,
+          challengeType: _type,
+          promptBariba: _bariba.text,
+          promptFrancais: _french.text,
+          answerKey: _answer.text,
+          contextText: _context.text,
+          theme: _theme,
+          durationHours: _duration,
+        );
+      } else {
+        await FitilaBackend.createBattleUserChallenge(
+          title: _title.text,
+          challengeType: _type,
+          promptBariba: _bariba.text,
+          promptFrancais: _french.text,
+          answerKey: _answer.text,
+          contextText: _context.text,
+          theme: _theme,
+          responseMode: 'text',
+          durationHours: _duration,
+        );
+      }
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) return;
       setState(() => _publishing = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Publication impossible : $error')),
+        SnackBar(
+          content: Text(
+            _editing
+                ? 'Mise à jour impossible : $error'
+                : 'Publication impossible : $error',
+          ),
+        ),
       );
     }
   }
@@ -25308,7 +25382,7 @@ class _SagesseUserChallengeCreateScreenState
     final selected = _type == value;
     return Expanded(
       child: InkWell(
-        onTap: () => setState(() => _type = value),
+        onTap: _publishing ? null : () => setState(() => _type = value),
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
@@ -25359,13 +25433,8 @@ class _SagesseUserChallengeCreateScreenState
   Widget build(BuildContext context) {
     return ReferenceCreationShell(
       dark: false,
-      title: 'Créer un défi',
+      title: _editing ? 'Modifier le défi' : 'Créer un défi',
       subtitle: 'Sagesse Battle',
-      leading: const Icon(
-        Icons.psychology_alt_rounded,
-        color: FitilaReferenceUi.goldDeep,
-        size: 20,
-      ),
       onBack: () => Navigator.maybePop(context),
       child: ListView(
         padding: EdgeInsets.zero,
@@ -25444,10 +25513,36 @@ class _SagesseUserChallengeCreateScreenState
             ),
           ),
           const SizedBox(height: 10),
-          TextField(
-            controller: _theme,
+          DropdownButtonFormField<String>(
+            initialValue: _theme,
+            isExpanded: true,
             decoration: const InputDecoration(
               labelText: 'Thème',
+              prefixIcon: Icon(Icons.category_outlined),
+            ),
+            items: [
+              for (final theme in _themeOptions)
+                DropdownMenuItem<String>(
+                  value: theme,
+                  child: Text(
+                    theme,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
+            onChanged: _publishing
+                ? null
+                : (value) {
+                    if (value != null) setState(() => _theme = value);
+                  },
+          ),
+          const SizedBox(height: 7),
+          const Text(
+            'Choisissez le thème qui décrit le mieux le défi.',
+            style: TextStyle(
+              color: FitilaReferenceUi.muted,
+              fontSize: 9.5,
             ),
           ),
           const SizedBox(height: 14),
@@ -25463,10 +25558,13 @@ class _SagesseUserChallengeCreateScreenState
           Wrap(
             spacing: 8,
             children: [
-              for (final item in const [(24, '24 h'), (48, '48 h'), (168, '7 jours')])
+              for (final item
+                  in const [(24, '24 h'), (48, '48 h'), (168, '7 jours')])
                 ChoiceChip(
                   selected: _duration == item.$1,
-                  onSelected: (_) => setState(() => _duration = item.$1),
+                  onSelected: _publishing
+                      ? null
+                      : (_) => setState(() => _duration = item.$1),
                   label: Text(item.$2),
                   selectedColor: FitilaReferenceUi.goldTint,
                   side: BorderSide(
@@ -25486,20 +25584,22 @@ class _SagesseUserChallengeCreateScreenState
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: FitilaReferenceUi.hairline),
             ),
-            child: const Row(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
+                const Icon(
                   Icons.info_outline_rounded,
                   color: FitilaReferenceUi.goldDeep,
                   size: 19,
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Après publication, le défi apparaît dans le fil Sagesse Battle. '
-                    'Les réponses sont notées sur 100 et la communauté peut noter la qualité du défi sur 5.',
-                    style: TextStyle(
+                    _editing
+                        ? 'Les changements seront visibles dans le fil Sagesse Battle.'
+                        : 'Après publication, le défi apparaît dans le fil Sagesse Battle. '
+                          'Les réponses sont notées sur 100 et la communauté peut noter la qualité du défi sur 5.',
+                    style: const TextStyle(
                       color: FitilaReferenceUi.inkSoft,
                       fontSize: 10.5,
                       height: 1.35,
@@ -25511,8 +25611,10 @@ class _SagesseUserChallengeCreateScreenState
           ),
           const SizedBox(height: 18),
           ReferenceGoldButton(
-            label: _publishing ? 'Publication…' : 'Publier le défi',
-            icon: Icons.publish_rounded,
+            label: _publishing
+                ? (_editing ? 'Mise à jour…' : 'Publication…')
+                : (_editing ? 'Mettre à jour' : 'Publier le défi'),
+            icon: _editing ? Icons.save_outlined : Icons.publish_rounded,
             busy: _publishing,
             onPressed: _publishing ? null : _publish,
           ),
@@ -25711,6 +25813,56 @@ class _SagesseUserChallengeDetailScreenState
     if (mounted) Navigator.of(context).pop(true);
   }
 
+  Future<void> _edit() async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => SagesseUserChallengeCreateScreen(
+          challenge: _challenge,
+        ),
+      ),
+    );
+    if (changed == true && mounted) {
+      await _load();
+    }
+  }
+
+  Future<void> _delete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Supprimer ce défi ?'),
+        content: const Text(
+          'Le défi et ses données associées seront supprimés définitivement.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: FitilaReferenceUi.danger,
+            ),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await FitilaBackend.deleteBattleUserChallenge(
+        _challenge['id'].toString(),
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Suppression impossible : $error')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final type = _challenge['challenge_type']?.toString();
@@ -25727,11 +25879,6 @@ class _SagesseUserChallengeDetailScreenState
       subtitle: isMine
           ? 'Mon défi'
           : 'Par ${_challenge['creator_name'] ?? 'Sage Fitila'}',
-      leading: const Icon(
-        Icons.psychology_alt_rounded,
-        color: FitilaReferenceUi.goldDeep,
-        size: 20,
-      ),
       onBack: () => Navigator.of(context).pop(false),
       child: _loading
           ? const Center(
@@ -25926,13 +26073,50 @@ class _SagesseUserChallengeDetailScreenState
                   ),
                 if (isMine) ...[
                   const SizedBox(height: 4),
-                  OutlinedButton.icon(
-                    onPressed: _close,
-                    icon: const Icon(Icons.stop_circle_outlined, size: 18),
-                    label: const Text('Clôturer le défi'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: FitilaReferenceUi.clay,
-                      side: const BorderSide(color: FitilaReferenceUi.clay),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: FitilaReferenceUi.surfaceAlt,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: FitilaReferenceUi.hairline),
+                    ),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _edit,
+                          icon: const Icon(Icons.edit_outlined, size: 17),
+                          label: const Text('Modifier'),
+                        ),
+                        if (_challenge['status']?.toString() == 'published')
+                          OutlinedButton.icon(
+                            onPressed: _close,
+                            icon: const Icon(
+                              Icons.stop_circle_outlined,
+                              size: 17,
+                            ),
+                            label: const Text('Clôturer'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: FitilaReferenceUi.clay,
+                              side: const BorderSide(
+                                color: FitilaReferenceUi.clay,
+                              ),
+                            ),
+                          ),
+                        OutlinedButton.icon(
+                          onPressed: _delete,
+                          icon: const Icon(Icons.delete_outline_rounded, size: 17),
+                          label: const Text('Supprimer'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: FitilaReferenceUi.danger,
+                            side: const BorderSide(
+                              color: FitilaReferenceUi.danger,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -28939,6 +29123,109 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     );
   }
 
+  Future<void> _editWorldMemory(Map<String, dynamic> memory) async {
+    final id = memory['id']?.toString() ?? '';
+    if (id.isEmpty || memory['local_only'] == true) return;
+    final transcript =
+        memory['transcript_text']?.toString().trim() ?? '';
+    final controller = TextEditingController(
+      text: transcript.isNotEmpty
+          ? transcript
+          : (memory['text']?.toString() ?? ''),
+    );
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Modifier ma publication'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          minLines: 4,
+          maxLines: 8,
+          maxLength: 1800,
+          decoration: const InputDecoration(
+            hintText: 'Votre souvenir…',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            icon: const Icon(Icons.save_outlined, size: 18),
+            label: const Text('Mettre à jour'),
+          ),
+        ],
+      ),
+    );
+    final nextText = controller.text.trim();
+    controller.dispose();
+    if (confirmed != true || nextText.isEmpty) return;
+
+    try {
+      await FitilaBackend.updateHanduniaFragment(
+        fragmentId: id,
+        text: nextText,
+        updateTranscript: transcript.isNotEmpty,
+        periodLabel: memory['period_label']?.toString(),
+        scopeLevel: memory['scope_level']?.toString(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Publication mise à jour.')),
+      );
+      await _openWorldFeed();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Mise à jour impossible : $error')),
+      );
+    }
+  }
+
+  Future<void> _deleteWorldMemory(Map<String, dynamic> memory) async {
+    final id = memory['id']?.toString() ?? '';
+    if (id.isEmpty || memory['local_only'] == true) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Supprimer ma publication ?'),
+        content: const Text(
+          'Cette publication Handunia Wasa sera supprimée définitivement.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: FitilaReferenceUi.danger,
+            ),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await FitilaBackend.deleteHanduniaFragment(id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Publication supprimée.')),
+      );
+      await _openWorldFeed();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Suppression impossible : $error')),
+      );
+    }
+  }
+
   Future<String?> _summarizeWorldMemory(
     Map<String, dynamic> memory,
   ) async {
@@ -30620,6 +30907,8 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       onLikeChanged: _toggleWorldFeedLike,
       onAiSummary: _summarizeWorldMemory,
       onTranslate: _translateWorldMemory,
+      onEditOwn: _editWorldMemory,
+      onDeleteOwn: _deleteWorldMemory,
       onFindMissingVoice: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => HanduniaLivingMapRoute(
