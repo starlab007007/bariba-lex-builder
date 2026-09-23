@@ -28705,6 +28705,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                 ? payload['scope_level'].toString()
                 : 'community',
             periodLabel: payload['period_label']?.toString(),
+            themeKey: payload['theme_key']?.toString(),
           );
           synced += 1;
         } catch (_) {
@@ -28768,6 +28769,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     required String periodLabel,
     required String scopeLevel,
     required bool aiAssisted,
+    required String themeKey,
   }) async {
     final preferences = await SharedPreferences.getInstance();
     final key = _localFragmentKey(lieuId);
@@ -28780,6 +28782,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         'period_label': periodLabel,
         'scope_level': scopeLevel,
         'ai_assisted': aiAssisted,
+        'theme_key': themeKey,
         'created_at': DateTime.now().toUtc().toIso8601String(),
       }),
     );
@@ -29003,6 +29006,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           periodLabel: _weavePeriodLabel,
           scopeLevel: _weaveScope,
           aiAssisted: _aiAssisted,
+          themeKey: _weaveTheme,
         );
         savedLocally = true;
       } else {
@@ -29014,6 +29018,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             aiAssisted: _aiAssisted,
             scopeLevel: _weaveScope,
             periodLabel: _weavePeriodLabel,
+            themeKey: _weaveTheme,
           );
         } catch (_) {
           await _saveLocalFragment(
@@ -29022,6 +29027,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             periodLabel: _weavePeriodLabel,
             scopeLevel: _weaveScope,
             aiAssisted: _aiAssisted,
+            themeKey: _weaveTheme,
           );
           savedLocally = true;
         }
@@ -29372,6 +29378,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         updateTranscript: transcript.isNotEmpty,
         periodLabel: memory['period_label']?.toString(),
         scopeLevel: memory['scope_level']?.toString(),
+        themeKey: memory['theme_key']?.toString(),
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
