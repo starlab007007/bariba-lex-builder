@@ -2603,6 +2603,7 @@ class FitilaBackend {
     bool aiAssisted = false,
     String scopeLevel = 'community',
     String? periodLabel,
+    String? themeKey,
   }) async {
     final user = client.auth.currentUser;
     if (user == null) {
@@ -2624,6 +2625,10 @@ class FitilaBackend {
     final cleanPeriod = periodLabel?.trim() ?? '';
     if (cleanPeriod.isNotEmpty && cleanPeriod != 'Je ne sais pas') {
       payload['period_label'] = cleanPeriod;
+    }
+    final cleanTheme = themeKey?.trim() ?? '';
+    if (cleanTheme.isNotEmpty && cleanTheme != 'Autre') {
+      payload['theme_key'] = cleanTheme;
     }
     final data = await client
         .from('handunia_fragments')
@@ -2668,6 +2673,7 @@ class FitilaBackend {
     bool updateTranscript = false,
     String? periodLabel,
     String? scopeLevel,
+    String? themeKey,
   }) async {
     final user = client.auth.currentUser;
     if (user == null) {
@@ -2691,6 +2697,10 @@ class FitilaBackend {
     final cleanScope = scopeLevel?.trim() ?? '';
     if (cleanScope.isNotEmpty) {
       payload['scope_level'] = cleanScope;
+    }
+    final cleanTheme = themeKey?.trim() ?? '';
+    if (cleanTheme.isNotEmpty) {
+      payload['theme_key'] = cleanTheme == 'Autre' ? null : cleanTheme;
     }
 
     final data = await client

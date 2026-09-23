@@ -27993,6 +27993,14 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           'La vieille route où les voyageurs échangent nouvelles et récits.',
       'sort_order': 7,
     },
+    {
+      'id': 'lieu-non-precise',
+      'name': 'Lieu à préciser',
+      'icon': '🧭',
+      'description':
+          'Souvenir conservé même lorsque le lieu exact n’est pas connu.',
+      'sort_order': 9999,
+    },
   ];
 
   // Handunia possède désormais des points d’entrée explicites :
@@ -28036,8 +28044,11 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   bool _generating = false;
   bool _aiAssisted = false;
   bool _lastPublishWasLocal = false;
+  bool _creationVoiceRecording = false;
+  bool _publishMapVisible = false;
   String _weavePeriodLabel = 'Je ne sais pas';
   String _weaveScope = 'community';
+  String _weaveTheme = 'Tradition';
 
   final _newLieuName = TextEditingController();
   final _newLieuIcon = TextEditingController(text: '📍');
@@ -28053,6 +28064,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   String? _worldFeedNotice;
   Position? _worldPosition;
   static const _worldFeedCacheKey = 'handunia_consultation_feed_cache_v1';
+  static const _lieuxCacheKey = 'handunia_lieux_cache_v2';
   int _syncedOfflineCount = 0;
 
   @override
@@ -28067,7 +28079,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     }
     _step = switch (widget.entryMode) {
       HanduniaWasaEntryMode.feed => 5,
-      HanduniaWasaEntryMode.publish => 1,
+      HanduniaWasaEntryMode.publish => 3,
       HanduniaWasaEntryMode.explore => 0,
     };
     unawaited(_bootstrapConsultation());
@@ -28156,7 +28168,12 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     }
 
     final list = _lieux
-        .where((lieu) => matchesText(lieu) && matchesFilter(lieu))
+        .where(
+          (lieu) =>
+              lieu['id']?.toString() != 'lieu-non-precise' &&
+              matchesText(lieu) &&
+              matchesFilter(lieu),
+        )
         .map((lieu) => Map<String, dynamic>.from(lieu))
         .toList();
 
@@ -28261,6 +28278,146 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         const SnackBar(content: Text('Micro indisponible.')),
       );
     }
+  }
+
+  Future<void> _toggleCreationVoice() async {
+    if (_creationVoiceRecording) {
+      setState(() => _creationVoiceRecording = false);
+      try {
+        final asset = await _handuniaVoiceMedia.stopAudio();
+        if (asset == null) return;
+        String transcript;
+        try {
+          transcript = await FitilaTranslationAudio.transcribe(
+            asset: asset,
+            sourceIsBariba: true,
+          );
+        } catch (_) {
+          transcript = await FitilaTranslationAudio.transcribe(
+            asset: asset,
+            sourceIsBariba: false,
+          );
+        }
+        if (!mounted) return;
+        final existing = _fragmentController.text.trim();
+        final next = existing.isEmpty
+            ? transcript.trim()
+            : '$existing\n${transcript.trim()}';
+        setState(() {
+          _fragmentController.text = next;
+          _fragmentController.selection = TextSelection.collapsed(
+            offset: next.length,
+          );
+        });
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error is StateError
+                  ? error.message
+                  : 'Enregistrement vocal indisponible.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    try {
+      await _handuniaVoiceMedia.startAudio();
+      if (mounted) setState(() => _creationVoiceRecording = true);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Micro indisponible. Vous pouvez écrire.')),
+      );
+    }
+  }
+
+  Future<void> _selectNearestPublishLieu() async {
+    if (_locatingLieux) return;
+    setState(() => _locatingLieux = true);
+    try {
+      Position? position = _worldPosition;
+      if (position == null) {
+        if (!await Geolocator.isLocationServiceEnabled()) {
+          throw StateError('Activez le GPS, ou choisissez un lieu dans la liste.');
+        }
+        var permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+        if (permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever) {
+          throw StateError('Position refusée. Choisissez un lieu dans la liste.');
+        }
+        position = await Geolocator.getLastKnownPosition();
+        position ??= await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+            timeLimit: Duration(seconds: 6),
+          ),
+        );
+        _worldPosition = position;
+      }
+
+      Map<String, dynamic>? nearest;
+      var bestDistance = double.infinity;
+      for (final lieu in _lieux) {
+        if (lieu['id']?.toString() == 'lieu-non-precise') continue;
+        final lat = (lieu['latitude'] as num?)?.toDouble();
+        final lon = (lieu['longitude'] as num?)?.toDouble();
+        if (lat == null || lon == null) continue;
+        final distance = Geolocator.distanceBetween(
+          position.latitude,
+          position.longitude,
+          lat,
+          lon,
+        );
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          nearest = Map<String, dynamic>.from(lieu);
+        }
+      }
+      if (nearest == null) {
+        throw StateError(
+          'Aucun lieu localisé hors ligne. Recherchez par nom ou continuez sans lieu précis.',
+        );
+      }
+      if (!mounted) return;
+      setState(() {
+        _selectedLieu = nearest;
+        _step = 7;
+      });
+    } on StateError catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Position non disponible. La carte n’est pas nécessaire : choisissez un lieu ou continuez sans lieu précis.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _locatingLieux = false);
+    }
+  }
+
+  void _selectUnknownPublishLieu() {
+    final existing = _lieux.where(
+      (lieu) => lieu['id']?.toString() == 'lieu-non-precise',
+    );
+    setState(() {
+      _selectedLieu = existing.isNotEmpty
+          ? Map<String, dynamic>.from(existing.first)
+          : Map<String, dynamic>.from(_fallbackLieux.last);
+      _step = 7;
+    });
   }
 
   Future<void> _toggleMemoryVoiceQuestion() async {
@@ -28404,22 +28561,62 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   }
 
 
+  Future<List<Map<String, dynamic>>> _readLieuxCache() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final raw = preferences.getString(_lieuxCacheKey);
+      if (raw == null || raw.isEmpty) return const [];
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return const [];
+      return decoded
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList(growable: false);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> _writeLieuxCache(List<Map<String, dynamic>> lieux) async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString(
+        _lieuxCacheKey,
+        jsonEncode(
+          lieux.map((item) => Map<String, dynamic>.from(item)).toList(),
+        ),
+      );
+    } catch (_) {
+      // Le cache des lieux ne bloque jamais la création.
+    }
+  }
+
   Future<void> _loadLieux() async {
     setState(() {
       _loadingLieux = true;
       _lieuxError = null;
       _syncedOfflineCount = 0;
     });
+
+    final cached = await _readLieuxCache();
+    if (mounted && cached.isNotEmpty) {
+      setState(() {
+        _lieux = cached;
+        _loadingLieux = false;
+      });
+    }
+
     try {
       final results = await Future.wait([
         FitilaBackend.fetchHanduniaLieux(),
         FitilaBackend.fetchHanduniaDensity(),
       ]);
-      final serverLieux = results[0] as List<Map<String, dynamic>>;
+      final serverLieux =
+          List<Map<String, dynamic>>.from(results[0] as List);
       var serverDensity = results[1] as Map<String, int>;
 
-      if (mounted) {
-        }
+      await _writeLieuxCache(serverLieux);
+
       var synced = 0;
       try {
         synced = await _syncPendingLocalFragments(serverLieux);
@@ -28427,13 +28624,10 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           serverDensity = await FitilaBackend.fetchHanduniaDensity();
         }
       } catch (_) {
-        // La synchronisation locale est best-effort : elle ne bloque jamais
-        // l'accès au monde vivant ni les données déjà disponibles.
+        // La synchronisation locale est best-effort.
       }
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _lieux = serverLieux;
         _density = serverDensity;
@@ -28457,19 +28651,19 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         });
       }
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
+      final offline = cached.isNotEmpty
+          ? cached
+          : _fallbackLieux
+              .map((lieu) => Map<String, dynamic>.from(lieu))
+              .toList(growable: false);
       setState(() {
-        _lieux = _fallbackLieux
-            .map((lieu) => Map<String, dynamic>.from(lieu))
-            .toList(growable: false);
+        _lieux = offline;
         _density = const {};
         _lieuxError = null;
         _backendUnavailable = true;
         _loadingLieux = false;
       });
-      unawaited(_enrichMissingLieuCoordinates());
     }
   }
 
@@ -28511,6 +28705,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                 ? payload['scope_level'].toString()
                 : 'community',
             periodLabel: payload['period_label']?.toString(),
+            themeKey: payload['theme_key']?.toString(),
           );
           synced += 1;
         } catch (_) {
@@ -28574,6 +28769,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     required String periodLabel,
     required String scopeLevel,
     required bool aiAssisted,
+    required String themeKey,
   }) async {
     final preferences = await SharedPreferences.getInstance();
     final key = _localFragmentKey(lieuId);
@@ -28586,6 +28782,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         'period_label': periodLabel,
         'scope_level': scopeLevel,
         'ai_assisted': aiAssisted,
+        'theme_key': themeKey,
         'created_at': DateTime.now().toUtc().toIso8601String(),
       }),
     );
@@ -28604,6 +28801,13 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   }
 
   Future<void> _openLieu(Map<String, dynamic> lieu) async {
+    if (widget.entryMode == HanduniaWasaEntryMode.publish) {
+      setState(() {
+        _selectedLieu = Map<String, dynamic>.from(lieu);
+        _step = 7;
+      });
+      return;
+    }
     setState(() {
       _selectedLieu = lieu;
       _step = 2;
@@ -28802,6 +29006,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           periodLabel: _weavePeriodLabel,
           scopeLevel: _weaveScope,
           aiAssisted: _aiAssisted,
+          themeKey: _weaveTheme,
         );
         savedLocally = true;
       } else {
@@ -28813,6 +29018,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             aiAssisted: _aiAssisted,
             scopeLevel: _weaveScope,
             periodLabel: _weavePeriodLabel,
+            themeKey: _weaveTheme,
           );
         } catch (_) {
           await _saveLocalFragment(
@@ -28821,6 +29027,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             periodLabel: _weavePeriodLabel,
             scopeLevel: _weaveScope,
             aiAssisted: _aiAssisted,
+            themeKey: _weaveTheme,
           );
           savedLocally = true;
         }
@@ -28990,7 +29197,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     }
     setState(() => _creatingLieu = true);
     try {
-      await FitilaBackend.createHanduniaLieu(
+      final created = await FitilaBackend.createHanduniaLieu(
         name: name,
         icon: _newLieuIcon.text,
         description: _newLieuDescription.text,
@@ -29010,7 +29217,14 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('« $name » a rejoint le monde vivant.')),
       );
-      setState(() => _step = 1);
+      if (widget.entryMode == HanduniaWasaEntryMode.publish) {
+        setState(() {
+          _selectedLieu = Map<String, dynamic>.from(created);
+          _step = 7;
+        });
+      } else {
+        setState(() => _step = 1);
+      }
       await _loadLieux();
     } on StateError catch (e) {
       if (!mounted) {
@@ -29171,6 +29385,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         updateTranscript: transcript.isNotEmpty,
         periodLabel: memory['period_label']?.toString(),
         scopeLevel: memory['scope_level']?.toString(),
+        themeKey: memory['theme_key']?.toString(),
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -29577,11 +29792,14 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     final content = switch (_step) {
       1 => ReferenceCreationShell(
         dark: false,
-        title: 'Carte',
-        subtitle: '',
-        leading: const Text('🌌', style: TextStyle(fontSize: 15)),
+        title: widget.entryMode == HanduniaWasaEntryMode.publish
+            ? 'Choisir le lieu'
+            : 'Carte',
+        subtitle: widget.entryMode == HanduniaWasaEntryMode.publish
+            ? 'Étape 2 sur 4'
+            : '',
         onBack: widget.entryMode == HanduniaWasaEntryMode.publish
-            ? _exitPublishFlow
+            ? () => setState(() => _step = 3)
             : () => setState(() => _step = 0),
         child: _buildLieuxStep(),
       ),
@@ -29594,31 +29812,47 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       ),
       3 => ReferenceCreationShell(
         dark: false,
-        title: 'Tisser',
-        subtitle: '',
-        leading: const Text('🧵', style: TextStyle(fontSize: 15)),
-        onBack: () => setState(() => _step = 2),
+        title: widget.entryMode == HanduniaWasaEntryMode.publish
+            ? 'Publier un souvenir'
+            : 'Tisser',
+        subtitle: widget.entryMode == HanduniaWasaEntryMode.publish
+            ? 'Étape 1 sur 4'
+            : '',
+        onBack: widget.entryMode == HanduniaWasaEntryMode.publish
+            ? _exitPublishFlow
+            : () => setState(() => _step = 2),
         child: _buildWeaveStep(),
       ),
       4 => ReferenceCreationShell(
         dark: false,
         title: 'Nouveau lieu',
-        subtitle: '',
+        subtitle: widget.entryMode == HanduniaWasaEntryMode.publish
+            ? 'Lieu introuvable'
+            : '',
         onBack: () => setState(() => _step = 1),
         child: _buildCreateLieuStep(),
       ),
       5 => _buildWorldFeedStep(),
       6 => ReferenceCreationShell(
         dark: false,
-        title: _lastPublishWasLocal ? 'Sauvé' : 'Tissé',
-        subtitle: '',
-        leading: const Icon(
-          Icons.check_circle_outline,
-          color: FitilaReferenceUi.goldDeep,
-          size: 20,
-        ),
+        title: _lastPublishWasLocal ? 'Sauvegardé' : 'Publié',
+        subtitle: 'Handunia Wasa',
         onBack: () => Navigator.maybePop(context),
         child: _buildPublishSuccessStep(),
+      ),
+      7 => ReferenceCreationShell(
+        dark: false,
+        title: 'Préciser',
+        subtitle: 'Étape 3 sur 4',
+        onBack: () => setState(() => _step = 1),
+        child: _buildPublishDetailsStep(),
+      ),
+      8 => ReferenceCreationShell(
+        dark: false,
+        title: 'Vérifier',
+        subtitle: 'Étape 4 sur 4',
+        onBack: () => setState(() => _step = 7),
+        child: _buildPublishReviewStep(),
       ),
       _ => ReferenceCreationShell(
         dark: false,
@@ -29668,10 +29902,728 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     );
   }
 
+  Widget _buildPublishProgress(int active) {
+    const steps = <(IconData, String)>[
+      (Icons.mic_rounded, 'Raconter'),
+      (Icons.place_rounded, 'Lieu'),
+      (Icons.tune_rounded, 'Détails'),
+      (Icons.check_rounded, 'Publier'),
+    ];
+    return Row(
+      children: [
+        for (var i = 0; i < steps.length; i++) ...[
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: i + 1 <= active
+                        ? FitilaReferenceUi.gold
+                        : FitilaReferenceUi.surface,
+                    border: Border.all(
+                      color: i + 1 <= active
+                          ? FitilaReferenceUi.gold
+                          : FitilaReferenceUi.hairline,
+                    ),
+                  ),
+                  child: Icon(
+                    steps[i].$1,
+                    size: 19,
+                    color: i + 1 <= active
+                        ? FitilaReferenceUi.ink
+                        : FitilaReferenceUi.muted,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  steps[i].$2,
+                  maxLines: 1,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: i + 1 == active
+                        ? FitilaReferenceUi.ink
+                        : FitilaReferenceUi.muted,
+                    fontSize: 9,
+                    fontWeight: i + 1 == active
+                        ? FontWeight.w900
+                        : FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (i < steps.length - 1)
+            Container(
+              width: 14,
+              height: 1,
+              color: i + 1 < active
+                  ? FitilaReferenceUi.gold
+                  : FitilaReferenceUi.hairline,
+            ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPublishComposeStep() {
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        _buildPublishProgress(1),
+        const SizedBox(height: 26),
+        Text(
+          'Racontez votre souvenir',
+          textAlign: TextAlign.center,
+          style: FitilaReferenceUi.serif(
+            size: 24,
+            color: FitilaReferenceUi.ink,
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Parlez naturellement, ou écrivez quelques mots.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: FitilaReferenceUi.muted,
+            fontSize: 12,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 22),
+        Center(
+          child: Semantics(
+            button: true,
+            label: _creationVoiceRecording
+                ? 'Arrêter l’enregistrement'
+                : 'Raconter par la voix',
+            child: Column(
+              children: [
+                IconButton.filled(
+                  onPressed: _toggleCreationVoice,
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(92, 92),
+                    backgroundColor: _creationVoiceRecording
+                        ? FitilaReferenceUi.clay
+                        : FitilaReferenceUi.gold,
+                    foregroundColor: _creationVoiceRecording
+                        ? Colors.white
+                        : FitilaReferenceUi.ink,
+                  ),
+                  icon: Icon(
+                    _creationVoiceRecording
+                        ? Icons.stop_rounded
+                        : Icons.mic_rounded,
+                    size: 42,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _creationVoiceRecording ? 'Arrêter' : 'PARLER',
+                  style: const TextStyle(
+                    color: FitilaReferenceUi.goldDeep,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 22),
+        TextField(
+          controller: _fragmentController,
+          minLines: 4,
+          maxLines: 8,
+          maxLength: 1800,
+          onChanged: (value) {
+            if (value.trim().isEmpty && _aiAssisted) {
+              setState(() => _aiAssisted = false);
+            }
+          },
+          decoration: const InputDecoration(
+            labelText: 'Ou écrire',
+            hintText: 'Votre souvenir…',
+            prefixIcon: Icon(Icons.edit_outlined),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: FitilaReferenceUi.surfaceAlt,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: FitilaReferenceUi.hairline),
+          ),
+          child: const Row(
+            children: [
+              Icon(
+                Icons.offline_bolt_outlined,
+                color: FitilaReferenceUi.goldDeep,
+                size: 18,
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Vous pouvez continuer même sans Internet.',
+                  style: TextStyle(
+                    color: FitilaReferenceUi.inkSoft,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        ReferenceGoldButton(
+          label: 'Continuer',
+          icon: Icons.arrow_forward_rounded,
+          onPressed: () {
+            if (_fragmentController.text.trim().isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Parlez ou écrivez votre souvenir pour continuer.'),
+                ),
+              );
+              return;
+            }
+            setState(() => _step = 1);
+          },
+        ),
+        const SizedBox(height: 22),
+      ],
+    );
+  }
+
+  Widget _buildPublishLocationStep() {
+    final visible = _visibleLieux.take(10).toList(growable: false);
+    final mapped = visible
+        .map(
+          (place) => <String, dynamic>{
+            ...place,
+            'memory_count': _density[place['id']?.toString() ?? ''] ?? 0,
+            'voice_count': place['voice_count'] ?? 0,
+          },
+        )
+        .toList(growable: false);
+
+    return RefreshIndicator(
+      color: FitilaReferenceUi.goldDeep,
+      onRefresh: _loadLieux,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        children: [
+          _buildPublishProgress(2),
+          const SizedBox(height: 22),
+          Text(
+            'Où cela s’est-il passé ?',
+            textAlign: TextAlign.center,
+            style: FitilaReferenceUi.serif(
+              size: 22,
+              color: FitilaReferenceUi.ink,
+            ),
+          ),
+          const SizedBox(height: 5),
+          const Text(
+            'La carte est facultative.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: FitilaReferenceUi.muted,
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 58,
+            child: FilledButton.icon(
+              onPressed: _locatingLieux ? null : _selectNearestPublishLieu,
+              style: FilledButton.styleFrom(
+                backgroundColor: FitilaReferenceUi.gold,
+                foregroundColor: FitilaReferenceUi.ink,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+              icon: _locatingLieux
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.my_location_rounded, size: 23),
+              label: const Text(
+                'Autour de moi',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _lieuxQuery,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              labelText: 'Chercher un lieu',
+              hintText: 'Village, quartier, commune…',
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: IconButton(
+                tooltip: _lieuxVoiceRecording ? 'Arrêter' : 'Chercher par la voix',
+                onPressed: _toggleLieuVoiceSearch,
+                icon: Icon(
+                  _lieuxVoiceRecording
+                      ? Icons.stop_circle_rounded
+                      : Icons.mic_rounded,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () =>
+                setState(() => _publishMapVisible = !_publishMapVisible),
+            icon: Icon(
+              _publishMapVisible
+                  ? Icons.map_outlined
+                  : Icons.map_rounded,
+            ),
+            label: Text(
+              _publishMapVisible
+                  ? 'Masquer la carte'
+                  : 'Voir la carte (optionnel)',
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: FitilaReferenceUi.goldDeep,
+              side: const BorderSide(color: FitilaReferenceUi.hairline),
+              padding: const EdgeInsets.symmetric(vertical: 13),
+            ),
+          ),
+          if (_publishMapVisible) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: FitilaReferenceUi.surfaceAlt,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: FitilaReferenceUi.hairline),
+              ),
+              child: Column(
+                children: [
+                  HanduniaUnifiedMap(
+                    places: mapped,
+                    selectedPlaceId: _selectedLieu?['id']?.toString(),
+                    height: 235,
+                    showSelectionCard: false,
+                    showChrome: false,
+                    minimalChrome: true,
+                    focusUserOnOpen: false,
+                    showTerritoryRail: false,
+                    openOnMarkerTap: true,
+                    onSelected: (place) => setState(() => _selectedLieu = place),
+                    onOpen: _openLieu,
+                  ),
+                  const SizedBox(height: 7),
+                  const Text(
+                    'Si le réseau est lent, utilisez simplement la liste ci-dessous.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: FitilaReferenceUi.muted,
+                      fontSize: 9.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          if (_loadingLieux && _lieux.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: FitilaReferenceUi.goldDeep,
+                  strokeWidth: 2,
+                ),
+              ),
+            )
+          else if (visible.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Text(
+                'Aucun lieu trouvé. Vous pouvez continuer sans lieu précis.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: FitilaReferenceUi.muted,
+                  fontSize: 11,
+                ),
+              ),
+            )
+          else
+            for (final place in visible)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 7),
+                child: Material(
+                  color: FitilaReferenceUi.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  child: ListTile(
+                    minTileHeight: 58,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(
+                        color: FitilaReferenceUi.hairline,
+                      ),
+                    ),
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: FitilaReferenceUi.goldTint,
+                      ),
+                      child: Text(
+                        place['icon']?.toString() ?? '📍',
+                        style: const TextStyle(fontSize: 19),
+                      ),
+                    ),
+                    title: Text(
+                      place['name']?.toString() ?? 'Lieu',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: FitilaReferenceUi.ink,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    subtitle: Text(
+                      [
+                        place['village_quartier'],
+                        place['commune'],
+                        place['department'],
+                      ]
+                          .where(
+                            (value) =>
+                                value?.toString().trim().isNotEmpty == true,
+                          )
+                          .map((value) => value.toString())
+                          .take(2)
+                          .join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: FitilaReferenceUi.muted,
+                        fontSize: 10,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _openLieu(place),
+                  ),
+                ),
+              ),
+          const SizedBox(height: 6),
+          TextButton.icon(
+            onPressed: _selectUnknownPublishLieu,
+            icon: const Icon(Icons.help_outline_rounded),
+            label: const Text('Je ne sais pas / préciser plus tard'),
+            style: TextButton.styleFrom(
+              foregroundColor: FitilaReferenceUi.inkSoft,
+            ),
+          ),
+          if (!_backendUnavailable)
+            TextButton.icon(
+              onPressed: _openCreateLieuStep,
+              icon: const Icon(Icons.add_location_alt_outlined),
+              label: const Text('Lieu introuvable ? Ajouter ce lieu'),
+              style: TextButton.styleFrom(
+                foregroundColor: FitilaReferenceUi.goldDeep,
+              ),
+            ),
+          if (_backendUnavailable)
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: FitilaReferenceUi.surfaceAlt,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.cloud_off_rounded,
+                    size: 17,
+                    color: FitilaReferenceUi.muted,
+                  ),
+                  SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      'Mode hors ligne : les lieux enregistrés sur le téléphone restent disponibles.',
+                      style: TextStyle(
+                        color: FitilaReferenceUi.muted,
+                        fontSize: 9.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 22),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPublishDetailsStep() {
+    const periods = <String>[
+      'Je ne sais pas',
+      'Enfance',
+      'Il y a longtemps',
+      'Avant 1960',
+      '1960–1979',
+      '1980–1999',
+      '2000–2019',
+      'Depuis 2020',
+    ];
+    const themes = <(String, String)>[
+      ('Famille', '👨‍👩‍👧'),
+      ('Tradition', '🥁'),
+      ('Marché', '🧺'),
+      ('Fête', '🎉'),
+      ('Travail', '🌾'),
+      ('Voyage', '🛤️'),
+      ('Histoire', '📜'),
+      ('Enfance', '🪁'),
+      ('Autre', '✨'),
+    ];
+    final lieuName =
+        _selectedLieu?['name']?.toString() ?? 'Lieu à préciser';
+
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        _buildPublishProgress(3),
+        const SizedBox(height: 20),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: FitilaReferenceUi.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: FitilaReferenceUi.hairline),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.place_rounded,
+                color: FitilaReferenceUi.goldDeep,
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  lieuName,
+                  style: const TextStyle(
+                    color: FitilaReferenceUi.ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => setState(() => _step = 1),
+                child: const Text('Changer'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        const Text(
+          'Quand ?',
+          style: TextStyle(
+            color: FitilaReferenceUi.ink,
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 7,
+          runSpacing: 7,
+          children: [
+            for (final period in periods)
+              ChoiceChip(
+                selected: _weavePeriodLabel == period,
+                onSelected: (_) =>
+                    setState(() => _weavePeriodLabel = period),
+                label: Text(period),
+                showCheckmark: false,
+                selectedColor: FitilaReferenceUi.goldTint,
+                side: BorderSide(
+                  color: _weavePeriodLabel == period
+                      ? FitilaReferenceUi.gold
+                      : FitilaReferenceUi.hairline,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        const Text(
+          'Thème',
+          style: TextStyle(
+            color: FitilaReferenceUi.ink,
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 7,
+          runSpacing: 7,
+          children: [
+            for (final theme in themes)
+              ChoiceChip(
+                selected: _weaveTheme == theme.$1,
+                onSelected: (_) => setState(() => _weaveTheme = theme.$1),
+                avatar: Text(theme.$2),
+                label: Text(theme.$1),
+                showCheckmark: false,
+                selectedColor: FitilaReferenceUi.goldTint,
+                side: BorderSide(
+                  color: _weaveTheme == theme.$1
+                      ? FitilaReferenceUi.gold
+                      : FitilaReferenceUi.hairline,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        ReferenceGoldButton(
+          label: 'Vérifier',
+          icon: Icons.arrow_forward_rounded,
+          onPressed: () => setState(() => _step = 8),
+        ),
+        const SizedBox(height: 22),
+      ],
+    );
+  }
+
+  Widget _buildPublishReviewStep() {
+    final lieu = _selectedLieu;
+    final lieuName = lieu?['name']?.toString() ?? 'Lieu à préciser';
+    final offline = _backendUnavailable || !FitilaBackend.configured;
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        _buildPublishProgress(4),
+        const SizedBox(height: 20),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: FitilaReferenceUi.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: FitilaReferenceUi.hairline),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _fragmentController.text.trim(),
+                style: FitilaReferenceUi.serif(
+                  size: 17,
+                  color: FitilaReferenceUi.ink,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 7,
+                runSpacing: 7,
+                children: [
+                  ReferenceTinyPill(
+                    label: lieuName,
+                    icon: Icons.place_outlined,
+                  ),
+                  ReferenceTinyPill(
+                    label: _weavePeriodLabel,
+                    icon: Icons.schedule_rounded,
+                  ),
+                  ReferenceTinyPill(
+                    label: _weaveTheme,
+                    icon: Icons.category_outlined,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (offline)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: FitilaReferenceUi.goldTint,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Row(
+              children: [
+                Icon(
+                  Icons.cloud_upload_outlined,
+                  color: FitilaReferenceUi.goldDeep,
+                ),
+                SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    'Pas de réseau ? Le souvenir sera gardé sur ce téléphone et synchronisé plus tard.',
+                    style: TextStyle(
+                      color: FitilaReferenceUi.inkSoft,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => setState(() => _step = 3),
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Modifier'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: FitilaReferenceUi.ink,
+                  side: const BorderSide(color: FitilaReferenceUi.hairline),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                ),
+              ),
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: ReferenceGoldButton(
+                label: _weaving ? 'Publication…' : 'Publier',
+                icon: Icons.publish_rounded,
+                busy: _weaving,
+                onPressed: _weaving ? null : _weaveFragment,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 22),
+      ],
+    );
+  }
+
   // 2/4 — Carte des lieux vivants  // 2/4 — Carte des lieux vivants  // 2/4 — Carte des lieux vivants : chaque lieu se densifie visuellement
   // à mesure que la communauté y dépose souvenirs, voix et récits —
   // une vraie densité, jamais fabriquée (voir _densityPercent).
   Widget _buildLieuxStep() {
+    if (widget.entryMode == HanduniaWasaEntryMode.publish) {
+      return _buildPublishLocationStep();
+    }
     if (_loadingLieux) {
       return const Center(
         child: CircularProgressIndicator(color: FitilaReferenceUi.goldDeep),
@@ -30423,79 +31375,77 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   }
 
   Widget _buildPublishSuccessStep() {
+    final local = _lastPublishWasLocal;
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      padding: const EdgeInsets.symmetric(vertical: 24),
       children: [
-        const HanduniaArchitectureMap(
-          active: HanduniaArchitectureLayer.discovery,
-          compact: true,
-        ),
-        const SizedBox(height: 28),
-        Icon(
-          _lastPublishWasLocal
-              ? Icons.cloud_upload_outlined
-              : Icons.check_circle_rounded,
-          color: FitilaReferenceUi.goldDeep,
-          size: 78,
-        ),
-        const SizedBox(height: 12),
-        Text(
-          _lastPublishWasLocal ? 'Sauvé' : 'Tissé',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: HanduniaTokens.ivoire,
-            fontFamily: 'Fraunces',
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
+        Center(
+          child: Container(
+            width: 92,
+            height: 92,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: local
+                  ? FitilaReferenceUi.goldTint
+                  : FitilaReferenceUi.sageTint,
+            ),
+            child: Icon(
+              local ? Icons.cloud_upload_outlined : Icons.check_rounded,
+              color: local
+                  ? FitilaReferenceUi.goldDeep
+                  : FitilaReferenceUi.sageDeep,
+              size: 48,
+            ),
           ),
         ),
-        const SizedBox(height: 26),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Semantics(
-              button: true,
-              label: 'Voir dans le Fil Handunia',
-              child: HanduniaNamedAction(
-                label: 'Fil',
-                color: FitilaReferenceUi.goldDeep,
-                child: IconButton.filled(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  style: IconButton.styleFrom(
-                    minimumSize: const Size(60, 60),
-                    backgroundColor: FitilaReferenceUi.gold,
-                    foregroundColor: FitilaReferenceUi.ink,
-                  ),
-                  icon: const Icon(Icons.dynamic_feed_rounded, size: 27),
-                ),
-              ),
-            ),
-            const SizedBox(width: 18),
-            Semantics(
-              button: true,
-              label: 'Tisser un autre souvenir',
-              child: HanduniaNamedAction(
-                label: 'Nouveau',
-                color: FitilaReferenceUi.goldDeep,
-                child: IconButton.outlined(
-                  onPressed: () {
-                    setState(() {
-                      _selectedLieu = null;
-                      _weavePeriodLabel = 'Je ne sais pas';
-                      _weaveScope = 'community';
-                      _step = 1;
-                    });
-                  },
-                  style: IconButton.styleFrom(
-                    minimumSize: const Size(60, 60),
-                    foregroundColor: FitilaReferenceUi.goldDeep,
-                    side: const BorderSide(color: FitilaReferenceUi.hairline),
-                  ),
-                  icon: const Icon(Icons.mic_none_rounded, size: 27),
-                ),
-              ),
-            ),
-          ],
+        const SizedBox(height: 18),
+        Text(
+          local ? 'Souvenir sauvegardé' : 'Souvenir publié',
+          textAlign: TextAlign.center,
+          style: FitilaReferenceUi.serif(
+            size: 25,
+            color: FitilaReferenceUi.ink,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          local
+              ? 'Il reste sur ce téléphone et sera synchronisé automatiquement dès que le réseau revient.'
+              : 'Il est maintenant visible dans Handunia Wasa.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: FitilaReferenceUi.muted,
+            fontSize: 11.5,
+            height: 1.45,
+          ),
+        ),
+        const SizedBox(height: 28),
+        ReferenceGoldButton(
+          label: 'Voir le fil',
+          icon: Icons.dynamic_feed_rounded,
+          onPressed: () => Navigator.of(context).pop(true),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          onPressed: () {
+            setState(() {
+              _selectedLieu = null;
+              _fragmentController.clear();
+              _weavePeriodLabel = 'Je ne sais pas';
+              _weaveScope = 'community';
+              _weaveTheme = 'Tradition';
+              _publishMapVisible = false;
+              _lastPublishWasLocal = false;
+              _step = 3;
+            });
+          },
+          icon: const Icon(Icons.mic_none_rounded),
+          label: const Text('Nouveau souvenir'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: FitilaReferenceUi.goldDeep,
+            side: const BorderSide(color: FitilaReferenceUi.hairline),
+            padding: const EdgeInsets.symmetric(vertical: 13),
+          ),
         ),
       ],
     );
@@ -30504,6 +31454,9 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   // Publication communautaire : le récit reste une mémoire du lieu et
   // devient immédiatement visible dans le vrai Fil Handunia de la plateforme.
   Widget _buildWeaveStep() {
+    if (widget.entryMode == HanduniaWasaEntryMode.publish) {
+      return _buildPublishComposeStep();
+    }
     const periods = <String>[
       'Je ne sais pas',
       'Avant 1960',

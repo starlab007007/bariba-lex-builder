@@ -337,10 +337,14 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
-    expect(find.text('Carte'), findsOneWidget);
-    expect(find.text('Voix'), findsOneWidget);
-    expect(find.text('Mémoire'), findsOneWidget);
-    expect(find.text('Explorer'), findsOneWidget);
+    expect(find.text('Publier un souvenir'), findsOneWidget);
+    expect(find.text('Étape 1 sur 4'), findsOneWidget);
+    expect(find.text('Racontez votre souvenir'), findsOneWidget);
+    expect(find.text('PARLER'), findsOneWidget);
+    expect(find.text('Carte'), findsNothing);
+    expect(find.text('Mémoire'), findsNothing);
+    expect(find.text('Explorer'), findsNothing);
+    expect(find.text('Satellite'), findsNothing);
     expect(find.text('Fil Handunia Wasa'), findsNothing);
     expect(tester.takeException(), isNull);
   });
