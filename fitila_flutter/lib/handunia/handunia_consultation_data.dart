@@ -106,6 +106,24 @@ class HanduniaConsultationData {
       }
     }
 
+    final divergentFragmentIds = <String>{};
+    if (fragmentIds.isNotEmpty) {
+      try {
+        final rows = await _client
+            .from('handunia_divergences')
+            .select('version_a_id, version_b_id, status')
+            .eq('status', 'open');
+        for (final row in List<Map<String, dynamic>>.from(rows as List)) {
+          final a = row['version_a_id']?.toString() ?? '';
+          final b = row['version_b_id']?.toString() ?? '';
+          if (a.isNotEmpty) divergentFragmentIds.add(a);
+          if (b.isNotEmpty) divergentFragmentIds.add(b);
+        }
+      } catch (_) {
+        // Une divergence non déployée ne doit jamais bloquer le fil.
+      }
+    }
+
     final likeCounts = <String, int>{};
     final likedByMe = <String>{};
     if (fragmentIds.isNotEmpty) {
@@ -228,6 +246,8 @@ class HanduniaConsultationData {
           fragment['user_id']?.toString(),
           voices[id] ?? const <String>{},
         ),
+        'corroboration_count': voices[id]?.length ?? 0,
+        'has_divergence': divergentFragmentIds.contains(id),
         'like_count': likeCounts[id] ?? 0,
         'liked_by_me': likedByMe.contains(id),
         'is_mine':
