@@ -1650,7 +1650,6 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                 Semantics(
                   button: true,
                   label: 'Aider à compléter cette mémoire par la voix',
-                  excludeSemantics: true,
                   child: SizedBox(
                     width: 58,
                     height: 58,
