@@ -27950,7 +27950,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         'nearby' => 'Proche',
         'markets' => 'Marchés',
         'villages' => 'Villages',
-        'stories' => 'Voix',
+        'stories' => 'Souvenirs',
         _ => label,
       };
       return Semantics(

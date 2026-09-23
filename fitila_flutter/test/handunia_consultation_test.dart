@@ -142,7 +142,7 @@ void main() {
 
     expect(find.text('Autour de moi'), findsNothing);
     expect(find.text('Ma lignée'), findsNothing);
-    expect(find.text('Tout'), findsNothing);
+    expect(find.text('Tout'), findsOneWidget);
     expect(find.bySemanticsLabel('Autour de moi'), findsOneWidget);
     expect(find.bySemanticsLabel('Ma lignée'), findsOneWidget);
     expect(find.bySemanticsLabel('Tout'), findsOneWidget);
