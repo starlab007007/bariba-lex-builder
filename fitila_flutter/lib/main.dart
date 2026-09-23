@@ -28192,6 +28192,9 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
               height: 470,
               onSelected: (place) => setState(() => _selectedLieu = place),
               onOpen: _openLieu,
+              focusUserOnOpen: true,
+              showTerritoryRail: false,
+              openOnMarkerTap: true,
             )
           else
             for (final place in mappedVisible)
@@ -28399,6 +28402,8 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           height: 245,
           showSelectionCard: false,
           showChrome: true,
+          showTerritoryRail: false,
+          focusUserOnOpen: true,
           initialZoom: 15.2,
         );
       }

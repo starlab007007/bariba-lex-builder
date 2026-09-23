@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../ui/reference_creation_ui.dart';
@@ -158,6 +159,10 @@ class HanduniaUnifiedMap extends StatefulWidget {
     this.routeProgress,
     this.routeLabel,
     this.immersive = false,
+    this.focusUserOnOpen = false,
+    this.showUserLocation = true,
+    this.showTerritoryRail = true,
+    this.openOnMarkerTap = false,
   });
 
   final List<Map<String, dynamic>> places;
@@ -172,6 +177,10 @@ class HanduniaUnifiedMap extends StatefulWidget {
   final double? routeProgress;
   final String? routeLabel;
   final bool immersive;
+  final bool focusUserOnOpen;
+  final bool showUserLocation;
+  final bool showTerritoryRail;
+  final bool openOnMarkerTap;
 
   @override
   State<HanduniaUnifiedMap> createState() => _HanduniaUnifiedMapState();
@@ -183,7 +192,10 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
   bool _satellite = false;
   String? _selectedId;
   String? _activeTerritory;
+  Position? _userPosition;
+  bool _locatingUser = false;
   late double _manualZoom;
+  LatLng _cameraTarget = handuniaBeninCenter;
 
   String get _activeStyle =>
       _satellite ? handuniaSatelliteMapStyle : handuniaMapStyleUrl;
@@ -231,9 +243,61 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
   Future<void> _onStyleLoaded() async {
     _styleLoaded = true;
     await _renderPlaces();
+
+    if (widget.focusUserOnOpen) {
+      final focused = await _locateUser(focus: true);
+      if (focused) return;
+    }
+
     final selected = _selected;
     if (selected != null) {
       await _focus(selected);
+    }
+  }
+
+  Future<bool> _locateUser({bool focus = false}) async {
+    if (_locatingUser) return _userPosition != null;
+    _locatingUser = true;
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) return false;
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return false;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+      _userPosition = position;
+      if (_styleLoaded) {
+        await _renderPlaces();
+      }
+      if (focus && _controller != null) {
+        _manualZoom = 15.4;
+        _cameraTarget = LatLng(position.latitude, position.longitude);
+        await _controller!.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: _cameraTarget,
+              zoom: _manualZoom,
+              tilt: widget.immersive ? 42 : 0,
+            ),
+          ),
+        );
+      }
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      _locatingUser = false;
     }
   }
 
@@ -315,6 +379,21 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
         ),
       );
     }
+    if (widget.showUserLocation && _userPosition != null) {
+      options.add(
+        CircleOptions(
+          geometry: LatLng(
+            _userPosition!.latitude,
+            _userPosition!.longitude,
+          ),
+          circleRadius: 8.5,
+          circleColor: '#2563EB',
+          circleStrokeColor: '#FFFFFF',
+          circleStrokeWidth: 3,
+        ),
+      );
+    }
+
     final cursor = _routeCursor();
     if (cursor != null) {
       options.add(
@@ -518,11 +597,14 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     final lat = _geoDouble(place['latitude']);
     final lon = _geoDouble(place['longitude']);
     if (controller == null || lat == null || lon == null) return;
+    final target = LatLng(lat, lon);
+    _cameraTarget = target;
+    _manualZoom = zoom ?? _zoomFor(place);
     await controller.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(
-          target: LatLng(lat, lon),
-          zoom: zoom ?? _zoomFor(place),
+          target: target,
+          zoom: _manualZoom,
           tilt: widget.immersive ? 42 : 0,
         ),
       ),
@@ -533,10 +615,11 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     final controller = _controller;
     if (controller == null) return;
     _manualZoom = widget.initialZoom;
+    _cameraTarget = handuniaBeninCenter;
     await controller.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(
-          target: handuniaBeninCenter,
+          target: _cameraTarget,
           zoom: _manualZoom,
           tilt: widget.immersive ? 42 : 0,
         ),
@@ -545,6 +628,8 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
   }
 
   Future<void> _recenter() async {
+    if (await _locateUser(focus: true)) return;
+
     final selected = _selected;
     if (selected != null) {
       _manualZoom = _zoomFor(selected);
@@ -558,16 +643,10 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     final controller = _controller;
     if (controller == null) return;
     _manualZoom = (_manualZoom + delta).clamp(5.0, 18.0).toDouble();
-    final selected = _selected;
-    final lat = selected == null ? null : _geoDouble(selected['latitude']);
-    final lon = selected == null ? null : _geoDouble(selected['longitude']);
-    final target = lat != null && lon != null
-        ? LatLng(lat, lon)
-        : handuniaBeninCenter;
     await controller.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(
-          target: target,
+          target: _cameraTarget,
           zoom: _manualZoom,
           tilt: widget.immersive ? 42 : 0,
         ),
@@ -603,10 +682,21 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
         nearest = place;
       }
     }
-    // Au niveau national, un toucher doit rester volontaire : on ne
-    // rattache jamais un point lointain au lieu le plus proche.
-    if (nearest != null && distance <= 35000) {
+
+    final hitRadiusMeters = _manualZoom < 7
+        ? 22000.0
+        : _manualZoom < 9
+            ? 12000.0
+            : _manualZoom < 12
+                ? 5000.0
+                : 1600.0;
+    if (nearest != null && distance <= hitRadiusMeters) {
       await _select(nearest);
+      if (widget.openOnMarkerTap &&
+          widget.onOpen != null &&
+          nearest['can_open'] != false) {
+        widget.onOpen!(nearest);
+      }
     }
   }
 
@@ -650,6 +740,10 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                         tiltGesturesEnabled: widget.immersive,
                         onMapCreated: (controller) => _controller = controller,
                         onStyleLoadedCallback: _onStyleLoaded,
+                        onCameraMove: (position) {
+                          _cameraTarget = position.target;
+                          _manualZoom = position.zoom;
+                        },
                         onMapClick: (point, latLng) => _onMapTap(latLng),
                       )
                     : const ColoredBox(
@@ -695,7 +789,9 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                                   child: Text(
                                     widget.routeLabel?.trim().isNotEmpty == true
                                         ? widget.routeLabel!
-                                        : '$locatedCount lieu${locatedCount > 1 ? 'x' : ''} · ${_satellite ? 'Satellite' : 'Plan'}',
+                                        : widget.openOnMarkerTap
+                                            ? '$locatedCount lieu${locatedCount > 1 ? 'x' : ''} · toucher un point'
+                                            : '$locatedCount lieu${locatedCount > 1 ? 'x' : ''} · ${_satellite ? 'Satellite' : 'Plan'}',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
@@ -756,7 +852,9 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                     ],
                   ),
                 ),
-              if (widget.showChrome && selected != null)
+              if (widget.showChrome &&
+                  widget.showTerritoryRail &&
+                  selected != null)
                 Positioned(
                   left: 10,
                   right: 10,

@@ -91,6 +91,19 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
     _ => HanduniaArchitectureLayer.collection,
   };
 
+  ({int current, int total, String label}) get _journeyStep => switch (_stage) {
+    0 => (current: 1, total: 8, label: 'Démarrer'),
+    1 => (current: 2, total: 8, label: 'Question IA'),
+    2 => (current: 3, total: 8, label: 'Enregistrer'),
+    3 => (current: 4, total: 8, label: 'Vérifier'),
+    4 => (current: 5, total: 8, label: 'Mémoire'),
+    5 => (current: 6, total: 8, label: 'Comparer'),
+    6 => (current: 7, total: 8, label: 'Portée'),
+    7 => (current: 8, total: 8, label: 'Terminé'),
+    8 => (current: 8, total: 8, label: 'Voix manquantes'),
+    _ => (current: 1, total: 8, label: 'Démarrer'),
+  };
+
   ThemeData _readableTheme(BuildContext context) {
     final base = Theme.of(context);
     final scheme = ColorScheme.fromSeed(
@@ -804,23 +817,29 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         children: [
           Row(
             children: [
-              SizedBox(
-                width: 44,
-                height: 44,
-                child: IconButton(
-                  tooltip: 'Retour',
-                  onPressed: _back,
-                  icon: const Icon(Icons.arrow_back_rounded, size: 23),
-                  color: HanduniaTokens.ivoire,
-                  style: IconButton.styleFrom(
-                    backgroundColor: HanduniaTokens.nuitPortee,
-                    side: const BorderSide(
-                      color: HanduniaTokens.bordureForte,
-                    ),
-                    shadowColor: const Color(0x216B4A22),
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+              HanduniaNamedAction(
+                label: 'Retour',
+                color: HanduniaTokens.cendre,
+                fontSize: 8.5,
+                maxWidth: 52,
+                child: SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: IconButton(
+                    tooltip: 'Retour',
+                    onPressed: _back,
+                    icon: const Icon(Icons.arrow_back_rounded, size: 23),
+                    color: HanduniaTokens.ivoire,
+                    style: IconButton.styleFrom(
+                      backgroundColor: HanduniaTokens.nuitPortee,
+                      side: const BorderSide(
+                        color: HanduniaTokens.bordureForte,
+                      ),
+                      shadowColor: const Color(0x216B4A22),
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                   ),
                 ),
@@ -859,6 +878,44 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           HanduniaArchitectureMap(
             active: _architectureLayer,
             compact: true,
+          ),
+          const SizedBox(height: 7),
+          Builder(
+            builder: (context) {
+              final step = _journeyStep;
+              return Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Étape ${step.current}/${step.total} · ${step.label}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _karla(
+                        size: 9.5,
+                        color: HanduniaTokens.cendre,
+                        weight: FontWeight.w800,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    width: 86,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: step.current / step.total,
+                        minHeight: 4,
+                        backgroundColor: HanduniaTokens.bordureForte,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          HanduniaTokens.braise,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -1344,25 +1401,127 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         .where((item) => item['validated'] == true)
         .take(6)
         .toList(growable: false);
+    final entityCount = _entities.length;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 20, 18, 28),
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
       children: [
-        Text('Mémoire', style: _fraunces(size: 27)),
-        const SizedBox(height: 10),
-        if (nodes.isNotEmpty)
-          Text(
-            '${nodes.length} lien${nodes.length > 1 ? 's' : ''}',
-            style: _karla(color: HanduniaTokens.cendre),
-          ),
-        const SizedBox(height: 22),
-        SizedBox(
-          height: 360,
-          child: _MemoryGraph(
-            centerLabel: 'VOIX',
-            nodes: nodes,
+        Row(
+          children: [
+            Expanded(child: Text('Mémoire', style: _fraunces(size: 27))),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: HanduniaTokens.braise.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: HanduniaTokens.braise.withValues(alpha: .45),
+                ),
+              ),
+              child: Text(
+                '${nodes.length}/$entityCount liens',
+                style: _karla(
+                  size: 10.5,
+                  color: HanduniaTokens.braise,
+                  weight: FontWeight.w800,
+                  height: 1,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          nodes.isEmpty
+              ? 'Votre voix peut être comparée même sans repère validé.'
+              : 'Les repères confirmés sont reliés à votre voix avant la comparaison.',
+          style: _karla(
+            size: 12.5,
+            color: HanduniaTokens.cendre,
+            height: 1.35,
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
+        if (nodes.isEmpty)
+          Container(
+            padding: const EdgeInsets.fromLTRB(18, 22, 18, 22),
+            decoration: BoxDecoration(
+              color: HanduniaTokens.nuitPortee,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: HanduniaTokens.bordureForte),
+            ),
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.hub_outlined,
+                  size: 42,
+                  color: HanduniaTokens.braise,
+                ),
+                const SizedBox(height: 9),
+                Text(
+                  'Aucun lien validé',
+                  textAlign: TextAlign.center,
+                  style: _fraunces(size: 18),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'Lumière IA cherchera directement les souvenirs proches de ce récit.',
+                  textAlign: TextAlign.center,
+                  style: _karla(
+                    size: 12,
+                    color: HanduniaTokens.cendre,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          Container(
+            height: 265,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: HanduniaTokens.nuitPortee.withValues(alpha: .74),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: HanduniaTokens.bordureForte),
+            ),
+            child: _MemoryGraph(
+              centerLabel: 'VOIX',
+              nodes: nodes,
+            ),
+          ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.fromLTRB(13, 11, 13, 11),
+          decoration: BoxDecoration(
+            color: HanduniaTokens.braise.withValues(alpha: .09),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: HanduniaTokens.braise.withValues(alpha: .32),
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.auto_awesome_rounded,
+                size: 20,
+                color: HanduniaTokens.braise,
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  'Comparer la voix aux souvenirs du lieu, puis expliquer clairement le lien trouvé.',
+                  style: _karla(
+                    size: 11.5,
+                    color: HanduniaTokens.ivoire,
+                    weight: FontWeight.w600,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
         _primaryButton(
           label: 'COMPARER',
           icon: Icons.compare_arrows_outlined,
@@ -1374,45 +1533,182 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
 
   Widget _comparisonStage() {
     final relation = _comparison['relation']?.toString() ?? 'new';
-    final reason = _comparison['reason']?.toString() ?? '';
+    final reason = _comparison['reason']?.toString().trim() ?? '';
+    final rawConfidence = _comparison['confidence'];
+    final confidence = rawConfidence is num
+        ? rawConfidence.toDouble().clamp(0.0, 1.0)
+        : (double.tryParse(rawConfidence?.toString() ?? '') ?? 0.0)
+            .clamp(0.0, 1.0);
+    final confidencePercent = (confidence * 100).round();
     final label = switch (relation) {
       'corroborates' => 'Même récit',
       'nuances' => 'Nuance',
       'diverges' => 'Deux versions',
       _ => 'Nouvelle trace',
     };
+    final recommendation = switch (relation) {
+      'corroborates' => 'Relier comme confirmation d’un souvenir existant.',
+      'nuances' => 'Conserver la nuance sans effacer la version existante.',
+      'diverges' => 'Garder les deux versions et laisser la mémoire rester plurielle.',
+      _ => 'Conserver comme nouvelle trace indépendante.',
+    };
+    final relationIcon = switch (relation) {
+      'corroborates' => Icons.join_inner_rounded,
+      'nuances' => Icons.compare_arrows_rounded,
+      'diverges' => Icons.call_split_rounded,
+      _ => Icons.add_link_rounded,
+    };
+    final relationColor = relation == 'diverges'
+        ? HanduniaTokens.terre
+        : HanduniaTokens.braise;
+
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       children: [
         Text('Comparer', style: _fraunces(size: 27)),
-        const SizedBox(height: 30),
-        SizedBox(
-          height: 220,
-          child: CustomPaint(
-            painter: _ComparisonPainter(relation: relation),
-          ),
-        ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
         Text(
-          label,
-          textAlign: TextAlign.center,
-          style: _fraunces(
-            size: 23,
-            color: relation == 'diverges'
-                ? HanduniaTokens.terre
-                : HanduniaTokens.ivoire,
+          'Lumière IA compare votre voix aux souvenirs disponibles, sans remplacer le jugement humain.',
+          style: _karla(
+            size: 12.5,
+            color: HanduniaTokens.cendre,
+            height: 1.35,
           ),
         ),
-        if (reason.isNotEmpty)
-          Semantics(
-            label: reason,
-            child: const SizedBox.shrink(),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+          decoration: BoxDecoration(
+            color: HanduniaTokens.nuitPortee,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: relationColor.withValues(alpha: .58)),
           ),
-        const SizedBox(height: 30),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: relationColor.withValues(alpha: .12),
+                      border: Border.all(
+                        color: relationColor.withValues(alpha: .55),
+                      ),
+                    ),
+                    child: Icon(relationIcon, color: relationColor, size: 24),
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          label,
+                          style: _fraunces(size: 20, color: relationColor),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          confidencePercent > 0
+                              ? 'Confiance IA · $confidencePercent %'
+                              : 'Confiance IA · à confirmer',
+                          style: _karla(
+                            size: 10.5,
+                            color: HanduniaTokens.cendre,
+                            weight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: confidence,
+                  minHeight: 6,
+                  backgroundColor: HanduniaTokens.bordureForte,
+                  valueColor: AlwaysStoppedAnimation<Color>(relationColor),
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 128,
+                child: CustomPaint(
+                  painter: _ComparisonPainter(relation: relation),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (reason.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              color: HanduniaTokens.nuitPortee,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: HanduniaTokens.bordureForte),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.psychology_alt_outlined,
+                  color: HanduniaTokens.braise,
+                  size: 21,
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    reason,
+                    style: _karla(
+                      size: 12,
+                      color: HanduniaTokens.ivoire,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            color: relationColor.withValues(alpha: .08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: relationColor.withValues(alpha: .34)),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.lightbulb_outline_rounded,
+                color: relationColor,
+                size: 21,
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  recommendation,
+                  style: _karla(
+                    size: 12,
+                    color: HanduniaTokens.ivoire,
+                    weight: FontWeight.w600,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
         _primaryButton(
-          label: relation == 'diverges'
-              ? 'GARDER 2'
-              : 'SUIVANT',
+          label: relation == 'diverges' ? 'GARDER LES 2' : 'SUIVANT',
           icon: Icons.arrow_forward_outlined,
           onPressed: () => setState(() => _stage = 6),
         ),

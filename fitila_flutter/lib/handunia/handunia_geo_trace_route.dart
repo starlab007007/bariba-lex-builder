@@ -545,10 +545,17 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
               children: [
                 Row(
                   children: [
-                    IconButton(
-                      onPressed: () => Navigator.of(context).maybePop(),
-                      icon: const Icon(Icons.arrow_back_outlined),
-                      color: HanduniaTokens.ivoire,
+                    HanduniaNamedAction(
+                      label: 'Retour',
+                      color: HanduniaTokens.cendre,
+                      fontSize: 8,
+                      maxWidth: 50,
+                      child: IconButton(
+                        tooltip: 'Retour',
+                        onPressed: () => Navigator.of(context).maybePop(),
+                        icon: const Icon(Icons.arrow_back_outlined),
+                        color: HanduniaTokens.ivoire,
+                      ),
                     ),
                     Expanded(
                       child: Column(
@@ -577,10 +584,17 @@ class _HanduniaGeoTraceRouteState extends State<HanduniaGeoTraceRoute> {
                         ],
                       ),
                     ),
-                    IconButton(
-                      onPressed: _reset,
-                      icon: const Icon(Icons.restart_alt_outlined),
+                    HanduniaNamedAction(
+                      label: 'Repartir',
                       color: HanduniaTokens.cendre,
+                      fontSize: 8,
+                      maxWidth: 54,
+                      child: IconButton(
+                        tooltip: 'Recommencer',
+                        onPressed: _reset,
+                        icon: const Icon(Icons.restart_alt_outlined),
+                        color: HanduniaTokens.cendre,
+                      ),
                     ),
                   ],
                 ),

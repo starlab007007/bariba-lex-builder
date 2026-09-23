@@ -673,22 +673,29 @@ class _HanduniaAiHeritageGuideRouteState
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
               child: Row(
                 children: [
-                  SizedBox(
-                    width: 44,
-                    height: 44,
-                    child: IconButton(
-                      onPressed: () => Navigator.maybePop(context),
-                      icon: const Icon(Icons.arrow_back_rounded, size: 23),
-                      color: HanduniaTokens.ivoire,
-                      style: IconButton.styleFrom(
-                        backgroundColor: HanduniaTokens.nuitPortee,
-                        side: const BorderSide(
-                          color: HanduniaTokens.bordureForte,
-                        ),
-                        elevation: 2,
-                        shadowColor: const Color(0x216B4A22),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                  HanduniaNamedAction(
+                    label: 'Retour',
+                    color: HanduniaTokens.cendre,
+                    fontSize: 8,
+                    maxWidth: 52,
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: IconButton(
+                        tooltip: 'Retour',
+                        onPressed: () => Navigator.maybePop(context),
+                        icon: const Icon(Icons.arrow_back_rounded, size: 23),
+                        color: HanduniaTokens.ivoire,
+                        style: IconButton.styleFrom(
+                          backgroundColor: HanduniaTokens.nuitPortee,
+                          side: const BorderSide(
+                            color: HanduniaTokens.bordureForte,
+                          ),
+                          elevation: 2,
+                          shadowColor: const Color(0x216B4A22),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                       ),
                     ),
