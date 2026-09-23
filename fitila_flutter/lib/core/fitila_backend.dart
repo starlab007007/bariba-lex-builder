@@ -2213,6 +2213,70 @@ class FitilaBackend {
         .eq('created_by', user.id);
   }
 
+  static Future<Map<String, dynamic>> updateBattleUserChallenge({
+    required String challengeId,
+    required String title,
+    required String challengeType,
+    required String promptBariba,
+    required String promptFrancais,
+    required String answerKey,
+    List<String> acceptedAnswers = const [],
+    String contextText = '',
+    String theme = 'Sagesse',
+    int durationHours = 24,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Connexion requise pour modifier ce défi.');
+    }
+    final cleanTitle = title.trim();
+    final cleanBariba = promptBariba.trim();
+    if (cleanTitle.length < 3 || cleanBariba.length < 3) {
+      throw StateError('Le titre et le défi doivent être renseignés.');
+    }
+    if (!const <int>{24, 48, 168}.contains(durationHours)) {
+      throw ArgumentError.value(durationHours, 'durationHours');
+    }
+
+    final data = await client
+        .from('battle_user_challenges')
+        .update(<String, dynamic>{
+          'title': cleanTitle,
+          'challenge_type': challengeType,
+          'prompt_bariba': cleanBariba,
+          'prompt_francais': promptFrancais.trim(),
+          'answer_key': answerKey.trim().isEmpty ? null : answerKey.trim(),
+          'accepted_answers': acceptedAnswers
+              .map((value) => value.trim())
+              .where((value) => value.isNotEmpty)
+              .toList(growable: false),
+          'context_text': contextText.trim(),
+          'theme': theme.trim().isEmpty ? 'Sagesse' : theme.trim(),
+          'duration_hours': durationHours,
+          'expires_at': DateTime.now()
+              .toUtc()
+              .add(Duration(hours: durationHours))
+              .toIso8601String(),
+        })
+        .eq('id', challengeId)
+        .eq('created_by', user.id)
+        .select()
+        .single();
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<void> deleteBattleUserChallenge(String challengeId) async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Connexion requise pour supprimer ce défi.');
+    }
+    await client
+        .from('battle_user_challenges')
+        .delete()
+        .eq('id', challengeId)
+        .eq('created_by', user.id);
+  }
+
   // ───────────────────────────────────────────────────────────────
   // Sasara IA — traduction bilingue (réutilise FitilaServices.translate
   // / ai-translate) + corpus communautaire strictement opt-in.
@@ -2596,6 +2660,59 @@ class FitilaBackend {
           .eq('fragment_id', fragmentId)
           .eq('user_id', user.id);
     }
+  }
+
+  static Future<Map<String, dynamic>> updateHanduniaFragment({
+    required String fragmentId,
+    required String text,
+    bool updateTranscript = false,
+    String? periodLabel,
+    String? scopeLevel,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Connexion requise pour modifier ce souvenir.');
+    }
+    final cleanText = text.trim();
+    if (cleanText.isEmpty) {
+      throw StateError('Le souvenir ne peut pas être vide.');
+    }
+    final payload = <String, dynamic>{
+      'text': cleanText,
+      'synchronized_at': DateTime.now().toUtc().toIso8601String(),
+    };
+    if (updateTranscript) {
+      payload['transcript_text'] = cleanText;
+    }
+    final cleanPeriod = periodLabel?.trim() ?? '';
+    if (cleanPeriod.isNotEmpty) {
+      payload['period_label'] = cleanPeriod;
+    }
+    final cleanScope = scopeLevel?.trim() ?? '';
+    if (cleanScope.isNotEmpty) {
+      payload['scope_level'] = cleanScope;
+    }
+
+    final data = await client
+        .from('handunia_fragments')
+        .update(payload)
+        .eq('id', fragmentId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<void> deleteHanduniaFragment(String fragmentId) async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Connexion requise pour supprimer ce souvenir.');
+    }
+    await client
+        .from('handunia_fragments')
+        .delete()
+        .eq('id', fragmentId)
+        .eq('user_id', user.id);
   }
 
   // ───────────────────────────────────────────────────────────────

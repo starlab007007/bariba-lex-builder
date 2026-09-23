@@ -200,8 +200,20 @@ void main() {
     await tester.pump();
 
     expect(find.text('Créer un défi'), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
     expect(find.text('Compléter'), findsOneWidget);
     expect(find.text('Interpréter'), findsOneWidget);
+
+    final theme = find.text('Sagesse');
+    await tester.scrollUntilVisible(
+      theme,
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump();
+    expect(find.text('Thème'), findsOneWidget);
+    expect(theme, findsOneWidget);
+
     final publish = find.text('Publier le défi');
     await tester.scrollUntilVisible(
       publish,
