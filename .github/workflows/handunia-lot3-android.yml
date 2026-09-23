@@ -48,7 +48,7 @@ jobs:
 
       - name: Verify Lot 3 release metadata
         run: |
-          grep -q '^version: 1.8.3+14$' pubspec.yaml
+          grep -q '^version: 1.8.4+15$' pubspec.yaml
 
       - name: Analyze
         run: flutter analyze
@@ -67,15 +67,15 @@ jobs:
           test -s build/app/outputs/flutter-apk/app-debug.apk
           mkdir -p build/lot3-output
           cp build/app/outputs/flutter-apk/app-debug.apk \
-            build/lot3-output/FITILA-Android-v1.8.3-build14-handunia-lot3-qa-debug.apk
+            build/lot3-output/FITILA-Android-v1.8.4-build15-handunia-lot3-qa-debug.apk
           cd build/lot3-output
-          sha256sum FITILA-Android-v1.8.3-build14-handunia-lot3-qa-debug.apk | tee SHA256SUMS.txt
-          ls -lh FITILA-Android-v1.8.3-build14-handunia-lot3-qa-debug.apk
+          sha256sum FITILA-Android-v1.8.4-build15-handunia-lot3-qa-debug.apk | tee SHA256SUMS.txt
+          ls -lh FITILA-Android-v1.8.4-build15-handunia-lot3-qa-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: FITILA-Android-v1.8.3-build14-handunia-lot3-qa-debug
+          name: FITILA-Android-v1.8.4-build15-handunia-lot3-qa-debug
           path: fitila_flutter/build/lot3-output/
           if-no-files-found: error
           retention-days: 14
