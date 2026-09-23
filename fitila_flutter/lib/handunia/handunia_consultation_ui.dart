@@ -1153,6 +1153,8 @@ class HanduniaFilView extends StatefulWidget {
     this.onLikeChanged,
     this.onAiSummary,
     this.onTranslate,
+    this.onEditOwn,
+    this.onDeleteOwn,
     this.notice,
   });
 
@@ -1172,6 +1174,8 @@ class HanduniaFilView extends StatefulWidget {
   final Future<void> Function(String fragmentId, bool like)? onLikeChanged;
   final Future<String?> Function(Map<String, dynamic> item)? onAiSummary;
   final Future<String?> Function(Map<String, dynamic> item)? onTranslate;
+  final Future<void> Function(Map<String, dynamic> item)? onEditOwn;
+  final Future<void> Function(Map<String, dynamic> item)? onDeleteOwn;
 
   @override
   State<HanduniaFilView> createState() => _HanduniaFilViewState();
@@ -1414,6 +1418,40 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                         unawaited(_runInsight(item, translate: true));
                       },
               ),
+              if (item['is_mine'] == true &&
+                  item['local_only'] != true &&
+                  widget.onEditOwn != null)
+                ListTile(
+                  leading: const Icon(
+                    Icons.edit_outlined,
+                    color: Colors.white,
+                  ),
+                  title: const Text(
+                    'Modifier ma publication',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    unawaited(widget.onEditOwn!(item));
+                  },
+                ),
+              if (item['is_mine'] == true &&
+                  item['local_only'] != true &&
+                  widget.onDeleteOwn != null)
+                ListTile(
+                  leading: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: Color(0xFFFF8A80),
+                  ),
+                  title: const Text(
+                    'Supprimer ma publication',
+                    style: TextStyle(color: Color(0xFFFF8A80)),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    unawaited(widget.onDeleteOwn!(item));
+                  },
+                ),
               ListTile(
                 leading: const Icon(Icons.refresh_rounded, color: Colors.white),
                 title: const Text(
