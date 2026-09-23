@@ -2291,6 +2291,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
     return Semantics(
       button: true,
       label: semanticLabel,
+      excludeSemantics: true,
       child: HanduniaNamedAction(
         label: label,
         color: active ? _feedGoldDeep : _feedMuted,
