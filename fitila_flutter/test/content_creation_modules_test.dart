@@ -62,7 +62,7 @@ void main() {
     });
   }
 
-  testWidgets('Echo opens from creator hub without Material or overflow errors', (
+  testWidgets('creator hub exposes only Handunia Wasa and Sagesse Battle', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -75,24 +75,13 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 300));
 
-    await tester.tap(find.text('Echo Sɔ̃ɔ').first);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 350));
-
-    expect(find.textContaining('Raconte quelque chose'), findsOneWidget);
-    expect(find.text('Bàátɔ̀nú'), findsOneWidget);
-    expect(find.text('Français'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-
-    await tester.tap(find.text('Écrire à la place'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 350));
-    expect(find.text('Texte & traduction'), findsOneWidget);
-    await tester.tap(find.text('Texte & traduction'));
-    await tester.pump(const Duration(milliseconds: 250));
-    expect(find.text('Français → Bariba'), findsOneWidget);
-    expect(find.text('Bariba → Français'), findsOneWidget);
-    expect(find.byType(TextField), findsWidgets);
+    expect(find.text('Créer'), findsOneWidget);
+    expect(find.text('Handunia Wasa'), findsOneWidget);
+    expect(find.text('Sagesse Battle'), findsOneWidget);
+    expect(find.text('Echo Sɔ̃ɔ'), findsNothing);
+    expect(find.text('Live Griot IA'), findsNothing);
+    expect(find.text('Aburu Fim IA'), findsNothing);
+    expect(find.text('Sasara IA'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

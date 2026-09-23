@@ -1148,6 +1148,7 @@ class HanduniaFilView extends StatefulWidget {
     required this.onFilterChanged,
     required this.onOpenMemory,
     required this.onFindMissingVoice,
+    this.showBack = true,
     this.onPublish,
     this.onLikeChanged,
     this.onAiSummary,
@@ -1166,6 +1167,7 @@ class HanduniaFilView extends StatefulWidget {
   final ValueChanged<HanduniaFeedFilter> onFilterChanged;
   final ValueChanged<Map<String, dynamic>> onOpenMemory;
   final VoidCallback onFindMissingVoice;
+  final bool showBack;
   final VoidCallback? onPublish;
   final Future<void> Function(String fragmentId, bool like)? onLikeChanged;
   final Future<String?> Function(Map<String, dynamic> item)? onAiSummary;
@@ -2231,11 +2233,14 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        _roundHeaderButton(
-                          icon: Icons.arrow_back_rounded,
-                          label: 'Retour',
-                          onTap: widget.onBack,
-                        ),
+                        if (widget.showBack)
+                          _roundHeaderButton(
+                            icon: Icons.arrow_back_rounded,
+                            label: 'Retour',
+                            onTap: widget.onBack,
+                          )
+                        else
+                          const SizedBox(width: 54),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Semantics(

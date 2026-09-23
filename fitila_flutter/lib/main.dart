@@ -2094,6 +2094,8 @@ class _NavigationPanel extends StatelessWidget {
   }
 }
 
+enum _FitilaPrimaryFeed { handunia, sagesse }
+
 class FeedScreen extends StatefulWidget {
   const FeedScreen({
     super.key,
@@ -2135,24 +2137,110 @@ class FeedScreen extends StatefulWidget {
 }
 
 class _FeedScreenState extends State<FeedScreen> {
-  // Le fil est désormais volontairement mono-mode : plein écran,
-  // immersif, style Kuaishou/TikTok — plus de bascule Immersion/Classique
-  // ni de sous-modules à choisir, conformément à la demande de
-  // désencombrement de l'écran.
+  _FitilaPrimaryFeed _active = _FitilaPrimaryFeed.handunia;
+
+  Widget _feedTab({
+    required _FitilaPrimaryFeed value,
+    required String emoji,
+    required String label,
+  }) {
+    final selected = _active == value;
+    return Expanded(
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: 'Fil $label',
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: () => setState(() => _active = value),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            height: 38,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              gradient: selected
+                  ? LinearGradient(
+                      colors: value == _FitilaPrimaryFeed.handunia
+                          ? const [Color(0xFF4A3B78), Color(0xFF14111C)]
+                          : const [Color(0xFF9C6B1D), Color(0xFFB54E33)],
+                    )
+                  : null,
+              color: selected ? null : _fitilaCard,
+              border: Border.all(
+                color: selected ? Colors.transparent : _fitilaHairline,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(emoji, style: const TextStyle(fontSize: 13)),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: selected ? Colors.white : _fitilaInk,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: Colors.black,
-      child: SafeArea(
-        top: false,
-        bottom: false,
-        child: _ImmersiveFeedDeck(
-          posts: widget.posts,
-          loading: widget.loading,
-          error: widget.error,
-          onRetry: widget.onRetry,
-          onOpenHanduniaFeed: widget.onOpenHanduniaFeed,
-        ),
+      color: _fitilaSurface,
+      child: Column(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 7),
+              child: Row(
+                children: [
+                  _feedTab(
+                    value: _FitilaPrimaryFeed.handunia,
+                    emoji: '🌌',
+                    label: 'Handunia Wasa',
+                  ),
+                  const SizedBox(width: 8),
+                  _feedTab(
+                    value: _FitilaPrimaryFeed.sagesse,
+                    emoji: '⚔️',
+                    label: 'Sagesse Battle',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              child: _active == _FitilaPrimaryFeed.handunia
+                  ? const HanduniaWasaScreen(
+                      key: ValueKey('feed-handunia'),
+                      entryMode: HanduniaWasaEntryMode.feed,
+                      embeddedFeed: true,
+                    )
+                  : const SagesseBattleScreen(
+                      key: ValueKey('feed-sagesse'),
+                      embeddedFeed: true,
+                    ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -3428,132 +3516,92 @@ class ContentCreatorScreen extends StatefulWidget {
 }
 
 class _ContentCreatorScreenState extends State<ContentCreatorScreen> {
-  // Page volontairement réduite à l'essentiel : uniquement les 6 modules
-  // de création. Studio de composition, statistiques, moteur créateur,
-  // pipeline et sélection de templates ont été retirés — désencombrement
-  // demandé, style Kuaishou plein écran.
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
       color: _fitilaSurface,
       child: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final columns = constraints.maxWidth < 420
-                    ? 2
-                    : constraints.maxWidth < 760
-                    ? 3
-                    : 6;
-                return GridView.count(
-                  crossAxisCount: columns,
-                  shrinkWrap: true,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  childAspectRatio: 0.92,
-                  children: [
-                    _CreationIaTile(
-                      emoji: '📡',
-                      title: 'Echo Sɔ̃ɔ',
-                      subtitle: 'Voix, texte, traduction, visuel signature.',
-                      colorA: const Color(0xFFC99530),
-                      colorB: const Color(0xFF9C6B1D),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => EchoSonScreen(
-                            onPostCreated: widget.onPostCreated,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+          child: Column(
+            children: [
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Créer',
+                  style: TextStyle(
+                    color: _fitilaInk,
+                    fontFamily: 'Fraunces',
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Choisissez une action',
+                  style: TextStyle(
+                    color: _fitilaMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final columns = constraints.maxWidth < 520 ? 2 : 2;
+                    return GridView.count(
+                      crossAxisCount: columns,
+                      mainAxisSpacing: 14,
+                      crossAxisSpacing: 14,
+                      childAspectRatio: constraints.maxWidth < 420 ? .90 : 1.05,
+                      children: [
+                        _CreationIaTile(
+                          emoji: '🌌',
+                          title: 'Handunia Wasa',
+                          subtitle: 'Publier un souvenir dans la mémoire vivante.',
+                          colorA: const Color(0xFF4A3B78),
+                          colorB: const Color(0xFF14111C),
+                          onTap: () async {
+                            final openPublish = widget.onOpenHanduniaPublish;
+                            final viewFeed = openPublish != null
+                                ? await openPublish()
+                                : await Navigator.push<bool>(
+                                    context,
+                                    MaterialPageRoute<bool>(
+                                      builder: (_) => const HanduniaWasaScreen(
+                                        entryMode: HanduniaWasaEntryMode.publish,
+                                      ),
+                                    ),
+                                  );
+                            if (viewFeed == true && context.mounted) {
+                              widget.onOpenHanduniaFeed?.call();
+                            }
+                          },
+                        ),
+                        _CreationIaTile(
+                          emoji: '⚔️',
+                          title: 'Sagesse Battle',
+                          subtitle: 'Répondre au défi du jour et rejoindre la chaîne.',
+                          colorA: const Color(0xFF9C6B1D),
+                          colorB: const Color(0xFFB54E33),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const SagesseBattleScreen(),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    _CreationIaTile(
-                      emoji: '🎙️',
-                      title: 'Live Griot IA',
-                      subtitle: 'Direct audio, chat en temps réel et auditeurs connectés.',
-                      colorA: const Color(0xFF6758C9),
-                      colorB: const Color(0xFF4A3B96),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => LiveGriotScreen(
-                            onPostCreated: widget.onPostCreated,
-                          ),
-                        ),
-                      ),
-                    ),
-                    _CreationIaTile(
-                      emoji: '⚔️',
-                      title: 'Sagesse Battle',
-                      subtitle: 'Défi proverbe quotidien, XP et badges.',
-                      colorA: const Color(0xFF9C6B1D),
-                      colorB: const Color(0xFFB54E33),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const SagesseBattleScreen(),
-                        ),
-                      ),
-                    ),
-                    _CreationIaTile(
-                      emoji: '🛍️',
-                      title: 'Aburu Fim IA',
-                      subtitle: 'Produit + template + publication instantanée.',
-                      colorA: const Color(0xFF3F6E52),
-                      colorB: const Color(0xFF2C4E3A),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => AburuFimScreen(
-                            onPostCreated: widget.onPostCreated,
-                          ),
-                        ),
-                      ),
-                    ),
-                    _CreationIaTile(
-                      emoji: '🌉',
-                      title: 'Sasara IA',
-                      subtitle: 'Le pont bilingue Bariba ⇄ Français.',
-                      colorA: const Color(0xFF241F2E),
-                      colorB: const Color(0xFF3A3448),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => SasaraIaScreen(
-                            onPostCreated: widget.onPostCreated,
-                          ),
-                        ),
-                      ),
-                    ),
-                    _CreationIaTile(
-                      emoji: '🌌',
-                      title: 'Handunia Wasa',
-                      subtitle: 'Monde vivant, souvenirs et mémoire collective.',
-                      colorA: const Color(0xFF4A3B78),
-                      colorB: const Color(0xFF14111C),
-                      onTap: () async {
-                        final openPublish = widget.onOpenHanduniaPublish;
-                        final viewFeed = openPublish != null
-                            ? await openPublish()
-                            : await Navigator.push<bool>(
-                                context,
-                                MaterialPageRoute<bool>(
-                                  builder: (_) => const HanduniaWasaScreen(
-                                    entryMode: HanduniaWasaEntryMode.publish,
-                                  ),
-                                ),
-                              );
-                        if (viewFeed == true && context.mounted) {
-                          widget.onOpenHanduniaFeed?.call();
-                        }
-                      },
-                    ),
-                  ],
-                );
-              },
-            ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -23786,7 +23834,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
 // 3. Sagesse Battle — défi proverbe quotidien, entièrement réel
 // ─────────────────────────────────────────────────────────────────
 class SagesseBattleScreen extends StatefulWidget {
-  const SagesseBattleScreen({super.key});
+  const SagesseBattleScreen({
+    super.key,
+    this.embeddedFeed = false,
+  });
+
+  final bool embeddedFeed;
 
   @override
   State<SagesseBattleScreen> createState() => _SagesseBattleScreenState();
@@ -24135,6 +24188,7 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
         : '$_participantCount participants';
     return ReferenceCreationShell(
       dark: false,
+      showTopBar: !widget.embeddedFeed,
       title: 'Défi du jour',
       subtitle: participantLabel,
       leading: const Text('🔥', style: TextStyle(fontSize: 15)),
@@ -26285,11 +26339,13 @@ class HanduniaWasaScreen extends StatefulWidget {
     this.entryMode = HanduniaWasaEntryMode.feed,
     this.onPlatformNav,
     this.onPlatformCreate,
+    this.embeddedFeed = false,
   });
 
   final HanduniaWasaEntryMode entryMode;
   final ValueChanged<int>? onPlatformNav;
   final VoidCallback? onPlatformCreate;
+  final bool embeddedFeed;
 
   @override
   State<HanduniaWasaScreen> createState() => _HanduniaWasaScreenState();
@@ -29114,9 +29170,12 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       pendingCount: _worldFeed
           .where((item) => item['local_only'] == true)
           .length,
-      onBack: widget.entryMode == HanduniaWasaEntryMode.feed
-          ? () => Navigator.maybePop(context)
-          : () => setState(() => _step = 1),
+      onBack: widget.embeddedFeed
+          ? () {}
+          : widget.entryMode == HanduniaWasaEntryMode.feed
+              ? () => Navigator.maybePop(context)
+              : () => setState(() => _step = 1),
+      showBack: !widget.embeddedFeed,
       onRefresh: _openWorldFeed,
       onFilterChanged: _changeWorldFeedFilter,
       onOpenMemory: _openWorldMemory,
