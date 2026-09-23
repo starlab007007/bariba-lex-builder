@@ -935,7 +935,6 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
   Map<String, dynamic>? get _selectedPlace {
     final id = _selectedId;
     if (id == null) return null;
-    final territoryFocus = _territoryFocus;
     if (territoryFocus != null &&
         territoryFocus['id']?.toString() == id) {
       return territoryFocus;
@@ -960,17 +959,6 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
       _notice = result['geo_unresolved'] == true
           ? 'Territoire sélectionné · position à préciser.'
           : null;
-    });
-  }
-
-  void _clearTerritoryFocus() {
-    final focusId = _territoryFocus?['id']?.toString();
-    setState(() {
-      _territoryFocus = null;
-      if (_selectedId == focusId) {
-        _selectedId = null;
-      }
-      _notice = null;
     });
   }
 
