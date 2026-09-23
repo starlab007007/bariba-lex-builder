@@ -935,6 +935,7 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
   Map<String, dynamic>? get _selectedPlace {
     final id = _selectedId;
     if (id == null) return null;
+    final territoryFocus = _territoryFocus;
     if (territoryFocus != null &&
         territoryFocus['id']?.toString() == id) {
       return territoryFocus;
@@ -983,7 +984,6 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
   @override
   Widget build(BuildContext context) {
     final visible = _visiblePlaces;
-    final territoryFocus = _territoryFocus;
     final mapPlaces = <Map<String, dynamic>>[
       ...visible,
     ];
