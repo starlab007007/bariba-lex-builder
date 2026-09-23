@@ -852,7 +852,7 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
     final initialPlaces = widget.initialPlaces;
     if (initialPlaces != null) {
       _places = List<Map<String, dynamic>>.from(initialPlaces);
-      _selectedId = _places.isEmpty ? null : _places.first['id']?.toString();
+      _selectedId = null;
       _loading = false;
     } else {
       unawaited(_load());
@@ -872,7 +872,7 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
       if (!mounted) return;
       setState(() {
         _places = places;
-        _selectedId ??= places.isEmpty ? null : places.first['id']?.toString();
+        _selectedId = null;
         _notice = null;
       });
     } catch (_) {
@@ -968,7 +968,7 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
     setState(() {
       _territoryFocus = null;
       if (_selectedId == focusId) {
-        _selectedId = _places.isEmpty ? null : _places.first['id']?.toString();
+        _selectedId = null;
       }
       _notice = null;
     });
@@ -1123,26 +1123,22 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                 ),
               ),
             ),
-            if (selected != null)
+            if (_territoryFocus != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 12, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: HanduniaTerritoryPath(
-                        place: selected,
-                        compact: true,
-                      ),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 7),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: InputChip(
+                    avatar: const Icon(Icons.place_outlined, size: 17),
+                    label: Text(
+                      _territoryFocus?['name']?.toString() ??
+                          _territoryFocus?['village_quartier']?.toString() ??
+                          'Zone sélectionnée',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    if (_territoryFocus != null) ...[
-                      const SizedBox(width: 4),
-                      IconButton(
-                        onPressed: _clearTerritoryFocus,
-                        icon: const Icon(Icons.public_rounded),
-                        color: HanduniaTokens.braise,
-                      ),
-                    ],
-                  ],
+                    onDeleted: _clearTerritoryFocus,
+                  ),
                 ),
               ),
             if (_notice != null)
@@ -1181,6 +1177,10 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                                   places: mapPlaces,
                                   selectedPlaceId: _selectedId,
                                   height: constraints.maxHeight,
+                                  showSelectionCard: false,
+                                  showTerritoryRail: false,
+                                  focusUserOnOpen: true,
+                                  openOnMarkerTap: true,
                                   onSelected: (place) => setState(
                                     () => _selectedId =
                                         place['id']?.toString(),
@@ -1189,30 +1189,17 @@ class _HanduniaLivingMapRouteState extends State<HanduniaLivingMapRoute> {
                                 ),
                           ),
                         ),
-                        if (unlocated.isNotEmpty)
-                          SizedBox(
-                            height: 58,
-                            child: ListView.separated(
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 7, 16, 7),
-                              scrollDirection: Axis.horizontal,
-                              itemCount: unlocated.length,
-                              separatorBuilder: (_, _) =>
-                                  const SizedBox(width: 7),
-                              itemBuilder: (context, index) {
-                                final place = unlocated[index];
-                                return ActionChip(
-                                  avatar: const Icon(
-                                    Icons.location_off_outlined,
-                                    size: 17,
-                                  ),
-                                  label: Text(
-                                    place['name']?.toString() ??
-                                        'Lieu à positionner',
-                                  ),
-                                  onPressed: () => _openPlace(place),
-                                );
-                              },
+                        if (unlocated.isNotEmpty && _query.text.trim().isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+                            child: Text(
+                              '${unlocated.length} lieu${unlocated.length > 1 ? 'x' : ''} trouvé${unlocated.length > 1 ? 's' : ''} sans position GPS.',
+                              textAlign: TextAlign.center,
+                              style: _karlaRoute(
+                                size: 10.5,
+                                color: HanduniaTokens.cendre,
+                                weight: FontWeight.w700,
+                              ),
                             ),
                           ),
                       ],

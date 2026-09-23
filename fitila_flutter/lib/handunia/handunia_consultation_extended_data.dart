@@ -259,7 +259,7 @@ class HanduniaConsultationExtendedData {
     final lieux = List<Map<String, dynamic>>.from(lieuxRaw as List);
     final fragmentsRaw = await _client
         .from('handunia_fragments')
-        .select('id, user_id, lieu_id, withdrawn_at')
+        .select('id, user_id, lieu_id, latitude, longitude, withdrawn_at')
         .isFilter('withdrawn_at', null);
     final fragments = List<Map<String, dynamic>>.from(fragmentsRaw as List);
     final ids = fragments
@@ -290,6 +290,7 @@ class HanduniaConsultationExtendedData {
           .where((fragment) => fragment['lieu_id']?.toString() == lieuId)
           .toList(growable: false);
       final witnesses = <String>{};
+      final memoryCoordinates = <(double, double)>[];
       for (final fragment in local) {
         final author = fragment['user_id']?.toString() ?? '';
         if (author.isNotEmpty) {
@@ -298,11 +299,56 @@ class HanduniaConsultationExtendedData {
         witnesses.addAll(
           corroborators[fragment['id']?.toString() ?? ''] ?? const <String>{},
         );
+
+        final latitude = fragment['latitude'];
+        final longitude = fragment['longitude'];
+        final lat = latitude is num
+            ? latitude.toDouble()
+            : double.tryParse(latitude?.toString() ?? '');
+        final lon = longitude is num
+            ? longitude.toDouble()
+            : double.tryParse(longitude?.toString() ?? '');
+        if (lat != null &&
+            lon != null &&
+            lat >= -90 &&
+            lat <= 90 &&
+            lon >= -180 &&
+            lon <= 180) {
+          memoryCoordinates.add((lat, lon));
+        }
       }
+
+      final lieuLatRaw = lieu['latitude'];
+      final lieuLonRaw = lieu['longitude'];
+      final lieuLat = lieuLatRaw is num
+          ? lieuLatRaw.toDouble()
+          : double.tryParse(lieuLatRaw?.toString() ?? '');
+      final lieuLon = lieuLonRaw is num
+          ? lieuLonRaw.toDouble()
+          : double.tryParse(lieuLonRaw?.toString() ?? '');
+
+      double? fallbackLat;
+      double? fallbackLon;
+      if ((lieuLat == null || lieuLon == null) && memoryCoordinates.isNotEmpty) {
+        fallbackLat =
+            memoryCoordinates.map((item) => item.$1).reduce((a, b) => a + b) /
+            memoryCoordinates.length;
+        fallbackLon =
+            memoryCoordinates.map((item) => item.$2).reduce((a, b) => a + b) /
+            memoryCoordinates.length;
+      }
+
       return <String, dynamic>{
         ...lieu,
+        'latitude': lieuLat ?? fallbackLat,
+        'longitude': lieuLon ?? fallbackLon,
         'memory_count': local.length,
         'voice_count': witnesses.length,
+        'can_open': local.isNotEmpty,
+        if ((lieuLat == null || lieuLon == null) &&
+            fallbackLat != null &&
+            fallbackLon != null)
+          'geo_provider': 'memory_centroid',
       };
     }).toList(growable: false);
   }

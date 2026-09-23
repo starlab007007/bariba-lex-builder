@@ -396,7 +396,7 @@ void main() {
 
     expect(find.text('Carte vivante'), findsOneWidget);
     expect(find.textContaining('0 lieu'), findsOneWidget);
-    expect(find.text('Chemin des caravanes'), findsWidgets);
+    expect(find.text('Chemin des caravanes'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -431,7 +431,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Chemin des caravanes'), findsWidgets);
+    expect(find.text('Chemin des caravanes'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
