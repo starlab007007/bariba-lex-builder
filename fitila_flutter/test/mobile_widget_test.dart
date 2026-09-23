@@ -11,14 +11,16 @@ void main() {
 
     await tester.pumpWidget(const FitilaApp(demoMode: true));
     await tester.ensureVisible(find.text('Se connecter'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 650));
+    await tester.pump();
     expect(
       tester.takeException(),
       isNull,
       reason: 'L’écran de connexion doit tenir sur un téléphone de 390 px.',
     );
     await tester.tap(find.text('Se connecter'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 650));
+    await tester.pump();
 
     expect(find.text('Fil'), findsWidgets);
     expect(tester.takeException(), isNull);

@@ -9,7 +9,8 @@ void main() {
     expect(find.text('Bienvenue'), findsOneWidget);
 
     await tester.tap(find.text('Se connecter'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 650));
+    await tester.pump();
 
     expect(find.text('Fil'), findsWidgets);
   });

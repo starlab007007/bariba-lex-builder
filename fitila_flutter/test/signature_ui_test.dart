@@ -76,11 +76,14 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(const FitilaApp(demoMode: true));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 650));
+    await tester.pump();
     await tester.ensureVisible(find.text('Se connecter'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 650));
+    await tester.pump();
     await tester.tap(find.text('Se connecter'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 650));
+    await tester.pump();
 
     expect(find.text('Fil'), findsWidgets);
     expect(find.text('Apprendre'), findsOneWidget);
@@ -120,11 +123,14 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(const FitilaApp(demoMode: true));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 650));
+    await tester.pump();
     await tester.ensureVisible(find.text('Se connecter'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 650));
+    await tester.pump();
     await tester.tap(find.text('Se connecter'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 650));
+    await tester.pump();
 
     await tester.tap(find.text('Traduc.').first);
     await tester.pump(const Duration(milliseconds: 350));
