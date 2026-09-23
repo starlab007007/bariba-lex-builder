@@ -2234,9 +2234,11 @@ class _FeedScreenState extends State<FeedScreen> {
                       entryMode: HanduniaWasaEntryMode.feed,
                       embeddedFeed: true,
                     )
-                  : const SagesseBattleScreen(
-                      key: ValueKey('feed-sagesse'),
+                  : SagesseBattleScreen(
+                      key: const ValueKey('feed-sagesse'),
                       embeddedFeed: true,
+                      onExitEmbedded: () =>
+                          setState(() => _active = _FitilaPrimaryFeed.handunia),
                     ),
             ),
           ),
@@ -3509,91 +3511,201 @@ class ContentCreatorScreen extends StatefulWidget {
 }
 
 class _ContentCreatorScreenState extends State<ContentCreatorScreen> {
+  Widget _creatorActionCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Ink(
+          padding: const EdgeInsets.fromLTRB(18, 18, 16, 18),
+          decoration: BoxDecoration(
+            color: _fitilaCard,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: _fitilaBorder),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0D2A2118),
+                blurRadius: 16,
+                offset: Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5E8C8),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, size: 27, color: _fitilaGoldDeep),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _fitilaInk,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _fitilaMuted,
+                        fontSize: 11.5,
+                        height: 1.3,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: _fitilaSurfaceAlt,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _fitilaBorder),
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 19,
+                  color: _fitilaGoldDeep,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openHanduniaCreation() async {
+    final openPublish = widget.onOpenHanduniaPublish;
+    final viewFeed = openPublish != null
+        ? await openPublish()
+        : await Navigator.push<bool>(
+            context,
+            MaterialPageRoute<bool>(
+              builder: (_) => const HanduniaWasaScreen(
+                entryMode: HanduniaWasaEntryMode.publish,
+              ),
+            ),
+          );
+    if (viewFeed == true && mounted) {
+      widget.onOpenHanduniaFeed?.call();
+    }
+  }
+
+  void _openSagesseCreation() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const SagesseBattleScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
       color: _fitilaSurface,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Créer',
-                  style: TextStyle(
-                    color: _fitilaInk,
-                    fontFamily: 'Fraunces',
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
+              Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: _fitilaCard,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: _fitilaBorder),
+                    ),
+                    child: const Icon(
+                      Icons.add_rounded,
+                      color: _fitilaGoldDeep,
+                      size: 24,
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Créer',
+                          style: TextStyle(
+                            color: _fitilaInk,
+                            fontFamily: 'Fraunces',
+                            fontSize: 25,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Deux actions, rien de plus.',
+                          style: TextStyle(
+                            color: _fitilaMuted,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              const Align(
-                alignment: Alignment.centerLeft,
+              const SizedBox(height: 22),
+              _creatorActionCard(
+                icon: Icons.auto_stories_rounded,
+                title: 'Handunia Wasa',
+                subtitle: 'Publier un souvenir dans la mémoire vivante.',
+                onTap: () => unawaited(_openHanduniaCreation()),
+              ),
+              const SizedBox(height: 12),
+              _creatorActionCard(
+                icon: Icons.psychology_alt_rounded,
+                title: 'Sagesse Battle',
+                subtitle: 'Répondre au défi du jour et rejoindre la chaîne.',
+                onTap: _openSagesseCreation,
+              ),
+              const Spacer(),
+              Center(
                 child: Text(
-                  'Choisissez une action',
+                  'Le bouton + ouvre toujours ces deux choix.',
                   style: TextStyle(
-                    color: _fitilaMuted,
-                    fontSize: 12,
+                    color: _fitilaMuted.withValues(alpha: .82),
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final columns = constraints.maxWidth < 520 ? 2 : 2;
-                    return GridView.count(
-                      crossAxisCount: columns,
-                      mainAxisSpacing: 14,
-                      crossAxisSpacing: 14,
-                      childAspectRatio: constraints.maxWidth < 420 ? .90 : 1.05,
-                      children: [
-                        _CreationIaTile(
-                          emoji: '🌌',
-                          title: 'Handunia Wasa',
-                          subtitle: 'Publier un souvenir dans la mémoire vivante.',
-                          colorA: const Color(0xFF4A3B78),
-                          colorB: const Color(0xFF14111C),
-                          onTap: () async {
-                            final openPublish = widget.onOpenHanduniaPublish;
-                            final viewFeed = openPublish != null
-                                ? await openPublish()
-                                : await Navigator.push<bool>(
-                                    context,
-                                    MaterialPageRoute<bool>(
-                                      builder: (_) => const HanduniaWasaScreen(
-                                        entryMode: HanduniaWasaEntryMode.publish,
-                                      ),
-                                    ),
-                                  );
-                            if (viewFeed == true && context.mounted) {
-                              widget.onOpenHanduniaFeed?.call();
-                            }
-                          },
-                        ),
-                        _CreationIaTile(
-                          emoji: '⚔️',
-                          title: 'Sagesse Battle',
-                          subtitle: 'Répondre au défi du jour et rejoindre la chaîne.',
-                          colorA: const Color(0xFF9C6B1D),
-                          colorB: const Color(0xFFB54E33),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const SagesseBattleScreen(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
+              const SizedBox(height: 4),
             ],
           ),
         ),
@@ -23830,9 +23942,11 @@ class SagesseBattleScreen extends StatefulWidget {
   const SagesseBattleScreen({
     super.key,
     this.embeddedFeed = false,
+    this.onExitEmbedded,
   });
 
   final bool embeddedFeed;
+  final VoidCallback? onExitEmbedded;
 
   @override
   State<SagesseBattleScreen> createState() => _SagesseBattleScreenState();
@@ -24213,6 +24327,28 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
               : ListView(
                   padding: EdgeInsets.zero,
                   children: [
+                    if (widget.embeddedFeed) ...[
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: widget.onExitEmbedded,
+                          icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                          label: const Text('Retour'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: FitilaReferenceUi.ink,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 7,
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
                     Container(
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
@@ -24296,32 +24432,92 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                       Container(
                         padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          gradient: FitilaReferenceUi.darkGradient,
+                          borderRadius: BorderRadius.circular(18),
+                          color: widget.embeddedFeed
+                              ? FitilaReferenceUi.surface
+                              : null,
+                          gradient: widget.embeddedFeed
+                              ? null
+                              : FitilaReferenceUi.darkGradient,
+                          border: widget.embeddedFeed
+                              ? Border.all(color: FitilaReferenceUi.hairline)
+                              : null,
                         ),
                         child: Column(
                           children: [
-                            const ReferenceMicOrb(
-                              icon: Icons.videocam_rounded,
-                              size: 78,
-                              ringExtent: 120,
-                            ),
+                            if (widget.embeddedFeed)
+                              Container(
+                                width: 74,
+                                height: 74,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: FitilaReferenceUi.goldTint,
+                                  border: Border.all(
+                                    color: FitilaReferenceUi.gold,
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.edit_rounded,
+                                  size: 31,
+                                  color: FitilaReferenceUi.goldDeep,
+                                ),
+                              )
+                            else
+                              const ReferenceMicOrb(
+                                icon: Icons.videocam_rounded,
+                                size: 78,
+                                ringExtent: 120,
+                              ),
                             const SizedBox(height: 8),
-                            const Text(
-                              'Enregistre ta réponse',
+                            Text(
+                              widget.embeddedFeed
+                                  ? 'Votre réponse'
+                                  : 'Enregistre ta réponse',
                               style: TextStyle(
-                                color: Color(0xC7FFFFFF),
+                                color: widget.embeddedFeed
+                                    ? FitilaReferenceUi.ink
+                                    : const Color(0xC7FFFFFF),
                                 fontSize: 12.5,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                             const SizedBox(height: 12),
                             TextField(
                               controller: _answerController,
-                              style: const TextStyle(color: Colors.white),
+                              style: TextStyle(
+                                color: widget.embeddedFeed
+                                    ? FitilaReferenceUi.ink
+                                    : Colors.white,
+                              ),
                               textAlign: TextAlign.center,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 hintText: 'Le mot manquant…',
+                                filled: widget.embeddedFeed,
+                                fillColor: widget.embeddedFeed
+                                    ? FitilaReferenceUi.surfaceAlt
+                                    : null,
+                                hintStyle: TextStyle(
+                                  color: widget.embeddedFeed
+                                      ? FitilaReferenceUi.muted
+                                      : Colors.white60,
+                                ),
+                                enabledBorder: widget.embeddedFeed
+                                    ? OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                        borderSide: const BorderSide(
+                                          color: FitilaReferenceUi.hairline,
+                                        ),
+                                      )
+                                    : null,
+                                focusedBorder: widget.embeddedFeed
+                                    ? OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                        borderSide: const BorderSide(
+                                          color: FitilaReferenceUi.gold,
+                                          width: 1.4,
+                                        ),
+                                      )
+                                    : null,
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -24339,8 +24535,16 @@ class _SagesseBattleScreenState extends State<SagesseBattleScreen> {
                       Container(
                         padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          gradient: FitilaReferenceUi.darkGradient,
+                          borderRadius: BorderRadius.circular(18),
+                          color: widget.embeddedFeed
+                              ? FitilaReferenceUi.surface
+                              : null,
+                          gradient: widget.embeddedFeed
+                              ? null
+                              : FitilaReferenceUi.darkGradient,
+                          border: widget.embeddedFeed
+                              ? Border.all(color: FitilaReferenceUi.hairline)
+                              : null,
                         ),
                         child: Column(
                           children: [
@@ -27851,8 +28055,22 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     });
   }
 
+  void _exitPublishFlow() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+      return;
+    }
+    if (widget.onPlatformCreate != null) {
+      widget.onPlatformCreate?.call();
+      return;
+    }
+    setState(() => _step = 0);
+  }
+
   void _leaveForCreator() {
     if (widget.entryMode == HanduniaWasaEntryMode.publish) {
+      _exitPublishFlow();
       return;
     }
     if (widget.onPlatformCreate == null) {
@@ -27873,7 +28091,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         subtitle: '',
         leading: const Text('🌌', style: TextStyle(fontSize: 15)),
         onBack: widget.entryMode == HanduniaWasaEntryMode.publish
-            ? () => Navigator.maybePop(context)
+            ? _exitPublishFlow
             : () => setState(() => _step = 0),
         child: _buildLieuxStep(),
       ),
@@ -28103,6 +28321,30 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
+          if (widget.entryMode == HanduniaWasaEntryMode.publish) ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: _exitPublishFlow,
+                icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                label: const Text('Précédent'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: FitilaReferenceUi.ink,
+                  side: const BorderSide(color: FitilaReferenceUi.hairline),
+                  backgroundColor: FitilaReferenceUi.surface,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           HanduniaArchitectureMap(
             active: widget.entryMode == HanduniaWasaEntryMode.publish
                 ? HanduniaArchitectureLayer.collection
