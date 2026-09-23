@@ -4,7 +4,7 @@ extension HanduniaFeedFilterUi on HanduniaFeedFilter {
   String get label => switch (this) {
     HanduniaFeedFilter.around => 'Autour de moi',
     HanduniaFeedFilter.lineage => 'Ma lignée',
-    HanduniaFeedFilter.all => 'Tout',
+    HanduniaFeedFilter.all => 'À découvrir',
   };
 
   String get backendValue => switch (this) {

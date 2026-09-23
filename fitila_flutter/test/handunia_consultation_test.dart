@@ -142,30 +142,42 @@ void main() {
 
     expect(find.text('Autour de moi'), findsNothing);
     expect(find.text('Ma lignée'), findsNothing);
-    expect(find.text('Tout'), findsOneWidget);
+    expect(find.text('Découvrir'), findsOneWidget);
     expect(find.bySemanticsLabel('Autour de moi'), findsOneWidget);
     expect(find.bySemanticsLabel('Ma lignée'), findsOneWidget);
-    expect(find.bySemanticsLabel('Tout'), findsOneWidget);
+    expect(find.bySemanticsLabel('À découvrir'), findsOneWidget);
     expect(find.byType(PageView), findsOneWidget);
     expect(
       find.textContaining('Votre voix attend le réseau.'),
       findsOneWidget,
     );
 
-    // The feed keeps only three compact heritage actions on one line.
+    // Le feed reste immersif, mais les actions intellectuelles ouvrent
+    // le contexte patrimonial plutôt qu'un classement de popularité.
     expect(find.text('Mémoire'), findsWidgets);
-    expect(find.bySemanticsLabel('Voir le souvenir'), findsWidgets);
+    expect(find.bySemanticsLabel('Pourquoi je vois cette mémoire'), findsWidgets);
+    expect(find.bySemanticsLabel('Ouvrir la mémoire'), findsWidgets);
+
+    // Les interactions émotionnelles existent, sans entrer dans le ranking.
+    expect(find.bySemanticsLabel('Partager'), findsWidgets);
     expect(
-      find.bySemanticsLabel('Trouver une voix sur la carte'),
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Icon &&
+            (widget.icon == Icons.favorite_rounded ||
+                widget.icon == Icons.favorite_border_rounded),
+      ),
       findsWidgets,
     );
-
-    // Social-network actions are intentionally absent from Handunia Wasa.
-    expect(find.bySemanticsLabel('Partager'), findsNothing);
-    expect(find.byIcon(Icons.favorite_rounded), findsNothing);
-    expect(find.byIcon(Icons.favorite_border_rounded), findsNothing);
-    expect(find.byIcon(Icons.bookmark_rounded), findsNothing);
-    expect(find.byIcon(Icons.bookmark_border_rounded), findsNothing);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Icon &&
+            (widget.icon == Icons.bookmark_rounded ||
+                widget.icon == Icons.bookmark_border_rounded),
+      ),
+      findsWidgets,
+    );
 
     await tester.drag(find.byType(PageView), const Offset(0, -620));
     await tester.pump(const Duration(milliseconds: 450));
@@ -174,15 +186,12 @@ void main() {
       find.textContaining('La voix traversait la place avant le marché.'),
       findsOneWidget,
     );
-    expect(find.textContaining('7 voix'), findsOneWidget);
-    expect(find.text('12'), findsNothing);
+    expect(find.textContaining('7 voix'), findsWidgets);
+    expect(find.text('12'), findsWidgets);
     expect(find.text('Mémoire'), findsWidgets);
-    expect(find.bySemanticsLabel('Voir le souvenir'), findsWidgets);
-    expect(
-      find.bySemanticsLabel('Trouver une voix sur la carte'),
-      findsWidgets,
-    );
-    expect(find.bySemanticsLabel('Partager'), findsNothing);
+    expect(find.bySemanticsLabel('Pourquoi je vois cette mémoire'), findsWidgets);
+    expect(find.bySemanticsLabel('Ouvrir la mémoire'), findsWidgets);
+    expect(find.bySemanticsLabel('Partager'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
@@ -221,7 +230,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Une mémoire se sépare en deux'), findsOneWidget);
+    expect(find.text('Deux versions existent'), findsOneWidget);
     expect(find.text('Deux mémoires du même départ'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -648,6 +657,28 @@ void main() {
     expect(viral, withoutLikes);
   });
 
+  test('Handunia explains heritage selection without popularity signals', () {
+    final item = <String, dynamic>{
+      'id': 'memory-explained',
+      'distance_m': 1800.0,
+      'voice_count': 5,
+      'corroboration_count': 4,
+      'lacuna_filled': true,
+      'theme_key': 'marché',
+      'like_count': 99999,
+    };
+
+    final reasons = HanduniaHeritageFeed.explanationFor(item);
+
+    expect(reasons, contains('Proche de votre territoire'));
+    expect(reasons, contains('Complète une lacune de mémoire'));
+    expect(
+      reasons.any((value) => value.contains('corroborent ce souvenir')),
+      isTrue,
+    );
+    expect(reasons.any((value) => value.contains('like')), isFalse);
+  });
+
   test('Handunia journey favors cultural continuity without author repetition', () {
     final journey = HanduniaHeritageFeed.buildJourney(
       <Map<String, dynamic>>[
@@ -725,7 +756,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Handunia cherche une voix'), findsNothing);
+    expect(find.text('Handunia cherche une voix'), findsOneWidget);
     expect(find.textContaining('Avant 1960'), findsOneWidget);
     final helpAction = find.bySemanticsLabel(
       'Aider à compléter cette mémoire par la voix',

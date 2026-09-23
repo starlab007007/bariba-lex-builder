@@ -275,7 +275,7 @@ void main() {
     expect(find.text('Handunia'), findsOneWidget);
     expect(find.bySemanticsLabel('Autour de moi'), findsOneWidget);
     expect(find.bySemanticsLabel('Ma lignée'), findsOneWidget);
-    expect(find.bySemanticsLabel('Tout'), findsOneWidget);
+    expect(find.bySemanticsLabel('À découvrir'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -315,7 +315,7 @@ void main() {
     expect(find.text('Handunia'), findsOneWidget);
     expect(find.bySemanticsLabel('Autour de moi'), findsOneWidget);
     expect(find.bySemanticsLabel('Ma lignée'), findsOneWidget);
-    expect(find.bySemanticsLabel('Tout'), findsOneWidget);
+    expect(find.bySemanticsLabel('À découvrir'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

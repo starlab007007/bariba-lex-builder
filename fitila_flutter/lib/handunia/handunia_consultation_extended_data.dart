@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/fitila_backend.dart';
+import 'handunia_consultation_data.dart';
 import 'handunia_consultation_model.dart';
 
 class HanduniaConsultationExtendedData {
@@ -68,14 +69,34 @@ class HanduniaConsultationExtendedData {
         ? profile!['display_name'].toString()
         : (profile?['username']?.toString() ?? '');
 
-    final versions = await fetchMemoryVersions(fragment);
+    final heritageResults = await Future.wait<dynamic>([
+      fetchMemoryVersions(fragment),
+      HanduniaConsultationData.fetchMemoryNeighborhood(
+        fragmentId,
+        depth: 1,
+      ),
+      lieuId.isEmpty
+          ? Future<Map<String, dynamic>?>.value(null)
+          : HanduniaConsultationData.fetchPlaceMemorySummary(lieuId),
+    ]);
+    final versions =
+        List<Map<String, dynamic>>.from(heritageResults[0] as List);
+    final neighborhood =
+        List<Map<String, dynamic>>.from(heritageResults[1] as List)
+            .where((item) => (item['depth'] as num?)?.toInt() != 0)
+            .toList(growable: false);
+    final placeStats = heritageResults[2] as Map<String, dynamic>?;
+
     return <String, dynamic>{
       ...fragment,
       'state': fragment['withdrawn_at'] == null ? 'ready' : 'withdrawn',
       'lieu_name': lieu?['name']?.toString() ?? '',
       'author_initials': handuniaInitials(displayName),
       'voice_count': handuniaDistinctVoiceCount(userId, corroboratorIds),
+      'corroboration_count': corroborations.length,
       'versions': versions,
+      'memory_neighborhood': neighborhood,
+      'place_memory_stats': placeStats,
     };
   }
 

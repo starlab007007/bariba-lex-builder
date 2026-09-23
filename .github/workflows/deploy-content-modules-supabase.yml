@@ -72,6 +72,8 @@ jobs:
               'supabase/migrations/20260919133000_aburu_product_link_and_realtime.sql',
               'supabase/migrations/20260919161000_live_griot_runtime_cleanup.sql',
               'supabase/migrations/20260923193000_handunia_optional_location.sql',
+              'supabase/migrations/20260923201500_handunia_heritage_memory_engine.sql',
+              'supabase/migrations/20260923203000_handunia_heritage_security_hardening.sql',
           )
 
           for migration_path in migration_paths:

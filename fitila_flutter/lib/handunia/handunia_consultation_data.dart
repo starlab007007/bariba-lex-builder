@@ -106,6 +106,24 @@ class HanduniaConsultationData {
       }
     }
 
+    final divergentFragmentIds = <String>{};
+    if (fragmentIds.isNotEmpty) {
+      try {
+        final rows = await _client
+            .from('handunia_divergences')
+            .select('version_a_id, version_b_id, status')
+            .eq('status', 'open');
+        for (final row in List<Map<String, dynamic>>.from(rows as List)) {
+          final a = row['version_a_id']?.toString() ?? '';
+          final b = row['version_b_id']?.toString() ?? '';
+          if (a.isNotEmpty) divergentFragmentIds.add(a);
+          if (b.isNotEmpty) divergentFragmentIds.add(b);
+        }
+      } catch (_) {
+        // Une divergence non déployée ne doit jamais bloquer le fil.
+      }
+    }
+
     final likeCounts = <String, int>{};
     final likedByMe = <String>{};
     if (fragmentIds.isNotEmpty) {
@@ -228,6 +246,8 @@ class HanduniaConsultationData {
           fragment['user_id']?.toString(),
           voices[id] ?? const <String>{},
         ),
+        'corroboration_count': voices[id]?.length ?? 0,
+        'has_divergence': divergentFragmentIds.contains(id),
         'like_count': likeCounts[id] ?? 0,
         'liked_by_me': likedByMe.contains(id),
         'is_mine':
@@ -361,6 +381,80 @@ class HanduniaConsultationData {
 
     return fragments;
   }
+
+  static Future<Map<String, dynamic>?> fetchPlaceMemorySummary(
+    String lieuId,
+  ) async {
+    if (!FitilaBackend.configured || lieuId.trim().isEmpty) return null;
+    try {
+      final rows = await _client.rpc(
+        'handunia_place_memory_summary',
+        params: {'p_lieu_id': lieuId.trim()},
+      );
+      final values = List<Map<String, dynamic>>.from(rows as List);
+      return values.isEmpty ? null : values.first;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchMemoryNeighborhood(
+    String fragmentId, {
+    int depth = 1,
+  }) async {
+    if (!FitilaBackend.configured || fragmentId.trim().isEmpty) {
+      return const [];
+    }
+    try {
+      final rows = await _client.rpc(
+        'handunia_memory_neighborhood',
+        params: {
+          'p_fragment_id': fragmentId.trim(),
+          'p_depth': depth.clamp(1, 3),
+        },
+      );
+      return List<Map<String, dynamic>>.from(rows as List);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchNextMemories(
+    String fragmentId, {
+    int limit = 8,
+  }) async {
+    if (!FitilaBackend.configured || fragmentId.trim().isEmpty) {
+      return const [];
+    }
+    try {
+      final rows = await _client.rpc(
+        'handunia_next_memory',
+        params: {
+          'p_fragment_id': fragmentId.trim(),
+          'p_limit': limit.clamp(1, 24),
+        },
+      );
+      return List<Map<String, dynamic>>.from(rows as List);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchGapPriorities({
+    int limit = 8,
+  }) async {
+    if (!FitilaBackend.configured) return const [];
+    try {
+      final rows = await _client.rpc(
+        'handunia_memory_gap_priorities',
+        params: {'p_limit': limit.clamp(1, 24)},
+      );
+      return List<Map<String, dynamic>>.from(rows as List);
+    } catch (_) {
+      return const [];
+    }
+  }
+
 
   static double _distanceMeters(
     double lat1,

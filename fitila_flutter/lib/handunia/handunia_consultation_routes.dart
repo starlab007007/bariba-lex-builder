@@ -348,6 +348,14 @@ class _OpenMemoryBodyState extends State<_OpenMemoryBody> {
     final voices = (widget.memory['voice_count'] as num?)?.toInt() ?? 1;
     final versions = (widget.memory['versions'] as List? ?? const <dynamic>[])
         .cast<Map<String, dynamic>>();
+    final neighborhood =
+        (widget.memory['memory_neighborhood'] as List? ?? const <dynamic>[])
+            .cast<Map<String, dynamic>>();
+    final placeStats =
+        widget.memory['place_memory_stats'] as Map<String, dynamic>?;
+    final corroborations =
+        (widget.memory['corroboration_count'] as num?)?.toInt() ??
+        math.max(0, voices - 1);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
@@ -443,6 +451,114 @@ class _OpenMemoryBodyState extends State<_OpenMemoryBody> {
             ],
           ),
         ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: HanduniaTokens.orClair.withValues(alpha: .55),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: HanduniaTokens.bordureForte),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Mémoire reliée',
+                style: _frauncesRoute(
+                  size: 16,
+                  color: HanduniaTokens.ivoire,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _HeritageMetricChip(
+                    icon: Icons.groups_2_outlined,
+                    label: '$voices voix',
+                  ),
+                  _HeritageMetricChip(
+                    icon: Icons.verified_outlined,
+                    label: corroborations == 1
+                        ? '1 corroboration'
+                        : '$corroborations corroborations',
+                  ),
+                  if (neighborhood.isNotEmpty)
+                    _HeritageMetricChip(
+                      icon: Icons.account_tree_outlined,
+                      label: '${neighborhood.length} liens',
+                    ),
+                  if ((placeStats?['gap_count'] as num?)?.toInt() != null)
+                    _HeritageMetricChip(
+                      icon: Icons.radio_button_unchecked,
+                      label:
+                          '${(placeStats?['gap_count'] as num).toInt()} lacunes',
+                    ),
+                ],
+              ),
+              if (neighborhood.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'Souvenirs liés',
+                  style: _karlaRoute(
+                    size: 12.5,
+                    color: HanduniaTokens.cendre,
+                    weight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                for (final linked in neighborhood.take(3))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () {
+                        final id = linked['fragment_id']?.toString() ?? '';
+                        if (id.isEmpty) return;
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => HanduniaMemoryRoute(memoryId: id),
+                          ),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 5,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.subdirectory_arrow_right_rounded,
+                              size: 17,
+                              color: HanduniaTokens.braise,
+                            ),
+                            const SizedBox(width: 7),
+                            Expanded(
+                              child: Text(
+                                linked['memory_text']?.toString().trim().isNotEmpty ==
+                                        true
+                                    ? linked['memory_text'].toString()
+                                    : 'Mémoire liée',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: _karlaRoute(
+                                  size: 12.2,
+                                  color: HanduniaTokens.ivoire,
+                                  weight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
         if (versions.isNotEmpty) ...[
           const SizedBox(height: 12),
           Semantics(
@@ -528,6 +644,44 @@ class _OpenMemoryBodyState extends State<_OpenMemoryBody> {
           _HoldToSpeak(onSubmit: widget.onSubmitNuance),
         ],
       ],
+    );
+  }
+}
+
+class _HeritageMetricChip extends StatelessWidget {
+  const _HeritageMetricChip({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: HanduniaTokens.nuitPortee,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: HanduniaTokens.bordureForte),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: HanduniaTokens.braise),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: _karlaRoute(
+              size: 11,
+              color: HanduniaTokens.ivoire,
+              weight: FontWeight.w700,
+              height: 1,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
