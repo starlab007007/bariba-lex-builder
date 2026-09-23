@@ -58,6 +58,51 @@ TextStyle _karla({
 }
 
 
+class HanduniaNamedAction extends StatelessWidget {
+  const HanduniaNamedAction({
+    super.key,
+    required this.label,
+    required this.child,
+    this.color = HanduniaTokens.cendre,
+    this.fontSize = 9,
+    this.gap = 2,
+    this.maxWidth = 78,
+  });
+
+  final String label;
+  final Widget child;
+  final Color color;
+  final double fontSize;
+  final double gap;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          child,
+          SizedBox(height: gap),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: _karla(
+              size: fontSize,
+              color: color,
+              weight: FontWeight.w800,
+              height: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 enum HanduniaArchitectureLayer { collection, memory, discovery }
 
 class HanduniaArchitectureMap extends StatelessWidget {
@@ -1053,19 +1098,25 @@ class _HanduniaAudioReaderState extends State<_HanduniaAudioReader> {
         Semantics(
           button: true,
           label: _playing ? 'Mettre la voix en pause' : 'Écouter la voix',
-          child: SizedBox(
-            width: 44,
-            height: 44,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(999),
-              onTap: _toggle,
-              onLongPress: _toggle,
-              child: Icon(
-                _playing
-                    ? Icons.pause_circle_outline
-                    : Icons.play_circle_outline,
-                size: 31,
-                color: HanduniaTokens.braise,
+          child: HanduniaNamedAction(
+            label: _playing ? 'Pause' : 'Lire',
+            color: HanduniaTokens.braise,
+            fontSize: 8.2,
+            maxWidth: 46,
+            child: SizedBox(
+              width: 42,
+              height: 31,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(999),
+                onTap: _toggle,
+                onLongPress: _toggle,
+                child: Icon(
+                  _playing
+                      ? Icons.pause_circle_outline
+                      : Icons.play_circle_outline,
+                  size: 29,
+                  color: HanduniaTokens.braise,
+                ),
               ),
             ),
           ),
@@ -1381,22 +1432,27 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
 
   Widget _filterChip(HanduniaFeedFilter value, IconData icon) {
     final selected = widget.filter == value;
+    final shortLabel = switch (value) {
+      HanduniaFeedFilter.around => 'Autour',
+      HanduniaFeedFilter.lineage => 'Lignée',
+      HanduniaFeedFilter.all => 'Tout',
+    };
     return Expanded(
       child: Semantics(
         button: true,
         selected: selected,
         label: value.label,
         child: InkWell(
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(16),
           onTap: () {
             HapticFeedback.selectionClick();
             widget.onFilterChanged(value);
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
-            height: 42,
+            height: 54,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(16),
               gradient: selected
                   ? const LinearGradient(
                       colors: [Color(0xFFF4C458), _feedGoldDeep],
@@ -1408,10 +1464,26 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
               ),
             ),
             alignment: Alignment.center,
-            child: Icon(
-              icon,
-              size: 20,
-              color: selected ? Colors.white : _feedInk,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 19,
+                  color: selected ? Colors.white : _feedInk,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  shortLabel,
+                  maxLines: 1,
+                  style: _karla(
+                    size: 8.8,
+                    color: selected ? Colors.white : _feedInk,
+                    weight: FontWeight.w800,
+                    height: 1,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -1895,23 +1967,29 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                   child: Semantics(
                     button: true,
                     label: 'Plus d’options',
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(999),
-                      onTap: () => _showMore(item),
-                      child: Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _feedPaper.withValues(alpha: .90),
-                          border: Border.all(
-                            color: _feedHairline.withValues(alpha: .9),
+                    child: HanduniaNamedAction(
+                      label: 'Plus',
+                      color: _feedInk,
+                      fontSize: 8,
+                      maxWidth: 42,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(999),
+                        onTap: () => _showMore(item),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _feedPaper.withValues(alpha: .90),
+                            border: Border.all(
+                              color: _feedHairline.withValues(alpha: .9),
+                            ),
                           ),
-                        ),
-                        child: const Icon(
-                          Icons.more_horiz_rounded,
-                          size: 19,
-                          color: _feedInk,
+                          child: const Icon(
+                            Icons.more_horiz_rounded,
+                            size: 18,
+                            color: _feedInk,
+                          ),
                         ),
                       ),
                     ),
@@ -2271,21 +2349,27 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
     return Semantics(
       button: true,
       label: label,
-      child: SizedBox(
-        width: 46,
-        height: 46,
-        child: IconButton(
-          onPressed: onTap,
-          icon: Icon(icon, color: _feedInk, size: 24),
-          style: IconButton.styleFrom(
-            backgroundColor: _feedPaper.withValues(alpha: .96),
-            foregroundColor: _feedInk,
-            side: const BorderSide(color: _feedHairline),
-            shadowColor: const Color(0x226B4A22),
-            elevation: 2,
+      child: HanduniaNamedAction(
+        label: label,
+        color: _feedInk,
+        fontSize: 8.5,
+        maxWidth: 54,
+        child: SizedBox(
+          width: 42,
+          height: 42,
+          child: IconButton(
+            onPressed: onTap,
+            icon: Icon(icon, color: _feedInk, size: 22),
+            style: IconButton.styleFrom(
+              backgroundColor: _feedPaper.withValues(alpha: .96),
+              foregroundColor: _feedInk,
+              side: const BorderSide(color: _feedHairline),
+              shadowColor: const Color(0x226B4A22),
+              elevation: 2,
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 42, height: 42),
           ),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints.tightFor(width: 46, height: 46),
         ),
       ),
     );

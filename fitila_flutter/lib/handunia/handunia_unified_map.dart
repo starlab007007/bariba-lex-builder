@@ -421,10 +421,10 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     final levels = _territoryLevels(place);
     return Material(
       color: HanduniaTokens.nuitPortee.withValues(alpha: .96),
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.circular(18),
       elevation: 1,
       child: SizedBox(
-        height: 48,
+        height: 58,
         child: ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
           scrollDirection: Axis.horizontal,
@@ -444,6 +444,15 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
               'Département' => Icons.map_rounded,
               _ => Icons.public_rounded,
             };
+            final shortLabel = switch (level.kind) {
+              'Quartier / village' => 'Village',
+              'Localité' => 'Lieu',
+              'Arrondissement' => 'Arrond.',
+              'Commune' => 'Commune',
+              'Ville' => 'Ville',
+              'Département' => 'Départ.',
+              _ => 'Bénin',
+            };
             return Semantics(
               button: true,
               selected: active,
@@ -451,14 +460,14 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
               child: Tooltip(
                 message: level.label,
                 child: InkWell(
-                  customBorder: const CircleBorder(),
+                  borderRadius: BorderRadius.circular(14),
                   onTap: () => _focusTerritory(place, level),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
-                    width: 40,
-                    height: 40,
+                    width: 52,
+                    height: 50,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(14),
                       color: active
                           ? HanduniaTokens.braise.withValues(alpha: .18)
                           : HanduniaTokens.nuit,
@@ -468,12 +477,31 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                             : HanduniaTokens.bordureForte,
                       ),
                     ),
-                    child: Icon(
-                      icon,
-                      size: 18,
-                      color: active
-                          ? HanduniaTokens.braise
-                          : HanduniaTokens.cendre,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          icon,
+                          size: 17,
+                          color: active
+                              ? HanduniaTokens.braise
+                              : HanduniaTokens.cendre,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          shortLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Karla',
+                            fontSize: 7.8,
+                            fontWeight: FontWeight.w800,
+                            color: active
+                                ? HanduniaTokens.braise
+                                : HanduniaTokens.cendre,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -684,33 +712,45 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Material(
-                        color: HanduniaTokens.nuitPortee.withValues(alpha: .96),
-                        shape: const CircleBorder(),
-                        elevation: 1,
-                        child: IconButton(
-                          tooltip: _satellite
-                              ? 'Afficher le plan'
-                              : 'Afficher le satellite',
-                          onPressed: _toggleSatellite,
-                          icon: Icon(
-                            _satellite
-                                ? Icons.layers_rounded
-                                : Icons.satellite_alt_rounded,
+                      HanduniaNamedAction(
+                        label: _satellite ? 'Plan' : 'Satellite',
+                        color: HanduniaTokens.braise,
+                        fontSize: 7.8,
+                        maxWidth: 54,
+                        child: Material(
+                          color: HanduniaTokens.nuitPortee.withValues(alpha: .96),
+                          shape: const CircleBorder(),
+                          elevation: 1,
+                          child: IconButton(
+                            tooltip: _satellite
+                                ? 'Afficher le plan'
+                                : 'Afficher le satellite',
+                            onPressed: _toggleSatellite,
+                            icon: Icon(
+                              _satellite
+                                  ? Icons.layers_rounded
+                                  : Icons.satellite_alt_rounded,
+                            ),
+                            color: HanduniaTokens.braise,
                           ),
-                          color: HanduniaTokens.braise,
                         ),
                       ),
                       const SizedBox(width: 4),
-                      Material(
-                        color: HanduniaTokens.nuitPortee.withValues(alpha: .96),
-                        shape: const CircleBorder(),
-                        elevation: 1,
-                        child: IconButton(
-                          tooltip: 'Voir tout le Bénin',
-                          onPressed: _focusBenin,
-                          icon: const Icon(Icons.public_rounded),
-                          color: HanduniaTokens.braise,
+                      HanduniaNamedAction(
+                        label: 'Bénin',
+                        color: HanduniaTokens.braise,
+                        fontSize: 7.8,
+                        maxWidth: 48,
+                        child: Material(
+                          color: HanduniaTokens.nuitPortee.withValues(alpha: .96),
+                          shape: const CircleBorder(),
+                          elevation: 1,
+                          child: IconButton(
+                            tooltip: 'Voir tout le Bénin',
+                            onPressed: _focusBenin,
+                            icon: const Icon(Icons.public_rounded),
+                            color: HanduniaTokens.braise,
+                          ),
                         ),
                       ),
                     ],
@@ -768,18 +808,21 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                     children: [
                       _MapRoundAction(
                         tooltip: 'Me centrer',
+                        label: 'Centrer',
                         icon: Icons.my_location_rounded,
                         onTap: _recenter,
                       ),
                       const SizedBox(height: 7),
                       _MapRoundAction(
                         tooltip: 'Zoomer',
+                        label: 'Zoom +',
                         icon: Icons.add_rounded,
                         onTap: () => _changeZoom(1),
                       ),
                       const SizedBox(height: 7),
                       _MapRoundAction(
                         tooltip: 'Dézoomer',
+                        label: 'Zoom −',
                         icon: Icons.remove_rounded,
                         onTap: () => _changeZoom(-1),
                       ),
@@ -811,27 +854,35 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
 class _MapRoundAction extends StatelessWidget {
   const _MapRoundAction({
     required this.tooltip,
+    required this.label,
     required this.icon,
     required this.onTap,
   });
 
   final String tooltip;
+  final String label;
   final IconData icon;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: HanduniaTokens.nuitPortee.withValues(alpha: .97),
-      shape: const CircleBorder(),
-      elevation: 2,
-      shadowColor: const Color(0x22241F2E),
-      child: IconButton(
-        tooltip: tooltip,
-        onPressed: onTap,
-        icon: Icon(icon),
-        color: HanduniaTokens.ivoire,
-        iconSize: 20,
+    return HanduniaNamedAction(
+      label: label,
+      color: HanduniaTokens.ivoire,
+      fontSize: 7.5,
+      maxWidth: 54,
+      child: Material(
+        color: HanduniaTokens.nuitPortee.withValues(alpha: .97),
+        shape: const CircleBorder(),
+        elevation: 2,
+        shadowColor: const Color(0x22241F2E),
+        child: IconButton(
+          tooltip: tooltip,
+          onPressed: onTap,
+          icon: Icon(icon),
+          color: HanduniaTokens.ivoire,
+          iconSize: 20,
+        ),
       ),
     );
   }

@@ -27945,19 +27945,27 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
 
     Widget filterButton(String id, String label, IconData icon) {
       final selected = _lieuxSmartFilter == id;
+      final shortLabel = switch (id) {
+        'all' => 'Tous',
+        'nearby' => 'Proche',
+        'markets' => 'Marchés',
+        'villages' => 'Villages',
+        'stories' => 'Voix',
+        _ => label,
+      };
       return Semantics(
         button: true,
         selected: selected,
         label: label,
         child: InkWell(
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(14),
           onTap: () => _setLieuSmartFilter(id),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
-            width: 46,
-            height: 46,
+            width: 58,
+            height: 58,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(14),
               color: selected
                   ? FitilaReferenceUi.gold
                   : FitilaReferenceUi.surface,
@@ -27967,12 +27975,30 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                     : FitilaReferenceUi.hairline,
               ),
             ),
-            child: Icon(
-              icon,
-              size: 21,
-              color: selected
-                  ? FitilaReferenceUi.ink
-                  : FitilaReferenceUi.goldDeep,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: selected
+                      ? FitilaReferenceUi.ink
+                      : FitilaReferenceUi.goldDeep,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  shortLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: selected
+                        ? FitilaReferenceUi.ink
+                        : FitilaReferenceUi.goldDeep,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -27989,22 +28015,30 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
         button: true,
         selected: selected,
         label: label,
-        child: IconButton(
-          onPressed: onTap,
-          icon: Icon(icon),
-          iconSize: 22,
-          style: IconButton.styleFrom(
-            minimumSize: const Size(46, 46),
-            backgroundColor: selected
-                ? FitilaReferenceUi.goldTint
-                : FitilaReferenceUi.surface,
-            foregroundColor: selected
-                ? FitilaReferenceUi.goldDeep
-                : FitilaReferenceUi.muted,
-            side: BorderSide(
-              color: selected
-                  ? FitilaReferenceUi.gold
-                  : FitilaReferenceUi.hairline,
+        child: HanduniaNamedAction(
+          label: label == 'Fil Handunia' ? 'Fil' : label,
+          color: selected
+              ? FitilaReferenceUi.goldDeep
+              : FitilaReferenceUi.muted,
+          fontSize: 8.2,
+          maxWidth: 62,
+          child: IconButton(
+            onPressed: onTap,
+            icon: Icon(icon),
+            iconSize: 21,
+            style: IconButton.styleFrom(
+              minimumSize: const Size(44, 44),
+              backgroundColor: selected
+                  ? FitilaReferenceUi.goldTint
+                  : FitilaReferenceUi.surface,
+              foregroundColor: selected
+                  ? FitilaReferenceUi.goldDeep
+                  : FitilaReferenceUi.muted,
+              side: BorderSide(
+                color: selected
+                    ? FitilaReferenceUi.gold
+                    : FitilaReferenceUi.hairline,
+              ),
             ),
           ),
         ),
@@ -28071,14 +28105,20 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
               Semantics(
                 button: true,
                 label: 'Ajouter un lieu',
-                child: IconButton.filled(
-                  onPressed: _backendUnavailable ? null : _openCreateLieuStep,
-                  style: IconButton.styleFrom(
-                    minimumSize: const Size(52, 52),
-                    backgroundColor: FitilaReferenceUi.gold,
-                    foregroundColor: FitilaReferenceUi.ink,
+                child: HanduniaNamedAction(
+                  label: 'Ajouter',
+                  color: FitilaReferenceUi.goldDeep,
+                  fontSize: 8,
+                  maxWidth: 58,
+                  child: IconButton.filled(
+                    onPressed: _backendUnavailable ? null : _openCreateLieuStep,
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(48, 48),
+                      backgroundColor: FitilaReferenceUi.gold,
+                      foregroundColor: FitilaReferenceUi.ink,
+                    ),
+                    icon: const Icon(Icons.add_location_alt_rounded, size: 23),
                   ),
-                  icon: const Icon(Icons.add_location_alt_rounded, size: 24),
                 ),
               ),
             ],
@@ -28527,52 +28567,64 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             Semantics(
               button: true,
               label: 'Tisser par la voix',
-              child: IconButton.filled(
-                onPressed: _generating ? null : _generateFragment,
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(66, 66),
-                  backgroundColor: FitilaReferenceUi.gold,
-                  foregroundColor: FitilaReferenceUi.ink,
+              child: HanduniaNamedAction(
+                label: 'Voix',
+                color: FitilaReferenceUi.goldDeep,
+                child: IconButton.filled(
+                  onPressed: _generating ? null : _generateFragment,
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(60, 60),
+                    backgroundColor: FitilaReferenceUi.gold,
+                    foregroundColor: FitilaReferenceUi.ink,
+                  ),
+                  icon: _generating
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.mic_rounded, size: 29),
                 ),
-                icon: _generating
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.mic_rounded, size: 30),
               ),
             ),
             Semantics(
               button: true,
               label: 'Tisser par le texte',
-              child: IconButton.outlined(
-                onPressed: () => setState(() => _step = 3),
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(58, 58),
-                  foregroundColor: FitilaReferenceUi.goldDeep,
-                  side: const BorderSide(color: FitilaReferenceUi.hairline),
+              child: HanduniaNamedAction(
+                label: 'Écrire',
+                color: FitilaReferenceUi.goldDeep,
+                child: IconButton.outlined(
+                  onPressed: () => setState(() => _step = 3),
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(56, 56),
+                    foregroundColor: FitilaReferenceUi.goldDeep,
+                    side: const BorderSide(color: FitilaReferenceUi.hairline),
+                  ),
+                  icon: const Icon(Icons.edit_rounded, size: 24),
                 ),
-                icon: const Icon(Icons.edit_rounded, size: 25),
               ),
             ),
             Semantics(
               button: true,
               label: 'Écouter ce lieu',
-              child: IconButton.outlined(
-                onPressed: _handuniaSpeaking ? null : _speakCurrentLieu,
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(58, 58),
-                  foregroundColor: FitilaReferenceUi.goldDeep,
-                  side: const BorderSide(color: FitilaReferenceUi.hairline),
+              child: HanduniaNamedAction(
+                label: 'Écouter',
+                color: FitilaReferenceUi.goldDeep,
+                child: IconButton.outlined(
+                  onPressed: _handuniaSpeaking ? null : _speakCurrentLieu,
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(56, 56),
+                    foregroundColor: FitilaReferenceUi.goldDeep,
+                    side: const BorderSide(color: FitilaReferenceUi.hairline),
+                  ),
+                  icon: _handuniaSpeaking
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.headphones_rounded, size: 24),
                 ),
-                icon: _handuniaSpeaking
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.headphones_rounded, size: 25),
               ),
             ),
           ],
@@ -28616,35 +28668,43 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
             Semantics(
               button: true,
               label: 'Voir dans le Fil Handunia',
-              child: IconButton.filled(
-                onPressed: () => Navigator.of(context).pop(true),
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(64, 64),
-                  backgroundColor: FitilaReferenceUi.gold,
-                  foregroundColor: FitilaReferenceUi.ink,
+              child: HanduniaNamedAction(
+                label: 'Fil',
+                color: FitilaReferenceUi.goldDeep,
+                child: IconButton.filled(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(60, 60),
+                    backgroundColor: FitilaReferenceUi.gold,
+                    foregroundColor: FitilaReferenceUi.ink,
+                  ),
+                  icon: const Icon(Icons.dynamic_feed_rounded, size: 27),
                 ),
-                icon: const Icon(Icons.dynamic_feed_rounded, size: 28),
               ),
             ),
             const SizedBox(width: 18),
             Semantics(
               button: true,
               label: 'Tisser un autre souvenir',
-              child: IconButton.outlined(
-                onPressed: () {
-                  setState(() {
-                    _selectedLieu = null;
-                    _weavePeriodLabel = 'Je ne sais pas';
-                    _weaveScope = 'community';
-                    _step = 1;
-                  });
-                },
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(64, 64),
-                  foregroundColor: FitilaReferenceUi.goldDeep,
-                  side: const BorderSide(color: FitilaReferenceUi.hairline),
+              child: HanduniaNamedAction(
+                label: 'Nouveau',
+                color: FitilaReferenceUi.goldDeep,
+                child: IconButton.outlined(
+                  onPressed: () {
+                    setState(() {
+                      _selectedLieu = null;
+                      _weavePeriodLabel = 'Je ne sais pas';
+                      _weaveScope = 'community';
+                      _step = 1;
+                    });
+                  },
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(60, 60),
+                    foregroundColor: FitilaReferenceUi.goldDeep,
+                    side: const BorderSide(color: FitilaReferenceUi.hairline),
+                  ),
+                  icon: const Icon(Icons.mic_none_rounded, size: 27),
                 ),
-                icon: const Icon(Icons.mic_none_rounded, size: 28),
               ),
             ),
           ],
@@ -28689,20 +28749,25 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           child: Semantics(
             button: true,
             label: 'Tisser par la voix',
-            child: IconButton.filled(
-              onPressed: _generating ? null : _generateFragment,
-              style: IconButton.styleFrom(
-                minimumSize: const Size(78, 78),
-                backgroundColor: FitilaReferenceUi.gold,
-                foregroundColor: FitilaReferenceUi.ink,
+            child: HanduniaNamedAction(
+              label: 'Voix',
+              color: FitilaReferenceUi.goldDeep,
+              fontSize: 9.5,
+              child: IconButton.filled(
+                onPressed: _generating ? null : _generateFragment,
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(78, 78),
+                  backgroundColor: FitilaReferenceUi.gold,
+                  foregroundColor: FitilaReferenceUi.ink,
+                ),
+                icon: _generating
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.mic_rounded, size: 36),
               ),
-              icon: _generating
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.mic_rounded, size: 36),
             ),
           ),
         ),
@@ -28753,17 +28818,31 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                       ),
                   ],
                   child: Container(
-                    height: 52,
+                    height: 58,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: FitilaReferenceUi.surface,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: FitilaReferenceUi.hairline),
                     ),
-                    child: const Icon(
-                      Icons.calendar_month_rounded,
-                      color: FitilaReferenceUi.goldDeep,
-                      size: 25,
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.calendar_month_rounded,
+                          color: FitilaReferenceUi.goldDeep,
+                          size: 23,
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Période',
+                          style: TextStyle(
+                            color: FitilaReferenceUi.goldDeep,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -28800,17 +28879,31 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                       ),
                   ],
                   child: Container(
-                    height: 52,
+                    height: 58,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: FitilaReferenceUi.surface,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: FitilaReferenceUi.hairline),
                     ),
-                    child: const Icon(
-                      Icons.visibility_rounded,
-                      color: FitilaReferenceUi.goldDeep,
-                      size: 25,
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.visibility_rounded,
+                          color: FitilaReferenceUi.goldDeep,
+                          size: 23,
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Portée',
+                          style: TextStyle(
+                            color: FitilaReferenceUi.goldDeep,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -28912,11 +29005,24 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                   borderRadius: BorderRadius.circular(18),
                 ),
               ),
-              child: Icon(
-                geo == null
-                    ? Icons.add_location_alt_rounded
-                    : Icons.edit_location_alt_rounded,
-                size: 27,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    geo == null
+                        ? Icons.add_location_alt_rounded
+                        : Icons.edit_location_alt_rounded,
+                    size: 25,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    geo == null ? 'Position' : 'Modifier',
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

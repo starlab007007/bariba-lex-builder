@@ -59,14 +59,20 @@ Widget _handuniaHeader(
         Semantics(
           button: true,
           label: 'Retour',
-          child: IconButton(
-            onPressed: () => Navigator.maybePop(context),
-            icon: const Icon(Icons.arrow_back_rounded, size: 23),
+          child: HanduniaNamedAction(
+            label: 'Retour',
             color: HanduniaTokens.ivoire,
-            style: IconButton.styleFrom(
-              minimumSize: const Size(44, 44),
-              backgroundColor: HanduniaTokens.nuitPortee,
-              side: const BorderSide(color: HanduniaTokens.bordureForte),
+            fontSize: 8.5,
+            maxWidth: 52,
+            child: IconButton(
+              onPressed: () => Navigator.maybePop(context),
+              icon: const Icon(Icons.arrow_back_rounded, size: 22),
+              color: HanduniaTokens.ivoire,
+              style: IconButton.styleFrom(
+                minimumSize: const Size(42, 42),
+                backgroundColor: HanduniaTokens.nuitPortee,
+                side: const BorderSide(color: HanduniaTokens.bordureForte),
+              ),
             ),
           ),
         ),
@@ -480,28 +486,38 @@ class _OpenMemoryBodyState extends State<_OpenMemoryBody> {
             Semantics(
               button: true,
               label: 'Corroborer ce souvenir',
-              child: IconButton.filled(
-                onPressed: widget.busy ? null : widget.onCorroborate,
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(58, 58),
-                  backgroundColor: HanduniaTokens.braise,
-                  foregroundColor: HanduniaTokens.encre,
+              child: HanduniaNamedAction(
+                label: 'Valider',
+                color: HanduniaTokens.braise,
+                maxWidth: 72,
+                child: IconButton.filled(
+                  onPressed: widget.busy ? null : widget.onCorroborate,
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(58, 58),
+                    backgroundColor: HanduniaTokens.braise,
+                    foregroundColor: HanduniaTokens.encre,
+                  ),
+                  icon: const Icon(Icons.check_rounded, size: 27),
                 ),
-                icon: const Icon(Icons.check_rounded, size: 27),
               ),
             ),
             const SizedBox(width: 18),
             Semantics(
               button: true,
               label: 'Ajouter une nuance',
-              child: IconButton.outlined(
-                onPressed: widget.busy ? null : widget.onNuance,
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(58, 58),
-                  foregroundColor: HanduniaTokens.terre,
-                  side: const BorderSide(color: HanduniaTokens.terre),
+              child: HanduniaNamedAction(
+                label: 'Nuance',
+                color: HanduniaTokens.terre,
+                maxWidth: 72,
+                child: IconButton.outlined(
+                  onPressed: widget.busy ? null : widget.onNuance,
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(58, 58),
+                    foregroundColor: HanduniaTokens.terre,
+                    side: const BorderSide(color: HanduniaTokens.terre),
+                  ),
+                  icon: const Icon(Icons.mic_none_rounded, size: 27),
                 ),
-                icon: const Icon(Icons.mic_none_rounded, size: 27),
               ),
             ),
           ],
@@ -666,7 +682,17 @@ class _MemoryPlaybackOrbState extends State<_MemoryPlaybackOrb> {
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
+        Text(
+          _playing ? 'Pause' : 'Lire',
+          style: _karlaRoute(
+            size: 9.5,
+            color: HanduniaTokens.braise,
+            weight: FontWeight.w800,
+            height: 1,
+          ),
+        ),
+        const SizedBox(height: 6),
         SizedBox(
           width: 220,
           child: OndeAudio(progression: progress, actif: _playing),

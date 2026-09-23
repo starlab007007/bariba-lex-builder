@@ -499,27 +499,42 @@ class ReferenceTopBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Material(
-            color: dark
-                ? Colors.white.withValues(alpha: .10)
-                : FitilaReferenceUi.surfaceAlt,
-            borderRadius: BorderRadius.circular(10),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(10),
-              onTap: onBack ?? () => Navigator.maybePop(context),
-              child: SizedBox(
-                width: 32,
-                height: 32,
-                child: Center(
-                  child: leading ??
-                      Icon(
-                        Icons.arrow_back_rounded,
-                        size: 17,
-                        color: dark ? Colors.white : FitilaReferenceUi.ink,
-                      ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Material(
+                color: dark
+                    ? Colors.white.withValues(alpha: .10)
+                    : FitilaReferenceUi.surfaceAlt,
+                borderRadius: BorderRadius.circular(10),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: onBack ?? () => Navigator.maybePop(context),
+                  child: SizedBox(
+                    width: 34,
+                    height: 34,
+                    child: Center(
+                      child: leading ??
+                          Icon(
+                            Icons.arrow_back_rounded,
+                            size: 17,
+                            color: dark ? Colors.white : FitilaReferenceUi.ink,
+                          ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(height: 2),
+              Text(
+                'Retour',
+                style: TextStyle(
+                  color: dark ? Colors.white70 : FitilaReferenceUi.muted,
+                  fontSize: 8,
+                  fontWeight: FontWeight.w800,
+                  height: 1,
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: 10),
           Expanded(
