@@ -1184,6 +1184,11 @@ class HanduniaFilView extends StatefulWidget {
 class _HanduniaFilViewState extends State<HanduniaFilView> {
   late final PageController _pageController;
   String? _busyInsightId;
+  final Set<String> _savedMemoryIds = <String>{};
+  final Map<String, bool> _likedOverrides = <String, bool>{};
+  final Map<String, int> _likeCountOverrides = <String, int>{};
+
+  static const _savedMemoriesKey = 'handunia_saved_memory_ids_v1';
 
   static const _feedCream = Color(0xFFFFF8EA);
   static const _feedPaper = Color(0xFFFFFCF5);
@@ -1198,6 +1203,94 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: 0);
+    unawaited(_loadSavedMemories());
+  }
+
+  Future<void> _loadSavedMemories() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final values =
+          preferences.getStringList(_savedMemoriesKey) ?? const <String>[];
+      if (!mounted) return;
+      setState(() {
+        _savedMemoryIds
+          ..clear()
+          ..addAll(values.where((value) => value.trim().isNotEmpty));
+      });
+    } catch (_) {
+      // Le favori local ne bloque jamais la consultation.
+    }
+  }
+
+  Future<void> _toggleSaved(Map<String, dynamic> item) async {
+    final id = item['id']?.toString().trim() ?? '';
+    if (id.isEmpty || item['local_only'] == true) return;
+    final next = !_savedMemoryIds.contains(id);
+    setState(() {
+      if (next) {
+        _savedMemoryIds.add(id);
+      } else {
+        _savedMemoryIds.remove(id);
+      }
+    });
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setStringList(
+        _savedMemoriesKey,
+        _savedMemoryIds.toList(growable: false),
+      );
+    } catch (_) {
+      // Best effort.
+    }
+  }
+
+  Future<void> _toggleLike(Map<String, dynamic> item) async {
+    final id = item['id']?.toString().trim() ?? '';
+    final callback = widget.onLikeChanged;
+    if (id.isEmpty || callback == null || item['local_only'] == true) return;
+
+    final current =
+        _likedOverrides[id] ?? (item['liked_by_me'] == true);
+    final currentCount =
+        _likeCountOverrides[id] ?? ((item['like_count'] as num?)?.toInt() ?? 0);
+    final next = !current;
+    setState(() {
+      _likedOverrides[id] = next;
+      _likeCountOverrides[id] =
+          math.max(0, currentCount + (next ? 1 : -1));
+    });
+    try {
+      await callback(id, next);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _likedOverrides[id] = current;
+        _likeCountOverrides[id] = currentCount;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Appréciation non enregistrée.')),
+      );
+    }
+  }
+
+  Future<void> _shareMemory(Map<String, dynamic> item) async {
+    final text = _memoryText(item);
+    final lieu = item['lieu_name']?.toString().trim() ?? '';
+    final period = item['period_label']?.toString().trim() ?? '';
+    final parts = <String>[
+      text,
+      if (lieu.isNotEmpty) '📍 $lieu',
+      if (period.isNotEmpty) period,
+      'Handunia Wasa · FITILA',
+    ];
+    await Clipboard.setData(ClipboardData(text: parts.join('\n')));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Souvenir copié pour le partager.'),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
