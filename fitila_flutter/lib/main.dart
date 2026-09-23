@@ -31375,79 +31375,77 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   }
 
   Widget _buildPublishSuccessStep() {
+    final local = _lastPublishWasLocal;
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      padding: const EdgeInsets.symmetric(vertical: 24),
       children: [
-        const HanduniaArchitectureMap(
-          active: HanduniaArchitectureLayer.discovery,
-          compact: true,
-        ),
-        const SizedBox(height: 28),
-        Icon(
-          _lastPublishWasLocal
-              ? Icons.cloud_upload_outlined
-              : Icons.check_circle_rounded,
-          color: FitilaReferenceUi.goldDeep,
-          size: 78,
-        ),
-        const SizedBox(height: 12),
-        Text(
-          _lastPublishWasLocal ? 'Sauvé' : 'Tissé',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: HanduniaTokens.ivoire,
-            fontFamily: 'Fraunces',
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
+        Center(
+          child: Container(
+            width: 92,
+            height: 92,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: local
+                  ? FitilaReferenceUi.goldTint
+                  : FitilaReferenceUi.sageTint,
+            ),
+            child: Icon(
+              local ? Icons.cloud_upload_outlined : Icons.check_rounded,
+              color: local
+                  ? FitilaReferenceUi.goldDeep
+                  : FitilaReferenceUi.sageDeep,
+              size: 48,
+            ),
           ),
         ),
-        const SizedBox(height: 26),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Semantics(
-              button: true,
-              label: 'Voir dans le Fil Handunia',
-              child: HanduniaNamedAction(
-                label: 'Fil',
-                color: FitilaReferenceUi.goldDeep,
-                child: IconButton.filled(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  style: IconButton.styleFrom(
-                    minimumSize: const Size(60, 60),
-                    backgroundColor: FitilaReferenceUi.gold,
-                    foregroundColor: FitilaReferenceUi.ink,
-                  ),
-                  icon: const Icon(Icons.dynamic_feed_rounded, size: 27),
-                ),
-              ),
-            ),
-            const SizedBox(width: 18),
-            Semantics(
-              button: true,
-              label: 'Tisser un autre souvenir',
-              child: HanduniaNamedAction(
-                label: 'Nouveau',
-                color: FitilaReferenceUi.goldDeep,
-                child: IconButton.outlined(
-                  onPressed: () {
-                    setState(() {
-                      _selectedLieu = null;
-                      _weavePeriodLabel = 'Je ne sais pas';
-                      _weaveScope = 'community';
-                      _step = 1;
-                    });
-                  },
-                  style: IconButton.styleFrom(
-                    minimumSize: const Size(60, 60),
-                    foregroundColor: FitilaReferenceUi.goldDeep,
-                    side: const BorderSide(color: FitilaReferenceUi.hairline),
-                  ),
-                  icon: const Icon(Icons.mic_none_rounded, size: 27),
-                ),
-              ),
-            ),
-          ],
+        const SizedBox(height: 18),
+        Text(
+          local ? 'Souvenir sauvegardé' : 'Souvenir publié',
+          textAlign: TextAlign.center,
+          style: FitilaReferenceUi.serif(
+            size: 25,
+            color: FitilaReferenceUi.ink,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          local
+              ? 'Il reste sur ce téléphone et sera synchronisé automatiquement dès que le réseau revient.'
+              : 'Il est maintenant visible dans Handunia Wasa.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: FitilaReferenceUi.muted,
+            fontSize: 11.5,
+            height: 1.45,
+          ),
+        ),
+        const SizedBox(height: 28),
+        ReferenceGoldButton(
+          label: 'Voir le fil',
+          icon: Icons.dynamic_feed_rounded,
+          onPressed: () => Navigator.of(context).pop(true),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          onPressed: () {
+            setState(() {
+              _selectedLieu = null;
+              _fragmentController.clear();
+              _weavePeriodLabel = 'Je ne sais pas';
+              _weaveScope = 'community';
+              _weaveTheme = 'Tradition';
+              _publishMapVisible = false;
+              _lastPublishWasLocal = false;
+              _step = 3;
+            });
+          },
+          icon: const Icon(Icons.mic_none_rounded),
+          label: const Text('Nouveau souvenir'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: FitilaReferenceUi.goldDeep,
+            side: const BorderSide(color: FitilaReferenceUi.hairline),
+            padding: const EdgeInsets.symmetric(vertical: 13),
+          ),
         ),
       ],
     );
