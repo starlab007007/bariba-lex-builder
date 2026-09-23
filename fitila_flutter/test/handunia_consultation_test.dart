@@ -153,7 +153,7 @@ void main() {
     );
 
     // The feed keeps only three compact heritage actions on one line.
-    expect(find.bySemanticsLabel('Mémoire'), findsOneWidget);
+    expect(find.text('Mémoire'), findsOneWidget);
     expect(find.bySemanticsLabel('Voir le souvenir'), findsOneWidget);
     expect(
       find.bySemanticsLabel('Trouver une voix sur la carte'),
@@ -176,7 +176,7 @@ void main() {
     );
     expect(find.textContaining('7 voix'), findsOneWidget);
     expect(find.text('12'), findsNothing);
-    expect(find.bySemanticsLabel('Mémoire'), findsOneWidget);
+    expect(find.text('Mémoire'), findsOneWidget);
     expect(find.bySemanticsLabel('Voir le souvenir'), findsOneWidget);
     expect(
       find.bySemanticsLabel('Trouver une voix sur la carte'),
