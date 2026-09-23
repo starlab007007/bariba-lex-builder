@@ -1934,37 +1934,38 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
       button: true,
       label: semanticLabel ?? label,
       child: SizedBox(
-        height: 34,
+        height: 42,
         child: OutlinedButton(
           onPressed: onTap,
           style: OutlinedButton.styleFrom(
             foregroundColor: _feedGoldDeep,
-            backgroundColor: _feedPaper.withValues(alpha: .28),
+            backgroundColor: _feedPaper.withValues(alpha: .22),
             side: BorderSide(
-              color: _feedGoldDeep.withValues(alpha: .34),
-              width: .9,
+              color: _feedGoldDeep.withValues(alpha: .30),
+              width: .8,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 5),
-            shape: const StadiumBorder(),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
             elevation: 0,
           ),
-          child: Row(
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 15, color: _feedGoldDeep),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: _karla(
-                    size: 9.5,
-                    color: _feedGoldDeep,
-                    weight: FontWeight.w800,
-                    height: 1,
-                  ),
+              Icon(icon, size: 16, color: _feedGoldDeep),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: _karla(
+                  size: 9,
+                  color: _feedGoldDeep,
+                  weight: FontWeight.w800,
+                  height: 1,
                 ),
               ),
             ],
