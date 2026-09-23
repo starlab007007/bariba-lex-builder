@@ -89,11 +89,14 @@ class HanduniaTerritoryPath extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final segments = handuniaTerritorySegments(place);
+    final visibleSegments = compact && segments.length > 2
+        ? segments.sublist(segments.length - 2)
+        : segments;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          for (var i = 0; i < segments.length; i++) ...[
+          for (var i = 0; i < visibleSegments.length; i++) ...[
             if (i > 0)
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 4),
@@ -109,25 +112,25 @@ class HanduniaTerritoryPath extends StatelessWidget {
                 vertical: compact ? 5 : 6,
               ),
               decoration: BoxDecoration(
-                color: i == segments.length - 1
+                color: i == visibleSegments.length - 1
                     ? HanduniaTokens.braise.withValues(alpha: .15)
                     : HanduniaTokens.nuitPortee.withValues(alpha: .92),
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(
-                  color: i == segments.length - 1
+                  color: i == visibleSegments.length - 1
                       ? HanduniaTokens.braise.withValues(alpha: .72)
                       : HanduniaTokens.bordureForte,
                 ),
               ),
               child: Text(
-                segments[i],
+                visibleSegments[i],
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontFamily: 'Karla',
                   fontWeight: FontWeight.w700,
                   fontSize: compact ? 11.5 : 12.5,
-                  color: i == segments.length - 1
+                  color: i == visibleSegments.length - 1
                       ? HanduniaTokens.braise
                       : HanduniaTokens.ivoire,
                 ),
@@ -418,62 +421,61 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
     final levels = _territoryLevels(place);
     return Material(
       color: HanduniaTokens.nuitPortee.withValues(alpha: .96),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(999),
       elevation: 1,
       child: SizedBox(
-        height: 46,
+        height: 48,
         child: ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
           scrollDirection: Axis.horizontal,
           itemCount: levels.length,
-          separatorBuilder: (_, _) => const SizedBox(width: 6),
+          separatorBuilder: (_, _) => const SizedBox(width: 5),
           itemBuilder: (context, index) {
             final level = levels[index];
             final active =
                 (_activeTerritory ?? levels.first.label).toLowerCase() ==
                 level.label.toLowerCase();
-            return InkWell(
-              borderRadius: BorderRadius.circular(999),
-              onTap: () => _focusTerritory(place, level),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: active
-                      ? HanduniaTokens.braise.withValues(alpha: .18)
-                      : HanduniaTokens.nuit,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: active
-                        ? HanduniaTokens.braise
-                        : HanduniaTokens.bordureForte,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      active
-                          ? Icons.location_on_rounded
-                          : Icons.zoom_out_map_rounded,
-                      size: 14,
+            final icon = switch (level.kind) {
+              'Quartier / village' => Icons.home_rounded,
+              'Localité' => Icons.place_rounded,
+              'Arrondissement' => Icons.hub_rounded,
+              'Commune' => Icons.domain_rounded,
+              'Ville' => Icons.location_city_rounded,
+              'Département' => Icons.map_rounded,
+              _ => Icons.public_rounded,
+            };
+            return Semantics(
+              button: true,
+              selected: active,
+              label: '${level.kind} : ${level.label}',
+              child: Tooltip(
+                message: level.label,
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () => _focusTerritory(place, level),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: active
+                          ? HanduniaTokens.braise.withValues(alpha: .18)
+                          : HanduniaTokens.nuit,
+                      border: Border.all(
+                        color: active
+                            ? HanduniaTokens.braise
+                            : HanduniaTokens.bordureForte,
+                      ),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 18,
                       color: active
                           ? HanduniaTokens.braise
                           : HanduniaTokens.cendre,
                     ),
-                    const SizedBox(width: 5),
-                    Text(
-                      level.label,
-                      style: TextStyle(
-                        fontFamily: 'Karla',
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        color: active
-                            ? HanduniaTokens.braise
-                            : HanduniaTokens.ivoire,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             );
@@ -721,75 +723,6 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
                   top: 62,
                   child: _territoryZoomRail(selected),
                 ),
-              if (widget.showChrome &&
-                  selected == null &&
-                  widget.immersive &&
-                  widget.places.isNotEmpty)
-                Positioned(
-                  left: 56,
-                  right: 56,
-                  top: 58,
-                  child: Center(
-                    child: Material(
-                      color: HanduniaTokens.nuitPortee.withValues(alpha: .92),
-                      borderRadius: BorderRadius.circular(999),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        child: Text(
-                          widget.places
-                              .take(4)
-                              .map(
-                                (place) =>
-                                    place['name']?.toString() ?? 'Lieu',
-                              )
-                              .join(' • '),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontFamily: 'Karla',
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: HanduniaTokens.cendre,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              if (widget.showChrome && selected == null)
-                Positioned(
-                  left: 12,
-                  right: 12,
-                  bottom: 12,
-                  child: Center(
-                    child: Material(
-                      color: HanduniaTokens.nuitPortee.withValues(alpha: .94),
-                      borderRadius: BorderRadius.circular(999),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 7,
-                        ),
-                        child: Text(
-                          locatedCount == 0
-                              ? 'Aucun lieu n’est encore positionné sur la carte.'
-                              : 'Touchez un point · pincez pour zoomer',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontFamily: 'Karla',
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w700,
-                            color: HanduniaTokens.cendre,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
               if (widget.showChrome)
                 Positioned(
                   right: 10,
@@ -883,10 +816,6 @@ class _SelectedPlaceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final voices = (place['voice_count'] as num?)?.toInt() ?? 0;
     final memories = (place['memory_count'] as num?)?.toInt() ?? 0;
-    final territory = handuniaTerritorySegments(place)
-        .where((segment) => segment.toLowerCase() != 'bénin')
-        .join(' › ');
-
     return Material(
       color: HanduniaTokens.nuitPortee.withValues(alpha: .98),
       borderRadius: BorderRadius.circular(18),
@@ -930,18 +859,7 @@ class _SelectedPlaceCard extends StatelessWidget {
                       color: HanduniaTokens.ivoire,
                     ),
                   ),
-                  if (territory.isNotEmpty)
-                    Text(
-                      territory,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontFamily: 'Karla',
-                        fontSize: 9.8,
-                        color: HanduniaTokens.cendre,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                  const SizedBox.shrink(),
                 ],
               ),
             ),

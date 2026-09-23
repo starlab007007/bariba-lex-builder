@@ -600,24 +600,10 @@ class BadgeSceau extends StatelessWidget {
         : 'Non scellé';
     return Semantics(
       label: label,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.verified_user_outlined,
-            size: 15,
-            color: sealed ? HanduniaTokens.braise : HanduniaTokens.cendre,
-          ),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: _karla(
-              size: 12.5,
-              weight: FontWeight.w600,
-              color: sealed ? HanduniaTokens.braise : HanduniaTokens.cendre,
-            ),
-          ),
-        ],
+      child: Icon(
+        sealed ? Icons.verified_rounded : Icons.verified_user_outlined,
+        size: 20,
+        color: sealed ? HanduniaTokens.braise : HanduniaTokens.cendre,
       ),
     );
   }
@@ -1819,6 +1805,10 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
         ? item['lieu_icon'].toString()
         : '📍';
     final text = _memoryText(item);
+    final hasAudio =
+        (item['audio_url']?.toString().trim().isNotEmpty ?? false) ||
+        (item['cached_audio_path']?.toString().trim().isNotEmpty ?? false);
+    final voiceLabel = voices == 1 ? '1 voix' : '$voices voix';
     final summaryBusy = _busyInsightId == 'summary:$id';
     final translateBusy = _busyInsightId == 'translate:$id';
     return GestureDetector(
@@ -1956,7 +1946,7 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                                   SizedBox(height: compact ? 7 : 10),
                                   Text(
                                     text,
-                                    maxLines: 2,
+                                    maxLines: hasAudio ? 1 : 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: _fraunces(
                                       size: compact ? 23 : 27,
@@ -2010,34 +2000,29 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
                                       ),
                                       const SizedBox(width: 8),
                                       Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              displayName,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: _karla(
-                                                size: 13,
-                                                color: _feedInk,
-                                                weight: FontWeight.w900,
-                                                height: 1.05,
+                                        child: Semantics(
+                                          label:
+                                              '$displayName · $voiceLabel · ${_relativeTime(item)}',
+                                          child: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.graphic_eq_rounded,
+                                                size: 15,
+                                                color: _feedGoldDeep,
                                               ),
-                                            ),
-                                            const SizedBox(height: 1),
-                                            Text(
-                                              '${voices == 1 ? '1 voix' : '$voices voix'} · ${_relativeTime(item)}',
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: _karla(
-                                                size: 10.6,
-                                                color: _feedMuted,
-                                                weight: FontWeight.w600,
-                                                height: 1.1,
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                voiceLabel,
+                                                maxLines: 1,
+                                                style: _karla(
+                                                  size: 11,
+                                                  color: _feedMuted,
+                                                  weight: FontWeight.w800,
+                                                  height: 1,
+                                                ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ],

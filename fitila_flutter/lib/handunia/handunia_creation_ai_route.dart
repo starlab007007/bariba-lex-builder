@@ -948,7 +948,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         const SizedBox(height: 20),
         Text(
           _loadingQuestion ? '…' : _question,
-          maxLines: 4,
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
           style: _fraunces(size: 24, height: 1.20),
@@ -1190,9 +1190,25 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
               childrenPadding: EdgeInsets.zero,
               iconColor: HanduniaTokens.braise,
               collapsedIconColor: HanduniaTokens.cendre,
-              title: Text(
-                'Données détectées · ${entities.length}',
-                style: _karla(size: 14.5, weight: FontWeight.w700),
+              title: Semantics(
+                label: 'Données détectées : ${entities.length}',
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.center_focus_strong_rounded,
+                      size: 18,
+                      color: HanduniaTokens.braise,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${entities.length}',
+                      style: _karla(
+                        size: 14.5,
+                        weight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               children: [
                 for (var i = 0; i < entities.length; i++) ...[
@@ -1291,14 +1307,30 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           ],
           Row(
             children: [
-              TextButton(
-                onPressed: () => _toggleEntityValidation(index),
-                child: Text(validated ? 'Confirmé' : 'Confirmer'),
+              Semantics(
+                button: true,
+                label: validated ? 'Confirmé' : 'Confirmer',
+                child: IconButton(
+                  onPressed: () => _toggleEntityValidation(index),
+                  icon: Icon(
+                    validated
+                        ? Icons.check_circle_rounded
+                        : Icons.check_circle_outline_rounded,
+                  ),
+                  color: validated
+                      ? HanduniaTokens.braise
+                      : HanduniaTokens.cendre,
+                ),
               ),
-              const SizedBox(width: 8),
-              TextButton(
-                onPressed: () => _editEntity(index),
-                child: const Text('Corriger'),
+              const SizedBox(width: 4),
+              Semantics(
+                button: true,
+                label: 'Corriger',
+                child: IconButton(
+                  onPressed: () => _editEntity(index),
+                  icon: const Icon(Icons.edit_rounded),
+                  color: HanduniaTokens.cendre,
+                ),
               ),
             ],
           ),
@@ -1487,19 +1519,46 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
           ),
         ),
         const SizedBox(height: 24),
-        Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 8,
-          runSpacing: 8,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _pill(
-              _savedOffline ? 'À synchroniser' : 'Scellé',
-              _savedOffline
-                  ? HanduniaTokens.terre
-                  : HanduniaTokens.braise,
+            Semantics(
+              label: _savedOffline ? 'À synchroniser' : 'Scellé',
+              child: Icon(
+                _savedOffline
+                    ? Icons.cloud_upload_outlined
+                    : Icons.verified_rounded,
+                color: _savedOffline
+                    ? HanduniaTokens.terre
+                    : HanduniaTokens.braise,
+                size: 24,
+              ),
             ),
-            _pill(_scopeLabel(_selectedScope), HanduniaTokens.ivoire),
-            _pill('$relationCount liens', HanduniaTokens.cendre),
+            const SizedBox(width: 18),
+            CercleDePortee(niveau: _selectedScope, size: 38),
+            const SizedBox(width: 18),
+            Semantics(
+              label: '$relationCount liens',
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.account_tree_rounded,
+                    size: 20,
+                    color: HanduniaTokens.cendre,
+                  ),
+                  const SizedBox(width: 3),
+                  Text(
+                    '$relationCount',
+                    style: _karla(
+                      size: 11.5,
+                      color: HanduniaTokens.cendre,
+                      weight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 30),

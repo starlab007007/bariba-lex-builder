@@ -28505,8 +28505,8 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                   const SizedBox(width: 7),
                   Expanded(
                     child: Text(
-                      _compactText(_memoryAnswer, max: 90),
-                      maxLines: 2,
+                      _compactText(_memoryAnswer, max: 55),
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: FitilaReferenceUi.inkSoft,
@@ -28754,32 +28754,16 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                   ],
                   child: Container(
                     height: 52,
-                    padding: const EdgeInsets.symmetric(horizontal: 11),
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: FitilaReferenceUi.surface,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: FitilaReferenceUi.hairline),
                     ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.calendar_month_rounded,
-                          color: FitilaReferenceUi.goldDeep,
-                        ),
-                        const SizedBox(width: 7),
-                        Expanded(
-                          child: Text(
-                            _weavePeriodLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.fade,
-                            style: const TextStyle(
-                              color: FitilaReferenceUi.ink,
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ],
+                    child: const Icon(
+                      Icons.calendar_month_rounded,
+                      color: FitilaReferenceUi.goldDeep,
+                      size: 25,
                     ),
                   ),
                 ),
@@ -28817,32 +28801,16 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
                   ],
                   child: Container(
                     height: 52,
-                    padding: const EdgeInsets.symmetric(horizontal: 11),
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: FitilaReferenceUi.surface,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: FitilaReferenceUi.hairline),
                     ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.visibility_rounded,
-                          color: FitilaReferenceUi.goldDeep,
-                        ),
-                        const SizedBox(width: 7),
-                        Expanded(
-                          child: Text(
-                            scopeLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.fade,
-                            style: const TextStyle(
-                              color: FitilaReferenceUi.ink,
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ],
+                    child: const Icon(
+                      Icons.visibility_rounded,
+                      color: FitilaReferenceUi.goldDeep,
+                      size: 25,
                     ),
                   ),
                 ),

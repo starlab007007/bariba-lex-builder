@@ -133,14 +133,11 @@ class _ConsultationState extends StatelessWidget {
               Icon(Icons.radio_button_unchecked, color: color, size: 28),
             const SizedBox(height: 10),
             Text(title, style: _frauncesRoute(size: 17, color: color)),
-            if (subtitle.isNotEmpty) ...[
-              const SizedBox(height: 5),
-              Text(
-                subtitle,
-                textAlign: TextAlign.center,
-                style: _karlaRoute(size: 12.5, color: HanduniaTokens.cendre),
+            if (subtitle.isNotEmpty)
+              Semantics(
+                label: subtitle,
+                child: const SizedBox(height: 5),
               ),
-            ],
           ],
         ),
       ),
@@ -389,11 +386,17 @@ class _OpenMemoryBodyState extends State<_OpenMemoryBody> {
             style: _frauncesRoute(size: 17, height: 1.58),
           ),
           const SizedBox(height: 7),
-          Text(
-            widget.memory['transcript_reviewed_by_guardian'] == true
+          Semantics(
+            label: widget.memory['transcript_reviewed_by_guardian'] == true
                 ? 'Transcription relue par un gardien'
                 : 'Transcription dérivée',
-            style: _karlaRoute(size: 12.5, color: HanduniaTokens.cendre),
+            child: Icon(
+              widget.memory['transcript_reviewed_by_guardian'] == true
+                  ? Icons.verified_rounded
+                  : Icons.subject_rounded,
+              size: 18,
+              color: HanduniaTokens.cendre,
+            ),
           ),
         ] else
           Center(
