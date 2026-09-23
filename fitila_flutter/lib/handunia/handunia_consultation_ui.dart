@@ -1896,298 +1896,400 @@ class _HanduniaFilViewState extends State<HanduniaFilView> {
         (item['audio_url']?.toString().trim().isNotEmpty ?? false) ||
         (item['cached_audio_path']?.toString().trim().isNotEmpty ?? false);
     final voiceLabel = voices == 1 ? '1 voix' : '$voices voix';
+    final liked = _likedOverrides[id] ?? (item['liked_by_me'] == true);
+    final likeCount =
+        _likeCountOverrides[id] ?? ((item['like_count'] as num?)?.toInt() ?? 0);
+    final saved = _savedMemoryIds.contains(id);
+    final transition =
+        item['_handunia_transition_label']?.toString().trim() ?? '';
+
     return ColoredBox(
       color: _feedCream,
       child: LayoutBuilder(
         builder: (context, constraints) {
-            final compact = constraints.maxHeight < 730;
-            final topInset = compact ? 158.0 : 190.0;
-            final bottomInset = compact ? 78.0 : 102.0;
-            const cardRight = 14.0;
+          final compact = constraints.maxHeight < 730;
+          final topInset = compact ? 158.0 : 190.0;
+          final bottomInset = compact ? 78.0 : 102.0;
+          final cardRight = compact ? 66.0 : 70.0;
 
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                Positioned(
-                  left: 14,
-                  right: cardRight,
-                  top: topInset,
-                  bottom: bottomInset,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(compact ? 24 : 30),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x226B4A22),
-                          blurRadius: 26,
-                          offset: Offset(0, 10),
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned(
+                left: 14,
+                right: cardRight,
+                top: topInset,
+                bottom: bottomInset,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(compact ? 24 : 30),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x226B4A22),
+                        blurRadius: 26,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(compact ? 24 : 30),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (backdrop != null)
+                          Image.network(
+                            backdrop,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) =>
+                                _fallbackBackdrop(icon, lieu),
+                          )
+                        else
+                          _fallbackBackdrop(icon, lieu),
+                        const DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              stops: [0, .44, .72, 1],
+                              colors: [
+                                Color(0x12FFF7E8),
+                                Color(0x00FFF7E8),
+                                Color(0x22FFF7E8),
+                                Color(0x66F8E4BE),
+                              ],
+                            ),
+                          ),
                         ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(compact ? 24 : 30),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          if (backdrop != null)
-                            Image.network(
-                              backdrop,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) =>
-                                  _fallbackBackdrop(icon, lieu),
-                            )
-                          else
-                            _fallbackBackdrop(icon, lieu),
-                          const DecoratedBox(
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: Container(
+                            padding: EdgeInsets.fromLTRB(
+                              compact ? 12 : 16,
+                              compact ? 10 : 14,
+                              compact ? 12 : 16,
+                              compact ? 10 : 14,
+                            ),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                stops: [0, .44, .72, 1],
                                 colors: [
-                                  Color(0x12FFF7E8),
-                                  Color(0x00FFF7E8),
-                                  Color(0x22FFF7E8),
-                                  Color(0x66F8E4BE),
+                                  _feedPaper.withValues(alpha: .84),
+                                  _feedPaper.withValues(alpha: .98),
                                 ],
                               ),
-                            ),
-                          ),
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            child: Container(
-                              padding: EdgeInsets.fromLTRB(
-                                compact ? 14 : 18,
-                                compact ? 12 : 16,
-                                compact ? 14 : 18,
-                                compact ? 12 : 16,
+                              border: Border(
+                                top: BorderSide(
+                                  color: Colors.white.withValues(alpha: .76),
+                                ),
                               ),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    _feedPaper.withValues(alpha: .84),
-                                    _feedPaper.withValues(alpha: .98),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (transition.isNotEmpty) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 9,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _feedGold.withValues(alpha: .14),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      transition,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: _karla(
+                                        size: 9.4,
+                                        color: _feedGoldDeep,
+                                        weight: FontWeight.w900,
+                                        height: 1,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(height: compact ? 5 : 7),
+                                ],
+                                Container(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 230,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 9,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _feedPaperSoft.withValues(alpha: .94),
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(color: _feedHairline),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.location_on_rounded,
+                                        size: 16,
+                                        color: _feedGoldDeep,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          lieu,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: _karla(
+                                            size: 11.8,
+                                            color: _feedInk,
+                                            weight: FontWeight.w800,
+                                            height: 1,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(height: compact ? 6 : 8),
+                                Text(
+                                  text,
+                                  maxLines: hasAudio ? 1 : 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: _fraunces(
+                                    size: compact ? 21 : 25,
+                                    color: _feedInk,
+                                    height: 1.10,
+                                  ),
+                                ),
+                                SizedBox(height: compact ? 7 : 9),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 9,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _feedPaperSoft.withValues(alpha: .72),
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
+                                  child: _HanduniaAudioReader(
+                                    id: id,
+                                    url: item['audio_url']?.toString(),
+                                    cachedPath:
+                                        item['cached_audio_path']?.toString(),
+                                    durationMs:
+                                        (item['audio_duration_ms'] as num?)
+                                            ?.toInt(),
+                                  ),
+                                ),
+                                SizedBox(height: compact ? 6 : 8),
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 32,
+                                      height: 32,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: _feedPaperSoft,
+                                        border: Border.all(
+                                          color: _feedHairline,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        initials,
+                                        style: _fraunces(
+                                          size: 10.5,
+                                          color: _feedInk,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 7),
+                                    Expanded(
+                                      child: Semantics(
+                                        label:
+                                            '$displayName · $voiceLabel · ${_relativeTime(item)}',
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.groups_2_outlined,
+                                              size: 16,
+                                              color: _feedGoldDeep,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              voiceLabel,
+                                              maxLines: 1,
+                                              style: _karla(
+                                                size: 11.2,
+                                                color: _feedGoldDeep,
+                                                weight: FontWeight.w900,
+                                                height: 1,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
-                                border: Border(
-                                  top: BorderSide(
-                                    color: Colors.white.withValues(alpha: .76),
-                                  ),
+                                SizedBox(height: compact ? 6 : 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _glassAction(
+                                        icon: Icons.info_outline_rounded,
+                                        label: 'Contexte',
+                                        semanticLabel:
+                                            'Pourquoi je vois cette mémoire',
+                                        onTap: () => _showMemoryContext(item),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: _glassAction(
+                                        icon: Icons.account_tree_outlined,
+                                        label: 'Mémoire',
+                                        semanticLabel: 'Ouvrir la mémoire',
+                                        onTap: () => widget.onOpenMemory(item),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 240,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _feedPaperSoft.withValues(
-                                        alpha: .94,
-                                      ),
-                                      borderRadius: BorderRadius.circular(999),
-                                      border: Border.all(
-                                        color: _feedHairline,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.location_on_rounded,
-                                          size: 17,
-                                          color: _feedGoldDeep,
-                                        ),
-                                        const SizedBox(width: 5),
-                                        Flexible(
-                                          child: Text(
-                                            lieu,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: _karla(
-                                              size: 12.8,
-                                              color: _feedInk,
-                                              weight: FontWeight.w800,
-                                              height: 1,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  SizedBox(height: compact ? 7 : 10),
-                                  Text(
-                                    text,
-                                    maxLines: hasAudio ? 1 : 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: _fraunces(
-                                      size: compact ? 23 : 27,
-                                      color: _feedInk,
-                                      height: 1.10,
-                                    ),
-                                  ),
-                                  SizedBox(height: compact ? 8 : 12),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _feedPaperSoft.withValues(
-                                        alpha: .72,
-                                      ),
-                                      borderRadius: BorderRadius.circular(18),
-                                    ),
-                                    child: _HanduniaAudioReader(
-                                      id: id,
-                                      url: item['audio_url']?.toString(),
-                                      cachedPath:
-                                          item['cached_audio_path']?.toString(),
-                                      durationMs:
-                                          (item['audio_duration_ms'] as num?)
-                                              ?.toInt(),
-                                    ),
-                                  ),
-                                  SizedBox(height: compact ? 7 : 10),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 34,
-                                        height: 34,
-                                        alignment: Alignment.center,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: _feedPaperSoft,
-                                          border: Border.all(
-                                            color: _feedHairline,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          initials,
-                                          style: _fraunces(
-                                            size: 11,
-                                            color: _feedInk,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Semantics(
-                                          label:
-                                              '$displayName · $voiceLabel · ${_relativeTime(item)}',
-                                          child: Row(
-                                            children: [
-                                              const Icon(
-                                                Icons.graphic_eq_rounded,
-                                                size: 15,
-                                                color: _feedGoldDeep,
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                voiceLabel,
-                                                maxLines: 1,
-                                                style: _karla(
-                                                  size: 11,
-                                                  color: _feedMuted,
-                                                  weight: FontWeight.w800,
-                                                  height: 1,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: compact ? 7 : 10),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _glassAction(
-                                          icon: Icons.account_tree_outlined,
-                                          label: 'Mémoire',
-                                          semanticLabel: 'Mémoire',
-                                          onTap: () => _showMemoryContext(item),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: _glassAction(
-                                          icon: Icons.visibility_outlined,
-                                          label: 'Souvenir',
-                                          semanticLabel: 'Voir le souvenir',
-                                          onTap: () => widget.onOpenMemory(item),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: _glassAction(
-                                          icon: Icons.travel_explore_rounded,
-                                          label: 'Carte',
-                                          semanticLabel:
-                                              'Trouver une voix sur la carte',
-                                          onTap: widget.onFindMissingVoice,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                Positioned(
-                  right: cardRight + 9,
-                  top: topInset + 10,
-                  child: Semantics(
-                    button: true,
-                    label: 'Plus d’options',
-                    child: HanduniaNamedAction(
-                      label: 'Plus',
-                      color: _feedInk,
-                      fontSize: 8,
-                      maxWidth: 42,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(999),
-                        onTap: () => _showMore(item),
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _feedPaper.withValues(alpha: .90),
-                            border: Border.all(
-                              color: _feedHairline.withValues(alpha: .9),
-                            ),
+              ),
+              Positioned(
+                right: 10,
+                top: topInset + 54,
+                child: Column(
+                  children: [
+                    _socialRailAction(
+                      icon: liked
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      label: likeCount > 0 ? '$likeCount' : 'Aimer',
+                      semanticLabel:
+                          liked ? 'Retirer mon appréciation' : 'Apprécier',
+                      active: liked,
+                      onTap: widget.onLikeChanged == null
+                          ? null
+                          : () => unawaited(_toggleLike(item)),
+                    ),
+                    const SizedBox(height: 7),
+                    _socialRailAction(
+                      icon: Icons.forum_outlined,
+                      label: voiceLabel,
+                      semanticLabel: 'Voix et corroborations',
+                      active: true,
+                      onTap: () => _showMemoryContext(item),
+                    ),
+                    const SizedBox(height: 7),
+                    _socialRailAction(
+                      icon: Icons.ios_share_rounded,
+                      label: 'Partager',
+                      semanticLabel: 'Partager',
+                      onTap: () => unawaited(_shareMemory(item)),
+                    ),
+                    const SizedBox(height: 7),
+                    _socialRailAction(
+                      icon: saved
+                          ? Icons.bookmark_rounded
+                          : Icons.bookmark_border_rounded,
+                      label: saved ? 'Gardé' : 'Garder',
+                      semanticLabel:
+                          saved ? 'Retirer des souvenirs gardés' : 'Garder',
+                      active: saved,
+                      onTap: item['local_only'] == true
+                          ? null
+                          : () => unawaited(_toggleSaved(item)),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                right: 12,
+                top: topInset + 8,
+                child: Semantics(
+                  button: true,
+                  label: 'Plus d’options',
+                  child: HanduniaNamedAction(
+                    label: 'Plus',
+                    color: _feedInk,
+                    fontSize: 8,
+                    maxWidth: 42,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(999),
+                      onTap: () => _showMore(item),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _feedPaper.withValues(alpha: .90),
+                          border: Border.all(
+                            color: _feedHairline.withValues(alpha: .9),
                           ),
-                          child: const Icon(
-                            Icons.more_horiz_rounded,
-                            size: 18,
-                            color: _feedInk,
-                          ),
+                        ),
+                        child: const Icon(
+                          Icons.more_horiz_rounded,
+                          size: 18,
+                          color: _feedInk,
                         ),
                       ),
                     ),
                   ),
                 ),
-              ],
-            );
-          },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _socialRailAction({
+    required IconData icon,
+    required String label,
+    required String semanticLabel,
+    required VoidCallback? onTap,
+    bool active = false,
+  }) {
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      child: HanduniaNamedAction(
+        label: label,
+        color: active ? _feedGoldDeep : _feedMuted,
+        fontSize: 7.8,
+        maxWidth: 58,
+        child: Material(
+          color: _feedPaper.withValues(alpha: .94),
+          shape: const CircleBorder(),
+          elevation: active ? 2 : 1,
+          shadowColor: const Color(0x226B4A22),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: SizedBox(
+              width: 42,
+              height: 42,
+              child: Icon(
+                icon,
+                size: 21,
+                color: active ? _feedGoldDeep : _feedInk,
+              ),
+            ),
+          ),
         ),
+      ),
     );
   }
 
