@@ -27993,6 +27993,14 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
           'La vieille route où les voyageurs échangent nouvelles et récits.',
       'sort_order': 7,
     },
+    {
+      'id': 'lieu-non-precise',
+      'name': 'Lieu à préciser',
+      'icon': '🧭',
+      'description':
+          'Souvenir conservé même lorsque le lieu exact n’est pas connu.',
+      'sort_order': 9999,
+    },
   ];
 
   // Handunia possède désormais des points d’entrée explicites :
@@ -28036,8 +28044,11 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   bool _generating = false;
   bool _aiAssisted = false;
   bool _lastPublishWasLocal = false;
+  bool _creationVoiceRecording = false;
+  bool _publishMapVisible = false;
   String _weavePeriodLabel = 'Je ne sais pas';
   String _weaveScope = 'community';
+  String _weaveTheme = 'Tradition';
 
   final _newLieuName = TextEditingController();
   final _newLieuIcon = TextEditingController(text: '📍');
@@ -28053,6 +28064,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
   String? _worldFeedNotice;
   Position? _worldPosition;
   static const _worldFeedCacheKey = 'handunia_consultation_feed_cache_v1';
+  static const _lieuxCacheKey = 'handunia_lieux_cache_v2';
   int _syncedOfflineCount = 0;
 
   @override
@@ -28067,7 +28079,7 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     }
     _step = switch (widget.entryMode) {
       HanduniaWasaEntryMode.feed => 5,
-      HanduniaWasaEntryMode.publish => 1,
+      HanduniaWasaEntryMode.publish => 3,
       HanduniaWasaEntryMode.explore => 0,
     };
     unawaited(_bootstrapConsultation());
@@ -28156,7 +28168,12 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
     }
 
     final list = _lieux
-        .where((lieu) => matchesText(lieu) && matchesFilter(lieu))
+        .where(
+          (lieu) =>
+              lieu['id']?.toString() != 'lieu-non-precise' &&
+              matchesText(lieu) &&
+              matchesFilter(lieu),
+        )
         .map((lieu) => Map<String, dynamic>.from(lieu))
         .toList();
 
