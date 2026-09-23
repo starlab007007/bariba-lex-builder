@@ -657,6 +657,28 @@ void main() {
     expect(viral, withoutLikes);
   });
 
+  test('Handunia explains heritage selection without popularity signals', () {
+    final item = <String, dynamic>{
+      'id': 'memory-explained',
+      'distance_m': 1800.0,
+      'voice_count': 5,
+      'corroboration_count': 4,
+      'lacuna_filled': true,
+      'theme_key': 'marché',
+      'like_count': 99999,
+    };
+
+    final reasons = HanduniaHeritageFeed.explanationFor(item);
+
+    expect(reasons, contains('Proche de votre territoire'));
+    expect(reasons, contains('Complète une lacune de mémoire'));
+    expect(
+      reasons.any((value) => value.contains('corroborent ce souvenir')),
+      isTrue,
+    );
+    expect(reasons.any((value) => value.contains('like')), isFalse);
+  });
+
   test('Handunia journey favors cultural continuity without author repetition', () {
     final journey = HanduniaHeritageFeed.buildJourney(
       <Map<String, dynamic>>[
