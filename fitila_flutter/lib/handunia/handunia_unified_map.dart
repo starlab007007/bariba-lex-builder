@@ -500,8 +500,6 @@ class _HanduniaUnifiedMapState extends State<HanduniaUnifiedMap> {
           textColor: '#4A260D',
           textHaloColor: '#FFF7E8',
           textHaloWidth: 1.6,
-          textAllowOverlap: true,
-          textIgnorePlacement: true,
           textOffset: const Offset(0, 0),
         ),
       );
