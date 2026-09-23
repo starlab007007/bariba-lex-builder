@@ -70,7 +70,7 @@ jobs:
 
       - name: Verify optimized source
         run: |
-          grep -q '^version: 1.8.3+14$' pubspec.yaml
+          grep -q '^version: 1.8.4+15$' pubspec.yaml
           flutter analyze
           flutter test test/handunia_lot3_ai_guide_test.dart \
             --dart-define-from-file=.ci-dart-defines.json \
@@ -91,7 +91,7 @@ jobs:
           test -s "$src"
           unzip -t "$src" >/dev/null
           mkdir -p build/lightweight-output
-          target="build/lightweight-output/FITILA-Android-v1.8.3-build14-author-controls-ARM64-optimized-qa.apk"
+          target="build/lightweight-output/FITILA-Android-v1.8.4-build15-author-controls-ARM64-optimized-qa.apk"
           cp "$src" "$target"
           cd build/lightweight-output
           sha256sum *.apk | tee SHA256SUMS.txt
@@ -100,10 +100,10 @@ jobs:
       - name: Upload optimized APK
         uses: actions/upload-artifact@v4
         with:
-          name: FITILA-Android-v1.8.3-build14-author-controls-ARM64-optimized-qa
+          name: FITILA-Android-v1.8.4-build15-author-controls-ARM64-optimized-qa
           path: fitila_flutter/build/lightweight-output/
           if-no-files-found: error
           compression-level: 6
           retention-days: 14
 
-# build-trigger: author-controls-2026-09-23-r1
+# build-trigger: handunia-guided-offline-2026-09-23-r1
