@@ -28,6 +28,30 @@ jobs:
           echo "eb8d695f34b0601473569e5d07d63ccdea21ead26202f05ad4c0209ae80c54e9  /tmp/fitila-apprendre-v23.tar.gz" | sha256sum -c -
           tar -xzf /tmp/fitila-apprendre-v23.tar.gz -C .
           sed -i 's/^version: 1\.8\.6+17$/version: 1.8.7+18/' fitila_flutter/pubspec.yaml
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('fitila_flutter/lib/apprendre/apprendre_scenes_ui.dart')
+          lines = p.read_text(encoding='utf-8').splitlines()
+          styles = [i for i, line in enumerate(lines) if 'style: ApText.small.copyWith(fontSize: 11),' in line]
+          if len(styles) < 2:
+              raise SystemExit('Scene status text style not found')
+          style_i = styles[-1]
+          start = max(i for i in range(style_i) if lines[i].strip() == 'Text(')
+          end = next(i for i in range(style_i, len(lines)) if lines[i].strip() == '),')
+          indent = lines[start][:len(lines[start]) - len(lines[start].lstrip())]
+          lines[start] = indent + 'Expanded('
+          lines.insert(start + 1, indent + '  child: Text(')
+          style_i += 1
+          end += 1
+          for i in range(start + 2, end + 1):
+              lines[i] = '  ' + lines[i]
+          lines.insert(style_i, indent + '    maxLines: 1,')
+          lines.insert(style_i + 1, indent + '    overflow: TextOverflow.ellipsis,')
+          end += 2
+          lines.insert(end + 1, indent + '),')
+          p.write_text('\\n'.join(lines) + '\\n', encoding='utf-8')
+          PY
+          dart format fitila_flutter/lib/apprendre/apprendre_scenes_ui.dart
 
       - name: Validate integrated corpus
         run: |
