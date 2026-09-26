@@ -1,0 +1,140 @@
+name: FITILA Apprendre v2.3 Build18
+
+on:
+  push:
+    branches:
+      - feat/apprendre-v2.3-build18-20260927
+    paths:
+      - '.github/workflows/flutter-apprendre-v23-build18.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apprendre-v23:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Reconstruct verified Apprendre v2.3 payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .integration/v23r/r_* | base64 -d > /tmp/fitila-apprendre-v23.tar.gz
+          echo "eb8d695f34b0601473569e5d07d63ccdea21ead26202f05ad4c0209ae80c54e9  /tmp/fitila-apprendre-v23.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/fitila-apprendre-v23.tar.gz -C .
+          sed -i 's/^version: 1\.8\.6+17$/version: 1.8.7+18/' fitila_flutter/pubspec.yaml
+
+      - name: Validate integrated corpus
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('fitila_flutter/assets/data/scenes_v2.json')
+          data = json.loads(p.read_text(encoding='utf-8'))
+          assert len(data.get('categories', [])) == 11, len(data.get('categories', []))
+          assert len(data.get('scenes', [])) == 44, len(data.get('scenes', []))
+          lines = sum(len(s.get('lines', [])) for s in data.get('scenes', []))
+          assert lines == 632, lines
+          assert Path('fitila_flutter/lib/apprendre/apprendre_review.dart').is_file()
+          assert Path('fitila_flutter/lib/apprendre/apprendre_session.dart').is_file()
+          assert Path('fitila_flutter/lib/apprendre/apprendre_scenes_ui.dart').is_file()
+          assert Path('fitila_flutter/test/apprendre_module_test.dart').is_file()
+          print(f'Apprendre v2.3: 11 categories, 44 scenes, {lines} repliques')
+          PY
+          grep -q '^version: 1.8.7+18$' fitila_flutter/pubspec.yaml
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          channel: stable
+          cache: true
+
+      - name: Prepare FITILA server configuration
+        working-directory: fitila_flutter
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          env = {}
+          for raw in Path('../.env').read_text(encoding='utf-8').splitlines():
+              line = raw.strip()
+              if line and not line.startswith('#') and '=' in line:
+                  key, value = line.split('=', 1)
+                  env[key.strip()] = value.strip().strip('"').strip("'")
+          url = env.get('SUPABASE_URL') or env.get('VITE_SUPABASE_URL') or ''
+          key = env.get('SUPABASE_ANON_KEY') or env.get('SUPABASE_PUBLISHABLE_KEY') or env.get('VITE_SUPABASE_PUBLISHABLE_KEY') or ''
+          if not url or not key:
+              raise SystemExit('FITILA server configuration is missing')
+          Path('.ci-dart-defines.json').write_text(
+              json.dumps({'SUPABASE_URL': url, 'SUPABASE_ANON_KEY': key}),
+              encoding='utf-8',
+          )
+          PY
+
+      - name: Resolve dependencies
+        working-directory: fitila_flutter
+        run: flutter pub get
+
+      - name: Analyze Apprendre v2.3
+        working-directory: fitila_flutter
+        run: flutter analyze lib/apprendre test/apprendre_module_test.dart
+
+      - name: Test Apprendre v2.3
+        working-directory: fitila_flutter
+        run: flutter test test/apprendre_module_test.dart --dart-define-from-file=.ci-dart-defines.json --reporter compact
+
+      - name: Build optimized release APK
+        working-directory: fitila_flutter
+        run: |
+          flutter build apk --release \
+            --dart-define-from-file=.ci-dart-defines.json \
+            --obfuscate \
+            --split-debug-info=build/symbols
+
+      - name: Validate and package APK
+        working-directory: fitila_flutter
+        run: |
+          set -euo pipefail
+          src="build/app/outputs/flutter-apk/app-release.apk"
+          test -s "$src"
+          unzip -t "$src" >/dev/null
+          mkdir -p build/apprendre-v23-output
+          target="build/apprendre-v23-output/FITILA-Android-v1.8.7-build18-apprendre-v2.3-final-optimized.apk"
+          cp "$src" "$target"
+          cp -R build/symbols build/apprendre-v23-output/symbols
+          echo "ci-ephemeral" > build/apprendre-v23-output/SIGNING_MODE.txt
+          cd build/apprendre-v23-output
+          sha256sum *.apk | tee SHA256SUMS.txt
+          du -h *.apk | tee SIZES.txt
+
+      - name: Commit integrated v2.3 source
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fitila_flutter/lib/apprendre fitila_flutter/test/apprendre_module_test.dart fitila_flutter/assets/data/scenes_v2.json fitila_flutter/pubspec.yaml
+          if ! git diff --cached --quiet; then
+            git commit -m "feat(apprendre): integrate v2.3 adaptive learning build18"
+            git push origin HEAD:feat/apprendre-v2.3-build18-20260927
+          fi
+
+      - name: Upload final APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FITILA-Android-v1.8.7-build18-apprendre-v2.3-final-optimized
+          path: fitila_flutter/build/apprendre-v23-output/
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 14
