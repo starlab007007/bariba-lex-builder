@@ -180,99 +180,109 @@ class ApSectionView extends StatelessWidget {
 
 class _Explain extends StatelessWidget {
   const _Explain({required this.section});
+
   final ApSection section;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      if (section.title.isNotEmpty)
-        Text(
-          section.title,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 16.5,
-            fontWeight: FontWeight.w800,
-            color: ApColors.ink,
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (section.title.isNotEmpty)
+          Text(
+            section.title,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 16.5,
+              fontWeight: FontWeight.w800,
+              color: ApColors.ink,
+            ),
           ),
-        ),
-      const SizedBox(height: 6),
-      Text(section.body, style: ApText.body),
-    ],
-  );
+        const SizedBox(height: 6),
+        Text(section.body, style: ApText.body),
+      ],
+    );
+  }
 }
 
 class _Tip extends StatelessWidget {
   const _Tip({required this.section});
+
   final ApSection section;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: ApColors.sageTint,
-      borderRadius: BorderRadius.circular(18),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(Icons.tips_and_updates_rounded, color: ApColors.sageInk, size: 20),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            section.body,
-            style: ApText.body.copyWith(color: const Color(0xFF24452F), fontSize: 13.5),
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: ApColors.sageTint,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.tips_and_updates_rounded, color: ApColors.sageInk, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              section.body,
+              style: ApText.body.copyWith(color: const Color(0xFF24452F), fontSize: 13.5),
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 class _Examples extends StatelessWidget {
   const _Examples({required this.section, required this.culture});
+
   final ApSection section;
   final bool culture;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      if (section.title.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Row(
-            children: [
-              if (culture) ...[
-                const Icon(Icons.local_fire_department_rounded, color: ApColors.clay, size: 18),
-                const SizedBox(width: 6),
-              ],
-              Expanded(
-                child: Text(
-                  section.title,
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 16.5,
-                    fontWeight: FontWeight.w800,
-                    color: ApColors.ink,
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (section.title.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              children: [
+                if (culture) ...[
+                  const Icon(Icons.local_fire_department_rounded, color: ApColors.clay, size: 18),
+                  const SizedBox(width: 6),
+                ],
+                Expanded(
+                  child: Text(
+                    section.title,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w800,
+                      color: ApColors.ink,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      for (final item in section.items)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: ApExampleTile(example: item, culture: culture),
-        ),
-    ],
-  );
+        for (final item in section.items)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: ApExampleTile(example: item, culture: culture),
+          ),
+      ],
+    );
+  }
 }
 
 /// Un exemple bariba + traduction + note + source.
 class ApExampleTile extends StatelessWidget {
   const ApExampleTile({super.key, required this.example, this.culture = false});
+
   final ApExample example;
   final bool culture;
 
@@ -310,6 +320,7 @@ class ApExampleTile extends StatelessWidget {
 
 class _TableView extends StatelessWidget {
   const _TableView({required this.section});
+
   final ApSection section;
 
   @override
@@ -352,6 +363,7 @@ class _TableView extends StatelessWidget {
   }
 }
 
+/// Ligne de tableau présentée en fiche : lisible sur téléphone.
 class _TableRowCard extends StatelessWidget {
   const _TableRowCard({
     required this.columns,
@@ -359,6 +371,7 @@ class _TableRowCard extends StatelessWidget {
     required this.first,
     required this.verified,
   });
+
   final List<String> columns;
   final List<String> cells;
   final bool first;
@@ -369,7 +382,9 @@ class _TableRowCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (cells.isEmpty) return const SizedBox.shrink();
+    if (cells.isEmpty) {
+      return const SizedBox.shrink();
+    }
     final lead = cells.first;
     final second = cells.length > 1 ? cells[1] : '';
     return Container(
@@ -432,77 +447,12 @@ class _TableRowCard extends StatelessWidget {
 
 class _Pairs extends StatelessWidget {
   const _Pairs({required this.section});
+
   final ApSection section;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        section.title,
-        style: const TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 16.5,
-          fontWeight: FontWeight.w800,
-          color: ApColors.ink,
-        ),
-      ),
-      const SizedBox(height: 10),
-      for (final pair in section.pairs)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Row(
-            children: [
-              Expanded(child: _PairSide(example: pair.a, color: ApColors.goldTint)),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Icon(Icons.compare_arrows_rounded, color: ApColors.muted),
-              ),
-              Expanded(child: _PairSide(example: pair.b, color: ApColors.clayTint)),
-            ],
-          ),
-        ),
-    ],
-  );
-}
-
-class _PairSide extends StatelessWidget {
-  const _PairSide({required this.example, required this.color});
-  final ApExample example;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(16)),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(example.ba, style: ApText.bariba.copyWith(fontSize: 20)),
-        const SizedBox(height: 2),
-        Text(example.fr, style: ApText.body.copyWith(fontSize: 13)),
-        const SizedBox(height: 4),
-        Text(example.src, style: ApText.small.copyWith(fontSize: 10.5)),
-      ],
-    ),
-  );
-}
-
-class _Order extends StatelessWidget {
-  const _Order({required this.section});
-  final ApSection section;
-
-  static const _roleColors = <String, Color>{
-    'sujet': ApColors.goldTint,
-    'reprise': ApColors.surfaceAlt,
-    'objet': ApColors.sageTint,
-    'verbe': ApColors.clayTint,
-  };
-
-  @override
-  Widget build(BuildContext context) => ApCardBox(
-    radius: 22,
-    child: Column(
+  Widget build(BuildContext context) {
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -514,38 +464,118 @@ class _Order extends StatelessWidget {
             color: ApColors.ink,
           ),
         ),
-        const SizedBox(height: 4),
-        Text(section.body, style: ApText.body),
-        const SizedBox(height: 14),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (var i = 0; i < section.orderWords.length; i++)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: _roleColors[i < section.orderRoles.length
-                          ? section.orderRoles[i]
-                          : ''] ??
-                      ApColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(14),
+        const SizedBox(height: 10),
+        for (final pair in section.pairs)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              children: [
+                Expanded(child: _PairSide(example: pair.a, color: ApColors.goldTint)),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Icon(Icons.compare_arrows_rounded, color: ApColors.muted),
                 ),
-                child: Column(
-                  children: [
-                    Text(section.orderWords[i], style: ApText.bariba.copyWith(fontSize: 18)),
-                    if (i < section.orderRoles.length)
-                      Text(section.orderRoles[i], style: ApText.small.copyWith(fontSize: 11)),
-                  ],
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Text(section.orderFr, style: ApText.body.copyWith(color: ApColors.quiet)),
-        const SizedBox(height: 6),
-        ApSourceTag(section.src),
+                Expanded(child: _PairSide(example: pair.b, color: ApColors.clayTint)),
+              ],
+            ),
+          ),
       ],
-    ),
-  );
+    );
+  }
+}
+
+class _PairSide extends StatelessWidget {
+  const _PairSide({required this.example, required this.color});
+
+  final ApExample example;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(example.ba, style: ApText.bariba.copyWith(fontSize: 20)),
+          const SizedBox(height: 2),
+          Text(example.fr, style: ApText.body.copyWith(fontSize: 13)),
+          const SizedBox(height: 4),
+          Text(example.src, style: ApText.small.copyWith(fontSize: 10.5)),
+        ],
+      ),
+    );
+  }
+}
+
+class _Order extends StatelessWidget {
+  const _Order({required this.section});
+
+  final ApSection section;
+
+  static const _roleColors = <String, Color>{
+    'sujet': ApColors.goldTint,
+    'reprise': ApColors.surfaceAlt,
+    'objet': ApColors.sageTint,
+    'verbe': ApColors.clayTint,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return ApCardBox(
+      radius: 22,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            section.title,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 16.5,
+              fontWeight: FontWeight.w800,
+              color: ApColors.ink,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(section.body, style: ApText.body),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (var i = 0; i < section.orderWords.length; i++)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _roleColors[i < section.orderRoles.length
+                            ? section.orderRoles[i]
+                            : ''] ??
+                        ApColors.surfaceAlt,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        section.orderWords[i],
+                        style: ApText.bariba.copyWith(fontSize: 18),
+                      ),
+                      if (i < section.orderRoles.length)
+                        Text(section.orderRoles[i], style: ApText.small.copyWith(fontSize: 11)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(section.orderFr, style: ApText.body.copyWith(color: ApColors.quiet)),
+          const SizedBox(height: 6),
+          ApSourceTag(section.src),
+        ],
+      ),
+    );
+  }
 }
