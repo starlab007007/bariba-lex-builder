@@ -1,0 +1,44 @@
+diff --git a/fitila_flutter/lib/main.dart b/fitila_flutter/lib/main.dart
+index 2e9d7b8..f3313e4 100644
+--- a/fitila_flutter/lib/main.dart
++++ b/fitila_flutter/lib/main.dart
+@@ -25,6 +25,7 @@ import 'core/fitila_translation_audio.dart';
+ import 'core/foncier_rag.dart';
+ import 'core/signature_theme.dart';
+ import 'core/web_parity_models.dart';
++import 'apprendre/apprendre_hub.dart';
+ import 'handunia/handunia_consultation_data.dart';
+ import 'handunia/handunia_consultation_extended_data.dart';
+ import 'handunia/handunia_consultation_model.dart';
+@@ -1878,7 +1879,30 @@ class _FitilaShellState extends State<FitilaShell> {
+       ),
+       FitilaPage.ia => const AiScreen(),
+       FitilaPage.temIa => const TemIaScreen(),
+-      FitilaPage.learn => const LearnScreen(),
++      FitilaPage.learn => ApprendreHubScreen(
++        links: [
++          ApLegacyLink(
++            label: 'Badges',
++            icon: Icons.emoji_events_rounded,
++            builder: (_) => const LearningBadgesScreen(),
++          ),
++          ApLegacyLink(
++            label: 'Historique',
++            icon: Icons.history_rounded,
++            builder: (_) => const LearningHistoryScreen(),
++          ),
++          ApLegacyLink(
++            label: 'Profil apprenant',
++            icon: Icons.badge_rounded,
++            builder: (_) => const LearnerProfileScreen(),
++          ),
++          ApLegacyLink(
++            label: 'Classe (lecture)',
++            icon: Icons.school_rounded,
++            builder: (_) => const ClasseScreen(),
++          ),
++        ],
++      ),
+       FitilaPage.classe => const ClasseScreen(),
+       FitilaPage.keyboard => const KeyboardScreen(),
+       FitilaPage.voiceLab => const VoiceLabScreen(),
