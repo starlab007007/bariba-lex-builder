@@ -51,7 +51,6 @@ jobs:
           lines.insert(end + 1, indent + '),')
           p.write_text('\\n'.join(lines) + '\\n', encoding='utf-8')
           PY
-          dart format fitila_flutter/lib/apprendre/apprendre_scenes_ui.dart
 
       - name: Validate integrated corpus
         run: |
