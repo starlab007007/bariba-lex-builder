@@ -49,7 +49,7 @@ jobs:
           lines.insert(style_i + 1, indent + '    overflow: TextOverflow.ellipsis,')
           end += 2
           lines.insert(end + 1, indent + '),')
-          p.write_text('\\n'.join(lines) + '\\n', encoding='utf-8')
+          p.write_text('\n'.join(lines) + '\n', encoding='utf-8')
           PY
 
       - name: Validate integrated corpus
