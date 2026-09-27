@@ -86,3 +86,18 @@ jobs:
 
             echo "🧹 Nettoyage des anciennes images inutilisées...."
             docker image prune -f
+
+            echo "🔐 Diagnostic TLS / Traefik fitila.bj..."
+            echo "--- containers reverse proxy ---"
+            docker ps --format '{{.Names}} {{.Image}} {{.Ports}}' | grep -Ei 'traefik|proxy|nginx|react-app-bariba' || true
+            echo "--- certificate served for fitila.bj ---"
+            echo | openssl s_client -connect 127.0.0.1:443 -servername fitila.bj 2>/dev/null | openssl x509 -noout -subject -issuer -dates -ext subjectAltName || true
+            echo "--- HTTPS response ---"
+            curl -k -sSI --max-time 10 https://fitila.bj/ | head -20 || true
+            echo "--- Traefik labels for FITILA ---"
+            docker inspect react-app-bariba-js --format '{{json .Config.Labels}}' || true
+            echo "--- recent Traefik ACME/TLS logs ---"
+            TRAEFIK_CONTAINER=$(docker ps --format '{{.Names}}' | grep -Ei '^traefik|traefik' | head -1 || true)
+            if [ -n "$TRAEFIK_CONTAINER" ]; then
+              docker logs --tail 250 "$TRAEFIK_CONTAINER" 2>&1 | grep -Ei 'fitila\.bj|acme|certificate|resolver|letsencrypt|tls' | tail -120 || true
+            fi
