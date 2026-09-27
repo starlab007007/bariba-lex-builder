@@ -18,7 +18,8 @@ import { useEditorRole } from '@/hooks/useEditorRole';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import BaribaAudioText from '@/components/fitila/BaribaAudioText';
+import { useQuery } from '@tanstack/react-query';
+import BaribaAudioText, { useApprendrePublishedAudio } from '@/components/fitila/BaribaAudioText';
 
 type ViewType = 'language-selection' | 'dashboard' | 'lesson' | 'lesson-complete' | 'foundation-lesson' | 'foundation-quiz';
 
@@ -35,6 +36,26 @@ export default function FitilaLearn() {
 
   const [currentView, setCurrentView] = useState<ViewType>(userLanguage ? 'dashboard' : 'language-selection');
   const [showLangSwitch, setShowLangSwitch] = useState(false);
+
+  const { data: publishedAudioManifest } = useApprendrePublishedAudio();
+  const { data: hubCatalog } = useQuery({
+    queryKey: ['apprendre-web-hub-catalog'],
+    queryFn: async () => {
+      const [scenesRes, proverbsRes] = await Promise.all([
+        supabase.from('apprendre_audio_items').select('*', { count: 'exact', head: true }).eq('in_content', true).eq('kind', 'scene'),
+        supabase.from('apprendre_audio_items').select('audio_key, text_ba, text_fr').eq('in_content', true).eq('kind', 'proverbe').order('audio_key').limit(8),
+      ]);
+      if (scenesRes.error) throw scenesRes.error;
+      if (proverbsRes.error) throw proverbsRes.error;
+      return {
+        sceneCount: scenesRes.count || 0,
+        proverbs: (proverbsRes.data || []) as { audio_key: string; text_ba: string; text_fr: string | null }[],
+      };
+    },
+    staleTime: 30 * 60 * 1000,
+  });
+
+  const publishedVoiceCount = publishedAudioManifest?.size || 0;
 
   // Lesson state
   const [currentThemeId, setCurrentThemeId] = useState<string | null>(null);
@@ -422,8 +443,8 @@ export default function FitilaLearn() {
                 </div>
               </div>
 
-              {/* Profile card */}
-              <div className="bg-white rounded-[24px] border border-[#E4DFCC] p-5">
+              {/* Profile details live in /profile; hidden here to keep Flutter Apprendre hub parity */}
+              <div className="hidden bg-white rounded-[24px] border border-[#E4DFCC] p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4">
                     {user && tamtamProfile?.avatar_url ? (
@@ -503,6 +524,7 @@ export default function FitilaLearn() {
               {/* Login recommendation banner */}
               {!user && (
                 <motion.div
+                  style={{ display: 'none' }}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="bg-[#FFFBF0] border border-[#E4DFCC] rounded-[20px] p-4 flex items-center gap-3"
@@ -534,7 +556,7 @@ export default function FitilaLearn() {
 
               {/* Badges */}
               {profile.badges.length > 0 && (
-                <div className="bg-white rounded-[24px] border border-[#E4DFCC] shadow-sm p-5 sm:p-6">
+                <div className="hidden bg-white rounded-[24px] border border-[#E4DFCC] shadow-sm p-5 sm:p-6">
                   <h3 className="text-lg font-bold text-[#241F2E] mb-4 flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-yellow-500" />
                     {getText('myBadges')}
@@ -562,7 +584,7 @@ export default function FitilaLearn() {
                 {showFoundations && (
                   <>
                     <p className="text-[#6F6955] text-xs mb-4">{getText('foundationsSub')}</p>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="flex gap-3 overflow-x-auto pb-1 snap-x">
                       {FOUNDATION_LESSONS.map((fl, idx) => {
                         const isComingSoon = fl.id === 'nombres';
                         return (
@@ -573,7 +595,7 @@ export default function FitilaLearn() {
                             transition={{ delay: idx * 0.04 }}
                             onClick={() => !isComingSoon && startFoundation(fl)}
                             disabled={isComingSoon}
-                            className={`border-2 rounded-2xl p-4 text-left transition-all group relative overflow-hidden ${
+                            className={`min-w-[180px] max-w-[210px] snap-start border-2 rounded-2xl p-4 text-left transition-all group relative overflow-hidden ${
                               isComingSoon
                                 ? 'border-gray-200 opacity-60 cursor-not-allowed'
                                 : 'border-[#E4DFCC] hover:border-indigo-200 hover:shadow-lg'
@@ -646,6 +668,62 @@ export default function FitilaLearn() {
                       </motion.button>
                     </motion.div>
                   ))}
+                </div>
+              </div>
+
+              {/* Scènes de vie — parité Flutter */}
+              <div>
+                <div className="mb-2 flex items-end justify-between">
+                  <h3 className="text-[17px] font-extrabold text-[#241F2E]">Scènes de vie</h3>
+                  <span className="text-xs font-bold text-[#9C6B1D]">{hubCatalog?.sceneCount || 0} répliques</span>
+                </div>
+                <button
+                  onClick={() => navigate('/learn/scenes')}
+                  className="w-full rounded-[22px] border border-[#E4DFCC] bg-white p-4 text-left transition hover:border-[#D5CEB3]"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-2xl bg-[#F3E3B9] flex items-center justify-center text-2xl">💬</div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-extrabold text-[#241F2E]">Parler dans la vie réelle</p>
+                      <p className="text-xs text-[#6F6955]">Salutations, famille, marché, santé, voyage, travail…</p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-[#9C6B1D]" />
+                  </div>
+                </button>
+              </div>
+
+              {/* Sagesse — parité Flutter */}
+              {hubCatalog?.proverbs?.length ? (
+                <div>
+                  <h3 className="mb-2 text-[17px] font-extrabold text-[#241F2E]">Sagesse</h3>
+                  {(() => {
+                    const proverb = hubCatalog.proverbs[new Date().getDate() % hubCatalog.proverbs.length];
+                    return (
+                      <div className="rounded-[22px] border border-[#E4DFCC] bg-white p-5">
+                        <BaribaAudioText
+                          text={proverb.text_ba}
+                          textClassName="text-lg font-extrabold leading-snug text-[#241F2E]"
+                        />
+                        {proverb.text_fr && <p className="ml-11 mt-2 text-sm leading-relaxed text-[#6F6955]">{proverb.text_fr}</p>}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : null}
+
+              {/* Voix de référence — même logique que Flutter */}
+              <div className="rounded-[22px] border border-[#E4DFCC] bg-white p-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-11 w-11 rounded-2xl bg-[#F3E3B9] flex items-center justify-center">
+                    <Volume2 className="h-5 w-5 text-[#9C6B1D]" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-extrabold text-[#241F2E]">{publishedVoiceCount} textes avec voix de référence</p>
+                    <p className="text-xs text-[#6F6955]">
+                      Les voix sont enregistrées, validées et publiées depuis l’administration.
+                    </p>
+                  </div>
+                  {user && <ChevronRight className="h-5 w-5 text-[#9C6B1D]" />}
                 </div>
               </div>
             </motion.div>
