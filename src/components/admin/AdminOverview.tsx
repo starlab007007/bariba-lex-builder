@@ -7,16 +7,25 @@ export default function AdminOverview() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
-      const [dictCount, phrasesCount, logsCount] = await Promise.all([
+      const monthStart = new Date();
+      monthStart.setUTCDate(1);
+      monthStart.setUTCHours(0, 0, 0, 0);
+
+      const [dictCount, phrasesCount, logsCount, activeUsers] = await Promise.all([
         supabase.from('dictionary_entries').select('*', { count: 'exact', head: true }),
-        supabase.from('training_phrases').select('*', { count: 'exact', head: true }),
+        supabase.from('training_phrases').select('*', { count: 'exact', head: true }).eq('is_validated', true),
         supabase.from('translation_logs').select('*', { count: 'exact', head: true }),
+        supabase.from('tamtam_profiles').select('*', { count: 'exact', head: true }).gte('last_seen_at', monthStart.toISOString()),
       ]);
+
+      const firstError = [dictCount.error, phrasesCount.error, logsCount.error, activeUsers.error].find(Boolean);
+      if (firstError) throw firstError;
 
       return {
         dictionaryEntries: dictCount.count || 0,
         trainingPhrases: phrasesCount.count || 0,
         totalTranslations: logsCount.count || 0,
+        activeUsers: activeUsers.count || 0,
       };
     },
   });
@@ -42,9 +51,9 @@ export default function AdminOverview() {
     },
     {
       title: 'Utilisateurs Actifs',
-      value: 0,
+      value: stats?.activeUsers || 0,
       icon: Users,
-      description: 'Ce mois-ci',
+      description: 'Actifs ce mois-ci',
     },
   ];
 
