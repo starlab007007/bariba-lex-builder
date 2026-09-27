@@ -20,7 +20,7 @@ import { AnimeLibraryManager } from '@/components/admin/AnimeLibraryManager';
 import VoiceRecordingsBrowser from '@/components/admin/VoiceRecordingsBrowser';
 import ClasseAudioReview from '@/pages/admin/ClasseAudioReview';
 import ApprendreVoiceAdmin from '@/components/admin/apprendre-voice/ApprendreVoiceAdmin';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Settings, Users, BarChart3, 
   FileText, Globe, 
@@ -101,7 +101,23 @@ class TabErrorBoundary extends Component<
 
 export default function AdminDashboard() {
   const { user, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const tabFromLocation = () => {
+    const path = location.pathname.replace(/\/$/, '');
+    if (path.endsWith('/apprendre-voice')) return 'apprendre-voice';
+    if (path.endsWith('/users')) return 'users';
+    const queryTab = new URLSearchParams(location.search).get('tab');
+    return queryTab || 'overview';
+  };
+  const [activeTab, setActiveTab] = useState(tabFromLocation);
+
+  const changeTab = (tab: string) => {
+    setActiveTab(tab);
+    if (tab === 'apprendre-voice') navigate('/admin/apprendre-voice');
+    else if (tab === 'users') navigate('/admin/users');
+    else navigate(`/admin?tab=${encodeURIComponent(tab)}`);
+  };
 
   return (
     <AdminErrorBoundary>
@@ -123,7 +139,7 @@ export default function AdminDashboard() {
       </header>
 
       <div className="container py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs value={activeTab} onValueChange={changeTab} className="space-y-6">
           <div className="overflow-x-auto">
             <TabsList className="inline-flex flex-wrap h-auto gap-1 bg-muted/50 p-2 min-w-full">
               {/* 🎯 SECTION DONNÉES */}
@@ -162,7 +178,7 @@ export default function AdminDashboard() {
               </TabsTrigger>
               <TabsTrigger value="apprendre-voice" className="flex items-center gap-2">
                 <Mic className="h-4 w-4 text-[hsl(var(--section-data))]" />
-                Voix Apprendre
+                🎙️ Gestion audio Apprendre
               </TabsTrigger>
 
               {/* 🧪 SECTION TESTS & QUALITÉ */}
@@ -237,7 +253,7 @@ export default function AdminDashboard() {
               </TabsTrigger>
               <TabsTrigger value="users" className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-[hsl(var(--section-management))]" />
-                Utilisateurs
+                Utilisateurs & rôles
               </TabsTrigger>
               <TabsTrigger value="settings" className="flex items-center gap-2">
                 <Settings className="h-4 w-4 text-[hsl(var(--section-management))]" />
