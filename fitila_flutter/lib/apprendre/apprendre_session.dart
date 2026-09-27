@@ -10,10 +10,23 @@ import 'apprendre_ui.dart';
 
 /// Résultat d'une séance, renvoyé à l'écran appelant.
 class ApSessionResult {
-  const ApSessionResult({required this.correct, required this.total});
+  const ApSessionResult({
+    required this.correct,
+    required this.total,
+    this.skillTotals = const {},
+    this.skillCorrect = const {},
+    this.xpGained = 0,
+  });
 
   final int correct;
   final int total;
+
+  /// Nombre d'exercices et de bonnes réponses par type d'exercice.
+  final Map<String, int> skillTotals;
+  final Map<String, int> skillCorrect;
+
+  /// Points gagnés pendant la séance.
+  final int xpGained;
 
   int get percent => total == 0 ? 0 : (correct * 100 / total).round();
 }
@@ -55,6 +68,10 @@ class _ApSessionScreenState extends State<ApSessionScreen> {
   bool _recording = false;
   FitilaMediaAsset? _recorded;
   bool _finishing = false;
+  int _skipped = 0;
+  int _xpStart = 0;
+  final Map<String, int> _skillTotals = <String, int>{};
+  final Map<String, int> _skillCorrect = <String, int>{};
 
   ApTask get _task => widget.tasks[_index];
   bool get _oral => widget.store.progress.profile == 'oral';
@@ -66,6 +83,7 @@ class _ApSessionScreenState extends State<ApSessionScreen> {
   @override
   void initState() {
     super.initState();
+    _xpStart = widget.store.progress.xp;
     if (_oral) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _readInstruction());
     }
@@ -143,8 +161,11 @@ class _ApSessionScreenState extends State<ApSessionScreen> {
   void _answer(bool ok) {
     _answered = true;
     _wasCorrect = ok;
+    final skill = _task.skill.isEmpty ? 'quiz' : _task.skill;
+    _skillTotals[skill] = (_skillTotals[skill] ?? 0) + 1;
     if (ok) {
       _correct++;
+      _skillCorrect[skill] = (_skillCorrect[skill] ?? 0) + 1;
     } else {
       _missed.add(_task);
     }
@@ -153,6 +174,19 @@ class _ApSessionScreenState extends State<ApSessionScreen> {
       correct: ok,
       now: DateTime.now(),
     );
+  }
+
+  /// Passe un exercice de prononciation (micro indisponible) sans le compter.
+  Future<void> _skip() async {
+    if (_answered) {
+      return;
+    }
+    if (_recording) {
+      await _media.stopAudio();
+    }
+    _recording = false;
+    _skipped++;
+    await _next();
   }
 
   Future<void> _toggleRecording() async {
@@ -212,7 +246,13 @@ class _ApSessionScreenState extends State<ApSessionScreen> {
   Future<void> _finish() async {
     setState(() => _finishing = true);
     final now = DateTime.now();
-    final result = ApSessionResult(correct: _correct, total: widget.tasks.length);
+    final result = ApSessionResult(
+      correct: _correct,
+      total: widget.tasks.length - _skipped,
+      skillTotals: Map<String, int>.unmodifiable(_skillTotals),
+      skillCorrect: Map<String, int>.unmodifiable(_skillCorrect),
+      xpGained: widget.store.progress.xp - _xpStart,
+    );
     final foundationId = widget.foundationId;
     if (foundationId != null) {
       widget.store.progress.recordFoundation(foundationId, result.percent, now);
@@ -240,6 +280,7 @@ class _ApSessionScreenState extends State<ApSessionScreen> {
           title: widget.title,
           result: result,
           missed: List<ApTask>.unmodifiable(_missed),
+          store: widget.store,
           foundationPassed: foundationId == null
               ? null
               : result.percent >= ApprendreProgress.passMark,
@@ -307,9 +348,23 @@ class _ApSessionScreenState extends State<ApSessionScreen> {
                       ],
                     ),
                   ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 2, 20, 0),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        task.skill.isEmpty
+                            ? widget.title
+                            : '${widget.title} · ${ApTask.skillLabel(task.skill)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: ApText.small.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
                   Expanded(
                     child: ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
                       children: [
                         Row(
                           children: [
@@ -517,6 +572,13 @@ class _ApSessionScreenState extends State<ApSessionScreen> {
               ],
             ),
           ],
+        ],
+        if (_recorded == null && !_recording && !_answered) ...[
+          const SizedBox(height: 6),
+          TextButton(
+            onPressed: _skip,
+            child: const Text('Je ne peux pas parler maintenant · passer'),
+          ),
         ],
         const SizedBox(height: 14),
         const ApPill(
@@ -772,27 +834,70 @@ class _FeedbackPanel extends StatelessWidget {
   }
 }
 
-/// Écran de fin de séance.
+/// Écran de fin de séance : score, points, détail par type d'exercice,
+/// mots à retenir et reprise immédiate des erreurs.
 class ApResultScreen extends StatelessWidget {
   const ApResultScreen({
     super.key,
     required this.title,
     required this.result,
     required this.missed,
+    this.store,
     this.foundationPassed,
   });
 
   final String title;
   final ApSessionResult result;
   final List<ApTask> missed;
+
+  /// Progression, pour afficher la série et relancer les erreurs.
+  final ApprendreStore? store;
   final bool? foundationPassed;
+
+  static IconData skillIcon(String skill) => switch (skill) {
+    'recognize' => Icons.visibility_rounded,
+    'recall' => Icons.translate_rounded,
+    'cloze' => Icons.short_text_rounded,
+    'plural' => Icons.filter_none_rounded,
+    'conjugate' => Icons.schedule_rounded,
+    'order' => Icons.swap_horiz_rounded,
+    'speak' => Icons.mic_rounded,
+    _ => Icons.school_rounded,
+  };
+
+  void _retry(BuildContext context) {
+    final current = store;
+    if (current == null || missed.isEmpty) {
+      return;
+    }
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<ApSessionResult>(
+        builder: (_) => ApSessionScreen(
+          title: 'Mes erreurs',
+          tasks: [for (final task in missed) ApTaskFactory.replayOf(task)],
+          store: current,
+          sessionKey: 'erreurs',
+        ),
+      ),
+      result: result,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final passed = foundationPassed;
+    final progress = store?.progress;
     final headline = passed == null
-        ? (result.percent >= 80 ? 'Très belle séance' : 'Séance terminée')
+        ? (result.percent >= 80
+              ? 'Très belle séance'
+              : result.percent >= ApprendreProgress.passMark
+              ? 'Bonne séance'
+              : 'Séance terminée')
         : (passed ? 'Fondation validée' : 'Encore un effort');
+    final skills = [
+      for (final skill in [...ApTask.coreSkills, 'quiz'])
+        if ((result.skillTotals[skill] ?? 0) > 0) skill,
+    ];
     return Scaffold(
       backgroundColor: ApColors.ivory,
       body: SafeArea(
@@ -803,7 +908,7 @@ class ApResultScreen extends StatelessWidget {
               child: ApRing(
                 value: result.percent / 100,
                 label: '${result.percent} %',
-                size: 116,
+                size: 132,
                 color: result.percent >= ApprendreProgress.passMark
                     ? ApColors.sage
                     : ApColors.clay,
@@ -821,12 +926,52 @@ class ApResultScreen extends StatelessWidget {
               textAlign: TextAlign.center,
               style: ApText.body,
             ),
+            const SizedBox(height: 12),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ApPill('+${result.xpGained} points', icon: Icons.star_rounded),
+                if (progress != null) ...[
+                  ApPill(
+                    '${progress.streak} j de suite',
+                    icon: Icons.local_fire_department_rounded,
+                    background: ApColors.clayTint,
+                    foreground: ApColors.clayInk,
+                  ),
+                  ApPill(
+                    '${progress.activeWords} mots actifs',
+                    icon: Icons.bolt_rounded,
+                    background: ApColors.sageTint,
+                    foreground: ApColors.sageInk,
+                  ),
+                ],
+              ],
+            ),
             if (passed == false) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: 10),
               const Text(
                 'Il faut 60 % pour valider. Relis la leçon puis réessaie.',
                 textAlign: TextAlign.center,
                 style: ApText.small,
+              ),
+            ],
+            if (skills.isNotEmpty) ...[
+              const ApSectionTitle('Par type d’exercice'),
+              ApCardBox(
+                padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
+                child: Column(
+                  children: [
+                    for (final skill in skills)
+                      _SkillRow(
+                        icon: skillIcon(skill),
+                        label: ApTask.skillLabel(skill),
+                        correct: result.skillCorrect[skill] ?? 0,
+                        total: result.skillTotals[skill] ?? 0,
+                      ),
+                  ],
+                ),
               ),
             ],
             if (missed.isNotEmpty) ...[
@@ -858,13 +1003,89 @@ class ApResultScreen extends StatelessWidget {
                   ),
                 ),
             ],
+            const SizedBox(height: 10),
+            Text(
+              missed.isEmpty
+                  ? 'Chaque mot réussi reviendra juste avant d’être oublié : 1, 2, 4, 8… jours.'
+                  : 'Les mots manqués reviennent dans 10 minutes ; les autres selon ta mémoire (1, 2, 4, 8… jours).',
+              textAlign: TextAlign.center,
+              style: ApText.small,
+            ),
             const SizedBox(height: 20),
+            if (missed.isNotEmpty && store != null) ...[
+              ApSecondaryButton(
+                label: 'Refaire mes erreurs (${missed.length})',
+                icon: Icons.replay_rounded,
+                onPressed: () => _retry(context),
+              ),
+              const SizedBox(height: 10),
+            ],
             ApPrimaryButton(
               label: 'Retour au parcours',
               onPressed: () => Navigator.of(context).pop(result),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SkillRow extends StatelessWidget {
+  const _SkillRow({
+    required this.icon,
+    required this.label,
+    required this.correct,
+    required this.total,
+  });
+
+  final IconData icon;
+  final String label;
+  final int correct;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = total == 0 ? 0.0 : correct / total;
+    final color = ratio >= .6 ? ApColors.sage : ApColors.clay;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: ApColors.goldTint,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(icon, size: 18, color: ApColors.goldDeep),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: ApText.body.copyWith(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    Text('$correct / $total', style: ApText.small),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ApProgressBar(value: ratio, color: color, height: 5),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

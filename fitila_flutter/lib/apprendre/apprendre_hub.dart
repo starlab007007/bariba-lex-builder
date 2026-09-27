@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import 'apprendre_daily.dart';
 import 'apprendre_explore.dart';
 import 'apprendre_foundation.dart';
 import 'apprendre_models.dart';
 import 'apprendre_onboarding.dart';
+import 'apprendre_review.dart';
+import 'apprendre_scenes_ui.dart';
 import 'apprendre_session.dart';
 import 'apprendre_store.dart';
 import 'apprendre_tasks.dart';
@@ -125,6 +128,25 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
     }
   }
 
+  Future<void> _startDaily() async {
+    final content = _content!;
+    final store = _store!;
+    final tasks = ApSessionPlanner(content).dailySession(store.progress, now: DateTime.now());
+    await openApSession(
+      context,
+      title: 'Séance du jour',
+      tasks: tasks,
+      store: store,
+      sessionKey: 'seance_du_jour',
+    );
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _openReview() =>
+      _open(ApReviewScreen(content: _content!, store: _store!));
+
   ApFoundation? _nextFoundation() {
     final content = _content!;
     final progress = _store!.progress;
@@ -232,25 +254,50 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
             subtitle: next == null
                 ? 'Continue avec le vocabulaire et les scènes'
                 : 'Fondation ${next.order} · ${next.minutes} min',
-            action: next == null ? 'Réviser mes mots' : 'Commencer',
-            onTap: next == null
-                ? (due.isEmpty ? null : _startReview)
-                : () => _open(ApFoundationScreen(content: content, unit: next, store: store)),
+            action: next != null
+                ? 'Commencer'
+                : (due.isEmpty ? 'Séance du jour' : 'Réviser mes mots'),
+            onTap: next != null
+                ? () => _open(ApFoundationScreen(content: content, unit: next, store: store))
+                : (due.isEmpty ? _startDaily : _startReview),
+          ),
+          const SizedBox(height: 12),
+          _DailySessionCard(
+            skills: ApSessionPlanner.skillsFor(progress.profile),
+            onStart: _startDaily,
           ),
           ApSectionTitle(
-            'À revoir avant d’oublier',
-            trailing: due.isEmpty
-                ? null
-                : Text('${due.length} mots', style: ApText.small.copyWith(fontWeight: FontWeight.w700)),
+            'Révision',
+            trailing: TextButton(
+              onPressed: _openReview,
+              child: Text(
+                due.isEmpty ? 'Ouvrir' : '${due.length} mots · tout voir',
+                style: ApText.small.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: ApColors.goldDeep,
+                ),
+              ),
+            ),
           ),
           if (due.isEmpty)
             ApCardBox(
               padding: const EdgeInsets.all(14),
-              child: Text(
-                progress.seenWords == 0
-                    ? 'Tes premiers mots apparaîtront ici après ta première séance.'
-                    : 'Aucun mot ne s’efface aujourd’hui. Bravo !',
-                style: ApText.small.copyWith(color: ApColors.inkSoft),
+              onTap: _openReview,
+              child: Row(
+                children: [
+                  const Icon(Icons.psychology_alt_rounded, color: ApColors.goldDeep),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      progress.seenWords == 0
+                          ? 'Tes premiers mots apparaîtront ici après ta première séance.'
+                          : 'Aucun mot ne s’efface aujourd’hui. Bravo ! '
+                                '${progress.activeWords} mots actifs sur ${progress.seenWords} vus.',
+                      style: ApText.small.copyWith(color: ApColors.inkSoft),
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: ApColors.muted),
+                ],
               ),
             )
           else ...[
@@ -316,47 +363,9 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
             },
           ),
           const ApSectionTitle('Scènes de vie'),
-          for (final scene in content.scenes)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: ApCardBox(
-                padding: const EdgeInsets.all(14),
-                radius: 18,
-                onTap: () => _open(ApSceneScreen(scene: scene)),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: ApColors.clayTint,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(apIcon(scene.icon), color: ApColors.clay),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            scene.title,
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: ApColors.ink,
-                            ),
-                          ),
-                          Text(scene.place, style: ApText.small),
-                        ],
-                      ),
-                    ),
-                    const Icon(Icons.chevron_right_rounded, color: ApColors.muted),
-                  ],
-                ),
-              ),
-            ),
+          _ScenesEntryCard(
+            onOpen: () => _open(ApScenesHubScreen(store: store)),
+          ),
           if (content.proverbs.isNotEmpty) ...[
             const ApSectionTitle('Sagesse'),
             _ProverbCard(proverb: content.proverbs[now.day % content.proverbs.length]),
@@ -366,6 +375,16 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
             spacing: 8,
             runSpacing: 8,
             children: [
+              _LinkChip(
+                label: 'Révision',
+                icon: Icons.psychology_alt_rounded,
+                onTap: _openReview,
+              ),
+              _LinkChip(
+                label: 'Scènes de vie',
+                icon: Icons.theater_comedy_rounded,
+                onTap: () => _open(ApScenesHubScreen(store: store)),
+              ),
               _LinkChip(
                 label: 'Ma progression',
                 icon: Icons.insights_rounded,
@@ -384,6 +403,183 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
             'Formes bariba issues du dictionnaire bariba-français (page citée sur chaque mot). '
             'Les tons et prononciations restent à confirmer par des locuteurs référents.',
             style: ApText.small.copyWith(fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Topic {
+  const _Topic(this.icon, this.label);
+
+  final IconData icon;
+  final String label;
+}
+
+/// Porte d'entrée du module Scènes de vie.
+class _ScenesEntryCard extends StatelessWidget {
+  const _ScenesEntryCard({required this.onOpen});
+
+  final VoidCallback onOpen;
+
+  static const _topics = <_Topic>[
+    _Topic(Icons.wb_twilight_rounded, 'Saluer'),
+    _Topic(Icons.family_restroom_rounded, 'Famille'),
+    _Topic(Icons.storefront_rounded, 'Marché'),
+    _Topic(Icons.restaurant_rounded, 'Repas'),
+    _Topic(Icons.agriculture_rounded, 'Champ'),
+    _Topic(Icons.forest_rounded, 'Nature'),
+    _Topic(Icons.local_hospital_rounded, 'Santé'),
+    _Topic(Icons.directions_walk_rounded, 'Voyage'),
+    _Topic(Icons.celebration_rounded, 'Fêtes'),
+    _Topic(Icons.groups_rounded, 'Village'),
+    _Topic(Icons.construction_rounded, 'Métiers'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onOpen,
+        child: Ink(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: const LinearGradient(
+              colors: [ApColors.clay, ApColors.goldDeep],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('VIVRE LA LANGUE', style: ApText.label.copyWith(color: ApColors.goldTint)),
+              const SizedBox(height: 4),
+              Text(
+                'Des dialogues complets, de la salutation au départ',
+                style: ApText.display.copyWith(color: Colors.white, fontSize: 18),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Jeu de rôle, culture, vocabulaire et test pour chaque situation.',
+                style: ApText.small.copyWith(color: Colors.white),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final topic in _topics)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: .16),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(topic.icon, size: 14, color: Colors.white),
+                          const SizedBox(width: 4),
+                          Text(
+                            topic.label,
+                            style: ApText.small.copyWith(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              ApPrimaryButton(
+                label: 'Explorer les scènes',
+                icon: Icons.theater_comedy_rounded,
+                onPressed: onOpen,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Carte « Séance du jour » : les sept types d'exercices en une séance.
+class _DailySessionCard extends StatelessWidget {
+  const _DailySessionCard({required this.skills, required this.onStart});
+
+  final List<String> skills;
+  final VoidCallback onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    return ApCardBox(
+      padding: const EdgeInsets.all(16),
+      color: ApColors.goldGlow,
+      borderColor: ApColors.gold,
+      radius: 24,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('SÉANCE DU JOUR', style: ApText.label.copyWith(color: ApColors.goldDeep)),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${skills.length} types d’exercices · environ 8 min',
+                      style: ApText.display.copyWith(fontSize: 18),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Nouveaux mots, révisions et correction immédiate.',
+                      style: ApText.small,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final skill in skills)
+                Tooltip(
+                  message: ApTask.skillLabel(skill),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: ApColors.goldTint,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      ApResultScreen.skillIcon(skill),
+                      size: 18,
+                      color: ApColors.goldDeep,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ApPrimaryButton(
+            label: 'Lancer la séance',
+            icon: Icons.play_arrow_rounded,
+            onPressed: onStart,
           ),
         ],
       ),

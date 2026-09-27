@@ -22,6 +22,7 @@ class ApTask {
     this.source = '',
     this.verified = true,
     this.cardId,
+    this.skill = '',
   });
 
   final ApTaskKind kind;
@@ -38,6 +39,34 @@ class ApTask {
   final String source;
   final bool verified;
   final String? cardId;
+
+  /// Type d'exercice : recognize, recall, cloze, plural, conjugate, order,
+  /// speak (ou quiz pour les tests de fondation).
+  final String skill;
+
+  /// Les sept types d'exercices d'une séance complète.
+  static const coreSkills = <String>[
+    'recognize',
+    'recall',
+    'cloze',
+    'plural',
+    'conjugate',
+    'order',
+    'speak',
+  ];
+
+  /// Libellé français de chaque type d'exercice.
+  static String skillLabel(String skill) => switch (skill) {
+    'recognize' => 'Reconnaître un mot',
+    'recall' => 'Retrouver le mot bariba',
+    'cloze' => 'Phrase à trous',
+    'plural' => 'Pluriel',
+    'conjugate' => 'Conjugaison',
+    'order' => 'Ordre des mots',
+    'speak' => 'Prononciation',
+    'quiz' => 'Question de leçon',
+    _ => 'Exercice',
+  };
 
   bool isCorrectChoice(String option) => option == answer;
 
@@ -114,6 +143,7 @@ class ApTaskFactory {
             answer: quiz.answer,
             explain: quiz.explain,
             source: quiz.src,
+            skill: 'order',
           ),
         );
       } else {
@@ -127,6 +157,7 @@ class ApTaskFactory {
             answer: quiz.answer,
             explain: quiz.explain,
             source: quiz.src,
+            skill: 'quiz',
           ),
         );
       }
@@ -244,6 +275,7 @@ class ApTaskFactory {
       source: card.source,
       verified: card.verified,
       cardId: card.id,
+      skill: 'recognize',
     );
   }
 
@@ -263,6 +295,7 @@ class ApTaskFactory {
       source: card.source,
       verified: card.verified,
       cardId: card.id,
+      skill: 'recall',
     );
   }
 
@@ -294,6 +327,7 @@ class ApTaskFactory {
       source: card.source,
       verified: card.verified,
       cardId: card.id,
+      skill: 'cloze',
     );
   }
 
@@ -323,6 +357,7 @@ class ApTaskFactory {
       source: card.source,
       verified: card.verified,
       cardId: card.id,
+      skill: 'plural',
     );
   }
 
@@ -351,6 +386,7 @@ class ApTaskFactory {
       source: card.source,
       verified: card.verified,
       cardId: card.id,
+      skill: 'conjugate',
     );
   }
 
@@ -368,6 +404,7 @@ class ApTaskFactory {
       source: card.source,
       verified: card.verified,
       cardId: card.id,
+      skill: 'order',
     );
   }
 
@@ -383,8 +420,79 @@ class ApTaskFactory {
       source: card.source,
       verified: card.verified,
       cardId: card.id,
+      skill: 'speak',
     );
   }
+
+  /// Mots proches (même thème) servant de distracteurs.
+  List<ApCard> poolFor(ApCard card) => _poolFor(card);
+
+  /// Vrai si [card] permet de construire un exercice de type [skill].
+  static bool supports(String skill, ApCard card) {
+    switch (skill) {
+      case 'recognize':
+      case 'recall':
+      case 'speak':
+        return card.ba.isNotEmpty && card.fr.isNotEmpty;
+      case 'cloze':
+        if (!card.cloze || !card.hasExample) {
+          return false;
+        }
+        final target = baseForm(card.ba);
+        return sentenceWords(card.exampleBa!).any((w) => baseForm(w) == target);
+      case 'plural':
+        return (card.plural ?? '').isNotEmpty &&
+            baseForm(card.plural!) != baseForm(card.ba);
+      case 'conjugate':
+        return (card.conjugation['inacc'] ?? '').isNotEmpty;
+      case 'order':
+        if (!card.hasExample) {
+          return false;
+        }
+        final count = sentenceWords(card.exampleBa!).length;
+        return count >= 3 && count <= 6;
+      default:
+        return false;
+    }
+  }
+
+  /// Construit un exercice du type [skill] sur [card], ou `null` si le mot
+  /// ne s'y prête pas.
+  ApTask? buildSkill(String skill, ApCard card) {
+    if (!supports(skill, card)) {
+      return null;
+    }
+    final pool = _poolFor(card);
+    return switch (skill) {
+      'recognize' => _recognize(card, pool),
+      'recall' => _recall(card, pool),
+      'cloze' => _cloze(card, pool),
+      'plural' => _plural(card, pool),
+      'conjugate' => _conjugate(card, pool),
+      'order' => _order(card),
+      'speak' => _speak(card),
+      _ => null,
+    };
+  }
+
+  /// Même exercice avec les propositions remélangées (refaire ses erreurs).
+  static ApTask replayOf(ApTask task, {math.Random? random}) => ApTask(
+    kind: task.kind,
+    instruction: task.instruction,
+    prompt: task.prompt,
+    promptIsBariba: task.promptIsBariba,
+    promptSub: task.promptSub,
+    transcription: task.transcription,
+    options: List<String>.from(task.options)..shuffle(random ?? math.Random()),
+    optionsAreBariba: task.optionsAreBariba,
+    answer: task.answer,
+    orderAnswer: task.orderAnswer,
+    explain: task.explain,
+    source: task.source,
+    verified: task.verified,
+    cardId: task.cardId,
+    skill: task.skill,
+  );
 
   List<String> _shuffled(List<String> values) {
     final copy = List<String>.from(values)..shuffle(_random);
