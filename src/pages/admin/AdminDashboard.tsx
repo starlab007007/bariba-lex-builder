@@ -1,4 +1,4 @@
-import { useState, Component, type ReactNode } from 'react';
+import { useEffect, useState, Component, type ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import AdminOverview from '@/components/admin/AdminOverview';
 import DictionaryManager from '@/components/admin/DictionaryManager';
@@ -112,7 +112,21 @@ export default function AdminDashboard() {
     return queryTab || 'overview';
   };
 
-  const [activeTab, setActiveTab] = useState(tabFromLocation);
+  const validTabs = new Set([
+    'overview','analytics','model-health','dictionary','dictionary-advanced','idioms','grammar-stats',
+    'apprendre-voice','classe-audio','voice-corpus','audio-services','quality','diagnostic',
+    'templates-ia','anime-library','bulk-edit','export','users','settings'
+  ]);
+
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = tabFromLocation();
+    return validTabs.has(tab) ? tab : 'overview';
+  });
+
+  useEffect(() => {
+    const next = tabFromLocation();
+    setActiveTab(validTabs.has(next) ? next : 'overview');
+  }, [location.pathname, location.search]);
 
   const changeTab = (tab: string) => {
     setActiveTab(tab);
