@@ -131,7 +131,7 @@ export default function FitilaVoiceLab() {
   useEffect(() => {
     if (user === null) {
       toast.error('Connectez-vous pour contribuer');
-      navigate('/fitila/auth');
+      navigate('/auth');
     }
   }, [user, navigate]);
 
