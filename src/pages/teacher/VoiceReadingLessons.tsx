@@ -14,7 +14,7 @@ export default function VoiceReadingLessons() {
 
   return (
     <div className="space-y-4">
-      <button onClick={() => nav('/fitila/teacher/voice-reading')} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+      <button onClick={() => nav('/teacher/voice-reading')} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="w-4 h-4" /> Tous les modules
       </button>
       <h1 className="text-xl md:text-2xl font-black">{lvl} · {moduleLabel(mod)} — {lessons.length} leçons</h1>
@@ -31,7 +31,7 @@ export default function VoiceReadingLessons() {
           return (
             <button
               key={l.lesson_id}
-              onClick={() => nav(`/fitila/teacher/voice-reading/${lvl}/${mod}/${l.lesson_id}`)}
+              onClick={() => nav(`/teacher/voice-reading/${lvl}/${mod}/${l.lesson_id}`)}
               className="w-full text-left p-3 md:p-4 rounded-xl border border-border bg-card hover:bg-muted/40 transition-colors flex items-center gap-3"
             >
               <Icon className={`w-5 h-5 ${iconCls}`} />
