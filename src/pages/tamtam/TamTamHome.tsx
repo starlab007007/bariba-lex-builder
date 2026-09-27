@@ -118,9 +118,9 @@ const BottomTabBar: React.FC<{
   const handleTabPress = (tabId: TabId) => {
     triggerFeedback('click');
     if (tabId === 'home') onTabChange(tabId);
-    else if (tabId === 'social') navigate('/fitila/social');
-    else if (tabId === 'market') navigate('/fitila/market');
-    else if (tabId === 'profile') navigate('/fitila/profile');
+    else if (tabId === 'social') navigate('/social');
+    else if (tabId === 'market') navigate('/market');
+    else if (tabId === 'profile') navigate('/profile');
   };
 
   return (
@@ -226,7 +226,7 @@ const WelcomeSection: React.FC<{ onGoToSocial: () => void; onMenuOpen: () => voi
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.1 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => navigate('/fitila/social')}
+            onClick={() => navigate('/social')}
             className={`w-full rounded-2xl p-4 flex items-center gap-4 bg-gradient-to-r ${feed.gradient}`}
           >
             <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center">
@@ -276,7 +276,7 @@ const WelcomeSection: React.FC<{ onGoToSocial: () => void; onMenuOpen: () => voi
         <p className="text-white/80 text-sm mb-3">
           "{currentLang === 'ba' ? 'Gisɔ aburu gobi nɛɛ!' : 'Parlez des prix du marché aujourd\'hui!'}"
         </p>
-        <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigate('/fitila/social')} className="w-full py-2.5 rounded-xl bg-[#FF7A00] text-white text-sm font-bold">
+        <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigate('/social')} className="w-full py-2.5 rounded-xl bg-[#FF7A00] text-white text-sm font-bold">
           {currentLang === 'ba' ? 'Sɔ̃ɔ' : 'Commencer'}
         </motion.button>
       </motion.div>
@@ -403,7 +403,7 @@ export default function TamTamHome() {
 
   return (
     <div className="fixed inset-0 overflow-y-auto" style={{ background: '#0B0B0B' }}>
-      <WelcomeSection onGoToSocial={() => navigate('/fitila/social')} onMenuOpen={sideMenu.open} currentLang={currentLang} />
+      <WelcomeSection onGoToSocial={() => navigate('/social')} onMenuOpen={sideMenu.open} currentLang={currentLang} />
 
       <BottomTabBar activeTab={activeTab} onTabChange={setActiveTab} onCreatePress={() => setShowCreateMenu(true)} currentLang={currentLang} />
 
