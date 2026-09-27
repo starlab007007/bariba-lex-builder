@@ -103,6 +103,18 @@ jobs:
             echo "--- Public DNS resolution ---"
             getent ahosts fitila.bj || true
             command -v dig >/dev/null && { echo "A=$(dig +short A fitila.bj | tr '\n' ' ')"; echo "AAAA=$(dig +short AAAA fitila.bj | tr '\n' ' ')"; } || true
+            echo "--- DNS target vs deployment VPS ---"
+            DNS_A=$(getent ahosts fitila.bj 2>/dev/null | awk '/STREAM/{print $1; exit}')
+            VPS_A=$(hostname -I 2>/dev/null | awk '{print $1}')
+            if [ -n "$DNS_A" ] && [ -n "$VPS_A" ]; then
+              if [ "$DNS_A" = "$VPS_A" ]; then
+                echo "FITILA_DNS_MATCH=YES"
+              else
+                echo "FITILA_DNS_MATCH=NO"
+              fi
+            else
+              echo "FITILA_DNS_MATCH=UNKNOWN"
+            fi
             echo "--- VPS network addresses ---"
             hostname -I || true
             ip -4 addr show scope global | grep -E 'inet ' || true
