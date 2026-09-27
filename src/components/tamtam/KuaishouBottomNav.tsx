@@ -38,11 +38,8 @@ export const KuaishouBottomNav: React.FC = memo(() => {
   // Bottom nav is always visible
 
   const isActive = (path: string) => {
-    if (path === '/social') {
-      return location.pathname === '/fitila' || 
-             location.pathname === '/fitila/' || 
-             location.pathname === '/social';
-    }
+    if (path === '/') return location.pathname === '/';
+    if (path === '/social') return location.pathname === '/social';
     return location.pathname.startsWith(path);
   };
 
