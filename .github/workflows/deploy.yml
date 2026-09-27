@@ -84,6 +84,15 @@ jobs:
             docker compose -f docker-composer.yml build
             docker compose -f docker-composer.yml up -d --force-recreate --remove-orphans
 
+            echo "🧪 Smoke tests FITILA / administration..."
+            sleep 2
+            curl -fsS --max-time 10 http://127.0.0.1:8085/ >/dev/null
+            curl -fsS --max-time 10 http://127.0.0.1:8085/admin >/dev/null
+            curl -fsS --max-time 10 http://127.0.0.1:8085/admin/users >/dev/null
+            curl -fsS --max-time 10 http://127.0.0.1:8085/admin/apprendre-voice >/dev/null
+            curl --resolve fitila.bj:443:127.0.0.1 -fsS --max-time 10 https://fitila.bj/admin >/dev/null
+            echo "✅ Routes web et admin accessibles sur le VPS"
+
             echo "🧹 Nettoyage des anciennes images inutilisées...."
             docker image prune -f
 
