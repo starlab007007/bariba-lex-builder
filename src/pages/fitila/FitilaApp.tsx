@@ -47,23 +47,23 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
   const { profile } = useTamTamProfile();
 
   const navItems = [
-    { icon: Home, labelKey: 'sidebar_home', path: '/fitila/social', emoji: '🏠' },
-    { icon: User, labelKey: 'sidebar_profile', path: '/fitila/profile', emoji: '👤' },
+    { icon: Home, labelKey: 'sidebar_home', path: '/social', emoji: '🏠' },
+    { icon: User, labelKey: 'sidebar_profile', path: '/profile', emoji: '👤' },
   ];
 
   // ✨ Modules récemment ajoutés - mis en avant
   const newToolsItems = [
-    { emoji: '🏫', labelKey: 'sidebar_classe',         descKey: 'sidebar_classe_desc',         path: '/fitila/classe',    gradient: 'from-rose-500 to-pink-400' },
-    { emoji: '🎙️', labelKey: 'sidebar_voice_lab',      descKey: 'sidebar_voice_lab_desc',      path: '/fitila/voice-lab', gradient: 'from-pink-500 to-rose-400' },
-    { emoji: '⚖️', labelKey: 'sidebar_fitila_tem_ia',  descKey: 'sidebar_fitila_tem_ia_desc',  path: '/fitila/tem-ia',    gradient: 'from-emerald-500 to-teal-400' },
+    { emoji: '🏫', labelKey: 'sidebar_classe',         descKey: 'sidebar_classe_desc',         path: '/classe',    gradient: 'from-rose-500 to-pink-400' },
+    { emoji: '🎙️', labelKey: 'sidebar_voice_lab',      descKey: 'sidebar_voice_lab_desc',      path: '/voice-lab', gradient: 'from-pink-500 to-rose-400' },
+    { emoji: '⚖️', labelKey: 'sidebar_fitila_tem_ia',  descKey: 'sidebar_fitila_tem_ia_desc',  path: '/tem-ia',    gradient: 'from-emerald-500 to-teal-400' },
   ];
 
   const toolsItems = [
-    { emoji: '⌨️', labelKey: 'sidebar_keyboard', descKey: 'sidebar_keyboard_desc', path: '/fitila/keyboard', gradient: 'from-amber-500 to-orange-400' },
-    { emoji: '📖', labelKey: 'sidebar_dictionary', descKey: 'sidebar_dictionary_desc', path: '/fitila/dictionary', gradient: 'from-emerald-500 to-teal-400' },
-    { emoji: '🌍', labelKey: 'sidebar_translator', descKey: 'sidebar_translator_desc', path: '/fitila/translator', gradient: 'from-blue-500 to-cyan-400' },
-    { emoji: '📚', labelKey: 'sidebar_learn',      descKey: 'sidebar_learn_desc',      path: '/fitila/learn',      gradient: 'from-amber-500 to-orange-400' },
-    { emoji: '🤖', labelKey: 'sidebar_fitila_ia',  descKey: 'sidebar_fitila_ia_desc',  path: '/fitila/ia',         gradient: 'from-purple-500 to-indigo-400' },
+    { emoji: '⌨️', labelKey: 'sidebar_keyboard', descKey: 'sidebar_keyboard_desc', path: '/keyboard', gradient: 'from-amber-500 to-orange-400' },
+    { emoji: '📖', labelKey: 'sidebar_dictionary', descKey: 'sidebar_dictionary_desc', path: '/dictionary', gradient: 'from-emerald-500 to-teal-400' },
+    { emoji: '🌍', labelKey: 'sidebar_translator', descKey: 'sidebar_translator_desc', path: '/translator', gradient: 'from-blue-500 to-cyan-400' },
+    { emoji: '📚', labelKey: 'sidebar_learn',      descKey: 'sidebar_learn_desc',      path: '/',      gradient: 'from-amber-500 to-orange-400' },
+    { emoji: '🤖', labelKey: 'sidebar_fitila_ia',  descKey: 'sidebar_fitila_ia_desc',  path: '/ia',         gradient: 'from-purple-500 to-indigo-400' },
   ];
 
   const handleNavigate = (path: string) => {
@@ -73,8 +73,8 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
   };
 
   const isActive = (path: string) => {
-    if (path === '/fitila/social') {
-      return location.pathname === '/fitila' || location.pathname === '/fitila/' || location.pathname === '/fitila/social';
+    if (path === '/social') {
+      return location.pathname === '/' || location.pathname === '/social';
     }
     return location.pathname.startsWith(path);
   };
@@ -293,7 +293,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                   <span className="text-[#FF7A00] text-sm font-medium">{t('sidebar_assets')}</span>
                 </motion.button>
               )}
-              <motion.button whileTap={{ scale: 0.98 }} onClick={() => handleNavigate('/fitila/profile?settings=1')} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5">
+              <motion.button whileTap={{ scale: 0.98 }} onClick={() => handleNavigate('/profile?settings=1')} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5">
                 <Settings className="w-5 h-5 text-white/50" />
                 <span className="text-white/50 text-sm">{t('sidebar_settings')}</span>
               </motion.button>
