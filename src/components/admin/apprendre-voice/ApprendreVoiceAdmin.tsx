@@ -732,12 +732,25 @@ export default function ApprendreVoiceAdmin() {
   const location = useLocation();
   const navigate = useNavigate();
   const allowedTabs = ['dashboard', 'review', 'publish', 'lots', 'contributors', 'issues', 'settings', 'audit'];
-  const initialSection = new URLSearchParams(location.search).get('section') || 'dashboard';
-  const [tab, setTab] = useState(allowedTabs.includes(initialSection) ? initialSection : 'dashboard');
+  const sectionFromLocation = () => {
+    const section = new URLSearchParams(location.search).get('section') || 'dashboard';
+    return allowedTabs.includes(section) ? section : 'dashboard';
+  };
+  const [tab, setTab] = useState(sectionFromLocation);
+
+  useEffect(() => {
+    setTab(sectionFromLocation());
+  }, [location.search]);
 
   const changeSection = (section: string) => {
-    setTab(section);
-    navigate(`/admin/apprendre-voice?section=${encodeURIComponent(section)}`, { replace: true });
+    const next = allowedTabs.includes(section) ? section : 'dashboard';
+    setTab(next);
+    navigate(
+      next === 'dashboard'
+        ? '/admin/apprendre-voice'
+        : `/admin/apprendre-voice?section=${encodeURIComponent(next)}`,
+      { replace: false },
+    );
   };
   return (
     <div className="space-y-4">
