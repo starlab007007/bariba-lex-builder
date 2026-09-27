@@ -24,13 +24,13 @@ export default function ProtectedRoute({ children, requireAdmin = false, require
 
   if (!user) {
     const from = `${location.pathname}${location.search}`;
-    const redirect = from && from !== '/fitila/auth'
-      ? `/fitila/auth?redirect=${encodeURIComponent(from)}`
-      : '/fitila/auth';
+    const redirect = from && from !== '/auth'
+      ? `/auth?redirect=${encodeURIComponent(from)}`
+      : '/auth';
     return <Navigate to={redirect} replace />;
   }
   if (requireAdmin && !isAdmin) return <Navigate to="/" replace />;
-  if (requireTeacher && !isTeacher) return <Navigate to="/fitila" replace />;
+  if (requireTeacher && !isTeacher) return <Navigate to="/" replace />;
 
   return <>{children}</>;
 }
