@@ -118,6 +118,69 @@ jobs:
         working-directory: fitila_flutter
         run: flutter test test/apprendre_module_test.dart --dart-define-from-file=.ci-dart-defines.json --reporter compact
 
+      - name: Prepare Android release signing
+        working-directory: fitila_flutter
+        env:
+          FITILA_KEYSTORE_BASE64: ${{ secrets.FITILA_KEYSTORE_BASE64 }}
+          FITILA_KEYSTORE_PASSWORD: ${{ secrets.FITILA_KEYSTORE_PASSWORD }}
+          FITILA_KEY_ALIAS: ${{ secrets.FITILA_KEY_ALIAS }}
+          FITILA_KEY_PASSWORD: ${{ secrets.FITILA_KEY_PASSWORD }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64
+          import os
+          import secrets
+          import subprocess
+
+          names = (
+              'FITILA_KEYSTORE_BASE64',
+              'FITILA_KEYSTORE_PASSWORD',
+              'FITILA_KEY_ALIAS',
+              'FITILA_KEY_PASSWORD',
+          )
+          required = {name: os.environ.get(name, '') for name in names}
+          production_ready = all(required.values())
+
+          if production_ready:
+              keystore = Path('android/app/fitila-release.jks')
+              keystore.write_bytes(base64.b64decode(required['FITILA_KEYSTORE_BASE64']))
+              store_password = required['FITILA_KEYSTORE_PASSWORD']
+              key_alias = required['FITILA_KEY_ALIAS']
+              key_password = required['FITILA_KEY_PASSWORD']
+              signing_mode = 'production'
+          else:
+              keystore = Path('android/app/fitila-ci-release.jks')
+              store_password = secrets.token_urlsafe(24)
+              key_password = store_password
+              key_alias = 'fitila-ci'
+              subprocess.run([
+                  'keytool', '-genkeypair', '-noprompt',
+                  '-keystore', str(keystore),
+                  '-storepass', store_password,
+                  '-keypass', key_password,
+                  '-alias', key_alias,
+                  '-keyalg', 'RSA',
+                  '-keysize', '2048',
+                  '-validity', '3650',
+                  '-dname', 'CN=FITILA CI Release,O=FITILA,C=BJ',
+              ], check=True)
+              signing_mode = 'ci-ephemeral'
+
+          Path('android/key.properties').write_text(
+              '\n'.join([
+                  f'storeFile=app/{keystore.name}',
+                  f'storePassword={store_password}',
+                  f'keyAlias={key_alias}',
+                  f'keyPassword={key_password}',
+                  '',
+              ]),
+              encoding='utf-8',
+          )
+          Path('build').mkdir(exist_ok=True)
+          Path('build/SIGNING_MODE.txt').write_text(signing_mode + '\n', encoding='utf-8')
+          PY
+
       - name: Build optimized release APK
         working-directory: fitila_flutter
         run: |
@@ -137,7 +200,7 @@ jobs:
           target="build/apprendre-v23-output/FITILA-Android-v1.8.7-build18-apprendre-v2.3-final-optimized.apk"
           cp "$src" "$target"
           cp -R build/symbols build/apprendre-v23-output/symbols
-          echo "ci-ephemeral" > build/apprendre-v23-output/SIGNING_MODE.txt
+          cp build/SIGNING_MODE.txt build/apprendre-v23-output/SIGNING_MODE.txt
           cd build/apprendre-v23-output
           sha256sum *.apk | tee SHA256SUMS.txt
           du -h *.apk | tee SIZES.txt
