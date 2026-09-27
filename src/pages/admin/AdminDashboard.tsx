@@ -104,19 +104,40 @@ export default function AdminDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const pathToTab: Record<string, string> = {
+    '/admin': 'overview',
+    '/admin/overview': 'overview',
+    '/admin/analytics': 'analytics',
+    '/admin/model-health': 'model-health',
+    '/admin/dictionary': 'dictionary',
+    '/admin/dictionary-advanced': 'dictionary-advanced',
+    '/admin/idioms': 'idioms',
+    '/admin/grammar-stats': 'grammar-stats',
+    '/admin/apprendre-voice': 'apprendre-voice',
+    '/admin/classe-audio': 'classe-audio',
+    '/admin/audio-services': 'audio-services',
+    '/admin/quality': 'quality',
+    '/admin/diagnostic': 'diagnostic',
+    '/admin/templates-ia': 'templates-ia',
+    '/admin/anime-library': 'anime-library',
+    '/admin/bulk-edit': 'bulk-edit',
+    '/admin/export': 'export',
+    '/admin/users': 'users',
+    '/admin/settings': 'settings',
+  };
+  const tabToPath: Record<string, string> = Object.fromEntries(
+    Object.entries(pathToTab).map(([path, tab]) => [tab, path])
+  );
+  tabToPath.overview = '/admin';
+
   const tabFromLocation = () => {
-    const path = location.pathname.replace(/\/$/, '');
-    if (path.endsWith('/apprendre-voice')) return 'apprendre-voice';
-    if (path.endsWith('/users')) return 'users';
+    const path = location.pathname.replace(/\/$/, '') || '/admin';
+    if (pathToTab[path]) return pathToTab[path];
     const queryTab = new URLSearchParams(location.search).get('tab');
     return queryTab || 'overview';
   };
 
-  const validTabs = new Set([
-    'overview','analytics','model-health','dictionary','dictionary-advanced','idioms','grammar-stats',
-    'apprendre-voice','classe-audio','voice-corpus','audio-services','quality','diagnostic',
-    'templates-ia','anime-library','bulk-edit','export','users','settings'
-  ]);
+  const validTabs = new Set(Object.values(pathToTab));
 
   const [activeTab, setActiveTab] = useState(() => {
     const tab = tabFromLocation();
@@ -129,11 +150,8 @@ export default function AdminDashboard() {
   }, [location.pathname, location.search]);
 
   const changeTab = (tab: string) => {
-    setActiveTab(tab);
-    if (tab === 'apprendre-voice') navigate('/admin/apprendre-voice');
-    else if (tab === 'users') navigate('/admin/users');
-    else if (tab === 'overview') navigate('/admin');
-    else navigate(`/admin?tab=${encodeURIComponent(tab)}`);
+    const target = tabToPath[tab] || '/admin';
+    navigate(target);
   };
 
   const navSections = [
