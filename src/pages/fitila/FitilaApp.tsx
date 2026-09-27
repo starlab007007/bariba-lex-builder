@@ -73,9 +73,8 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
   };
 
   const isActive = (path: string) => {
-    if (path === '/social') {
-      return location.pathname === '/' || location.pathname === '/social';
-    }
+    if (path === '/') return location.pathname === '/';
+    if (path === '/social') return location.pathname === '/social';
     return location.pathname.startsWith(path);
   };
 
