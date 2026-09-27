@@ -17,18 +17,18 @@ interface NavItem {
 const COMING_SOON_PATHS: string[] = [];
 
 const leftItems: NavItem[] = [
-  { id: 'home', icon: Home, labelFr: 'Fil', labelBa: 'Soo', path: '/fitila/social' },
-  { id: 'learn', icon: BookOpen, labelFr: 'Apprendre', labelBa: 'Dɔnku', path: '/fitila/learn' },
-  { id: 'classe', icon: School, labelFr: 'Classe', labelBa: 'Klaasi', path: '/fitila/classe' },
+  { id: 'home', icon: Home, labelFr: 'Fil', labelBa: 'Soo', path: '/social' },
+  { id: 'learn', icon: BookOpen, labelFr: 'Apprendre', labelBa: 'Dɔnku', path: '/' },
+  { id: 'classe', icon: School, labelFr: 'Classe', labelBa: 'Klaasi', path: '/classe' },
 ];
 
 const rightItems: NavItem[] = [
-  { id: 'dictionary', icon: Book, labelFr: 'Dico', labelBa: 'Gãnsɛ', path: '/fitila/dictionary' },
-  { id: 'translator', icon: BookText, labelFr: 'Traducteur', labelBa: 'Tɛnyɛ̃ɛ̃ru', path: '/fitila/translator' },
-  { id: 'tem-ia', icon: Bot, labelFr: 'Fitila IA', labelBa: 'Fitila IA', path: '/fitila/tem-ia' },
+  { id: 'dictionary', icon: Book, labelFr: 'Dico', labelBa: 'Gãnsɛ', path: '/dictionary' },
+  { id: 'translator', icon: BookText, labelFr: 'Traducteur', labelBa: 'Tɛnyɛ̃ɛ̃ru', path: '/translator' },
+  { id: 'tem-ia', icon: Bot, labelFr: 'Fitila IA', labelBa: 'Fitila IA', path: '/tem-ia' },
 ];
 
-const createItem: NavItem = { id: 'create', icon: Plus, labelFr: 'Créer', labelBa: 'Ko', path: '/fitila/creator', isCreate: true };
+const createItem: NavItem = { id: 'create', icon: Plus, labelFr: 'Créer', labelBa: 'Ko', path: '/creator', isCreate: true };
 
 export const KuaishouBottomNav: React.FC = memo(() => {
   const navigate = useNavigate();
@@ -38,10 +38,10 @@ export const KuaishouBottomNav: React.FC = memo(() => {
   // Bottom nav is always visible
 
   const isActive = (path: string) => {
-    if (path === '/fitila/social') {
+    if (path === '/social') {
       return location.pathname === '/fitila' || 
              location.pathname === '/fitila/' || 
-             location.pathname === '/fitila/social';
+             location.pathname === '/social';
     }
     return location.pathname.startsWith(path);
   };
