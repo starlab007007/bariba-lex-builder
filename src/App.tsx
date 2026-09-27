@@ -172,8 +172,8 @@ const App = () => (
                 <Route path="profile/:userId" element={<TamTamPublicProfile />} />
               </Route>
 
-              {/* Teacher dashboard */}
-              <Route path="/fitila/teacher" element={<ProtectedRoute requireTeacher><TeacherLayout /></ProtectedRoute>}>
+              {/* Teacher dashboard — canonical FITILA routes */}
+              <Route path="/teacher" element={<ProtectedRoute requireTeacher><TeacherLayout /></ProtectedRoute>}>
                 <Route index element={<TeacherDashboard />} />
                 <Route path="students" element={<StudentList />} />
                 <Route path="student/:id" element={<StudentDetail />} />
@@ -186,11 +186,16 @@ const App = () => (
                 <Route path="voice-reading/:level/:module" element={<VoiceReadingLessons />} />
                 <Route path="voice-reading/:level/:module/:lessonId" element={<VoiceReadingStudio />} />
               </Route>
-              <Route path="/fitila/classe/corrections" element={<ProtectedRoute><ClasseCorrections /></ProtectedRoute>} />
-              <Route path="/fitila/classe/notes" element={<ProtectedRoute><MyGradeReport /></ProtectedRoute>} />
+              <Route path="/classe/corrections" element={<ProtectedRoute><ClasseCorrections /></ProtectedRoute>} />
+              <Route path="/classe/notes" element={<ProtectedRoute><MyGradeReport /></ProtectedRoute>} />
 
-              {/* Legacy /tamtam routes redirect to /fitila */}
-              <Route path="/tamtam/*" element={<Navigate to="/fitila" replace />} />
+              {/* Compatibility: legacy teacher/class URLs */}
+              <Route path="/fitila/teacher/*" element={<Navigate to="/teacher" replace />} />
+              <Route path="/fitila/classe/corrections" element={<Navigate to="/classe/corrections" replace />} />
+              <Route path="/fitila/classe/notes" element={<Navigate to="/classe/notes" replace />} />
+
+              {/* Legacy social routes */}
+              <Route path="/tamtam/*" element={<Navigate to="/social" replace />} />
 
               <Route
                 path="/admin/voice-corpus"
