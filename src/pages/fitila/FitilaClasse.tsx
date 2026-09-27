@@ -235,7 +235,7 @@ export default function FitilaClasse() {
       {isTeacher && (
         <motion.button
           whileTap={{ scale: 0.98 }}
-          onClick={() => navigate('/fitila/teacher')}
+          onClick={() => navigate('/teacher')}
           className="w-full flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-200 text-left"
         >
           <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
