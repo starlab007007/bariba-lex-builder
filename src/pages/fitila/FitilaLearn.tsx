@@ -18,6 +18,7 @@ import { useEditorRole } from '@/hooks/useEditorRole';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import BaribaAudioText from '@/components/fitila/BaribaAudioText';
 
 type ViewType = 'language-selection' | 'dashboard' | 'lesson' | 'lesson-complete' | 'foundation-lesson' | 'foundation-quiz';
 
@@ -354,9 +355,10 @@ export default function FitilaLearn() {
               {/* Flutter v2.4 greeting */}
               <div className="flex items-start justify-between pt-1">
                 <div>
-                  <h2 className="text-[26px] leading-tight font-extrabold text-[#241F2E]">
-                    {new Date().getHours() < 12 ? 'A kpuna n do ?' : 'Mɛɛribu'}
-                  </h2>
+                  <BaribaAudioText
+                    text={new Date().getHours() < 12 ? 'A kpuna n do ?' : 'Mɛɛribu'}
+                    textClassName="text-[26px] leading-tight font-extrabold text-[#241F2E]"
+                  />
                   <p className="mt-1 text-sm text-[#6F6955]">
                     {new Date().getHours() < 12 ? '« As-tu bien dormi ? » — le salut du matin' : 'Apprendre le bàátɔ̀nú et le français'}
                   </p>
@@ -591,7 +593,9 @@ export default function FitilaLearn() {
                               </div>
                               <ChevronRight className="w-4 h-4 text-gray-300 ml-auto group-hover:text-indigo-400 transition-colors" />
                             </div>
-                            <h4 className="font-bold text-[#241F2E] text-xs leading-tight">{fl.title[langKey]}</h4>
+                            {langKey === 'br'
+                              ? <BaribaAudioText text={fl.title.br} compact hideUnavailable textClassName="font-bold text-[#241F2E] text-xs leading-tight" />
+                              : <h4 className="font-bold text-[#241F2E] text-xs leading-tight">{fl.title.fr}</h4>}
                             <p className="text-[10px] text-gray-400 mt-1">{fl.sections.length} {getText('sections')} • {fl.quiz.length} {getText('quiz')}</p>
                           </motion.button>
                         );
@@ -621,7 +625,9 @@ export default function FitilaLearn() {
                           {theme.icon}
                         </div>
                         <div className="flex-1">
-                          <h4 className="font-bold text-[#241F2E] text-sm">{theme.name[langKey]}</h4>
+                          {langKey === 'br'
+                            ? <BaribaAudioText text={theme.name.br} compact hideUnavailable textClassName="font-bold text-[#241F2E] text-sm" />
+                            : <h4 className="font-bold text-[#241F2E] text-sm">{theme.name.fr}</h4>}
                           <p className="text-xs text-[#6F6955]">{theme.lessonsCount} {getText('lessonsAvailable')}</p>
                         </div>
                         <div className="text-right">
@@ -655,7 +661,9 @@ export default function FitilaLearn() {
                     {currentFoundation.icon}
                   </div>
                   <div className="flex-1">
-                    <h2 className="text-lg font-bold text-[#241F2E]">{currentFoundation.title[langKey]}</h2>
+                    {langKey === 'br'
+                      ? <BaribaAudioText text={currentFoundation.title.br} compact hideUnavailable textClassName="text-lg font-bold text-[#241F2E]" />
+                      : <h2 className="text-lg font-bold text-[#241F2E]">{currentFoundation.title.fr}</h2>}
                     <p className="text-xs text-[#6F6955]">{currentFoundation.sections.length} {getText('sections')}</p>
                   </div>
                   {isEditor && (
@@ -689,7 +697,9 @@ export default function FitilaLearn() {
                           className="border-b-2 border-blue-400 bg-transparent outline-none text-base font-bold flex-1"
                         />
                       ) : (
-                        section.title[langKey]
+                        langKey === 'br'
+                          ? <BaribaAudioText text={section.title.br} compact hideUnavailable textClassName="font-bold text-[#241F2E] text-base" />
+                          : section.title.fr
                       )}
                     </h3>
                     {isEditor && (
@@ -715,7 +725,9 @@ export default function FitilaLearn() {
                       rows={5}
                     />
                   ) : (
-                    <p className="text-gray-600 text-sm leading-relaxed">{section.content[langKey]}</p>
+                    langKey === 'br'
+                      ? <BaribaAudioText text={section.content.br} hideUnavailable textClassName="text-gray-600 text-sm leading-relaxed" />
+                      : <p className="text-gray-600 text-sm leading-relaxed">{section.content.fr}</p>
                   )}
 
                   {/* Table */}
@@ -736,7 +748,7 @@ export default function FitilaLearn() {
                             <tr key={rIdx} className={rIdx % 2 === 0 ? 'bg-gray-50/50' : ''}>
                               {row.map((cell, cIdx) => (
                                 <td key={cIdx} className="px-2 py-1.5 text-gray-600 border-b border-[#E4DFCC]">
-                                  {cell}
+                                  <BaribaAudioText text={cell} compact hideUnavailable textClassName="text-gray-600" />
                                 </td>
                               ))}
                             </tr>
@@ -756,8 +768,8 @@ export default function FitilaLearn() {
                         <div key={eIdx} className="bg-gray-50 rounded-xl p-3 border border-[#E4DFCC]">
                           <div className="flex items-start gap-2">
                             <div className="flex-1">
-                              <p className="font-semibold text-[#241F2E] text-sm">{ex.bariba}</p>
-                              <p className="text-[#6F6955] text-xs">{ex.french}</p>
+                              <BaribaAudioText text={ex.bariba} compact textClassName="font-semibold text-[#241F2E] text-sm" />
+                              <p className="text-[#6F6955] text-xs mt-1">{ex.french}</p>
                             </div>
                             {ex.french && (
                               <motion.button whileTap={{ scale: 0.85 }} onClick={() => speakFrench(ex.french)} className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
@@ -774,7 +786,9 @@ export default function FitilaLearn() {
                   {/* Tip */}
                   {section.tip && (
                     <div className="bg-amber-50 rounded-xl p-3 border border-amber-200">
-                      <p className="text-amber-800 text-xs">{section.tip[langKey]}</p>
+                      {langKey === 'br'
+                        ? <BaribaAudioText text={section.tip.br} compact hideUnavailable textClassName="text-amber-800 text-xs" />
+                        : <p className="text-amber-800 text-xs">{section.tip.fr}</p>}
                     </div>
                   )}
 
@@ -832,7 +846,9 @@ export default function FitilaLearn() {
                 return (
                   <>
                     <div className="bg-white rounded-3xl shadow-sm p-6 text-center">
-                      <p className="text-[#241F2E] font-bold text-xl">{q.question[langKey]}</p>
+                      {langKey === 'br'
+                        ? <BaribaAudioText text={q.question.br} textClassName="text-[#241F2E] font-bold text-xl" />
+                        : <p className="text-[#241F2E] font-bold text-xl">{q.question.fr}</p>}
                     </div>
 
                     <div className="space-y-3">
@@ -851,7 +867,7 @@ export default function FitilaLearn() {
                             disabled={foundationQuizAnswer !== null}
                             className={`w-full p-4 rounded-2xl border-2 ${styles} transition-all text-left flex items-center justify-between shadow-sm`}
                           >
-                            <span className="text-[#241F2E] text-sm font-medium">{opt}</span>
+                            <BaribaAudioText text={opt} compact hideUnavailable textClassName="text-[#241F2E] text-sm font-medium" />
                             {foundationQuizAnswer !== null && idx === q.correctIndex && <Check className="w-5 h-5 text-green-500" />}
                             {foundationQuizAnswer === idx && idx !== q.correctIndex && <X className="w-5 h-5 text-red-500" />}
                           </motion.button>
@@ -870,7 +886,9 @@ export default function FitilaLearn() {
                                 {foundationQuizAnswer === q.correctIndex ? getText('correctAnswer') : getText('wrongAnswer')}
                               </span>
                             </div>
-                            <p className="text-gray-600 text-xs">{q.explanation[langKey]}</p>
+                            {langKey === 'br'
+                              ? <BaribaAudioText text={q.explanation.br} compact hideUnavailable textClassName="text-gray-600 text-xs" />
+                              : <p className="text-gray-600 text-xs">{q.explanation.fr}</p>}
                           </div>
                           <div className="flex gap-2">
                             <motion.button
@@ -925,11 +943,18 @@ export default function FitilaLearn() {
               <div className="bg-white rounded-3xl shadow-sm p-6 text-center">
                 <p className="text-gray-400 text-xs mb-3">{getText('translateTo')}</p>
                 <div className="flex items-center justify-center gap-3 mb-2">
-                  <p className="text-[#241F2E] font-bold text-2xl">{getQuestion(exercises[exerciseIndex], direction)}</p>
-                  {direction === 'fr_to_bariba' && (
-                    <motion.button whileTap={{ scale: 0.85 }} onClick={() => speakFrench(exercises[exerciseIndex].french)} className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 shadow-sm">
-                      <Volume2 className="w-4 h-4 text-blue-500" />
-                    </motion.button>
+                  {direction === 'bariba_to_french' ? (
+                    <BaribaAudioText
+                      text={exercises[exerciseIndex].bariba}
+                      textClassName="text-[#241F2E] font-bold text-2xl"
+                    />
+                  ) : (
+                    <>
+                      <p className="text-[#241F2E] font-bold text-2xl">{exercises[exerciseIndex].french}</p>
+                      <motion.button whileTap={{ scale: 0.85 }} onClick={() => speakFrench(exercises[exerciseIndex].french)} className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <Volume2 className="w-4 h-4 text-blue-500" />
+                      </motion.button>
+                    </>
                   )}
                 </div>
                 {exercises[exerciseIndex].context && (
@@ -954,7 +979,9 @@ export default function FitilaLearn() {
                       disabled={selectedAnswer !== null}
                       className={`w-full p-4 rounded-2xl border-2 ${styles} transition-all text-left flex items-center justify-between shadow-sm`}
                     >
-                      <span className="text-[#241F2E] text-sm font-medium">{option}</span>
+                      {direction === 'fr_to_bariba'
+                        ? <BaribaAudioText text={option} compact textClassName="text-[#241F2E] text-sm font-medium" />
+                        : <span className="text-[#241F2E] text-sm font-medium">{option}</span>}
                       <div className="flex items-center gap-2">
                         {selectedAnswer === option && isCorrect && <Check className="w-5 h-5 text-green-500" />}
                         {selectedAnswer === option && isCorrect === false && <X className="w-5 h-5 text-red-500" />}
@@ -979,9 +1006,9 @@ export default function FitilaLearn() {
                       </span>
                     </div>
                     {!isCorrect && (
-                      <p className="text-gray-600 text-xs mt-1">
-                        {getCorrectAnswer(exercises[exerciseIndex], direction)}
-                      </p>
+                      direction === 'fr_to_bariba'
+                        ? <BaribaAudioText text={getCorrectAnswer(exercises[exerciseIndex], direction)} compact textClassName="text-gray-600 text-xs mt-1" />
+                        : <p className="text-gray-600 text-xs mt-1">{getCorrectAnswer(exercises[exerciseIndex], direction)}</p>
                     )}
                   </motion.div>
                 )}
