@@ -23,7 +23,7 @@ const db = supabase as unknown as SupabaseClient;
 const BUCKET = 'apprendre-audio';
 
 const KIND_LABELS: Record<string, string> = {
-  lecon: 'Leçons', proverbe: 'Proverbes', scene: 'Scènes de vie', mot: 'Mots', exemple: 'Phrases d’exemple', forme: 'Formes',
+  lecon: 'Phrases / leçons', proverbe: 'Proverbes / expressions', scene: 'Scènes de vie', mot: 'Mots', exemple: 'Exemples en bàátɔ̀nú', forme: 'Formes / vocabulaire',
 };
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon', submitted: 'À valider', approved: 'Approuvée', rejected: 'Rejetée', needs_fix: 'À corriger', withdrawn: 'Retirée',
@@ -161,7 +161,10 @@ function DashboardTab() {
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle className="text-base">Couverture par type de texte</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Couverture obligatoire des textes bàátɔ̀nú</CardTitle>
+            <CardDescription>Objectif : chaque mot, forme, phrase, expression, exemple et réplique doit avoir au moins une voix validée et publiée.</CardDescription>
+          </CardHeader>
           <CardContent className="space-y-3">
             {order.filter(k => stats.by_kind[k]).map(k => {
               const v = stats.by_kind[k];
@@ -173,6 +176,9 @@ function DashboardTab() {
                 </div>
               );
             })}
+            <Button asChild variant="outline" size="sm" className="mt-2 w-full">
+              <Link to="/admin/apprendre-voice?section=lots"><Mic className="h-4 w-4" /> Créer des lots pour les voix manquantes</Link>
+            </Button>
           </CardContent>
         </Card>
         <Card>
