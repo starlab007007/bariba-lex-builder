@@ -129,7 +129,7 @@ export default function TamTamProfile() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/fitila/auth', { replace: true });
+      navigate('/auth', { replace: true });
     }
   }, [authLoading, user, navigate]);
 
@@ -325,7 +325,7 @@ export default function TamTamProfile() {
       try { setLanguage(next); } catch {}
       toast({ title: next === 'ba' ? 'Bààtɔ̀nú' : 'Français' });
     } else if (id === 'help') {
-      navigate('/fitila/learn');
+      navigate('/');
     }
   };
 
@@ -333,7 +333,7 @@ export default function TamTamProfile() {
     tamtamFeedback.play('click');
     setShowLogoutConfirm(false);
     await signOut();
-    navigate('/fitila/auth', { replace: true });
+    navigate('/auth', { replace: true });
   };
 
   if (profileLoading) {
@@ -359,7 +359,7 @@ export default function TamTamProfile() {
             Réessayer
           </button>
           <button
-            onClick={async () => { await signOut(); navigate('/fitila/auth', { replace: true }); }}
+            onClick={async () => { await signOut(); navigate('/auth', { replace: true }); }}
             className="px-4 py-2 rounded-xl border font-bold"
           >
             Se reconnecter
@@ -522,7 +522,7 @@ export default function TamTamProfile() {
             <MyCommunities
               communities={myGroups}
               currentUserId={user?.id}
-              onOpenChat={(id) => navigate(`/fitila/social?community=${id}`)}
+              onOpenChat={(id) => navigate(`/social?community=${id}`)}
             />
           </div>
         )}
@@ -621,7 +621,7 @@ export default function TamTamProfile() {
                 </div>
                 <TamTamStories 
                   stories={myStories} 
-                  onCreateStory={() => navigate('/fitila/social')} 
+                  onCreateStory={() => navigate('/social')} 
                 />
               </motion.div>
             )}
