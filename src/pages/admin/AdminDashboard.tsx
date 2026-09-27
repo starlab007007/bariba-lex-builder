@@ -19,6 +19,7 @@ import { TemplateGenerationAdmin } from '@/components/admin/TemplateGenerationAd
 import { AnimeLibraryManager } from '@/components/admin/AnimeLibraryManager';
 import VoiceRecordingsBrowser from '@/components/admin/VoiceRecordingsBrowser';
 import ClasseAudioReview from '@/pages/admin/ClasseAudioReview';
+import ApprendreVoiceAdmin from '@/components/admin/apprendre-voice/ApprendreVoiceAdmin';
 import { Link } from 'react-router-dom';
 import { 
   Settings, Users, BarChart3, 
@@ -159,6 +160,10 @@ export default function AdminDashboard() {
                 <Volume2 className="h-4 w-4 text-[hsl(var(--section-data))]" />
                 Audio Classe
               </TabsTrigger>
+              <TabsTrigger value="apprendre-voice" className="flex items-center gap-2">
+                <Mic className="h-4 w-4 text-[hsl(var(--section-data))]" />
+                Voix Apprendre
+              </TabsTrigger>
 
               {/* 🧪 SECTION TESTS & QUALITÉ */}
               <div className="flex items-center gap-1 w-full mt-2">
@@ -274,6 +279,12 @@ export default function AdminDashboard() {
               </div>
             </TabErrorBoundary>
           </TabsContent>
+          <TabsContent value="apprendre-voice">
+            <TabErrorBoundary tabName="apprendre-voice">
+              <ApprendreVoiceAdmin />
+            </TabErrorBoundary>
+          </TabsContent>
+
           <TabsContent value="classe-audio">
             <TabErrorBoundary tabName="classe-audio">
               <div className="space-y-3">
