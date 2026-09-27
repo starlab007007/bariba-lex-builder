@@ -13,7 +13,7 @@ export default function TeacherLayout() {
   }
 
   if (!user) {
-    return <Navigate to="/fitila/auth" replace />;
+    return <Navigate to="/auth" replace />;
   }
 
   if (!isTeacher) {
@@ -30,14 +30,14 @@ export default function TeacherLayout() {
   }
 
   const links = [
-    { to: '/fitila/teacher', icon: Home, label: 'Vue d\'ensemble', end: true },
-    { to: '/fitila/teacher/students', icon: Users, label: 'Apprenants' },
-    { to: '/fitila/teacher/grading', icon: ClipboardCheck, label: 'À corriger' },
-    { to: '/fitila/teacher/answer-keys', icon: BookOpen, label: 'Corrigés' },
-    { to: '/fitila/teacher/weights', icon: Scale, label: 'Barèmes' },
-    { to: '/fitila/teacher/grades', icon: FileBarChart, label: 'Relevé classe' },
-    { to: '/fitila/teacher/voice-reading', icon: Mic, label: '🎙️ Lecture Vocale' },
-    { to: '/fitila/teacher/stats', icon: BarChart3, label: 'Statistiques' },
+    { to: '/teacher', icon: Home, label: 'Vue d\'ensemble', end: true },
+    { to: '/teacher/students', icon: Users, label: 'Apprenants' },
+    { to: '/teacher/grading', icon: ClipboardCheck, label: 'À corriger' },
+    { to: '/teacher/answer-keys', icon: BookOpen, label: 'Corrigés' },
+    { to: '/teacher/weights', icon: Scale, label: 'Barèmes' },
+    { to: '/teacher/grades', icon: FileBarChart, label: 'Relevé classe' },
+    { to: '/teacher/voice-reading', icon: Mic, label: '🎙️ Lecture Vocale' },
+    { to: '/teacher/stats', icon: BarChart3, label: 'Statistiques' },
   ];
 
   return (
