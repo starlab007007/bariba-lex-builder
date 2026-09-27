@@ -317,7 +317,7 @@ export default function FitilaLearn() {
       {/* Header — parité Flutter Apprendre v2.4 */}
       {currentView !== 'language-selection' && (
         <div className="flex-shrink-0 px-4 pt-3 pb-2 bg-[#F7F5EC]/95 backdrop-blur">
-          <div className="mx-auto flex max-w-5xl items-center justify-between">
+          <div className="mx-auto flex max-w-3xl items-center justify-between">
             <motion.button whileTap={{ scale: 0.92 }} onClick={handleBack} className="w-11 h-11 rounded-full bg-white border border-[#E4DFCC] flex items-center justify-center">
               {currentView === 'dashboard' ? <Menu className="w-5 h-5 text-[#241F2E]" /> : <ArrowLeft className="w-5 h-5 text-[#241F2E]" />}
             </motion.button>
@@ -372,7 +372,7 @@ export default function FitilaLearn() {
 
           {/* ═══ DASHBOARD ═══ */}
           {currentView === 'dashboard' && config && (
-            <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto max-w-5xl px-4 pb-8 space-y-5">
+            <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto max-w-3xl px-4 pb-8 space-y-5">
               {/* Flutter v2.4 greeting */}
               <div className="flex items-start justify-between pt-1">
                 <div>
@@ -731,7 +731,7 @@ export default function FitilaLearn() {
 
           {/* ═══ FOUNDATION LESSON ═══ */}
           {currentView === 'foundation-lesson' && currentFoundation && config && (
-            <motion.div key="foundation" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="px-4 pb-6 space-y-4">
+            <motion.div key="foundation" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="mx-auto max-w-3xl px-4 pb-6 space-y-4">
               {/* Title */}
               <div className="bg-white rounded-2xl shadow-md p-5">
                 <div className="flex items-center gap-3 mb-2">
@@ -906,7 +906,7 @@ export default function FitilaLearn() {
 
           {/* ═══ FOUNDATION QUIZ ═══ */}
           {currentView === 'foundation-quiz' && currentFoundation && config && (
-            <motion.div key="fquiz" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="px-4 pb-6 space-y-4">
+            <motion.div key="fquiz" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="mx-auto max-w-3xl px-4 pb-6 space-y-4">
               {/* Progress */}
               <div className="bg-white rounded-2xl shadow-md p-4">
                 <div className="flex justify-between mb-2 text-xs font-semibold">
@@ -997,7 +997,7 @@ export default function FitilaLearn() {
 
           {/* ═══ LESSON (QCM) ═══ */}
           {currentView === 'lesson' && config && exercises.length > 0 && (
-            <motion.div key="lesson" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="px-4 pb-6 space-y-4">
+            <motion.div key="lesson" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="mx-auto max-w-3xl px-4 pb-6 space-y-4">
               <div className="bg-white rounded-2xl shadow-md p-4">
                 <div className="flex justify-between mb-2 text-xs font-semibold">
                   <span className="text-[#6F6955]">{userLanguage === 'french' ? 'Question' : 'Kasuu'} {exerciseIndex + 1} / {exercises.length}</span>
