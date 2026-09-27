@@ -1,0 +1,199 @@
+name: FITILA Apprendre v2.4 Build19
+
+on:
+  push:
+    branches:
+      - feat/apprendre-v2.4-build19-20260927
+    paths:
+      - '.github/workflows/flutter-apprendre-v24-build19.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate-web-flutter-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Reconstruct verified Apprendre v2.4 payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .integration/v24r/r_* | base64 -d > /tmp/fitila-apprendre-v24.tar.gz
+          echo "5af4374eb0c22a92d806abf354d393a702df3994c41a7ca47d019db1d59dbef2  /tmp/fitila-apprendre-v24.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/fitila-apprendre-v24.tar.gz -C .
+          sed -i 's/^version: 1\.8\.7+18$/version: 1.8.8+19/' fitila_flutter/pubspec.yaml
+          grep -q '^version: 1.8.8+19$' fitila_flutter/pubspec.yaml
+          test -f fitila_flutter/lib/apprendre/apprendre_voice_ui.dart
+          test -f fitila_flutter/lib/apprendre/apprendre_voice_studio.dart
+          test -f src/components/admin/apprendre-voice/ApprendreVoiceAdmin.tsx
+          test -f supabase/migrations/20260927120000_apprendre_voice_v24.sql
+          test -f supabase/migrations/20260927123000_apprendre_voice_security_hardening.sql
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install web dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build web application
+        env:
+          VITE_BUILD_SHA: ${{ github.sha }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: npm run build
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          channel: stable
+          cache: true
+
+      - name: Prepare FITILA server configuration
+        working-directory: fitila_flutter
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          env = {}
+          for raw in Path('../.env').read_text(encoding='utf-8').splitlines():
+              line = raw.strip()
+              if line and not line.startswith('#') and '=' in line:
+                  key, value = line.split('=', 1)
+                  env[key.strip()] = value.strip().strip('"').strip("'")
+          url = env.get('SUPABASE_URL') or env.get('VITE_SUPABASE_URL') or ''
+          key = env.get('SUPABASE_ANON_KEY') or env.get('SUPABASE_PUBLISHABLE_KEY') or env.get('VITE_SUPABASE_PUBLISHABLE_KEY') or ''
+          if not url or not key:
+              raise SystemExit('FITILA server configuration is missing')
+          Path('.ci-dart-defines.json').write_text(
+              json.dumps({'SUPABASE_URL': url, 'SUPABASE_ANON_KEY': key}),
+              encoding='utf-8',
+          )
+          PY
+
+      - name: Resolve Flutter dependencies
+        working-directory: fitila_flutter
+        run: flutter pub get
+
+      - name: Analyze Apprendre v2.4
+        working-directory: fitila_flutter
+        run: flutter analyze lib/apprendre test/apprendre_module_test.dart
+
+      - name: Test Apprendre v2.4
+        working-directory: fitila_flutter
+        run: flutter test test/apprendre_module_test.dart --dart-define-from-file=.ci-dart-defines.json --reporter compact
+
+      - name: Prepare Android release signing
+        working-directory: fitila_flutter
+        env:
+          FITILA_KEYSTORE_BASE64: ${{ secrets.FITILA_KEYSTORE_BASE64 }}
+          FITILA_KEYSTORE_PASSWORD: ${{ secrets.FITILA_KEYSTORE_PASSWORD }}
+          FITILA_KEY_ALIAS: ${{ secrets.FITILA_KEY_ALIAS }}
+          FITILA_KEY_PASSWORD: ${{ secrets.FITILA_KEY_PASSWORD }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64, os, secrets, subprocess
+          names = ('FITILA_KEYSTORE_BASE64','FITILA_KEYSTORE_PASSWORD','FITILA_KEY_ALIAS','FITILA_KEY_PASSWORD')
+          required = {name: os.environ.get(name, '') for name in names}
+          production_ready = all(required.values())
+          if production_ready:
+              keystore = Path('android/app/fitila-release.jks')
+              keystore.write_bytes(base64.b64decode(required['FITILA_KEYSTORE_BASE64']))
+              store_password = required['FITILA_KEYSTORE_PASSWORD']
+              key_alias = required['FITILA_KEY_ALIAS']
+              key_password = required['FITILA_KEY_PASSWORD']
+              signing_mode = 'production'
+          else:
+              keystore = Path('android/app/fitila-ci-release.jks')
+              store_password = secrets.token_urlsafe(24)
+              key_password = store_password
+              key_alias = 'fitila-ci'
+              subprocess.run([
+                  'keytool','-genkeypair','-noprompt',
+                  '-keystore',str(keystore),'-storepass',store_password,'-keypass',key_password,
+                  '-alias',key_alias,'-keyalg','RSA','-keysize','2048','-validity','3650',
+                  '-dname','CN=FITILA CI Release,O=FITILA,C=BJ'
+              ], check=True)
+              signing_mode = 'ci-ephemeral'
+          Path('android/key.properties').write_text('\n'.join([
+              f'storeFile=app/{keystore.name}',
+              f'storePassword={store_password}',
+              f'keyAlias={key_alias}',
+              f'keyPassword={key_password}',
+              ''
+          ]), encoding='utf-8')
+          Path('build').mkdir(exist_ok=True)
+          Path('build/SIGNING_MODE.txt').write_text(signing_mode+'\n', encoding='utf-8')
+          PY
+
+      - name: Build optimized release APK
+        working-directory: fitila_flutter
+        run: |
+          flutter build apk --release \
+            --dart-define-from-file=.ci-dart-defines.json \
+            --obfuscate \
+            --split-debug-info=build/symbols
+
+      - name: Validate and package APK
+        working-directory: fitila_flutter
+        run: |
+          set -euo pipefail
+          src="build/app/outputs/flutter-apk/app-release.apk"
+          test -s "$src"
+          unzip -t "$src" >/dev/null
+          mkdir -p build/apprendre-v24-output
+          target="build/apprendre-v24-output/FITILA-Android-v1.8.8-build19-apprendre-v2.4-final-optimized.apk"
+          cp "$src" "$target"
+          cp -R build/symbols build/apprendre-v24-output/symbols
+          cp build/SIGNING_MODE.txt build/apprendre-v24-output/SIGNING_MODE.txt
+          cd build/apprendre-v24-output
+          sha256sum *.apk | tee SHA256SUMS.txt
+          du -h *.apk | tee SIZES.txt
+
+      - name: Commit integrated v2.4 source
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fitila_flutter/lib/apprendre fitila_flutter/test/apprendre_module_test.dart fitila_flutter/pubspec.yaml
+          git add src/pages/admin/AdminDashboard.tsx src/components/admin/UserRoleManager.tsx src/components/admin/apprendre-voice/ApprendreVoiceAdmin.tsx src/integrations/supabase/types.ts
+          git add supabase/migrations/20260927100000_apprendre_voice_roles.sql supabase/migrations/20260927100100_apprendre_voice_studio.sql supabase/migrations/20260927120000_apprendre_voice_v24.sql supabase/migrations/20260927123000_apprendre_voice_security_hardening.sql
+          git add AUDIT-Apprendre-v2.4.md LISEZMOI-v2.4.md
+          git rm -r .integration/v24r
+          if ! git diff --cached --quiet; then
+            git commit -m "feat(apprendre): integrate v2.4 voice learning and web admin build19"
+            git push origin HEAD:feat/apprendre-v2.4-build19-20260927
+          fi
+
+      - name: Upload web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: FITILA-Web-Apprendre-v2.4-build19
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload final APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FITILA-Android-v1.8.8-build19-apprendre-v2.4-final-optimized
+          path: fitila_flutter/build/apprendre-v24-output/
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 14
