@@ -147,8 +147,8 @@ function DashboardTab() {
               <p className="font-bold text-amber-950">Catalogue audio non initialisé</p>
               <p className="text-sm text-amber-800">Aucun texte Apprendre n’est encore disponible pour créer des lots ou publier des voix.</p>
             </div>
-            <Button variant="outline" className="border-amber-400 bg-white" onClick={() => window.history.pushState({}, '', '/admin/apprendre-voice?section=settings')}>
-              Ouvrir les paramètres
+            <Button asChild variant="outline" className="border-amber-400 bg-white">
+              <Link to="/admin/apprendre-voice?section=settings">Ouvrir les paramètres</Link>
             </Button>
           </CardContent>
         </Card>
@@ -485,7 +485,19 @@ function LotsTab() {
   const speakers = contributors.filter(c => c.roles.includes('voice_speaker') && !c.withdrawn_at);
   const reviewers = contributors.filter(c => c.roles.includes('voice_reviewer'));
   return (
-    <div className="grid gap-4 lg:grid-cols-[420px_1fr]">
+    <div className="space-y-4">
+      {speakers.length === 0 && (
+        <Card className="border-amber-300 bg-amber-50">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold text-amber-950">Aucun locuteur disponible</p>
+              <p className="text-sm text-amber-800">Affectez d’abord le rôle « Locuteur voix » à un utilisateur. Il devra ensuite signer son consentement dans l’application.</p>
+            </div>
+            <Button asChild variant="outline" className="bg-white"><Link to="/admin/users">Gérer les rôles</Link></Button>
+          </CardContent>
+        </Card>
+      )}
+      <div className="grid gap-4 lg:grid-cols-[420px_1fr]">
       <Card>
         <CardHeader><CardTitle className="text-base">Nouveau lot d’enregistrement</CardTitle><CardDescription>Choisissez les textes, puis assignez-les à un locuteur.</CardDescription></CardHeader>
         <CardContent className="space-y-3">
@@ -543,6 +555,7 @@ function LotsTab() {
           </Table>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
