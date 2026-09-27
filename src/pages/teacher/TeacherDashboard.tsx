@@ -42,7 +42,7 @@ export default function TeacherDashboard() {
 
   const cards = [
     { label: 'Apprenants', value: stats.totalStudents, icon: Users, color: 'from-blue-500 to-indigo-500' },
-    { label: 'À corriger', value: stats.pendingGrading, icon: ClipboardCheck, color: 'from-amber-500 to-orange-500', link: '/fitila/teacher/grading' },
+    { label: 'À corriger', value: stats.pendingGrading, icon: ClipboardCheck, color: 'from-amber-500 to-orange-500', link: '/teacher/grading' },
     { label: 'Leçons terminées', value: stats.completedLessons, icon: TrendingUp, color: 'from-emerald-500 to-teal-500' },
     { label: 'Moyenne classe', value: stats.avgGrade !== null ? `${stats.avgGrade.toFixed(1)}/20` : '—', icon: Trophy, color: 'from-purple-500 to-pink-500' },
   ];
@@ -77,7 +77,7 @@ export default function TeacherDashboard() {
             {recent.map((r, i) => (
               <li key={i} className="flex items-center justify-between text-sm py-2 border-b border-border/50 last:border-0">
                 <span>
-                  <Link to={`/fitila/teacher/student/${r.user_id}`} className="font-mono text-xs text-blue-600 hover:underline">
+                  <Link to={`/teacher/student/${r.user_id}`} className="font-mono text-xs text-blue-600 hover:underline">
                     {r.user_id.slice(0, 8)}…
                   </Link>
                   <span className="ml-2 text-muted-foreground">{r.module} · {r.level} · L{r.lesson_id}</span>
