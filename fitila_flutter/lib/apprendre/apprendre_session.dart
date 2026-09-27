@@ -4,9 +4,11 @@ import 'package:flutter_tts/flutter_tts.dart';
 
 import '../core/fitila_backend.dart';
 import '../core/fitila_media.dart';
+import 'apprendre_audio.dart';
 import 'apprendre_store.dart';
 import 'apprendre_tasks.dart';
 import 'apprendre_ui.dart';
+import 'apprendre_voice_ui.dart';
 
 /// Résultat d'une séance, renvoyé à l'écran appelant.
 class ApSessionResult {
@@ -502,8 +504,25 @@ class _ApSessionScreenState extends State<ApSessionScreen> {
   }
 
   Widget _speakBody() {
+    final task = _task;
     return Column(
       children: [
+        ValueListenableBuilder<int>(
+          valueListenable: ApAudioService.instance.revision,
+          builder: (context, _, _) => ApAudioService.instance.has(task.prompt)
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ApAudioButton(task.prompt, size: 48),
+                      const SizedBox(width: 10),
+                      Text('Écoute la voix de référence', style: ApText.small.copyWith(fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
         const SizedBox(height: 6),
         Semantics(
           button: true,
@@ -581,12 +600,14 @@ class _ApSessionScreenState extends State<ApSessionScreen> {
           ),
         ],
         const SizedBox(height: 14),
-        const ApPill(
-          'Voix de référence des locuteurs : en préparation',
-          icon: Icons.graphic_eq_rounded,
-          background: ApColors.surfaceAlt,
-          foreground: ApColors.quiet,
-        ),
+        ApCompareButton(task.prompt, fr: task.promptSub),
+        if (!ApAudioService.instance.has(task.prompt))
+          const ApPill(
+            'Voix de référence des locuteurs : en préparation',
+            icon: Icons.graphic_eq_rounded,
+            background: ApColors.surfaceAlt,
+            foreground: ApColors.quiet,
+          ),
       ],
     );
   }
@@ -617,10 +638,17 @@ class _PromptCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (task.promptIsBariba)
-            ApBaribaText(
-              task.prompt,
-              size: large ? 30 : 26,
-              transcription: showTranscription ? task.transcription : null,
+            Row(
+              children: [
+                Expanded(
+                  child: ApBaribaText(
+                    task.prompt,
+                    size: large ? 30 : 26,
+                    transcription: showTranscription ? task.transcription : null,
+                  ),
+                ),
+                if (task.skill != 'cloze' && task.kind != ApTaskKind.speak) ApAudioButton(task.prompt, size: large ? 48 : 40),
+              ],
             )
           else
             Text(
@@ -774,6 +802,11 @@ class _FeedbackPanel extends StatelessWidget {
     final color = correct ? ApColors.sageTint : ApColors.clayTint;
     final ink = correct ? ApColors.sageInk : ApColors.clayInk;
     final showAnswer = !correct && task.kind != ApTaskKind.speak;
+    final audioText = task.kind == ApTaskKind.order
+        ? task.explain
+        : task.optionsAreBariba
+        ? task.answer
+        : (task.promptIsBariba && task.skill != 'cloze' ? task.prompt : null);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
@@ -819,6 +852,16 @@ class _FeedbackPanel extends StatelessWidget {
           if (task.explain.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(task.explain, style: ApText.body.copyWith(fontSize: 13.5)),
+          ],
+          if (audioText != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                ApAudioButton(audioText, size: 36),
+                const SizedBox(width: 8),
+                ApCompareButton(audioText, compact: true),
+              ],
+            ),
           ],
           const SizedBox(height: 8),
           ApSourceTag(task.source, verified: task.verified),

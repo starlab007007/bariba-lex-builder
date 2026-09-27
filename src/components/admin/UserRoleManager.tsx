@@ -13,7 +13,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Shield, ShieldOff, Loader2, Search, PenTool, Trash2, Ban, CheckCircle, Edit, Key, Phone, GraduationCap } from 'lucide-react';
+import { Shield, ShieldOff, Loader2, Search, PenTool, Trash2, Ban, CheckCircle, Edit, Key, Phone, GraduationCap, Mic, ListChecks } from 'lucide-react';
+
+type AppRole = 'admin' | 'editor' | 'user' | 'teacher' | 'voice_speaker' | 'voice_reviewer';
 
 interface UserData {
   id: string;
@@ -68,7 +70,7 @@ export default function UserRoleManager() {
   const handleGrantRole = async (userId: string, role: string) => {
     try {
       setActionLoading(userId);
-      const { error } = await supabase.from('user_roles').insert({ user_id: userId, role: role as 'admin' | 'editor' | 'user' | 'teacher' });
+      const { error } = await supabase.from('user_roles').insert({ user_id: userId, role: role as AppRole });
       if (error) throw error;
       toast({ title: 'Succès', description: `Rôle ${role} attribué` });
       await loadUsers();
@@ -83,7 +85,7 @@ export default function UserRoleManager() {
     if (!revokeInfo) return;
     try {
       setActionLoading(revokeInfo.user.id);
-      const { error } = await supabase.from('user_roles').delete().eq('user_id', revokeInfo.user.id).eq('role', revokeInfo.role as 'admin' | 'editor' | 'user' | 'teacher');
+      const { error } = await supabase.from('user_roles').delete().eq('user_id', revokeInfo.user.id).eq('role', revokeInfo.role as AppRole);
       if (error) throw error;
       toast({ title: 'Succès', description: `Rôle ${revokeInfo.role} révoqué` });
       await loadUsers();
@@ -212,7 +214,9 @@ export default function UserRoleManager() {
                           {u.roles.includes('admin') && <Badge variant="default" className="gap-1"><Shield className="h-3 w-3" />Admin</Badge>}
                           {u.roles.includes('editor') && <Badge variant="outline" className="gap-1 border-blue-300 text-blue-700 bg-blue-50"><PenTool className="h-3 w-3" />Éditeur</Badge>}
                           {u.roles.includes('teacher') && <Badge variant="outline" className="gap-1 border-emerald-300 text-emerald-700 bg-emerald-50"><GraduationCap className="h-3 w-3" />Enseignant</Badge>}
-                          {!u.roles.includes('admin') && !u.roles.includes('editor') && !u.roles.includes('teacher') && !u.banned && <Badge variant="secondary">Utilisateur</Badge>}
+                          {u.roles.includes('voice_speaker') && <Badge variant="outline" className="gap-1 border-amber-300 text-amber-800 bg-amber-50"><Mic className="h-3 w-3" />Locuteur voix</Badge>}
+                          {u.roles.includes('voice_reviewer') && <Badge variant="outline" className="gap-1 border-violet-300 text-violet-700 bg-violet-50"><ListChecks className="h-3 w-3" />Validateur voix</Badge>}
+                          {!u.roles.some(r => ['admin', 'editor', 'teacher', 'voice_speaker', 'voice_reviewer'].includes(r)) && !u.banned && <Badge variant="secondary">Utilisateur</Badge>}
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">{new Date(u.created_at).toLocaleDateString('fr-FR')}</TableCell>
@@ -239,6 +243,24 @@ export default function UserRoleManager() {
                           ) : (
                             <Button variant="ghost" size="icon" title="Attribuer rôle enseignant" onClick={() => handleGrantRole(u.id, 'teacher')} disabled={actionLoading === u.id}>
                               <GraduationCap className="h-4 w-4 text-emerald-600" />
+                            </Button>
+                          )}
+                          {u.roles.includes('voice_speaker') ? (
+                            <Button variant="ghost" size="icon" title="Retirer le rôle Locuteur voix" onClick={() => setRevokeInfo({ user: u, role: 'voice_speaker' })}>
+                              <Mic className="h-4 w-4 text-destructive" />
+                            </Button>
+                          ) : (
+                            <Button variant="ghost" size="icon" title="Attribuer le rôle Locuteur voix (Apprendre)" onClick={() => handleGrantRole(u.id, 'voice_speaker')} disabled={actionLoading === u.id}>
+                              <Mic className="h-4 w-4 text-amber-600" />
+                            </Button>
+                          )}
+                          {u.roles.includes('voice_reviewer') ? (
+                            <Button variant="ghost" size="icon" title="Retirer le rôle Validateur voix" onClick={() => setRevokeInfo({ user: u, role: 'voice_reviewer' })}>
+                              <ListChecks className="h-4 w-4 text-destructive" />
+                            </Button>
+                          ) : (
+                            <Button variant="ghost" size="icon" title="Attribuer le rôle Validateur voix (Apprendre)" onClick={() => handleGrantRole(u.id, 'voice_reviewer')} disabled={actionLoading === u.id}>
+                              <ListChecks className="h-4 w-4 text-violet-600" />
                             </Button>
                           )}
                           {/* Ban/Unban */}

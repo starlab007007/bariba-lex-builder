@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import 'apprendre_audio.dart';
 import 'apprendre_daily.dart';
 import 'apprendre_explore.dart';
 import 'apprendre_foundation.dart';
@@ -11,6 +14,8 @@ import 'apprendre_session.dart';
 import 'apprendre_store.dart';
 import 'apprendre_tasks.dart';
 import 'apprendre_ui.dart';
+import 'apprendre_voice_studio.dart';
+import 'apprendre_voice_ui.dart';
 
 /// Lien vers un écran existant du module (badges, historique, profil).
 class ApLegacyLink {
@@ -46,6 +51,9 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
   ApprendreStore? _store;
   String? _error;
   bool _onboardingShown = false;
+  ApVoiceAccess _voiceAccess = ApVoiceAccess.none;
+  int _downloadDone = 0;
+  int _downloadTotal = 0;
 
   @override
   void initState() {
@@ -64,6 +72,7 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
         _content = content;
         _store = store;
       });
+      unawaited(_loadVoices());
       if (store.progress.profile == null && !_onboardingShown) {
         _onboardingShown = true;
         WidgetsBinding.instance.addPostFrameCallback((_) => _openOnboarding());
@@ -72,6 +81,117 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
       if (mounted) {
         setState(() => _error = 'Contenu d’apprentissage indisponible ($error).');
       }
+    }
+  }
+
+  /// Voix de référence et rôles voix : jamais bloquant, silencieux hors-ligne.
+  Future<void> _loadVoices() async {
+    try {
+      await ApAudioService.instance.ensureLoaded();
+    } catch (_) {
+      // Pas de voix : les écrans gardent la mention « en préparation ».
+    }
+    final access = await ApVoiceAccess.load();
+    if (mounted) {
+      setState(() => _voiceAccess = access);
+    }
+  }
+
+  Future<void> _downloadVoicePack(ApAudioOfflinePack pack) async {
+    final service = ApAudioService.instance;
+    final total = service.countForPack(pack);
+    if (total == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Le pack ${pack.label.toLowerCase()} n’a pas encore de voix publiée.')),
+      );
+      return;
+    }
+    setState(() {
+      _downloadDone = 0;
+      _downloadTotal = total;
+    });
+    final ok = await service.downloadPack(
+      pack,
+      onProgress: (done, total) {
+        if (mounted) {
+          setState(() {
+            _downloadDone = done;
+            _downloadTotal = total;
+          });
+        }
+      },
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() => _downloadTotal = 0);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$ok voix du pack ${pack.label} disponibles hors connexion.')),
+    );
+  }
+
+  Future<void> _chooseVoicePack() async {
+    final service = ApAudioService.instance;
+    final choice = await showModalBottomSheet<ApAudioOfflinePack>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: ApColors.ivory,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Voix hors connexion', style: ApText.display.copyWith(fontSize: 20)),
+              const SizedBox(height: 4),
+              const Text(
+                'Choisis un petit paquet si la connexion ou l’espace du téléphone est limité.',
+                style: ApText.small,
+              ),
+              const SizedBox(height: 12),
+              for (final pack in ApAudioOfflinePack.values)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    pack == ApAudioOfflinePack.essential
+                        ? Icons.offline_bolt_rounded
+                        : pack == ApAudioOfflinePack.scenes
+                        ? Icons.theater_comedy_rounded
+                        : Icons.library_music_rounded,
+                    color: ApColors.goldDeep,
+                  ),
+                  title: Text(pack.label, style: ApText.body.copyWith(fontWeight: FontWeight.w800)),
+                  subtitle: Text(
+                    '${pack.subtitle} · ${service.countForPack(pack)} voix · ~${service.megabytesForPack(pack).toStringAsFixed(0)} Mo',
+                    style: ApText.small,
+                  ),
+                  trailing: const Icon(Icons.download_rounded, color: ApColors.goldDeep),
+                  onTap: () => Navigator.of(context).pop(pack),
+                ),
+              const Divider(),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.delete_outline_rounded, color: ApColors.clayInk),
+                title: const Text('Vider les voix téléchargées'),
+                subtitle: const Text('Le contenu Apprendre reste disponible ; seules les copies audio locales sont supprimées.'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  await service.clearOfflineCache();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Cache des voix hors connexion vidé.')),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (choice != null && mounted) {
+      await _downloadVoicePack(choice);
     }
   }
 
@@ -370,11 +490,66 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
             const ApSectionTitle('Sagesse'),
             _ProverbCard(proverb: content.proverbs[now.day % content.proverbs.length]),
           ],
+          ValueListenableBuilder<int>(
+            valueListenable: ApAudioService.instance.revision,
+            builder: (context, _, _) {
+              final service = ApAudioService.instance;
+              if (service.count == 0) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(top: 22),
+                child: ApCardBox(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.record_voice_over_rounded, color: ApColors.goldDeep),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${service.count} textes avec voix de référence',
+                              style: ApText.body.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                            Text(
+                              _downloadTotal > 0
+                                  ? 'Téléchargement $_downloadDone / $_downloadTotal…'
+                                  : 'Hors ligne par petits packs · Essentiel ~${service.megabytesForPack(ApAudioOfflinePack.essential).toStringAsFixed(0)} Mo',
+                              style: ApText.small,
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Télécharger les voix',
+                        onPressed: _downloadTotal > 0 ? null : _chooseVoicePack,
+                        icon: const Icon(Icons.download_rounded, color: ApColors.goldDeep),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
           const ApSectionTitle('Mon parcours'),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
+              if (_voiceAccess.speaker)
+                _LinkChip(
+                  label: 'Studio Voix',
+                  icon: Icons.mic_rounded,
+                  onTap: () => _open(const ApVoiceStudioScreen()),
+                ),
+              if (_voiceAccess.reviewer)
+                _LinkChip(
+                  label: 'Validation voix',
+                  icon: Icons.fact_check_rounded,
+                  onTap: () => _open(const ApVoiceReviewScreen()),
+                ),
               _LinkChip(
                 label: 'Révision',
                 icon: Icons.psychology_alt_rounded,

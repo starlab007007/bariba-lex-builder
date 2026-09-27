@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:fitila_native/apprendre/apprendre_audio.dart';
 import 'package:fitila_native/apprendre/apprendre_daily.dart';
 import 'package:fitila_native/apprendre/apprendre_hub.dart';
 import 'package:fitila_native/apprendre/apprendre_models.dart';
@@ -10,6 +11,7 @@ import 'package:fitila_native/apprendre/apprendre_scenes.dart';
 import 'package:fitila_native/apprendre/apprendre_scenes_ui.dart';
 import 'package:fitila_native/apprendre/apprendre_store.dart';
 import 'package:fitila_native/apprendre/apprendre_tasks.dart';
+import 'package:fitila_native/apprendre/apprendre_voice_analysis.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -383,5 +385,102 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Suite'), findsOneWidget);
     expect(find.text(scene.spoken.first.ba), findsOneWidget);
+  });
+
+  group('Voix de référence', () {
+    test('la clé audio est l’empreinte FNV-1a du texte, comme dans le catalogue', () {
+      expect(apFnv1a64(''), 'cbf29ce484222325');
+      expect(apFnv1a64('a'), 'af63dc4c8601ec8c');
+      expect(apAudioKey('nim'), 'ap:2146bb19257dc85f');
+      expect(apAudioKey('  Ka   kookari ! '), 'ap:362cb77296546808');
+      expect(apAudioKey('gúra'), 'ap:389e7ae43a20f162');
+      expect(apAudioKey('Bɛɛ ka weru.'), 'ap:894e0eeef1a406e6');
+    });
+
+    test('le catalogue couvre les mots, exemples et répliques affichés', () {
+      final catalog = jsonDecode(
+        File('tool/audio_catalog/apprendre_audio_catalog.json').readAsStringSync(),
+      ) as Map<String, dynamic>;
+      final keys = {for (final item in catalog['items'] as List) (item as Map)['key'] as String};
+      final content = _loadContent();
+      for (final card in content.cards.values) {
+        expect(keys, contains(apAudioKey(card.ba)), reason: card.ba);
+        if (card.hasExample) {
+          expect(keys, contains(apAudioKey(card.exampleBa!)), reason: card.exampleBa);
+        }
+      }
+      for (final scene in _loadScenes().scenes) {
+        for (final line in scene.spoken) {
+          expect(keys, contains(apAudioKey(line.ba)), reason: line.ba);
+        }
+      }
+    });
+
+    List<double> synth(double f0Start, double f0End, double seconds, {double noise = 0.002, int seed = 1}) {
+      final rnd = math.Random(seed);
+      final out = <double>[];
+      for (var i = 0; i < 4000; i++) {
+        out.add(noise * (rnd.nextDouble() * 2 - 1));
+      }
+      final n = (seconds * 16000).round();
+      var phase = 0.0;
+      for (var i = 0; i < n; i++) {
+        final t = i / n;
+        final f0 = f0Start * math.pow(f0End / f0Start, t);
+        phase += 2 * math.pi * f0 / 16000;
+        final env = math.sqrt(math.sin(math.pi * t));
+        var v = 0.0;
+        for (var h = 1; h < 25; h++) {
+          final fh = h * f0;
+          if (fh > 7800) {
+            break;
+          }
+          final gain = 1 / (1 + math.pow((fh - 700) / 120, 2)) + 1 / (1 + math.pow((fh - 1200) / 120, 2)) + 0.05;
+          v += gain * math.sin(h * phase) / h;
+        }
+        out.add(0.2 * env * v + noise * (rnd.nextDouble() * 2 - 1));
+      }
+      for (var i = 0; i < 4000; i++) {
+        out.add(noise * (rnd.nextDouble() * 2 - 1));
+      }
+      return out;
+    }
+
+    ApPcm pcm(List<double> samples) => apDecodeWav(apEncodeWav(samples))!;
+
+    test('la mélodie identique est reconnue, la mélodie inversée non', () {
+      const settings = ApCompareSettings();
+      final reference = pcm(synth(140, 210, 0.6));
+      final sameHigher = apCompareVoices(reference, pcm(synth(230, 345, 0.7, seed: 3)), settings)!;
+      final inverted = apCompareVoices(reference, pcm(synth(210, 140, 0.6, seed: 4)), settings)!;
+      expect(sameHigher.melody, isNotNull);
+      expect(sameHigher.melody!, greaterThan(75));
+      expect(inverted.melody!, lessThan(40));
+      expect(sameHigher.total, greaterThan(inverted.total));
+      expect(inverted.advice.join(' '), contains('monter'));
+      expect(sameHigher.referenceContour.length, sameHigher.learnerContour.length);
+    });
+
+    test('les paramètres de comparaison gardent le statut de calibrage', () {
+      const raw = {
+        'very_close': 82,
+        'close': 64,
+        'mfcc_good': 4.5,
+        'mfcc_bad': 13.5,
+        'calibrated': true,
+      };
+      final settings = ApCompareSettings.fromJson(raw);
+      expect(settings.calibrated, isTrue);
+      expect(settings.toJson()['calibrated'], isTrue);
+      expect(settings.veryClose, 82);
+    });
+
+    test('le contrôle qualité refuse une prise silencieuse', () {
+      final silent = pcm(List<double>.generate(16000, (i) => 0.0005 * math.sin(i / 3)));
+      final quality = apMeasureTake(silent, expectedSyllables: 2);
+      expect(quality.acceptable, isFalse);
+      final good = apMeasureTake(pcm(synth(140, 210, 0.6)), expectedSyllables: 2);
+      expect(good.problems, isNot(contains(startsWith('Niveau trop faible'))));
+    });
   });
 }

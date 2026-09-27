@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'apprendre_audio.dart';
 import 'apprendre_models.dart';
 import 'apprendre_session.dart';
 import 'apprendre_store.dart';
@@ -297,7 +298,13 @@ class ApExampleTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(example.ba, style: ApText.bariba.copyWith(fontSize: 17)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: Text(example.ba, style: ApText.bariba.copyWith(fontSize: 17))),
+              ApAudioButton(example.ba, size: 34),
+            ],
+          ),
           const SizedBox(height: 3),
           Text(example.fr, style: ApText.body.copyWith(color: ApColors.quiet)),
           if (note != null && note.isNotEmpty) ...[
@@ -501,7 +508,12 @@ class _PairSide extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(example.ba, style: ApText.bariba.copyWith(fontSize: 20)),
+          Row(
+            children: [
+              Expanded(child: Text(example.ba, style: ApText.bariba.copyWith(fontSize: 20))),
+              ApAudioButton(example.ba, size: 32),
+            ],
+          ),
           const SizedBox(height: 2),
           Text(example.fr, style: ApText.body.copyWith(fontSize: 13)),
           const SizedBox(height: 4),
@@ -571,7 +583,12 @@ class _Order extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(section.orderFr, style: ApText.body.copyWith(color: ApColors.quiet)),
+          Row(
+            children: [
+              Expanded(child: Text(section.orderFr, style: ApText.body.copyWith(color: ApColors.quiet))),
+              ApAudioButton(section.orderWords.join(' '), size: 34),
+            ],
+          ),
           const SizedBox(height: 6),
           ApSourceTag(section.src),
         ],

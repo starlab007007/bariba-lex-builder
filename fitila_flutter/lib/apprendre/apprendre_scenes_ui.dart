@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import 'apprendre_audio.dart';
 import 'apprendre_scenes.dart';
 import 'apprendre_session.dart';
 import 'apprendre_store.dart';
 import 'apprendre_ui.dart';
+import 'apprendre_voice_ui.dart';
 
 const _sceneIcons = <String, IconData>{
   'wb_twilight': Icons.wb_twilight_rounded,
@@ -577,6 +579,14 @@ class _ApSceneDetailScreenState extends State<ApSceneDetailScreen> {
       widget.progress.markPlayed(_scene.id);
       widget.progress.save();
     }
+    // La dernière réplique affichée se fait entendre si sa voix existe.
+    for (var i = _shown - 1; i >= 0; i--) {
+      final line = _scene.lines[i];
+      if (!line.isNarration) {
+        ApAudioService.instance.play(line.ba);
+        break;
+      }
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scroll.hasClients) {
         _scroll.animateTo(
@@ -868,17 +878,25 @@ class _ApSceneDetailScreenState extends State<ApSceneDetailScreen> {
             const SizedBox(height: 4),
             Text('« ${line.fr} »', style: ApText.body.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
-            if (_hint)
-              Text(line.ba, style: ApText.bariba.copyWith(fontSize: 18))
-            else
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: () => setState(() => _hint = true),
-                  icon: const Icon(Icons.visibility_rounded, size: 18),
-                  label: const Text('Voir la réplique'),
+            Row(
+              children: [
+                Expanded(
+                  child: _hint
+                      ? Text(line.ba, style: ApText.bariba.copyWith(fontSize: 18))
+                      : Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () => setState(() => _hint = true),
+                            icon: const Icon(Icons.visibility_rounded, size: 18),
+                            label: const Text('Voir la réplique'),
+                          ),
+                        ),
                 ),
-              ),
+                if (_hint) ApAudioButton(line.ba, size: 36),
+                const SizedBox(width: 6),
+                ApCompareButton(line.ba, fr: line.fr, compact: true),
+              ],
+            ),
             const SizedBox(height: 8),
           ],
           ApPrimaryButton(
@@ -1018,12 +1036,22 @@ class _SceneBubble extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 2),
-            Text(
-              line.ba,
-              style: ApText.bariba.copyWith(
-                fontSize: 17,
-                color: mine ? Colors.white : ApColors.ink,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    line.ba,
+                    style: ApText.bariba.copyWith(
+                      fontSize: 17,
+                      color: mine ? Colors.white : ApColors.ink,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                ApAudioButton(line.ba, size: 30, dark: mine),
+              ],
             ),
             if (showFrench) ...[
               const SizedBox(height: 3),

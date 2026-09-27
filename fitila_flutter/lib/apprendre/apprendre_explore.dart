@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import 'apprendre_audio.dart';
 import 'apprendre_models.dart';
 import 'apprendre_session.dart';
 import 'apprendre_store.dart';
 import 'apprendre_tasks.dart';
 import 'apprendre_ui.dart';
+import 'apprendre_voice_ui.dart';
 
 /// Fiche d'un mot : forme, classe, pluriel, conjugaison, exemple, source.
 Future<void> showApWordSheet(
@@ -44,7 +46,14 @@ class _WordSheet extends StatelessWidget {
           shrinkWrap: true,
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
           children: [
-            ApBaribaText(card.ba, size: 30, transcription: card.transcription),
+            Row(
+              children: [
+                Expanded(child: ApBaribaText(card.ba, size: 30, transcription: card.transcription)),
+                ApAudioButton(card.ba, size: 44, placeholder: true),
+                const SizedBox(width: 8),
+                ApCompareButton(card.ba, fr: card.fr, compact: true),
+              ],
+            ),
             const SizedBox(height: 6),
             Text(card.fr, style: ApText.display.copyWith(fontSize: 20)),
             const SizedBox(height: 10),
@@ -96,7 +105,13 @@ class _WordSheet extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(card.exampleBa!, style: ApText.bariba.copyWith(fontSize: 17)),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: Text(card.exampleBa!, style: ApText.bariba.copyWith(fontSize: 17))),
+                        ApAudioButton(card.exampleBa!, size: 34),
+                      ],
+                    ),
                     const SizedBox(height: 4),
                     Text(card.exampleFr!, style: ApText.body.copyWith(color: ApColors.quiet)),
                   ],
@@ -126,6 +141,8 @@ class _FormRow extends StatelessWidget {
         children: [
           Expanded(child: Text(label, style: ApText.small)),
           Text(value, style: ApText.bariba.copyWith(fontSize: 16)),
+          const SizedBox(width: 6),
+          ApAudioButton(value, size: 30),
         ],
       ),
     );
