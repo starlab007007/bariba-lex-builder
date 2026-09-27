@@ -1,71 +1,53 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Database, RefreshCw } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Download, Activity, ShieldCheck, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function AdminSettings() {
-  const { toast } = useToast();
-
-  const handleBackup = () => {
-    toast({
-      title: 'Sauvegarde en cours',
-      description: 'La sauvegarde de la base de données est en cours...',
-    });
-  };
-
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Paramètres</h2>
         <p className="text-muted-foreground">
-          Configuration et maintenance du système
+          Accès aux opérations de maintenance réellement disponibles dans FITILA.
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Gestion des Données</CardTitle>
+          <CardTitle>Maintenance et données</CardTitle>
           <CardDescription>
-            Sauvegarder et maintenir les données du dictionnaire
+            Les actions ci-dessous ouvrent les outils opérationnels correspondants ; aucun bouton factice n’est conservé.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-4 border rounded-lg">
+        <CardContent className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-xl border p-4 space-y-3">
             <div>
-              <div className="font-medium">Sauvegarde complète</div>
-              <div className="text-sm text-muted-foreground">
-                Exporter toutes les données (dictionnaire, phrases, logs)
-              </div>
+              <div className="font-medium">Exporter le dictionnaire</div>
+              <div className="text-sm text-muted-foreground">Télécharger les données du dictionnaire depuis l’outil d’export.</div>
             </div>
-            <Button onClick={handleBackup} variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Sauvegarder
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/admin/export"><Download className="mr-2 h-4 w-4" /> Ouvrir l’export</Link>
             </Button>
           </div>
 
-          <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div className="rounded-xl border p-4 space-y-3">
             <div>
-              <div className="font-medium">Optimiser la base</div>
-              <div className="text-sm text-muted-foreground">
-                Nettoyer et optimiser la base de données
-              </div>
+              <div className="font-medium">Contrôler la qualité</div>
+              <div className="text-sm text-muted-foreground">Consulter les métriques et vérifier la qualité des données.</div>
             </div>
-            <Button variant="outline">
-              <Database className="mr-2 h-4 w-4" />
-              Optimiser
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/admin/quality"><ShieldCheck className="mr-2 h-4 w-4" /> Ouvrir Qualité</Link>
             </Button>
           </div>
 
-          <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div className="rounded-xl border p-4 space-y-3">
             <div>
-              <div className="font-medium">Actualiser les index</div>
-              <div className="text-sm text-muted-foreground">
-                Reconstruire les index de recherche
-              </div>
+              <div className="font-medium">Diagnostic système</div>
+              <div className="text-sm text-muted-foreground">Inspecter les traductions, modèles et services actifs.</div>
             </div>
-            <Button variant="outline">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Actualiser
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/admin/diagnostic"><Activity className="mr-2 h-4 w-4" /> Ouvrir Diagnostic</Link>
             </Button>
           </div>
         </CardContent>
@@ -73,23 +55,16 @@ export default function AdminSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Informations Système</CardTitle>
+          <CardTitle>Informations système</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Version:</span>
-              <span className="font-medium">1.0.0</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Base de données:</span>
-              <span className="font-medium">PostgreSQL</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Backend:</span>
-              <span className="font-medium">Lovable Cloud</span>
-            </div>
-          </div>
+        <CardContent className="space-y-3 text-sm">
+          <div className="flex justify-between gap-4"><span className="text-muted-foreground">Application</span><span className="font-medium">FITILA Web</span></div>
+          <div className="flex justify-between gap-4"><span className="text-muted-foreground">Base de données</span><span className="font-medium">Supabase PostgreSQL</span></div>
+          <div className="flex justify-between gap-4"><span className="text-muted-foreground">Backend</span><span className="font-medium">Supabase + Edge Functions</span></div>
+          <div className="flex justify-between gap-4"><span className="text-muted-foreground">Déploiement</span><span className="font-medium">Docker / Traefik</span></div>
+          <Button asChild variant="ghost" className="mt-2 px-0">
+            <Link to="/admin"><ExternalLink className="mr-2 h-4 w-4" /> Retour au centre de contrôle</Link>
+          </Button>
         </CardContent>
       </Card>
     </div>
