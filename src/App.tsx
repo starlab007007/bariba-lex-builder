@@ -48,6 +48,7 @@ const SystemValidation = lazy(() => import("./pages/SystemValidation"));
 const AssetsDashboard = lazy(() => import("./pages/AssetsDashboard"));
 const GriotStudioPage = lazy(() => import("./pages/GriotStudioPage"));
 const FitilaLearn = lazy(() => import("./pages/fitila/FitilaLearn"));
+const FitilaLearnScenes = lazy(() => import("./pages/fitila/FitilaLearnScenes"));
 const FitilaClasse = lazy(() => import("./pages/fitila/FitilaClasse"));
 const FitilaIA = lazy(() => import("./pages/fitila/FitilaIA"));
 const FitilaTemIA = lazy(() => import("./pages/fitila/FitilaTemIA"));
@@ -122,6 +123,7 @@ const App = () => (
                 <Route path="profile" element={<ProtectedRoute><SafeBoundary label="Profil"><TamTamProfile /></SafeBoundary></ProtectedRoute>} />
                 <Route path="dictionary" element={<TamTamDictionary />} />
                 <Route path="learn" element={<FitilaLearn />} />
+                <Route path="learn/scenes" element={<FitilaLearnScenes />} />
                 <Route path="classe" element={<FitilaClasse />} />
                 <Route path="ia" element={<FitilaIA />} />
                 <Route path="tem-ia" element={<FitilaTemIA />} />
@@ -160,6 +162,7 @@ const App = () => (
                 <Route path="profile" element={<Navigate to="/profile" replace />} />
                 <Route path="dictionary" element={<Navigate to="/dictionary" replace />} />
                 <Route path="learn" element={<Navigate to="/" replace />} />
+                <Route path="learn/scenes" element={<Navigate to="/learn/scenes" replace />} />
                 <Route path="classe" element={<Navigate to="/classe" replace />} />
                 <Route path="ia" element={<Navigate to="/ia" replace />} />
                 <Route path="tem-ia" element={<Navigate to="/tem-ia" replace />} />
