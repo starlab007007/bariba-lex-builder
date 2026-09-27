@@ -68,8 +68,8 @@ export default function AppTourProvider({ children }: { children: React.ReactNod
     setShowLangPicker(false);
     // Delay navigation to let state settle before route change
     setTimeout(() => {
-      if (!window.location.pathname.includes('/fitila/social')) {
-        navigate('/fitila/social', { replace: true });
+      if (!window.location.pathname.includes('/social')) {
+        navigate('/social', { replace: true });
       }
     }, 100);
   }, [navigate]);
