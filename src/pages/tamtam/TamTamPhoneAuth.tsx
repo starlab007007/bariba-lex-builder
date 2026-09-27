@@ -85,7 +85,7 @@ export default function TamTamPhoneAuth() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
-  const redirectTo = searchParams.get('redirect') || '/fitila/social';
+  const redirectTo = searchParams.get('redirect') || '/social';
   
   const [step, setStep] = useState<Step>('phone');
   const [phoneDigits, setPhoneDigits] = useState('');
@@ -245,7 +245,7 @@ export default function TamTamPhoneAuth() {
         email: emailFromPhone,
         password: pin,
         options: {
-          emailRedirectTo: `${window.location.origin}/fitila/social`,
+          emailRedirectTo: `${window.location.origin}/social`,
           data: {
             display_name: displayName,
             phone_number: fullPhone,
@@ -260,7 +260,7 @@ export default function TamTamPhoneAuth() {
             password: pin,
           });
           if (signInError) throw signInError;
-          navigate('/fitila/social');
+          navigate('/social');
           return;
         }
         throw signUpError;
@@ -304,7 +304,7 @@ export default function TamTamPhoneAuth() {
       vibrate([50, 30, 50]);
       setStep('complete');
       toast({ title: "Compte créé !", description: `Bienvenue ${displayName} !` });
-      setTimeout(() => navigate('/fitila/social'), 2000);
+      setTimeout(() => navigate('/social'), 2000);
     } catch (err: any) {
       console.error(err);
       toast({ title: "Erreur", description: err.message || "Erreur serveur", variant: "destructive" });
@@ -362,7 +362,7 @@ export default function TamTamPhoneAuth() {
       } else {
         vibrate([50, 30, 50]);
         toast({ title: "✅ PIN réinitialisé !", description: "Vous êtes connecté" });
-        navigate('/fitila/social');
+        navigate('/social');
       }
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message || "Erreur serveur", variant: "destructive" });
@@ -533,11 +533,11 @@ export default function TamTamPhoneAuth() {
             onBack={() => {
               // Allow skipping - go to social, reminder will show there
               if (isExistingUser) {
-                navigate('/fitila/social');
+                navigate('/social');
               } else {
                 setStep('complete');
                 toast({ title: "Rappel", description: "Tu pourras configurer ton code secret plus tard depuis ton profil" });
-                setTimeout(() => navigate('/fitila/social'), 2000);
+                setTimeout(() => navigate('/social'), 2000);
               }
             }}
             isLoading={isLoading}
