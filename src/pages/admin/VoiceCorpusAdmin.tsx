@@ -37,7 +37,7 @@ export default function VoiceCorpusAdmin() {
   useEffect(() => {
     if (!authLoading && !isAdmin) {
       toast.error('Accès réservé aux administrateurs');
-      navigate('/fitila');
+      navigate('/');
     }
   }, [isAdmin, authLoading, navigate]);
 
