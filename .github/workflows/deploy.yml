@@ -100,7 +100,18 @@ jobs:
             docker inspect traefik --format 'CMD={{json .Config.Cmd}}' || true
             docker inspect traefik --format 'MOUNTS={{json .Mounts}}' || true
             docker inspect traefik --format 'LABELS={{json .Config.Labels}}' || true
+            echo "--- Public DNS resolution ---"
+            getent ahosts fitila.bj || true
+            command -v dig >/dev/null && { echo "A=$(dig +short A fitila.bj | tr '\n' ' ')"; echo "AAAA=$(dig +short AAAA fitila.bj | tr '\n' ' ')"; } || true
+            echo "--- VPS network addresses ---"
+            hostname -I || true
+            ip -4 addr show scope global | grep -E 'inet ' || true
+            ip -6 addr show scope global | grep -E 'inet6 ' || true
             echo "--- TLS verification without insecure bypass ---"
+            echo "IPv4:"
+            timeout 10 curl -4 -vIs https://fitila.bj/ 2>&1 | grep -E 'Connected to|subject:|issuer:|SSL certificate|HTTP/' | head -30 || true
+            echo "IPv6:"
+            timeout 10 curl -6 -vIs https://fitila.bj/ 2>&1 | grep -E 'Connected to|subject:|issuer:|SSL certificate|HTTP/|Could not resolve|Failed to connect' | head -30 || true
             timeout 10 curl -fsSI https://fitila.bj/ | head -20 || true
             timeout 10 curl -fsSI https://fitila.bj/admin | head -20 || true
             timeout 10 sh -c "echo | openssl s_client -connect 127.0.0.1:443 -servername fitila.bj -verify_return_error 2>&1 | tail -25" || true
