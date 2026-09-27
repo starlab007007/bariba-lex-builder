@@ -140,6 +140,19 @@ function DashboardTab() {
   const order = ['lecon', 'proverbe', 'scene', 'mot', 'exemple', 'forme'];
   return (
     <div className="space-y-4">
+      {stats.items === 0 && (
+        <Card className="border-amber-300 bg-amber-50">
+          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-bold text-amber-950">Catalogue audio non initialisé</p>
+              <p className="text-sm text-amber-800">Aucun texte Apprendre n’est encore disponible pour créer des lots ou publier des voix.</p>
+            </div>
+            <Button variant="outline" className="border-amber-400 bg-white" onClick={() => window.history.pushState({}, '', '/admin/apprendre-voice?section=settings')}>
+              Ouvrir les paramètres
+            </Button>
+          </CardContent>
+        </Card>
+      )}
       <div className="grid gap-3 md:grid-cols-4">
         <Card><CardHeader className="pb-2"><CardDescription>Textes avec voix active</CardDescription><CardTitle className="text-3xl">{stats.covered} / {stats.items}</CardTitle></CardHeader><CardContent><Progress value={pct} /><p className="mt-1 text-xs text-muted-foreground">{pct} % du catalogue audible</p></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardDescription>Prises à valider</CardDescription><CardTitle className="text-3xl">{stats.by_status.submitted ?? 0}</CardTitle></CardHeader><CardContent className="text-xs text-muted-foreground">Délai moyen de validation : {stats.avg_review_hours ?? '—'} h</CardContent></Card>
@@ -345,6 +358,11 @@ function PublishTab() {
         <Table>
           <TableHeader><TableRow><TableHead>Texte</TableHead><TableHead>Type</TableHead><TableHead>Voix</TableHead><TableHead>Qualité</TableHead><TableHead>Écoute</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
           <TableBody>
+            {takes.length === 0 && (
+              <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                {filter === 'pending' ? 'Aucune voix approuvée en attente de publication.' : 'Aucune voix active pour le moment.'}
+              </TableCell></TableRow>
+            )}
             {takes.map(t => (
               <TableRow key={t.id}>
                 <TableCell><div className="font-medium">{items[t.audio_key]?.text_ba ?? t.audio_key}</div><div className="text-xs text-muted-foreground">{items[t.audio_key]?.text_fr}</div></TableCell>
@@ -540,6 +558,11 @@ function ContributorsTab() {
         <Table>
           <TableHeader><TableRow><TableHead>Nom</TableHead><TableHead>Rôles</TableHead><TableHead>Voix</TableHead><TableHead>Variante</TableHead><TableHead>Accord</TableHead><TableHead>Usage IA</TableHead></TableRow></TableHeader>
           <TableBody>
+            {rows.length === 0 && (
+              <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                Aucun locuteur ou validateur n’est encore affecté. Utilisez « Gérer les rôles audio ».
+              </TableCell></TableRow>
+            )}
             {rows.map(c => (
               <TableRow key={c.user_id}>
                 <TableCell>{c.display_name ?? c.user_id.slice(0, 8)}</TableCell>
@@ -583,6 +606,9 @@ function IssuesTab() {
         <Table>
           <TableHeader><TableRow><TableHead>Texte</TableHead><TableHead>Type</TableHead><TableHead>Détail</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
           <TableBody>
+            {rows.length === 0 && (
+              <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">Aucun signalement ouvert ou historique pour le moment.</TableCell></TableRow>
+            )}
             {rows.map(r => (
               <TableRow key={r.id}>
                 <TableCell><div className="font-medium">{items[r.audio_key]?.text_ba ?? r.audio_key}</div><div className="text-xs text-muted-foreground">{items[r.audio_key]?.text_fr}{items[r.audio_key]?.source_page ? ` · p. ${items[r.audio_key]?.source_page}` : ''}</div></TableCell>
@@ -607,11 +633,42 @@ function SettingsTab() {
   const [s, setS] = useState<SettingsRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
+  const [catalogCount, setCatalogCount] = useState<number | null>(null);
+  const [catalogVersion, setCatalogVersion] = useState<string | null>(null);
+  const [syncingCatalog, setSyncingCatalog] = useState(false);
+  const loadCatalogStatus = useCallback(async () => {
+    const { count, error } = await db.from('apprendre_audio_items').select('*', { count: 'exact', head: true }).eq('in_content', true);
+    if (error) throw error;
+    setCatalogCount(count ?? 0);
+    if ((count ?? 0) > 0) {
+      const { data } = await db.from('apprendre_audio_items').select('content_version').eq('in_content', true).limit(1).maybeSingle();
+      setCatalogVersion((data as { content_version?: string } | null)?.content_version ?? null);
+    } else {
+      setCatalogVersion(null);
+    }
+  }, []);
+
   useEffect(() => {
     db.from('apprendre_audio_settings').select('*').eq('id', 1).maybeSingle().then(({ data, error }) => {
       if (error) toast.error(errorText(error)); else setS(data as SettingsRow);
     });
-  }, []);
+    loadCatalogStatus().catch(e => toast.error(errorText(e)));
+  }, [loadCatalogStatus]);
+
+  async function syncCatalog() {
+    setSyncingCatalog(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('apprendre-catalog-sync', { body: {} });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Catalogue ${data?.content_version ?? ''} synchronisé : ${data?.items ?? 0} textes`);
+      await loadCatalogStatus();
+    } catch (e) {
+      toast.error(`Synchronisation impossible : ${errorText(e)}`);
+    } finally {
+      setSyncingCatalog(false);
+    }
+  }
 
   async function save() {
     if (!s) return;
@@ -687,8 +744,21 @@ function SettingsTab() {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader><CardTitle className="text-base">Catalogue des textes</CardTitle><CardDescription>Fichier produit par fitila_flutter/tool/audio_catalog/build_audio_catalog.py à chaque nouvelle version du contenu Apprendre.</CardDescription></CardHeader>
+        <CardHeader><CardTitle className="text-base">Catalogue des textes</CardTitle><CardDescription>Source des mots, leçons, phrases et scènes à enregistrer dans Apprendre.</CardDescription></CardHeader>
         <CardContent className="space-y-3">
+          <div className="rounded-xl border bg-muted/30 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="font-semibold">{catalogCount === null ? 'Vérification…' : `${catalogCount} texte(s) actif(s)`}</p>
+                <p className="text-xs text-muted-foreground">{catalogVersion ? `Version ${catalogVersion}` : 'Catalogue serveur non initialisé'}</p>
+              </div>
+              <Button onClick={syncCatalog} disabled={syncingCatalog}>
+                {syncingCatalog ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                {catalogCount ? 'Resynchroniser' : 'Initialiser le catalogue'}
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">Synchronisation automatique depuis la build19 Apprendre v2.4 validée. L’import manuel reste disponible en secours.</p>
           <Input type="file" accept="application/json" disabled={importing !== null} onChange={e => { const f = e.target.files?.[0]; if (f) importCatalog(f); e.target.value = ''; }} />
           {importing && <p className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Import {importing}</p>}
           <p className="text-xs text-muted-foreground"><Upload className="mr-1 inline h-3 w-3" />Les textes absents de la nouvelle version sont marqués hors contenu ; leurs voix cessent d’être proposées.</p>
@@ -714,6 +784,9 @@ function AuditTab() {
     <Table>
       <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Action</TableHead><TableHead>Cible</TableHead><TableHead>Détail</TableHead></TableRow></TableHeader>
       <TableBody>
+        {rows.length === 0 && (
+          <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">Le journal est vide. Les actions audio apparaîtront ici.</TableCell></TableRow>
+        )}
         {rows.map(r => (
           <TableRow key={r.id}>
             <TableCell className="whitespace-nowrap text-sm">{new Date(r.created_at).toLocaleString('fr-FR')}</TableCell>
