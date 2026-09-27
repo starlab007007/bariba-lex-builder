@@ -103,6 +103,7 @@ export default function AdminDashboard() {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
   const tabFromLocation = () => {
     const path = location.pathname.replace(/\/$/, '');
     if (path.endsWith('/apprendre-voice')) return 'apprendre-voice';
@@ -110,226 +111,241 @@ export default function AdminDashboard() {
     const queryTab = new URLSearchParams(location.search).get('tab');
     return queryTab || 'overview';
   };
+
   const [activeTab, setActiveTab] = useState(tabFromLocation);
 
   const changeTab = (tab: string) => {
     setActiveTab(tab);
     if (tab === 'apprendre-voice') navigate('/admin/apprendre-voice');
     else if (tab === 'users') navigate('/admin/users');
+    else if (tab === 'overview') navigate('/admin');
     else navigate(`/admin?tab=${encodeURIComponent(tab)}`);
   };
 
+  const navSections = [
+    {
+      label: 'Pilotage',
+      items: [
+        { value: 'overview', label: 'Vue d’ensemble', icon: BarChart3 },
+        { value: 'analytics', label: 'Analytics', icon: Activity },
+        { value: 'model-health', label: 'Santé modèles IA', icon: Sparkles },
+      ],
+    },
+    {
+      label: 'Contenus',
+      items: [
+        { value: 'dictionary', label: 'Dictionnaire', icon: BookOpen },
+        { value: 'dictionary-advanced', label: 'Dictionnaire avancé', icon: Sparkles },
+        { value: 'idioms', label: 'Idiomes', icon: FileText },
+        { value: 'grammar-stats', label: 'Stats grammaticales', icon: BarChart3 },
+      ],
+    },
+    {
+      label: 'Voix & audio',
+      items: [
+        { value: 'apprendre-voice', label: 'Audio Apprendre', icon: Mic },
+        { value: 'classe-audio', label: 'Audio Classe', icon: Volume2 },
+        { value: 'voice-corpus', label: 'Corpus voix', icon: Mic },
+        { value: 'audio-services', label: 'Services audio', icon: Volume2 },
+      ],
+    },
+    {
+      label: 'Qualité & production',
+      items: [
+        { value: 'quality', label: 'Qualité', icon: Shield },
+        { value: 'diagnostic', label: 'Diagnostic', icon: Activity },
+        { value: 'templates-ia', label: 'Templates IA', icon: Film },
+        { value: 'anime-library', label: 'Bibliothèque Anime', icon: BookImage },
+        { value: 'bulk-edit', label: 'Édition masse', icon: Edit3 },
+        { value: 'export', label: 'Export', icon: Download },
+      ],
+    },
+    {
+      label: 'Administration',
+      items: [
+        { value: 'users', label: 'Utilisateurs & rôles', icon: Users },
+        { value: 'settings', label: 'Paramètres', icon: Settings },
+      ],
+    },
+  ];
+
+  const activeLabel =
+    navSections.flatMap(section => section.items).find(item => item.value === activeTab)?.label ||
+    'Administration';
+
+  const renderContents = (
+    <>
+      <TabsContent value="overview" className="m-0"><TabErrorBoundary tabName="overview"><AdminOverview /></TabErrorBoundary></TabsContent>
+      <TabsContent value="model-health" className="m-0">
+        <TabErrorBoundary tabName="model-health">
+          <div className="space-y-6"><ModelHealthDashboard /><ByT5SpaceConfig /></div>
+        </TabErrorBoundary>
+      </TabsContent>
+      <TabsContent value="audio-services" className="m-0"><TabErrorBoundary tabName="audio-services"><AudioServicesMonitor /></TabErrorBoundary></TabsContent>
+      <TabsContent value="dictionary" className="m-0"><TabErrorBoundary tabName="dictionary"><DictionaryManager /></TabErrorBoundary></TabsContent>
+      <TabsContent value="dictionary-advanced" className="m-0"><TabErrorBoundary tabName="dictionary-advanced"><AdvancedDictionaryManager /></TabErrorBoundary></TabsContent>
+      <TabsContent value="idioms" className="m-0"><TabErrorBoundary tabName="idioms"><IdiomManager /></TabErrorBoundary></TabsContent>
+      <TabsContent value="voice-corpus" className="m-0">
+        <TabErrorBoundary tabName="voice-corpus">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-[#E4DFCC] bg-white p-5 shadow-sm">
+              <div>
+                <h2 className="flex items-center gap-2 text-lg font-extrabold text-[#241F2E]"><Mic className="h-5 w-5 text-[#9C6B1D]" /> Corpus Voix Bariba</h2>
+                <p className="text-sm text-[#6F6955]">Écouter, valider et exporter les enregistrements collectés via le Voice Lab.</p>
+              </div>
+              <Link to="/admin/voice-corpus" className="inline-flex items-center gap-2 rounded-full bg-[#241F2E] px-4 py-2.5 text-sm font-bold text-white hover:opacity-90">
+                <ExternalLink className="h-4 w-4" /> Stats & export complet
+              </Link>
+            </div>
+            <VoiceRecordingsBrowser />
+          </div>
+        </TabErrorBoundary>
+      </TabsContent>
+      <TabsContent value="apprendre-voice" className="m-0"><TabErrorBoundary tabName="apprendre-voice"><ApprendreVoiceAdmin /></TabErrorBoundary></TabsContent>
+      <TabsContent value="classe-audio" className="m-0">
+        <TabErrorBoundary tabName="classe-audio">
+          <div className="space-y-3">
+            <div className="rounded-[24px] border border-[#E4DFCC] bg-white p-5 shadow-sm">
+              <h2 className="flex items-center gap-2 text-lg font-extrabold text-[#241F2E]"><Volume2 className="h-5 w-5 text-[#9C6B1D]" /> Lecture vocale des contenus</h2>
+              <p className="text-sm text-[#6F6955]">Validez les enregistrements audio des enseignants pour les manuels N1/N2.</p>
+            </div>
+            <ClasseAudioReview />
+          </div>
+        </TabErrorBoundary>
+      </TabsContent>
+      <TabsContent value="quality" className="m-0"><TabErrorBoundary tabName="quality"><QualityMetricsDashboard /></TabErrorBoundary></TabsContent>
+      <TabsContent value="diagnostic" className="m-0"><TabErrorBoundary tabName="diagnostic"><TranslationDiagnosticDashboard /></TabErrorBoundary></TabsContent>
+      <TabsContent value="analytics" className="m-0"><TabErrorBoundary tabName="analytics"><AnalyticsDashboard /></TabErrorBoundary></TabsContent>
+      <TabsContent value="templates-ia" className="m-0"><TabErrorBoundary tabName="templates-ia"><TemplateGenerationAdmin /></TabErrorBoundary></TabsContent>
+      <TabsContent value="anime-library" className="m-0"><TabErrorBoundary tabName="anime-library"><AnimeLibraryManager /></TabErrorBoundary></TabsContent>
+      <TabsContent value="grammar-stats" className="m-0"><TabErrorBoundary tabName="grammar-stats"><GrammaticalStatsDashboard /></TabErrorBoundary></TabsContent>
+      <TabsContent value="bulk-edit" className="m-0"><TabErrorBoundary tabName="bulk-edit"><BulkEditPanel /></TabErrorBoundary></TabsContent>
+      <TabsContent value="export" className="m-0"><TabErrorBoundary tabName="export"><DictionaryExporter /></TabErrorBoundary></TabsContent>
+      <TabsContent value="users" className="m-0"><TabErrorBoundary tabName="users"><UserRoleManager /></TabErrorBoundary></TabsContent>
+      <TabsContent value="settings" className="m-0"><TabErrorBoundary tabName="settings"><AdminSettings /></TabErrorBoundary></TabsContent>
+    </>
+  );
+
   return (
     <AdminErrorBoundary>
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Globe className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold">Admin - Dictionnaire Bààtɔ̀nú</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">{user?.email}</span>
-            <Button variant="outline" size="sm" onClick={signOut}>
-              Déconnexion
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <div className="container py-6">
-        <Tabs value={activeTab} onValueChange={changeTab} className="space-y-6">
-          <div className="overflow-x-auto">
-            <TabsList className="inline-flex flex-wrap h-auto gap-1 bg-muted/50 p-2 min-w-full">
-              {/* 🎯 SECTION DONNÉES */}
-              <div className="flex items-center gap-1 w-full">
-                <Separator className="flex-1" />
-                <span className="text-xs font-semibold text-[hsl(var(--section-data))] px-2 whitespace-nowrap">🎯 DONNÉES</span>
-                <Separator className="flex-1" />
-              </div>
-              <TabsTrigger value="model-health" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-data))]">
-                <Activity className="h-4 w-4 text-[hsl(var(--section-data))]" />
-                Santé Modèles
-              </TabsTrigger>
-              <TabsTrigger value="audio-services" className="flex items-center gap-2">
-                <Volume2 className="h-4 w-4 text-[hsl(var(--section-data))]" />
-                Services Audio
-              </TabsTrigger>
-              <TabsTrigger value="dictionary" className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-[hsl(var(--section-data))]" />
-                Dictionnaire
-              </TabsTrigger>
-              <TabsTrigger value="dictionary-advanced" className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-[hsl(var(--section-data))]" />
-                Dictionnaire Avancé
-              </TabsTrigger>
-              <TabsTrigger value="idioms" className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-[hsl(var(--section-data))]" />
-                Idiomes
-              </TabsTrigger>
-              <TabsTrigger value="voice-corpus" className="flex items-center gap-2">
-                <Mic className="h-4 w-4 text-[hsl(var(--section-data))]" />
-                Voice Corpus
-              </TabsTrigger>
-              <TabsTrigger value="classe-audio" className="flex items-center gap-2">
-                <Volume2 className="h-4 w-4 text-[hsl(var(--section-data))]" />
-                Audio Classe
-              </TabsTrigger>
-              <TabsTrigger value="apprendre-voice" className="flex items-center gap-2">
-                <Mic className="h-4 w-4 text-[hsl(var(--section-data))]" />
-                🎙️ Gestion audio Apprendre
-              </TabsTrigger>
-
-              {/* 🧪 SECTION TESTS & QUALITÉ */}
-              <div className="flex items-center gap-1 w-full mt-2">
-                <Separator className="flex-1" />
-                <span className="text-xs font-semibold text-[hsl(var(--section-tests))] px-2 whitespace-nowrap">🧪 TESTS & QUALITÉ</span>
-                <Separator className="flex-1" />
-              </div>
-              <TabsTrigger value="quality" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-tests))]">
-                <Shield className="h-4 w-4 text-[hsl(var(--section-tests))]" />
-                Qualité
-              </TabsTrigger>
-              <TabsTrigger value="diagnostic" className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-[hsl(var(--section-tests))]" />
-                Diagnostic
-              </TabsTrigger>
-
-              {/* 📈 SECTION ANALYTICS */}
-              <div className="flex items-center gap-1 w-full mt-2">
-                <Separator className="flex-1" />
-                <span className="text-xs font-semibold text-[hsl(var(--section-analytics))] px-2 whitespace-nowrap">📈 ANALYTICS</span>
-                <Separator className="flex-1" />
-              </div>
-              <TabsTrigger value="analytics" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-analytics))]">
-                <BarChart3 className="h-4 w-4 text-[hsl(var(--section-analytics))]" />
-                Analytics
-              </TabsTrigger>
-
-              {/* 🎬 SECTION CRÉATION */}
-              <div className="flex items-center gap-1 w-full mt-2">
-                <Separator className="flex-1" />
-                <span className="text-xs font-semibold text-[hsl(var(--section-creation))] px-2 whitespace-nowrap">🎬 CRÉATION</span>
-                <Separator className="flex-1" />
-              </div>
-              <TabsTrigger value="templates-ia" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-creation))]">
-                <Film className="h-4 w-4 text-[hsl(var(--section-creation))]" />
-                Templates IA
-              </TabsTrigger>
-              <TabsTrigger value="anime-library" className="flex items-center gap-2">
-                <BookImage className="h-4 w-4 text-[hsl(var(--section-creation))]" />
-                Bibliothèque Anime
-              </TabsTrigger>
-
-              {/* 🛠️ SECTION OUTILS */}
-              <div className="flex items-center gap-1 w-full mt-2">
-                <Separator className="flex-1" />
-                <span className="text-xs font-semibold text-[hsl(var(--section-tools))] px-2 whitespace-nowrap">🛠️ OUTILS</span>
-                <Separator className="flex-1" />
-              </div>
-              <TabsTrigger value="grammar-stats" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-tools))]">
-                <BarChart3 className="h-4 w-4 text-[hsl(var(--section-tools))]" />
-                Stats Grammaticales
-              </TabsTrigger>
-              <TabsTrigger value="bulk-edit" className="flex items-center gap-2">
-                <Edit3 className="h-4 w-4 text-[hsl(var(--section-tools))]" />
-                Édition Masse
-              </TabsTrigger>
-              <TabsTrigger value="export" className="flex items-center gap-2">
-                <Download className="h-4 w-4 text-[hsl(var(--section-tools))]" />
-                Export
-              </TabsTrigger>
-
-              {/* 👥 SECTION GESTION */}
-              <div className="flex items-center gap-1 w-full mt-2">
-                <Separator className="flex-1" />
-                <span className="text-xs font-semibold text-[hsl(var(--section-management))] px-2 whitespace-nowrap">👥 GESTION</span>
-                <Separator className="flex-1" />
-              </div>
-              <TabsTrigger value="overview" className="flex items-center gap-2 border-l-2 border-[hsl(var(--section-management))]">
-                <BarChart3 className="h-4 w-4 text-[hsl(var(--section-management))]" />
-                Vue d'ensemble
-              </TabsTrigger>
-              <TabsTrigger value="users" className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-[hsl(var(--section-management))]" />
-                Utilisateurs & rôles
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center gap-2">
-                <Settings className="h-4 w-4 text-[hsl(var(--section-management))]" />
-                Paramètres
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          {/* Tab Contents - each wrapped in error boundary */}
-          <TabsContent value="overview"><TabErrorBoundary tabName="overview"><AdminOverview /></TabErrorBoundary></TabsContent>
-          <TabsContent value="model-health">
-            <TabErrorBoundary tabName="model-health">
-              <div className="space-y-6">
-                <ModelHealthDashboard />
-                <ByT5SpaceConfig />
-              </div>
-            </TabErrorBoundary>
-          </TabsContent>
-          <TabsContent value="audio-services"><TabErrorBoundary tabName="audio-services"><AudioServicesMonitor /></TabErrorBoundary></TabsContent>
-          <TabsContent value="dictionary"><TabErrorBoundary tabName="dictionary"><DictionaryManager /></TabErrorBoundary></TabsContent>
-          <TabsContent value="dictionary-advanced"><TabErrorBoundary tabName="dictionary-advanced"><AdvancedDictionaryManager /></TabErrorBoundary></TabsContent>
-          <TabsContent value="idioms"><TabErrorBoundary tabName="idioms"><IdiomManager /></TabErrorBoundary></TabsContent>
-          <TabsContent value="voice-corpus">
-            <TabErrorBoundary tabName="voice-corpus">
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3 bg-card border rounded-lg p-4">
-                  <div>
-                    <h2 className="text-lg font-bold flex items-center gap-2"><Mic className="w-5 h-5 text-primary" /> Corpus Voix Bariba</h2>
-                    <p className="text-sm text-muted-foreground">Écouter, valider, télécharger les enregistrements collectés via le Voice Lab.</p>
+      <div className="min-h-screen bg-[#F7F5EC] text-[#241F2E]">
+        <Tabs value={activeTab} onValueChange={changeTab}>
+          <div className="grid min-h-screen lg:grid-cols-[280px_minmax(0,1fr)]">
+            <aside className="hidden lg:flex lg:flex-col bg-[#241F2E] text-white border-r border-white/10 sticky top-0 h-screen">
+              <div className="px-6 pt-7 pb-5 border-b border-white/10">
+                <Link to="/" className="flex items-center gap-3 group">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#C99530] text-[#2B2110] shadow-lg shadow-black/20">
+                    <span className="text-xl">🔥</span>
                   </div>
-                  <Link
-                    to="/admin/voice-corpus"
-                    className="inline-flex items-center gap-2 text-sm rounded-md bg-primary text-primary-foreground px-3 py-2 hover:opacity-90"
-                  >
-                    <ExternalLink className="w-4 h-4" /> Stats & Export ZIP complet
-                  </Link>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#D9D3C1]">FITILA</p>
+                    <h1 className="text-lg font-extrabold tracking-tight">Centre de contrôle</h1>
+                  </div>
+                </Link>
+                <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#B7AF98]">Administrateur connecté</p>
+                  <p className="mt-1 truncate text-sm font-semibold text-white">{user?.email || 'Administration FITILA'}</p>
                 </div>
-                <VoiceRecordingsBrowser />
               </div>
-            </TabErrorBoundary>
-          </TabsContent>
-          <TabsContent value="apprendre-voice">
-            <TabErrorBoundary tabName="apprendre-voice">
-              <ApprendreVoiceAdmin />
-            </TabErrorBoundary>
-          </TabsContent>
 
-          <TabsContent value="classe-audio">
-            <TabErrorBoundary tabName="classe-audio">
-              <div className="space-y-3">
-                <div className="bg-card border rounded-lg p-4">
-                  <h2 className="text-lg font-bold flex items-center gap-2"><Volume2 className="w-5 h-5 text-primary" /> Lecture Vocale des Contenus</h2>
-                  <p className="text-sm text-muted-foreground">Validez les enregistrements audio des enseignants pour chaque texte et question des manuels N1/N2.</p>
-                </div>
-                <ClasseAudioReview />
+              <div className="flex-1 overflow-y-auto px-3 py-4">
+                <TabsList className="h-auto w-full flex-col items-stretch gap-4 bg-transparent p-0">
+                  {navSections.map(section => (
+                    <div key={section.label}>
+                      <p className="px-3 pb-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#B7AF98]">{section.label}</p>
+                      <div className="space-y-1">
+                        {section.items.map(item => {
+                          const Icon = item.icon;
+                          return (
+                            <TabsTrigger
+                              key={item.value}
+                              value={item.value}
+                              className="w-full justify-start gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/70 data-[state=active]:bg-[#C99530] data-[state=active]:text-[#2B2110] data-[state=active]:shadow-lg hover:bg-white/8 hover:text-white"
+                            >
+                              <Icon className="h-4 w-4 shrink-0" />
+                              <span className="truncate">{item.label}</span>
+                            </TabsTrigger>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </TabsList>
               </div>
-            </TabErrorBoundary>
-          </TabsContent>
-          
-          <TabsContent value="quality"><TabErrorBoundary tabName="quality"><QualityMetricsDashboard /></TabErrorBoundary></TabsContent>
-          <TabsContent value="diagnostic"><TabErrorBoundary tabName="diagnostic"><TranslationDiagnosticDashboard /></TabErrorBoundary></TabsContent>
-          
-          <TabsContent value="analytics"><TabErrorBoundary tabName="analytics"><AnalyticsDashboard /></TabErrorBoundary></TabsContent>
-          
-          <TabsContent value="templates-ia"><TabErrorBoundary tabName="templates-ia"><TemplateGenerationAdmin /></TabErrorBoundary></TabsContent>
-          <TabsContent value="anime-library"><TabErrorBoundary tabName="anime-library"><AnimeLibraryManager /></TabErrorBoundary></TabsContent>
-          
-          <TabsContent value="grammar-stats"><TabErrorBoundary tabName="grammar-stats"><GrammaticalStatsDashboard /></TabErrorBoundary></TabsContent>
-          <TabsContent value="bulk-edit"><TabErrorBoundary tabName="bulk-edit"><BulkEditPanel /></TabErrorBoundary></TabsContent>
-          <TabsContent value="export"><TabErrorBoundary tabName="export"><DictionaryExporter /></TabErrorBoundary></TabsContent>
-          
-          <TabsContent value="users"><TabErrorBoundary tabName="users"><UserRoleManager /></TabErrorBoundary></TabsContent>
-          <TabsContent value="settings"><TabErrorBoundary tabName="settings"><AdminSettings /></TabErrorBoundary></TabsContent>
+
+              <div className="border-t border-white/10 p-4 space-y-2">
+                <Button asChild variant="ghost" className="w-full justify-start rounded-xl text-white/80 hover:bg-white/10 hover:text-white">
+                  <Link to="/"><Globe className="mr-2 h-4 w-4" /> Ouvrir FITILA</Link>
+                </Button>
+                <Button variant="ghost" className="w-full justify-start rounded-xl text-white/60 hover:bg-white/10 hover:text-white" onClick={signOut}>
+                  Déconnexion
+                </Button>
+              </div>
+            </aside>
+
+            <main className="min-w-0">
+              <header className="sticky top-0 z-40 border-b border-[#E4DFCC]/80 bg-[#F7F5EC]/92 backdrop-blur-xl">
+                <div className="flex min-h-[76px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-[#9C6B1D]">Administration FITILA</p>
+                    <h2 className="truncate text-xl sm:text-2xl font-extrabold tracking-tight text-[#241F2E]">{activeLabel}</h2>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button asChild variant="outline" size="sm" className="rounded-full border-[#D5CEB3] bg-white">
+                      <Link to="/"><Globe className="mr-2 h-4 w-4" /> <span className="hidden sm:inline">Voir l’application</span><span className="sm:hidden">FITILA</span></Link>
+                    </Button>
+                    <Button variant="outline" size="sm" className="hidden sm:inline-flex rounded-full border-[#D5CEB3] bg-white" onClick={signOut}>Déconnexion</Button>
+                  </div>
+                </div>
+
+                <div className="lg:hidden overflow-x-auto border-t border-[#E4DFCC] px-3 py-2">
+                  <TabsList className="inline-flex h-auto min-w-max gap-1 bg-transparent p-0">
+                    {navSections.flatMap(section => section.items).map(item => {
+                      const Icon = item.icon;
+                      return (
+                        <TabsTrigger
+                          key={item.value}
+                          value={item.value}
+                          className="gap-1.5 rounded-full border border-[#E4DFCC] bg-white px-3 py-2 text-xs font-bold text-[#5E5846] data-[state=active]:border-[#C99530] data-[state=active]:bg-[#F3E3B9] data-[state=active]:text-[#2B2110]"
+                        >
+                          <Icon className="h-3.5 w-3.5" /> {item.label}
+                        </TabsTrigger>
+                      );
+                    })}
+                  </TabsList>
+                </div>
+              </header>
+
+              <div className="px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+                <div className="mx-auto max-w-[1600px]">
+                  {activeTab === 'overview' && (
+                    <div className="mb-6 overflow-hidden rounded-[28px] bg-[#241F2E] p-6 sm:p-8 text-white shadow-xl shadow-[#241F2E]/10">
+                      <div className="grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
+                        <div>
+                          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-[#F3E3B9]">
+                            <Sparkles className="h-3.5 w-3.5" /> Pilotage unifié
+                          </div>
+                          <h3 className="max-w-3xl text-2xl sm:text-3xl font-extrabold tracking-tight">Tout FITILA, depuis un seul centre de contrôle.</h3>
+                          <p className="mt-2 max-w-2xl text-sm sm:text-base text-[#D9D3C1]">Contenus, voix, qualité, IA, utilisateurs et production sont regroupés sans changer vos outils métier.</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button onClick={() => changeTab('apprendre-voice')} className="rounded-full bg-[#C99530] text-[#2B2110] hover:bg-[#D7A84B] font-bold">
+                            <Mic className="mr-2 h-4 w-4" /> Audio Apprendre
+                          </Button>
+                          <Button onClick={() => changeTab('users')} variant="outline" className="rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white">
+                            <Users className="mr-2 h-4 w-4" /> Utilisateurs & rôles
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {renderContents}
+                </div>
+              </div>
+            </main>
+          </div>
         </Tabs>
       </div>
-    </div>
     </AdminErrorBoundary>
   );
 }
