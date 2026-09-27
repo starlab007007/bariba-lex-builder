@@ -129,6 +129,7 @@ export default function AdminDashboard() {
     Object.entries(pathToTab).map(([path, tab]) => [tab, path])
   );
   tabToPath.overview = '/admin';
+  tabToPath['voice-corpus'] = '/admin/voice-corpus';
 
   const tabFromLocation = () => {
     const path = location.pathname.replace(/\/$/, '') || '/admin';
