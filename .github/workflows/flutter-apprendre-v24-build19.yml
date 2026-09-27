@@ -32,6 +32,7 @@ jobs:
           test -f fitila_flutter/lib/apprendre/apprendre_voice_ui.dart
           test -f fitila_flutter/lib/apprendre/apprendre_voice_studio.dart
           test -f fitila_flutter/tool/audio_catalog/apprendre_audio_catalog.json
+          python fitila_flutter/tool/audio_catalog/build_audio_catalog.py --out fitila_flutter/tool/audio_catalog/apprendre_audio_catalog.json
           test -f src/components/admin/apprendre-voice/ApprendreVoiceAdmin.tsx
           test -f supabase/migrations/20260927120000_apprendre_voice_v24.sql
           test -f supabase/migrations/20260927123000_apprendre_voice_security_hardening.sql
