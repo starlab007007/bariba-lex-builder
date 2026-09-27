@@ -18,7 +18,7 @@ export default function AuthGuardBanner() {
 
   return (
     <button
-      onClick={() => navigate('/fitila/auth')}
+      onClick={() => navigate('/auth')}
       className="w-full flex items-center gap-3 p-3 rounded-2xl bg-amber-50 border-2 border-amber-300 hover:border-amber-400 transition-colors text-left"
     >
       <div className="w-10 h-10 rounded-xl bg-amber-200 flex items-center justify-center">
