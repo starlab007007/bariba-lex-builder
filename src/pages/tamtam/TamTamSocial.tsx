@@ -242,12 +242,12 @@ const BottomTabBar: React.FC<{
 }> = ({ activeTab, onTabChange, onCreatePress, onNavigate }) => {
   const leftTabs: { id: BottomTab; icon: typeof Home; label: string; path?: string }[] = [
     { id: 'fil', icon: Home, label: 'Fil' },
-    { id: 'learn', icon: BookOpen, label: 'Apprendre', path: '/fitila/learn' },
-    { id: 'classe', icon: School, label: 'Classe', path: '/fitila/classe' },
+    { id: 'learn', icon: BookOpen, label: 'Apprendre', path: '/' },
+    { id: 'classe', icon: School, label: 'Classe', path: '/classe' },
   ];
   const rightTabs: { id: BottomTab; icon: typeof Home; label: string; path?: string }[] = [
-    { id: 'dictionary', icon: Book, label: 'Dico', path: '/fitila/dictionary' },
-    { id: 'translator', icon: BookText, label: 'Traduc.', path: '/fitila/translator' },
+    { id: 'dictionary', icon: Book, label: 'Dico', path: '/dictionary' },
+    { id: 'translator', icon: BookText, label: 'Traduc.', path: '/translator' },
     { id: 'tem-ia', icon: Bot, label: 'Fitila IA', path: '/fitila/tem-ia' },
   ];
 
