@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import {
@@ -728,14 +729,39 @@ function AuditTab() {
 
 /** Onglet d'administration « Voix Apprendre » : tout le circuit des voix de référence. */
 export default function ApprendreVoiceAdmin() {
-  const [tab, setTab] = useState('dashboard');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const allowedTabs = ['dashboard', 'review', 'publish', 'lots', 'contributors', 'issues', 'settings', 'audit'];
+  const initialSection = new URLSearchParams(location.search).get('section') || 'dashboard';
+  const [tab, setTab] = useState(allowedTabs.includes(initialSection) ? initialSection : 'dashboard');
+
+  const changeSection = (section: string) => {
+    setTab(section);
+    navigate(`/admin/apprendre-voice?section=${encodeURIComponent(section)}`, { replace: true });
+  };
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border bg-card p-4">
-        <h2 className="flex items-center gap-2 text-lg font-bold"><Mic className="h-5 w-5 text-primary" /> Voix de référence du module Apprendre</h2>
-        <p className="text-sm text-muted-foreground">Un locuteur enregistre, un autre contributeur valide, l’administration active. Seules les voix actives sont audibles par les apprenants.</p>
+      <div className="rounded-lg border bg-card p-4 space-y-3">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-bold"><Mic className="h-5 w-5 text-primary" /> Gestion des audios — module Apprendre</h2>
+          <p className="text-sm text-muted-foreground">1. Donner le rôle Locuteur voix → 2. Le locuteur enregistre → 3. Un validateur contrôle → 4. L’administration publie. Seules les voix actives sont audibles par les apprenants.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="default" size="sm">
+            <Link to="/admin/users"><Users className="h-4 w-4" /> Gérer les rôles audio</Link>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => changeSection('review')}>
+            <ShieldCheck className="h-4 w-4" /> Audios à valider
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => changeSection('publish')}>
+            <Power className="h-4 w-4" /> Publier / retirer une voix
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => changeSection('contributors')}>
+            <Users className="h-4 w-4" /> Locuteurs & contributeurs
+          </Button>
+        </div>
       </div>
-      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
+      <Tabs value={tab} onValueChange={changeSection} className="space-y-4">
         <TabsList className="flex h-auto flex-wrap gap-1">
           <TabsTrigger value="dashboard"><Activity className="mr-1 h-4 w-4" />Tableau de bord</TabsTrigger>
           <TabsTrigger value="review"><ShieldCheck className="mr-1 h-4 w-4" />Validation</TabsTrigger>
