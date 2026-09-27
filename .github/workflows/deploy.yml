@@ -96,6 +96,14 @@ jobs:
             curl -k -sSI --max-time 10 https://fitila.bj/ | head -20 || true
             echo "--- Traefik labels for FITILA ---"
             docker inspect react-app-bariba-js --format '{{json .Config.Labels}}' || true
+            echo "--- Traefik static configuration / mounts ---"
+            docker inspect traefik --format 'CMD={{json .Config.Cmd}}' || true
+            docker inspect traefik --format 'MOUNTS={{json .Mounts}}' || true
+            docker inspect traefik --format 'LABELS={{json .Config.Labels}}' || true
+            echo "--- TLS verification without insecure bypass ---"
+            timeout 10 curl -fsSI https://fitila.bj/ | head -20 || true
+            timeout 10 curl -fsSI https://fitila.bj/admin | head -20 || true
+            timeout 10 sh -c "echo | openssl s_client -connect 127.0.0.1:443 -servername fitila.bj -verify_return_error 2>&1 | tail -25" || true
             echo "--- recent Traefik ACME/TLS logs ---"
             TRAEFIK_CONTAINER=$(docker ps --format '{{.Names}}' | grep -Ei '^traefik|traefik' | head -1 || true)
             if [ -n "$TRAEFIK_CONTAINER" ]; then
