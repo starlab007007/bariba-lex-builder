@@ -77,9 +77,9 @@ export default function FitilaLearn() {
     } else if (currentView === 'foundation-lesson' || currentView === 'lesson' || currentView === 'lesson-complete') {
       setCurrentView('dashboard');
     } else if (currentView === 'dashboard') {
-      navigate('/fitila/social');
+      navigate('/social');
     } else {
-      navigate('/fitila/social');
+      navigate('/social');
     }
     triggerFeedback('click');
   };
@@ -452,7 +452,7 @@ export default function FitilaLearn() {
                   </div>
                   <motion.button
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => navigate('/fitila/auth')}
+                    onClick={() => navigate('/auth')}
                     className="bg-amber-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md flex-shrink-0"
                   >
                     {userLanguage === 'french' ? 'Connexion' : 'Doo'}
