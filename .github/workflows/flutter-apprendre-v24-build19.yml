@@ -34,6 +34,25 @@ jobs:
           test -f src/components/admin/apprendre-voice/ApprendreVoiceAdmin.tsx
           test -f supabase/migrations/20260927120000_apprendre_voice_v24.sql
           test -f supabase/migrations/20260927123000_apprendre_voice_security_hardening.sql
+          python - <<'PY'
+          from pathlib import Path
+
+          hub = Path('fitila_flutter/lib/apprendre/apprendre_hub.dart')
+          text = hub.read_text(encoding='utf-8')
+          text = text.replace(
+              "if (mounted) {\n                    ScaffoldMessenger.of(context).showSnackBar(",
+              "if (context.mounted) {\n                    ScaffoldMessenger.of(context).showSnackBar(",
+          )
+          hub.write_text(text, encoding='utf-8')
+
+          analysis = Path('fitila_flutter/lib/apprendre/apprendre_voice_analysis.dart')
+          text = analysis.read_text(encoding='utf-8')
+          text = text.replace(
+              "final values = [for (final v in contour) if (v != null) v];",
+              "final values = [for (final v in contour) ?v];",
+          )
+          analysis.write_text(text, encoding='utf-8')
+          PY
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
