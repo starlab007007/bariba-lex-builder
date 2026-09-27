@@ -157,6 +157,28 @@ export default function UserRoleManager() {
 
   return (
     <div className="space-y-6">
+      <Card className="border-amber-200 bg-amber-50/40">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Mic className="h-5 w-5" /> Rôles audio — module Apprendre</CardTitle>
+          <CardDescription>
+            Affectez ici les personnes autorisées à enregistrer ou valider les voix de référence d’Apprendre.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2 text-sm">
+          <div className="rounded-lg border bg-background p-3">
+            <p className="font-semibold flex items-center gap-2"><Mic className="h-4 w-4 text-amber-600" /> Locuteur voix</p>
+            <p className="text-muted-foreground mt-1">Peut enregistrer et soumettre des audios dans le Studio Voix Apprendre après consentement.</p>
+          </div>
+          <div className="rounded-lg border bg-background p-3">
+            <p className="font-semibold flex items-center gap-2"><ListChecks className="h-4 w-4 text-violet-600" /> Validateur voix</p>
+            <p className="text-muted-foreground mt-1">Peut écouter, contrôler et approuver/rejeter les prises des autres locuteurs.</p>
+          </div>
+          <p className="md:col-span-2 text-muted-foreground">
+            Dans le tableau ci-dessous, utilisez les boutons texte « Donner rôle Locuteur » et « Donner rôle Validateur » sur la ligne de l’utilisateur concerné.
+          </p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Gestion des Utilisateurs</CardTitle>
@@ -246,21 +268,21 @@ export default function UserRoleManager() {
                             </Button>
                           )}
                           {u.roles.includes('voice_speaker') ? (
-                            <Button variant="ghost" size="icon" title="Retirer le rôle Locuteur voix" onClick={() => setRevokeInfo({ user: u, role: 'voice_speaker' })}>
-                              <Mic className="h-4 w-4 text-destructive" />
+                            <Button variant="outline" size="sm" title="Retirer le rôle Locuteur voix" onClick={() => setRevokeInfo({ user: u, role: 'voice_speaker' })}>
+                              <Mic className="h-4 w-4 text-destructive" /> Retirer Locuteur
                             </Button>
                           ) : (
-                            <Button variant="ghost" size="icon" title="Attribuer le rôle Locuteur voix (Apprendre)" onClick={() => handleGrantRole(u.id, 'voice_speaker')} disabled={actionLoading === u.id}>
-                              <Mic className="h-4 w-4 text-amber-600" />
+                            <Button variant="outline" size="sm" title="Attribuer le rôle Locuteur voix (Apprendre)" onClick={() => handleGrantRole(u.id, 'voice_speaker')} disabled={actionLoading === u.id}>
+                              <Mic className="h-4 w-4 text-amber-600" /> Donner rôle Locuteur
                             </Button>
                           )}
                           {u.roles.includes('voice_reviewer') ? (
-                            <Button variant="ghost" size="icon" title="Retirer le rôle Validateur voix" onClick={() => setRevokeInfo({ user: u, role: 'voice_reviewer' })}>
-                              <ListChecks className="h-4 w-4 text-destructive" />
+                            <Button variant="outline" size="sm" title="Retirer le rôle Validateur voix" onClick={() => setRevokeInfo({ user: u, role: 'voice_reviewer' })}>
+                              <ListChecks className="h-4 w-4 text-destructive" /> Retirer Validateur
                             </Button>
                           ) : (
-                            <Button variant="ghost" size="icon" title="Attribuer le rôle Validateur voix (Apprendre)" onClick={() => handleGrantRole(u.id, 'voice_reviewer')} disabled={actionLoading === u.id}>
-                              <ListChecks className="h-4 w-4 text-violet-600" />
+                            <Button variant="outline" size="sm" title="Attribuer le rôle Validateur voix (Apprendre)" onClick={() => handleGrantRole(u.id, 'voice_reviewer')} disabled={actionLoading === u.id}>
+                              <ListChecks className="h-4 w-4 text-violet-600" /> Donner rôle Validateur
                             </Button>
                           )}
                           {/* Ban/Unban */}
