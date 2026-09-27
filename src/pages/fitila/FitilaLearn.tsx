@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Volume2, Check, X, Flame, BookOpen, Star, Trophy, Award, Share2, ChevronDown, Zap, Target, Sparkles, GraduationCap, ChevronRight, LogIn, Lock, MessageSquarePlus, AlertTriangle, PenTool } from 'lucide-react';
+import { ArrowLeft, Menu, Volume2, Check, X, Flame, BookOpen, Star, Trophy, Award, Share2, ChevronDown, Zap, Target, Sparkles, GraduationCap, ChevronRight, LogIn, Lock, MessageSquarePlus, AlertTriangle, PenTool } from 'lucide-react';
 import { ContributionModal } from '@/components/fitila/ContributionModal';
 import { EditorToolbar } from '@/components/fitila/EditorToolbar';
 import { useNavigate } from 'react-router-dom';
@@ -77,9 +77,9 @@ export default function FitilaLearn() {
     } else if (currentView === 'foundation-lesson' || currentView === 'lesson' || currentView === 'lesson-complete') {
       setCurrentView('dashboard');
     } else if (currentView === 'dashboard') {
-      navigate('/social');
+      openMenu();
     } else {
-      navigate('/social');
+      openMenu();
     }
     triggerFeedback('click');
   };
@@ -278,7 +278,7 @@ export default function FitilaLearn() {
   };
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+    <div className="h-[100dvh] flex flex-col bg-[#F7F5EC] text-[#241F2E]">
       {/* Level up overlay */}
       <AnimatePresence>
         {showLevelUp && (
@@ -292,22 +292,23 @@ export default function FitilaLearn() {
         )}
       </AnimatePresence>
 
-      {/* Header */}
+      {/* Header — parité Flutter Apprendre v2.4 */}
       {currentView !== 'language-selection' && (
-        <div className="flex-shrink-0 px-4 pt-4 pb-3">
-          <div className="flex items-center justify-between">
-            <motion.button whileTap={{ scale: 0.9 }} onClick={handleBack} className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center">
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+        <div className="flex-shrink-0 px-4 pt-3 pb-2 bg-[#F7F5EC]/95 backdrop-blur">
+          <div className="mx-auto flex max-w-5xl items-center justify-between">
+            <motion.button whileTap={{ scale: 0.92 }} onClick={handleBack} className="w-11 h-11 rounded-full bg-white border border-[#E4DFCC] flex items-center justify-center">
+              {currentView === 'dashboard' ? <Menu className="w-5 h-5 text-[#241F2E]" /> : <ArrowLeft className="w-5 h-5 text-[#241F2E]" />}
             </motion.button>
-            <h1 className="text-gray-800 font-bold text-lg">
-              {config?.flag} {userLanguage === 'french' ? 'Apprendre le Bariba' : 'Fãsei debu'}
-            </h1>
+            <div className="flex-1 min-w-0 px-3">
+              <h1 className="text-[#241F2E] font-extrabold text-base leading-tight">Apprendre</h1>
+              <p className="text-[#6F6955] text-xs truncate">Mɛɛribu · bàátɔ̀nú ⇄ français</p>
+            </div>
             <div className="relative">
-              <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowLangSwitch(!showLangSwitch)} className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-sm">
+              <motion.button whileTap={{ scale: 0.92 }} onClick={() => setShowLangSwitch(!showLangSwitch)} className="w-11 h-11 rounded-full bg-white border border-[#E4DFCC] flex items-center justify-center text-sm">
                 {config?.flag || '🌐'}
               </motion.button>
               {showLangSwitch && (
-                <div className="absolute right-0 top-12 bg-white rounded-xl shadow-xl border border-gray-100 p-1 z-20 min-w-[140px]">
+                <div className="absolute right-0 top-12 bg-white rounded-xl shadow-sm border border-[#E4DFCC] p-1 z-20 min-w-[140px]">
                   <button onClick={() => { handleSelectLanguage('french'); setShowLangSwitch(false); }} className="w-full text-left px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 text-sm">🇫🇷 Français</button>
                   <button onClick={() => { handleSelectLanguage('bariba'); setShowLangSwitch(false); }} className="w-full text-left px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 text-sm">🌍 Bariba</button>
                 </div>
@@ -323,22 +324,22 @@ export default function FitilaLearn() {
           {/* ═══ LANGUAGE SELECTION ═══ */}
           {currentView === 'language-selection' && (
             <motion.div key="lang-select" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center min-h-full px-6 py-8">
-              <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-lg w-full">
+              <div className="bg-white rounded-[28px] border border-[#E4DFCC] shadow-sm p-8 max-w-lg w-full">
                 {/* Back button */}
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => navigate(-1)}
-                  className="flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-6 text-sm font-medium"
+                  className="flex items-center gap-2 text-[#6F6955] hover:text-gray-700 mb-6 text-sm font-medium"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   <span>Retour</span>
                 </motion.button>
                 <div className="space-y-4">
-                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => handleSelectLanguage('french')} className="w-full bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 rounded-3xl p-8 text-center text-white transition-all shadow-lg hover:shadow-xl flex flex-col items-center gap-3">
+                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => handleSelectLanguage('french')} className="w-full bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 rounded-3xl p-8 text-center text-white transition-all shadow-lg hover:shadow-sm flex flex-col items-center gap-3">
                     <div className="text-6xl">🇫🇷</div>
                     <h2 className="text-2xl font-bold">Français</h2>
                   </motion.button>
-                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => handleSelectLanguage('bariba')} className="w-full bg-gradient-to-br from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 rounded-3xl p-8 text-center text-white transition-all shadow-lg hover:shadow-xl flex flex-col items-center gap-3">
+                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => handleSelectLanguage('bariba')} className="w-full bg-gradient-to-br from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 rounded-3xl p-8 text-center text-white transition-all shadow-lg hover:shadow-sm flex flex-col items-center gap-3">
                     <div className="text-6xl">🌍</div>
                     <h2 className="text-2xl font-bold">Baatonum</h2>
                   </motion.button>
@@ -349,9 +350,78 @@ export default function FitilaLearn() {
 
           {/* ═══ DASHBOARD ═══ */}
           {currentView === 'dashboard' && config && (
-            <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="px-4 pb-6 space-y-5">
+            <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto max-w-5xl px-4 pb-8 space-y-5">
+              {/* Flutter v2.4 greeting */}
+              <div className="flex items-start justify-between pt-1">
+                <div>
+                  <h2 className="text-[26px] leading-tight font-extrabold text-[#241F2E]">
+                    {new Date().getHours() < 12 ? 'A kpuna n do ?' : 'Mɛɛribu'}
+                  </h2>
+                  <p className="mt-1 text-sm text-[#6F6955]">
+                    {new Date().getHours() < 12 ? '« As-tu bien dormi ? » — le salut du matin' : 'Apprendre le bàátɔ̀nú et le français'}
+                  </p>
+                </div>
+                <div className="inline-flex items-center gap-1 rounded-xl bg-[#F4DED2] px-3 py-1.5 text-xs font-bold text-[#8A3A24]">
+                  <Flame className="h-4 w-4" /> {profile.streak} j
+                </div>
+              </div>
+
+              {/* Guide du jour — même hiérarchie que Flutter */}
+              <div className="overflow-hidden rounded-[26px] bg-[#241F2E] p-5 sm:p-6 text-white shadow-lg">
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 shrink-0 rounded-full border-2 border-[#C99530] bg-[#3A3448] flex items-center justify-center text-3xl">📚</div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#F3E3B9]">Ton guide aujourd’hui</p>
+                    <h3 className="mt-1 text-xl font-extrabold">
+                      {FOUNDATION_LESSONS[0]?.title?.[langKey] || (userLanguage === 'french' ? 'Commencer les fondations' : 'Mɛɛri')}
+                    </h3>
+                    <p className="mt-1 text-sm text-[#D9D3C1]">Une étape courte, puis pratique et répétition.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => FOUNDATION_LESSONS[0] && startFoundation(FOUNDATION_LESSONS[0])}
+                  className="mt-5 w-full rounded-full bg-[#C99530] px-5 py-3.5 text-sm font-extrabold text-[#2B2110] active:scale-[0.99]"
+                >
+                  Commencer
+                </button>
+              </div>
+
+              {/* Séance du jour */}
+              <div className="rounded-[22px] border border-[#E4DFCC] bg-white p-5">
+                <div className="flex items-center gap-3">
+                  <div className="h-11 w-11 rounded-2xl bg-[#F3E3B9] flex items-center justify-center">
+                    <Zap className="h-5 w-5 text-[#9C6B1D]" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-extrabold text-[#241F2E]">Séance du jour</h3>
+                    <p className="text-xs text-[#6F6955]">10 exercices · écouter, reconnaître, répondre</p>
+                  </div>
+                  <button
+                    onClick={() => THEMES[0] && startLesson(THEMES[0].id)}
+                    className="rounded-full bg-[#241F2E] px-4 py-2 text-xs font-bold text-white"
+                  >
+                    Démarrer
+                  </button>
+                </div>
+              </div>
+
+              {/* Révision */}
+              <div>
+                <div className="mb-2 flex items-end justify-between">
+                  <h3 className="text-[17px] font-extrabold text-[#241F2E]">Révision</h3>
+                  <span className="text-xs font-bold text-[#9C6B1D]">{profile.masteredWords} mots maîtrisés</span>
+                </div>
+                <div className="rounded-[20px] border border-[#E4DFCC] bg-white p-4 flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-[#F3E3B9] flex items-center justify-center">🧠</div>
+                  <p className="flex-1 text-sm text-[#5E5846]">
+                    {profile.completedLessons === 0 ? 'Tes premiers mots apparaîtront ici après ta première séance.' : 'Continue à revoir régulièrement les mots déjà rencontrés.'}
+                  </p>
+                  <ChevronRight className="h-5 w-5 text-[#9C6B1D]" />
+                </div>
+              </div>
+
               {/* Profile card */}
-              <div className="bg-white rounded-3xl shadow-xl p-6">
+              <div className="bg-white rounded-[24px] border border-[#E4DFCC] p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4">
                     {user && tamtamProfile?.avatar_url ? (
@@ -367,7 +437,7 @@ export default function FitilaLearn() {
                       </div>
                     )}
                     <div>
-                      <h2 className="text-xl font-bold text-gray-800">
+                      <h2 className="text-xl font-bold text-[#241F2E]">
                         {user && tamtamProfile?.display_name
                           ? tamtamProfile.display_name
                           : (userLanguage === 'french' ? 'Apprenant' : 'Debutɔm')}
@@ -377,7 +447,7 @@ export default function FitilaLearn() {
                       </p>
                       <div className="flex items-center gap-1.5 mt-1">
                         <Flame className="w-4 h-4 text-orange-500" />
-                        <span className="text-sm text-gray-500 font-medium">{profile.streak} {getText('dayStreak')}</span>
+                        <span className="text-sm text-[#6F6955] font-medium">{profile.streak} {getText('dayStreak')}</span>
                       </div>
                     </div>
                   </div>
@@ -394,16 +464,16 @@ export default function FitilaLearn() {
                 {/* XP bar */}
                 <div className="mb-4">
                   <div className="flex justify-between mb-1.5 text-xs font-semibold">
-                    <span className="text-gray-500">{profile.xp} {getText('xp')}</span>
+                    <span className="text-[#6F6955]">{profile.xp} {getText('xp')}</span>
                     {nextLevel && (
-                      <span className="text-gray-500">
+                      <span className="text-[#6F6955]">
                         {nextLevel.minXP} {getText('xp')} {userLanguage === 'french' ? 'pour' : 'yira'} {getLevelName(nextLevel)}
                       </span>
                     )}
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-3.5 overflow-hidden">
+                  <div className="w-full bg-[#F1EDDF] rounded-full h-2.5 overflow-hidden">
                     <motion.div
-                      className="bg-gradient-to-r from-green-400 via-blue-400 to-purple-500 h-full rounded-full"
+                      className="bg-[#C99530] h-full rounded-full"
                       initial={{ width: 0 }}
                       animate={{ width: `${progressToNext}%` }}
                       transition={{ duration: 0.6 }}
@@ -433,7 +503,7 @@ export default function FitilaLearn() {
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-4 flex items-center gap-3"
+                  className="bg-[#FFFBF0] border border-[#E4DFCC] rounded-[20px] p-4 flex items-center gap-3"
                 >
                   <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
                     <LogIn className="w-5 h-5 text-amber-600" />
@@ -453,7 +523,7 @@ export default function FitilaLearn() {
                   <motion.button
                     whileTap={{ scale: 0.95 }}
                     onClick={() => navigate('/auth')}
-                    className="bg-amber-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md flex-shrink-0"
+                    className="bg-[#C99530] text-[#2B2110] px-4 py-2 rounded-full text-xs font-bold shadow-md flex-shrink-0"
                   >
                     {userLanguage === 'french' ? 'Connexion' : 'Doo'}
                   </motion.button>
@@ -462,8 +532,8 @@ export default function FitilaLearn() {
 
               {/* Badges */}
               {profile.badges.length > 0 && (
-                <div className="bg-white rounded-3xl shadow-xl p-6">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <div className="bg-white rounded-[24px] border border-[#E4DFCC] shadow-sm p-5 sm:p-6">
+                  <h3 className="text-lg font-bold text-[#241F2E] mb-4 flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-yellow-500" />
                     {getText('myBadges')}
                   </h3>
@@ -479,9 +549,9 @@ export default function FitilaLearn() {
               )}
 
               {/* ═══ FOUNDATIONS SECTION ═══ */}
-              <div className="bg-white rounded-3xl shadow-xl p-6">
+              <div className="bg-white rounded-3xl shadow-sm p-6">
                 <button onClick={() => setShowFoundations(!showFoundations)} className="w-full flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  <h3 className="text-xl font-bold text-[#241F2E] flex items-center gap-2">
                     <GraduationCap className="w-5 h-5 text-indigo-500" />
                     {getText('foundations')}
                   </h3>
@@ -489,7 +559,7 @@ export default function FitilaLearn() {
                 </button>
                 {showFoundations && (
                   <>
-                    <p className="text-gray-500 text-xs mb-4">{getText('foundationsSub')}</p>
+                    <p className="text-[#6F6955] text-xs mb-4">{getText('foundationsSub')}</p>
                     <div className="grid grid-cols-2 gap-3">
                       {FOUNDATION_LESSONS.map((fl, idx) => {
                         const isComingSoon = fl.id === 'nombres';
@@ -504,13 +574,13 @@ export default function FitilaLearn() {
                             className={`border-2 rounded-2xl p-4 text-left transition-all group relative overflow-hidden ${
                               isComingSoon
                                 ? 'border-gray-200 opacity-60 cursor-not-allowed'
-                                : 'border-gray-100 hover:border-indigo-200 hover:shadow-lg'
+                                : 'border-[#E4DFCC] hover:border-indigo-200 hover:shadow-lg'
                             }`}
                           >
                             {isComingSoon && (
                               <div className="absolute inset-0 bg-white/70 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center rounded-2xl">
                                 <Lock className="w-5 h-5 text-gray-400 mb-1" />
-                                <span className="text-gray-500 text-xs font-bold">
+                                <span className="text-[#6F6955] text-xs font-bold">
                                   {userLanguage === 'french' ? 'À venir' : 'Kɑ nɑɑ'}
                                 </span>
                               </div>
@@ -521,7 +591,7 @@ export default function FitilaLearn() {
                               </div>
                               <ChevronRight className="w-4 h-4 text-gray-300 ml-auto group-hover:text-indigo-400 transition-colors" />
                             </div>
-                            <h4 className="font-bold text-gray-800 text-xs leading-tight">{fl.title[langKey]}</h4>
+                            <h4 className="font-bold text-[#241F2E] text-xs leading-tight">{fl.title[langKey]}</h4>
                             <p className="text-[10px] text-gray-400 mt-1">{fl.sections.length} {getText('sections')} • {fl.quiz.length} {getText('quiz')}</p>
                           </motion.button>
                         );
@@ -532,8 +602,8 @@ export default function FitilaLearn() {
               </div>
 
               {/* Learning Themes */}
-              <div className="bg-white rounded-3xl shadow-xl p-6">
-                <h3 className="text-xl font-bold text-gray-800 mb-5 flex items-center gap-2">
+              <div className="bg-white rounded-3xl shadow-sm p-6">
+                <h3 className="text-xl font-bold text-[#241F2E] mb-5 flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-purple-500" />
                   {getText('themes')}
                 </h3>
@@ -544,15 +614,15 @@ export default function FitilaLearn() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.03 }}
-                      className="border-2 border-gray-100 rounded-2xl p-4 hover:border-purple-200 hover:shadow-lg transition-all"
+                      className="border-2 border-[#E4DFCC] rounded-2xl p-4 hover:border-purple-200 hover:shadow-lg transition-all"
                     >
                       <div className="flex items-center gap-3 mb-3">
                         <div className={`${themeIconBgs[theme.id] || 'bg-gray-100'} w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shadow-sm`}>
                           {theme.icon}
                         </div>
                         <div className="flex-1">
-                          <h4 className="font-bold text-gray-800 text-sm">{theme.name[langKey]}</h4>
-                          <p className="text-xs text-gray-500">{theme.lessonsCount} {getText('lessonsAvailable')}</p>
+                          <h4 className="font-bold text-[#241F2E] text-sm">{theme.name[langKey]}</h4>
+                          <p className="text-xs text-[#6F6955]">{theme.lessonsCount} {getText('lessonsAvailable')}</p>
                         </div>
                         <div className="text-right">
                           <div className="flex items-center gap-1 text-yellow-600 font-bold text-sm">
@@ -564,7 +634,7 @@ export default function FitilaLearn() {
                       <motion.button
                         whileTap={{ scale: 0.97 }}
                         onClick={() => startLesson(theme.id)}
-                        className={`w-full bg-gradient-to-r ${themeButtonGradients[theme.id] || 'from-purple-400 to-pink-500'} text-white py-3 rounded-xl font-semibold text-sm shadow-md hover:shadow-lg transition-all`}
+                        className="w-full bg-[#C99530] text-[#2B2110] py-3 rounded-full font-extrabold text-sm transition-all"
                       >
                         {getText('start')} →
                       </motion.button>
@@ -585,8 +655,8 @@ export default function FitilaLearn() {
                     {currentFoundation.icon}
                   </div>
                   <div className="flex-1">
-                    <h2 className="text-lg font-bold text-gray-800">{currentFoundation.title[langKey]}</h2>
-                    <p className="text-xs text-gray-500">{currentFoundation.sections.length} {getText('sections')}</p>
+                    <h2 className="text-lg font-bold text-[#241F2E]">{currentFoundation.title[langKey]}</h2>
+                    <p className="text-xs text-[#6F6955]">{currentFoundation.sections.length} {getText('sections')}</p>
                   </div>
                   {isEditor && (
                     <div className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-[10px] font-bold">
@@ -608,7 +678,7 @@ export default function FitilaLearn() {
                 >
                   {/* Section header with editor toolbar */}
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-bold text-gray-800 text-base flex items-center gap-2">
+                    <h3 className="font-bold text-[#241F2E] text-base flex items-center gap-2">
                       <span className="w-7 h-7 rounded-full text-white text-xs font-bold flex items-center justify-center" style={{ backgroundColor: currentFoundation.color }}>
                         {sIdx + 1}
                       </span>
@@ -665,7 +735,7 @@ export default function FitilaLearn() {
                           {section.table.rows.map((row, rIdx) => (
                             <tr key={rIdx} className={rIdx % 2 === 0 ? 'bg-gray-50/50' : ''}>
                               {row.map((cell, cIdx) => (
-                                <td key={cIdx} className="px-2 py-1.5 text-gray-600 border-b border-gray-100">
+                                <td key={cIdx} className="px-2 py-1.5 text-gray-600 border-b border-[#E4DFCC]">
                                   {cell}
                                 </td>
                               ))}
@@ -679,15 +749,15 @@ export default function FitilaLearn() {
                   {/* Examples */}
                   {section.examples && section.examples.length > 0 && (
                     <div className="space-y-2">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      <p className="text-xs font-semibold text-[#6F6955] uppercase tracking-wider">
                         {userLanguage === 'french' ? 'Exemples' : 'Yirɑnu'}
                       </p>
                       {section.examples.map((ex, eIdx) => (
-                        <div key={eIdx} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                        <div key={eIdx} className="bg-gray-50 rounded-xl p-3 border border-[#E4DFCC]">
                           <div className="flex items-start gap-2">
                             <div className="flex-1">
-                              <p className="font-semibold text-gray-800 text-sm">{ex.bariba}</p>
-                              <p className="text-gray-500 text-xs">{ex.french}</p>
+                              <p className="font-semibold text-[#241F2E] text-sm">{ex.bariba}</p>
+                              <p className="text-[#6F6955] text-xs">{ex.french}</p>
                             </div>
                             {ex.french && (
                               <motion.button whileTap={{ scale: 0.85 }} onClick={() => speakFrench(ex.french)} className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
@@ -734,7 +804,7 @@ export default function FitilaLearn() {
               <motion.button
                 whileTap={{ scale: 0.97 }}
                 onClick={startFoundationQuiz}
-                className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-4 rounded-2xl font-bold text-sm shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-4 rounded-2xl font-bold text-sm shadow-lg hover:shadow-sm transition-all flex items-center justify-center gap-2"
               >
                 <GraduationCap className="w-5 h-5" />
                 {getText('quiz')} ({currentFoundation.quiz.length} {userLanguage === 'french' ? 'questions' : 'kasuurenu'})
@@ -748,7 +818,7 @@ export default function FitilaLearn() {
               {/* Progress */}
               <div className="bg-white rounded-2xl shadow-md p-4">
                 <div className="flex justify-between mb-2 text-xs font-semibold">
-                  <span className="text-gray-500">{getText('quiz')} {foundationQuizIndex + 1} / {currentFoundation.quiz.length}</span>
+                  <span className="text-[#6F6955]">{getText('quiz')} {foundationQuizIndex + 1} / {currentFoundation.quiz.length}</span>
                   <span className="text-green-600">{getText('score')}: {foundationQuizScore} / {currentFoundation.quiz.length}</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
@@ -761,8 +831,8 @@ export default function FitilaLearn() {
                 const q = currentFoundation.quiz[foundationQuizIndex];
                 return (
                   <>
-                    <div className="bg-white rounded-3xl shadow-xl p-6 text-center">
-                      <p className="text-gray-800 font-bold text-xl">{q.question[langKey]}</p>
+                    <div className="bg-white rounded-3xl shadow-sm p-6 text-center">
+                      <p className="text-[#241F2E] font-bold text-xl">{q.question[langKey]}</p>
                     </div>
 
                     <div className="space-y-3">
@@ -771,7 +841,7 @@ export default function FitilaLearn() {
                         if (foundationQuizAnswer !== null) {
                           if (idx === q.correctIndex) styles = 'bg-green-50 border-green-400 shadow-md';
                           else if (idx === foundationQuizAnswer) styles = 'bg-red-50 border-red-400 shadow-md';
-                          else styles = 'bg-white border-gray-100 opacity-50';
+                          else styles = 'bg-white border-[#E4DFCC] opacity-50';
                         }
                         return (
                           <motion.button
@@ -781,7 +851,7 @@ export default function FitilaLearn() {
                             disabled={foundationQuizAnswer !== null}
                             className={`w-full p-4 rounded-2xl border-2 ${styles} transition-all text-left flex items-center justify-between shadow-sm`}
                           >
-                            <span className="text-gray-800 text-sm font-medium">{opt}</span>
+                            <span className="text-[#241F2E] text-sm font-medium">{opt}</span>
                             {foundationQuizAnswer !== null && idx === q.correctIndex && <Check className="w-5 h-5 text-green-500" />}
                             {foundationQuizAnswer === idx && idx !== q.correctIndex && <X className="w-5 h-5 text-red-500" />}
                           </motion.button>
@@ -834,7 +904,7 @@ export default function FitilaLearn() {
             <motion.div key="lesson" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="px-4 pb-6 space-y-4">
               <div className="bg-white rounded-2xl shadow-md p-4">
                 <div className="flex justify-between mb-2 text-xs font-semibold">
-                  <span className="text-gray-500">{userLanguage === 'french' ? 'Question' : 'Kasuu'} {exerciseIndex + 1} / {exercises.length}</span>
+                  <span className="text-[#6F6955]">{userLanguage === 'french' ? 'Question' : 'Kasuu'} {exerciseIndex + 1} / {exercises.length}</span>
                   <span className="text-green-600">{getText('score')}: {score} / {exercises.length}</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
@@ -852,10 +922,10 @@ export default function FitilaLearn() {
                 </span>
               </div>
 
-              <div className="bg-white rounded-3xl shadow-xl p-6 text-center">
+              <div className="bg-white rounded-3xl shadow-sm p-6 text-center">
                 <p className="text-gray-400 text-xs mb-3">{getText('translateTo')}</p>
                 <div className="flex items-center justify-center gap-3 mb-2">
-                  <p className="text-gray-800 font-bold text-2xl">{getQuestion(exercises[exerciseIndex], direction)}</p>
+                  <p className="text-[#241F2E] font-bold text-2xl">{getQuestion(exercises[exerciseIndex], direction)}</p>
                   {direction === 'fr_to_bariba' && (
                     <motion.button whileTap={{ scale: 0.85 }} onClick={() => speakFrench(exercises[exerciseIndex].french)} className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 shadow-sm">
                       <Volume2 className="w-4 h-4 text-blue-500" />
@@ -874,7 +944,7 @@ export default function FitilaLearn() {
                   if (selectedAnswer !== null) {
                     if (option === correct) styles = 'bg-green-50 border-green-400 shadow-md';
                     else if (option === selectedAnswer && !isCorrect) styles = 'bg-red-50 border-red-400 shadow-md';
-                    else styles = 'bg-white border-gray-100 opacity-50';
+                    else styles = 'bg-white border-[#E4DFCC] opacity-50';
                   }
                   return (
                     <motion.button
@@ -884,7 +954,7 @@ export default function FitilaLearn() {
                       disabled={selectedAnswer !== null}
                       className={`w-full p-4 rounded-2xl border-2 ${styles} transition-all text-left flex items-center justify-between shadow-sm`}
                     >
-                      <span className="text-gray-800 text-sm font-medium">{option}</span>
+                      <span className="text-[#241F2E] text-sm font-medium">{option}</span>
                       <div className="flex items-center gap-2">
                         {selectedAnswer === option && isCorrect && <Check className="w-5 h-5 text-green-500" />}
                         {selectedAnswer === option && isCorrect === false && <X className="w-5 h-5 text-red-500" />}
@@ -928,10 +998,10 @@ export default function FitilaLearn() {
                 </motion.div>
                 <h2 className="text-2xl font-bold text-purple-600 mb-2">{getText('congratulations')}</h2>
                 {currentTheme && (
-                  <p className="text-gray-500 text-sm mb-6">{currentTheme.name[langKey]}</p>
+                  <p className="text-[#6F6955] text-sm mb-6">{currentTheme.name[langKey]}</p>
                 )}
                 {currentFoundation && !currentTheme && (
-                  <p className="text-gray-500 text-sm mb-6">{currentFoundation.title[langKey]}</p>
+                  <p className="text-[#6F6955] text-sm mb-6">{currentFoundation.title[langKey]}</p>
                 )}
 
                 <div className="grid grid-cols-3 gap-3 mb-6">
@@ -969,10 +1039,10 @@ export default function FitilaLearn() {
                 )}
 
                 <div className="space-y-3">
-                  <motion.button whileTap={{ scale: 0.97 }} onClick={() => { setCurrentView('dashboard'); setCurrentFoundation(null); clearNewBadges(); }} className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm shadow-lg hover:shadow-xl transition-all">
+                  <motion.button whileTap={{ scale: 0.97 }} onClick={() => { setCurrentView('dashboard'); setCurrentFoundation(null); clearNewBadges(); }} className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm shadow-lg hover:shadow-sm transition-all">
                     {getText('backToDashboard')}
                   </motion.button>
-                  <motion.button whileTap={{ scale: 0.97 }} onClick={() => { shareProgress(); triggerFeedback('click'); }} className="w-full py-3.5 rounded-xl border-2 border-gray-100 text-gray-500 text-sm flex items-center justify-center gap-2 hover:border-gray-200 transition-all">
+                  <motion.button whileTap={{ scale: 0.97 }} onClick={() => { shareProgress(); triggerFeedback('click'); }} className="w-full py-3.5 rounded-xl border-2 border-[#E4DFCC] text-[#6F6955] text-sm flex items-center justify-center gap-2 hover:border-gray-200 transition-all">
                     <Share2 className="w-4 h-4" />
                     {getText('shareSuccess')}
                   </motion.button>
