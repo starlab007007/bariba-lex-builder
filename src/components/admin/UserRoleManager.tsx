@@ -35,6 +35,7 @@ export default function UserRoleManager() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Dialogs
@@ -57,11 +58,14 @@ export default function UserRoleManager() {
   const loadUsers = async () => {
     try {
       setLoading(true);
+      setLoadError(null);
       const data = await callAdmin({ action: 'list' });
       setUsers(data.users || []);
     } catch (error: any) {
       console.error(error);
-      toast({ title: 'Erreur', description: error.message || 'Impossible de charger les utilisateurs', variant: 'destructive' });
+      const message = error.message || 'Impossible de charger les utilisateurs';
+      setLoadError(message);
+      toast({ title: 'Erreur', description: message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -192,7 +196,13 @@ export default function UserRoleManager() {
             </Button>
           </div>
 
-          {loading ? (
+          {loadError && !loading ? (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 text-center">
+              <p className="font-semibold text-destructive">Impossible de charger les utilisateurs</p>
+              <p className="mt-1 text-sm text-muted-foreground">{loadError}</p>
+              <Button className="mt-4" variant="outline" onClick={loadUsers}>Réessayer</Button>
+            </div>
+          ) : loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
