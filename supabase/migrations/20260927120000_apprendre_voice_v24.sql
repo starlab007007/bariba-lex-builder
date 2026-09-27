@@ -30,7 +30,9 @@ $$;
 
 -- Métadonnées pédagogiques exposées avec les voix publiées afin que le mobile
 -- puisse construire des petits packs hors-ligne sans télécharger tout le corpus.
-CREATE OR REPLACE VIEW public.apprendre_audio_published AS
+DROP VIEW IF EXISTS public.apprendre_audio_published;
+
+CREATE VIEW public.apprendre_audio_published AS
 SELECT t.audio_key,
        t.voice,
        t.variant,
