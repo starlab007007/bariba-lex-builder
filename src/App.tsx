@@ -101,19 +101,9 @@ const App = () => (
           <Suspense fallback={<PageLoader />}>
             <SafeBoundary label="Application">
             <Routes>
-              {/* Redirect root to FITILA */}
-              <Route path="/" element={<Navigate to="/fitila" replace />} />
-              <Route path="/dictionary" element={<Index />} />
-              <Route path="/auth" element={<Navigate to="/fitila/auth" replace />} />
-              <Route path="/gamification" element={<Gamification />} />
-              <Route path="/template-test" element={<TemplateTest />} />
-              <Route path="/system-validation" element={<SystemValidation />} />
-              <Route path="/assets" element={<AssetsDashboard />} />
-              <Route path="/griot-studio" element={<GriotStudioPage />} />
-              
-              {/* FITILA Platform Routes (new branding) */}
-              <Route path="/fitila" element={<FitilaApp />}>
-                <Route index element={<TamTamSocial />} />
+              {/* FITILA canonical routes — fitila.bj/ opens Apprendre directly */}
+              <Route path="/" element={<FitilaApp />}>
+                <Route index element={<FitilaLearn />} />
                 <Route path="auth" element={<TamTamPhoneAuth />} />
                 <Route path="home" element={<TamTamHome />} />
                 <Route path="social" element={<TamTamSocial />} />
@@ -140,6 +130,44 @@ const App = () => (
                 <Route path="discover" element={<ComingSoonPage />} />
                 <Route path="install" element={<InstallPage />} />
                 <Route path="keyboard" element={<FloatingKeyboardPage />} />
+                <Route path="user/:userId" element={<TamTamPublicProfile />} />
+                <Route path="profile/:userId" element={<TamTamPublicProfile />} />
+              </Route>
+
+              <Route path="/dictionary-old" element={<Index />} />
+              <Route path="/gamification" element={<Gamification />} />
+              <Route path="/template-test" element={<TemplateTest />} />
+              <Route path="/system-validation" element={<SystemValidation />} />
+              <Route path="/assets" element={<AssetsDashboard />} />
+
+              {/* Compatibility routes: old /fitila/... URLs remain valid */}
+              <Route path="/fitila" element={<FitilaApp />}>
+                <Route index element={<Navigate to="/" replace />} />
+                <Route path="auth" element={<Navigate to="/auth" replace />} />
+                <Route path="home" element={<Navigate to="/home" replace />} />
+                <Route path="social" element={<Navigate to="/social" replace />} />
+                <Route path="services" element={<Navigate to="/services" replace />} />
+                <Route path="market" element={<Navigate to="/market" replace />} />
+                <Route path="agriculture" element={<Navigate to="/agriculture" replace />} />
+                <Route path="finance" element={<Navigate to="/finance" replace />} />
+                <Route path="education" element={<Navigate to="/education" replace />} />
+                <Route path="health" element={<Navigate to="/health" replace />} />
+                <Route path="translator" element={<Navigate to="/translator" replace />} />
+                <Route path="creator" element={<Navigate to="/creator" replace />} />
+                <Route path="templates" element={<Navigate to="/templates" replace />} />
+                <Route path="griot-studio" element={<Navigate to="/griot-studio" replace />} />
+                <Route path="sos" element={<Navigate to="/sos" replace />} />
+                <Route path="profile" element={<Navigate to="/profile" replace />} />
+                <Route path="dictionary" element={<Navigate to="/dictionary" replace />} />
+                <Route path="learn" element={<Navigate to="/" replace />} />
+                <Route path="classe" element={<Navigate to="/classe" replace />} />
+                <Route path="ia" element={<Navigate to="/ia" replace />} />
+                <Route path="tem-ia" element={<Navigate to="/tem-ia" replace />} />
+                <Route path="voice-lab" element={<Navigate to="/voice-lab" replace />} />
+                <Route path="messages" element={<Navigate to="/messages" replace />} />
+                <Route path="discover" element={<Navigate to="/discover" replace />} />
+                <Route path="install" element={<Navigate to="/install" replace />} />
+                <Route path="keyboard" element={<Navigate to="/keyboard" replace />} />
                 <Route path="user/:userId" element={<TamTamPublicProfile />} />
                 <Route path="profile/:userId" element={<TamTamPublicProfile />} />
               </Route>
