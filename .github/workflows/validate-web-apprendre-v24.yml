@@ -1,0 +1,37 @@
+name: Validate Web Apprendre v2.4
+
+on:
+  push:
+    branches:
+      - feat/web-apprendre-v2.4-20260927
+    paths:
+      - '.github/workflows/validate-web-apprendre-v24.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - name: Build web
+        env:
+          VITE_BUILD_SHA: ${{ github.sha }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: npm run build
+      - name: Verify Apprendre Voice admin
+        run: |
+          test -f src/components/admin/apprendre-voice/ApprendreVoiceAdmin.tsx
+          test -f supabase/migrations/20260927100000_apprendre_voice_roles.sql
+          test -f supabase/migrations/20260927100100_apprendre_voice_studio.sql
+          test -f supabase/migrations/20260927120000_apprendre_voice_v24.sql
+          test -f supabase/migrations/20260927123000_apprendre_voice_security_hardening.sql
