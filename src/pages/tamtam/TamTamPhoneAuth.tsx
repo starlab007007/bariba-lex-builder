@@ -28,7 +28,7 @@ const PinInput = React.memo(({ value, onChange, showPin, onToggleShow, autoFocus
     <div className="flex justify-center gap-2 sm:gap-3 mb-4">
       {[0, 1, 2, 3, 4, 5].map(i => (
         <div key={i} className={`w-11 h-14 sm:w-12 sm:h-16 rounded-xl border-2 flex items-center justify-center text-2xl font-bold transition-all ${
-          i < value.length ? 'border-white bg-white/20 text-white' : i === value.length ? 'border-white/80 bg-white/10' : 'border-white/30 bg-white/5'
+          i < value.length ? 'border-[#C99530] bg-[#FFF9E8] text-[#241F2E]' : i === value.length ? 'border-[#C99530]/70 bg-white' : 'border-[#E4DFCC] bg-white'
         }`}>
           {value[i] ? (showPin ? value[i] : '●') : ''}
         </div>
@@ -49,7 +49,7 @@ const PinInput = React.memo(({ value, onChange, showPin, onToggleShow, autoFocus
       className="absolute inset-0 opacity-0 w-full h-full"
       autoFocus={autoFocus}
     />
-    <button type="button" onClick={onToggleShow} className="mx-auto flex items-center gap-1 text-white/60 text-xs mt-1">
+    <button type="button" onClick={onToggleShow} className="mx-auto flex items-center gap-1 text-[#8C8571] text-xs mt-1">
       {showPin ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
       {showPin ? 'Masquer' : 'Afficher'}
     </button>
@@ -70,7 +70,7 @@ const NumPad = React.memo(({ onDigit, onBackspace }: NumPadProps) => (
         key={idx}
         type="button"
         whileTap={{ scale: 0.9 }}
-        className="w-16 h-14 sm:w-18 sm:h-16 rounded-2xl bg-white/10 backdrop-blur-lg text-white text-xl font-bold border border-white/20 flex items-center justify-center active:bg-white/20"
+        className="w-16 h-14 sm:w-18 sm:h-16 rounded-[16px] bg-white text-[#241F2E] text-xl font-extrabold border border-[#E4DFCC] flex items-center justify-center active:bg-[#F3E3B9]"
         onClick={() => num === 'del' ? onBackspace() : onDigit(num!.toString())}
       >
         {num === 'del' ? '←' : num}
@@ -374,11 +374,11 @@ export default function TamTamPhoneAuth() {
   const toggleShowPin = () => setShowPin(s => !s);
 
   return (
-    <div className="h-[100dvh] bg-gradient-to-br from-orange-500 via-orange-600 to-amber-700 flex flex-col items-center justify-between py-4 sm:py-6 px-4 sm:px-6">
+    <div className={`h-full overflow-y-auto ${step === 'security-setup' || step === 'pin-forgot' ? 'bg-gradient-to-br from-orange-500 via-orange-600 to-amber-700' : 'bg-[#F7F5EC] text-[#241F2E]'} flex flex-col items-center justify-between py-4 sm:py-6 px-[18px] sm:px-6`}>
       {/* Logo */}
       <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex-shrink-0">
-        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/20 backdrop-blur-lg flex items-center justify-center shadow-2xl">
-          <span className="text-3xl sm:text-4xl">🥁</span>
+        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[#F3E3B9] flex items-center justify-center border border-[#E4DFCC]">
+          <img src="/fitila-icon-192.png" alt="FITILA" className="h-10 w-10 rounded-full object-cover" />
         </div>
       </motion.div>
 
@@ -387,13 +387,13 @@ export default function TamTamPhoneAuth() {
         {step === 'phone' && (
           <motion.div key="phone" initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -100 }} className="w-full max-w-md text-center flex-1 flex flex-col justify-center">
             <div className="flex items-center justify-center gap-2 mb-3">
-              <Phone className="w-6 h-6 text-white" />
-              <h1 className="text-xl font-bold text-white">Votre numéro</h1>
+              <Phone className="w-6 h-6 text-[#241F2E]" />
+              <h1 className="text-xl font-bold text-[#241F2E]">Votre numéro</h1>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 mb-4 border border-white/20">
-              <p className="text-xs text-white/60 mb-1">🇧🇯 Bénin</p>
-              <p className="text-2xl sm:text-3xl font-mono text-white tracking-wider">
+            <div className="bg-white rounded-[18px] p-4 mb-4 border border-[#E4DFCC]">
+              <p className="text-xs text-[#8C8571] mb-1">🇧🇯 Bénin</p>
+              <p className="text-2xl sm:text-3xl font-mono text-[#241F2E] tracking-wider">
                 +229 {formatPhone(phoneDigits) || '__ __ __ __ __'}
               </p>
             </div>
@@ -402,7 +402,7 @@ export default function TamTamPhoneAuth() {
 
             <motion.button
               whileTap={{ scale: 0.95 }}
-              className="mt-4 w-full py-3 bg-white rounded-full text-orange-600 font-bold text-lg flex items-center justify-center gap-2 shadow-xl disabled:opacity-50"
+              className="mt-4 w-full h-[52px] bg-[#C99530] rounded-full text-[#2B2110] font-extrabold text-[15px] flex items-center justify-center gap-2 disabled:opacity-50"
               onClick={handlePhoneSubmit}
               disabled={phoneDigits.length < 8 || isLoading}
             >
@@ -416,17 +416,17 @@ export default function TamTamPhoneAuth() {
         {step === 'pin-login' && (
           <motion.div key="pin-login" initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -100 }} className="w-full max-w-md text-center flex-1 flex flex-col justify-center">
             <button onClick={() => { setStep('phone'); setPin(''); }} className="self-start mb-4">
-              <ArrowLeft className="w-6 h-6 text-white" />
+              <ArrowLeft className="w-6 h-6 text-[#241F2E]" />
             </button>
-            <Lock className="w-10 h-10 text-white mx-auto mb-3" />
-            <h1 className="text-xl font-bold text-white mb-1">Entrez votre PIN</h1>
-            <p className="text-white/70 text-sm mb-6">Bonjour {displayName} 👋</p>
+            <Lock className="w-10 h-10 text-[#241F2E] mx-auto mb-3" />
+            <h1 className="text-xl font-bold text-[#241F2E] mb-1">Entrez votre PIN</h1>
+            <p className="text-[#8C8571] text-sm mb-6">Bonjour {displayName} 👋</p>
             
             <PinInput value={pin} onChange={setPin} showPin={showPin} onToggleShow={toggleShowPin} inputRef={pinInputRef} />
 
             <motion.button
               whileTap={{ scale: 0.95 }}
-              className="mt-6 w-full py-3 bg-white rounded-full text-orange-600 font-bold text-lg flex items-center justify-center gap-2 shadow-xl disabled:opacity-50"
+              className="mt-6 w-full h-[52px] bg-[#C99530] rounded-full text-[#2B2110] font-extrabold text-[15px] flex items-center justify-center gap-2 disabled:opacity-50"
               onClick={handlePinLogin}
               disabled={pin.length !== 6 || isLoading}
             >
@@ -434,7 +434,7 @@ export default function TamTamPhoneAuth() {
               <ArrowRight className="w-5 h-5" />
             </motion.button>
 
-            <button className="mt-3 text-white/60 text-sm underline" onClick={() => {
+            <button className="mt-3 text-[#8C8571] text-sm underline" onClick={() => {
               setNewPin('');
               setNewPinConfirm('');
               setSecurityAnswers([]);
@@ -449,18 +449,18 @@ export default function TamTamPhoneAuth() {
         {step === 'name' && (
           <motion.div key="name" initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -100 }} className="w-full max-w-md text-center flex-1 flex flex-col justify-center">
             <button onClick={() => { setStep('phone'); }} className="self-start mb-4">
-              <ArrowLeft className="w-6 h-6 text-white" />
+              <ArrowLeft className="w-6 h-6 text-[#241F2E]" />
             </button>
-            <h1 className="text-xl font-bold text-white mb-1">Comment vous appelez-vous ?</h1>
-            <p className="text-white/70 text-sm mb-6">Ce nom sera visible par les autres</p>
+            <h1 className="text-xl font-bold text-[#241F2E] mb-1">Comment vous appelez-vous ?</h1>
+            <p className="text-[#8C8571] text-sm mb-6">Ce nom sera visible par les autres</p>
 
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 mb-6 border border-white/20">
+            <div className="bg-white rounded-[18px] p-4 mb-6 border border-[#E4DFCC]">
               <input
                 type="text"
                 value={displayName}
                 onChange={e => setDisplayName(e.target.value)}
                 placeholder="Votre nom ou pseudo"
-                className="w-full text-xl text-center bg-transparent text-white placeholder-white/50 outline-none"
+                className="w-full text-xl text-center bg-transparent text-[#241F2E] placeholder-[#8C8571] outline-none"
                 autoFocus
                 maxLength={30}
               />
@@ -468,7 +468,7 @@ export default function TamTamPhoneAuth() {
 
             <motion.button
               whileTap={{ scale: 0.95 }}
-              className="w-full py-3 bg-white rounded-full text-orange-600 font-bold text-lg flex items-center justify-center gap-2 shadow-xl disabled:opacity-50"
+              className="w-full h-[52px] bg-[#C99530] rounded-full text-[#2B2110] font-extrabold text-[15px] flex items-center justify-center gap-2 disabled:opacity-50"
               onClick={handleNameSubmit}
               disabled={!displayName.trim()}
             >
@@ -482,17 +482,17 @@ export default function TamTamPhoneAuth() {
         {step === 'pin-create' && (
           <motion.div key="pin-create" initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -100 }} className="w-full max-w-md text-center flex-1 flex flex-col justify-center">
             <button onClick={() => { setStep('name'); setPin(''); }} className="self-start mb-4">
-              <ArrowLeft className="w-6 h-6 text-white" />
+              <ArrowLeft className="w-6 h-6 text-[#241F2E]" />
             </button>
-            <Lock className="w-10 h-10 text-white mx-auto mb-3" />
-            <h1 className="text-xl font-bold text-white mb-1">Créez votre PIN</h1>
-            <p className="text-white/70 text-sm mb-6">6 chiffres pour sécuriser votre compte</p>
+            <Lock className="w-10 h-10 text-[#241F2E] mx-auto mb-3" />
+            <h1 className="text-xl font-bold text-[#241F2E] mb-1">Créez votre PIN</h1>
+            <p className="text-[#8C8571] text-sm mb-6">6 chiffres pour sécuriser votre compte</p>
 
             <PinInput value={pin} onChange={setPin} showPin={showPin} onToggleShow={toggleShowPin} inputRef={pinInputRef} />
 
             <motion.button
               whileTap={{ scale: 0.95 }}
-              className="mt-6 w-full py-3 bg-white rounded-full text-orange-600 font-bold text-lg flex items-center justify-center gap-2 shadow-xl disabled:opacity-50"
+              className="mt-6 w-full h-[52px] bg-[#C99530] rounded-full text-[#2B2110] font-extrabold text-[15px] flex items-center justify-center gap-2 disabled:opacity-50"
               onClick={handlePinCreate}
               disabled={pin.length !== 6}
             >
@@ -506,17 +506,17 @@ export default function TamTamPhoneAuth() {
         {step === 'pin-confirm' && (
           <motion.div key="pin-confirm" initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -100 }} className="w-full max-w-md text-center flex-1 flex flex-col justify-center">
             <button onClick={() => { setStep('pin-create'); setPinConfirm(''); }} className="self-start mb-4">
-              <ArrowLeft className="w-6 h-6 text-white" />
+              <ArrowLeft className="w-6 h-6 text-[#241F2E]" />
             </button>
-            <Lock className="w-10 h-10 text-white mx-auto mb-3" />
-            <h1 className="text-xl font-bold text-white mb-1">Confirmez votre PIN</h1>
-            <p className="text-white/70 text-sm mb-6">Entrez à nouveau vos 6 chiffres</p>
+            <Lock className="w-10 h-10 text-[#241F2E] mx-auto mb-3" />
+            <h1 className="text-xl font-bold text-[#241F2E] mb-1">Confirmez votre PIN</h1>
+            <p className="text-[#8C8571] text-sm mb-6">Entrez à nouveau vos 6 chiffres</p>
 
             <PinInput value={pinConfirm} onChange={setPinConfirm} showPin={showPin} onToggleShow={toggleShowPin} />
 
             <motion.button
               whileTap={{ scale: 0.95 }}
-              className="mt-6 w-full py-3 bg-white rounded-full text-orange-600 font-bold text-lg flex items-center justify-center gap-2 shadow-xl disabled:opacity-50"
+              className="mt-6 w-full h-[52px] bg-[#C99530] rounded-full text-[#2B2110] font-extrabold text-[15px] flex items-center justify-center gap-2 disabled:opacity-50"
               onClick={handlePinConfirm}
               disabled={pinConfirm.length !== 6 || isLoading}
             >
@@ -558,13 +558,13 @@ export default function TamTamPhoneAuth() {
         {step === 'pin-reset' && (
           <motion.div key="pin-reset" initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -100 }} className="w-full max-w-md text-center flex-1 flex flex-col justify-center">
             <button onClick={() => { setStep('pin-forgot'); setNewPin(''); setNewPinConfirm(''); }} className="self-start mb-4">
-              <ArrowLeft className="w-6 h-6 text-white" />
+              <ArrowLeft className="w-6 h-6 text-[#241F2E]" />
             </button>
-            <Lock className="w-10 h-10 text-white mx-auto mb-3" />
-            <h1 className="text-xl font-bold text-white mb-1">
+            <Lock className="w-10 h-10 text-[#241F2E] mx-auto mb-3" />
+            <h1 className="text-xl font-bold text-[#241F2E] mb-1">
               {newPinConfirm.length > 0 || newPin.length === 6 ? 'Confirmez le nouveau PIN' : 'Nouveau PIN'}
             </h1>
-            <p className="text-white/70 text-sm mb-6">
+            <p className="text-[#8C8571] text-sm mb-6">
               {newPin.length < 6 ? 'Choisissez 6 nouveaux chiffres' : 'Entrez à nouveau pour confirmer'}
             </p>
 
@@ -576,7 +576,7 @@ export default function TamTamPhoneAuth() {
 
             <motion.button
               whileTap={{ scale: 0.95 }}
-              className="mt-6 w-full py-3 bg-white rounded-full text-orange-600 font-bold text-lg flex items-center justify-center gap-2 shadow-xl disabled:opacity-50"
+              className="mt-6 w-full h-[52px] bg-[#C99530] rounded-full text-[#2B2110] font-extrabold text-[15px] flex items-center justify-center gap-2 disabled:opacity-50"
               onClick={handlePinReset}
               disabled={newPin.length !== 6 || newPinConfirm.length !== 6 || isLoading}
             >
@@ -584,7 +584,7 @@ export default function TamTamPhoneAuth() {
               <Check className="w-5 h-5" />
             </motion.button>
 
-            <button className="mt-3 text-white/60 text-xs" onClick={() => toast({ title: "Aide", description: "Si le code secret ne correspond pas, contactez un administrateur FITILA" })}>
+            <button className="mt-3 text-[#8C8571] text-xs" onClick={() => toast({ title: "Aide", description: "Si le code secret ne correspond pas, contactez un administrateur FITILA" })}>
               Besoin d'aide ?
             </button>
           </motion.div>
@@ -595,8 +595,8 @@ export default function TamTamPhoneAuth() {
             <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 0.5 }} className="text-6xl mb-4">
               🎉
             </motion.div>
-            <h1 className="text-2xl font-bold text-white mb-2">Bienvenue {displayName} !</h1>
-            <p className="text-white/80 text-sm">Redirection...</p>
+            <h1 className="text-2xl font-bold text-[#241F2E] mb-2">Bienvenue {displayName} !</h1>
+            <p className="text-[#8C8571] text-sm">Redirection...</p>
           </motion.div>
         )}
       </AnimatePresence>
