@@ -123,7 +123,7 @@ const SystemValidation: React.FC = () => {
     try {
       switch (testId) {
         case 'types': {
-          const types = await import('@/components/creator/TemplateSystem/types');
+          const types = await import('@/components/tamtam/creator/TemplateSystem/types');
           // Types module loads successfully
           if (!types) {
             throw new Error('Types module not loaded');
@@ -132,7 +132,7 @@ const SystemValidation: React.FC = () => {
         }
 
         case 'asset-manager': {
-          const mod = await import('@/components/creator/TemplateSystem/AssetManager');
+          const mod = await import('@/components/tamtam/creator/TemplateSystem/AssetManager');
           if (!mod.AssetManager || !mod.assetManager) {
             throw new Error('AssetManager not properly exported');
           }
@@ -140,7 +140,7 @@ const SystemValidation: React.FC = () => {
         }
 
         case 'effects-renderer': {
-          const mod = await import('@/components/creator/TemplateSystem/EffectsRenderer');
+          const mod = await import('@/components/tamtam/creator/TemplateSystem/EffectsRenderer');
           if (!mod.EffectsRenderer) {
             throw new Error('EffectsRenderer not properly exported');
           }
@@ -148,7 +148,7 @@ const SystemValidation: React.FC = () => {
         }
 
         case 'template-engine': {
-          const mod = await import('@/components/creator/TemplateSystem/TemplateEngine');
+          const mod = await import('@/components/tamtam/creator/TemplateSystem/TemplateEngine');
           if (!mod.TemplateEngine || !mod.templateEngine) {
             throw new Error('TemplateEngine not properly exported');
           }
@@ -156,7 +156,7 @@ const SystemValidation: React.FC = () => {
         }
 
         case 'templates-registry': {
-          const mod = await import('@/components/creator/TemplateSystem/templates');
+          const mod = await import('@/components/tamtam/creator/TemplateSystem/templates');
           if (!Array.isArray(mod.allTemplates)) {
             throw new Error('allTemplates is not an array');
           }
@@ -167,7 +167,7 @@ const SystemValidation: React.FC = () => {
         }
 
         case 'griot-digital': {
-          const mod = await import('@/components/creator/TemplateSystem/templates/griotDigital');
+          const mod = await import('@/components/tamtam/creator/TemplateSystem/templates/griotDigital');
           if (!mod.griotDigitalTemplate) {
             throw new Error('griotDigitalTemplate not found');
           }
@@ -181,7 +181,7 @@ const SystemValidation: React.FC = () => {
         }
 
         case 'template-selector': {
-          const mod = await import('@/components/creator/TemplateSystem/TemplateSelector');
+          const mod = await import('@/components/tamtam/creator/TemplateSystem/TemplateSelector');
           if (!mod.TemplateSelector) {
             throw new Error('TemplateSelector component not found');
           }
