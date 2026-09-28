@@ -112,12 +112,12 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
         tamtamFeedback.play('success');
         setTimeout(() => {
           switch (result.value) {
-            case 'home': navigate('/tamtam/home'); break;
-            case 'social': navigate('/tamtam/social'); break;
-            case 'market': navigate('/tamtam/market'); break;
-            case 'sos': navigate('/tamtam/sos'); break;
-            case 'profile': navigate('/tamtam/profile'); break;
-            case 'services': navigate('/tamtam/services'); break;
+            case 'home': navigate('/learn'); break;
+            case 'social': navigate('/social'); break;
+            case 'market': navigate('/market'); break;
+            case 'sos': navigate('/sos'); break;
+            case 'profile': navigate('/profile'); break;
+            case 'services': navigate('/services'); break;
           }
           onOpenChange(false);
         }, 1500);
