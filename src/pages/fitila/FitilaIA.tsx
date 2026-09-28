@@ -224,7 +224,7 @@ export default function FitilaIA() {
   return (
     <div className="flex flex-col h-full w-full bg-[#F7F5EC] text-[#241F2E]">
       {/* Header */}
-      <div className="flex items-center gap-3 pl-[74px] pr-4 pt-[14px] pb-2 z-10">
+      <div className="flex items-center gap-3 pl-[74px] lg:pl-[18px] pr-4 pt-[14px] pb-2 z-10">
                 <div className="flex items-center gap-2.5 flex-1">
                     <div>
             <h1 className="text-[#241F2E] font-extrabold text-[17px] leading-tight">Fitila IA</h1>

@@ -340,7 +340,7 @@ export default function FitilaClasse() {
   return (
     <div className="h-full flex flex-col bg-[#F7F5EC] text-[#241F2E]">
       {/* Header */}
-      <div className="flex items-center gap-3 pl-[74px] pr-[18px] pt-[14px] pb-2 min-h-[62px]">
+      <div className="flex items-center gap-3 pl-[74px] lg:pl-[18px] pr-[18px] pt-[14px] pb-2 min-h-[62px]">
         {section !== 'home' && (
           <button type="button" onClick={goBack} aria-label="Retour" className="absolute right-[18px] top-[14px] z-[86] flex h-[38px] items-center gap-1 rounded-full border border-[#E4DFCC] bg-white px-3 text-[12px] font-extrabold text-[#241F2E]">
             <ArrowLeft className="w-4 h-4" /> Retour
