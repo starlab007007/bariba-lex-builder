@@ -15,6 +15,7 @@ import { useExtendedNotifications } from '@/hooks/useExtendedNotifications';
 import AppTourProvider, { TOUR_STORAGE_KEY } from '@/components/onboarding/AppTourProvider';
 import SafeBoundary from '@/components/common/SafeBoundary';
 import FitilaBottomNav from '@/components/fitila/FitilaBottomNav';
+import FitilaCanonicalDrawer from '@/components/fitila/FitilaCanonicalDrawer';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📱 FITILA APP V7 - MENU SIMPLIFIÉ
@@ -347,7 +348,7 @@ function AppContent() {
     <SideMenuContext.Provider value={menuContext}>
       <AppTourProvider>
         <div className="fixed inset-0 w-full h-full overflow-hidden kuaishou-bg">
-          <SideMenuDrawer isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+          <FitilaCanonicalDrawer open={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
 
           {!isMenuOpen && (
             <button
