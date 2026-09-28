@@ -21,7 +21,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
+    const imageApiKey = Deno.env.get('FITILA_IMAGE_API_KEY')!;
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { action, templateId, templateKey, batchSize = 3 }: VisualGenerationRequest = await req.json();
@@ -41,7 +41,7 @@ serve(async (req) => {
     switch (action) {
       case 'generate_preview': {
         const template = await getTemplate(templateId, templateKey);
-        const previewUrl = await generatePreviewImage(lovableApiKey, template, supabase);
+        const previewUrl = await generatePreviewImage(imageApiKey, template, supabase);
         
         await supabase
           .from('ai_generated_templates')
@@ -58,7 +58,7 @@ serve(async (req) => {
 
       case 'generate_icon': {
         const template = await getTemplate(templateId, templateKey);
-        const iconUrl = await generateIconImage(lovableApiKey, template, supabase);
+        const iconUrl = await generateIconImage(imageApiKey, template, supabase);
         
         await supabase
           .from('ai_generated_templates')
@@ -72,7 +72,7 @@ serve(async (req) => {
 
       case 'generate_storyboard': {
         const template = await getTemplate(templateId, templateKey);
-        const storyboardFrames = await generateStoryboardFrames(lovableApiKey, template, supabase);
+        const storyboardFrames = await generateStoryboardFrames(imageApiKey, template, supabase);
         
         await supabase
           .from('ai_generated_templates')
@@ -93,7 +93,7 @@ serve(async (req) => {
           .eq('id', template.id);
 
         try {
-          const videoUrl = await generateDemoVideo(lovableApiKey, template, supabase);
+          const videoUrl = await generateDemoVideo(imageApiKey, template, supabase);
           
           await supabase
             .from('ai_generated_templates')
@@ -126,10 +126,10 @@ serve(async (req) => {
 
         try {
           // Generate preview image first
-          const previewUrl = await generatePreviewImage(lovableApiKey, template, supabase);
+          const previewUrl = await generatePreviewImage(imageApiKey, template, supabase);
           
           // Then generate animated video from the preview
-          const videoUrl = await generateDemoVideo(lovableApiKey, template, supabase, previewUrl);
+          const videoUrl = await generateDemoVideo(imageApiKey, template, supabase, previewUrl);
 
           // Update with all generated content
           await supabase
@@ -177,10 +177,10 @@ serve(async (req) => {
               .eq('id', template.id);
 
             // Generate preview image first
-            const previewUrl = await generatePreviewImage(lovableApiKey, template, supabase);
+            const previewUrl = await generatePreviewImage(imageApiKey, template, supabase);
             
             // Generate animated video from preview
-            const videoUrl = await generateDemoVideo(lovableApiKey, template, supabase, previewUrl);
+            const videoUrl = await generateDemoVideo(imageApiKey, template, supabase, previewUrl);
 
             await supabase
               .from('ai_generated_templates')
@@ -241,7 +241,7 @@ Requirements:
 
 Style: Contemporary African art meets mobile app design, geometric patterns, bold typography hints, dynamic composition.`;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -305,7 +305,7 @@ Design requirements:
 
 Output: Single clean icon, no text, vibrant colors.`;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -402,7 +402,7 @@ Requirements:
 Style: Modern social media template preview, dynamic and engaging, smooth motion.`;
 
     try {
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -488,7 +488,7 @@ Progress: ${progress}%
 Style: Clean storyboard sketch, African-inspired, ${template.color} tones, 9:16 format.`;
 
     try {
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
