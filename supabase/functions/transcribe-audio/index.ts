@@ -56,23 +56,13 @@ serve(async (req) => {
 
     // No external fallback provider: use client-side Web Speech when Mistral is unavailable.
     return new Response(
-            JSON.stringify({ success: true, ...result, method: 'gemini' }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      } catch (geminiError) {
-        console.error('[transcribe-audio] Gemini fallback error:', geminiError);
-      }
-    }
-
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: 'Transcription failed with all available methods',
+      JSON.stringify({
+        success: false,
+        error: 'Transcription serveur indisponible',
         useClientSide: true,
         message: 'Utilisez Web Speech API comme fallback côté client'
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 503 }
     );
 
   } catch (error) {
