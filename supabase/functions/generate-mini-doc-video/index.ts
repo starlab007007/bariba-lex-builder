@@ -88,7 +88,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
+    const imageApiKey = Deno.env.get('FITILA_IMAGE_API_KEY')!;
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { duration = 15, villageName = 'Village Africain' }: MiniDocRequest = await req.json();
@@ -130,10 +130,10 @@ serve(async (req) => {
       const customizedPrompt = scene.prompt.replace(/village/gi, villageName);
 
       try {
-        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${lovableApiKey}`,
+            Authorization: `Bearer ${imageApiKey}`,
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
