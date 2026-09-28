@@ -1,0 +1,96 @@
+exit=1
+tests: 143 ; success: 120 ; failure: 23
+
+## phone_shell_drafts -> error
+Test failed. See exception logs above.
+The test description was: phone_shell_drafts
+
+## phone_shell_history -> error
+Test failed. See exception logs above.
+The test description was: phone_shell_history
+
+## phone_shell_home -> error
+Test failed. See exception logs above.
+The test description was: phone_shell_home
+Test failed. See exception logs above.
+The test description was: phone_shell_home
+
+## phone_shell_keyboard -> error
+Test failed. See exception logs above.
+The test description was: phone_shell_keyboard
+
+## phone_shell_offline -> error
+Test failed. See exception logs above.
+The test description was: phone_shell_offline
+
+## phone_shell_profile -> error
+Test failed. See exception logs above.
+The test description was: phone_shell_profile
+
+## phone_shell_scan -> error
+Test failed. See exception logs above.
+The test description was: phone_shell_scan
+
+## phone_shell_settings -> error
+Test failed. See exception logs above.
+The test description was: phone_shell_settings
+
+## phone_shell_shop -> error
+Test failed. See exception logs above.
+The test description was: phone_shell_shop
+
+## phone_shell_teacher -> error
+Test failed. See exception logs above.
+The test description was: phone_shell_teacher
+
+## phone_shell_wallet -> error
+Test failed. See exception logs above.
+The test description was: phone_shell_wallet
+
+## tall_templates -> error
+Test failed. See exception logs above.
+The test description was: tall_templates
+
+## wide_shell_drafts -> error
+Test failed. See exception logs above.
+The test description was: wide_shell_drafts
+
+## wide_shell_history -> error
+Test failed. See exception logs above.
+The test description was: wide_shell_history
+
+## wide_shell_keyboard -> error
+Test failed. See exception logs above.
+The test description was: wide_shell_keyboard
+
+## wide_shell_offline -> error
+Test failed. See exception logs above.
+The test description was: wide_shell_offline
+
+## wide_shell_profile -> error
+Test failed. See exception logs above.
+The test description was: wide_shell_profile
+
+## wide_shell_scan -> error
+Test failed. See exception logs above.
+The test description was: wide_shell_scan
+
+## wide_shell_settings -> error
+Test failed. See exception logs above.
+The test description was: wide_shell_settings
+
+## wide_shell_shop -> error
+Test failed. See exception logs above.
+The test description was: wide_shell_shop
+
+## wide_shell_teacher -> error
+Test failed. See exception logs above.
+The test description was: wide_shell_teacher
+
+## wide_shell_templates -> error
+Test failed. See exception logs above.
+The test description was: wide_shell_templates
+
+## wide_shell_wallet -> error
+Test failed. See exception logs above.
+The test description was: wide_shell_wallet
