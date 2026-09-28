@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Keyboard, Volume2, Loader2, Search, ArrowLeft } from 'lucide-react';
+import { Keyboard, Mic, Volume2, Loader2, Search, BookOpen } from 'lucide-react';
+import FitilaPageHeader from '@/components/fitila/FitilaPageHeader';
+import { SIG } from '@/components/fitila/signatureTheme';
 import { useNavigate } from 'react-router-dom';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
@@ -165,64 +167,40 @@ export default function TamTamDictionary() {
     setNotFoundWord('');
   };
 
-  return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 overflow-hidden">
-      <div className="flex-shrink-0 z-40 px-4 pt-4 pb-2 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
-        <div className="flex items-center gap-3 mb-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="w-10 h-10 bg-white shadow-md rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">📖</span>
-            <h1 className="text-xl font-bold text-gray-800">
-              {t('dict_title')}
-            </h1>
-          </div>
-        </div>
+  const segClass = (active: boolean) =>
+    `flex-1 flex h-[46px] items-center justify-center gap-2 rounded-[16px] border text-[14px] font-extrabold transition-colors ${
+      active ? 'bg-white text-[#241F2E] border-[#C99530]' : 'bg-[#FBF9F2] text-[#8C8571] border-[#E4DFCC]'
+    }`;
 
-        <div className="flex gap-2">
-          <button
-            onClick={() => { setInputMode('keyboard'); triggerFeedback('click'); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all ${
-              inputMode === 'keyboard'
-                ? 'bg-white shadow-md text-gray-800'
-                : 'bg-white/60 text-gray-500 hover:bg-white/80'
-            }`}
-          >
-            <Keyboard className="w-5 h-5" />
+  return (
+    <div className="h-full flex flex-col overflow-hidden" style={{ background: SIG.appBackground, color: SIG.ink }}>
+      <FitilaPageHeader title={t('dict_title')} subtitle="Recherche Bàátɔ̀nú ↔ Français, clavier et recherche vocale" />
+      <div className="flex-shrink-0 z-40 px-[18px] pt-[30px] pb-2">
+        <div className="flex gap-[10px]">
+          <button onClick={() => { setInputMode('keyboard'); triggerFeedback('click'); }} className={segClass(inputMode === 'keyboard')}>
+            <Keyboard className="w-[18px] h-[18px]" style={{ color: inputMode === 'keyboard' ? SIG.goldDeep : SIG.muted }} />
             {t('dict_keyboard')}
           </button>
-
-          <button
-            onClick={() => { setInputMode('voice'); triggerFeedback('click'); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all ${
-              inputMode === 'voice'
-                ? 'bg-white shadow-md text-gray-800'
-                : 'bg-white/60 text-gray-500 hover:bg-white/80'
-            }`}
-          >
-            <span className="text-lg">🎤</span>
+          <button onClick={() => { setInputMode('voice'); triggerFeedback('click'); }} className={segClass(inputMode === 'voice')}>
+            <Mic className="w-[18px] h-[18px]" style={{ color: inputMode === 'voice' ? SIG.goldDeep : SIG.muted }} />
             {t('dict_vocal')}
           </button>
         </div>
 
-        <div className="mt-2 flex items-center justify-center gap-3">
-          <span className="text-gray-500 text-sm">
-            {totalEntries > 0 ? `${totalEntries.toLocaleString()} ${t('dict_words')}` : t('dict_loading')}
+        <div className="mt-3 flex items-center justify-center gap-3">
+          <span className="text-[12px] font-extrabold" style={{ color: SIG.muted }}>
+            {totalEntries > 0 ? `${totalEntries.toLocaleString('fr-FR')} ${t('dict_words')}` : t('dict_loading')}
           </span>
           {!isLoadingContrib && totalPoints > 0 && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white shadow-sm text-gray-600 text-xs">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border text-[11px]" style={{ borderColor: SIG.hairline, color: SIG.muted }}>
               {getLevel(totalPoints).emoji} {totalPoints} {t('dict_pts')} · {level}
             </span>
           )}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pb-8">
-        <motion.div layout className="bg-white rounded-3xl shadow-md p-4 mb-4">
+      <div className="flex-1 overflow-y-auto px-[18px] pb-8">
+        <motion.div layout className="bg-white rounded-[24px] border p-4 mb-[14px]" style={{ borderColor: SIG.hairline }}>
           {inputMode === 'voice' ? (
             <VoiceLangPanel
               defaultLang={voiceLang}
@@ -245,7 +223,7 @@ export default function TamTamDictionary() {
             />
           ) : (
             <div>
-              <p className="text-gray-500 mb-3 text-sm">
+              <p className="mb-3 text-[13px]" style={{ color: SIG.muted }}>
                 {searchDirection === 'ba-fr'
                   ? t('dict_type_bariba')
                   : t('dict_type_french')}
@@ -288,9 +266,9 @@ export default function TamTamDictionary() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="bg-white rounded-3xl shadow-md p-4"
+            className="bg-white rounded-[24px] border p-4" style={{ borderColor: SIG.hairline }}
           >
-            <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center gap-2">
+            <h3 className="text-[13px] font-extrabold mb-3 text-[#8C8571] flex items-center gap-2">
               <Search className="w-4 h-4" />
               {t('dict_recent_searches')}
             </h3>
@@ -300,7 +278,7 @@ export default function TamTamDictionary() {
                 <button
                   key={`${entry.word}-${index}`}
                   onClick={() => handleSelectWord(entry)}
-                  className="w-full flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-indigo-50 transition-colors"
+                  className="w-full flex items-center gap-3 p-3 bg-[#F7F5EC] rounded-[14px] hover:bg-[#F3E3B9]/50 transition-colors"
                 >
                   <span className="text-lg">📖</span>
                   <div className="flex-1 text-left">
@@ -314,9 +292,19 @@ export default function TamTamDictionary() {
           </motion.div>
         )}
 
+        {!selectedEntry && searchHistory.length === 0 && !isLoadingDict && (
+          <div className="flex flex-col items-center pt-6 text-center">
+            <BookOpen className="h-[44px] w-[44px]" style={{ color: '#B9B5A8' }} strokeWidth={1.6} />
+            <h2 className="mt-4 text-[18px] font-extrabold" style={{ color: SIG.inkSoft }}>Cherchez un mot</h2>
+            <p className="mt-2 max-w-[340px] text-left text-[14px] leading-[1.45]" style={{ color: SIG.inkSoft }}>
+              Le dictionnaire embarqué reprend le parcours du site FITILA avec recherche et fiche détaillée.
+            </p>
+          </div>
+        )}
+
         {isLoadingDict && (
           <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin mb-4" />
+            <Loader2 className="w-8 h-8 text-[#C99530] animate-spin mb-4" />
             <p className="text-gray-500">
               {t('dict_loading_dict')}
             </p>

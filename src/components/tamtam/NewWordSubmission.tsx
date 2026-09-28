@@ -190,7 +190,7 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
       {/* Trigger button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-2xl font-medium shadow-lg hover:shadow-xl transition-all"
+        className="w-full flex h-[52px] items-center justify-center gap-2 px-4 bg-[#3F6E52] text-white rounded-[16px] text-[15px] font-extrabold hover:bg-[#365F47] transition-colors"
       >
         <Plus className="w-5 h-5" />
         <span>
