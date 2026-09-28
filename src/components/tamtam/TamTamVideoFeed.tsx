@@ -174,7 +174,7 @@ const VideoCard: React.FC<{
   };
 
   const handleProfileClick = () => {
-    if (authorId) navigate(`/fitila/user/${authorId}`);
+    if (authorId) navigate(`/user/${authorId}`);
   };
 
   return (
