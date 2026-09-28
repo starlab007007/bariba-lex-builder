@@ -53,7 +53,7 @@ export const MyCommunities: React.FC<MyCommunitiesProps> = ({
         </p>
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={() => navigate('/tamtam/social')}
+          onClick={() => navigate('/social')}
           className="px-6 py-2 bg-primary text-primary-foreground rounded-full font-medium"
         >
           Explorer les communautés
