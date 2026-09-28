@@ -133,7 +133,7 @@ export default function ClasseCorrections() {
             </div>
           </div>
         </div>
-        <Link to="/fitila/classe/notes" className="p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 flex items-center gap-3 hover:shadow-md transition-shadow">
+        <Link to="/classe/notes" className="p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 flex items-center gap-3 hover:shadow-md transition-shadow">
           <div className="w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center">
             <FileText className="w-6 h-6 text-white" />
           </div>
