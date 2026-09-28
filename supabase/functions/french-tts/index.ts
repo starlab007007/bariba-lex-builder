@@ -39,48 +39,8 @@ serve(async (req) => {
     console.log(`🔊 French TTS: "${text.substring(0, 100)}..." voice=${voice} returnAudio=${returnAudio}`);
     const startTime = Date.now();
 
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
-    
-    // Step 1: Optimize text for natural French speech using AI
-    let optimizedText = text;
-    if (lovableApiKey) {
-      try {
-        const optimizeResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${lovableApiKey}`,
-          },
-          body: JSON.stringify({
-            model: 'google/gemini-3-flash-preview',
-            messages: [
-              {
-                role: 'system',
-                content: `Tu es un assistant qui optimise les textes pour une lecture à voix haute naturelle en français. 
-Ajoute des pauses naturelles avec "..." et des emphases.
-Garde le texte court et percutant pour un journal TV.
-Ne modifie pas le sens, juste le rythme pour la narration.
-Retourne UNIQUEMENT le texte optimisé, sans explications.`
-              },
-              {
-                role: 'user',
-                content: `Optimise ce texte pour une narration de journal TV en français:\n\n${text}`
-              }
-            ],
-            max_tokens: 1000,
-            temperature: 0.3,
-          }),
-        });
-
-        if (optimizeResponse.ok) {
-          const data = await optimizeResponse.json();
-          optimizedText = data.choices?.[0]?.message?.content?.trim() || text;
-          console.log(`[TTS] AI optimized text in ${Date.now() - startTime}ms`);
-        }
-      } catch (aiError) {
-        console.warn('[TTS] AI optimization failed, using original text:', aiError);
-      }
-    }
+    // FITILA centralisé : aucune optimisation externe n'est nécessaire avant TTS.
+    const optimizedText = text;
 
     // Step 2: If returnAudio is true, generate actual audio
     if (returnAudio) {
