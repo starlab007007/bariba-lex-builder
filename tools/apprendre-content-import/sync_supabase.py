@@ -101,8 +101,13 @@ def main() -> None:
 
     status, info = http('GET', f'{API}/projects/{ref}', {'Authorization': f'Bearer {TOKEN}'})
     if status != 200:
-        stop(f"Pas d'accès Management au projet {ref} (HTTP {status}). "
-             "Applique la migration et lance tools/apprendre-content-import à la main (voir INSTRUCTIONS.md).")
+        # Même appel que deploy-content-modules-supabase.yml, pour distinguer
+        # un jeton refusé (401 partout) d'un simple manque d'accès au projet.
+        q_status, _ = query(ref, 'select 1 as ok')
+        shape = f"jeton : {len(TOKEN)} caractères, préfixe {'sbp_' if TOKEN.startswith('sbp_') else 'autre que sbp_'}"
+        stop(f"Pas d'accès Management au projet {ref} (GET projet HTTP {status}, requête SQL HTTP {q_status} ; {shape}). "
+             "Si 401 : le secret SUPABASE_ACCESS_TOKEN est expiré ou révoqué — régénère-le (supabase.com/dashboard/account/tokens) "
+             "puis relance ce workflow. Sinon : voie manuelle, tools/apprendre-content-import/INSTRUCTIONS.md.")
     annotate('notice', f'Accès au projet {ref} confirmé.')
 
     status, rows = query(ref, "select to_regprocedure('public.has_role(uuid, public.app_role)') is not null as ok")
