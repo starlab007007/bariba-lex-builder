@@ -119,7 +119,8 @@ export default function TamTamEducation() {
     const label = currentLang === 'fr' ? category.labelFr : category.labelBa;
     await speakCurrentLang(label);
     setActiveCategory(category.id);
-    navigate('/education/'+({business:'commerce',health:'sante',stories:'histoires'} as Record<string,string>)[category.id] ?? category.id);
+    const routeId=({business:'commerce',health:'sante',stories:'histoires'} as Record<string,string>)[category.id] ?? category.id;
+    navigate('/education/'+routeId);
   };
 
   const handleBack = () => {
