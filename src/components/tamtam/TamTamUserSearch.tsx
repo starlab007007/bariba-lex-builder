@@ -62,7 +62,7 @@ export function TamTamUserSearch({ isOpen, onClose, onMessage }: TamTamUserSearc
   const handleViewProfile = (userId: string) => {
     triggerFeedback('notification');
     handleClose();
-    navigate(`/tamtam/user/${userId}`);
+    navigate(`/user/${userId}`);
   };
 
   const handleMessage = (userId: string) => {
