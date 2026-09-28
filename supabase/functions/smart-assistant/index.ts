@@ -369,9 +369,9 @@ serve(async (req) => {
 
     console.log(`🤖 Smart Assistant: context=${context}, message="${message.substring(0, 50)}..."`);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY not configured');
+    const MISTRAL_API_KEY = Deno.env.get('MISTRAL_API_KEY');
+    if (!MISTRAL_API_KEY) {
+      throw new Error('MISTRAL_API_KEY not configured');
     }
 
     // Build messages array with specialized prompt
@@ -382,15 +382,15 @@ serve(async (req) => {
       { role: 'user', content: message }
     ];
 
-    // Call Lovable AI Gateway
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // Call Mistral AI Gateway
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${MISTRAL_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'mistral-small-latest',
         messages,
         max_tokens: 300,
         temperature: 0.7
