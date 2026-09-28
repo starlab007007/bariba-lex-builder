@@ -11,16 +11,20 @@
 // main dans `src/data/learningExercises.ts` etc.), désormais inutilisé mais
 // laissé en place sans suppression (aucune autre page n'en dépend).
 
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import ApHubScreen from '@/components/apprendre/ApHubScreen';
 
 export default function FitilaLearn() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   return (
     <ApHubScreen
-      onOpenVoiceStudio={() => navigate('/voice-lab')}
-      onOpenVoiceReview={() => navigate('/voice-lab')}
+      onOpenVoiceStudio={() => navigate('/learn/voice-studio')}
+      onOpenVoiceReview={() => navigate('/learn/voice-review')}
+      onOpenProgress={() => navigate('/learn/progress')}
+      routePath={location.pathname}
+      onNavigate={(path) => navigate(path)}
     />
   );
 }
