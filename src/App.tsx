@@ -20,6 +20,11 @@ import FitilaApp from "./pages/fitila/FitilaApp";
 
 // Lazy-loaded routes - deferred until needed
 const TamTamSocial = lazy(() => import("./pages/tamtam/TamTamSocial"));
+const FitilaSocialCanonical = lazy(() => import("./pages/fitila/FitilaCanonicalCommunity").then(m => ({ default: m.FitilaSocialCanonical })));
+const FitilaCreatorCanonical = lazy(() => import("./pages/fitila/FitilaCanonicalCommunity").then(m => ({ default: m.FitilaCreatorCanonical })));
+const HanduniaCanonicalPage = lazy(() => import("./pages/fitila/FitilaCanonicalCommunity").then(m => ({ default: m.HanduniaCanonicalPage })));
+const SagesseCanonicalPage = lazy(() => import("./pages/fitila/FitilaCanonicalCommunity").then(m => ({ default: m.SagesseCanonicalPage })));
+const FitilaUtilityParity = lazy(() => import("./pages/fitila/FitilaUtilityParity"));
 
 // Lazy-loaded routes - deferred until needed
 const Index = lazy(() => import("./pages/Index"));
@@ -107,24 +112,24 @@ const App = () => (
                 <Route index element={<FitilaLearn />} />
                 <Route path="auth" element={<TamTamPhoneAuth />} />
                 <Route path="home" element={<TamTamHome />} />
-                <Route path="social" element={<TamTamSocial />} />
+                <Route path="social/*" element={<FitilaSocialCanonical />} />
                 <Route path="services" element={<TamTamServices />} />
-                <Route path="market" element={<TamTamMarket />} />
-                <Route path="agriculture" element={<TamTamAgriculture />} />
-                <Route path="finance" element={<TamTamFinance />} />
-                <Route path="education" element={<TamTamEducation />} />
-                <Route path="health" element={<TamTamHealth />} />
-                <Route path="translator" element={<TamTamTranslator />} />
+                <Route path="market/*" element={<TamTamMarket />} />
+                <Route path="agriculture/*" element={<TamTamAgriculture />} />
+                <Route path="finance/*" element={<TamTamFinance />} />
+                <Route path="education/*" element={<TamTamEducation />} />
+                <Route path="health/*" element={<TamTamHealth />} />
+                <Route path="translator/*" element={<TamTamTranslator />} />
                 <Route path="kuaishou-test" element={<TamTamKuaishouTest />} />
-                <Route path="creator" element={<TamTamCreator />} />
+                <Route path="creator" element={<FitilaCreatorCanonical />} />\n                <Route path="creator/handunia" element={<HanduniaCanonicalPage />} />\n                <Route path="creator/sagesse-battle" element={<SagesseCanonicalPage />} />
                 <Route path="templates" element={<TamTamTemplates />} />
                 <Route path="griot-studio" element={<GriotStudioPage />} />
                 <Route path="sos" element={<TamTamSOS />} />
                 <Route path="profile" element={<ProtectedRoute><SafeBoundary label="Profil"><TamTamProfile /></SafeBoundary></ProtectedRoute>} />
-                <Route path="dictionary" element={<TamTamDictionary />} />
-                <Route path="learn" element={<FitilaLearn />} />
+                <Route path="dictionary/*" element={<TamTamDictionary />} />
+                <Route path="learn" element={<FitilaLearn />} />\n                <Route path="learn/daily" element={<FitilaLearn />} />\n                <Route path="learn/review" element={<FitilaLearn />} />\n                <Route path="learn/progress" element={<FitilaLearn />} />\n                <Route path="learn/foundations/:id" element={<FitilaLearn />} />\n                <Route path="learn/themes/:id" element={<FitilaLearn />} />\n                <Route path="learn/voice-studio" element={<FitilaVoiceLab />} />\n                <Route path="learn/voice-review" element={<FitilaVoiceLab />} />
                 <Route path="learn/scenes" element={<FitilaLearnScenes />} />
-                <Route path="classe" element={<FitilaClasse />} />
+                <Route path="classe" element={<FitilaClasse />} />\n                <Route path="classe/:level/*" element={<FitilaClasse />} />
                 <Route path="ia" element={<FitilaIA />} />
                 <Route path="tem-ia" element={<FitilaTemIA />} />
                 <Route path="voice-lab" element={<FitilaVoiceLab />} />
