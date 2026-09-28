@@ -55,6 +55,7 @@ const inputModes: { id: InputMode; icon: React.ReactNode; label: string; color: 
 ];
 
 export default function TamTamTranslator() {
+  const location=useLocation(); const navigate=useNavigate();
   const navigate = useNavigate();
   const translator = useSmartTranslator();
   const { detectLanguage } = useLanguageDetection();
@@ -64,16 +65,22 @@ export default function TamTamTranslator() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [textInput, setTextInput] = useState('');
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistory, setShowHistory] = useState(() => location.pathname.includes('/history'));
   const [historyTab, setHistoryTab] = useState<'recent' | 'favorites'>('recent');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<TranslationHistoryItem[]>([]);
   const [autoDetectEnabled, setAutoDetectEnabled] = useState(true);
-  const [conversationMode, setConversationMode] = useState(true);
+  const [conversationMode, setConversationMode] = useState(() => location.pathname.endsWith('/conversation') || !location.pathname.includes('/history'));
   const [detectedLang, setDetectedLang] = useState<'bariba' | 'french' | null>(null);
   const [baribaTranscribedText, setBaribaTranscribedText] = useState<string>('');
   const [voicePanelSuccess, setVoicePanelSuccess] = useState(false);
   const [voicePanelError, setVoicePanelError] = useState('');
+
+  useEffect(()=>{
+    const history=location.pathname.includes('/history');
+    setShowHistory(history);
+    if (location.pathname.endsWith('/conversation')) setConversationMode(true);
+  },[location.pathname]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -238,7 +245,7 @@ export default function TamTamTranslator() {
 
   const handleHistoryItemClick = (item: TranslationHistoryItem) => {
     setTextInput(item.source_text);
-    setShowHistory(false);
+    setShowHistory(false); if(location.pathname.includes('/history')) navigate('/translator');
     tamtamFeedback.play('click');
   };
 
@@ -288,7 +295,7 @@ export default function TamTamTranslator() {
           <History className="w-5 h-5" />
           Historique
         </h2>
-        <button onClick={() => setShowHistory(false)} className="p-2 rounded-full hover:bg-gray-100">
+        <button onClick={() => setShowHistory(false); if(location.pathname.includes('/history')) navigate('/translator')} className="p-2 rounded-full hover:bg-gray-100">
           <X className="w-5 h-5 text-gray-600" />
         </button>
       </div>
@@ -426,7 +433,7 @@ export default function TamTamTranslator() {
             
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowHistory(true)}
+                onClick={() => setShowHistory(true); navigate('/translator/history')}
                 className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
               >
                 <History className="w-5 h-5 text-gray-500" />
