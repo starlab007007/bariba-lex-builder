@@ -1748,3 +1748,49 @@
     background: hsl(var(--kuaishou-gray-light));
   }
 }
+
+/* ========================================== */
+/* FITILA Premium Clair — jetons globaux      */
+/* Miroir de fitila_flutter signature_theme   */
+/* ========================================== */
+@layer base {
+  :root {
+    --background: 48 33% 95%;            /* #F7F5EC */
+    --foreground: 261 19% 15%;           /* #241F2E */
+    --card: 0 0% 100%;
+    --card-foreground: 261 19% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 261 19% 15%;
+    --primary: 39 62% 49%;               /* #C99530 */
+    --primary-foreground: 39 52% 12%;    /* #2B2110 */
+    --primary-glow: 39 62% 58%;
+    --secondary: 48 29% 90%;             /* #F1EDDF */
+    --secondary-foreground: 261 19% 15%;
+    --muted: 48 29% 90%;
+    --muted-foreground: 45 10% 49%;      /* #8C8571 */
+    --accent: 44 71% 82%;                /* #F3E3B9 */
+    --accent-foreground: 261 19% 15%;
+    --destructive: 12 57% 46%;           /* #B54E33 */
+    --border: 48 29% 84%;                /* #E4DFCC */
+    --input: 48 29% 84%;
+    --ring: 39 62% 49%;
+
+    --tamtam-bg: 48 33% 95%;
+    --tamtam-surface: 0 0% 100%;
+    --tamtam-primary: 39 62% 49%;
+    --tamtam-secondary: 143 27% 34%;     /* #3F6E52 */
+    --tamtam-text: 261 19% 15%;
+    --tamtam-text-muted: 45 10% 49%;
+
+    --kuaishou-orange: 39 62% 49%;
+    --kuaishou-orange-light: 39 62% 49%;
+    --kuaishou-primary: 39 62% 49%;
+    --kuaishou-primary-dark: 37 68% 36%; /* #9C6B1D */
+    --kuaishou-verified: 39 62% 49%;
+    --kuaishou-bg: 48 33% 95%;
+    --kuaishou-border: 48 29% 84%;
+    --kuaishou-text: 261 19% 15%;
+    --kuaishou-text-muted: 45 10% 49%;
+  }
+}
+

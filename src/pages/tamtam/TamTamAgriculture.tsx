@@ -136,7 +136,7 @@ export default function TamTamAgriculture() {
                   <p className="text-3xl font-bold">{mockWeather.temp}°C</p>
                 </div>
                 <div className="text-5xl">☀️</div>
-                <div className="text-right">
+                <div className="text-right mr-9">
                   <div className="flex items-center gap-1">
                     <Droplets className="w-4 h-4" />
                     <span>{mockWeather.humidity}%</span>

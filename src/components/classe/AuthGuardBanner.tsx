@@ -28,7 +28,7 @@ export default function AuthGuardBanner() {
         <p className="text-[#241F2E] font-extrabold text-sm">Connectez-vous pour sauvegarder</p>
         <p className="text-[#8C8571] text-xs">Sans compte, vos réponses et notes seront perdues.</p>
       </div>
-      <span className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-bold whitespace-nowrap">Se connecter</span>
+      <span className="px-3 py-1.5 rounded-lg bg-[#C99530] text-[#2B2110] text-xs font-extrabold whitespace-nowrap">Se connecter</span>
     </button>
   );
 }

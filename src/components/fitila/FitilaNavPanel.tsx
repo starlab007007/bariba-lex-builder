@@ -81,7 +81,7 @@ export default function FitilaNavPanel({ onNavigate }: { onNavigate?: (path: str
       >
         <Icon className="h-[20px] w-[20px] shrink-0" style={{ color: SIG.goldDeep }} />
         <span className="min-w-0">
-          <span className="block text-[14px]" style={{ color: SIG.ink, fontWeight: active ? 800 : 600 }}>{label}</span>
+          <span className="block text-[14px]" style={{ color: SIG.ink, fontWeight: active ? 800 : 500 }}>{label}</span>
           {active && desc && <span className="block truncate text-[11px]" style={{ color: SIG.muted }}>{desc}</span>}
         </span>
       </button>

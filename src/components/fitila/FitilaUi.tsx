@@ -1,4 +1,4 @@
-import { Volume2, type LucideIcon } from 'lucide-react';
+import { ChevronRight, Volume2, type LucideIcon } from 'lucide-react';
 import { SIG } from './signatureTheme';
 
 /** Page pleine hauteur au fond Premium Clair. */
@@ -94,6 +94,7 @@ export function ActionList({ items }: { items: Feature[] }) {
             <span className="block text-[13px] font-extrabold">{title}</span>
             <span className="mt-0.5 block text-[11px] leading-[1.35]" style={{ color: SIG.muted }}>{desc}</span>
           </span>
+          <ChevronRight className="h-5 w-5 shrink-0" style={{ color: SIG.muted }} />
         </button>
       ))}
     </div>

@@ -4,7 +4,7 @@ import {
   Accessibility, Activity, AlertTriangle, BadgeCheck, Bell, Bookmark, CloudOff, CloudUpload, Download, Eraser, FileScan,
   FileText, FolderCheck, GitMerge, GraduationCap, History, Inbox, Keyboard, Languages, Lock, LogOut, Mic, MessagesSquare, PenLine,
   Film, QrCode, Receipt, RefreshCw, ScanText, Search, Settings2, Shield, ShieldCheck, Smartphone, Sliders, Store, Users, Volume2,
-  Wallet, PiggyBank, Zap, Hand, BarChart3, UserCog, Rss, Trash2, Globe, Database, HeartPulse, Cog,
+  Compass, Wallet, PiggyBank, Zap, Hand, BarChart3, UserCog, Rss, Trash2, Globe, Database, HeartPulse, Cog,
   type LucideIcon,
 } from 'lucide-react';
 import FitilaPageHeader from '@/components/fitila/FitilaPageHeader';
@@ -99,6 +99,15 @@ const DEFS: Record<string, Def> = {
       f(FileScan, 'Document', 'Photo, recadrage, OCR, traduction et résumé IA.'),
       f(ScanText, 'OCR Bariba/FR', 'Extraction texte, correction, dictionnaire et audio.'),
       f(ShieldCheck, 'Sécurité', 'Consentement, données sensibles et stockage local contrôlé.'),
+    ],
+  },
+  discover: {
+    title: 'Découvrir', subtitle: 'Tendances, créateurs et contenus', icon: Compass,
+    tabs: [['Vue', Compass], ['Actions', Hand], ['Backend', Cog], ['Offline', Zap]],
+    list: [
+      f(Compass, 'Découvrir', 'Tendances, créateurs et contenus'),
+      f(ShieldCheck, 'Contrôle visuel', 'Vérifie les actions sensibles comme dans le web React.'),
+      f(Cog, 'Connexion backend', 'Point prêt pour brancher Supabase dans la prochaine étape.'),
     ],
   },
   shop: {

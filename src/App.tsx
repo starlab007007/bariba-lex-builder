@@ -40,7 +40,6 @@ const FitilaIA = lazy(() => import("./pages/fitila/FitilaIA"));
 const FitilaTemIA = lazy(() => import("./pages/fitila/FitilaTemIA"));
 const FitilaVoiceLab = lazy(() => import("./pages/fitila/FitilaVoiceLab"));
 const VoiceCorpusAdmin = lazy(() => import("./pages/admin/VoiceCorpusAdmin"));
-const ComingSoonPage = lazy(() => import("./pages/fitila/ComingSoonPage"));
 const InstallPage = lazy(() => import("./pages/fitila/InstallPage"));
 const FloatingKeyboardPage = lazy(() => import("./pages/fitila/FloatingKeyboardPage"));
 
@@ -139,7 +138,7 @@ const App = () => (
                   <Route path="shop" element={<FitilaUtilityParity />} />
                   <Route path="settings" element={<FitilaUtilityParity />} />
 
-                  <Route path="discover" element={<ComingSoonPage />} />
+                  <Route path="discover" element={<FitilaUtilityParity />} />
                   <Route path="install" element={<InstallPage />} />
                   <Route path="keyboard" element={<FloatingKeyboardPage />} />
 
