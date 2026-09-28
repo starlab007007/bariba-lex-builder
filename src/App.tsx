@@ -38,17 +38,17 @@ const TamTamDictionary = lazy(() => import("./pages/tamtam/TamTamDictionary"));
 const TamTamAgriculture = lazy(() => import("./pages/tamtam/TamTamAgriculture"));
 const TamTamFinance = lazy(() => import("./pages/tamtam/TamTamFinance"));
 const TamTamEducation = lazy(() => import("./pages/tamtam/TamTamEducation"));
-const SasaraIA = lazy(() => import("./pages/fitila/SasaraIA"));
+const TamTamTranslator = lazy(() => import("./pages/tamtam/TamTamTranslator"));
 const TamTamHealth = lazy(() => import("./pages/tamtam/TamTamHealth"));
 const TamTamKuaishouTest = lazy(() => import("./pages/tamtam/TamTamKuaishouTest"));
 const TamTamCreator = lazy(() => import("./pages/tamtam/TamTamCreator"));
 const TamTamTemplates = lazy(() => import("./pages/tamtam/TamTamTemplates"));
-const AburuFimIA = lazy(() => import("./pages/fitila/AburuFimIA"));
 const TemplateTest = lazy(() => import("./pages/TemplateTest"));
 const SystemValidation = lazy(() => import("./pages/SystemValidation"));
 const AssetsDashboard = lazy(() => import("./pages/AssetsDashboard"));
 const GriotStudioPage = lazy(() => import("./pages/GriotStudioPage"));
 const FitilaLearn = lazy(() => import("./pages/fitila/FitilaLearn"));
+const FitilaLearnScenes = lazy(() => import("./pages/fitila/FitilaLearnScenes"));
 const FitilaClasse = lazy(() => import("./pages/fitila/FitilaClasse"));
 const FitilaIA = lazy(() => import("./pages/fitila/FitilaIA"));
 const FitilaTemIA = lazy(() => import("./pages/fitila/FitilaTemIA"));
@@ -102,19 +102,9 @@ const App = () => (
           <Suspense fallback={<PageLoader />}>
             <SafeBoundary label="Application">
             <Routes>
-              {/* Redirect root to FITILA */}
-              <Route path="/" element={<Navigate to="/fitila" replace />} />
-              <Route path="/dictionary" element={<Index />} />
-              <Route path="/auth" element={<Navigate to="/fitila/auth" replace />} />
-              <Route path="/gamification" element={<Gamification />} />
-              <Route path="/template-test" element={<TemplateTest />} />
-              <Route path="/system-validation" element={<SystemValidation />} />
-              <Route path="/assets" element={<AssetsDashboard />} />
-              <Route path="/griot-studio" element={<GriotStudioPage />} />
-              
-              {/* FITILA Platform Routes (new branding) */}
-              <Route path="/fitila" element={<FitilaApp />}>
-                <Route index element={<TamTamSocial />} />
+              {/* FITILA canonical routes — fitila.bj/ opens Apprendre directly */}
+              <Route path="/" element={<FitilaApp />}>
+                <Route index element={<FitilaLearn />} />
                 <Route path="auth" element={<TamTamPhoneAuth />} />
                 <Route path="home" element={<TamTamHome />} />
                 <Route path="social" element={<TamTamSocial />} />
@@ -124,17 +114,16 @@ const App = () => (
                 <Route path="finance" element={<TamTamFinance />} />
                 <Route path="education" element={<TamTamEducation />} />
                 <Route path="health" element={<TamTamHealth />} />
-                <Route path="translator" element={<SafeBoundary label="Sasara IA"><SasaraIA /></SafeBoundary>} />
+                <Route path="translator" element={<TamTamTranslator />} />
                 <Route path="kuaishou-test" element={<TamTamKuaishouTest />} />
                 <Route path="creator" element={<TamTamCreator />} />
                 <Route path="templates" element={<TamTamTemplates />} />
-                <Route path="creer/aburu-fim" element={<ProtectedRoute><SafeBoundary label="Aburu Fim IA"><AburuFimIA /></SafeBoundary></ProtectedRoute>} />
-                <Route path="creer/sasara-ia" element={<SafeBoundary label="Sasara IA"><SasaraIA /></SafeBoundary>} />
                 <Route path="griot-studio" element={<GriotStudioPage />} />
                 <Route path="sos" element={<TamTamSOS />} />
                 <Route path="profile" element={<ProtectedRoute><SafeBoundary label="Profil"><TamTamProfile /></SafeBoundary></ProtectedRoute>} />
                 <Route path="dictionary" element={<TamTamDictionary />} />
                 <Route path="learn" element={<FitilaLearn />} />
+                <Route path="learn/scenes" element={<FitilaLearnScenes />} />
                 <Route path="classe" element={<FitilaClasse />} />
                 <Route path="ia" element={<FitilaIA />} />
                 <Route path="tem-ia" element={<FitilaTemIA />} />
@@ -147,8 +136,47 @@ const App = () => (
                 <Route path="profile/:userId" element={<TamTamPublicProfile />} />
               </Route>
 
-              {/* Teacher dashboard */}
-              <Route path="/fitila/teacher" element={<ProtectedRoute requireTeacher><TeacherLayout /></ProtectedRoute>}>
+              <Route path="/dictionary-old" element={<Index />} />
+              <Route path="/gamification" element={<Gamification />} />
+              <Route path="/template-test" element={<TemplateTest />} />
+              <Route path="/system-validation" element={<SystemValidation />} />
+              <Route path="/assets" element={<AssetsDashboard />} />
+
+              {/* Compatibility routes: old /fitila/... URLs remain valid */}
+              <Route path="/fitila" element={<FitilaApp />}>
+                <Route index element={<Navigate to="/" replace />} />
+                <Route path="auth" element={<Navigate to="/auth" replace />} />
+                <Route path="home" element={<Navigate to="/home" replace />} />
+                <Route path="social" element={<Navigate to="/social" replace />} />
+                <Route path="services" element={<Navigate to="/services" replace />} />
+                <Route path="market" element={<Navigate to="/market" replace />} />
+                <Route path="agriculture" element={<Navigate to="/agriculture" replace />} />
+                <Route path="finance" element={<Navigate to="/finance" replace />} />
+                <Route path="education" element={<Navigate to="/education" replace />} />
+                <Route path="health" element={<Navigate to="/health" replace />} />
+                <Route path="translator" element={<Navigate to="/translator" replace />} />
+                <Route path="creator" element={<Navigate to="/creator" replace />} />
+                <Route path="templates" element={<Navigate to="/templates" replace />} />
+                <Route path="griot-studio" element={<Navigate to="/griot-studio" replace />} />
+                <Route path="sos" element={<Navigate to="/sos" replace />} />
+                <Route path="profile" element={<Navigate to="/profile" replace />} />
+                <Route path="dictionary" element={<Navigate to="/dictionary" replace />} />
+                <Route path="learn" element={<Navigate to="/" replace />} />
+                <Route path="learn/scenes" element={<Navigate to="/learn/scenes" replace />} />
+                <Route path="classe" element={<Navigate to="/classe" replace />} />
+                <Route path="ia" element={<Navigate to="/ia" replace />} />
+                <Route path="tem-ia" element={<Navigate to="/tem-ia" replace />} />
+                <Route path="voice-lab" element={<Navigate to="/voice-lab" replace />} />
+                <Route path="messages" element={<Navigate to="/messages" replace />} />
+                <Route path="discover" element={<Navigate to="/discover" replace />} />
+                <Route path="install" element={<Navigate to="/install" replace />} />
+                <Route path="keyboard" element={<Navigate to="/keyboard" replace />} />
+                <Route path="user/:userId" element={<TamTamPublicProfile />} />
+                <Route path="profile/:userId" element={<TamTamPublicProfile />} />
+              </Route>
+
+              {/* Teacher dashboard — canonical FITILA routes */}
+              <Route path="/teacher" element={<ProtectedRoute requireTeacher><TeacherLayout /></ProtectedRoute>}>
                 <Route index element={<TeacherDashboard />} />
                 <Route path="students" element={<StudentList />} />
                 <Route path="student/:id" element={<StudentDetail />} />
@@ -161,11 +189,16 @@ const App = () => (
                 <Route path="voice-reading/:level/:module" element={<VoiceReadingLessons />} />
                 <Route path="voice-reading/:level/:module/:lessonId" element={<VoiceReadingStudio />} />
               </Route>
-              <Route path="/fitila/classe/corrections" element={<ProtectedRoute><ClasseCorrections /></ProtectedRoute>} />
-              <Route path="/fitila/classe/notes" element={<ProtectedRoute><MyGradeReport /></ProtectedRoute>} />
+              <Route path="/classe/corrections" element={<ProtectedRoute><ClasseCorrections /></ProtectedRoute>} />
+              <Route path="/classe/notes" element={<ProtectedRoute><MyGradeReport /></ProtectedRoute>} />
 
-              {/* Legacy /tamtam routes redirect to /fitila */}
-              <Route path="/tamtam/*" element={<Navigate to="/fitila" replace />} />
+              {/* Compatibility: legacy teacher/class URLs */}
+              <Route path="/fitila/teacher/*" element={<Navigate to="/teacher" replace />} />
+              <Route path="/fitila/classe/corrections" element={<Navigate to="/classe/corrections" replace />} />
+              <Route path="/fitila/classe/notes" element={<Navigate to="/classe/notes" replace />} />
+
+              {/* Legacy social routes */}
+              <Route path="/tamtam/*" element={<Navigate to="/social" replace />} />
 
               <Route
                 path="/admin/voice-corpus"
