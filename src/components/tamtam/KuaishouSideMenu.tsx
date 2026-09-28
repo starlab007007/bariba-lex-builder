@@ -54,8 +54,8 @@ export const KuaishouSideMenu: React.FC<KuaishouSideMenuProps> = ({
 
   // Quick actions at top
   const quickActions: MenuGridItem[] = [
-    { icon: <QrCode className="w-5 h-5" />, label: 'Scanner', path: '/fitila/scan' },
-    { icon: <ShoppingBag className="w-5 h-5" />, label: 'Boutique', path: '/fitila/shop' },
+    { icon: <QrCode className="w-5 h-5" />, label: 'Scanner', path: '/scan' },
+    { icon: <ShoppingBag className="w-5 h-5" />, label: 'Boutique', path: '/shop' },
   ];
 
   // Menu sections (Kuaishou-style)
@@ -64,24 +64,19 @@ export const KuaishouSideMenu: React.FC<KuaishouSideMenuProps> = ({
       title: 'Common function',
       titleBa: 'Iṣẹ́ pàtàkì',
       items: [
-        { icon: <Clock className="w-5 h-5" />, label: 'Historique', labelBa: 'Ìtàn', path: '/fitila/history' },
-        { icon: <Cloud className="w-5 h-5" />, label: 'Hors ligne', labelBa: 'Láìsí nẹ́tì', path: '/fitila/offline' },
-        { icon: <Settings className="w-5 h-5" />, label: 'Paramètres', labelBa: 'Ètò', path: '/fitila/settings' },
-        { icon: <Wallet className="w-5 h-5" />, label: 'Portefeuille', labelBa: 'Àpamọ́wọ́', path: '/fitila/wallet' },
-        { icon: <FileText className="w-5 h-5" />, label: 'Brouillons', labelBa: 'Àkọsílẹ̀', path: '/fitila/drafts' },
+        { icon: <Clock className="w-5 h-5" />, label: 'Historique', labelBa: 'Ìtàn', path: '/history' },
+        { icon: <Cloud className="w-5 h-5" />, label: 'Hors ligne', labelBa: 'Láìsí nẹ́tì', path: '/offline' },
+        { icon: <Settings className="w-5 h-5" />, label: 'Paramètres', labelBa: 'Ètò', path: '/settings' },
+        { icon: <Wallet className="w-5 h-5" />, label: 'Portefeuille', labelBa: 'Àpamọ́wọ́', path: '/wallet' },
+        { icon: <FileText className="w-5 h-5" />, label: 'Brouillons', labelBa: 'Àkọsílẹ̀', path: '/drafts' },
       ],
     },
     {
       title: 'Tool service',
       titleBa: 'Irinṣẹ́ iṣẹ́',
       items: [
-        { icon: <BookOpen className="w-5 h-5" />, label: 'Dictionnaire', labelBa: 'Ìwé ọ̀rọ̀', path: '/fitila/dictionary' },
-        { icon: <Languages className="w-5 h-5" />, label: 'Traducteur', labelBa: 'Ìtumọ̀', path: '/fitila/translator' },
-        { icon: <Headphones className="w-5 h-5" />, label: 'Assistance', labelBa: 'Ìrànlọ́wọ́', path: '/fitila/support' },
-        { icon: <Users className="w-5 h-5" />, label: 'Protection', labelBa: 'Ìdáàbòbò', path: '/fitila/safety' },
-        { icon: <Eye className="w-5 h-5" />, label: 'Voir plus tard', labelBa: 'Wo lẹ́yìn', path: '/fitila/watch-later' },
-        { icon: <ListOrdered className="w-5 h-5" />, label: 'Abonnements', labelBa: 'Ìforúkọsílẹ̀', path: '/fitila/subscriptions' },
-        { icon: <BarChart3 className="w-5 h-5" />, label: 'Rapport', labelBa: 'Ìròyìn', path: '/fitila/report' },
+        { icon: <BookOpen className="w-5 h-5" />, label: 'Dictionnaire', labelBa: 'Ìwé ọ̀rọ̀', path: '/dictionary' },
+        { icon: <Languages className="w-5 h-5" />, label: 'Traducteur', labelBa: 'Ìtumọ̀', path: '/translator' },
       ],
     },
     {
@@ -89,7 +84,6 @@ export const KuaishouSideMenu: React.FC<KuaishouSideMenuProps> = ({
       titleBa: 'Ìdárayá',
       items: [
         { icon: <Gamepad2 className="w-5 h-5" />, label: 'Jeux', labelBa: 'Eré', path: '/fitila/games' },
-        { icon: <Tv className="w-5 h-5" />, label: 'TV Shows', labelBa: 'Ìwòran TV', path: '/fitila/tv' },
       ],
     },
   ];
@@ -160,7 +154,7 @@ export const KuaishouSideMenu: React.FC<KuaishouSideMenuProps> = ({
             {/* System message notification */}
             <motion.button
               whileTap={{ scale: 0.98 }}
-              onClick={() => handleNavigate('/fitila/notifications')}
+              onClick={() => handleNavigate('/messages')}
               className="w-full flex items-center justify-between p-4 border-b border-gray-200 hover:bg-white/60 transition-colors"
             >
               <div className="flex items-center gap-3">
