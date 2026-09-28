@@ -90,6 +90,8 @@ jobs:
             curl -fsS --max-time 10 http://127.0.0.1:8085/admin >/dev/null
             curl -fsS --max-time 10 http://127.0.0.1:8085/admin/users >/dev/null
             curl -fsS --max-time 10 http://127.0.0.1:8085/admin/apprendre-voice >/dev/null
+            curl -fsS --max-time 10 http://127.0.0.1:8085/admin/apprendre-content >/dev/null
+            curl -fsS --max-time 10 http://127.0.0.1:8085/learn/scenes >/dev/null
             curl --resolve fitila.bj:443:127.0.0.1 -fsS --max-time 10 https://fitila.bj/admin >/dev/null
             echo "✅ Routes web et admin accessibles sur le VPS"
 
