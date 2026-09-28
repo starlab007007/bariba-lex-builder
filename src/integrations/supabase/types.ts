@@ -364,6 +364,106 @@ export type Database = {
         }
         Relationships: []
       }
+      // Ajoutée additivement : table utilisée par
+      // `src/components/fitila/BaribaAudioText.tsx` (catalogue de voix de
+      // référence Apprendre, branche feat/apprendre-v2.4-build19-20260927)
+      // mais absente de ce fichier généré — seules les colonnes déjà
+      // sélectionnées par le code existant sont typées, sans rien inventer
+      // au-delà.
+      apprendre_audio_published: {
+        Row: {
+          audio_key: string
+          voice: string | null
+          variant: string | null
+          storage_path: string
+          duration_ms: number | null
+          speaker_name: string | null
+        }
+        Insert: {
+          audio_key: string
+          voice?: string | null
+          variant?: string | null
+          storage_path: string
+          duration_ms?: number | null
+          speaker_name?: string | null
+        }
+        Update: {
+          audio_key?: string
+          voice?: string | null
+          variant?: string | null
+          storage_path?: string
+          duration_ms?: number | null
+          speaker_name?: string | null
+        }
+        Relationships: []
+      }
+      // Ajoutée additivement : table créée par la migration
+      // `20260928090000_apprendre_module_content.sql` (branche de travail web
+      // parity, contenu centralisé Apprendre — mots + scènes — pour que web
+      // et Flutter lisent la même source). Absente de ce fichier généré tant
+      // que la migration n'a pas été appliquée à un projet dont le schéma a
+      // servi à régénérer ces types ; typée ici à l'identique du SQL de la
+      // migration, sans rien inventer au-delà.
+      apprendre_module_content: {
+        Row: {
+          id: string
+          content: Json
+          content_version: string
+          content_hash: string
+          item_count: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id: string
+          content: Json
+          content_version: string
+          content_hash?: string
+          item_count?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          content?: Json
+          content_version?: string
+          content_hash?: string
+          item_count?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      apprendre_content_audit: {
+        Row: {
+          id: number
+          content_id: string
+          content_version: string
+          content_hash: string
+          item_count: number
+          actor: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          content_id: string
+          content_version: string
+          content_hash: string
+          item_count: number
+          actor?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          content_id?: string
+          content_version?: string
+          content_hash?: string
+          item_count?: number
+          actor?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       bariba_corpus_phrases: {
         Row: {
           category: string
@@ -4081,7 +4181,19 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      // Ajoutée additivement : vue créée par la même migration que
+      // `apprendre_module_content` (lecture publique du statut de contenu,
+      // sans exposer le JSON complet — voir `20260928090000_apprendre_module_content.sql`).
+      apprendre_module_content_status: {
+        Row: {
+          id: string
+          content_version: string
+          content_hash: string
+          item_count: number
+          updated_at: string
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_level: { Args: { points: number }; Returns: number }
@@ -4095,9 +4207,23 @@ export type Database = {
         Returns: boolean
       }
       is_teacher_or_admin: { Args: { _user_id: string }; Returns: boolean }
+      // Ajoutée additivement : fonction SECURITY DEFINER créée par la même
+      // migration que `apprendre_module_content` (import admin-only du
+      // contenu Apprendre — mots ou scènes — avec calcul de hash/compteur
+      // et journal d'audit).
+      apprendre_import_content: {
+        Args: { _id: string; _content: Json; _version: string }
+        Returns: Json
+      }
     }
     Enums: {
-      app_role:\n        | "admin"\n        | "user"\n        | "editor"\n        | "teacher"\n        | "voice_speaker"\n        | "voice_reviewer"
+      app_role:
+        | "admin"
+        | "user"
+        | "editor"
+        | "teacher"
+        | "voice_speaker"
+        | "voice_reviewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4225,7 +4351,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: [\n        "admin",\n        "user",\n        "editor",\n        "teacher",\n        "voice_speaker",\n        "voice_reviewer",\n      ],
+      app_role: [
+        "admin",
+        "user",
+        "editor",
+        "teacher",
+        "voice_speaker",
+        "voice_reviewer",
+      ],
     },
   },
 } as const
