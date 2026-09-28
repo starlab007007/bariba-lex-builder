@@ -128,7 +128,7 @@ export function useAudioServices(): UseAudioServicesReturn {
       baribaSTT: 'checking',
       baribaTTS: 'checking',
       frenchSTT: 'available', // Web Speech API is usually available
-      frenchTTS: 'available', // Lovable AI is usually available
+      frenchTTS: 'available', // Web Speech / FITILA TTS
       byT5: 'checking',
     }
   );
