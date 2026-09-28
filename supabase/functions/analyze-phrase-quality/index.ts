@@ -121,7 +121,7 @@ serve(async (req: Request) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
+    const MISTRAL_API_KEY = Deno.env.get("MISTRAL_API_KEY") ?? "";
 
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("Missing SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY");
@@ -232,20 +232,20 @@ serve(async (req: Request) => {
 
           let parsedAiAnalyses: AiAnalysis[] = [];
 
-          if (LOVABLE_API_KEY) {
+          if (MISTRAL_API_KEY) {
             const prompt = buildAnalysisPrompt(batch);
 
             try {
               const response = await fetchWithTimeout(
-                "https://ai.gateway.lovable.dev/v1/chat/completions",
+                "https://api.mistral.ai/v1/chat/completions",
                 {
                   method: "POST",
                   headers: {
-                    Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                    Authorization: `Bearer ${MISTRAL_API_KEY}`,
                     "Content-Type": "application/json",
                   },
                   body: JSON.stringify({
-                    model: "google/gemini-2.5-flash",
+                    model: "mistral-small-latest",
                     messages: [
                       {
                         role: "system",
