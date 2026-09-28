@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Lock, ChevronRight, GraduationCap } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { useSideMenu } from './FitilaApp';
 import { useTeacherRole } from '@/hooks/useTeacherRole';
@@ -23,15 +23,21 @@ type Level = 'N1' | 'N2';
 
 export default function FitilaClasse() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentLang } = useFitilaLanguage();
   const { open: openMenu } = useSideMenu();
   const { isTeacher } = useTeacherRole();
   const [section, setSection] = useState<Section>('home');
   const [selectedLessonId, setSelectedLessonId] = useState<number>(1);
   const [selectedEvalId, setSelectedEvalId] = useState<number>(1);
-  const [activeLevel, setActiveLevel] = useState<Level>('N1');
+  const [activeLevel, setActiveLevel] = useState<Level>(() => location.pathname.includes('/n2') ? 'N2' : 'N1');
 
-  // Pick data based on level
+  React.useEffect(()=>{
+    if(location.pathname.includes('/n2')) setActiveLevel('N2');
+    else if(location.pathname.includes('/n1')) setActiveLevel('N1');
+  },[location.pathname]);
+
+    // Pick data based on level
   const lessons = activeLevel === 'N1' ? CLASSE_LESSONS : CLASSE_N2_LESSONS;
   const evaluations = activeLevel === 'N1' ? CLASSE_EVALUATIONS : CLASSE_N2_EVALUATIONS;
   const calculLessons = activeLevel === 'N1' ? CALCUL_LESSONS : CALCUL_N2_LESSONS;
@@ -79,6 +85,7 @@ export default function FitilaClasse() {
 
   const handleLevelSwitch = (level: Level) => {
     setActiveLevel(level);
+    navigate('/classe/'+level.toLowerCase());
     setSection('home');
     setSelectedLessonId(1);
     setSelectedEvalId(1);
