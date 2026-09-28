@@ -18,8 +18,8 @@ const BYT5_TIMEOUT_MS = 25_000;
 const TOP_K = 8;
 const MIN_RELEVANCE_SCORE = 1; // au moins 1 mot-clé matché
 
-const PRIMARY_MODEL = "google/gemini-2.5-flash";
-const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
+const PRIMARY_MODEL = "mistral-small-latest";
+const FALLBACK_MODEL = "mistral-small-latest";
 
 const NO_INFO_FR = "Désolé, je ne trouve pas cette information dans le document foncier Bariba fourni.";
 const NO_INFO_BA = "Min kun yɛ̃ gari yi tem bausu sariaba tire sɔɔ.";
@@ -106,7 +106,7 @@ async function callLLM(messages: { role: string; content: string }[], model: str
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resp = await fetch("https://api.mistral.ai/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -169,8 +169,8 @@ serve(async (req: Request) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
+    const MISTRAL_API_KEY = Deno.env.get("MISTRAL_API_KEY");
+    if (!MISTRAL_API_KEY) throw new Error("MISTRAL_API_KEY missing");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY");
 
@@ -210,7 +210,7 @@ serve(async (req: Request) => {
             { role: "user", content: userPrompt },
           ],
           PRIMARY_MODEL,
-          LOVABLE_API_KEY,
+          MISTRAL_API_KEY,
         );
       } catch (e) {
         const msg = e instanceof Error ? e.message : "";
@@ -227,7 +227,7 @@ serve(async (req: Request) => {
             { role: "user", content: userPrompt },
           ],
           FALLBACK_MODEL,
-          LOVABLE_API_KEY,
+          MISTRAL_API_KEY,
         );
       }
 
