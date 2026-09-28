@@ -3,7 +3,7 @@ import {
   BookOpen,
   ClipboardList,
   Languages,
-  MenuBook,
+  BookMarked,
   Plus,
   Sparkles,
   Waves,
@@ -14,7 +14,7 @@ const items = [
   { label: 'Fil', path: '/social', icon: Waves },
   { label: 'Apprendre', path: '/learn', icon: BookOpen },
   { label: 'Classe', path: '/classe', icon: ClipboardList },
-  { label: 'Dico', path: '/dictionary', icon: MenuBook },
+  { label: 'Dico', path: '/dictionary', icon: BookMarked },
   { label: 'Traduc.', path: '/translator', icon: Languages },
   { label: 'Fitila IA', path: '/ia', icon: Sparkles },
 ] as const;
