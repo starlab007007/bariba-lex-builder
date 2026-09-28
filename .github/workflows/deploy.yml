@@ -79,8 +79,8 @@ jobs:
             echo "🔨 Construction et redémarrage des services..."
             export VITE_BUILD_SHA=${{ github.sha }}
             export VITE_BUILD_TIME=$(date -Iseconds)
-            export VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
-            export VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+            export VITE_SUPABASE_URL=https://dvswhjawiooprghzeyol.supabase.co
+            export VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_Rs6ysvbwQ0oGpHuYulZ5Hw_loUqyGKw
             docker compose -f docker-composer.yml build
             docker compose -f docker-composer.yml up -d --force-recreate --remove-orphans
 
