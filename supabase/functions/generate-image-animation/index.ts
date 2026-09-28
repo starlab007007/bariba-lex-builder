@@ -104,9 +104,9 @@ serve(async (req) => {
   try {
     const { imageBase64, story, style, duration = 15, analysisType = 'full' } = await req.json();
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const FITILA_IMAGE_API_KEY = Deno.env.get('FITILA_IMAGE_API_KEY');
+    if (!FITILA_IMAGE_API_KEY) {
+      throw new Error('FITILA_IMAGE_API_KEY is not configured');
     }
 
     const results: { imageAnalysis?: ImageAnalysis; emotionAnalysis?: EmotionAnalysis } = {};
@@ -141,10 +141,10 @@ Return ONLY a JSON object with this exact structure (no markdown, no explanation
 Style hint: ${style || 'traditional african storytelling'}
 Story context: ${story || 'A traditional African tale'}`;
 
-      const imageResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      const imageResponse = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Authorization': `Bearer ${FITILA_IMAGE_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -199,10 +199,10 @@ Return ONLY a JSON object with this exact structure (no markdown, no explanation
 
 Make segments that cover the full duration proportionally to the story content.`;
 
-      const emotionResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      const emotionResponse = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Authorization': `Bearer ${FITILA_IMAGE_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
