@@ -493,29 +493,10 @@ class UnifiedAudioServiceClass {
       };
     }
 
-    // Fallback vers Lovable AI avec retry
-    const aiResult = await this.withRetry(async () => {
-      const { data, error } = await supabase.functions.invoke('ai-translate-lovable', {
-        body: { text, sourceLang, targetLang }
-      });
-      if (error) throw new Error(error.message);
-      if (!data?.translation) throw new Error('Pas de traduction');
-      return data;
-    }, 'Lovable AI');
-
-    if (aiResult.result?.translation) {
-      return {
-        translation: aiResult.result.translation,
-        source: from,
-        target: to,
-        method: 'lovable-ai',
-        confidence: aiResult.result.confidence || 0.75,
-        retryCount: aiResult.retryCount,
-      };
-    }
-
+    // Aucun fournisseur cloud externe n'est utilisé ici.
+    // Si ByT5 échoue, on renvoie le texte source avec un état dégradé.
     // Échec total
-    const errorInfo = this.getErrorWithAction(aiResult.error || 'Traduction échouée', 'Traduction');
+    const errorInfo = this.getErrorWithAction(byt5Result.error || 'Traduction échouée', 'Traduction');
     return {
       translation: text,
       source: from,
@@ -523,7 +504,7 @@ class UnifiedAudioServiceClass {
       method: 'fallback',
       confidence: 0,
       error: `${errorInfo.message}. ${errorInfo.action}`,
-      retryCount: aiResult.retryCount,
+      retryCount: byt5Result.retryCount,
     };
   }
 
