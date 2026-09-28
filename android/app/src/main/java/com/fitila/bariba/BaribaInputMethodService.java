@@ -68,9 +68,9 @@ public class BaribaInputMethodService extends InputMethodService {
 
     // Edge function URL (anon key embedded — public publishable key, safe).
     private static final String TRANSLATE_URL =
-            "https://pmrhezgnyffiskbaiudb.supabase.co/functions/v1/bariba-translate";
+            "https://dvswhjawiooprghzeyol.supabase.co/functions/v1/byt5-bariba-translate";
     private static final String ANON_KEY =
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcmhlemdueWZmaXNrYmFpdWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyODgzNzAsImV4cCI6MjA3ODg2NDM3MH0.BRqdPly5tClRwhuQes1dckaTNQkbjIqZ5I8q6km_lZ4";
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2c3doamF3aW9vcHJnaHpleW9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NTgzMTcsImV4cCI6MjEwNTMzNDMxN30.HK488q3C1q5uMDgthIbiTlGw20WMfMlRvEOjnlxPEgc";
 
     private static final List<String> ROW1 =
             Arrays.asList("a","z","e","r","t","y","u","i","o","p");
@@ -748,7 +748,11 @@ public class BaribaInputMethodService extends InputMethodService {
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setRequestProperty("apikey", ANON_KEY);
             conn.setRequestProperty("Authorization", "Bearer " + ANON_KEY);
-            String payload = "{\"text\":" + jsonStr(text) + ",\"direction\":\"" + direction + "\"}";
+            String sourceLang = "ba-fr".equals(direction) ? "bariba" : "french";
+            String targetLang = "ba-fr".equals(direction) ? "french" : "bariba";
+            String payload = "{\"text\":" + jsonStr(text)
+                    + ",\"sourceLang\":\"" + sourceLang
+                    + "\",\"targetLang\":\"" + targetLang + "\"}";
             conn.getOutputStream().write(payload.getBytes(StandardCharsets.UTF_8));
             int code = conn.getResponseCode();
             if (code < 200 || code >= 300) return;
