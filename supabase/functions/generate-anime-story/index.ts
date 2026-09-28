@@ -129,7 +129,7 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const FITILA_IMAGE_API_KEY = Deno.env.get('FITILA_IMAGE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
     
@@ -141,7 +141,7 @@ serve(async (req) => {
       duration,
       pre_segmented,
       preEditedScenesCount: preEditedScenes?.length || 0,
-      hasApiKey: !!LOVABLE_API_KEY,
+      hasApiKey: !!FITILA_IMAGE_API_KEY,
     });
 
     // PHASE 1: Get scenes
@@ -157,8 +157,8 @@ serve(async (req) => {
         durationSeconds: s.durationSeconds || Math.floor(duration / preEditedScenes.length),
       }));
     } else {
-      const scenes = LOVABLE_API_KEY
-        ? await segmentStory(story, duration, LOVABLE_API_KEY)
+      const scenes = FITILA_IMAGE_API_KEY
+        ? await segmentStory(story, duration, FITILA_IMAGE_API_KEY)
         : createDefaultScenes(story, duration, Math.min(6, Math.max(3, Math.ceil(duration / 10))));
 
       safeScenes = scenes.length
@@ -170,7 +170,7 @@ serve(async (req) => {
 
     // PHASE 2: Match with library + character reference + fallback generation
     const imagePromises = safeScenes.map((scene, i) => 
-      getSceneImage(scene, style, i, safeScenes.length, supabase, LOVABLE_API_KEY)
+      getSceneImage(scene, style, i, safeScenes.length, supabase, FITILA_IMAGE_API_KEY)
     );
 
     const generatedScenes: GeneratedScene[] = await Promise.all(imagePromises);
@@ -490,7 +490,7 @@ Réponds UNIQUEMENT avec un JSON valide dans ce format exact:
 }`;
 
   try {
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -584,7 +584,7 @@ Create a single, complete illustration capturing this exact moment.`;
     messages.push({ role: 'user', content: prompt });
   }
 
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
