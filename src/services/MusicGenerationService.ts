@@ -1,4 +1,4 @@
-// Music Generation and Suggestion Service using Lovable AI
+// Music Generation and Suggestion Service using FITILA AI
 import { supabase } from '@/integrations/supabase/client';
 import { MUSIC_LIBRARY, MusicTrack, getSuggestedMusic } from '@/data/musicLibrary';
 
