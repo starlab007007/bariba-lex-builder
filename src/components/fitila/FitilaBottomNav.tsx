@@ -21,6 +21,7 @@ const items = [
 
 function routeIsActive(pathname: string, path: string) {
   if (path === '/learn') return pathname === '/' || pathname === '/learn' || pathname.startsWith('/learn/');
+  if (path === '/social') return pathname.startsWith('/social') || pathname.startsWith('/handunia') || pathname.startsWith('/sagesse-battle');
   return pathname === path || pathname.startsWith(`${path}/`);
 }
 
