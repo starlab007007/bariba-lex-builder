@@ -1,0 +1,117 @@
+name: Package FITILA continuation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/package-fitila-continuation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout latest main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+          fetch-depth: 1
+
+      - name: Checkout Flutter Build19
+        uses: actions/checkout@v4
+        with:
+          ref: feat/apprendre-v2.4-build19-20260927
+          path: flutter-build19
+          fetch-depth: 1
+
+      - name: Record exact revisions
+        shell: bash
+        run: |
+          MAIN_SHA=$(git -C main rev-parse HEAD)
+          FLUTTER_SHA=$(git -C flutter-build19 rev-parse HEAD)
+          cat > CONTINUATION-FITILA.md <<EOF
+          # FITILA — paquet de continuité
+
+          Généré le $(date -u +"%Y-%m-%dT%H:%M:%SZ").
+
+          ## Références exactes
+
+          - Web/Admin/Supabase : `main` @ `$MAIN_SHA`
+          - Flutter/APK : `feat/apprendre-v2.4-build19-20260927` @ `$FLUTTER_SHA`
+          - Supabase FITILA central : `dvswhjawiooprghzeyol`
+          - Version Flutter actuelle : `1.8.8+19`
+          - Prochaine cible recommandée : `release/fitila-unified-v1.8.9-build20`
+
+          ## État de reprise
+
+          Le dossier `main/` contient le Web/Admin/Supabase le plus récent.
+          Le dossier `flutter-build19/` contient la dernière base Flutter complète ayant servi à l'APK Build19.
+
+          Pour poursuivre sans perte :
+          1. préserver ces deux snapshots ;
+          2. créer `release/fitila-unified-v1.8.9-build20` depuis la branche Flutter Build19 ;
+          3. reporter sélectivement les changements Web/Admin/Supabase nécessaires depuis `main` ;
+          4. ne pas faire de fusion brute de `main` dans Flutter ;
+          5. lancer analyse/tests puis générer Build20.
+
+          ## Centralisation Supabase
+
+          La cible unique est `dvswhjawiooprghzeyol`.
+          Le contenu Apprendre centralisé attendu :
+          - core : 1847
+          - scenes : 44
+          - version : v2.4-build19-20260927
+
+          Les dépendances historiques Lovable/ancien projet Supabase doivent continuer à être retirées ou remplacées avant Build20.
+          EOF
+
+          cat > REVISIONS.txt <<EOF
+          main=$MAIN_SHA
+          flutter_build19=$FLUTTER_SHA
+          generated_utc=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          EOF
+
+      - name: Validate web build without screenshots
+        working-directory: main
+        run: |
+          npm ci --legacy-peer-deps
+          npm run build
+
+      - name: Verify key continuation files
+        shell: bash
+        run: |
+          test -f main/src/data/apprendre_v2.json
+          test -f main/src/data/scenes_v2.json
+          test -f main/supabase/migrations/20260928090000_apprendre_module_content.sql
+          test -f main/src/lib/apprendre/contentLoader.ts
+          test -f flutter-build19/fitila_flutter/pubspec.yaml
+          test -f flutter-build19/fitila_flutter/lib/apprendre/apprendre_hub.dart
+          test -f flutter-build19/fitila_flutter/lib/apprendre/apprendre_audio.dart
+
+      - name: Remove VCS metadata
+        run: |
+          rm -rf main/.git flutter-build19/.git
+          rm -rf main/node_modules main/dist
+
+      - name: Create archive
+        run: |
+          zip -q -r FITILA-CONTINUATION-COMPLETE-2026-09-28.zip \
+            CONTINUATION-FITILA.md REVISIONS.txt main flutter-build19
+          sha256sum FITILA-CONTINUATION-COMPLETE-2026-09-28.zip > SHA256SUMS.txt
+
+      - name: Upload continuation package
+        uses: actions/upload-artifact@v4
+        with:
+          name: FITILA-CONTINUATION-COMPLETE-2026-09-28
+          path: |
+            FITILA-CONTINUATION-COMPLETE-2026-09-28.zip
+            CONTINUATION-FITILA.md
+            REVISIONS.txt
+            SHA256SUMS.txt
+          compression-level: 0
+          retention-days: 30
