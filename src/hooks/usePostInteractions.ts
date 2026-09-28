@@ -159,7 +159,7 @@ export function usePostInteractions(postId: string | null, authorId: string | nu
 
   const sharePost = useCallback(async (shareMethod: string = 'link') => {
     // Native share always works (no auth needed for copying link)
-    const postUrl = `${window.location.origin}/fitila/social?video=${postId}`;
+    const postUrl = `${window.location.origin}/social?video=${postId}`;
     
     if (!currentUserId) {
       toast({ title: '🔐 Connexion requise', description: 'Connectez-vous pour partager cette publication', variant: 'destructive' });
