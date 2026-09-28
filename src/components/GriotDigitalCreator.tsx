@@ -1108,7 +1108,7 @@ export const GriotDigitalCreator: React.FC = () => {
             duration: state.result.duration
           });
           if (result.success) {
-            navigate('/tamtam/social');
+            navigate('/social');
           }
         }}
         disabled={isPublishing}
