@@ -36,8 +36,8 @@ jobs:
         env:
           VITE_BUILD_SHA: ${{ github.sha }}
           VITE_BUILD_TIME: ${{ github.event.head_commit.timestamp }}
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_URL: https://dvswhjawiooprghzeyol.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_Rs6ysvbwQ0oGpHuYulZ5Hw_loUqyGKw
 
       - name: Build successful
         run: echo "✅ Build completed successfully!"
