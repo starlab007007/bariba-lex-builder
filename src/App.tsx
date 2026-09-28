@@ -128,7 +128,7 @@ const App = () => (
                 <Route path="profile" element={<ProtectedRoute><SafeBoundary label="Profil"><TamTamProfile /></SafeBoundary></ProtectedRoute>} />
                 <Route path="dictionary/*" element={<TamTamDictionary />} />
                 <Route path="learn" element={<FitilaLearn />} />\n                <Route path="learn/daily" element={<FitilaLearn />} />\n                <Route path="learn/review" element={<FitilaLearn />} />\n                <Route path="learn/progress" element={<FitilaLearn />} />\n                <Route path="learn/foundations/:id" element={<FitilaLearn />} />\n                <Route path="learn/themes/:id" element={<FitilaLearn />} />\n                <Route path="learn/voice-studio" element={<FitilaVoiceLab />} />\n                <Route path="learn/voice-review" element={<FitilaVoiceLab />} />
-                <Route path="learn/scenes" element={<FitilaLearnScenes />} />
+                <Route path="learn/scenes" element={<FitilaLearn />} />
                 <Route path="classe" element={<FitilaClasse />} />\n                <Route path="classe/:level/*" element={<FitilaClasse />} />
                 <Route path="ia" element={<FitilaIA />} />
                 <Route path="tem-ia" element={<FitilaTemIA />} />
