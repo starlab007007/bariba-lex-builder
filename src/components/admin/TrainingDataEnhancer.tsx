@@ -111,7 +111,7 @@ export default function TrainingDataEnhancer() {
             Enrichissement IA des Données d'Entraînement
           </h2>
           <p className="text-muted-foreground mt-1">
-            Générez automatiquement de nouvelles phrases d'entraînement avec Lovable AI
+            Générez automatiquement de nouvelles phrases d'entraînement avec FITILA AI
           </p>
         </div>
 
@@ -132,7 +132,7 @@ export default function TrainingDataEnhancer() {
       <Alert>
         <Sparkles className="h-4 w-4" />
         <AlertDescription>
-          <strong>Architecture Transformer Seq2Seq</strong> : Ce système utilise Lovable AI (Gemini 2.5 Flash) 
+          <strong>Architecture Transformer Seq2Seq</strong> : Ce système utilise FITILA AI (Gemini 2.5 Flash) 
           pour générer des paires de phrases French-Bariba en appliquant :
           <ul className="list-disc ml-6 mt-2 space-y-1">
             <li><strong>Tokenisation</strong> : Reconnaissance des caractères spéciaux bariba (ɔ, ɛ, ɡ, kp, tons)</li>
