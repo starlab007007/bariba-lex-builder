@@ -152,10 +152,83 @@ function HanduniaMap() {
 
 type Challenge={id:string;title?:string;challenge_type?:string;prompt_bariba?:string;prompt_francais?:string;created_by?:string;status?:string;created_at?:string};
 function SagesseBattle({embedded=false}:{embedded?:boolean}) {
-  const user=useUser(); const nav=useNavigate(); const [tab,setTab]=useState<'community'|'mine'|'create'>('community'); const [items,setItems]=useState<Challenge[]>([]);
+  const user=useUser(); const nav=useNavigate(); const location=useLocation();
+  const [tab,setTab]=useState<'community'|'mine'|'create'>('community'); const [items,setItems]=useState<Challenge[]>([]);
   const [title,setTitle]=useState(''); const [prompt,setPrompt]=useState(''); const [fr,setFr]=useState(''); const [type,setType]=useState('complete_proverb'); const [busy,setBusy]=useState(false);
-  const load=async()=>{const sys=await supabase.from('battle_challenges').select('id,prompt_ba,prompt_fr,proverb_ba,proverb_fr,created_at').eq('is_active',true); const usr=await supabase.from('battle_user_challenges').select('*').order('created_at',{ascending:false}); const a:any[]=[];(sys.data??[]).forEach((x:any)=>a.push({id:x.id,title:'Défi FITILA',challenge_type:'system',prompt_bariba:x.prompt_ba||x.proverb_ba,prompt_francais:x.prompt_fr||x.proverb_fr}));(usr.data??[]).forEach((x:any)=>a.push(x));setItems(a);}; useEffect(()=>{load();},[]);
-  const create=async()=>{if(!user){nav('/auth');return;} if(!title.trim()||!prompt.trim())return;setBusy(true);const {error}=await supabase.from('battle_user_challenges').insert({created_by:user.id,title:title.trim(),challenge_type:type,prompt_bariba:prompt.trim(),prompt_francais:fr.trim(),status:'published',moderation_status:'approved',visibility:'public',published_at:new Date().toISOString()});setBusy(false);if(error){alert(error.message);return;}setTitle('');setPrompt('');setFr('');setTab('community');load();};
+  const [response,setResponse]=useState(''); const [responses,setResponses]=useState<any[]>([]);
+  const detailId=location.pathname.startsWith('/sagesse-battle/') ? decodeURIComponent(location.pathname.slice('/sagesse-battle/'.length)) : '';
+  const selected=detailId?items.find(x=>String(x.id)===detailId):undefined;
+
+  const load=async()=>{
+    const sys=await supabase.from('battle_challenges').select('id,prompt_ba,prompt_fr,proverb_ba,proverb_fr,created_at').eq('is_active',true);
+    const usr=await supabase.from('battle_user_challenges').select('*').order('created_at',{ascending:false});
+    const a:any[]=[];
+    (sys.data??[]).forEach((x:any)=>a.push({id:x.id,title:'Défi FITILA',challenge_type:'system',prompt_bariba:x.prompt_ba||x.proverb_ba,prompt_francais:x.prompt_fr||x.proverb_fr}));
+    (usr.data??[]).forEach((x:any)=>a.push(x));
+    setItems(a);
+  };
+  useEffect(()=>{load();},[]);
+  useEffect(()=>{if(!detailId){setResponses([]);return;} supabase.from('battle_responses').select('*').eq('challenge_id',detailId).order('created_at',{ascending:false}).then(({data})=>setResponses((data??[]) as any));},[detailId]);
+
+  const create=async()=>{
+    if(!user){nav('/auth');return;} if(!title.trim()||!prompt.trim())return;
+    setBusy(true);
+    const {error}=await supabase.from('battle_user_challenges').insert({created_by:user.id,title:title.trim(),challenge_type:type,prompt_bariba:prompt.trim(),prompt_francais:fr.trim(),status:'published',moderation_status:'approved',visibility:'public',published_at:new Date().toISOString()});
+    setBusy(false); if(error){alert(error.message);return;}
+    setTitle('');setPrompt('');setFr('');setTab('community');load();
+  };
+
+  const answer=async()=>{
+    if(!selected||!response.trim())return;
+    if(!user){nav('/auth');return;}
+    setBusy(true);
+    const {error}=await supabase.from('battle_responses').insert({
+      user_id:user.id,
+      challenge_id:String(selected.id),
+      prompt_bariba:selected.prompt_bariba||'',
+      prompt_francais:selected.prompt_francais||'',
+      answer_text:response.trim(),
+      response_text:response.trim(),
+      response_lang:'bariba',
+      score:0,
+      xp_awarded:0,
+      scoring_method:'local'
+    });
+    setBusy(false);
+    if(error){alert(error.message);return;}
+    setResponse('');
+    const r=await supabase.from('battle_responses').select('*').eq('challenge_id',String(selected.id)).order('created_at',{ascending:false});
+    setResponses((r.data??[]) as any);
+  };
+
+  const removeChallenge=async()=>{
+    if(!selected||!user||selected.created_by!==user.id)return;
+    if(!confirm('Supprimer ce défi ?'))return;
+    const {error}=await supabase.from('battle_user_challenges').delete().eq('id',selected.id);
+    if(error){alert(error.message);return;}
+    nav('/social/sagesse-battle'); load();
+  };
+
+  if(detailId){
+    return <div>
+      {!embedded&&<BackTitle title="Sagesse Battle" subtitle="Répondre au défi"/>}
+      {!selected?<div className="rounded-3xl border bg-white p-6" style={{borderColor:C.border}}>Chargement du défi…</div>:<>
+        <div className="rounded-3xl border bg-white p-6" style={{borderColor:C.border}}>
+          <div className="text-xs font-black uppercase" style={{color:C.gold2}}>{selected.challenge_type==='interpret_proverb'?'Interpréter':'Compléter'}</div>
+          <h2 className="mt-2 text-2xl font-black">{selected.title||'Défi FITILA'}</h2>
+          <p className="mt-4 text-xl">{selected.prompt_bariba}</p>
+          {selected.prompt_francais&&<p className="mt-2 text-sm" style={{color:C.muted}}>{selected.prompt_francais}</p>}
+          {user&&selected.created_by===user.id&&<button onClick={removeChallenge} className="mt-4 flex items-center gap-2 rounded-full border border-red-200 px-4 py-2 text-sm font-bold text-red-600"><Trash2 className="h-4 w-4"/>Supprimer mon défi</button>}
+        </div>
+        <div className="mt-4 rounded-3xl border bg-white p-5" style={{borderColor:C.border}}>
+          <textarea value={response} onChange={e=>setResponse(e.target.value)} placeholder="Ta réponse en Bàátɔ̀nú…" className="min-h-28 w-full rounded-2xl border p-3 outline-none"/>
+          <button disabled={busy||!response.trim()} onClick={answer} className="mt-3 w-full rounded-full py-3 font-black disabled:opacity-50" style={{background:C.gold}}>{busy?'Envoi…':'Publier ma réponse'}</button>
+        </div>
+        <div className="mt-5 space-y-3"><h3 className="text-lg font-black">{responses.length} réponse{responses.length>1?'s':''}</h3>{responses.map(r=><div key={r.id} className="rounded-2xl border bg-white p-4" style={{borderColor:C.border}}><p>{r.response_text||r.answer_text}</p><div className="mt-2 text-xs" style={{color:C.muted}}>Score {r.ai_score??r.local_score??r.score??0} · {r.votes_count??0} vote(s)</div></div>)}</div>
+      </>}
+    </div>;
+  }
+
   const shown=tab==='mine'&&user?items.filter(x=>x.created_by===user.id):items;
   return <div>
     {!embedded&&<BackTitle title="Sagesse Battle" subtitle="Défis système et défis de la communauté"/>}
