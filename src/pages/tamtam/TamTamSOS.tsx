@@ -6,7 +6,8 @@ import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Check, Hospital, MapPin, Mic, Phone, ShieldCheck, UserPlus, Users, type LucideIcon } from 'lucide-react';
+import FitilaPageHeader from '@/components/fitila/FitilaPageHeader';
 
 const emergencyContacts = [
   { id: 1, avatar: '👨🏾', type: '👨‍👩‍👧', labelKey: 'family' },
@@ -25,7 +26,8 @@ export default function TamTamSOS() {
   const { toast } = useToast();
 
   useEffect(() => {
-    announceAction(t('screenSOS'));
+    announceAction(tr('screenSOS', "Écran SOS"));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [announceAction, t]);
 
   const handleSOSPress = () => {
@@ -35,20 +37,20 @@ export default function TamTamSOS() {
       setIsActivated(false);
       setCountdown(null);
       setVoiceMessage(null);
-      speakCurrentLang(t('cancelAlert'));
+      speakCurrentLang(tr('cancelAlert', 'Alerte annulée'));
       return;
     }
 
     setIsActivated(true);
     setCountdown(3);
     tamtamFeedback.play('sos');
-    speakCurrentLang(t('emergency'));
+    speakCurrentLang(tr('emergency', "Urgence"));
 
     const interval = setInterval(() => {
       setCountdown(prev => {
         if (prev === null || prev <= 1) {
           clearInterval(interval);
-          speakCurrentLang(t('callEmergency'));
+          speakCurrentLang(tr('callEmergency', "Appel d'urgence en cours"));
           
           // Send emergency alert with voice context
           sendEmergencyAlert();
@@ -74,7 +76,7 @@ export default function TamTamSOS() {
         description: `Position: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`
       });
       
-      await speakCurrentLang(t('sos_alert_sent'));
+      await speakCurrentLang(tr('sos_alert_sent', "Alerte envoyée"));
       
     } catch (err) {
       console.error('[TamTamSOS] Location error:', err);
@@ -101,7 +103,7 @@ export default function TamTamSOS() {
         description: result.transcription
       });
       
-      await speakCurrentLang(t('sos_message_recorded'));
+      await speakCurrentLang(tr('sos_message_recorded', "Message enregistré"));
     }
   };
 
@@ -115,98 +117,60 @@ export default function TamTamSOS() {
     speakCurrentLang(t('addContact'));
   };
 
+  // Libellés Flutter Build19 ; la traduction de la plateforme reste prioritaire quand elle existe.
+  const tr = (key: string, fr: string) => {
+    const v = t(key);
+    return !v || v === key ? fr : v;
+  };
+  const contactIcons: Record<string, LucideIcon> = { family: Users, hospital: Hospital, police: ShieldCheck };
+  const contactLabels: Record<string, string> = { family: 'Famille', hospital: 'Hôpital', police: 'Police' };
+
   return (
-    <div className="min-h-screen bg-tamtam-bg px-4 flex flex-col items-center pt-8 pb-32">
-      {/* Title */}
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        className="text-center mb-6"
-      >
-        <span className="text-5xl">🆘</span>
-        <h1 className="text-xl font-bold text-tamtam-text mt-2">
-          {t('emergency')}
-        </h1>
-      </motion.div>
+    <div className="h-full overflow-y-auto bg-[#F7F5EC] text-[#241F2E] pb-28">
+      <FitilaPageHeader title="SOS" subtitle="Alerte rapide et contacts de confiance" />
 
-      {/* Giant SOS button */}
-      <motion.button
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: "spring", delay: 0.2 }}
-        onClick={handleSOSPress}
-        className="relative mb-6"
-      >
-        {/* Pulsing rings when activated */}
-        {isActivated && (
-          <>
-            <motion.div
-              animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
-              transition={{ duration: 1, repeat: Infinity }}
-              className="absolute inset-0 bg-red-500 rounded-full"
-            />
-            <motion.div
-              animate={{ scale: [1, 1.8], opacity: [0.3, 0] }}
-              transition={{ duration: 1, repeat: Infinity, delay: 0.3 }}
-              className="absolute inset-0 bg-red-500 rounded-full"
-            />
-          </>
-        )}
-
-        <div
-          className={`w-52 h-52 rounded-full flex flex-col items-center justify-center transition-all ${
-            isActivated
-              ? 'bg-red-600 shadow-lg shadow-red-500/50'
-              : 'bg-red-500 shadow-tamtam-soft'
-          }`}
+      <div className="flex flex-col items-center px-[18px] pt-[26px]">
+        <motion.button
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          onClick={handleSOSPress}
+          aria-label="Déclencher une alerte SOS"
+          className="relative"
         >
-          {countdown !== null ? (
-            <span className="text-7xl font-bold text-white">{countdown}</span>
-          ) : isActivated ? (
-            <motion.div
-              animate={{ scale: [1, 1.1, 1] }}
-              transition={{ duration: 0.5, repeat: Infinity }}
-              className="text-center"
-            >
-              <span className="text-6xl">📞</span>
-              <p className="text-white text-sm mt-2 font-medium">
-                {t('callEmergency')}
-              </p>
-            </motion.div>
-          ) : (
-            <div className="text-center">
-              <span className="text-6xl">🆘</span>
-              <p className="text-white text-sm mt-2 font-medium">
-                {t('tapToSpeak')}
-              </p>
-            </div>
+          {isActivated && (
+            <>
+              <motion.div animate={{ scale: [1, 1.35], opacity: [0.45, 0] }} transition={{ duration: 1, repeat: Infinity }} className="absolute inset-0 rounded-full bg-[#B54E33]" />
+              <motion.div animate={{ scale: [1, 1.6], opacity: [0.25, 0] }} transition={{ duration: 1, repeat: Infinity, delay: 0.3 }} className="absolute inset-0 rounded-full bg-[#B54E33]" />
+            </>
           )}
-        </div>
-      </motion.button>
+          <div
+            className="relative flex h-[170px] w-[170px] items-center justify-center rounded-full border-4 transition-colors"
+            style={{ background: isActivated ? '#9E3F27' : '#B54E33', borderColor: '#E9B9A6' }}
+          >
+            {countdown !== null ? (
+              <span className="text-[64px] font-extrabold text-white">{countdown}</span>
+            ) : isActivated ? (
+              <Phone className="h-14 w-14 text-white" />
+            ) : (
+              <span className="text-[40px] font-black tracking-wide text-white">SOS</span>
+            )}
+          </div>
+        </motion.button>
+        <p className="mt-4 text-[12px]" style={{ color: '#8C8571' }}>
+          {isActivated ? tr('cancelAlert', 'Touchez pour annuler') : 'Touchez pour déclencher une alerte'}
+        </p>
 
-      {/* Voice message for emergency context */}
-      {!isActivated && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-sm mb-6"
-        >
-          <div className="bg-tamtam-surface rounded-3xl p-4 shadow-tamtam-soft">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">🎤</span>
-                <span className="text-sm font-medium text-tamtam-text">
-                  {t('sos_describe_situation')}
-                </span>
-              </div>
+        {!isActivated && (
+          <div className="mt-5 w-full rounded-[18px] border border-[#E4DFCC] bg-white p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Mic className="h-[18px] w-[18px]" style={{ color: '#9C6B1D' }} />
+              <span className="text-[13px] font-extrabold">{tr('sos_describe_situation', 'Décrivez la situation')}</span>
             </div>
-            
-            {voiceMessage ? (
-              <div className="bg-tamtam-bg rounded-2xl p-3 mb-3">
-                <p className="text-sm text-tamtam-text italic">"{voiceMessage}"</p>
+            {voiceMessage && (
+              <div className="mb-3 rounded-[14px] bg-[#F7F5EC] p-3">
+                <p className="text-[13px] italic">"{voiceMessage}"</p>
               </div>
-            ) : null}
-            
+            )}
             <div className="flex justify-center">
               <TamTamMicButton
                 size="md"
@@ -218,87 +182,45 @@ export default function TamTamSOS() {
               />
             </div>
           </div>
-        </motion.div>
-      )}
+        )}
 
-      {/* Cancel hint when activated */}
-      {isActivated && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6 flex items-center gap-2 bg-tamtam-surface rounded-full px-4 py-2"
-        >
-          <span className="text-xl">👆</span>
-          <span className="text-sm text-tamtam-text">{t('cancelAlert')}</span>
-          <span className="text-xl">❌</span>
-        </motion.div>
-      )}
-
-      {/* Location indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        className="bg-tamtam-surface rounded-3xl p-4 shadow-tamtam-soft flex items-center gap-3 mb-6"
-      >
-        <span className="text-3xl">📍</span>
-        <span className="text-sm text-tamtam-text">{t('location')}</span>
-        <div className="flex gap-1">
-          {[...Array(3)].map((_, i) => (
-            <motion.div
-              key={i}
-              animate={{ opacity: [0.3, 1, 0.3] }}
-              transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.3 }}
-              className="w-3 h-3 bg-green-500 rounded-full"
-            />
-          ))}
+        <div className="mt-5 flex w-full items-center gap-3 rounded-[18px] border border-[#E4DFCC] bg-white px-4 py-3">
+          <MapPin className="h-[18px] w-[18px]" style={{ color: '#B54E33' }} />
+          <span className="flex-1 text-[13px] font-extrabold">{tr('location', 'Localisation')}</span>
+          <div className="flex gap-1">
+            {[0, 1, 2].map((i) => (
+              <motion.div key={i} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.3 }} className="h-2.5 w-2.5 rounded-full bg-[#3F6E52]" />
+            ))}
+          </div>
+          <Check className="h-[18px] w-[18px]" style={{ color: '#3F6E52' }} />
         </div>
-        <span className="text-xl">✓</span>
-      </motion.div>
 
-      {/* Emergency contacts */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className="w-full max-w-sm"
-      >
-        <h2 className="text-sm font-medium text-tamtam-text-muted mb-3 text-center">
-          {t('emergencyContacts')}
-        </h2>
-        <div className="flex justify-center gap-4">
-          {emergencyContacts.map((contact, index) => (
-            <motion.button
-              key={contact.id}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.7 + index * 0.1 }}
-              onClick={() => handleContactPress(contact.labelKey)}
-              className="bg-tamtam-surface rounded-3xl p-4 shadow-tamtam-soft flex flex-col items-center gap-2"
-            >
-              <span className="text-4xl">{contact.avatar}</span>
-              <span className="text-xl">{contact.type}</span>
-              <span className="text-xs text-tamtam-text-muted">
-                {t(contact.labelKey)}
-              </span>
-            </motion.button>
-          ))}
+        <h2 className="mt-6 w-full text-[14px] font-extrabold">Contacts de confiance</h2>
+        <div className="mt-3 w-full space-y-[10px]">
+          {emergencyContacts.map((contact) => {
+            const Icon = contactIcons[contact.labelKey] ?? Users;
+            return (
+              <button
+                key={contact.id}
+                type="button"
+                onClick={() => handleContactPress(contact.labelKey)}
+                className="flex h-[52px] w-full items-center gap-3 rounded-[26px] border border-[#E4DFCC] bg-white px-4 text-left active:scale-[0.99]"
+              >
+                <Icon className="h-[18px] w-[18px]" style={{ color: '#9C6B1D' }} />
+                <span className="text-[14px] font-extrabold">{contactLabels[contact.labelKey] ?? t(contact.labelKey)}</span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={handleAddContact}
+            className="flex h-[48px] w-full items-center justify-center gap-2 rounded-[24px] border border-[#E4DFCC] bg-[#FBF9F2] text-[13px] font-bold"
+            style={{ color: '#8C8571' }}
+          >
+            <UserPlus className="h-[18px] w-[18px]" /> {tr('addContact', 'Ajouter un contact de confiance')}
+          </button>
         </div>
-      </motion.div>
-
-      {/* Add contact button */}
-      <motion.button
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
-        onClick={handleAddContact}
-        className="mt-6 flex items-center gap-2 bg-tamtam-surface rounded-full px-4 py-3 shadow-tamtam-soft"
-      >
-        <span className="text-2xl">➕</span>
-        <span className="text-sm font-medium text-tamtam-text">
-          {t('addContact')}
-        </span>
-      </motion.button>
+      </div>
     </div>
   );
 }
