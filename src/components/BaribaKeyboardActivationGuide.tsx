@@ -59,7 +59,7 @@ export default function BaribaKeyboardActivationGuide() {
 
   const openAppSettings = () => {
     try {
-      window.location.href = 'intent:#Intent;action=android.settings.APPLICATION_DETAILS_SETTINGS;data=package:app.lovable.a8b67aa7de064bed97db29852f4f01ed;end';
+      window.location.href = 'intent:#Intent;action=android.settings.APPLICATION_DETAILS_SETTINGS;data=package:bj.fitila.bariba;end';
     } catch {
       // fallback silent
     }
