@@ -83,7 +83,7 @@ export class AIAssetGenerator {
   }
 
   /**
-   * Generate photo using Lovable AI (Gemini 3 Pro Image)
+   * Generate photo using FITILA AI (Gemini 3 Pro Image)
    * Uses character reference image for multimodal consistency
    */
   private async generatePhoto(prompt: string, charRef: CharacterReference): Promise<string> {
@@ -133,7 +133,7 @@ export class AIAssetGenerator {
   }
 
   private async validateConsistency(_generatedUrl: string, _charRef: CharacterReference): Promise<number> {
-    // TODO: Implement facial similarity validation via Lovable AI vision
+    // TODO: Implement facial similarity validation via FITILA AI vision
     return 0.82;
   }
 }
