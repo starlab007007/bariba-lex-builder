@@ -110,8 +110,7 @@ export const TranslationModelSwitcher = ({
             <div className={cn(
               "p-1.5 rounded-full",
               model.id === 'byt5-expert' && "bg-orange-100 text-orange-600",
-              model.id === 'simplified' && "bg-green-100 text-green-600",
-              model.id === 'lovable-ai' && "bg-blue-100 text-blue-600"
+              model.id === 'simplified' && "bg-green-100 text-green-600"
             )}>
               {model.icon}
             </div>
