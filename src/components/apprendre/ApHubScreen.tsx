@@ -18,7 +18,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeft, Flame, Zap, Eye, Languages, TextCursor, Copy, Clock, Shuffle, Mic,
+  ArrowLeft, BrainCog, ChevronRight, SlidersHorizontal, Flame, Zap, Eye, Languages, TextCursor, Copy, Clock, Shuffle, Mic,
   GraduationCap, ShieldCheck, Sparkles, TrendingUp, Volume2, type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,6 +41,7 @@ import ApSessionScreen from './ApSessionScreen';
 import ApReviewScreen from './ApReviewScreen';
 import ApScenesHubScreen from './ApScenesHubScreen';
 import ApFoundationScreen from './ApFoundationScreen';
+import ApOnboardingScreen from './ApOnboardingScreen';
 
 const SKILL_ICON_COMPONENTS: Record<ApSkillIconName, LucideIcon> = {
   eye: Eye,
@@ -76,7 +77,8 @@ type Overlay =
   | { kind: 'daily' }
   | { kind: 'review' }
   | { kind: 'scenes' }
-  | { kind: 'foundation'; unit: ApFoundation };
+  | { kind: 'foundation'; unit: ApFoundation }
+  | { kind: 'onboarding' };
 
 export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceReview, onOpenProgress, extraLinks, routePath, onNavigate }: ApHubScreenProps) {
   const { data, isLoading, error, refetch } = useApprendreContent();
@@ -123,6 +125,15 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
   const openScenes = () => { onNavigate?.('/learn/scenes'); setOverlay({ kind: 'scenes' }); };
   const openFoundation = (unit: ApFoundation) => { onNavigate?.('/learn/foundations/' + unit.id); setOverlay({ kind: 'foundation', unit }); };
 
+  // Comme Flutter : profil jamais choisi → l'onboarding s'ouvre une fois au premier affichage.
+  const [onboardingShown, setOnboardingShown] = useState(false);
+  useEffect(() => {
+    if (content && store.progress.profile == null && !onboardingShown && !routePath?.match(/\/learn\/.+/)) {
+      setOnboardingShown(true);
+      setOverlay({ kind: 'onboarding' });
+    }
+  }, [content, onboardingShown, store, routePath]);
+
   useEffect(() => {
     if (!routePath || !content) return;
     if (routePath.endsWith('/daily')) setOverlay({ kind: 'daily' });
@@ -134,10 +145,28 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
         const unit = content.foundations.find((f) => f.id === decodeURIComponent(match[1]));
         if (unit) setOverlay({ kind: 'foundation', unit });
       } else if (routePath === '/learn' || routePath === '/') {
-        setOverlay(null);
+        setOverlay((o) => (o?.kind === 'onboarding' ? o : null));
       }
     }
   }, [routePath, content]);
+
+  const finishOnboarding = (choice: { profile: string; direction: string } | null) => {
+    store.progress.profile = choice?.profile ?? store.progress.profile ?? 'fr';
+    if (choice) store.progress.direction = choice.direction;
+    store.save();
+    setOverlay(null);
+    setRefreshKey((k) => k + 1);
+  };
+  if (overlay?.kind === 'onboarding' && content) {
+    return (
+      <ApOnboardingScreen
+        profiles={content.raw.profiles}
+        initialProfile={store.progress.profile}
+        initialDirection={store.progress.direction}
+        onDone={finishOnboarding}
+      />
+    );
+  }
 
   if (overlay?.kind === 'daily' && planner) {
     return (
@@ -196,6 +225,16 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
             <h1 className="truncate text-[22px] font-black leading-tight" style={{ color: AP_COLORS.ink }}>Apprendre</h1>
             <p className="truncate text-[13px]" style={{ color: AP_COLORS.muted }}>Mɛɛribu · bàátɔ̀nú ⇄ français</p>
           </div>
+          <button
+            type="button"
+            onClick={() => setOverlay({ kind: 'onboarding' })}
+            aria-label="Profil et sens d’apprentissage"
+            title="Profil et sens d’apprentissage"
+            className="ml-auto flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full border bg-white"
+            style={{ borderColor: AP_COLORS.line, color: AP_COLORS.ink }}
+          >
+            <SlidersHorizontal className="h-5 w-5" />
+          </button>
         </div>
 
         {/* 1. En-tête de salutation */}
@@ -247,11 +286,15 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
         />
         {due.length === 0 ? (
           <ApHubCardBox onClick={openReview}>
-            <p className="text-sm" style={{ color: AP_COLORS.inkSoft }}>
-              {progress.seenWords === 0
-                ? 'Tes premiers mots apparaîtront ici après ta première séance.'
-                : `Aucun mot ne s’efface aujourd’hui. Bravo ! ${progress.activeWords} mots actifs sur ${progress.seenWords} vus.`}
-            </p>
+            <div className="flex items-center gap-3">
+              <BrainCog className="h-5 w-5 shrink-0" style={{ color: AP_COLORS.goldDeep }} />
+              <p className="flex-1 text-sm" style={{ color: AP_COLORS.inkSoft }}>
+                {progress.seenWords === 0
+                  ? 'Tes premiers mots apparaîtront ici après ta première séance.'
+                  : `Aucun mot ne s’efface aujourd’hui. Bravo ! ${progress.activeWords} mots actifs sur ${progress.seenWords} vus.`}
+              </p>
+              <ChevronRight className="h-5 w-5 shrink-0" style={{ color: AP_COLORS.muted }} />
+            </div>
           </ApHubCardBox>
         ) : (
           <div className="space-y-2">
