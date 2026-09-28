@@ -1,73 +1,65 @@
-# Welcome to your Lovable project
+# FITILA
 
-## Project info
+FITILA est une plateforme web et mobile centrée sur le bàátɔ̀nú : apprentissage, dictionnaire, traduction, voix, contenus culturels et outils de création.
 
-**URL**: https://lovable.dev/projects/a8b67aa7-de06-4bed-97db-29852f4f01ed
+## Architecture de référence
 
-## How can I edit this code?
+- Web : React + Vite
+- Mobile : Flutter
+- Backend unique : Supabase FITILA `dvswhjawiooprghzeyol`
+- Déploiement web : GitHub Actions → VPS Docker/Traefik
+- Domaine : `https://fitila.bj`
 
-There are several ways of editing your application.
+Le projet ne dépend plus d'un backend de prototypage externe. Le Web et Flutter doivent utiliser le même projet Supabase FITILA.
 
-**Use Lovable**
+## Développement web
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/a8b67aa7-de06-4bed-97db-29852f4f01ed) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+npm ci
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Build :
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+npm run build
+```
 
-**Use GitHub Codespaces**
+## Apprendre
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Le contenu canonique est versionné dans :
 
-## What technologies are used for this project?
+- `src/data/apprendre_v2.json`
+- `src/data/scenes_v2.json`
 
-This project is built with:
+et centralisé dans Supabase via :
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- `supabase/migrations/20260928090000_apprendre_module_content.sql`
+- `tools/apprendre-content-import/`
 
-## How can I deploy this project?
+Le web lit Supabase en priorité et conserve les JSON embarqués comme repli. Flutter conserve également une copie embarquée pour le mode hors-ligne.
 
-Simply open [Lovable](https://lovable.dev/projects/a8b67aa7-de06-4bed-97db-29852f4f01ed) and click on Share -> Publish.
+## Flutter
 
-## Can I connect a custom domain to my Lovable project?
+La branche Flutter Build19 de référence est :
 
-Yes, you can!
+`feat/apprendre-v2.4-build19-20260927`
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Toute future consolidation Flutter/Web doit partir d'une branche unifiée dérivée de cette référence, sans réintroduire d'ancien backend.
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## Administration
+
+- `/admin`
+- `/admin/users`
+- `/admin/apprendre-content`
+- `/admin/apprendre-voice`
+
+## Sécurité
+
+Ne jamais committer :
+- clés service_role ;
+- mots de passe DB ;
+- tokens d'accès Supabase ;
+- secrets de fournisseurs IA.
+
+Les clés publishables publiques peuvent être utilisées côté client.
