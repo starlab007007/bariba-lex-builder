@@ -77,7 +77,7 @@ export default function BaribaKeyboardActivationGuide() {
 
   const PermissionBadge = ({ state, label }: { state: PermissionState; label: string }) => {
     const config = {
-      unknown: { icon: AlertTriangle, text: 'Non demandée', bg: 'bg-muted', textColor: 'text-muted-foreground' },
+      unknown: { icon: AlertTriangle, text: 'Non demandée', bg: 'bg-white border border-[#E4DFCC]', textColor: 'text-[#8C8571]' },
       requesting: { icon: RefreshCw, text: 'En cours...', bg: 'bg-blue-500/15', textColor: 'text-blue-600 dark:text-blue-400' },
       granted: { icon: ShieldCheck, text: 'Autorisée', bg: 'bg-emerald-500/15', textColor: 'text-emerald-600 dark:text-emerald-400' },
       denied: { icon: ShieldX, text: 'Refusée', bg: 'bg-destructive/15', textColor: 'text-destructive' },
@@ -94,13 +94,11 @@ export default function BaribaKeyboardActivationGuide() {
   return (
     <div className="space-y-5">
       {/* ── Section 1: Keyboard Activation ── */}
-      <div className="text-center mb-2">
-        <h3 className="text-lg font-bold flex items-center justify-center gap-2">
-          <Keyboard className="w-5 h-5 text-amber-500" />
-          Activer le Clavier Natif
-        </h3>
-        <p className="text-xs text-muted-foreground mt-1">
-          Utilisez le clavier Bariba dans toutes vos applications
+      <div className="rounded-[18px] bg-gradient-to-br from-[#241F2E] to-[#3A3448] p-4 text-white">
+        <p className="text-[11px] text-white/60">Statut</p>
+        <h3 className="mt-2 text-[17px] font-extrabold">Non activé</h3>
+        <p className="mt-2 text-[11.5px] leading-snug text-white/75">
+          Le clavier est installé avec FITILA mais doit être activé puis sélectionné pour fonctionner dans vos applications.
         </p>
       </div>
 
@@ -110,30 +108,30 @@ export default function BaribaKeyboardActivationGuide() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: i * 0.12 }}
-          className="flex items-start gap-3"
+          className="flex items-start gap-3 rounded-[18px] border border-[#E4DFCC] bg-white p-3"
         >
-          <div className={`shrink-0 w-8 h-8 rounded-full bg-gradient-to-br ${step.color} flex items-center justify-center shadow-lg`}>
-            <span className="text-white text-xs font-bold">{i + 1}</span>
+          <div className="shrink-0 w-7 h-7 rounded-full bg-[#F3E3B9] flex items-center justify-center">
+            <span className="text-[#9C6B1D] text-xs font-extrabold">{i + 1}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="font-semibold text-sm">{step.title}</h4>
-            <p className="text-xs text-muted-foreground mt-0.5">{step.desc}</p>
+            <h4 className="font-extrabold text-[13px]">{step.title}</h4>
+            <p className="text-[11.5px] text-[#8C8571] mt-0.5 leading-snug">{step.desc}</p>
           </div>
         </motion.div>
       ))}
 
       <button
         onClick={openKeyboardSettings}
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-sm hover:from-amber-600 hover:to-orange-600 active:scale-[0.98] transition-all shadow-lg shadow-amber-500/25"
+        className="w-full flex items-center justify-center gap-2 h-[48px] rounded-full bg-[#241F2E] text-white font-extrabold text-[13px] active:scale-[0.98] transition-all"
       >
         <Smartphone className="w-5 h-5" />
         Ouvrir Paramètres → Langue et saisie
       </button>
 
       {/* ── Section 2: Permissions ── */}
-      <div className="pt-3 border-t border-border/50">
+      <div className="pt-3 border-t border-[#E4DFCC]">
         <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-emerald-500" />
+          <ShieldCheck className="w-4 h-4 text-[#3F6E52]" />
           Permissions de l'application
         </h4>
 
@@ -148,48 +146,48 @@ export default function BaribaKeyboardActivationGuide() {
           <button
             onClick={requestCamera}
             disabled={cameraPermission === 'granted' || cameraPermission === 'requesting'}
-            className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
+            className={`w-full flex items-center gap-3 p-3 rounded-[18px] border transition-all ${
               cameraPermission === 'granted'
                 ? 'border-emerald-500/30 bg-emerald-500/5'
                 : cameraPermission === 'denied'
                 ? 'border-destructive/30 bg-destructive/5'
-                : 'border-border/50 bg-muted/30 hover:bg-muted/50'
+                : 'border-[#E4DFCC] bg-white hover:bg-[#F1EDDF]'
             }`}
           >
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-              cameraPermission === 'granted' ? 'bg-emerald-500/20' : 'bg-blue-500/20'
+              cameraPermission === 'granted' ? 'bg-[#DCEAE0]' : 'bg-[#F3E3B9]'
             }`}>
-              <Camera className={`w-4.5 h-4.5 ${cameraPermission === 'granted' ? 'text-emerald-500' : 'text-blue-500'}`} />
+              <Camera className={`w-4.5 h-4.5 ${cameraPermission === 'granted' ? 'text-[#3F6E52]' : 'text-[#9C6B1D]'}`} />
             </div>
             <div className="flex-1 text-left">
               <p className="text-sm font-medium">Caméra</p>
-              <p className="text-[10px] text-muted-foreground">Photo-traduction, scan de documents</p>
+              <p className="text-[10px] text-[#8C8571]">Photo-traduction, scan de documents</p>
             </div>
-            {cameraPermission === 'granted' && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+            {cameraPermission === 'granted' && <CheckCircle2 className="w-5 h-5 text-[#3F6E52]" />}
             {cameraPermission === 'denied' && <ShieldX className="w-5 h-5 text-destructive" />}
           </button>
 
           <button
             onClick={requestMic}
             disabled={micPermission === 'granted' || micPermission === 'requesting'}
-            className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
+            className={`w-full flex items-center gap-3 p-3 rounded-[18px] border transition-all ${
               micPermission === 'granted'
                 ? 'border-emerald-500/30 bg-emerald-500/5'
                 : micPermission === 'denied'
                 ? 'border-destructive/30 bg-destructive/5'
-                : 'border-border/50 bg-muted/30 hover:bg-muted/50'
+                : 'border-[#E4DFCC] bg-white hover:bg-[#F1EDDF]'
             }`}
           >
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-              micPermission === 'granted' ? 'bg-emerald-500/20' : 'bg-purple-500/20'
+              micPermission === 'granted' ? 'bg-[#DCEAE0]' : 'bg-[#F3E3B9]'
             }`}>
-              <Mic className={`w-4.5 h-4.5 ${micPermission === 'granted' ? 'text-emerald-500' : 'text-purple-500'}`} />
+              <Mic className={`w-4.5 h-4.5 ${micPermission === 'granted' ? 'text-[#3F6E52]' : 'text-[#9C6B1D]'}`} />
             </div>
             <div className="flex-1 text-left">
               <p className="text-sm font-medium">Microphone</p>
-              <p className="text-[10px] text-muted-foreground">Traduction vocale, dictée, appels</p>
+              <p className="text-[10px] text-[#8C8571]">Traduction vocale, dictée, appels</p>
             </div>
-            {micPermission === 'granted' && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+            {micPermission === 'granted' && <CheckCircle2 className="w-5 h-5 text-[#3F6E52]" />}
             {micPermission === 'denied' && <ShieldX className="w-5 h-5 text-destructive" />}
           </button>
         </div>
@@ -207,7 +205,7 @@ export default function BaribaKeyboardActivationGuide() {
                 <p className="text-[11px] text-destructive font-medium mb-2">
                   ⚠️ Permission refusée — activez-la manuellement :
                 </p>
-                <ol className="text-[10px] text-muted-foreground space-y-1 list-decimal list-inside">
+                <ol className="text-[10px] text-[#8C8571] space-y-1 list-decimal list-inside">
                   <li>Ouvrez les Paramètres de l'application</li>
                   <li>Allez dans Autorisations</li>
                   <li>Activez Caméra et/ou Microphone</li>
