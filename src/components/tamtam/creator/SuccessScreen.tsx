@@ -93,7 +93,7 @@ export const SuccessScreen: React.FC<SuccessScreenProps> = ({
     const shareData = {
       title: 'Ma création TAM-TAM',
       text: templateName ? `Regardez ma vidéo créée avec ${templateName} sur TAM-TAM !` : 'Regardez ma création sur TAM-TAM !',
-      url: postId ? `${window.location.origin}/tamtam?postId=${postId}` : window.location.origin
+      url: postId ? `${window.location.origin}/social?postId=${postId}` : window.location.origin
     };
 
     try {
