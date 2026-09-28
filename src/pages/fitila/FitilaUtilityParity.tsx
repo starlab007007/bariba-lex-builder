@@ -1,15 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CloudOff, Download, History, Inbox, Keyboard, Lock, QrCode, Receipt, Settings, Shield, Store, Sync, Wallet } from 'lucide-react';
+import { ArrowLeft, CloudOff, Download, History, Inbox, Keyboard, Lock, QrCode, Receipt, Settings, Shield, Store, RefreshCw, Wallet } from 'lucide-react';
 
 const configs:Record<string,{title:string;tabs:[string,React.ReactNode,string][]}> = {
   messages:{title:'Messages',tabs:[['Vue',<Inbox/>,'Conversations et messages FITILA.'],['Vocaux',<Inbox/>,'Enregistrer, transcrire, traduire et envoyer.'],['Groupes',<Inbox/>,'Communautés, fils et rôles.'],['Modération',<Shield/>,'Signalement et contrôle.']]},
-  drafts:{title:'Brouillons',tabs:[['Vue',<Inbox/>,'Brouillons locaux et synchronisés.'],['Créateur',<Inbox/>,'Créations non publiées.'],['Classe',<Inbox/>,'Réponses et travaux en attente.'],['Sync',<Sync/>,'Synchronisation lorsque le réseau revient.']]},
-  offline:{title:'Hors ligne',tabs:[['Vue',<CloudOff/>,'État du mode hors connexion.'],['Cache',<CloudOff/>,'Contenus disponibles localement.'],['Queue',<Sync/>,'Actions en attente de réseau.'],['Conflits',<Sync/>,'Réconciliation des modifications.']]},
+  drafts:{title:'Brouillons',tabs:[['Vue',<Inbox/>,'Brouillons locaux et synchronisés.'],['Créateur',<Inbox/>,'Créations non publiées.'],['Classe',<Inbox/>,'Réponses et travaux en attente.'],['RefreshCw',<RefreshCw/>,'Synchronisation lorsque le réseau revient.']]},
+  offline:{title:'Hors ligne',tabs:[['Vue',<CloudOff/>,'État du mode hors connexion.'],['Cache',<CloudOff/>,'Contenus disponibles localement.'],['Queue',<RefreshCw/>,'Actions en attente de réseau.'],['Conflits',<RefreshCw/>,'Réconciliation des modifications.']]},
   wallet:{title:'Portefeuille',tabs:[['Vue',<Wallet/>,'Vue du portefeuille FITILA.'],['Tontine',<Wallet/>,'Tontines et contributions.'],['Reçus',<Receipt/>,'Historique des reçus.'],['Sécurité',<Lock/>,'Protection des opérations.']]},
   history:{title:'Historique',tabs:[['Vue',<History/>,'Historique général.'],['Recherches',<History/>,'Recherches récentes.'],['Activité',<History/>,'Activité du compte.'],['Exports',<Download/>,'Exports disponibles.']]},
   scan:{title:'Scanner',tabs:[['Vue',<QrCode/>,'Scanner FITILA.'],['QR',<QrCode/>,'Lecture de QR.'],['Document',<QrCode/>,'Numérisation de documents.'],['OCR',<QrCode/>,'Reconnaissance de texte.']]},
-  shop:{title:'Boutique',tabs:[['Vue',<Store/>,'Boutique FITILA.'],['Actions',<Store/>,'Actions disponibles.'],['Backend',<Sync/>,'État des services.'],['Offline',<CloudOff/>,'Disponibilité hors connexion.']]},
+  shop:{title:'Boutique',tabs:[['Vue',<Store/>,'Boutique FITILA.'],['Actions',<Store/>,'Actions disponibles.'],['Backend',<RefreshCw/>,'État des services.'],['Offline',<CloudOff/>,'Disponibilité hors connexion.']]},
   settings:{title:'Paramètres',tabs:[['Vue',<Settings/>,'Préférences FITILA.'],['Sécurité',<Lock/>,'Code, biométrie et confirmations.'],['Données',<Download/>,'Export et gestion des données.'],['Accessibilité',<Keyboard/>,'Contrôles tactiles et audio.']]},
 };
 
