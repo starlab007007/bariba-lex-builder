@@ -209,7 +209,7 @@ const VideoFeedCardComponent: React.FC<VideoFeedCardProps> = ({
   }, [videoUrl, isPhoto]);
 
   const handleProfileClick = useCallback(() => {
-    if (authorId) navigate(`/fitila/profile/${authorId}`);
+    if (authorId) navigate(`/profile/${authorId}`);
   }, [authorId, navigate]);
 
   const handleLike = useCallback(() => {
