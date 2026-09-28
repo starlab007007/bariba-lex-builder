@@ -62,7 +62,7 @@ serve(async (req: Request) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const MISTRAL_API_KEY = Deno.env.get("MISTRAL_API_KEY");
     const cleanedText = normalizeBaribaText(text);
 
     // Fallback immédiat si texte ressemble à du bruit UI
@@ -81,7 +81,7 @@ serve(async (req: Request) => {
     }
 
     // Si pas de clé IA, on applique seulement les hard corrections
-    if (!LOVABLE_API_KEY) {
+    if (!MISTRAL_API_KEY) {
       const fallbackRefined = applyHardCorrections(cleanedText);
       const changes = detectRefinementChanges({
         original: cleanedText,
@@ -100,7 +100,7 @@ serve(async (req: Request) => {
             changes,
             aiUsed: false,
           }),
-          error: "LOVABLE_API_KEY missing",
+          error: "MISTRAL_API_KEY missing",
           meta: { duration: Date.now() - startedAt, fallback: true, aiUsed: false },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -116,14 +116,14 @@ serve(async (req: Request) => {
       `🔧 refine-bariba: type=${type}, direction=${direction || "-"}, text="${cleanedText.substring(0, 80)}..."`,
     );
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${MISTRAL_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "mistral-small-latest",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
