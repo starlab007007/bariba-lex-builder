@@ -1,0 +1,90 @@
+name: FITILA Flutter reference renders
+
+# Rend tous les écrans Flutter Build19 (téléphone, contenu complet, bureau)
+# et commite les PNG sur cette même branche, comme référence de conformité
+# du web. Ne publie rien, n'appelle aucun service de production.
+on:
+  push:
+    branches:
+      - 'ci/flutter-reference-renders-*'
+    paths:
+      - '.github/workflows/flutter-reference-renders.yml'
+      - 'fitila_flutter/test/web_parity_renders_test.dart'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: flutter-reference-renders-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          channel: stable
+          cache: true
+
+      - name: Resolve Flutter dependencies
+        working-directory: fitila_flutter
+        run: flutter pub get
+
+      - name: Render every screen
+        working-directory: fitila_flutter
+        run: |
+          set +e
+          rm -rf test/web_parity_renders
+          flutter test --update-goldens test/web_parity_renders_test.dart \
+            --reporter json > /tmp/renders.jsonl 2>/tmp/renders.err
+          echo "exit=$?" > test/web_parity_renders_status.txt
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          names, results, errors = {}, {}, {}
+          for line in open('/tmp/renders.jsonl', encoding='utf-8', errors='replace'):
+              try:
+                  e = json.loads(line)
+              except Exception:
+                  continue
+              if e.get('type') == 'testStart':
+                  names[e['test']['id']] = e['test']['name']
+              elif e.get('type') == 'error':
+                  errors.setdefault(e['testID'], []).append(e.get('error', '')[:600])
+              elif e.get('type') == 'testDone' and not e.get('hidden'):
+                  results[e['testID']] = e['result']
+          out = Path('test/web_parity_renders_status.txt')
+          lines = [out.read_text().strip()]
+          ok = sum(1 for r in results.values() if r == 'success')
+          lines.append(f'tests: {len(results)} ; success: {ok} ; failure: {len(results) - ok}')
+          for tid, r in sorted(results.items(), key=lambda x: names.get(x[0], '')):
+              if r != 'success':
+                  lines.append(f'\n## {names.get(tid, tid)} -> {r}')
+                  lines.extend(errors.get(tid, [])[:2])
+          out.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          pngs = sorted(p.name for p in Path('test/web_parity_renders').glob('*.png'))
+          figs = '\n'.join(f'<figure><a href="{n}"><img loading="lazy" src="{n}" alt="{n}"></a><figcaption>{n[:-4]}</figcaption></figure>' for n in pngs)
+          Path('test/web_parity_renders/index.html').write_text(
+              '<!doctype html><html lang="fr"><meta charset="utf-8"><title>FITILA Build19 — rendus de référence</title>'
+              '<style>body{margin:0;background:#faf7f2;font:15px system-ui}main{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:24px;padding:32px}'
+              'img{width:100%;border:1px solid #e9e4dc;border-radius:16px;background:#fff}figure{margin:0}figcaption{padding:8px;font-weight:600}</style>'
+              f'<h1 style="padding:32px 32px 0">FITILA Build19 — {len(pngs)} rendus</h1><main>{figs}</main></html>', encoding='utf-8')
+          print('\n'.join(lines[:3]), f'\npng: {len(pngs)}')
+          PY
+          tail -5 /tmp/renders.err || true
+
+      - name: Commit renders to this branch
+        run: |
+          git config user.name "fitila-ci"
+          git config user.email "ci@fitila.bj"
+          git add fitila_flutter/test/web_parity_renders fitila_flutter/test/web_parity_renders_status.txt
+          git commit -m "chore(ci): Flutter Build19 reference renders" || echo "nothing to commit"
+          git push origin HEAD:${GITHUB_REF_NAME}
