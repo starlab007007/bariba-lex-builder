@@ -2,7 +2,7 @@
  * Transcribe Audio Edge Function
  * 
  * Receives an audio blob and transcribes it to text using Mistral Voxtral Mini (batch).
- * Falls back to Lovable AI (Gemini Flash) if Mistral fails.
+ * Falls back to client-side speech recognition if Mistral fails.
  * 
  * Returns: { text, words[], language }
  */
@@ -34,7 +34,6 @@ serve(async (req) => {
     console.log(`[transcribe-audio] Received audio: ${audioFile.name}, size: ${audioFile.size}, type: ${audioFile.type}`);
 
     const MISTRAL_API_KEY = Deno.env.get('MISTRAL_API_KEY');
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     // Try Mistral Voxtral Mini STT first
     if (MISTRAL_API_KEY) {
@@ -55,16 +54,8 @@ serve(async (req) => {
       console.log('[transcribe-audio] No MISTRAL_API_KEY, skipping Mistral');
     }
 
-    // Fallback: Lovable AI (Gemini Flash)
-    if (LOVABLE_API_KEY) {
-      try {
-        const audioBytes = await audioFile.arrayBuffer();
-        const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioBytes)));
-        
-        const result = await transcribeWithGemini(base64Audio, audioFile.type, LOVABLE_API_KEY);
-        if (result && result.text && result.text.trim().length > 0) {
-          console.log(`[transcribe-audio] Gemini fallback success: ${result.text.length} chars`);
-          return new Response(
+    // No external fallback provider: use client-side Web Speech when Mistral is unavailable.
+    return new Response(
             JSON.stringify({ success: true, ...result, method: 'gemini' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
@@ -135,60 +126,5 @@ async function transcribeWithMistral(
       end: w.end,
     })),
     language: data.language || 'fr',
-  };
-}
-
-/**
- * Fallback transcription using Gemini (audio understanding)
- */
-async function transcribeWithGemini(
-  base64Audio: string,
-  mimeType: string,
-  apiKey: string
-): Promise<{ text: string; words: never[]; language: string }> {
-  console.log('[transcribe-audio] Calling Gemini for audio transcription...');
-
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'input_audio',
-              input_audio: {
-                data: base64Audio,
-                format: mimeType.includes('webm') ? 'webm' : mimeType.includes('mp4') ? 'mp4' : 'wav',
-              },
-            },
-            {
-              type: 'text',
-              text: `Transcris cet audio en français mot à mot. L'audio contient un conte ou une histoire racontée à voix haute. Retourne UNIQUEMENT le texte transcrit, sans commentaire, sans guillemets, sans formatage spécial. Si tu ne comprends pas certains mots, fais de ton mieux pour les transcrire phonétiquement.`,
-            },
-          ],
-        },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[transcribe-audio] Gemini error:', response.status, errorText);
-    throw new Error(`Gemini transcription error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  const text = data.choices?.[0]?.message?.content || '';
-
-  return {
-    text: text.trim(),
-    words: [],
-    language: 'fra',
   };
 }
