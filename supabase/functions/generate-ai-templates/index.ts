@@ -253,12 +253,12 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const FITILA_IMAGE_API_KEY = Deno.env.get("FITILA_IMAGE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY not configured");
+    if (!FITILA_IMAGE_API_KEY) {
+      throw new Error("FITILA_IMAGE_API_KEY not configured");
     }
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
@@ -382,7 +382,7 @@ serve(async (req) => {
           .eq('template_key', templateKey);
 
         try {
-          const aiContent = await generateAIContent(LOVABLE_API_KEY, template);
+          const aiContent = await generateAIContent(FITILA_IMAGE_API_KEY, template);
 
           const { error: updateError } = await supabase
             .from('ai_generated_templates')
@@ -443,7 +443,7 @@ serve(async (req) => {
               .update({ generation_status: 'generating' })
               .eq('id', template.id);
 
-            const aiContent = await generateAIContent(LOVABLE_API_KEY, template);
+            const aiContent = await generateAIContent(FITILA_IMAGE_API_KEY, template);
 
             await supabase
               .from('ai_generated_templates')
@@ -504,7 +504,7 @@ serve(async (req) => {
         try {
           console.log(`[generate_single_visual] Generating 5 TikTok-style scenes for ${template.template_key}`);
 
-          const sceneImages = await generateTikTokSceneImages(LOVABLE_API_KEY, template, supabase);
+          const sceneImages = await generateTikTokSceneImages(FITILA_IMAGE_API_KEY, template, supabase);
 
           await supabase
             .from('ai_generated_templates')
@@ -570,7 +570,7 @@ serve(async (req) => {
 
           console.log(`[generate_visuals_batch] Generating TikTok scenes for ${pendingTemplate.template_key}`);
 
-          const sceneImages = await generateTikTokSceneImages(LOVABLE_API_KEY, pendingTemplate, supabase);
+          const sceneImages = await generateTikTokSceneImages(FITILA_IMAGE_API_KEY, pendingTemplate, supabase);
 
           await supabase
             .from('ai_generated_templates')
@@ -646,7 +646,7 @@ serve(async (req) => {
           throw new Error(`Template not found: ${templateKey}`);
         }
 
-        const analysis = await analyzeTemplate(LOVABLE_API_KEY, template);
+        const analysis = await analyzeTemplate(FITILA_IMAGE_API_KEY, template);
 
         await supabase
           .from('ai_generated_templates')
@@ -673,7 +673,7 @@ serve(async (req) => {
           throw new Error(`Template not found: ${templateKey}`);
         }
 
-        const enhanced = await enhanceTemplate(LOVABLE_API_KEY, template);
+        const enhanced = await enhanceTemplate(FITILA_IMAGE_API_KEY, template);
 
         await supabase
           .from('ai_generated_templates')
@@ -783,7 +783,7 @@ Output: ONE stunning vertical image ready for video template preview.`;
     try {
       console.log(`[generateScene] Attempt ${attempt}/${maxRetries} for ${template.template_key} scene ${scenePrompt.scene}`);
 
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -892,7 +892,7 @@ Génère 3 textes courts et simples :
 
 Réponds en JSON avec les clés: "fr", "ba", "enhanced"`;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -946,7 +946,7 @@ Ajoute aussi :
 
 Réponds en JSON.`;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -999,7 +999,7 @@ Génère un storyboard de 3-5 étapes, chaque étape avec :
 
 Réponds en JSON avec une clé "steps" contenant le tableau d'étapes.`;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
