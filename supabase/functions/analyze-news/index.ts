@@ -69,29 +69,29 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const MISTRAL_API_KEY = Deno.env.get('MISTRAL_API_KEY');
     
-    if (!LOVABLE_API_KEY) {
-      console.warn('[analyze-news] LOVABLE_API_KEY not configured, using default structure');
+    if (!MISTRAL_API_KEY) {
+      console.warn('[analyze-news] MISTRAL_API_KEY not configured, using default structure');
       return new Response(JSON.stringify(createDefaultNewsShow(villageName, language)), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log('[analyze-news] Generating news script with Lovable AI...');
+    console.log('[analyze-news] Generating news script with Mistral AI...');
     
     const newsContent = newsItems.map((item: { type: string; title: string; description: string; location?: string }) => 
       `- Type: ${item.type}, Titre: ${item.title}, Description: ${item.description}${item.location ? `, Lieu: ${item.location}` : ''}`
     ).join('\n');
     
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${MISTRAL_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+        model: 'mistral-small-latest',
         messages: [
           { role: 'system', content: NEWS_ANALYSIS_PROMPT },
           { role: 'user', content: `Village: ${villageName}\nLangue: ${language}\n\nActualités:\n${newsContent}` }
