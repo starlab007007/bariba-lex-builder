@@ -1,4 +1,4 @@
-// AI Music Generation Service using Lovable AI
+// AI Music Generation Service using FITILA AI
 import { supabase } from '@/integrations/supabase/client';
 
 export interface GeneratedMusicTrack {
