@@ -1,6 +1,6 @@
 /**
  * Service de vérification de santé des modèles de traduction et audio
- * Modèles actifs : ByT5 Expert, Bariba TTS, Bariba STT, Lovable AI
+ * Modèles actifs : ByT5 Expert, Bariba TTS, Bariba STT
  */
 
 import { supabase } from "@/integrations/supabase/client";
@@ -24,7 +24,6 @@ class ModelHealthCheckService {
       { id: 'byt5-expert', name: 'ByT5 Expert (Translation)', checker: this.checkByT5 },
       { id: 'bariba-tts', name: 'Bariba TTS', checker: this.checkBaribaTTS },
       { id: 'bariba-stt', name: 'Bariba STT', checker: this.checkBaribaSTT },
-      { id: 'lovable-ai', name: 'Lovable AI (Fallback)', checker: this.checkLovableAI },
     ];
 
     const results = await Promise.all(
@@ -127,43 +126,7 @@ class ModelHealthCheckService {
     }
   }
 
-  private async checkLovableAI(): Promise<ModelHealthStatus> {
-    const start = Date.now();
-    
-    try {
-      const { error } = await supabase.functions.invoke('ai-translate-lovable', {
-        body: { text: 'test', sourceLang: 'french', targetLang: 'bariba' }
-      });
 
-      return {
-        id: 'lovable-ai',
-        name: 'Lovable AI (Fallback)',
-        status: error ? 'degraded' : 'healthy',
-        responseTime: Date.now() - start,
-        lastChecked: Date.now(),
-        error: error?.message,
-        endpoint: 'Lovable Cloud Edge Function',
-      };
-    } catch (error) {
-      return {
-        id: 'lovable-ai',
-        name: 'Lovable AI (Fallback)',
-        status: 'offline',
-        responseTime: Date.now() - start,
-        lastChecked: Date.now(),
-        error: error instanceof Error ? error.message : 'API unavailable',
-        endpoint: 'Lovable Cloud Edge Function',
-      };
-    }
-  }
-
-  getStatus(modelId: string): ModelHealthStatus | undefined {
-    return this.healthStatus.get(modelId);
-  }
-
-  getAllStatuses(): ModelHealthStatus[] {
-    return Array.from(this.healthStatus.values());
-  }
 }
 
 export const modelHealthCheck = new ModelHealthCheckService();
