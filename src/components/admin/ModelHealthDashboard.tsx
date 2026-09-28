@@ -1,6 +1,6 @@
 /**
  * Dashboard de santé des modèles actifs
- * ByT5 Expert, Bariba TTS, Bariba STT, Lovable AI
+ * ByT5 Expert, Bariba TTS, Bariba STT
  */
 
 import { useState, useEffect } from "react";
