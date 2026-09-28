@@ -1,10 +1,8 @@
-project_id = "pmrhezgnyffiskbaiudb"
+project_id = "dvswhjawiooprghzeyol"
 
 [functions.smt-initialize]
 verify_jwt = false
 
-[functions.ai-translate-lovable]
-verify_jwt = false
 
 [functions.byt5-bariba-translate]
 verify_jwt = false
