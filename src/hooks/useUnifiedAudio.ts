@@ -7,7 +7,7 @@
  * - Français STT: Web Speech API (navigateur)
  * - Bariba TTS: HuggingFace Space (zimesongbian)
  * - Bariba STT: HuggingFace Space (zimesongbian)
- * - Traduction: ByT5 + Lovable AI fallback
+ * - Traduction: ByT5 Expert
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
