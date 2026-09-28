@@ -1,7 +1,7 @@
 /**
  * TAM-TAM Asset Real Mapping v5.0
- * Mappage des assets avec support CDN cloud storage
- * Les assets vidéo sont hébergés sur Supabase Storage
+ * Mappage des assets FITILA avec ressources locales / stockage centralisé
+ * Les assets légers sont servis localement ; les données applicatives restent sur Supabase FITILA
  */
 
 // ============================================================================
@@ -11,8 +11,7 @@
 /**
  * URL de base du bucket Supabase Storage pour les assets Envato
  */
-export const SUPABASE_ASSET_CDN_URL = 
-  'https://pmrhezgnyffiskbaiudb.supabase.co/storage/v1/object/public/envato-assets';
+export const SUPABASE_ASSET_CDN_URL = '/assets/envato';
 
 /**
  * Catégories qui utilisent le CDN cloud (fichiers vidéo - anciennement LFS)
