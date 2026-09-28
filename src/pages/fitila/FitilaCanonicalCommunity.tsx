@@ -1,31 +1,28 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, ArrowRight, BookOpen, Brain, ChevronRight, MapPin, Mic, Pause, Play, Plus,
+  ArrowRight, Globe, Lock, Users, BookOpen, Brain, ChevronRight, MapPin, Mic, Pause, Play, Plus,
   RefreshCw, Send, Sparkles, Swords, Trash2, Volume2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 const C = {
-  bg:'#F8F5EA', ink:'#241F2E', muted:'#777161', gold:'#C9972C', gold2:'#9C6B1D',
+  bg:'#F7F5EC', ink:'#241F2E', muted:'#777161', gold:'#C9972C', gold2:'#9C6B1D',
   border:'#E4DFCC', card:'#FFFFFF', night:'#0D1018', night2:'#151A24', ember:'#E0A03C', earth:'#C96A3F'
 };
 
-function Shell({children, dark=false}:{children:React.ReactNode;dark?:boolean}) {
-  return <div className="h-full overflow-y-auto" style={{background:dark?C.night:C.bg,color:dark?'#F7F1E3':C.ink}}>
-    <div className="mx-auto w-full max-w-[900px] px-4 pb-28 pt-20">{children}</div>
+function Shell({children}:{children:React.ReactNode}) {
+  return <div className="h-full overflow-y-auto" style={{background:C.bg,color:C.ink}}>
+    <div className="mx-auto w-full max-w-[900px] px-[18px] pb-28 pt-[14px]">{children}</div>
   </div>;
 }
 
-function BackTitle({title,subtitle,dark=false}:{title:string;subtitle?:string;dark?:boolean}) {
-  const nav=useNavigate();
-  return <div className="mb-5 flex items-center gap-3">
-    <button onClick={()=>nav(-1)} className="flex h-11 w-11 items-center justify-center rounded-full border" style={{borderColor:dark?'#2E3848':C.border,background:dark?C.night2:'#fff'}}>
-      <ArrowLeft className="h-5 w-5"/>
-    </button>
+/** En-tête Flutter : titre + sous-titre ; le bouton menu flottant du shell occupe l'emplacement du bouton retour. */
+function BackTitle({title,subtitle}:{title:string;subtitle?:string}) {
+  return <div className="mb-5 flex min-h-[48px] items-center pl-[56px]">
     <div className="min-w-0">
-      <h1 className="truncate text-2xl font-semibold" style={{fontFamily:'Fraunces, ui-serif, serif'}}>{title}</h1>
-      {subtitle&&<p className="text-sm" style={{color:dark?'#AAB2C0':C.muted}}>{subtitle}</p>}
+      <h1 className="truncate text-[20px] font-semibold leading-tight" style={{fontFamily:'Fraunces, ui-serif, serif'}}>{title}</h1>
+      {subtitle&&<p className="text-[11px]" style={{color:C.muted}}>{subtitle}</p>}
     </div>
   </div>;
 }
@@ -42,7 +39,7 @@ type Fragment={id:string;user_id:string;lieu_id:string;text:string;transcript_te
 function LoginRequired() {
   const nav=useNavigate();
   return <div className="rounded-3xl border bg-white p-6 text-center" style={{borderColor:C.border}}>
-    <div className="text-4xl">🔐</div><h2 className="mt-3 text-xl font-black">Connexion requise</h2>
+    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full" style={{background:'#F3E3B9',color:C.gold2}}><Lock className="h-6 w-6"/></div><h2 className="mt-3 text-xl font-black">Connexion requise</h2>
     <p className="mt-2 text-sm" style={{color:C.muted}}>Handunia protège les portées et les contributions par identité.</p>
     <button onClick={()=>nav('/auth')} className="mt-4 rounded-full px-6 py-3 font-bold" style={{background:C.gold,color:'#2B2110'}}>Se connecter</button>
   </div>;
@@ -52,6 +49,7 @@ function HanduniaFeed({embedded=false}:{embedded?:boolean}) {
   const user=useUser(); const nav=useNavigate();
   const [items,setItems]=useState<Fragment[]>([]); const [lieux,setLieux]=useState<Record<string,Lieu>>({});
   const [loading,setLoading]=useState(true); const [error,setError]=useState('');
+  const [mode,setMode]=useState<'around'|'lineage'|'discover'>('discover');
   const load=async()=>{setLoading(true);setError(''); try{
     const [{data:f,error:fe},{data:l,error:le}]=await Promise.all([
       supabase.from('handunia_fragments').select('id,user_id,lieu_id,text,transcript_text,audio_url,period_label,scope_level,created_at,latitude,longitude').is('withdrawn_at',null).order('created_at',{ascending:false}).limit(50),
@@ -62,28 +60,38 @@ function HanduniaFeed({embedded=false}:{embedded?:boolean}) {
   useEffect(()=>{if(user) load(); else if(user===null)setLoading(false);},[user]);
   if(user===undefined) return <div className="p-8 text-center">Chargement…</div>;
   if(!user) return <LoginRequired/>;
-  return <div>
-    {!embedded&&<BackTitle title="Handunia Wasa" subtitle="La mémoire vivante — voix, lieux, temps"/>}
+  const shownItems=items.filter(f=>mode==='discover'?true:mode==='lineage'?f.scope_level==='lineage':f.scope_level!=='lineage'&&f.scope_level!=='elders');
+  const tabs=[['around','Autour',MapPin],['lineage','Lignée',Users],['discover','Découvrir',Globe]] as const;
+  return <div className="-mx-[18px] -mt-[14px] min-h-full px-[18px] pt-[14px]" style={{background:'#FFF6E6'}}>
+    <h1 className="mb-4 pl-[56px] pr-[56px] text-center text-[26px] font-semibold leading-[48px]" style={{fontFamily:'Fraunces, ui-serif, serif',color:'#3B2314'}}>Handunia</h1>
+    <div className="mb-3 grid grid-cols-3 gap-[10px]">
+      {tabs.map(([k,label,Icon])=><button key={k} onClick={()=>setMode(k)} className="flex h-[54px] flex-col items-center justify-center gap-1 rounded-[16px] border text-[11px] font-extrabold" style={mode===k?{background:'linear-gradient(135deg,#F0C15A,#B98626)',borderColor:'#C99530',color:'#fff'}:{background:'#FFFBF2',borderColor:'#EAD9B0',color:'#3B2314'}}><Icon className="h-[18px] w-[18px]"/>{label}</button>)}
+    </div>
     <div className="mb-4 flex gap-2">
-      <button onClick={()=>nav('/creator/handunia')} className="flex-1 rounded-2xl px-4 py-3 font-black" style={{background:C.ember,color:'#2B2110'}}><Plus className="mr-2 inline h-5 w-5"/>Publier un souvenir</button>
-      <button onClick={()=>nav('/handunia/map')} className="rounded-2xl border px-4" style={{borderColor:'#2E3848',background:C.night2}} aria-label="Carte"><MapPin/></button>
-      <button onClick={()=>nav('/handunia/ask')} className="rounded-2xl border px-4" style={{borderColor:'#2E3848',background:C.night2}} aria-label="Mémoire"><Sparkles/></button>
+      <button onClick={()=>nav('/creator/handunia')} className="flex flex-1 items-center justify-center rounded-2xl px-4 py-3 text-[14px] font-extrabold" style={{background:C.gold,color:'#2B2110'}}><Plus className="mr-2 h-5 w-5"/>Publier un souvenir</button>
+      <button onClick={()=>nav('/handunia/map')} className="rounded-2xl border px-4" style={{borderColor:'#EAD9B0',background:'#FFFBF2'}} aria-label="Carte"><MapPin/></button>
+      <button onClick={()=>nav('/handunia/ask')} className="rounded-2xl border px-4" style={{borderColor:'#EAD9B0',background:'#FFFBF2'}} aria-label="Mémoire"><Sparkles/></button>
     </div>
     {loading&&<div className="py-16 text-center">Mémoire en cours…</div>}
-    {error&&<button onClick={load} className="mx-auto flex items-center gap-2 rounded-full border px-4 py-2"><RefreshCw className="h-4 w-4"/>{error}</button>}
+    {error&&<div className="mb-4 text-center"><button onClick={load} className="mx-auto inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-bold" style={{borderColor:'#EAD9B0',background:'#F8ECCB',color:'#7A5215'}}><RefreshCw className="h-3 w-3"/>{/réseau|network|fetch/i.test(error)?'En attente de réseau':error}</button></div>}
+    {!loading&&shownItems.length===0&&<div className="flex flex-col items-center pt-14 text-center">
+      <div className="flex h-[76px] w-[76px] items-center justify-center rounded-full" style={{background:'#F3E9CE',color:C.gold2}}><Mic className="h-8 w-8"/></div>
+      <h2 className="mt-4 text-[22px] font-semibold" style={{fontFamily:'Fraunces, ui-serif, serif',color:'#3B2314'}}>Une voix manque</h2>
+      <button onClick={()=>nav('/handunia/map')} aria-label="Ouvrir la carte" className="mt-4 flex h-[58px] w-[58px] items-center justify-center rounded-[16px]" style={{background:C.gold,color:'#2B2110'}}><MapPin className="h-6 w-6"/></button>
+    </div>}
     <div className="space-y-4">
-      {items.map(f=>{const lieu=lieux[f.lieu_id]; const text=(f.transcript_text||f.text||'').trim(); return <article key={f.id} className="overflow-hidden rounded-[28px] border" style={{background:C.night2,borderColor:'#2E3848'}}>
+      {shownItems.map(f=>{const lieu=lieux[f.lieu_id]; const text=(f.transcript_text||f.text||'').trim(); return <article key={f.id} className="overflow-hidden rounded-[28px] border" style={{background:'#fff',borderColor:C.border}}>
         <div className="p-5">
-          <div className="mb-4 flex items-center justify-between gap-2 text-xs" style={{color:'#AAB2C0'}}>
+          <div className="mb-4 flex items-center justify-between gap-2 text-xs" style={{color:C.muted}}>
             <span>📍 {lieu?.village_quartier||lieu?.name||'Lieu transmis'}</span>
             <span>{f.period_label||'Mémoire transmise'}</span>
           </div>
-          {f.audio_url?<audio controls preload="none" className="mb-4 w-full" src={f.audio_url}/>:<div className="mb-4 flex h-16 items-center justify-center rounded-2xl border" style={{borderColor:'#2E3848'}}><Volume2 className="mr-2"/> Voix non jointe</div>}
+          {f.audio_url?<audio controls preload="none" className="mb-4 w-full" src={f.audio_url}/>:<div className="mb-4 flex h-16 items-center justify-center rounded-2xl border" style={{borderColor:C.border}}><Volume2 className="mr-2"/> Voix non jointe</div>}
           <p className="line-clamp-5 text-lg font-semibold leading-relaxed">{text||'Souvenir vocal'}</p>
           <div className="mt-5 grid grid-cols-3 gap-2 text-[11px] font-bold">
-            <button onClick={()=>nav('/handunia/ask?lieu='+encodeURIComponent(f.lieu_id))} className="rounded-xl border px-2 py-3" style={{borderColor:'#2E3848'}}>Mémoire</button>
-            <button onClick={()=>nav('/handunia/memory/'+f.id)} className="rounded-xl border px-2 py-3" style={{borderColor:'#2E3848'}}>Voir souvenir</button>
-            <button onClick={()=>nav('/handunia/map?fragment='+f.id)} className="rounded-xl border px-2 py-3" style={{borderColor:'#2E3848'}}>Voix sur carte</button>
+            <button onClick={()=>nav('/handunia/ask?lieu='+encodeURIComponent(f.lieu_id))} className="rounded-xl border px-2 py-3" style={{borderColor:C.border}}>Mémoire</button>
+            <button onClick={()=>nav('/handunia/memory/'+f.id)} className="rounded-xl border px-2 py-3" style={{borderColor:C.border}}>Voir souvenir</button>
+            <button onClick={()=>nav('/handunia/map?fragment='+f.id)} className="rounded-xl border px-2 py-3" style={{borderColor:C.border}}>Voix sur carte</button>
           </div>
         </div>
       </article>;})}
@@ -106,15 +114,15 @@ function HanduniaPublish() {
     if(ins.error)throw ins.error; nav('/social/handunia');
   }catch(e:any){alert(e?.message||'Publication impossible');}finally{setBusy(false);}};
   if(user===null)return <LoginRequired/>;
-  return <Shell dark><BackTitle dark title="Publier un souvenir" subtitle="Collecter → lieu → préciser → vérifier"/>
+  return <Shell><BackTitle title="Publier un souvenir" subtitle="Collecter → lieu → préciser → vérifier"/>
     <div className="space-y-4">
-      <button onClick={toggle} className="flex w-full items-center justify-center gap-3 rounded-[28px] border py-8 text-lg font-black" style={{borderColor:'#2E3848',background:recording?'#4A2020':C.night2,color:C.ember}}><Mic/>{recording?'Arrêter la voix':'Tisser par la voix'}</button>
+      <button onClick={toggle} className="flex w-full items-center justify-center gap-3 rounded-[28px] border py-8 text-lg font-black" style={{borderColor:C.border,background:recording?'#4A2020':'#fff',color:C.gold2}}><Mic/>{recording?'Arrêter la voix':'Tisser par la voix'}</button>
       {blob&&<audio controls className="w-full" src={URL.createObjectURL(blob)}/>}
-      <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Ou écrire le souvenir…" className="min-h-36 w-full rounded-3xl border bg-transparent p-4 outline-none" style={{borderColor:'#2E3848'}}/>
-      <select value={lieu} onChange={e=>setLieu(e.target.value)} className="w-full rounded-2xl border p-4 text-black" style={{borderColor:'#2E3848'}}>{lieux.map(l=><option key={l.id} value={l.id}>{l.village_quartier||l.name}{l.commune?' · '+l.commune:''}</option>)}</select>
-      <input value={period} onChange={e=>setPeriod(e.target.value)} placeholder="Période — ex. Avant 1960" className="w-full rounded-2xl border bg-transparent p-4 outline-none" style={{borderColor:'#2E3848'}}/>
+      <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Ou écrire le souvenir…" className="min-h-36 w-full rounded-3xl border bg-transparent p-4 outline-none" style={{borderColor:C.border}}/>
+      <select value={lieu} onChange={e=>setLieu(e.target.value)} className="w-full rounded-2xl border p-4 text-black" style={{borderColor:C.border}}>{lieux.map(l=><option key={l.id} value={l.id}>{l.village_quartier||l.name}{l.commune?' · '+l.commune:''}</option>)}</select>
+      <input value={period} onChange={e=>setPeriod(e.target.value)} placeholder="Période — ex. Avant 1960" className="w-full rounded-2xl border bg-transparent p-4 outline-none" style={{borderColor:C.border}}/>
       <select value={scope} onChange={e=>setScope(e.target.value)} className="w-full rounded-2xl border p-4 text-black"><option value="community">Communauté</option><option value="lineage">Lignée</option><option value="elders">Anciens</option><option value="all">Tous</option></select>
-      <button disabled={busy} onClick={submit} className="w-full rounded-full py-4 text-lg font-black disabled:opacity-50" style={{background:C.ember,color:'#20170B'}}>{busy?'Publication…':'Publier le souvenir'}</button>
+      <button disabled={busy} onClick={submit} className="w-full rounded-full py-4 text-lg font-black disabled:opacity-50" style={{background:C.gold,color:'#2B2110'}}>{busy?'Publication…':'Publier le souvenir'}</button>
     </div>
   </Shell>;
 }
@@ -157,20 +165,20 @@ function HanduniaMemory() {
     setBusy(false); if(error){alert(error.message);return;} setNuance(''); alert('Nuance ajoutée à la mémoire.');
   };
 
-  return <Shell dark><BackTitle dark title="Souvenir" subtitle={lieu?.name||'Handunia Wasa'}/>{loading?<div>Chargement…</div>:!item?<div>Souvenir indisponible.</div>:<div className="space-y-5">
+  return <Shell><BackTitle title="Souvenir" subtitle={lieu?.name||'Handunia Wasa'}/>{loading?<div>Chargement…</div>:!item?<div>Souvenir indisponible.</div>:<div className="space-y-5">
     {item.audio_url&&<audio controls className="w-full" src={item.audio_url}/>}
-    <div className="rounded-3xl border p-5" style={{borderColor:'#2E3848',background:C.night2}}>
-      {editing?<textarea value={editText} onChange={e=>setEditText(e.target.value)} className="min-h-32 w-full rounded-2xl border bg-transparent p-3 outline-none" style={{borderColor:'#2E3848'}}/>:<p className="text-xl leading-relaxed">“{item.transcript_text||item.text}”</p>}
+    <div className="rounded-3xl border p-5" style={{borderColor:C.border,background:'#fff'}}>
+      {editing?<textarea value={editText} onChange={e=>setEditText(e.target.value)} className="min-h-32 w-full rounded-2xl border bg-transparent p-3 outline-none" style={{borderColor:C.border}}/>:<p className="text-xl leading-relaxed">“{item.transcript_text||item.text}”</p>}
     </div>
-    <div className="grid grid-cols-2 gap-3 text-sm"><div className="rounded-2xl border p-4" style={{borderColor:'#2E3848'}}>📍 {lieu?.name||item.lieu_id}</div><div className="rounded-2xl border p-4" style={{borderColor:'#2E3848'}}>🕰 {item.period_label||'Période non précisée'}</div></div>
+    <div className="grid grid-cols-2 gap-3 text-sm"><div className="rounded-2xl border p-4" style={{borderColor:C.border}}>📍 {lieu?.name||item.lieu_id}</div><div className="rounded-2xl border p-4" style={{borderColor:C.border}}>🕰 {item.period_label||'Période non précisée'}</div></div>
     <div className="grid grid-cols-2 gap-3">
-      <button disabled={busy} onClick={corroborate} className="rounded-2xl border p-4 font-bold" style={{borderColor:'#2E3848'}}>✓ Corroborer · {corroborations}</button>
-      <button onClick={()=>nav('/handunia/ask?lieu='+encodeURIComponent(item.lieu_id))} className="rounded-2xl border p-4 font-bold" style={{borderColor:'#2E3848'}}>✨ Demander à la mémoire</button>
+      <button disabled={busy} onClick={corroborate} className="rounded-2xl border p-4 font-bold" style={{borderColor:C.border}}>✓ Corroborer · {corroborations}</button>
+      <button onClick={()=>nav('/handunia/ask?lieu='+encodeURIComponent(item.lieu_id))} className="rounded-2xl border p-4 font-bold" style={{borderColor:C.border}}>✨ Demander à la mémoire</button>
     </div>
-    <div className="rounded-3xl border p-5" style={{borderColor:'#2E3848',background:C.night2}}>
-      <h3 className="font-black">Ajouter une nuance</h3><textarea value={nuance} onChange={e=>setNuance(e.target.value)} placeholder="Une autre version ou précision…" className="mt-3 min-h-24 w-full rounded-2xl border bg-transparent p-3 outline-none" style={{borderColor:'#2E3848'}}/><button disabled={busy||!nuance.trim()} onClick={addNuance} className="mt-3 rounded-full px-5 py-2 font-black disabled:opacity-50" style={{background:C.ember,color:'#20170B'}}>Publier la nuance</button>
+    <div className="rounded-3xl border p-5" style={{borderColor:C.border,background:'#fff'}}>
+      <h3 className="font-black">Ajouter une nuance</h3><textarea value={nuance} onChange={e=>setNuance(e.target.value)} placeholder="Une autre version ou précision…" className="mt-3 min-h-24 w-full rounded-2xl border bg-transparent p-3 outline-none" style={{borderColor:C.border}}/><button disabled={busy||!nuance.trim()} onClick={addNuance} className="mt-3 rounded-full px-5 py-2 font-black disabled:opacity-50" style={{background:C.gold,color:'#2B2110'}}>Publier la nuance</button>
     </div>
-    {user&&item.user_id===user.id&&<div className="flex gap-2">{editing?<><button onClick={saveEdit} className="flex-1 rounded-full py-3 font-black" style={{background:C.ember,color:'#20170B'}}>Enregistrer</button><button onClick={()=>setEditing(false)} className="rounded-full border px-5" style={{borderColor:'#2E3848'}}>Annuler</button></>:<button onClick={()=>setEditing(true)} className="flex-1 rounded-full border py-3 font-bold" style={{borderColor:'#2E3848'}}>Modifier mon souvenir</button>}<button onClick={withdraw} className="rounded-full border border-red-500/40 px-5 text-red-300"><Trash2/></button></div>}
+    {user&&item.user_id===user.id&&<div className="flex gap-2">{editing?<><button onClick={saveEdit} className="flex-1 rounded-full py-3 font-black" style={{background:C.gold,color:'#2B2110'}}>Enregistrer</button><button onClick={()=>setEditing(false)} className="rounded-full border px-5" style={{borderColor:C.border}}>Annuler</button></>:<button onClick={()=>setEditing(true)} className="flex-1 rounded-full border py-3 font-bold" style={{borderColor:C.border}}>Modifier mon souvenir</button>}<button onClick={withdraw} className="rounded-full border border-[#B54E33]/40 px-5 text-[#B54E33]"><Trash2/></button></div>}
   </div>}</Shell>;
 }
 
@@ -178,10 +186,10 @@ function HanduniaAsk() {
   const user=useUser(); const [q,setQ]=useState(''); const [answer,setAnswer]=useState<any>(null); const [busy,setBusy]=useState(false);
   const params=new URLSearchParams(useLocation().search); const lieu=params.get('lieu')||undefined;
   const ask=async()=>{if(!q.trim())return;setBusy(true);const {data,error}=await supabase.functions.invoke('handunia-memory-query',{body:{question:q.trim(),lieu_id:lieu}});setAnswer(error?{state:'unavailable',answer:error.message}:data);setBusy(false);};
-  if(user===null)return <Shell dark><LoginRequired/></Shell>;
-  return <Shell dark><BackTitle dark title="Demander à la mémoire" subtitle="Réponses sourcées — sans invention"/>
-    <div className="flex gap-2"><input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&ask()} placeholder="Comment ? Quand ? Qui ?" className="flex-1 rounded-2xl border bg-transparent p-4 outline-none" style={{borderColor:'#2E3848'}}/><button onClick={ask} disabled={busy} className="rounded-2xl px-5" style={{background:C.ember,color:'#20170B'}}><Send/></button></div>
-    {answer&&<div className="mt-5 rounded-3xl border p-5" style={{borderColor:'#2E3848',background:C.night2}}><p className="text-lg leading-relaxed">{answer.answer||answer.message||'La communauté ne l’a pas encore raconté.'}</p>{Array.isArray(answer.sources)&&answer.sources.length>0&&<div className="mt-4 space-y-2 text-sm" style={{color:'#AAB2C0'}}>{answer.sources.map((s:any)=><div key={s.id}>[{s.index}] {s.witness} · {s.year} · {s.place}</div>)}</div>}</div>}
+  if(user===null)return <Shell><LoginRequired/></Shell>;
+  return <Shell><BackTitle title="Demander à la mémoire" subtitle="Réponses sourcées — sans invention"/>
+    <div className="flex gap-2"><input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&ask()} placeholder="Comment ? Quand ? Qui ?" className="flex-1 rounded-2xl border bg-transparent p-4 outline-none" style={{borderColor:C.border}}/><button onClick={ask} disabled={busy} className="rounded-2xl px-5" style={{background:C.gold,color:'#2B2110'}}><Send/></button></div>
+    {answer&&<div className="mt-5 rounded-3xl border p-5" style={{borderColor:C.border,background:'#fff'}}><p className="text-lg leading-relaxed">{answer.answer||answer.message||'La communauté ne l’a pas encore raconté.'}</p>{Array.isArray(answer.sources)&&answer.sources.length>0&&<div className="mt-4 space-y-2 text-sm" style={{color:C.muted}}>{answer.sources.map((s:any)=><div key={s.id}>[{s.index}] {s.witness} · {s.year} · {s.place}</div>)}</div>}</div>}
   </Shell>;
 }
 
@@ -189,9 +197,9 @@ function HanduniaMap() {
   const [lieux,setLieux]=useState<Lieu[]>([]); const [q,setQ]=useState('');
   useEffect(()=>{supabase.from('handunia_lieux').select('id,name,commune,village_quartier,latitude,longitude').order('sort_order').then(({data})=>setLieux((data??[]) as any));},[]);
   const visible=useMemo(()=>lieux.filter(l=>(l.name+' '+(l.commune||'')+' '+(l.village_quartier||'')).toLowerCase().includes(q.toLowerCase())),[lieux,q]);
-  return <Shell dark><BackTitle dark title="Carte vivante" subtitle="Quartiers → villages → communes → villes"/>
-    <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher un lieu…" className="mb-4 w-full rounded-2xl border bg-transparent p-4 outline-none" style={{borderColor:'#2E3848'}}/>
-    <div className="grid gap-3 sm:grid-cols-2">{visible.map(l=><a key={l.id} href={l.latitude&&l.longitude?`https://www.openstreetmap.org/?mlat=${l.latitude}&mlon=${l.longitude}#map=14/${l.latitude}/${l.longitude}`:'#'} target="_blank" rel="noreferrer" className="rounded-2xl border p-4" style={{borderColor:'#2E3848',background:C.night2}}><div className="font-black">{l.village_quartier||l.name}</div><div className="mt-1 text-xs" style={{color:'#AAB2C0'}}>{l.commune||'Bénin'} · {l.name}</div></a>)}</div>
+  return <Shell><BackTitle title="Carte vivante" subtitle="Quartiers → villages → communes → villes"/>
+    <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher un lieu…" className="mb-4 w-full rounded-2xl border bg-transparent p-4 outline-none" style={{borderColor:C.border}}/>
+    <div className="grid gap-3 sm:grid-cols-2">{visible.map(l=><a key={l.id} href={l.latitude&&l.longitude?`https://www.openstreetmap.org/?mlat=${l.latitude}&mlon=${l.longitude}#map=14/${l.latitude}/${l.longitude}`:'#'} target="_blank" rel="noreferrer" className="rounded-2xl border p-4" style={{borderColor:C.border,background:'#fff'}}><div className="font-black">{l.village_quartier||l.name}</div><div className="mt-1 text-xs" style={{color:C.muted}}>{l.commune||'Bénin'} · {l.name}</div></a>)}</div>
   </Shell>;
 }
 
@@ -278,14 +286,14 @@ function SagesseBattle({embedded=false}:{embedded?:boolean}) {
   const shown=tab==='mine'&&user?items.filter(x=>x.created_by===user.id):items;
   return <div>
     {!embedded&&<BackTitle title="Sagesse Battle" subtitle="Défis système et défis de la communauté"/>}
-    <div className="mb-4 grid grid-cols-3 gap-2">{[['community','Communauté'],['mine','Mes défis'],['create','Créer']].map(([k,l])=><button key={k} onClick={()=>setTab(k as any)} className="rounded-full border px-3 py-2 text-sm font-bold" style={{borderColor:C.border,background:tab===k?C.gold:'#fff'}}>{l}</button>)}</div>
-    {tab==='create'?<div className="space-y-3 rounded-3xl border bg-white p-5" style={{borderColor:C.border}}><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Titre du défi" className="w-full rounded-2xl border p-3"/><select value={type} onChange={e=>setType(e.target.value)} className="w-full rounded-2xl border p-3"><option value="complete_proverb">Compléter</option><option value="interpret_proverb">Interpréter</option></select><textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="Défi en Bàátɔ̀nú" className="min-h-28 w-full rounded-2xl border p-3"/><textarea value={fr} onChange={e=>setFr(e.target.value)} placeholder="Repère en français" className="min-h-20 w-full rounded-2xl border p-3"/><button disabled={busy} onClick={create} className="w-full rounded-full py-3 font-black" style={{background:C.gold}}>{busy?'Publication…':'Publier le défi'}</button></div>:<div className="space-y-3">{shown.map(c=><div key={c.id} className="rounded-3xl border bg-white p-5" style={{borderColor:C.border}}><div className="mb-2 text-xs font-black uppercase" style={{color:C.gold2}}>{c.challenge_type==='interpret_proverb'?'Interpréter':'Compléter'}</div><h3 className="text-xl font-black">{c.title||'Défi FITILA'}</h3><p className="mt-3 text-lg">{c.prompt_bariba}</p>{c.prompt_francais&&<p className="mt-1 text-sm" style={{color:C.muted}}>{c.prompt_francais}</p>}<button onClick={()=>nav('/sagesse-battle/'+c.id)} className="mt-4 rounded-full border px-4 py-2 text-sm font-bold" style={{borderColor:C.border}}>Répondre <ChevronRight className="inline h-4 w-4"/></button></div>)}</div>}
+    <div className="mb-4 grid grid-cols-3 gap-2">{[['community','Communauté'],['mine','Mes défis'],['create','Créer']].map(([k,l])=><button key={k} onClick={()=>setTab(k as any)} className="rounded-full border px-3 py-2 text-[13px] font-extrabold" style={{borderColor:tab===k?C.gold:C.border,background:tab===k?C.gold:'#fff',color:tab===k?'#2B2110':C.ink}}>{l}</button>)}</div>
+    {tab==='create'?<div className="space-y-3 rounded-3xl border bg-white p-5" style={{borderColor:C.border}}><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Titre du défi" className="w-full rounded-2xl border p-3"/><select value={type} onChange={e=>setType(e.target.value)} className="w-full rounded-2xl border p-3"><option value="complete_proverb">Compléter</option><option value="interpret_proverb">Interpréter</option></select><textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="Défi en Bàátɔ̀nú" className="min-h-28 w-full rounded-2xl border p-3"/><textarea value={fr} onChange={e=>setFr(e.target.value)} placeholder="Repère en français" className="min-h-20 w-full rounded-2xl border p-3"/><button disabled={busy} onClick={create} className="w-full rounded-full py-3 font-black" style={{background:C.gold}}>{busy?'Publication…':'Publier le défi'}</button></div>:<div className="space-y-3">{shown.map(c=><div key={c.id} className="rounded-[24px] border p-5 text-center" style={c.challenge_type==='system'?{borderColor:'#B54E33',background:'linear-gradient(180deg,#FBEFE8,#F7E1D6)'}:{borderColor:C.border,background:'#fff'}}><div className="mb-2 text-[11px] font-black uppercase tracking-wide" style={{color:c.challenge_type==='system'?'#8A3A25':C.gold2}}>{c.challenge_type==='interpret_proverb'?'Interprète le proverbe':'Complète le proverbe'}</div><h3 className="sr-only">{c.title||'Défi FITILA'}</h3><p className="mt-3 text-[18px] font-semibold" style={{fontFamily:'Fraunces, ui-serif, serif'}}>{c.prompt_bariba}</p>{c.prompt_francais&&<p className="mt-1 text-sm" style={{color:C.muted}}>{c.prompt_francais}</p>}<button onClick={()=>nav('/sagesse-battle/'+c.id)} className="mt-4 rounded-full px-5 py-2.5 text-sm font-extrabold" style={{background:C.gold,color:'#2B2110'}}>Répondre <ChevronRight className="inline h-4 w-4"/></button></div>)}</div>}
   </div>;
 }
 
 export function FitilaSocialCanonical() {
   const loc=useLocation(); const nav=useNavigate(); const isSagesse=loc.pathname.includes('sagesse-battle');
-  return <Shell dark={!isSagesse}><div className="mb-4 grid grid-cols-2 gap-2"><button onClick={()=>nav('/social/handunia')} className="rounded-full px-4 py-3 font-black" style={{background:!isSagesse?'#4A3B78':C.night2,color:'#fff'}}>🌌 Handunia Wasa</button><button onClick={()=>nav('/social/sagesse-battle')} className="rounded-full px-4 py-3 font-black" style={{background:isSagesse?C.gold:C.night2,color:isSagesse?'#2B2110':'#fff'}}>⚔️ Sagesse Battle</button></div>{isSagesse?<SagesseBattle embedded/>:<HanduniaFeed embedded/>}</Shell>;
+  return <Shell><div className="mb-4 grid grid-cols-2 gap-2 pl-[56px]"><button onClick={()=>nav('/social/handunia')} className="rounded-full px-4 py-3 text-[13px] font-extrabold" style={{background:!isSagesse?'linear-gradient(90deg,#4A3B78,#241F2E)':'#fff',color:!isSagesse?'#fff':C.ink,border:'1px solid '+C.border}}>Handunia Wasa</button><button onClick={()=>nav('/social/sagesse-battle')} className="rounded-full px-4 py-3 text-[13px] font-extrabold" style={{background:isSagesse?C.gold:'#fff',color:'#2B2110',border:'1px solid '+C.border}}>Sagesse Battle</button></div>{isSagesse?<SagesseBattle embedded/>:<HanduniaFeed embedded/>}</Shell>;
 }
 
 export function FitilaCreatorCanonical() {
@@ -315,7 +323,7 @@ export function HanduniaCanonicalPage() {
   if(p.startsWith('/handunia/memory/')) return <HanduniaMemory/>;
   if(p.startsWith('/handunia/map')) return <HanduniaMap/>;
   if(p.startsWith('/handunia/ask')) return <HanduniaAsk/>;
-  return <Shell dark><HanduniaFeed/></Shell>;
+  return <Shell><HanduniaFeed/></Shell>;
 }
 
 export function SagesseCanonicalPage() {
