@@ -152,7 +152,7 @@ const App = () => (
                 <Route index element={<Navigate to="/" replace />} />
                 <Route path="auth" element={<Navigate to="/auth" replace />} />
                 <Route path="home" element={<Navigate to="/home" replace />} />
-                <Route path="social" element={<Navigate to="/social" replace />} />
+                <Route path="social/*" element={<Navigate to="/social" replace />} />
                 <Route path="services" element={<Navigate to="/services" replace />} />
                 <Route path="market" element={<Navigate to="/market" replace />} />
                 <Route path="agriculture" element={<Navigate to="/agriculture" replace />} />
@@ -161,6 +161,8 @@ const App = () => (
                 <Route path="health" element={<Navigate to="/health" replace />} />
                 <Route path="translator" element={<Navigate to="/translator" replace />} />
                 <Route path="creator" element={<Navigate to="/creator" replace />} />
+                <Route path="creator/handunia" element={<Navigate to="/creator/handunia" replace />} />
+                <Route path="creator/sagesse-battle" element={<Navigate to="/creator/sagesse-battle" replace />} />
                 <Route path="templates" element={<Navigate to="/templates" replace />} />
                 <Route path="griot-studio" element={<Navigate to="/griot-studio" replace />} />
                 <Route path="sos" element={<Navigate to="/sos" replace />} />
@@ -172,6 +174,9 @@ const App = () => (
                 <Route path="ia" element={<Navigate to="/ia" replace />} />
                 <Route path="tem-ia" element={<Navigate to="/tem-ia" replace />} />
                 <Route path="voice-lab" element={<Navigate to="/voice-lab" replace />} />
+                <Route path="handunia" element={<Navigate to="/handunia" replace />} />
+                <Route path="handunia/*" element={<Navigate to="/handunia" replace />} />
+                <Route path="sagesse-battle/*" element={<Navigate to="/sagesse-battle" replace />} />
                 <Route path="messages" element={<Navigate to="/messages" replace />} />
                 <Route path="discover" element={<Navigate to="/discover" replace />} />
                 <Route path="install" element={<Navigate to="/install" replace />} />
