@@ -74,7 +74,7 @@ export const useVoiceInteraction = (): UseVoiceInteractionReturn => {
         const result = await baribaSTT.transcribe(audioBase64);
         return result?.transcription || null;
       } else {
-        // For French, we use the Lovable AI function or Web Speech API
+        // For French, we use the FITILA Edge Function or Web Speech API
         // The frenchSTT hook uses Web Speech API in real-time
         // For base64 audio, we'd need a different approach
         // For now, return null and use Web Speech API for real-time
