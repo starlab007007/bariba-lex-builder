@@ -36,9 +36,9 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const FITILA_IMAGE_API_KEY = Deno.env.get('FITILA_IMAGE_API_KEY');
+    if (!FITILA_IMAGE_API_KEY) {
+      throw new Error('FITILA_IMAGE_API_KEY is not configured');
     }
 
     const body: TemplateAssetRequest = await req.json();
@@ -48,7 +48,7 @@ serve(async (req) => {
 
     switch (action) {
       // ============================================================
-      // 1. Generate Preview Image for Template (Lovable AI Image)
+      // 1. Generate Preview Image for Template (FITILA Image AI Image)
       // ============================================================
       case 'generate_preview_image': {
         if (!templateLabel || !templateDescription) {
@@ -68,12 +68,12 @@ Visual elements:
 - No text or words, only visual elements
 Ultra high resolution, sharp details, professional quality.`;
 
-        console.log('[generate-template-assets] Generating preview image with Lovable AI...');
+        console.log('[generate-template-assets] Generating preview image with FITILA Image AI...');
 
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Authorization': `Bearer ${FITILA_IMAGE_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -165,10 +165,10 @@ Règles:
 
 Important: Le texte sera lu à voix haute à des personnes qui ne savent pas lire. Sois naturel et direct.`;
 
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Authorization': `Bearer ${FITILA_IMAGE_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -279,10 +279,10 @@ Réponds UNIQUEMENT en JSON valide:
   "context_interpretation": "ce que j'ai compris de la demande"
 }`;
 
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Authorization': `Bearer ${FITILA_IMAGE_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -369,10 +369,10 @@ Réponds en JSON:
   ]
 }`;
 
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Authorization': `Bearer ${FITILA_IMAGE_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -439,10 +439,10 @@ Réponds en JSON:
   ]
 }`;
 
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Authorization': `Bearer ${FITILA_IMAGE_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
