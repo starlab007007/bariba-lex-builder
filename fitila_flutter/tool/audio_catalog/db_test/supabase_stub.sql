@@ -1,0 +1,17 @@
+CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN;
+CREATE SCHEMA auth; CREATE SCHEMA storage;
+CREATE TABLE auth.users (id uuid PRIMARY KEY, email text);
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+CREATE TABLE storage.buckets (id text PRIMARY KEY, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
+CREATE TABLE storage.objects (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), bucket_id text, name text);
+CREATE FUNCTION storage.foldername(name text) RETURNS text[] LANGUAGE sql AS $$ SELECT string_to_array(name, '/') $$;
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+CREATE TYPE public.app_role AS ENUM ('admin', 'user');
+ALTER TYPE public.app_role ADD VALUE 'editor';
+ALTER TYPE public.app_role ADD VALUE 'teacher';
+CREATE TABLE public.user_roles (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid REFERENCES auth.users(id), role app_role NOT NULL, UNIQUE (user_id, role));
+CREATE FUNCTION public.has_role(_user_id uuid, _role app_role) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$ SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role) $$;
+CREATE FUNCTION public.update_updated_at_column() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
+GRANT USAGE ON SCHEMA public, auth, storage TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO anon, authenticated;
