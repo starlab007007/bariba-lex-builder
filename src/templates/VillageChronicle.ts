@@ -278,7 +278,7 @@ export class VillageChronicleEngine {
     console.log('[VillageChronicle] Loading premium VFX from CDN...');
     
     const config = VillageChronicleConfig.requiredAssets;
-    const cdnBase = 'https://pmrhezgnyffiskbaiudb.supabase.co/storage/v1/object/public/envato-assets';
+    const cdnBase = '/assets/envato';
     
     // Helper to load video element
     const loadVideo = (url: string): Promise<HTMLVideoElement | null> => {
