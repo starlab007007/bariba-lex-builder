@@ -29,9 +29,9 @@ from build_import_sql import DEFAULT_VERSION, build, expected_counts, load  # no
 MIGRATION = ROOT / 'supabase/migrations/20260928090000_apprendre_module_content.sql'
 FLUTTER_PROJECT = 'dvswhjawiooprghzeyol'
 API = 'https://api.supabase.com/v1'
-TARGET = os.environ.get('TARGET', 'web')
+TARGET = os.environ.get('TARGET', 'flutter')
 TOKEN = os.environ.get('SUPABASE_ACCESS_TOKEN', '')
-STRICT = TARGET == 'web'  # le projet web est celui qui compte pour fitila.bj
+STRICT = True  # projet unique FITILA : tout échec de synchronisation est bloquant
 
 
 def annotate(level: str, message: str) -> None:
@@ -70,7 +70,7 @@ def env_file_value(*keys: str) -> str:
 
 
 def project_ref() -> str:
-    if TARGET == 'flutter':
+    if TARGET in ('flutter', 'web'):
         return FLUTTER_PROJECT
     url = os.environ.get('WEB_SUPABASE_URL') or env_file_value('VITE_SUPABASE_URL', 'SUPABASE_URL')
     if '.supabase.co' not in url:
