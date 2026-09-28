@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Keyboard, Volume2, Loader2, Search, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +18,7 @@ type InputMode = 'voice' | 'keyboard';
 type SearchDirection = 'ba-fr' | 'fr-ba';
 
 export default function TamTamDictionary() {
+  const [routeParams,setRouteParams]=useSearchParams();
   const navigate = useNavigate();
   const { t, currentLang } = useTamTamLanguage();
   const { speakCurrentLang, isSpeaking } = useUnifiedAudio();
@@ -25,7 +27,7 @@ export default function TamTamDictionary() {
   const { transcribe: transcribeBariba, isTranscribing: isSTTLoading, isWakingUp: isSTTWakingUp } = useBaribaSTT();
   
   const [inputMode, setInputMode] = useState<InputMode>('keyboard');
-  const [searchDirection, setSearchDirection] = useState<SearchDirection>('ba-fr');
+  const [searchDirection, setSearchDirection] = useState<SearchDirection>(() => routeParams.get('direction')==='fr-ba' ? 'fr-ba' : 'ba-fr');
   const [keyboardLang, setKeyboardLang] = useState<SearchLanguage>('ba');
   const [selectedEntry, setSelectedEntry] = useState<PhoneticEntry | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -36,6 +38,15 @@ export default function TamTamDictionary() {
   const [voiceLang, setVoiceLang] = useState<'ba' | 'fr'>('ba');
   const [panelSuccess, setPanelSuccess] = useState(false);
   const [panelError, setPanelError] = useState('');
+
+  useEffect(()=>{
+    const wanted=routeParams.get('direction')==='fr-ba'?'fr-ba':'ba-fr';
+    if(wanted!==searchDirection) setSearchDirection(wanted as SearchDirection);
+  },[routeParams]);
+  useEffect(()=>{
+    const current=routeParams.get('direction')==='fr-ba'?'fr-ba':'ba-fr';
+    if(current!==searchDirection){ const next=new URLSearchParams(routeParams); next.set('direction',searchDirection); setRouteParams(next,{replace:true}); }
+  },[searchDirection]);
 
   const handleVoiceCommand = async (result: {
     audioBase64: string;
