@@ -78,7 +78,7 @@ export default function FloatingBaribaKeyboard() {
         const dir: 'ba2fr' | 'fr2ba' = isLikelyBariba(t) ? 'ba2fr' : 'fr2ba';
         const sourceLang = dir === 'ba2fr' ? 'bariba' : 'french';
         const targetLang = dir === 'ba2fr' ? 'french' : 'bariba';
-        const { data, error } = await supabase.functions.invoke('bariba-translate', {
+        const { data, error } = await supabase.functions.invoke('byt5-bariba-translate', {
           body: { text: t, sourceLang, targetLang },
         });
         if (error) return;
@@ -209,7 +209,7 @@ export default function FloatingBaribaKeyboard() {
       const dir = isLikelyBariba(t) ? 'ba2fr' : 'fr2ba';
       const sourceLang = dir === 'ba2fr' ? 'bariba' : 'french';
       const targetLang = dir === 'ba2fr' ? 'french' : 'bariba';
-      const { data, error } = await supabase.functions.invoke('bariba-translate', {
+      const { data, error } = await supabase.functions.invoke('byt5-bariba-translate', {
         body: { text: t, sourceLang, targetLang },
       });
       if (error) throw error;
