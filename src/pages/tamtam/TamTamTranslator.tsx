@@ -295,7 +295,7 @@ export default function TamTamTranslator() {
           <History className="w-5 h-5" />
           Historique
         </h2>
-        <button onClick={() => setShowHistory(false); if(location.pathname.includes('/history')) navigate('/translator')} className="p-2 rounded-full hover:bg-gray-100">
+        <button onClick={() => { setShowHistory(false); if (location.pathname.includes('/history')) navigate('/translator'); }} className="p-2 rounded-full hover:bg-gray-100">
           <X className="w-5 h-5 text-gray-600" />
         </button>
       </div>
@@ -433,7 +433,7 @@ export default function TamTamTranslator() {
             
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowHistory(true); navigate('/translator/history')}
+                onClick={() => { setShowHistory(true); navigate('/translator/history'); }}
                 className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
               >
                 <History className="w-5 h-5 text-gray-500" />
