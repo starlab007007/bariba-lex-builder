@@ -22,10 +22,9 @@ export const ServiceStatusIndicator = ({ compact = false }: ServiceStatusIndicat
     baribaTTS: { name: 'TTS Bariba', status: 'checking', lastCheck: null },
     baribaSTT: { name: 'STT Bariba', status: 'checking', lastCheck: null },
     byt5Expert: { name: 'ByT5 Expert', status: 'checking', lastCheck: null },
-    frenchTTS: { name: 'TTS Français', status: 'available', lastCheck: new Date(), message: 'Lovable AI' },
+    frenchTTS: { name: 'TTS Français', status: 'available', lastCheck: new Date(), message: 'FITILA / Web Speech' },
     frenchSTT: { name: 'STT Français', status: 'available', lastCheck: new Date(), message: 'Web Speech API' },
-    simplifiedAI: { name: 'SimplifiedAI', status: 'available', lastCheck: new Date() },
-    lovableAI: { name: 'Lovable AI', status: 'available', lastCheck: new Date() }
+    simplifiedAI: { name: 'SimplifiedAI', status: 'available', lastCheck: new Date() }
   });
 
   useEffect(() => {
