@@ -5,7 +5,7 @@ import { Bot, Zap, Brain, Check, Loader2 } from "lucide-react";
 import { byT5TranslationService } from "@/services/ByT5TranslationService";
 import { cn } from "@/lib/utils";
 
-export type TranslationModel = 'byt5-expert' | 'simplified' | 'lovable-ai';
+export type TranslationModel = 'byt5-expert' | 'simplified';
 
 interface TranslationModelSwitcherProps {
   selectedModel: TranslationModel;
@@ -86,16 +86,7 @@ export const TranslationModelSwitcher = ({
       icon: <Zap className="h-4 w-4" />,
       badge: 'Rapide',
       badgeVariant: 'secondary'
-    },
-    {
-      id: 'lovable-ai',
-      name: 'Lovable AI',
-      description: 'Cloud, phrases complexes',
-      icon: <Brain className="h-4 w-4" />,
-      badge: 'Cloud',
-      badgeVariant: 'outline'
-    }
-  ];
+    }];
 
   return (
     <div className="flex flex-wrap gap-2">
