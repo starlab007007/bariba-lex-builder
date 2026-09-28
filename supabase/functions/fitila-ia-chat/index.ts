@@ -11,10 +11,7 @@ const LLM_TIMEOUT_MS = 20_000;
 const BYT5_TIMEOUT_MS = 30_000;
 
 // Optimisation: modèle unique le plus économique, pas de cascade coûteuse
-const MODELS_TO_TRY = [
-  "google/gemini-2.5-flash-lite",  // Le plus rapide et économique
-  "openai/gpt-5-nano",             // Fallback uniquement si le premier échoue
-];
+const MODELS_TO_TRY = ["mistral-small-latest"];
 
 const SYSTEM_PROMPT = `Tu es Fitila, un assistant intelligent et bienveillant.
 Réponds TOUJOURS en français, de manière claire et concise.
@@ -61,7 +58,7 @@ async function callLLMWithFallback(args: {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
 
-      const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const resp = await fetch("https://api.mistral.ai/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${args.apiKey}`,
@@ -173,8 +170,8 @@ serve(async (req: Request) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
+    const MISTRAL_API_KEY = Deno.env.get("MISTRAL_API_KEY");
+    if (!MISTRAL_API_KEY) throw new Error("MISTRAL_API_KEY missing");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY");
@@ -194,7 +191,7 @@ serve(async (req: Request) => {
 
     // Step 1: LLM generates French response
     const llmResult = await callLLMWithFallback({
-      apiKey: LOVABLE_API_KEY,
+      apiKey: MISTRAL_API_KEY,
       messages: chatMessages,
       temperature,
       maxTokens,
