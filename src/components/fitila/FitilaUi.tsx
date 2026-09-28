@@ -1,4 +1,4 @@
-import type { LucideIcon } from 'lucide-react';
+import { Volume2, type LucideIcon } from 'lucide-react';
 import { SIG } from './signatureTheme';
 
 /** Page pleine hauteur au fond Premium Clair. */
@@ -118,5 +118,60 @@ export function SwitchTile({ icon: Icon, title, value, onChange }: { icon: Lucid
         <span className="absolute top-[4px] h-[24px] w-[24px] rounded-full bg-white shadow transition-all" style={{ left: value ? 24 : 4 }} />
       </button>
     </div>
+  );
+}
+
+export type DomainTile = {
+  id: string;
+  label: string;
+  Icon: LucideIcon;
+  danger?: boolean;
+  onClick: () => void;
+  onSpeak?: (e: React.MouseEvent) => void;
+};
+
+/** Grille de sections des écrans métier (Santé, Agriculture, Finance, Éducation…). */
+export function SectionTiles({ items }: { items: DomainTile[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-[10px]">
+      {items.map(({ id, label, Icon, danger, onClick, onSpeak }) => (
+        <div key={id} className="relative">
+          <button
+            type="button"
+            onClick={onClick}
+            className="flex h-[92px] w-full flex-col rounded-[16px] border bg-white p-[12px] text-left transition-transform active:scale-[0.98]"
+            style={{ borderColor: danger ? SIG.clay : SIG.hairline }}
+          >
+            <Icon className="h-[18px] w-[18px]" style={{ color: danger ? SIG.clay : SIG.sage }} />
+            <span className="mt-auto text-[12px] font-extrabold" style={{ color: danger ? SIG.clay : SIG.ink }}>{label}</span>
+          </button>
+          {onSpeak && (
+            <button
+              type="button"
+              onClick={onSpeak}
+              aria-label={`Écouter : ${label}`}
+              className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full"
+              style={{ color: SIG.muted }}
+            >
+              <Volume2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Carte blanche générique (résumé, météo, progression…). */
+export function InfoCard({ children, className = '', onClick }: { children: React.ReactNode; className?: string; onClick?: () => void }) {
+  const Tag = onClick ? 'button' : 'div';
+  return (
+    <Tag
+      {...(onClick ? { type: 'button' as const, onClick } : {})}
+      className={`block w-full rounded-[18px] border bg-white p-[14px] text-left ${className}`}
+      style={{ borderColor: SIG.hairline }}
+    >
+      {children}
+    </Tag>
   );
 }

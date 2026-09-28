@@ -6,7 +6,13 @@ import { SmartChatbot } from '@/components/tamtam/SmartChatbot';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
+import FitilaPageHeader from '@/components/fitila/FitilaPageHeader';
+import { SectionTiles } from '@/components/fitila/FitilaUi';
+import type { LucideIcon } from 'lucide-react';
+import { Sprout, PawPrint, Store, HeartPulse, HelpCircle, BookOpen, Sparkles } from 'lucide-react';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
+
+const TILE_ICONS: Record<string, LucideIcon> = { crops: Sprout, livestock: PawPrint, business: Store, health: HeartPulse, qa: HelpCircle, stories: BookOpen };
 
 const categories = [
   { id: 'crops', icon: '🌱', color: 'bg-green-500', bgLight: 'bg-green-50', labelFr: 'Cultures', labelBa: 'Gberu' },
@@ -164,7 +170,7 @@ export default function TamTamEducation() {
   const courses = activeCategory ? mockCourses[activeCategory] || [] : [];
 
   return (
-    <div className="min-h-screen bg-tamtam-bg px-4 pb-32">
+    <div className="h-full overflow-y-auto bg-[#F7F5EC] text-[#241F2E] px-[18px] pb-28">
       <AnimatePresence mode="wait">
         {!activeCategory ? (
           <motion.div
@@ -173,63 +179,38 @@ export default function TamTamEducation() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            {/* Header */}
-            <div className="text-center mb-6">
-              <span className="text-5xl">📚</span>
-              <h1 className="text-xl font-bold text-tamtam-text mt-2">
-                {currentLang === 'fr' ? 'Éducation' : 'Ẹ̀kọ́'}
-              </h1>
-              <p className="text-tamtam-text-muted text-sm mt-1">
-                {currentLang === 'fr' ? 'Apprenez en écoutant' : 'Kọ́ nípa gbígbọ́'}
-              </p>
-            </div>
+            <div className="-mx-[18px] mb-4"><FitilaPageHeader title="Éducation" subtitle="Éducation, modules et progression" /></div>
 
             {/* Progress card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-3xl p-4 mb-6 text-white"
+              className="bg-white border border-[#E4DFCC] rounded-[18px] p-[16px] mb-[14px] text-[#241F2E]"
             >
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+                <div className="w-14 h-14 bg-[#F3E3B9] rounded-[16px] flex items-center justify-center">
                   <span className="text-3xl">🎓</span>
                 </div>
                 <div className="flex-1">
                   <p className="text-sm opacity-80">{currentLang === 'fr' ? 'Votre progression' : 'Ìlọsíwájú rẹ'}</p>
                   <p className="text-2xl font-bold">2 / 15 {currentLang === 'fr' ? 'cours' : 'ẹ̀kọ́'}</p>
-                  <div className="w-full bg-white/30 rounded-full h-2 mt-2">
-                    <div className="bg-white h-2 rounded-full" style={{ width: '13%' }} />
+                  <div className="w-full bg-[#F1EDDF] rounded-full h-2 mt-2">
+                    <div className="bg-[#C99530] h-2 rounded-full" style={{ width: '13%' }} />
                   </div>
                 </div>
               </div>
             </motion.div>
 
-            {/* Categories grid */}
-            <div className="grid grid-cols-2 gap-4">
-              {categories.map((category, index) => (
-                <motion.button
-                  key={category.id}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.1 }}
-                  onClick={() => handleCategorySelect(category)}
-                  className={`aspect-square ${category.bgLight} rounded-3xl shadow-tamtam-soft flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform relative`}
-                >
-                  <div className={`w-16 h-16 ${category.color} rounded-2xl flex items-center justify-center`}>
-                    <span className="text-3xl">{category.icon}</span>
-                  </div>
-                  <span className="text-sm font-medium text-tamtam-text text-center px-2">
-                    {currentLang === 'fr' ? category.labelFr : category.labelBa}
-                  </span>
-                  <button
-                    onClick={(e) => handleSpeakLabel(category.labelFr, category.labelBa, e)}
-                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/80 flex items-center justify-center"
-                  >
-                    <Volume2 className="w-3 h-3 text-tamtam-primary" />
-                  </button>
-                </motion.button>
-              ))}
-            </div>
+            <SectionTiles
+              items={categories.map((s) => ({
+                id: s.id,
+                label: currentLang === 'fr' ? s.labelFr : s.labelBa,
+                Icon: TILE_ICONS[s.id] ?? Sparkles,
+                danger: (s as { isEmergency?: boolean }).isEmergency,
+                onClick: () => handleCategorySelect(s),
+                onSpeak: (e) => handleSpeakLabel(s.labelFr, s.labelBa, e),
+              }))}
+            />
           </motion.div>
         ) : activeCourse ? (
           // Audio player view
@@ -317,14 +298,15 @@ export default function TamTamEducation() {
             <div className="flex items-center gap-4 mb-6">
               <button
                 onClick={handleBack}
-                className="w-12 h-12 bg-tamtam-surface rounded-2xl flex items-center justify-center shadow-tamtam-soft"
-              >
-                <ArrowLeft className="w-6 h-6 text-tamtam-text" />
-              </button>
+                aria-label="Retour"
+                className="w-[42px] h-[42px] bg-white border border-[#E4DFCC] rounded-full flex items-center justify-center"
+                >
+                  <ArrowLeft className="w-5 h-5 text-[#241F2E]" />
+                </button>
               <div className={`w-14 h-14 ${activeCategoryData?.color} rounded-2xl flex items-center justify-center`}>
                 <span className="text-3xl">{activeCategoryData?.icon}</span>
               </div>
-              <span className="text-lg font-bold text-tamtam-text">
+              <span className="text-[17px] font-extrabold text-[#241F2E]">
                 {activeCategoryData && (currentLang === 'fr' ? activeCategoryData.labelFr : activeCategoryData.labelBa)}
               </span>
             </div>

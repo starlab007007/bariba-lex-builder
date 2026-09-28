@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import FitilaPageHeader from '@/components/fitila/FitilaPageHeader';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, ShoppingCart, Package, Briefcase, HandHelping, Volume2 } from 'lucide-react';
@@ -157,12 +158,10 @@ export default function TamTamMarket() {
   ];
 
   return (
-    <div className="min-h-screen bg-tamtam-bg px-4 pb-32">
+    <div className="h-full overflow-y-auto bg-[#F7F5EC] text-[#241F2E] px-[18px] pb-28">
       {/* Header with global audio help */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-tamtam-text">
-          {t('market_title')}
-        </h1>
+      <div className="-mx-[18px] mb-4 flex items-center justify-between pr-[18px]">
+        <FitilaPageHeader title={t('market_title')} subtitle="Produits, jobs et annonces du marché" />
         <VoiceButton 
           textFr={t('market_welcome_desc_fr')}
           textBa={t('market_welcome_desc_fr')}
@@ -190,12 +189,12 @@ export default function TamTamMarket() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.1 }}
                   onClick={() => handleMainAction(action.id)}
-                  className="relative bg-tamtam-surface rounded-3xl p-6 flex flex-col items-center gap-3 hover:shadow-lg transition-all group"
+                  className="relative h-[132px] bg-white border border-[#E4DFCC] rounded-[18px] p-[14px] flex flex-col items-start justify-between text-left transition-all group active:scale-[0.98]"
                 >
-                  <div className={`w-16 h-16 ${action.color} rounded-2xl flex items-center justify-center`}>
-                    <span className="text-4xl">{action.emoji}</span>
+                  <div className="w-[44px] h-[44px] bg-[#F3E3B9] text-[#9C6B1D] rounded-full flex items-center justify-center">
+                    <action.icon className="w-[22px] h-[22px]" />
                   </div>
-                  <span className="font-bold text-tamtam-text text-lg">
+                  <span className="font-extrabold text-[#241F2E] text-[15px]">
                     {t(action.labelKey)}
                   </span>
                   
@@ -215,14 +214,14 @@ export default function TamTamMarket() {
             <div className="flex gap-3 mb-6">
               <button
                 onClick={() => handleMainAction('my-shop')}
-                className="flex-1 py-3 px-4 bg-tamtam-surface rounded-xl flex items-center justify-center gap-2 text-tamtam-text-muted"
+                className="flex-1 py-3 px-4 bg-white border border-[#E4DFCC] rounded-[16px] flex items-center justify-center gap-2 text-[#241F2E] font-bold"
               >
                 <span>👤</span>
                 <span className="text-sm">{t('market_my_shop')}</span>
               </button>
               <button
                 onClick={() => handleMainAction('my-jobs')}
-                className="flex-1 py-3 px-4 bg-tamtam-surface rounded-xl flex items-center justify-center gap-2 text-tamtam-text-muted"
+                className="flex-1 py-3 px-4 bg-tamtam-surface rounded-xl flex items-center justify-center gap-2 text-[#8C8571]"
               >
                 <span>📋</span>
                 <span className="text-sm">{t('market_my_ads')}</span>
@@ -251,13 +250,13 @@ export default function TamTamMarket() {
           >
             <button 
               onClick={() => setView('home')} 
-              className="mb-4 text-tamtam-primary flex items-center gap-2"
+              className="mb-4 text-[#9C6B1D] font-extrabold flex items-center gap-2"
             >
               ← {t('common_back')}
             </button>
             
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-tamtam-text">
+              <h2 className="text-lg font-bold text-[#241F2E]">
                 {t('market_what_sell')}
               </h2>
               <VoiceButton 
@@ -290,7 +289,7 @@ export default function TamTamMarket() {
           >
             <button 
               onClick={() => setView('home')} 
-              className="mb-4 text-tamtam-primary flex items-center gap-2"
+              className="mb-4 text-[#9C6B1D] font-extrabold flex items-center gap-2"
             >
               ← {t('common_back')}
             </button>
@@ -312,7 +311,7 @@ export default function TamTamMarket() {
                   />
                 ))}
                 {products.length === 0 && (
-                  <div className="col-span-2 text-center py-12 text-tamtam-text-muted">
+                  <div className="col-span-2 text-center py-12 text-[#8C8571]">
                     {t('market_no_product')}
                   </div>
                 )}
@@ -331,7 +330,7 @@ export default function TamTamMarket() {
           >
             <button 
               onClick={() => setView('home')} 
-              className="mb-4 text-tamtam-primary flex items-center gap-2"
+              className="mb-4 text-[#9C6B1D] font-extrabold flex items-center gap-2"
             >
               ← {t('common_back')}
             </button>
@@ -339,7 +338,7 @@ export default function TamTamMarket() {
             {/* Quick create demand */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-tamtam-text">
+                <h3 className="font-bold text-[#241F2E]">
                   {t('market_signal_availability')}
                 </h3>
                 <VoiceButton 
@@ -352,7 +351,7 @@ export default function TamTamMarket() {
             </div>
 
             {/* Job offers list */}
-            <h3 className="font-bold text-tamtam-text mb-3">
+            <h3 className="font-bold text-[#241F2E] mb-3">
               {t('market_job_offers')}
             </h3>
 
@@ -373,7 +372,7 @@ export default function TamTamMarket() {
                   />
                 ))}
                 {offers.length === 0 && (
-                  <div className="text-center py-12 text-tamtam-text-muted">
+                  <div className="text-center py-12 text-[#8C8571]">
                     {t('market_no_offer')}
                   </div>
                 )}
@@ -392,7 +391,7 @@ export default function TamTamMarket() {
           >
             <button 
               onClick={() => setView('home')} 
-              className="mb-4 text-tamtam-primary flex items-center gap-2"
+              className="mb-4 text-[#9C6B1D] font-extrabold flex items-center gap-2"
             >
               ← {t('common_back')}
             </button>
@@ -400,7 +399,7 @@ export default function TamTamMarket() {
             {/* Quick create offer */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-tamtam-text">
+                <h3 className="font-bold text-[#241F2E]">
                   {t('market_create_offer')}
                 </h3>
                 <VoiceButton 
@@ -413,7 +412,7 @@ export default function TamTamMarket() {
             </div>
 
             {/* People looking for work */}
-            <h3 className="font-bold text-tamtam-text mb-3">
+            <h3 className="font-bold text-[#241F2E] mb-3">
               {t('market_people_available')}
             </h3>
 
@@ -435,7 +434,7 @@ export default function TamTamMarket() {
                   />
                 ))}
                 {demands.length === 0 && (
-                  <div className="text-center py-12 text-tamtam-text-muted">
+                  <div className="text-center py-12 text-[#8C8571]">
                     {t('market_no_person')}
                   </div>
                 )}
@@ -454,7 +453,7 @@ export default function TamTamMarket() {
           >
             <button 
               onClick={() => setView('home')} 
-              className="mb-4 text-tamtam-primary flex items-center gap-2"
+              className="mb-4 text-[#9C6B1D] font-extrabold flex items-center gap-2"
             >
               ← {t('common_back')}
             </button>
@@ -487,7 +486,7 @@ export default function TamTamMarket() {
           >
             <button 
               onClick={() => setView('home')} 
-              className="mb-4 text-tamtam-primary flex items-center gap-2"
+              className="mb-4 text-[#9C6B1D] font-extrabold flex items-center gap-2"
             >
               ← {t('common_back')}
             </button>
@@ -508,7 +507,7 @@ export default function TamTamMarket() {
                   />
                 ))}
                 {myJobs.length === 0 && (
-                  <div className="text-center py-12 text-tamtam-text-muted">
+                  <div className="text-center py-12 text-[#8C8571]">
                     {t('market_no_ad')}
                   </div>
                 )}

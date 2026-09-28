@@ -6,8 +6,14 @@ import { SmartChatbot } from '@/components/tamtam/SmartChatbot';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
+import FitilaPageHeader from '@/components/fitila/FitilaPageHeader';
+import { SectionTiles } from '@/components/fitila/FitilaUi';
+import type { LucideIcon } from 'lucide-react';
+import { Sprout, PawPrint, Droplet, Headset, Banknote, Sparkles } from 'lucide-react';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 import { useToast } from '@/hooks/use-toast';
+const TILE_ICONS: Record<string, LucideIcon> = { weather: Sun, crops: Sprout, livestock: PawPrint, water: Droplet, technician: Headset, prices: Banknote };
+
 const sections = [
   { id: 'weather', icon: '🌧️', color: 'bg-blue-500', bgLight: 'bg-blue-50', labelFr: 'Météo', labelBa: 'Gura wɑɑru' },
   { id: 'crops', icon: '🌱', color: 'bg-green-500', bgLight: 'bg-green-50', labelFr: 'Conseils cultures', labelBa: 'Gberu deburu' },
@@ -106,7 +112,7 @@ export default function TamTamAgriculture() {
   const activeSectionData = sections.find(s => s.id === activeSection);
 
   return (
-    <div className="min-h-screen bg-tamtam-bg px-4 pb-32">
+    <div className="h-full overflow-y-auto bg-[#F7F5EC] text-[#241F2E] px-[18px] pb-28">
       <AnimatePresence mode="wait">
         {!activeSection ? (
           <motion.div
@@ -115,19 +121,13 @@ export default function TamTamAgriculture() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            {/* Header */}
-            <div className="text-center mb-6">
-              <span className="text-5xl">🌾</span>
-              <h1 className="text-xl font-bold text-tamtam-text mt-2">
-                {currentLang === 'fr' ? 'Agriculture' : 'Gberu sɔmburu'}
-              </h1>
-            </div>
+            <div className="-mx-[18px] mb-4"><FitilaPageHeader title="Agriculture" subtitle="Conseils agricoles, météo et prix" /></div>
 
             {/* Quick weather widget */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-r from-blue-500 to-cyan-400 rounded-3xl p-4 mb-6 text-white"
+              className="bg-white border border-[#E4DFCC] rounded-[18px] p-[16px] mb-[14px] text-[#241F2E] relative"
               onClick={speakWeather}
             >
               <div className="flex items-center justify-between">
@@ -135,7 +135,7 @@ export default function TamTamAgriculture() {
                   <p className="text-sm opacity-80">{currentLang === 'fr' ? "Aujourd'hui" : 'Gisɔ'}</p>
                   <p className="text-3xl font-bold">{mockWeather.temp}°C</p>
                 </div>
-                <div className="text-6xl">☀️</div>
+                <div className="text-5xl">☀️</div>
                 <div className="text-right">
                   <div className="flex items-center gap-1">
                     <Droplets className="w-4 h-4" />
@@ -147,7 +147,7 @@ export default function TamTamAgriculture() {
                   </div>
                 </div>
               </div>
-              <div className="flex justify-between mt-4 pt-3 border-t border-white/20">
+              <div className="flex justify-between mt-4 pt-3 border-t border-[#E4DFCC]">
                 {mockWeather.forecast.map((day, i) => (
                   <div key={i} className="text-center">
                     <p className="text-xs opacity-70">{day.day}</p>
@@ -156,37 +156,21 @@ export default function TamTamAgriculture() {
                   </div>
                 ))}
               </div>
-              <button className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+              <button className="absolute top-2 right-2 w-8 h-8 rounded-full bg-[#F1EDDF] text-[#9C6B1D] flex items-center justify-center">
                 <Volume2 className="w-4 h-4" />
               </button>
             </motion.div>
 
-            {/* Sections grid */}
-            <div className="grid grid-cols-2 gap-4">
-              {sections.map((section, index) => (
-                <motion.button
-                  key={section.id}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.1 }}
-                  onClick={() => handleSectionSelect(section)}
-                  className={`aspect-square ${section.bgLight} rounded-3xl shadow-tamtam-soft flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform relative`}
-                >
-                  <div className={`w-16 h-16 ${section.color} rounded-2xl flex items-center justify-center`}>
-                    <span className="text-3xl">{section.icon}</span>
-                  </div>
-                  <span className="text-sm font-medium text-tamtam-text text-center px-2">
-                    {currentLang === 'fr' ? section.labelFr : section.labelBa}
-                  </span>
-                  <button
-                    onClick={(e) => handleSpeakLabel(section.labelFr, section.labelBa, e)}
-                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/80 flex items-center justify-center"
-                  >
-                    <Volume2 className="w-3 h-3 text-tamtam-primary" />
-                  </button>
-                </motion.button>
-              ))}
-            </div>
+            <SectionTiles
+              items={sections.map((s) => ({
+                id: s.id,
+                label: currentLang === 'fr' ? s.labelFr : s.labelBa,
+                Icon: TILE_ICONS[s.id] ?? Sparkles,
+                danger: (s as { isEmergency?: boolean }).isEmergency,
+                onClick: () => handleSectionSelect(s),
+                onSpeak: (e) => handleSpeakLabel(s.labelFr, s.labelBa, e),
+              }))}
+            />
           </motion.div>
         ) : (
           <motion.div
@@ -200,14 +184,15 @@ export default function TamTamAgriculture() {
             <div className="flex items-center gap-4 mb-6">
               <button
                 onClick={handleBack}
-                className="w-12 h-12 bg-tamtam-surface rounded-2xl flex items-center justify-center shadow-tamtam-soft"
-              >
-                <ArrowLeft className="w-6 h-6 text-tamtam-text" />
-              </button>
-              <div className={`w-14 h-14 ${activeSectionData?.color} rounded-2xl flex items-center justify-center`}>
-                <span className="text-3xl">{activeSectionData?.icon}</span>
+                aria-label="Retour"
+                className="w-[42px] h-[42px] bg-white border border-[#E4DFCC] rounded-full flex items-center justify-center"
+                >
+                  <ArrowLeft className="w-5 h-5 text-[#241F2E]" />
+                </button>
+              <div className={`w-[42px] h-[42px] bg-[#F3E3B9] rounded-[14px] flex items-center justify-center`}>
+                <span className="text-[20px]">{activeSectionData?.icon}</span>
               </div>
-              <span className="text-lg font-bold text-tamtam-text">
+              <span className="text-[17px] font-extrabold text-[#241F2E]">
                 {activeSectionData && (currentLang === 'fr' ? activeSectionData.labelFr : activeSectionData.labelBa)}
               </span>
             </div>
