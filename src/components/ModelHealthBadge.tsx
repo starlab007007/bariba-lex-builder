@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Brain, Zap, BarChart3, Bot, Cloud } from "lucide-react";
 
 interface ModelHealthBadgeProps {
-  modelId: 'smt' | 'simplified' | 'baatonu' | 'byt5-expert' | 'lovable-ai' | 'idiom' | 'context' | 'rag' | 'advanced' | 'fallback' | 'ai';
+  modelId: 'smt' | 'simplified' | 'baatonu' | 'byt5-expert' | 'idiom' | 'context' | 'rag' | 'advanced' | 'fallback' | 'ai';
   confidence?: number;
   duration?: number;
 }
@@ -19,7 +19,6 @@ const modelConfig = {
   'simplified': { icon: Zap, color: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400', label: '🔤 SimplifiedAI' },
   'baatonu': { icon: Brain, color: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400', label: '🧠 BaatonuAI' },
   'byt5-expert': { icon: Bot, color: 'bg-orange-500/10 text-orange-700 dark:text-orange-400', label: '🤖 ByT5' },
-  'lovable-ai': { icon: Cloud, color: 'bg-pink-500/10 text-pink-700 dark:text-pink-400', label: '☁️ Lovable AI' },
   'advanced': { icon: Brain, color: 'bg-violet-500/10 text-violet-700 dark:text-violet-400', label: '🚀 Advanced' },
   'ai': { icon: Cloud, color: 'bg-pink-500/10 text-pink-700 dark:text-pink-400', label: '☁️ AI' },
   'fallback': { icon: Zap, color: 'bg-gray-500/10 text-gray-700 dark:text-gray-400', label: '⚡ Fallback' },
