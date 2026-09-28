@@ -27,21 +27,21 @@ interface SuperIARequest {
 }
 
 /**
- * Génère du contenu via Lovable AI (Gemini)
+ * Génère du contenu via Mistral AI (Gemini)
  */
 async function generateContent(prompt: string): Promise<{ text_fr: string; title: string; error?: string }> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) return { text_fr: "", title: "", error: "LOVABLE_API_KEY manquant" };
+  const MISTRAL_API_KEY = Deno.env.get("MISTRAL_API_KEY");
+  if (!MISTRAL_API_KEY) return { text_fr: "", title: "", error: "MISTRAL_API_KEY manquant" };
 
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resp = await fetch("https://api.mistral.ai/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${MISTRAL_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "mistral-small-latest",
         messages: [
           {
             role: "system",
