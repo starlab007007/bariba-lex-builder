@@ -83,7 +83,6 @@ export const KuaishouSideMenu: React.FC<KuaishouSideMenuProps> = ({
       title: 'Entertainment',
       titleBa: 'Ìdárayá',
       items: [
-        { icon: <Gamepad2 className="w-5 h-5" />, label: 'Jeux', labelBa: 'Eré', path: '/fitila/games' },
       ],
     },
   ];
