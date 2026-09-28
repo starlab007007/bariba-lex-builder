@@ -115,10 +115,10 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const MISTRAL_API_KEY = Deno.env.get('MISTRAL_API_KEY');
     
-    if (!LOVABLE_API_KEY) {
-      console.warn('[analyze-story] LOVABLE_API_KEY not configured, using default structure');
+    if (!MISTRAL_API_KEY) {
+      console.warn('[analyze-story] MISTRAL_API_KEY not configured, using default structure');
       const defaultStructure = createDefaultStructure(duration, transcript);
       return new Response(JSON.stringify(defaultStructure), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -127,14 +127,14 @@ serve(async (req) => {
 
     console.log(`[analyze-story] Analyzing transcript (${transcript.length} chars) for ${duration}s video`);
     
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${MISTRAL_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+        model: 'mistral-small-latest',
         messages: [
           { role: 'system', content: STORY_ANALYSIS_PROMPT },
           { role: 'user', content: `Durée totale exacte: ${duration} secondes\n\nTranscript de l'histoire:\n${transcript}` }
