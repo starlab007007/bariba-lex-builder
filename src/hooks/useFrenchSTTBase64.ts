@@ -7,7 +7,7 @@ export interface FrenchSTTBase64Result {
   transcription: string;
   confidence: number;
   duration: number;
-  method: 'lovable-ai' | 'web-speech-api' | 'fallback';
+  method: 'edge-function' | 'web-speech-api' | 'fallback';
 }
 
 export interface UseFrenchSTTBase64Return {
@@ -38,7 +38,7 @@ export const useFrenchSTTBase64 = (): UseFrenchSTTBase64Return => {
     try {
       const startTime = Date.now();
       
-      // Try Lovable AI via Edge Function
+      // Try FITILA French STT Edge Function
       const { data, error: fnError } = await supabase.functions.invoke('french-stt', {
         body: { audio: audioBase64 }
       });
@@ -69,7 +69,7 @@ export const useFrenchSTTBase64 = (): UseFrenchSTTBase64Return => {
         transcription: data.transcription || '',
         confidence: data.confidence || 90,
         duration: Date.now() - startTime,
-        method: 'lovable-ai'
+        method: 'edge-function'
       };
 
       setLastResult(result);
