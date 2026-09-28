@@ -20,6 +20,7 @@ import { AnimeLibraryManager } from '@/components/admin/AnimeLibraryManager';
 import VoiceRecordingsBrowser from '@/components/admin/VoiceRecordingsBrowser';
 import ClasseAudioReview from '@/pages/admin/ClasseAudioReview';
 import ApprendreVoiceAdmin from '@/components/admin/apprendre-voice/ApprendreVoiceAdmin';
+import ApContentImportPanel from '@/components/admin/apprendre-content/ApContentImportPanel';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Settings, Users, BarChart3, 
@@ -27,7 +28,7 @@ import {
   BookOpen, 
   Sparkles, Shield, 
   Activity, Download, Edit3, Volume2, Film, BookImage,
-  AlertTriangle, Mic, ExternalLink
+  AlertTriangle, Mic, ExternalLink, GraduationCap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -113,6 +114,7 @@ export default function AdminDashboard() {
     '/admin/dictionary-advanced': 'dictionary-advanced',
     '/admin/idioms': 'idioms',
     '/admin/grammar-stats': 'grammar-stats',
+    '/admin/apprendre-content': 'apprendre-content',
     '/admin/apprendre-voice': 'apprendre-voice',
     '/admin/classe-audio': 'classe-audio',
     '/admin/audio-services': 'audio-services',
@@ -171,6 +173,7 @@ export default function AdminDashboard() {
         { value: 'dictionary-advanced', label: 'Dictionnaire avancé', icon: Sparkles },
         { value: 'idioms', label: 'Idiomes', icon: FileText },
         { value: 'grammar-stats', label: 'Stats grammaticales', icon: BarChart3 },
+        { value: 'apprendre-content', label: 'Contenu Apprendre', icon: GraduationCap },
       ],
     },
     {
@@ -234,6 +237,7 @@ export default function AdminDashboard() {
           </div>
         </TabErrorBoundary>
       </TabsContent>
+      <TabsContent value="apprendre-content" className="m-0"><TabErrorBoundary tabName="apprendre-content"><ApContentImportPanel /></TabErrorBoundary></TabsContent>
       <TabsContent value="apprendre-voice" className="m-0"><TabErrorBoundary tabName="apprendre-voice"><ApprendreVoiceAdmin /></TabErrorBoundary></TabsContent>
       <TabsContent value="classe-audio" className="m-0">
         <TabErrorBoundary tabName="classe-audio">

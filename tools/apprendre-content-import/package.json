@@ -1,0 +1,16 @@
+{
+  "name": "apprendre-content-import",
+  "private": true,
+  "type": "module",
+  "description": "Import du contenu Apprendre (src/data/*.json) dans Supabase, et test de la migration associée.",
+  "scripts": {
+    "import": "node import_apprendre_content.mjs",
+    "test": "node test_migration.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.0"
+  }
+}

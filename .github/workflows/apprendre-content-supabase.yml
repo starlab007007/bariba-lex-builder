@@ -1,0 +1,67 @@
+name: Apprendre content to Supabase
+
+# Garde le contenu Apprendre de Supabase identique au repo (source :
+# src/data/apprendre_v2.json et scenes_v2.json, copies exactes des assets
+# Flutter de feat/apprendre-v2.4-build19-20260927).
+#   1. test : rejoue migration + import dans PostgreSQL (PGlite)
+#   2. sync : applique la migration et importe le contenu dans le projet
+#      Supabase du site (web) et dans celui de l'appli mobile (flutter)
+# Résultats lisibles en annotations du run.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - supabase/migrations/20260928090000_apprendre_module_content.sql
+      - src/data/apprendre_v2.json
+      - src/data/scenes_v2.json
+      - tools/apprendre-content-import/**
+      - .github/workflows/apprendre-content-supabase.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apprendre-content-supabase
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Test migration and import in PostgreSQL (PGlite)
+        working-directory: tools/apprendre-content-import
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+
+  sync:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [web, flutter]
+    env:
+      TARGET: ${{ matrix.target }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      WEB_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      WEB_SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply migration and import content
+        run: python3 tools/apprendre-content-import/sync_supabase.py
