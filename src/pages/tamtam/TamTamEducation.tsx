@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Volume2, Play, Pause, SkipBack, SkipForward, CheckCircle } from 'lucide-react';
 import { SmartChatbot } from '@/components/tamtam/SmartChatbot';
@@ -76,7 +77,9 @@ const mockStories = [
 ];
 
 export default function TamTamEducation() {
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const location=useLocation(); const navigate=useNavigate();
+  const routeCategory=()=>{const raw=location.pathname.split('/').filter(Boolean)[1]; const alias:Record<string,string>={commerce:'business',sante:'health',histoires:'stories'}; const s=alias[raw]||raw; return s&&categories.some(x=>x.id===s)?s:null;};
+  const [activeCategory, setActiveCategory] = useState<string | null>(routeCategory());
   const [activeCourse, setActiveCourse] = useState<AudioCourse | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -85,6 +88,7 @@ export default function TamTamEducation() {
   const { speakCurrentLang } = useBilingualAudio();
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  useEffect(()=>{setActiveCategory(routeCategory());},[location.pathname]);
   useEffect(() => {
     announceAction(currentLang === 'fr' ? 'Éducation' : 'Ẹ̀kọ́');
   }, [announceAction, currentLang]);
@@ -115,6 +119,7 @@ export default function TamTamEducation() {
     const label = currentLang === 'fr' ? category.labelFr : category.labelBa;
     await speakCurrentLang(label);
     setActiveCategory(category.id);
+    navigate('/education/'+({business:'commerce',health:'sante',stories:'histoires'} as Record<string,string>)[category.id] ?? category.id);
   };
 
   const handleBack = () => {
