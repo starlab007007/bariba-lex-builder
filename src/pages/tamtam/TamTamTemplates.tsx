@@ -90,7 +90,7 @@ export default function TamTamTemplates() {
           </button>
           
           <button
-            onClick={() => { if ('vibrate' in navigator) navigator.vibrate(20); navigate('/tamtam'); }}
+            onClick={() => { if ('vibrate' in navigator) navigator.vibrate(20); navigate('/'); }}
             className="flex items-center gap-2 px-4 py-3 rounded-xl bg-muted/50 hover:bg-muted active:scale-95 transition-all min-h-[48px]"
             aria-label="Accueil"
           >

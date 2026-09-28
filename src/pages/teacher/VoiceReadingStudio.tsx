@@ -143,7 +143,7 @@ export default function VoiceReadingStudio() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <button onClick={() => nav(`/fitila/teacher/voice-reading/${lvl}/${mod}`)} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <button onClick={() => nav(`/teacher/voice-reading/${lvl}/${mod}`)} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="w-4 h-4" /> Leçons
         </button>
         <label className="inline-flex items-center gap-2 text-sm cursor-pointer select-none">

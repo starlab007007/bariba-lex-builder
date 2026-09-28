@@ -14,7 +14,7 @@ function ModuleCard({ level, module, label, emoji }: { level: 'N1' | 'N2'; modul
   const pct = totalItems > 0 ? Math.round((approved / totalItems) * 100) : 0;
   return (
     <button
-      onClick={() => nav(`/fitila/teacher/voice-reading/${level}/${module}`)}
+      onClick={() => nav(`/teacher/voice-reading/${level}/${module}`)}
       className="w-full text-left p-4 rounded-2xl border border-border bg-card hover:bg-muted/40 transition-colors flex items-center gap-3"
     >
       <span className="text-3xl">{emoji}</span>

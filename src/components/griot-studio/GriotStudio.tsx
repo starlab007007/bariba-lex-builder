@@ -432,7 +432,7 @@ export function GriotStudio() {
   const handlePublishSuccess = useCallback((videoId: string) => {
     setPublishedVideoId(videoId);
     clearDraft();
-    const feedUrl = videoId ? `/fitila?video=${videoId}` : '/fitila';
+    const feedUrl = videoId ? `/social?video=${videoId}` : '/';
     toast({ title: '🎉 Félicitations !', description: 'Ton conte est maintenant visible sur le feed.' });
     // Force full page reload to close all modals (FullscreenCreator overlay)
     setTimeout(() => {
@@ -441,7 +441,7 @@ export function GriotStudio() {
   }, [clearDraft, toast]);
 
   const handleViewInFeed = useCallback(() => {
-    navigate(publishedVideoId ? `/fitila?video=${publishedVideoId}` : '/fitila');
+    navigate(publishedVideoId ? `/social?video=${publishedVideoId}` : '/');
   }, [navigate, publishedVideoId]);
 
   const handleReset = useCallback(() => {
@@ -476,13 +476,13 @@ export function GriotStudio() {
 
   const handleCancelClick = useCallback(() => {
     if (audioBlob || generationResult) setShowCancelConfirm(true);
-    else navigate('/fitila', { replace: true });
+    else navigate('/', { replace: true });
   }, [audioBlob, generationResult, navigate]);
 
   const confirmCancel = useCallback(() => {
     setShowCancelConfirm(false);
     handleReset();
-    navigate('/fitila', { replace: true });
+    navigate('/', { replace: true });
   }, [handleReset, navigate]);
 
   const handleModify = useCallback(() => {

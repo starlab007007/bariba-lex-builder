@@ -83,7 +83,7 @@ const NotFound = () => {
         >
           <motion.button
             whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/tamtam')}
+            onClick={() => navigate('/')}
             className="px-6 py-3 kuaishou-btn-primary flex items-center justify-center gap-2"
           >
             <Home className="w-5 h-5" />

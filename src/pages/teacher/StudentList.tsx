@@ -97,7 +97,7 @@ export default function StudentList() {
         ) : filtered.map(r => (
           <Link
             key={r.user_id}
-            to={`/fitila/teacher/student/${r.user_id}`}
+            to={`/teacher/student/${r.user_id}`}
             className="flex items-center gap-3 p-4 border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors"
           >
             {r.avatar_url ? (

@@ -470,10 +470,10 @@ const TamTamCreator: React.FC = () => {
         // Can't go back during publish
         break;
       case 'success':
-        navigate('/tamtam');
+        navigate('/');
         break;
       default:
-        navigate('/tamtam');
+        navigate('/');
     }
   }, [phase, currentSegmentIndex, navigate]);
 
@@ -542,7 +542,7 @@ const TamTamCreator: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors"
-          onClick={() => navigate('/tamtam')}
+          onClick={() => navigate('/')}
         >
           <X className="w-5 h-5" />
         </motion.button>
@@ -576,7 +576,7 @@ const TamTamCreator: React.FC = () => {
             >
               <UnifiedTemplateSelector
                 onSelect={handleTemplateSelect}
-                onClose={() => navigate('/tamtam')}
+                onClose={() => navigate('/')}
               />
             </motion.div>
           )}
@@ -732,7 +732,7 @@ const TamTamCreator: React.FC = () => {
               postId={publishedPostId}
               templateName={selectedTemplate?.name}
               onCreateAnother={handleCreateAnother}
-              onGoHome={() => navigate('/tamtam')}
+              onGoHome={() => navigate('/')}
             />
           )}
         </AnimatePresence>

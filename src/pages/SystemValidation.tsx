@@ -286,7 +286,7 @@ const SystemValidation: React.FC = () => {
           <Button 
             variant="ghost" 
             size="icon"
-            onClick={() => navigate('/tamtam')}
+            onClick={() => navigate('/')}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -419,7 +419,7 @@ const SystemValidation: React.FC = () => {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => navigate('/tamtam')}
+                onClick={() => navigate('/')}
               >
                 TAM-TAM Home
               </Button>

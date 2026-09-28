@@ -23,7 +23,7 @@ export default function TeacherLayout() {
           <span className="text-6xl">🚫</span>
           <h1 className="text-2xl font-black text-gray-800">Accès réservé aux enseignants</h1>
           <p className="text-gray-600">Contactez un administrateur pour obtenir le rôle <span className="font-bold">Enseignant</span>.</p>
-          <button onClick={() => navigate('/fitila')} className="px-6 py-3 rounded-xl bg-amber-500 text-white font-bold">Retour</button>
+          <button onClick={() => navigate('/')} className="px-6 py-3 rounded-xl bg-amber-500 text-white font-bold">Retour</button>
         </div>
       </div>
     );
@@ -44,7 +44,7 @@ export default function TeacherLayout() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <header className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-border">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
-          <button onClick={() => navigate('/fitila')} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
+          <button onClick={() => navigate('/')} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex-1">

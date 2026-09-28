@@ -83,9 +83,9 @@ export const SuccessScreen: React.FC<SuccessScreenProps> = ({
 
   const handleViewInFeed = () => {
     if (postId) {
-      navigate(`/tamtam?postId=${postId}`);
+      navigate(`/social?postId=${postId}`);
     } else {
-      navigate('/tamtam');
+      navigate('/');
     }
   };
 

@@ -74,7 +74,7 @@ export default function PendingGrading() {
       ) : items.map(a => (
         <div key={a.id}>
           <p className="text-xs text-muted-foreground mb-1 px-1">
-            👤 <Link to={`/fitila/teacher/student/${a.user_id}`} className="font-semibold text-blue-600 hover:underline">{profiles.get(a.user_id) ?? a.user_id.slice(0, 8)}</Link>
+            👤 <Link to={`/teacher/student/${a.user_id}`} className="font-semibold text-blue-600 hover:underline">{profiles.get(a.user_id) ?? a.user_id.slice(0, 8)}</Link>
             <span className="ml-2">— {new Date(a.updated_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}</span>
           </p>
           <AnswerReview answer={a} studentName={profiles.get(a.user_id)} onGraded={() => setTick(t => t + 1)} />

@@ -73,7 +73,7 @@ export default function FitilaClasse() {
     if (section === 'lesson-detail') setSection('lessons');
     else if (section === 'eval-detail') setSection('evaluations');
     else if (section !== 'home') setSection('home');
-    else navigate('/fitila');
+    else navigate('/');
   };
 
   const themes = [...new Set(lessons.map(l => l.theme))];
