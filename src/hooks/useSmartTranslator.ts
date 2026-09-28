@@ -349,7 +349,7 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     tamtamFeedback.play('send');
     
     try {
-      // Use Lovable AI Vision for OCR
+      // Use FITILA OCR for OCR
       const { data, error } = await supabase.functions.invoke('ocr-translate', {
         body: { 
           image: imageBase64,
