@@ -16,7 +16,7 @@
 // actions mènent (pas d'écran `ApProgressScreen` porté, et « Studio Voix »/
 // « Validation voix » restent dans `ApprendreVoiceAdmin.tsx`, existant).
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft, Flame, Zap, Eye, Languages, TextCursor, Copy, Clock, Shuffle, Mic,
   GraduationCap, ShieldCheck, Sparkles, TrendingUp, Volume2, type LucideIcon,
@@ -66,6 +66,10 @@ export interface ApHubScreenProps {
   onOpenProgress?: () => void;
   /** Liens legacy injectés par l'appelant (équivalent de `widget.links` côté Dart). */
   extraLinks?: { label: string; icon?: LucideIcon; onClick: () => void }[];
+  /** Route canonique Web correspondante au sous-écran Flutter. */
+  routePath?: string;
+  /** Synchronise les overlays internes avec l'URL Web canonique. */
+  onNavigate?: (path: string) => void;
 }
 
 type Overlay =
@@ -74,7 +78,7 @@ type Overlay =
   | { kind: 'scenes' }
   | { kind: 'foundation'; unit: ApFoundation };
 
-export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceReview, onOpenProgress, extraLinks }: ApHubScreenProps) {
+export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceReview, onOpenProgress, extraLinks, routePath, onNavigate }: ApHubScreenProps) {
   const { data, isLoading, error, refetch } = useApprendreContent();
   const voiceAccess = useApVoiceAccess();
   const { data: audioManifest } = useApprendrePublishedAudio();
@@ -91,6 +95,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
 
   const closeOverlay = () => {
     setOverlay(null);
+    onNavigate?.('/learn');
     setRefreshKey((k) => k + 1); // relit `store.progress`/`scenesProgress` pour les compteurs du Hub
   };
 
@@ -113,10 +118,26 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
   const nextFoundation = content?.foundations.find((f) => !progress.foundationDone(f.id));
   const activeSkills = skillsFor(profile);
 
-  const startDaily = () => setOverlay({ kind: 'daily' });
-  const openReview = () => setOverlay({ kind: 'review' });
-  const openScenes = () => setOverlay({ kind: 'scenes' });
-  const openFoundation = (unit: ApFoundation) => setOverlay({ kind: 'foundation', unit });
+  const startDaily = () => { onNavigate?.('/learn/daily'); setOverlay({ kind: 'daily' }); };
+  const openReview = () => { onNavigate?.('/learn/review'); setOverlay({ kind: 'review' }); };
+  const openScenes = () => { onNavigate?.('/learn/scenes'); setOverlay({ kind: 'scenes' }); };
+  const openFoundation = (unit: ApFoundation) => { onNavigate?.('/learn/foundations/' + unit.id); setOverlay({ kind: 'foundation', unit }); };
+
+  useEffect(() => {
+    if (!routePath || !content) return;
+    if (routePath.endsWith('/daily')) setOverlay({ kind: 'daily' });
+    else if (routePath.endsWith('/review')) setOverlay({ kind: 'review' });
+    else if (routePath.endsWith('/scenes')) setOverlay({ kind: 'scenes' });
+    else {
+      const match = routePath.match(/\/learn\/foundations\/([^/]+)/);
+      if (match) {
+        const unit = content.foundations.find((f) => f.id === decodeURIComponent(match[1]));
+        if (unit) setOverlay({ kind: 'foundation', unit });
+      } else if (routePath === '/learn' || routePath === '/') {
+        setOverlay(null);
+      }
+    }
+  }, [routePath, content]);
 
   if (overlay?.kind === 'daily' && planner) {
     return (
