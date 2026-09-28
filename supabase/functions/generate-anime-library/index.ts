@@ -93,7 +93,7 @@ serve(async (req) => {
     // Support both 'action' (legacy) and 'command' for the API action
     const apiAction = command || body.action;
     
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const FITILA_IMAGE_API_KEY = Deno.env.get('FITILA_IMAGE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
@@ -107,10 +107,10 @@ serve(async (req) => {
         // Use image_action explicitly, with 'standing' as default
         const { action: _, ...genParams } = params;
         const imageAction = body.image_action || 'standing';
-        return await handleGenerateBatch({ ...genParams, action: imageAction }, supabase, LOVABLE_API_KEY);
+        return await handleGenerateBatch({ ...genParams, action: imageAction }, supabase, FITILA_IMAGE_API_KEY);
       
       case 'generate_full_library':
-        return await handleGenerateFullLibrary(params, supabase, LOVABLE_API_KEY);
+        return await handleGenerateFullLibrary(params, supabase, FITILA_IMAGE_API_KEY);
       
       case 'list_library':
         return await handleListLibrary(params, supabase);
@@ -238,7 +238,7 @@ Create a single, complete illustration capturing this scene.`;
   const description_fr = `${character_type === 'child_boy' ? 'Jeune garçon' : character_type === 'child_girl' ? 'Jeune fille' : character_type} dans une scène de ${scene_type}, ambiance ${emotion}`;
 
   // Generate image
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
