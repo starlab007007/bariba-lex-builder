@@ -954,8 +954,8 @@ export class AIServicesHub {
 
     return this.enqueueRequest('translation', async () => {
       try {
-        // Use the existing translation edge function
-        const { data, error } = await supabase.functions.invoke('ai-translate-lovable', {
+        // Use the FITILA ByT5 translation edge function
+        const { data, error } = await supabase.functions.invoke('byt5-bariba-translate', {
           body: {
             text,
             sourceLang: from,
