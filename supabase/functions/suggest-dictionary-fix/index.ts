@@ -15,9 +15,9 @@ serve(async (req) => {
     
     console.log('Received suggestion request:', { entry, issue });
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const MISTRAL_API_KEY = Deno.env.get('MISTRAL_API_KEY');
+    if (!MISTRAL_API_KEY) {
+      throw new Error('MISTRAL_API_KEY is not configured');
     }
 
     // Construire le prompt contextuel basé sur le type de problème
@@ -61,16 +61,16 @@ Format de réponse JSON STRICTEMENT :
 
 IMPORTANT : Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
 
-    console.log('Sending prompt to Lovable AI...');
+    console.log('Sending prompt to Mistral AI...');
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${MISTRAL_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'mistral-small-latest',
         messages: [
           {
             role: 'system',
@@ -88,7 +88,7 @@ IMPORTANT : Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Lovable AI error:', response.status, errorText);
+      console.error('Mistral AI error:', response.status, errorText);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ 
