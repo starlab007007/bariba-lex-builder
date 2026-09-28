@@ -9,8 +9,8 @@ import { TemplateHeroSection } from '@/components/tamtam/templates/TemplateHeroS
 import { TemplateGalleryGrid } from '@/components/tamtam/templates/TemplateGalleryGrid';
 import { TemplatePreviewFullscreen } from '@/components/tamtam/templates/TemplatePreviewFullscreen';
 import { TemplatePublishFlow } from '@/components/tamtam/templates/TemplatePublishFlow';
-import { Template } from '@/components/tamtam/creator/TemplateSystem/types';
-import { allTemplates } from '@/components/tamtam/creator/TemplateSystem/templates';
+import { Template } from '@/components/creator/TemplateSystem/types';
+import { allTemplates } from '@/components/creator/TemplateSystem/templates';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Home } from 'lucide-react';
 
@@ -35,7 +35,7 @@ export default function TamTamTemplates() {
   const handleUseTemplate = useCallback((template: Template) => {
     if ('vibrate' in navigator) navigator.vibrate(50);
     console.log('🎬 Navigating to creator with template:', template.id, template.name);
-    navigate('/tamtam/creator', { 
+    navigate('/creator', { 
       state: { templateId: template.id },
       replace: false 
     });
