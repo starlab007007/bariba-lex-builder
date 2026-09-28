@@ -96,20 +96,20 @@ export default function FitilaClasse() {
       <motion.button
         whileTap={{ scale: 0.95 }}
         onClick={() => handleLevelSwitch('N1')}
-        className={`flex-1 p-4 rounded-3xl border-2 shadow-md transition-all ${
+        className={`flex-1 p-4 rounded-[18px] border transition-all text-left ${
           activeLevel === 'N1'
-            ? 'bg-gradient-to-br from-amber-100 to-orange-100 border-amber-300'
-            : 'bg-white border-gray-200'
+            ? 'bg-[#FFF9E8] border-[#C99530]'
+            : 'bg-white border-[#E4DFCC]'
         }`}
       >
-        <p className={`font-black text-lg ${activeLevel === 'N1' ? 'text-amber-700' : 'text-gray-400'}`}>
+        <p className={`font-extrabold text-[16px] ${activeLevel === 'N1' ? 'text-[#9C6B1D]' : 'text-[#8C8571]'}`}>
           🔥 {currentLang === 'ba' ? 'Dii gbiikiru' : 'Niveau 1'}
         </p>
         {activeLevel === 'N1' && (
           <>
-            <p className="text-amber-600/70 text-xs mt-1">{progressPercent}% {currentLang === 'ba' ? 'kobu' : 'complété'}</p>
-            <div className="mt-2 h-2.5 bg-amber-200/50 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
+            <p className="text-[#8C8571] text-[11px] mt-1">{progressPercent}% {currentLang === 'ba' ? 'kobu' : 'complété'}</p>
+            <div className="mt-2 h-2 bg-[#F1EDDF] rounded-full overflow-hidden">
+              <div className="h-full bg-[#C99530] rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
             </div>
           </>
         )}
@@ -117,20 +117,20 @@ export default function FitilaClasse() {
       <motion.button
         whileTap={{ scale: 0.95 }}
         onClick={() => handleLevelSwitch('N2')}
-        className={`flex-1 p-4 rounded-3xl border-2 shadow-md transition-all ${
+        className={`flex-1 p-4 rounded-[18px] border transition-all text-left ${
           activeLevel === 'N2'
-            ? 'bg-gradient-to-br from-indigo-100 to-purple-100 border-indigo-300'
-            : 'bg-white border-gray-200'
+            ? 'bg-[#FFF9E8] border-[#C99530]'
+            : 'bg-white border-[#E4DFCC]'
         }`}
       >
-        <p className={`font-black text-lg ${activeLevel === 'N2' ? 'text-indigo-700' : 'text-gray-400'}`}>
+        <p className={`font-extrabold text-[16px] ${activeLevel === 'N2' ? 'text-[#9C6B1D]' : 'text-[#8C8571]'}`}>
           🚀 {currentLang === 'ba' ? 'Dii yiruse' : 'Niveau 2'}
         </p>
         {activeLevel === 'N2' && (
           <>
-            <p className="text-indigo-600/70 text-xs mt-1">{progressPercent}% {currentLang === 'ba' ? 'kobu' : 'complété'}</p>
-            <div className="mt-2 h-2.5 bg-indigo-200/50 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
+            <p className="text-[#8C8571] text-[11px] mt-1">{progressPercent}% {currentLang === 'ba' ? 'kobu' : 'complété'}</p>
+            <div className="mt-2 h-2 bg-[#F1EDDF] rounded-full overflow-hidden">
+              <div className="h-full bg-[#C99530] rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
             </div>
           </>
         )}
@@ -144,7 +144,7 @@ export default function FitilaClasse() {
         <div key={group.theme}>
           <div className="flex items-center gap-2 mb-3 px-1">
             <span className="text-lg">📖</span>
-            <h3 className="text-gray-800 font-bold text-sm">{group.label}</h3>
+            <h3 className="text-[#241F2E] font-bold text-sm">{group.label}</h3>
           </div>
           <div className="space-y-2">
             {group.lessons.map(lesson => {
@@ -154,19 +154,19 @@ export default function FitilaClasse() {
                   key={lesson.id}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => { setSelectedLessonId(lesson.id); setSection('lesson-detail'); }}
-                  className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all shadow-sm ${done ? 'bg-emerald-50 border-2 border-emerald-200' : 'bg-white border border-gray-100'}`}
+                  className={`w-full flex items-center gap-3 p-3 rounded-[18px] transition-all ${done ? 'bg-[#DCEAE0]/50 border border-[#3F6E52]/40' : 'bg-white border border-[#E4DFCC]'}`}
                 >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${done ? 'bg-emerald-500 text-white' : activeLevel === 'N2' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${done ? 'bg-[#3F6E52] text-white' : 'bg-[#F3E3B9] text-[#9C6B1D]'}`}>
                     {done ? '✓' : lesson.id}
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="text-gray-800 text-sm font-semibold">{lesson.title}</p>
+                    <p className="text-[#241F2E] text-sm font-semibold">{lesson.title}</p>
                     {lesson.phonetics && (
-                      <p className="text-gray-400 text-xs">{lesson.phonetics.label}</p>
+                      <p className="text-[#8C8571] text-xs">{lesson.phonetics.label}</p>
                     )}
                   </div>
-                  {lesson.imageUrl && <span className="text-gray-300 text-xs">🖼️</span>}
-                  <ChevronRight className="w-4 h-4 text-gray-300" />
+                  {lesson.imageUrl && <span className="text-[#B9B5A8] text-xs">🖼️</span>}
+                  <ChevronRight className="w-4 h-4 text-[#B9B5A8]" />
                 </motion.button>
               );
             })}
@@ -179,26 +179,26 @@ export default function FitilaClasse() {
   const renderEvaluationList = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-gray-700 font-bold text-sm mb-3 px-1">📖 {currentLang === 'ba' ? 'Garibu' : 'Langue'}</h3>
+        <h3 className="text-[#241F2E] font-bold text-sm mb-3 px-1">📖 {currentLang === 'ba' ? 'Garibu' : 'Langue'}</h3>
         <div className="space-y-2">
           {langEvals.map(ev => {
             const score = progress.evaluationScores[ev.id];
             return (
               <motion.button key={ev.id} whileTap={{ scale: 0.98 }}
                 onClick={() => { setSelectedEvalId(ev.id); setSection('eval-detail'); }}
-                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-gray-100 shadow-sm"
+                className="w-full flex items-center gap-3 p-4 rounded-[18px] bg-white border border-[#E4DFCC]"
               >
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-[14px] bg-[#F3E3B9] flex items-center justify-center">
                   <span className="text-2xl">📝</span>
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="text-gray-800 font-semibold text-sm">{ev.title}</p>
-                  <p className="text-gray-400 text-xs">{ev.allQuestions.length} {currentLang === 'ba' ? 'gari bikiabu' : 'questions'}</p>
+                  <p className="text-[#241F2E] font-semibold text-sm">{ev.title}</p>
+                  <p className="text-[#8C8571] text-xs">{ev.allQuestions.length} {currentLang === 'ba' ? 'gari bikiabu' : 'questions'}</p>
                 </div>
                 {score !== undefined && (
-                  <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-600 text-sm font-bold">{score}%</span>
+                  <span className="px-3 py-1 rounded-full bg-[#DCEAE0] text-[#3F6E52] text-sm font-extrabold">{score}%</span>
                 )}
-                <ChevronRight className="w-4 h-4 text-gray-300" />
+                <ChevronRight className="w-4 h-4 text-[#B9B5A8]" />
               </motion.button>
             );
           })}
@@ -206,26 +206,26 @@ export default function FitilaClasse() {
       </div>
       {calcEvals.length > 0 && (
         <div>
-          <h3 className="text-gray-700 font-bold text-sm mb-3 px-1">🔢 {currentLang === 'ba' ? 'Dooru' : 'Calcul'}</h3>
+          <h3 className="text-[#241F2E] font-bold text-sm mb-3 px-1">🔢 {currentLang === 'ba' ? 'Dooru' : 'Calcul'}</h3>
           <div className="space-y-2">
             {calcEvals.map(ev => {
               const score = progress.evaluationScores[ev.id];
               return (
                 <motion.button key={ev.id} whileTap={{ scale: 0.98 }}
                   onClick={() => { setSelectedEvalId(ev.id); setSection('eval-detail'); }}
-                  className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-gray-100 shadow-sm"
+                  className="w-full flex items-center gap-3 p-4 rounded-[18px] bg-white border border-[#E4DFCC]"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-400 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-[14px] bg-[#F3E3B9] flex items-center justify-center">
                     <span className="text-2xl">🧮</span>
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="text-gray-800 font-semibold text-sm">{ev.title}</p>
-                    <p className="text-gray-400 text-xs">{ev.allQuestions.length} {currentLang === 'ba' ? 'gari bikiabu' : 'questions'}</p>
+                    <p className="text-[#241F2E] font-semibold text-sm">{ev.title}</p>
+                    <p className="text-[#8C8571] text-xs">{ev.allQuestions.length} {currentLang === 'ba' ? 'gari bikiabu' : 'questions'}</p>
                   </div>
                   {score !== undefined && (
-                    <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-600 text-sm font-bold">{score}%</span>
+                    <span className="px-3 py-1 rounded-full bg-[#DCEAE0] text-[#3F6E52] text-sm font-extrabold">{score}%</span>
                   )}
-                  <ChevronRight className="w-4 h-4 text-gray-300" />
+                  <ChevronRight className="w-4 h-4 text-[#B9B5A8]" />
                 </motion.button>
               );
             })}
@@ -243,7 +243,7 @@ export default function FitilaClasse() {
         <motion.button
           whileTap={{ scale: 0.98 }}
           onClick={() => navigate('/teacher')}
-          className="w-full flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-200 text-left"
+          className="w-full flex items-center gap-3 p-3 rounded-[18px] bg-[#241F2E] text-white text-left"
         >
           <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
             <GraduationCap className="w-5 h-5" />
@@ -260,17 +260,17 @@ export default function FitilaClasse() {
 
       {/* Stats */}
       <div className="flex gap-3">
-        <div className="flex-1 p-3 rounded-2xl bg-white shadow-sm border border-gray-100 text-center">
-          <p className="text-2xl font-black text-gray-800">{completedCount}</p>
-          <p className="text-gray-400 text-[10px]">{currentLang === 'ba' ? 'Gari kobu' : 'Leçons'}</p>
+        <div className="flex-1 h-[80px] flex flex-col items-center justify-center rounded-[18px] bg-white border border-[#E4DFCC] text-center">
+          <p className="text-[16px] font-extrabold text-[#241F2E]">{completedCount}</p>
+          <p className="text-[#8C8571] text-[11px] mt-1">{currentLang === 'ba' ? 'Gari kobu' : 'Leçons'}</p>
         </div>
-        <div className="flex-1 p-3 rounded-2xl bg-white shadow-sm border border-gray-100 text-center">
-          <p className="text-2xl font-black text-gray-800">{Object.keys(progress.evaluationScores).length}</p>
-          <p className="text-gray-400 text-[10px]">{currentLang === 'ba' ? 'Yaayasiabu' : 'Évaluations'}</p>
+        <div className="flex-1 h-[80px] flex flex-col items-center justify-center rounded-[18px] bg-white border border-[#E4DFCC] text-center">
+          <p className="text-[16px] font-extrabold text-[#241F2E]">{Object.keys(progress.evaluationScores).length}</p>
+          <p className="text-[#8C8571] text-[11px] mt-1">{currentLang === 'ba' ? 'Yaayasiabu' : 'Évaluations'}</p>
         </div>
-        <div className="flex-1 p-3 rounded-2xl bg-white shadow-sm border border-gray-100 text-center">
-          <p className={`text-2xl font-black ${activeLevel === 'N2' ? 'text-indigo-500' : 'text-amber-500'}`}>{progressPercent}%</p>
-          <p className="text-gray-400 text-[10px]">{currentLang === 'ba' ? 'Swaa sɔɔ' : 'Progression'}</p>
+        <div className="flex-1 h-[80px] flex flex-col items-center justify-center rounded-[18px] bg-white border border-[#E4DFCC] text-center">
+          <p className={`text-[16px] font-extrabold text-[#9C6B1D]`}>{progressPercent}%</p>
+          <p className="text-[#8C8571] text-[11px] mt-1">{currentLang === 'ba' ? 'Swaa sɔɔ' : 'Progression'}</p>
         </div>
       </div>
 
@@ -284,15 +284,15 @@ export default function FitilaClasse() {
             transition={{ delay: i * 0.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setSection(sec.id)}
-            className="flex flex-col items-center gap-2 p-5 rounded-3xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all"
+            className="flex flex-col items-start gap-1 p-3 h-[156px] rounded-[18px] bg-white border border-[#E4DFCC] text-left transition-all"
           >
-            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${sec.gradient} flex items-center justify-center shadow-lg`}>
-              <span className="text-3xl">{sec.emoji}</span>
+            <div className={`w-[44px] h-[44px] mb-auto rounded-full bg-[#F3E3B9] flex items-center justify-center`}>
+              <span className="text-[22px]">{sec.emoji}</span>
             </div>
-            <span className="text-gray-800 text-sm font-bold text-center">{sec.label}</span>
-            <span className="text-gray-400 text-[10px] text-center">{sec.desc}</span>
+            <span className="text-[#241F2E] text-[13px] font-extrabold">{sec.label}</span>
+            <span className="text-[#8C8571] text-[10.5px] leading-snug">{sec.desc}</span>
             {sec.count !== undefined && (
-              <span className="text-emerald-500 text-[10px] font-bold">{sec.count}/{totalLessons} ✓</span>
+              <span className="text-[#3F6E52] text-[10.5px] font-extrabold">{sec.count}/{totalLessons} ✓</span>
             )}
           </motion.button>
         ))}
@@ -304,15 +304,15 @@ export default function FitilaClasse() {
           transition={{ delay: sectionCards.length * 0.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setSection('corrections')}
-          className="flex flex-col items-center gap-2 p-5 rounded-3xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all"
+          className="flex flex-col items-start gap-1 p-3 h-[156px] rounded-[18px] bg-white border border-[#E4DFCC] text-left transition-all"
         >
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg">
-            <span className="text-3xl">✅</span>
+          <div className="w-[44px] h-[44px] mb-auto rounded-full bg-[#DCEAE0] flex items-center justify-center">
+            <span className="text-[22px]">✅</span>
           </div>
-          <span className="text-gray-800 text-sm font-bold text-center">
+          <span className="text-[#241F2E] text-[13px] font-extrabold">
             {currentLang === 'ba' ? 'Nɛn gɔrasun' : 'Mes corrections'}
           </span>
-          <span className="text-gray-400 text-[10px] text-center">
+          <span className="text-[#8C8571] text-[10.5px] leading-snug">
             {currentLang === 'ba' ? 'Sɔ̃ɔsiri yorubu' : 'Notes & commentaires'}
           </span>
         </motion.button>
@@ -338,29 +338,24 @@ export default function FitilaClasse() {
   const levelBadge = activeLevel === 'N2' ? '🚀 N2' : '🔥 N1';
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50">
+    <div className="h-full flex flex-col bg-[#F7F5EC] text-[#241F2E]">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 bg-white/80 backdrop-blur-sm border-b border-gray-200/50">
-        <motion.button whileTap={{ scale: 0.9 }} onClick={goBack} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
-        </motion.button>
-        <div className="flex-1">
-          <h1 className="text-gray-800 font-black text-lg flex items-center gap-2">
-            🏫 {sectionTitles[section]}
-          </h1>
-          {section === 'home' && (
-            <p className="text-gray-400 text-xs">{levelBadge} — Baatɔnum</p>
-          )}
-        </div>
+      <div className="flex items-center gap-3 pl-[74px] pr-[18px] pt-[14px] pb-2 min-h-[62px]">
         {section !== 'home' && (
-          <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
-            activeLevel === 'N2' ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-100 text-amber-600'
-          }`}>{levelBadge}</span>
+          <button type="button" onClick={goBack} aria-label="Retour" className="absolute right-[18px] top-[14px] z-[86] flex h-[38px] items-center gap-1 rounded-full border border-[#E4DFCC] bg-white px-3 text-[12px] font-extrabold text-[#241F2E]">
+            <ArrowLeft className="w-4 h-4" /> Retour
+          </button>
         )}
+        <div className="flex-1 min-w-0">
+          <h1 className="text-[#241F2E] font-extrabold text-[17px] leading-tight truncate">
+            {sectionTitles[section]}
+          </h1>
+          <p className="text-[#8C8571] text-[11px] leading-tight">{levelBadge.replace(/[^\w ]/gu, '').trim()} — Bàátɔ̀nú</p>
+        </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto px-[18px] pb-4 pt-3">
         <AnimatePresence mode="wait">
           <motion.div key={`${activeLevel}-${section}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
             {section === 'home' && renderHome()}
