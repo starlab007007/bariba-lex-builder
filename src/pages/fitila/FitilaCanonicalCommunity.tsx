@@ -120,12 +120,57 @@ function HanduniaPublish() {
 }
 
 function HanduniaMemory() {
-  const {id}=useParams(); const [item,setItem]=useState<any>(null); const [lieu,setLieu]=useState<any>(null); const [loading,setLoading]=useState(true);
-  useEffect(()=>{if(!id)return; (async()=>{const {data}=await supabase.from('handunia_fragments').select('*').eq('id',id).maybeSingle();setItem(data);if(data?.lieu_id){const l=await supabase.from('handunia_lieux').select('*').eq('id',data.lieu_id).maybeSingle();setLieu(l.data);}setLoading(false);})();},[id]);
+  const {id}=useParams(); const user=useUser(); const nav=useNavigate();
+  const [item,setItem]=useState<any>(null); const [lieu,setLieu]=useState<any>(null); const [loading,setLoading]=useState(true);
+  const [corroborations,setCorroborations]=useState(0); const [editing,setEditing]=useState(false); const [editText,setEditText]=useState('');
+  const [nuance,setNuance]=useState(''); const [busy,setBusy]=useState(false);
+
+  const load=async()=>{
+    if(!id)return;
+    setLoading(true);
+    const {data}=await supabase.from('handunia_fragments').select('*').eq('id',id).maybeSingle();
+    setItem(data); setEditText((data?.transcript_text||data?.text||'').trim());
+    if(data?.lieu_id){const l=await supabase.from('handunia_lieux').select('*').eq('id',data.lieu_id).maybeSingle();setLieu(l.data);}
+    const co=await supabase.from('handunia_corroborations').select('fragment_id',{count:'exact',head:true}).eq('fragment_id',id);
+    setCorroborations(co.count??0); setLoading(false);
+  };
+  useEffect(()=>{load();},[id]);
+
+  const corroborate=async()=>{
+    if(!user){nav('/auth');return;} if(!id)return; setBusy(true);
+    const {error}=await supabase.from('handunia_corroborations').insert({fragment_id:id,user_id:user.id});
+    setBusy(false); if(error&&!String(error.message).toLowerCase().includes('duplicate')){alert(error.message);return;} load();
+  };
+  const saveEdit=async()=>{
+    if(!item||!user||item.user_id!==user.id||!editText.trim())return; setBusy(true);
+    const {error}=await supabase.from('handunia_fragments').update({text:editText.trim(),transcript_text:editText.trim()}).eq('id',item.id).eq('user_id',user.id);
+    setBusy(false); if(error){alert(error.message);return;} setEditing(false); load();
+  };
+  const withdraw=async()=>{
+    if(!item||!user||item.user_id!==user.id)return; if(!confirm('Retirer ce souvenir du fil ?'))return;
+    const {error}=await supabase.from('handunia_fragments').update({withdrawn_at:new Date().toISOString()}).eq('id',item.id).eq('user_id',user.id);
+    if(error){alert(error.message);return;} nav('/social/handunia');
+  };
+  const addNuance=async()=>{
+    if(!item||!nuance.trim())return; if(!user){nav('/auth');return;} setBusy(true);
+    const {error}=await supabase.from('handunia_fragments').insert({user_id:user.id,lieu_id:item.lieu_id,text:nuance.trim(),transcript_text:nuance.trim(),scope_level:item.scope_level||'community',period_label:item.period_label,source_fragment_id:item.id,language_code:item.language_code||'ba',ai_generated:false,ai_assisted:false});
+    setBusy(false); if(error){alert(error.message);return;} setNuance(''); alert('Nuance ajoutée à la mémoire.');
+  };
+
   return <Shell dark><BackTitle dark title="Souvenir" subtitle={lieu?.name||'Handunia Wasa'}/>{loading?<div>Chargement…</div>:!item?<div>Souvenir indisponible.</div>:<div className="space-y-5">
     {item.audio_url&&<audio controls className="w-full" src={item.audio_url}/>}
-    <div className="rounded-3xl border p-5" style={{borderColor:'#2E3848',background:C.night2}}><p className="text-xl leading-relaxed">“{item.transcript_text||item.text}”</p></div>
+    <div className="rounded-3xl border p-5" style={{borderColor:'#2E3848',background:C.night2}}>
+      {editing?<textarea value={editText} onChange={e=>setEditText(e.target.value)} className="min-h-32 w-full rounded-2xl border bg-transparent p-3 outline-none" style={{borderColor:'#2E3848'}}/>:<p className="text-xl leading-relaxed">“{item.transcript_text||item.text}”</p>}
+    </div>
     <div className="grid grid-cols-2 gap-3 text-sm"><div className="rounded-2xl border p-4" style={{borderColor:'#2E3848'}}>📍 {lieu?.name||item.lieu_id}</div><div className="rounded-2xl border p-4" style={{borderColor:'#2E3848'}}>🕰 {item.period_label||'Période non précisée'}</div></div>
+    <div className="grid grid-cols-2 gap-3">
+      <button disabled={busy} onClick={corroborate} className="rounded-2xl border p-4 font-bold" style={{borderColor:'#2E3848'}}>✓ Corroborer · {corroborations}</button>
+      <button onClick={()=>nav('/handunia/ask?lieu='+encodeURIComponent(item.lieu_id))} className="rounded-2xl border p-4 font-bold" style={{borderColor:'#2E3848'}}>✨ Demander à la mémoire</button>
+    </div>
+    <div className="rounded-3xl border p-5" style={{borderColor:'#2E3848',background:C.night2}}>
+      <h3 className="font-black">Ajouter une nuance</h3><textarea value={nuance} onChange={e=>setNuance(e.target.value)} placeholder="Une autre version ou précision…" className="mt-3 min-h-24 w-full rounded-2xl border bg-transparent p-3 outline-none" style={{borderColor:'#2E3848'}}/><button disabled={busy||!nuance.trim()} onClick={addNuance} className="mt-3 rounded-full px-5 py-2 font-black disabled:opacity-50" style={{background:C.ember,color:'#20170B'}}>Publier la nuance</button>
+    </div>
+    {user&&item.user_id===user.id&&<div className="flex gap-2">{editing?<><button onClick={saveEdit} className="flex-1 rounded-full py-3 font-black" style={{background:C.ember,color:'#20170B'}}>Enregistrer</button><button onClick={()=>setEditing(false)} className="rounded-full border px-5" style={{borderColor:'#2E3848'}}>Annuler</button></>:<button onClick={()=>setEditing(true)} className="flex-1 rounded-full border py-3 font-bold" style={{borderColor:'#2E3848'}}>Modifier mon souvenir</button>}<button onClick={withdraw} className="rounded-full border border-red-500/40 px-5 text-red-300"><Trash2/></button></div>}
   </div>}</Shell>;
 }
 
