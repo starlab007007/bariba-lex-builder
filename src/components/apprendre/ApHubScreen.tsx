@@ -285,7 +285,12 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
         <ApHubSectionTitle title="Vocabulaire" />
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {content.themes.map((theme: ApTheme) => (
-            <ApThemeTile key={theme.id} theme={theme} learned={progress.learnedIn(theme)} />
+            <ApThemeTile
+              key={theme.id}
+              theme={theme}
+              learned={progress.learnedIn(theme)}
+              onTap={() => onNavigate?.('/learn/themes/' + theme.id)}
+            />
           ))}
         </div>
 
