@@ -78,7 +78,7 @@ const mockStories = [
 
 export default function TamTamEducation() {
   const location=useLocation(); const navigate=useNavigate();
-  const routeCategory=()=>{const raw=location.pathname.split('/').filter(Boolean)[1]; const alias:Record<string,string>={commerce:'business',sante:'health',histoires:'stories'}; const s=alias[raw]||raw; return s&&categories.some(x=>x.id===s)?s:null;};
+  const routeCategory=()=>{const raw=location.pathname.split('/').filter(Boolean)[1]; const alias:Record<string,string>={commerce:'business'}; const s=alias[raw]||raw; return s&&categories.some(x=>x.id===s)?s:null;};
   const [activeCategory, setActiveCategory] = useState<string | null>(routeCategory());
   const [activeCourse, setActiveCourse] = useState<AudioCourse | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -119,7 +119,7 @@ export default function TamTamEducation() {
     const label = currentLang === 'fr' ? category.labelFr : category.labelBa;
     await speakCurrentLang(label);
     setActiveCategory(category.id);
-    const routeId=({business:'commerce',health:'sante',stories:'histoires'} as Record<string,string>)[category.id] ?? category.id;
+    const routeId=({business:'commerce'} as Record<string,string>)[category.id] ?? category.id;
     navigate('/education/'+routeId);
   };
 
