@@ -58,9 +58,7 @@ ALTER TABLE public.battle_responses
 CREATE UNIQUE INDEX IF NOT EXISTS battle_responses_challenge_user_uidx
   ON public.battle_responses (challenge_id, user_id);
 
--- Reconstituer les défis historiques datés à partir des réponses existantes.
--- Les anciens identifiants UUID sans date restent dans l'historique des réponses,
--- mais ne créent pas de doublon de challenge_date.
+-- Reconstituer uniquement les défis historiques dont l'identifiant est une date.
 INSERT INTO public.battle_challenges (
   id, challenge_date, prompt_fr, prompt_ba, is_active, created_at
 )
@@ -72,49 +70,7 @@ SELECT
   true,
   min(br.created_at)
 FROM public.battle_responses br
-WHERE br.challenge_id ~ '^\\d{4}-\\d{2}-\\d{2}
-
-UPDATE public.battle_responses br
-SET votes_count = COALESCE(v.cnt, 0)
-FROM (
-  SELECT response_id, count(*)::int AS cnt
-  FROM public.battle_response_votes
-  GROUP BY response_id
-) v
-WHERE br.id = v.response_id;
-
-CREATE OR REPLACE FUNCTION public.battle_sync_votes_count()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF TG_OP = 'INSERT' THEN
-    UPDATE public.battle_responses
-    SET votes_count = votes_count + 1
-    WHERE id = NEW.response_id;
-    RETURN NEW;
-  ELSIF TG_OP = 'DELETE' THEN
-    UPDATE public.battle_responses
-    SET votes_count = GREATEST(votes_count - 1, 0)
-    WHERE id = OLD.response_id;
-    RETURN OLD;
-  END IF;
-  RETURN NULL;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS battle_votes_count_sync_trg ON public.battle_response_votes;
-CREATE TRIGGER battle_votes_count_sync_trg
-AFTER INSERT OR DELETE ON public.battle_response_votes
-FOR EACH ROW EXECUTE FUNCTION public.battle_sync_votes_count();
-
-DROP TRIGGER IF EXISTS battle_responses_updated_at_trg ON public.battle_responses;
-CREATE TRIGGER battle_responses_updated_at_trg
-BEFORE UPDATE ON public.battle_responses
-FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
+WHERE br.challenge_id ~ '^\\d{4}-\\d{2}-\\d{2}$'
 GROUP BY br.challenge_id
 ON CONFLICT (id) DO NOTHING;
 
