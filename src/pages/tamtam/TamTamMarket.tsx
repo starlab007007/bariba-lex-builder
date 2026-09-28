@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, ShoppingCart, Package, Briefcase, HandHelping, Volume2 } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
@@ -23,7 +24,18 @@ import { useToast } from '@/hooks/use-toast';
 type MainView = 'home' | 'buy' | 'sell' | 'work' | 'hire' | 'my-shop' | 'my-jobs';
 
 export default function TamTamMarket() {
-  const [view, setView] = useState<MainView>('home');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const routeView = (): MainView => {
+    const p = location.pathname;
+    if (p.endsWith('/buy')) return 'buy';
+    if (p.endsWith('/sell')) return 'sell';
+    if (p.endsWith('/jobs')) return 'work';
+    if (p.endsWith('/hire')) return 'hire';
+    if (p.endsWith('/mine')) return 'my-shop';
+    return 'home';
+  };
+  const [view, setView] = useState<MainView>(routeView());
   const [isCreatingProduct, setIsCreatingProduct] = useState(false);
   const [isCreatingJob, setIsCreatingJob] = useState(false);
   const [jobCreatorType, setJobCreatorType] = useState<'offer' | 'demand'>('offer');
@@ -42,6 +54,10 @@ export default function TamTamMarket() {
   const { offers, demands, myJobs, isLoading: jobsLoading, fetchOffers, fetchDemands, fetchMyJobs, applyToJob } = useMarketJobs();
 
   useEffect(() => {
+    setView(routeView());
+  }, [location.pathname]);
+
+  useEffect(() => {
     announceAction(t('market_title'));
   }, [announceAction, t]);
 
@@ -56,6 +72,8 @@ export default function TamTamMarket() {
   const handleMainAction = async (action: MainView) => {
     tamtamFeedback.play('click');
     setView(action);
+    const routeByView: Partial<Record<MainView,string>> = {buy:'/market/buy',sell:'/market/sell',work:'/market/jobs',hire:'/market/hire','my-shop':'/market/mine',home:'/market'};
+    if (routeByView[action]) navigate(routeByView[action]!);
     
     const labelKeys: Record<MainView, string> = {
       home: 'nav_home',
