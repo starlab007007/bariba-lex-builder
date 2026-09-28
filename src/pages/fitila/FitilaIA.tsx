@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Send, Mic, MicOff, Loader2, Bot, User, Languages, Keyboard, ChevronDown } from 'lucide-react';
+import { Send, Mic, MicOff, Loader2, Bot, User, Languages, Keyboard, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useBaribaSTT } from '@/hooks/useBaribaSTT';
@@ -60,7 +59,6 @@ function TypingText({ content, onComplete }: { content: string; onComplete: () =
 }
 
 export default function FitilaIA() {
-  const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -224,19 +222,13 @@ export default function FitilaIA() {
   const isBusy = isProcessing || isTranscribing;
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full bg-gradient-to-b from-indigo-50 via-white to-pink-50">
+    <div className="flex flex-col h-full w-full bg-[#F7F5EC] text-[#241F2E]">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white/80 backdrop-blur-md z-10 shadow-sm">
-        <motion.button whileTap={{ scale: 0.9 }} onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
-        </motion.button>
-        <div className="flex items-center gap-2.5 flex-1">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-md">
-            <Bot className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-gray-800 font-bold text-base">Fitila IA</h1>
-            <p className="text-gray-400 text-[10px]">Assistant intelligent en Bariba</p>
+      <div className="flex items-center gap-3 pl-[74px] pr-4 pt-[14px] pb-2 z-10">
+                <div className="flex items-center gap-2.5 flex-1">
+                    <div>
+            <h1 className="text-[#241F2E] font-extrabold text-[17px] leading-tight">Fitila IA</h1>
+            <p className="text-[#8C8571] text-[11px] leading-tight">Assistant intelligent en Bàátɔ̀nú</p>
           </div>
         </div>
       </div>
@@ -244,16 +236,32 @@ export default function FitilaIA() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-4 opacity-70">
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center border border-indigo-200/50 shadow-lg">
-              <Bot className="w-10 h-10 text-indigo-500" />
+          <div className="flex flex-col items-center justify-center h-full gap-4">
+            <div className="w-[86px] h-[86px] rounded-[28px] bg-[#ECE8FA] flex items-center justify-center border border-[#D9D2F3]">
+              <Bot className="w-10 h-10 text-[#6758C9]" />
             </div>
-            <p className="text-gray-600 text-sm text-center max-w-[260px] font-medium">
+            <p className="text-[#241F2E] text-[16px] text-center max-w-[320px] font-extrabold">
               Yaa sɔ̃ɔ wírú Bariba mɛ̀, ǹ nɛ́ɛ̀ daa gɔ!
             </p>
-            <p className="text-gray-400 text-xs text-center">
-              Posez vos questions en Bariba
+            <p className="text-[#8C8571] text-[12px] text-center">
+              Posez vos questions en Bàátɔ̀nú
             </p>
+            <div className="flex flex-col items-center gap-3 mt-1">
+              {[
+                ['Comment saluer ?', 'Comment saluer en Bàátɔ̀nú ?'],
+                ['Explique une coutume', 'Explique une coutume Bàátɔ̀nú'],
+                ['Aide-moi en classe', 'Aide-moi à apprendre le Bàátɔ̀nú'],
+              ].map(([label, prompt]) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => sendMessage(prompt)}
+                  className="inline-flex h-[40px] items-center rounded-full border border-[#E4DFCC] bg-white px-4 text-[13px] font-bold text-[#241F2E] active:scale-95"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -270,8 +278,8 @@ export default function FitilaIA() {
                 {/* Avatar */}
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-1 shadow-sm ${
                   msg.role === 'user'
-                    ? 'bg-orange-500'
-                    : 'bg-gradient-to-br from-indigo-500 to-purple-500'
+                    ? 'bg-[#C99530]'
+                    : 'bg-[#6758C9]'
                 }`}>
                   {msg.role === 'user'
                     ? <User className="w-3.5 h-3.5 text-white" />
@@ -281,17 +289,17 @@ export default function FitilaIA() {
 
                 {/* Bubble + translation */}
                 <div className="flex flex-col gap-1">
-                  <div className={`px-4 py-3 rounded-2xl text-sm shadow-sm ${
+                  <div className={`px-4 py-3 rounded-[18px] text-sm ${
                     msg.role === 'user'
-                      ? 'bg-orange-500 text-white rounded-tr-md'
-                      : 'bg-white text-gray-800 rounded-tl-md border border-gray-100'
+                      ? 'bg-[#C99530] text-[#2B2110] rounded-tr-md'
+                      : 'bg-white text-[#241F2E] rounded-tl-md border border-[#E4DFCC]'
                   }`}>
                     {msg.isLoading ? (
                       <div className="flex items-center gap-2 py-1">
                         <div className="flex gap-1">
-                          <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                          <span className="w-2 h-2 bg-[#6758C9] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-2 h-2 bg-[#6758C9] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-2 h-2 bg-[#6758C9] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                         </div>
                         <span className="text-gray-400 text-xs">Ǹ nɛ́ɛ̀ dɔɔ bírú...</span>
                       </div>
@@ -317,7 +325,7 @@ export default function FitilaIA() {
                         <button
                           onClick={() => handleTranslate(msg.id, msg.content)}
                           disabled={msg.isTranslatingFr}
-                          className="flex items-center gap-1.5 text-xs text-indigo-500 hover:text-indigo-700 transition-colors ml-1 mt-0.5 disabled:opacity-50"
+                          className="flex items-center gap-1.5 text-xs text-[#6758C9] hover:text-[#4B3EA0] transition-colors ml-1 mt-0.5 disabled:opacity-50"
                         >
                           {msg.isTranslatingFr ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
@@ -330,9 +338,9 @@ export default function FitilaIA() {
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
-                          className="bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2 text-xs text-indigo-700 leading-relaxed whitespace-pre-wrap"
+                          className="bg-[#ECE8FA] border border-[#D9D2F3] rounded-xl px-3 py-2 text-xs text-[#4B3EA0] leading-relaxed whitespace-pre-wrap"
                         >
-                          <span className="font-medium text-indigo-400 text-[10px] uppercase tracking-wide block mb-1">Français</span>
+                          <span className="font-medium text-[#6758C9] text-[10px] uppercase tracking-wide block mb-1">Français</span>
                           {msg.translationFr}
                         </motion.div>
                       )}
@@ -355,12 +363,12 @@ export default function FitilaIA() {
             exit={{ opacity: 0, y: 8 }}
             className="px-4 pb-1"
           >
-            <div className="flex gap-1.5 flex-wrap bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-md">
+            <div className="flex gap-1.5 flex-wrap bg-white border border-[#E4DFCC] rounded-[18px] px-3 py-2">
               {suggestions.map((s, i) => (
                 <button
                   key={i}
                   onClick={() => selectSuggestion(s.word)}
-                  className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-medium hover:bg-indigo-100 transition-colors border border-indigo-100"
+                  className="px-2.5 py-1 rounded-lg bg-white text-[#241F2E] text-xs font-bold hover:bg-[#F3E3B9]/50 transition-colors border border-[#E4DFCC] rounded-full"
                 >
                   {s.word}
                 </button>
@@ -379,12 +387,12 @@ export default function FitilaIA() {
             exit={{ opacity: 0, height: 0 }}
             className="px-4 pb-1"
           >
-            <div className="flex gap-1 flex-wrap bg-white border border-gray-200 rounded-xl px-3 py-2.5 shadow-md">
+            <div className="flex gap-1 flex-wrap bg-white border border-[#E4DFCC] rounded-[18px] px-3 py-2.5">
               {BARIBA_CHARS.map((char) => (
                 <button
                   key={char}
                   onClick={() => insertChar(char)}
-                  className="w-9 h-9 rounded-lg bg-gray-50 hover:bg-indigo-50 text-gray-800 text-sm font-medium flex items-center justify-center border border-gray-200 hover:border-indigo-200 transition-colors active:scale-95"
+                  className="w-9 h-9 rounded-lg bg-[#F7F5EC] hover:bg-[#F3E3B9]/50 text-[#241F2E] text-sm font-medium flex items-center justify-center border border-[#E4DFCC] hover:border-[#C99530] transition-colors active:scale-95"
                 >
                   {char}
                 </button>
@@ -395,15 +403,15 @@ export default function FitilaIA() {
       </AnimatePresence>
 
       {/* Input area */}
-      <form onSubmit={handleSubmit} className="px-4 py-3 border-t border-gray-200 bg-white/80 backdrop-blur-md">
+      <form onSubmit={handleSubmit} className="px-[18px] py-3 border-t border-[#E4DFCC] bg-[#F7F5EC]">
         <div className="flex items-center gap-2">
           {/* Bariba keyboard toggle */}
           <motion.button
             type="button"
             whileTap={{ scale: 0.9 }}
             onClick={() => setShowKeyboard(v => !v)}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-              showKeyboard ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            className={`w-[46px] h-[46px] rounded-[14px] flex items-center justify-center transition-all ${
+              showKeyboard ? 'bg-[#241F2E] text-white border border-[#241F2E]' : 'bg-white text-[#241F2E] border border-[#E4DFCC] hover:bg-[#F1EDDF]'
             }`}
           >
             <Keyboard className="w-5 h-5" />
@@ -420,7 +428,7 @@ export default function FitilaIA() {
             onFocus={() => setShowSuggestions(true)}
             placeholder="Yaa sɔ̃ɔ..."
             disabled={isBusy}
-            className="flex-1 bg-gray-100 border border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 text-sm placeholder:text-gray-400 focus:outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 disabled:opacity-50 transition-all"
+            className="flex-1 h-[50px] bg-white border border-[#E4DFCC] rounded-[24px] px-4 text-[#241F2E] text-[15px] placeholder:text-[#8C8571] focus:outline-none focus:border-[#C99530] disabled:opacity-50 transition-all"
           />
 
           {/* Mic */}
@@ -429,12 +437,12 @@ export default function FitilaIA() {
             whileTap={{ scale: 0.9 }}
             onClick={handleVoiceToggle}
             disabled={isProcessing || isTranscribing}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+            className={`w-[46px] h-[46px] rounded-[14px] flex items-center justify-center transition-all ${
               isRecording
                 ? 'bg-red-500 animate-pulse shadow-lg shadow-red-200'
                 : isTranscribing
                   ? 'bg-amber-100'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-500'
+                  : 'bg-white border border-[#E4DFCC] text-[#241F2E] hover:bg-[#F1EDDF]'
             }`}
           >
             {isTranscribing ? (
@@ -451,7 +459,7 @@ export default function FitilaIA() {
             type="submit"
             whileTap={{ scale: 0.9 }}
             disabled={!input.trim() || isBusy}
-            className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center disabled:opacity-30 transition-opacity shadow-md shadow-indigo-200"
+            className="w-[46px] h-[46px] rounded-[14px] bg-[#6758C9] flex items-center justify-center disabled:opacity-60 transition-opacity"
           >
             {isProcessing ? (
               <Loader2 className="w-5 h-5 text-white animate-spin" />
