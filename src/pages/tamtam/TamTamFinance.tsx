@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Volume2, TrendingUp, TrendingDown } from 'lucide-react';
 import { SmartChatbot } from '@/components/tamtam/SmartChatbot';
@@ -50,7 +51,9 @@ const mockTontineMembers: TontineMember[] = [
 ];
 
 export default function TamTamFinance() {
-  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const location=useLocation(); const navigate=useNavigate();
+  const routeSection=()=>{const s=location.pathname.split('/').filter(Boolean)[1]; return s&&sections.some(x=>x.id===s)?s:null;};
+  const [activeSection, setActiveSection] = useState<string | null>(routeSection());
   const [transactions] = useState<Transaction[]>(mockTransactions);
   const { currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
@@ -60,6 +63,7 @@ export default function TamTamFinance() {
   const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
   const balance = totalSales - totalExpenses;
 
+  useEffect(()=>{setActiveSection(routeSection());},[location.pathname]);
   useEffect(() => {
     announceAction(currentLang === 'fr' ? 'Finance' : 'Owó');
   }, [announceAction, currentLang]);
@@ -69,11 +73,13 @@ export default function TamTamFinance() {
     const label = currentLang === 'fr' ? section.labelFr : section.labelBa;
     await speakCurrentLang(label);
     setActiveSection(section.id);
+    navigate('/finance/'+section.id);
   };
 
   const handleBack = () => {
     tamtamFeedback.play('click');
     setActiveSection(null);
+    navigate('/finance');
   };
 
   const handleSpeakLabel = async (labelFr: string, labelBa: string, e: React.MouseEvent) => {
