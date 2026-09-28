@@ -54,6 +54,7 @@ const AssetsDashboard = lazy(() => import("./pages/AssetsDashboard"));
 const GriotStudioPage = lazy(() => import("./pages/GriotStudioPage"));
 const FitilaLearn = lazy(() => import("./pages/fitila/FitilaLearn"));
 const FitilaLearnScenes = lazy(() => import("./pages/fitila/FitilaLearnScenes"));
+const FitilaLearnProgress = lazy(() => import("./pages/fitila/FitilaLearnProgress"));
 const FitilaClasse = lazy(() => import("./pages/fitila/FitilaClasse"));
 const FitilaIA = lazy(() => import("./pages/fitila/FitilaIA"));
 const FitilaTemIA = lazy(() => import("./pages/fitila/FitilaTemIA"));
@@ -127,7 +128,7 @@ const App = () => (
                 <Route path="sos" element={<TamTamSOS />} />
                 <Route path="profile" element={<ProtectedRoute><SafeBoundary label="Profil"><TamTamProfile /></SafeBoundary></ProtectedRoute>} />
                 <Route path="dictionary/*" element={<TamTamDictionary />} />
-                <Route path="learn" element={<FitilaLearn />} />\n                <Route path="learn/daily" element={<FitilaLearn />} />\n                <Route path="learn/review" element={<FitilaLearn />} />\n                <Route path="learn/progress" element={<FitilaLearn />} />\n                <Route path="learn/foundations/:id" element={<FitilaLearn />} />\n                <Route path="learn/themes/:id" element={<FitilaLearn />} />\n                <Route path="learn/voice-studio" element={<FitilaVoiceLab />} />\n                <Route path="learn/voice-review" element={<FitilaVoiceLab />} />
+                <Route path="learn" element={<FitilaLearn />} />\n                <Route path="learn/daily" element={<FitilaLearn />} />\n                <Route path="learn/review" element={<FitilaLearn />} />\n                <Route path="learn/progress" element={<FitilaLearnProgress />} />\n                <Route path="learn/foundations/:id" element={<FitilaLearn />} />\n                <Route path="learn/themes/:id" element={<FitilaLearn />} />\n                <Route path="learn/voice-studio" element={<FitilaVoiceLab />} />\n                <Route path="learn/voice-review" element={<FitilaVoiceLab />} />
                 <Route path="learn/scenes" element={<FitilaLearn />} />
                 <Route path="classe" element={<FitilaClasse />} />\n                <Route path="classe/:level/*" element={<FitilaClasse />} />
                 <Route path="ia" element={<FitilaIA />} />
