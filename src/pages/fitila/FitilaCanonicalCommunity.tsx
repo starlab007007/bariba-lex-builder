@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, BookOpen, ChevronRight, MapPin, Mic, Pause, Play, Plus,
+  ArrowLeft, ArrowRight, BookOpen, Brain, ChevronRight, MapPin, Mic, Pause, Play, Plus,
   RefreshCw, Send, Sparkles, Swords, Trash2, Volume2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,7 +24,7 @@ function BackTitle({title,subtitle,dark=false}:{title:string;subtitle?:string;da
       <ArrowLeft className="h-5 w-5"/>
     </button>
     <div className="min-w-0">
-      <h1 className="truncate text-2xl font-black">{title}</h1>
+      <h1 className="truncate text-2xl font-semibold" style={{fontFamily:'Fraunces, ui-serif, serif'}}>{title}</h1>
       {subtitle&&<p className="text-sm" style={{color:dark?'#AAB2C0':C.muted}}>{subtitle}</p>}
     </div>
   </div>;
@@ -289,12 +289,24 @@ export function FitilaSocialCanonical() {
 }
 
 export function FitilaCreatorCanonical() {
-  const nav=useNavigate(); return <Shell><BackTitle title="Créer" subtitle="Deux actions, rien de plus."/>
-    <div className="space-y-4">
-      <button onClick={()=>nav('/creator/handunia')} className="flex w-full items-center gap-4 rounded-3xl border bg-white p-5 text-left" style={{borderColor:C.border}}><div className="flex h-14 w-14 items-center justify-center rounded-2xl text-2xl" style={{background:'#F5E8C8'}}>🌌</div><div className="flex-1"><div className="text-lg font-black">Handunia Wasa</div><div className="text-sm" style={{color:C.muted}}>Publier un souvenir : voix, texte, lieu, période et portée.</div></div><ChevronRight/></button>
-      <button onClick={()=>nav('/creator/sagesse-battle')} className="flex w-full items-center gap-4 rounded-3xl border bg-white p-5 text-left" style={{borderColor:C.border}}><div className="flex h-14 w-14 items-center justify-center rounded-2xl text-2xl" style={{background:'#F5E8C8'}}>⚔️</div><div className="flex-1"><div className="text-lg font-black">Sagesse Battle</div><div className="text-sm" style={{color:C.muted}}>Créer un défi ou répondre à la communauté.</div></div><ChevronRight/></button>
+  const nav=useNavigate();
+  const actions=[
+    {to:'/creator/handunia',icon:BookOpen,title:'Handunia Wasa',desc:'Publier un souvenir dans la mémoire vivante.'},
+    {to:'/creator/sagesse-battle',icon:Brain,title:'Sagesse Battle',desc:'Répondre au défi du jour et rejoindre la chaîne.'},
+  ];
+  return <div className="relative h-full overflow-y-auto" style={{background:'#F7F5EC',color:C.ink}}>
+    <header className="flex items-center gap-3 pl-[74px] pr-5 pt-[14px]">
+      <div className="min-w-0"><h1 className="text-[26px] font-semibold leading-none" style={{fontFamily:'Fraunces, ui-serif, serif'}}>Créer</h1><p className="mt-1 text-[11px] font-bold" style={{color:'#8C8571'}}>Deux actions, rien de plus.</p></div>
+    </header>
+    <div className="mt-[34px] space-y-[13px] px-5">
+      {actions.map(({to,icon:Icon,title,desc})=><button key={to} onClick={()=>nav(to)} className="flex w-full items-center gap-4 rounded-[24px] border bg-white p-[18px] text-left shadow-[0_3px_0_0_rgba(228,223,204,.7)] active:scale-[0.99]" style={{borderColor:C.border}}>
+        <span className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[16px]" style={{background:'#F3E3B9',color:'#9C6B1D'}}><Icon className="h-6 w-6"/></span>
+        <span className="min-w-0 flex-1"><span className="block text-[16px] font-extrabold">{title}</span><span className="mt-0.5 block text-[11.5px] font-bold leading-snug" style={{color:'#8C8571'}}>{desc}</span></span>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{background:'#F1EDDF',color:'#9C6B1D'}}><ArrowRight className="h-[18px] w-[18px]"/></span>
+      </button>)}
     </div>
-  </Shell>;
+    <p className="absolute inset-x-0 bottom-[10px] text-center text-[11px] font-bold" style={{color:'#8C8571'}}>Le bouton + ouvre toujours ces deux choix.</p>
+  </div>;
 }
 
 export function HanduniaCanonicalPage() {

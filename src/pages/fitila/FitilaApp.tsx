@@ -347,7 +347,7 @@ function AppContent() {
   return (
     <SideMenuContext.Provider value={menuContext}>
       <AppTourProvider>
-        <div className="fixed inset-0 w-full h-full overflow-hidden kuaishou-bg">
+        <div className="fixed inset-0 w-full h-full overflow-hidden fitila-app-bg">
           <FitilaCanonicalDrawer open={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
 
           {!isMenuOpen && (

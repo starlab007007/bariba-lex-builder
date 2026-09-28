@@ -1,5 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
+@font-face {
+  font-family: 'Fraunces';
+  src: url('/fonts/Fraunces-Variable.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -1510,6 +1517,13 @@
 
   .kuaishou-bg {
     background: linear-gradient(180deg, #0B0B0B 0%, #1A1A2E 100%);
+    min-height: 100vh;
+  }
+
+  /* FITILA Premium Clair — fond d'application (signature_theme.dart appBackground) */
+  .fitila-app-bg {
+    background: #F7F5EC;
+    color: #241F2E;
     min-height: 100vh;
   }
 
