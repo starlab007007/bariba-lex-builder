@@ -34,11 +34,11 @@ export function TamTamNotificationBell() {
     if (notification.type === 'follow' || notification.type === 'friend_request' || notification.type === 'friend_accepted') {
       if (notification.actor_id) {
         setIsOpen(false);
-        navigate(`/tamtam/user/${notification.actor_id}`);
+        navigate(`/user/${notification.actor_id}`);
       }
     } else if (notification.type === 'message') {
       setIsOpen(false);
-      navigate('/tamtam/social');
+      navigate('/social');
     }
   };
 
