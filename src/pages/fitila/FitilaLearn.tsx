@@ -19,8 +19,8 @@ export default function FitilaLearn() {
 
   return (
     <ApHubScreen
-      onBack={() => navigate('/fitila')}
-      onOpenVoiceStudio={() => navigate('/fitila/voice-lab')}
+      onOpenVoiceStudio={() => navigate('/voice-lab')}
+      onOpenVoiceReview={() => navigate('/voice-lab')}
     />
   );
 }

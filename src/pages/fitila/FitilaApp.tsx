@@ -5,7 +5,7 @@ import { FitilaLanguageProvider, useFitilaLanguage } from '@/contexts/FitilaLang
 import { AudioDescriptionProvider } from '@/contexts/AudioDescriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTamTamProfile } from '@/hooks/useTamTamProfile';
-import { Home, User, Settings, X, Bell, Globe, BookOpen, Shield, LayoutDashboard, Package, Sparkles } from 'lucide-react';
+import { Home, User, Settings, X, Bell, Globe, BookOpen, Shield, LayoutDashboard, Package, Sparkles, Menu } from 'lucide-react';
 import { HelpCircle } from 'lucide-react';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { AdminFloatingButton } from '@/components/admin/AdminFloatingButton';
@@ -14,6 +14,7 @@ import { useHFPreWarm } from '@/hooks/useHFPreWarm';
 import { useExtendedNotifications } from '@/hooks/useExtendedNotifications';
 import AppTourProvider, { TOUR_STORAGE_KEY } from '@/components/onboarding/AppTourProvider';
 import SafeBoundary from '@/components/common/SafeBoundary';
+import FitilaBottomNav from '@/components/fitila/FitilaBottomNav';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📱 FITILA APP V7 - MENU SIMPLIFIÉ
@@ -347,11 +348,29 @@ function AppContent() {
       <AppTourProvider>
         <div className="fixed inset-0 w-full h-full overflow-hidden kuaishou-bg">
           <SideMenuDrawer isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
-          <main className="w-full h-full overflow-hidden">
+
+          {!isMenuOpen && (
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen(true)}
+              aria-label="Ouvrir le menu FITILA"
+              className="fixed top-[max(14px,env(safe-area-inset-top))] z-[85] flex h-12 w-12 items-center justify-center rounded-full border bg-white/95 shadow-sm backdrop-blur-xl transition-transform active:scale-95"
+              style={{
+                left: 'max(14px, calc(50% - 450px))',
+                borderColor: '#E4DFCC',
+                color: '#241F2E',
+              }}
+            >
+              <Menu className="h-6 w-6" strokeWidth={2.2} />
+            </button>
+          )}
+
+          <main className="w-full h-full overflow-hidden pb-[92px]">
             <SafeBoundary label="Page Fitila">
               <Outlet />
             </SafeBoundary>
           </main>
+          <FitilaBottomNav />
           <AdminFloatingButton />
         </div>
       </AppTourProvider>

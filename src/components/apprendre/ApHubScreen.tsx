@@ -169,7 +169,14 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: AP_COLORS.ivory }}>
-      <div className="mx-auto max-w-3xl px-5 pb-10 pt-4">
+      <div className="mx-auto max-w-[900px] px-5 pb-10 pt-4">
+        <div className="mb-4 flex min-h-12 items-center pl-14">
+          <div className="min-w-0">
+            <h1 className="truncate text-[22px] font-black leading-tight" style={{ color: AP_COLORS.ink }}>Apprendre</h1>
+            <p className="truncate text-[13px]" style={{ color: AP_COLORS.muted }}>Mɛɛribu · bàátɔ̀nú ⇄ français</p>
+          </div>
+        </div>
+
         {/* 1. En-tête de salutation */}
         <div className="flex items-start gap-3">
           {onBack && (
