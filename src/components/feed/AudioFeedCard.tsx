@@ -542,7 +542,7 @@ const AudioFeedCardComponent: React.FC<AudioFeedCardProps> = ({
 
       {/* Author avatar bottom left */}
       <div className="absolute left-3 bottom-40">
-        <div className="relative cursor-pointer" onClick={() => authorId && navigate(`/fitila/profile/${authorId}`)}>
+        <div className="relative cursor-pointer" onClick={() => authorId && navigate(`/profile/${authorId}`)}>
           <div className="w-11 h-11 rounded-full bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center border-2 border-white shadow-lg overflow-hidden">
             {post.profile?.avatar_url
               ? <img src={post.profile.avatar_url} alt="" className="w-full h-full object-cover" />
