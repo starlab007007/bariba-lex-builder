@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Volume2, Loader2, Cloud, Droplets, Sun, Thermometer, Phone } from 'lucide-react';
 import { SmartChatbot } from '@/components/tamtam/SmartChatbot';
@@ -40,12 +41,15 @@ const mockPrices = [
 ];
 
 export default function TamTamAgriculture() {
-  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const location=useLocation(); const navigate=useNavigate();
+  const routeSection=()=>{const s=location.pathname.split('/').filter(Boolean)[1]; return s&&sections.some(x=>x.id===s)?s:null;};
+  const [activeSection, setActiveSection] = useState<string | null>(routeSection());
   const { t, currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
   const { toast } = useToast();
 
+  useEffect(()=>{setActiveSection(routeSection());},[location.pathname]);
   useEffect(() => {
     announceAction(currentLang === 'fr' ? 'Agriculture' : 'Àgbẹ̀');
   }, [announceAction, currentLang]);
@@ -55,11 +59,13 @@ export default function TamTamAgriculture() {
     const label = currentLang === 'fr' ? section.labelFr : section.labelBa;
     await speakCurrentLang(label);
     setActiveSection(section.id);
+    navigate('/agriculture/'+section.id);
   };
 
   const handleBack = () => {
     tamtamFeedback.play('click');
     setActiveSection(null);
+    navigate('/agriculture');
   };
 
   const handleSpeakLabel = async (labelFr: string, labelBa: string, e: React.MouseEvent) => {
