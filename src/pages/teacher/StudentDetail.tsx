@@ -70,7 +70,7 @@ export default function StudentDetail() {
 
   return (
     <div className="space-y-5">
-      <Link to="/fitila/teacher/students" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link to="/teacher/students" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="w-4 h-4" /> Tous les apprenants
       </Link>
 
