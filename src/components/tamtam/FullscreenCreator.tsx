@@ -3199,7 +3199,7 @@ export default function FullscreenCreator({
               className="absolute top-20 left-4 z-40"
             >
               <button
-                onClick={() => !isRecording && navigate('/tamtam/creator')}
+                onClick={() => !isRecording && navigate('/creator')}
                 disabled={isRecording}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-xl border transition-all",
@@ -3933,7 +3933,7 @@ export default function FullscreenCreator({
           }}
         />
 
-        {/* Advanced Template Drawer - disabled, now redirects to /tamtam/creator */}
+        {/* Advanced Template Drawer - disabled, now redirects to /creator */}
         {/* 
         <AdvancedTemplateDrawer
           isOpen={drawer === "template"}
