@@ -101,12 +101,12 @@ async function sleep(ms: number): Promise<void> {
 }
 
 async function callVisionOcr(params: {
-  lovableApiKey: string;
+  mistralApiKey: string;
   dataUrl: string;
   targetLanguage: "bariba" | "french";
   pageNumber?: number;
 }): Promise<{ extractedText: string; confidence: number; ocrNotes?: string[] }> {
-  const { lovableApiKey, dataUrl, targetLanguage, pageNumber } = params;
+  const { mistralApiKey, dataUrl, targetLanguage, pageNumber } = params;
 
   const systemPrompt = `You are a precise OCR extraction assistant.
 
@@ -129,14 +129,14 @@ Expected JSON format:
       ? `Extract all visible text exactly as written (likely French source text). Return ONLY JSON.${pageNumber ? ` Page ${pageNumber}.` : ""}`
       : `Extract all visible text exactly as written (likely Bariba source text). Return ONLY JSON.${pageNumber ? ` Page ${pageNumber}.` : ""}`;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${lovableApiKey}`,
+      Authorization: `Bearer ${mistralApiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "pixtral-large-latest",
       messages: [
         { role: "system", content: systemPrompt },
         {
@@ -337,9 +337,9 @@ serve(async (req) => {
       translateMode = "per_page",
     }: OCRTranslateRequest = await req.json();
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const MISTRAL_API_KEY = Deno.env.get("MISTRAL_API_KEY");
+    if (!MISTRAL_API_KEY) {
+      throw new Error("MISTRAL_API_KEY is not configured");
     }
 
     // ─────────────────────────────────────────────
@@ -374,7 +374,7 @@ serve(async (req) => {
 
     for (let i = 0; i < pageImages.length; i++) {
       const ocr = await callVisionOcr({
-        lovableApiKey: LOVABLE_API_KEY,
+        mistralApiKey: MISTRAL_API_KEY,
         dataUrl: pageImages[i],
         targetLanguage,
         pageNumber: i + 1,
