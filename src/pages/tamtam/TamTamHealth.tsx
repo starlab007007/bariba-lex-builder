@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Volume2, Phone, AlertTriangle } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
@@ -87,12 +88,15 @@ const emergencyContacts = [
 ];
 
 export default function TamTamHealth() {
-  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const location=useLocation(); const navigate=useNavigate();
+  const routeSection=()=>{const raw=location.pathname.split('/').filter(Boolean)[1]; const alias:Record<string,string>={'first-aid':'first_aid'}; const s=alias[raw]||raw; return s&&sections.some(x=>x.id===s)?s:null;};
+  const [activeSection, setActiveSection] = useState<string | null>(routeSection());
   const { currentLang } = useTamTamLanguage();
   const { announceAction } = useAudioDescription();
   const { speakCurrentLang } = useBilingualAudio();
   const { toast } = useToast();
 
+  useEffect(()=>{setActiveSection(routeSection());},[location.pathname]);
   useEffect(() => {
     announceAction(currentLang === 'fr' ? 'Section Santé' : 'Apá Ìlera');
   }, [announceAction, currentLang]);
@@ -101,11 +105,13 @@ export default function TamTamHealth() {
     tamtamFeedback.play('click');
     await speakCurrentLang(currentLang === 'fr' ? section.labelFr : section.labelBa);
     setActiveSection(section.id);
+    navigate('/health/'+(section.id==='first_aid'?'first-aid':section.id));
   };
 
   const handleBack = () => {
     tamtamFeedback.play('click');
     setActiveSection(null);
+    navigate('/health');
   };
 
   const handleSpeakLabel = async (labelFr: string, labelBa: string, e: React.MouseEvent) => {
