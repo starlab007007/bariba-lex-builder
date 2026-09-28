@@ -14,9 +14,9 @@ serve(async (req) => {
   try {
     const { action, templateId, templateLabel, templateFamily, inputText, hasVideo, hasPhotos, hasAudio, features } = await req.json();
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const MISTRAL_API_KEY = Deno.env.get('MISTRAL_API_KEY');
+    if (!MISTRAL_API_KEY) {
+      throw new Error('MISTRAL_API_KEY is not configured');
     }
 
     let result: any = {};
@@ -37,14 +37,14 @@ ${hasAudio ? 'Le contenu inclut un enregistrement audio.' : ''}
 Génère une narration de 2-3 phrases maximum, en français simple et accessible.
 Format: intro accrocheuse + message principal + conclusion mémorable.`;
 
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Authorization': `Bearer ${MISTRAL_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'mistral-small-latest',
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userPrompt }
@@ -78,14 +78,14 @@ Génère 3-5 segments de sous-titres en JSON avec ce format:
 
 Utilise des emojis pertinents: 🌾 agriculture, 💰 argent, ☀️ météo, 🏥 santé, 📚 éducation, etc.`;
 
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Authorization': `Bearer ${MISTRAL_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'mistral-small-latest',
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userPrompt }
@@ -128,14 +128,14 @@ Tu donnes des conseils courts et pratiques.`;
 
 Réponds en français simple, format très court.`;
 
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Authorization': `Bearer ${MISTRAL_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'mistral-small-latest',
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userPrompt }
