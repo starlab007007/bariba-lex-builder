@@ -198,7 +198,7 @@ function HanduniaMap() {
 type Challenge={id:string;title?:string;challenge_type?:string;prompt_bariba?:string;prompt_francais?:string;created_by?:string;status?:string;created_at?:string};
 function SagesseBattle({embedded=false}:{embedded?:boolean}) {
   const user=useUser(); const nav=useNavigate(); const location=useLocation();
-  const [tab,setTab]=useState<'community'|'mine'|'create'>('community'); const [items,setItems]=useState<Challenge[]>([]);
+  const [tab,setTab]=useState<'community'|'mine'|'create'>(()=>location.pathname.startsWith('/creator/sagesse-battle')?'create':'community'); const [items,setItems]=useState<Challenge[]>([]);
   const [title,setTitle]=useState(''); const [prompt,setPrompt]=useState(''); const [fr,setFr]=useState(''); const [type,setType]=useState('complete_proverb'); const [busy,setBusy]=useState(false);
   const [response,setResponse]=useState(''); const [responses,setResponses]=useState<any[]>([]);
   const detailId=location.pathname.startsWith('/sagesse-battle/') ? decodeURIComponent(location.pathname.slice('/sagesse-battle/'.length)) : '';
@@ -213,6 +213,7 @@ function SagesseBattle({embedded=false}:{embedded?:boolean}) {
     setItems(a);
   };
   useEffect(()=>{load();},[]);
+  useEffect(()=>{ if(location.pathname.startsWith('/creator/sagesse-battle')) setTab('create'); },[location.pathname]);
   useEffect(()=>{if(!detailId){setResponses([]);return;} supabase.from('battle_responses').select('*').eq('challenge_id',detailId).order('created_at',{ascending:false}).then(({data})=>setResponses((data??[]) as any));},[detailId]);
 
   const create=async()=>{
