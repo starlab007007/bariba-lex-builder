@@ -282,7 +282,7 @@ export default function FitilaVoiceLab() {
   return (
     <div className="h-full bg-[#F7F5EC] text-[#241F2E] overflow-y-auto">
       {/* Header */}
-      <header className="z-10 pl-[74px] lg:pl-[18px] pr-4 pt-[14px] pb-2">
+      <header className="z-10 pl-[74px] md:pl-[18px] pr-4 pt-[14px] pb-2">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
           <div className="flex-1">
             <h1 className="text-[17px] font-extrabold text-[#241F2E] flex items-center gap-2">

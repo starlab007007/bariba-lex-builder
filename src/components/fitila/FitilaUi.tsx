@@ -16,8 +16,8 @@ export type Metric = { label: string; value: string };
 export function MetricStrip({ metrics }: { metrics: Metric[] }) {
   return (
     <div className="grid grid-cols-3 gap-[10px] px-[18px]">
-      {metrics.map((m) => (
-        <div key={m.label} className="flex h-[80px] flex-col items-center justify-center rounded-[18px] border bg-white px-2" style={{ borderColor: SIG.hairline }}>
+      {metrics.map((m, i) => (
+        <div key={m.label} style={{ borderColor: SIG.hairline, ["--i" as string]: i }} className="fitila-rise fitila-lift flex h-[80px] flex-col items-center justify-center rounded-[18px] border bg-white px-2">
           <span className="text-[16px] font-extrabold">{m.value}</span>
           <span className="mt-1 text-[11px]" style={{ color: SIG.muted }}>{m.label}</span>
         </div>
@@ -56,14 +56,14 @@ export type Feature = { icon: LucideIcon; title: string; desc: string; onClick?:
 export function FeatureGrid({ items }: { items: Feature[] }) {
   return (
     <div className="grid grid-cols-2 gap-[10px] px-[18px] md:grid-cols-3 xl:grid-cols-4">
-      {items.map(({ icon: Icon, title, desc, onClick }) => (
+      {items.map(({ icon: Icon, title, desc, onClick }, i) => (
         <button
           key={title}
           type="button"
           onClick={onClick}
           disabled={!onClick}
-          className="flex h-[132px] flex-col rounded-[18px] border bg-white p-[12px] text-left disabled:cursor-default"
-          style={{ borderColor: SIG.hairline }}
+          style={{ ["--i" as string]: i, borderColor: SIG.hairline }}
+          className="fitila-rise fitila-lift flex h-[132px] flex-col rounded-[18px] border bg-white p-[12px] text-left disabled:cursor-default"
         >
           <Icon className="h-[18px] w-[18px]" style={{ color: SIG.goldDeep }} />
           <span className="mt-auto text-[13px] font-extrabold">{title}</span>
@@ -78,14 +78,14 @@ export function FeatureGrid({ items }: { items: Feature[] }) {
 export function ActionList({ items }: { items: Feature[] }) {
   return (
     <div className="space-y-[8px] px-[18px]">
-      {items.map(({ icon: Icon, title, desc, onClick }) => (
+      {items.map(({ icon: Icon, title, desc, onClick }, i) => (
         <button
           key={title}
           type="button"
           onClick={onClick}
           disabled={!onClick}
-          className="flex w-full items-center gap-3 rounded-[18px] border bg-white p-[12px] text-left disabled:cursor-default"
-          style={{ borderColor: SIG.hairline }}
+          style={{ ["--i" as string]: i, borderColor: SIG.hairline }}
+          className="fitila-rise fitila-lift flex w-full items-center gap-3 rounded-[18px] border bg-white p-[12px] text-left disabled:cursor-default"
         >
           <span className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-[12px]" style={{ background: SIG.goldTint, color: SIG.goldDeep }}>
             <Icon className="h-5 w-5" />
@@ -135,12 +135,12 @@ export type DomainTile = {
 export function SectionTiles({ items }: { items: DomainTile[] }) {
   return (
     <div className="grid grid-cols-2 gap-[10px] md:grid-cols-3 xl:grid-cols-4">
-      {items.map(({ id, label, Icon, danger, onClick, onSpeak }) => (
-        <div key={id} className="relative">
+      {items.map(({ id, label, Icon, danger, onClick, onSpeak }, i) => (
+        <div key={id} className="relative fitila-rise" style={{ ["--i" as string]: i }}>
           <button
             type="button"
             onClick={onClick}
-            className="flex h-[92px] w-full flex-col rounded-[16px] border bg-white p-[12px] text-left transition-transform active:scale-[0.98]"
+            className="fitila-lift flex h-[92px] w-full flex-col rounded-[16px] border bg-white p-[12px] text-left transition-transform active:scale-[0.98]"
             style={{ borderColor: danger ? SIG.clay : SIG.hairline }}
           >
             <Icon className="h-[18px] w-[18px]" style={{ color: danger ? SIG.clay : SIG.sage }} />
@@ -174,5 +174,23 @@ export function InfoCard({ children, className = '', onClick }: { children: Reac
     >
       {children}
     </Tag>
+  );
+}
+
+/** Squelette de chargement (remplace les « Chargement… » textuels). */
+export function Skeleton({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
+  return <div className={`fitila-skeleton ${className}`} style={style} aria-hidden />;
+}
+
+/** Squelette pleine page façon Apprendre/hub : en-tête, carte héro, tuiles. */
+export function PageSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-[900px] space-y-4 px-5 pt-20" role="status" aria-label="Chargement">
+      <Skeleton className="h-8 w-40" />
+      <Skeleton className="h-4 w-64" />
+      <Skeleton className="h-44 w-full" style={{ borderRadius: 28 }} />
+      <Skeleton className="h-40 w-full" style={{ borderRadius: 24 }} />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3"><Skeleton className="h-28" /><Skeleton className="h-28" /><Skeleton className="h-28 max-md:hidden" /></div>
+    </div>
   );
 }

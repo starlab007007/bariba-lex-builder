@@ -42,6 +42,7 @@ import ApReviewScreen from './ApReviewScreen';
 import ApScenesHubScreen from './ApScenesHubScreen';
 import ApFoundationScreen from './ApFoundationScreen';
 import ApOnboardingScreen from './ApOnboardingScreen';
+import { PageSkeleton } from '@/components/fitila/FitilaUi';
 
 const SKILL_ICON_COMPONENTS: Record<ApSkillIconName, LucideIcon> = {
   eye: Eye,
@@ -191,11 +192,8 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center" style={{ backgroundColor: AP_COLORS.ivory }}>
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: `${AP_COLORS.gold} transparent transparent transparent` }} />
-          <p className="text-sm" style={{ color: AP_COLORS.muted }}>Chargement du contenu Apprendre…</p>
-        </div>
+      <div className="h-full" style={{ backgroundColor: AP_COLORS.ivory }}>
+        <PageSkeleton />
       </div>
     );
   }
