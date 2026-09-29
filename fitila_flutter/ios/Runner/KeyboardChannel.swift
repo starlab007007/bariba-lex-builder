@@ -11,7 +11,7 @@ import UIKit
 /// (returning from Settings).
 final class KeyboardChannel: NSObject, FlutterStreamHandler {
     static let appGroup = "group.bj.fitila.fitilaFlutter"
-    private static let extensionSuffix = ".BaribaKeyboard"
+    private static let keyboardLanguage = "fr-BJ"
 
     private var sink: FlutterEventSink?
     private var observer: NSObjectProtocol?
@@ -57,9 +57,11 @@ final class KeyboardChannel: NSObject, FlutterStreamHandler {
     /// `enabled`: the keyboard is in the user's active input modes.
     /// `fullAccess`: last value written by the extension (needs Full Access to write).
     private func status() -> [String: Any] {
+        // Use only the public UITextInputMode API. The extension declares
+        // PrimaryLanguage=fr-BJ, so it appears here once added to iOS keyboards.
+        // Avoid KVC access to the private input-mode identifier (App Store risk).
         let enabled = UITextInputMode.activeInputModes.contains { mode in
-            guard let id = mode.value(forKey: "identifier") as? String else { return false }
-            return id.hasSuffix(KeyboardChannel.extensionSuffix)
+            mode.primaryLanguage?.caseInsensitiveCompare(KeyboardChannel.keyboardLanguage) == .orderedSame
         }
         let fullAccess = UserDefaults(suiteName: KeyboardChannel.appGroup)?.bool(forKey: "full_access") ?? false
         return ["enabled": enabled, "selected": false, "fullAccess": fullAccess, "platform": "ios"]

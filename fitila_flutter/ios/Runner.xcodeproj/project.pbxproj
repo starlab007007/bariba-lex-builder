@@ -696,13 +696,13 @@
 		};
 		BA51B0000000000000000027 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = BaribaKeyboard/BaribaKeyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				CURRENT_PROJECT_VERSION = 19;
+				MARKETING_VERSION = 1.8.8;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = BaribaKeyboard/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
@@ -723,13 +723,13 @@
 		};
 		BA51B0000000000000000028 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = BaribaKeyboard/BaribaKeyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				CURRENT_PROJECT_VERSION = 19;
+				MARKETING_VERSION = 1.8.8;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = BaribaKeyboard/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
@@ -749,13 +749,13 @@
 		};
 		BA51B0000000000000000029 /* Profile */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = BaribaKeyboard/BaribaKeyboard.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				CURRENT_PROJECT_VERSION = 19;
+				MARKETING_VERSION = 1.8.8;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = BaribaKeyboard/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
