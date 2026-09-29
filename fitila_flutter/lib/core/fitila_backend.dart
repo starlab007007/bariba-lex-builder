@@ -1443,48 +1443,63 @@ class FitilaBackend {
     String? comment,
     Uint8List? personalAudioBytes,
     Uint8List? genericAudioBytes,
-    String contentType = 'audio/m4a',
+    String contentType = 'audio/mp4',
     int? personalDurationSeconds,
     int? genericDurationSeconds,
   }) async {
     final updates = <String, dynamic>{
       'teacher_grade': grade,
       'teacher_comment': comment,
-      'graded_at': DateTime.now().toIso8601String(),
+      'graded_by': client.auth.currentUser?.id,
+      'graded_at': DateTime.now().toUtc().toIso8601String(),
     };
     final extension = contentType.contains('mp4') || contentType.contains('m4a')
         ? 'm4a'
+        : contentType.contains('opus')
+        ? 'opus'
         : 'wav';
+    const bucket = 'classe-answers-audio';
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+
+    // Corrigé vocal personnalisé : même emplacement et mêmes colonnes que le web
+    // (`teacher-personal/{réponse}/…`, colonnes `teacher_audio_*`), visible dans « Mes corrections ».
     if (personalAudioBytes != null) {
-      final path =
-          'corrections/personal_${answerId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+      final path = 'teacher-personal/$answerId/$stamp.$extension';
       await client.storage
-          .from('tamtam-audio')
-          .uploadBinary(
-            path,
-            personalAudioBytes,
-            fileOptions: FileOptions(contentType: contentType, upsert: true),
-          );
+          .from(bucket)
+          .uploadBinary(path, personalAudioBytes, fileOptions: FileOptions(contentType: contentType, upsert: true));
+      updates['teacher_audio_path'] = path;
+      updates['teacher_audio_duration'] = personalDurationSeconds;
       updates['teacher_audio_personal_path'] = path;
       updates['teacher_audio_personal_duration'] = personalDurationSeconds;
     }
+
+    // Corrigé vocal général de la question : rattaché au corrigé (réutilisable pour tous les élèves).
     if (genericAudioBytes != null) {
-      final path =
-          'corrections/generic_${answerId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+      final answer = await client
+          .from('classe_student_answers')
+          .select('level,module,lesson_id,section_key,question_idx')
+          .eq('id', answerId)
+          .single();
+      final path = 'teacher/$answerId/$stamp.$extension';
       await client.storage
-          .from('tamtam-audio')
-          .uploadBinary(
-            path,
-            genericAudioBytes,
-            fileOptions: FileOptions(contentType: contentType, upsert: true),
-          );
+          .from(bucket)
+          .uploadBinary(path, genericAudioBytes, fileOptions: FileOptions(contentType: contentType, upsert: true));
       updates['teacher_audio_generic_path'] = path;
       updates['teacher_audio_generic_duration'] = genericDurationSeconds;
+      await client.from('classe_answer_keys').upsert({
+        'level': answer['level'],
+        'module': answer['module'],
+        'lesson_id': answer['lesson_id'],
+        'section_key': answer['section_key'] ?? '',
+        'question_idx': answer['question_idx'] ?? 0,
+        'teacher_audio_path': path,
+        'teacher_audio_duration': genericDurationSeconds,
+        'updated_by': client.auth.currentUser?.id,
+      }, onConflict: 'level,module,lesson_id,section_key,question_idx');
     }
-    await client
-        .from('classe_student_answers')
-        .update(updates)
-        .eq('id', answerId);
+
+    await client.from('classe_student_answers').update(updates).eq('id', answerId);
   }
 
   // ---------------------------------------------------------------------

@@ -19,6 +19,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import 'core/fitila_backend.dart';
+import 'core/fitila_language.dart';
 import 'core/fitila_live.dart';
 import 'core/fitila_media.dart';
 import 'core/fitila_translation_audio.dart';
@@ -34,6 +35,12 @@ import 'handunia/handunia_creation_ai_route.dart';
 import 'handunia/handunia_map_data.dart';
 import 'handunia/handunia_unified_map.dart';
 import 'handunia/handunia_consultation_ui.dart';
+import 'classe/classe_content.dart';
+import 'classe/classe_hub.dart';
+import 'classe/classe_lookup.dart';
+import 'classe/classe_session.dart';
+import 'classe/classe_store.dart';
+import 'classe/classe_widgets.dart' show ClasseStoragePlayer;
 import 'espace/espace_home.dart';
 import 'keyboard/bariba_input.dart';
 import 'keyboard/bariba_keyboard_engine.dart';
@@ -12638,1046 +12645,31 @@ class _LearnerProfileScreenState extends State<LearnerProfileScreen> {
 }
 
 class ClasseScreen extends StatefulWidget {
-  const ClasseScreen({super.key, this.initialLessons});
+  const ClasseScreen({super.key, this.initialLessons, this.session});
 
   final List<WebClasseLesson>? initialLessons;
+  final ClasseSession? session;
 
   @override
   State<ClasseScreen> createState() => _ClasseScreenState();
 }
 
 class _ClasseScreenState extends State<ClasseScreen> {
-  late Future<List<WebClasseLesson>> _webLessons;
+  late final ClasseSession _session;
+  late final bool _ownsSession;
   String _level = 'N1';
-  String _section = 'home';
-  int _selectedLessonId = 1;
-  String _lessonTab = 'text';
-  final Map<String, String> _lessonAnswers = {};
-  final Set<String> _completed = {};
 
   @override
   void initState() {
     super.initState();
-    _webLessons = widget.initialLessons == null
-        ? WebClasseContent.loadLessons()
-        : Future.value(widget.initialLessons!);
+    _ownsSession = widget.session == null;
+    _session = widget.session ?? ClasseSession(store: SupabaseClasseStore());
   }
 
-  void _setLevel(String level) {
-    setState(() {
-      _level = level;
-      _section = 'home';
-      _selectedLessonId = 1;
-      _lessonTab = 'text';
-    });
-  }
-
-  List<WebClasseLesson> _forLevel(List<WebClasseLesson> all) =>
-      all.where((lesson) => lesson.level == _level).toList(growable: false);
-
-  Map<String, List<WebClasseLesson>> _grouped(List<WebClasseLesson> lessons) {
-    final groups = <String, List<WebClasseLesson>>{};
-    for (final lesson in lessons) {
-      groups.putIfAbsent(lesson.themeLabel, () => []).add(lesson);
-    }
-    return groups;
-  }
-
-  void _openLesson(WebClasseLesson lesson) {
-    setState(() {
-      _selectedLessonId = lesson.id;
-      _lessonTab = 'text';
-      _section = 'detail';
-    });
-  }
-
-  Future<void> _playApprovedAudio(
-    WebClasseLesson lesson, {
-    String section = 'text',
-    int? itemIndex,
-  }) async {
-    if (!FitilaBackend.configured) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Serveur audio FITILA indisponible.')),
-      );
-      return;
-    }
-    final suffix = itemIndex == null ? section : '$section/$itemIndex';
-    final contentKey = 'classe/${lesson.level}/lang/${lesson.id}/$suffix';
-    try {
-      final row = await FitilaBackend.client
-          .from('classe_content_audios')
-          .select('storage_path')
-          .eq('content_key', contentKey)
-          .eq('is_current', true)
-          .eq('status', 'approved')
-          .maybeSingle();
-      if (row == null) {
-        if (!mounted) {
-          return;
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Audio validé non disponible pour ce contenu.'),
-          ),
-        );
-        return;
-      }
-      final signed = await FitilaBackend.client.storage
-          .from('classe-audio')
-          .createSignedUrl(row['storage_path'].toString(), 3600);
-      final url = signed;
-      final player = audio.AudioPlayer();
-      await player.play(audio.UrlSource(url));
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lecture audio impossible.')),
-      );
-    }
-  }
-
-  Widget _levelSelector(List<WebClasseLesson> all) {
-    final n1 = all.where((e) => e.level == 'N1').length;
-    final n2 = all.where((e) => e.level == 'N2').length;
-    Widget levelCard({
-      required String level,
-      required String title,
-      required String emoji,
-      required int count,
-      required Color tone,
-    }) {
-      final selected = _level == level;
-      return Expanded(
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => _setLevel(level),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(
-              color: selected ? tone.withValues(alpha: .15) : _fitilaCard,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: selected ? tone : _fitilaBorder,
-                width: selected ? 1.5 : 1,
-              ),
-              boxShadow: selected
-                  ? const [
-                      BoxShadow(
-                        color: Color(0x17241F2E),
-                        blurRadius: 20,
-                        offset: Offset(0, 9),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Column(
-              children: [
-                Text(
-                  '$emoji $title',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: selected ? tone : _fitilaMuted,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  '$count leçons',
-                  style: const TextStyle(color: _fitilaMuted, fontSize: 10.5),
-                ),
-                if (selected) ...[
-                  const SizedBox(height: 9),
-                  LinearProgressIndicator(
-                    value: .0,
-                    minHeight: 6,
-                    borderRadius: BorderRadius.circular(99),
-                    color: tone,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Row(
-      children: [
-        levelCard(
-          level: 'N1',
-          title: 'Niveau 1',
-          emoji: '🔥',
-          count: n1,
-          tone: _fitilaGoldDeep,
-        ),
-        const SizedBox(width: 10),
-        levelCard(
-          level: 'N2',
-          title: 'Niveau 2',
-          emoji: '🚀',
-          count: n2,
-          tone: const Color(0xFF6758C9),
-        ),
-      ],
-    );
-  }
-
-  Widget _home(List<WebClasseLesson> all) {
-    final lessons = _forLevel(all);
-    final completed = lessons
-        .where((lesson) => _completed.contains('${lesson.level}-${lesson.id}'))
-        .length;
-    final isN2 = _level == 'N2';
-
-    final sections =
-        <({String id, String emoji, String title, String subtitle})>[
-          (
-            id: 'lessons',
-            emoji: '📖',
-            title: isN2 ? 'Part 1 — Langue' : 'Leçons',
-            subtitle: '${lessons.length} leçons',
-          ),
-          (
-            id: 'alphabet',
-            emoji: isN2 ? '🔢' : '🔤',
-            title: isN2 ? 'Part 2 — Calcul' : 'Alphabet',
-            subtitle: isN2 ? 'Calcul & problèmes' : 'Voyelles & consonnes',
-          ),
-          (
-            id: 'evaluations',
-            emoji: '📝',
-            title: 'Évaluations',
-            subtitle: 'Questions & scores',
-          ),
-          if (isN2)
-            (
-              id: 'grammaire',
-              emoji: '📐',
-              title: 'Grammaire',
-              subtitle: 'Classes, tons, verbes',
-            ),
-          if (isN2)
-            (
-              id: 'textprod',
-              emoji: '✍️',
-              title: 'Production de textes',
-              subtitle: '6 types de textes',
-            ),
-          if (isN2)
-            (
-              id: 'gestion',
-              emoji: '💼',
-              title: 'Gestion',
-              subtitle: 'Documents pratiques',
-            ),
-          (
-            id: 'facilitateur',
-            emoji: '👨‍🏫',
-            title: 'Facilitateur',
-            subtitle: 'Guide pédagogique',
-          ),
-          (
-            id: 'corrections',
-            emoji: '✅',
-            title: 'Mes corrections',
-            subtitle: 'Notes & commentaires',
-          ),
-        ];
-
-    return ListView(
-      children: [
-        _levelSelector(all),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _WebClassStat(
-                value: '$completed',
-                label: 'Leçons',
-                tone: _fitilaInk,
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: _WebClassStat(
-                value: '0',
-                label: 'Évaluations',
-                tone: _fitilaInk,
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: _WebClassStat(
-                value: '0%',
-                label: 'Progression',
-                tone: _fitilaGoldDeep,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        GridView.builder(
-          itemCount: sections.length,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisExtent: 152,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-          ),
-          itemBuilder: (context, index) {
-            final section = sections[index];
-            return InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: () {
-                if (section.id == 'lessons') {
-                  setState(() => _section = 'lessons');
-                } else {
-                  setState(() => _section = section.id);
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: _fitilaCard,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: _fitilaBorder),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 54,
-                      height: 54,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: index.isEven
-                            ? _fitilaPrimarySoft
-                            : const Color(0xFFDCEAE0),
-                        borderRadius: BorderRadius.circular(17),
-                      ),
-                      child: Text(
-                        section.emoji,
-                        style: const TextStyle(fontSize: 25),
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      section.title,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _fitilaInk,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      section.subtitle,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _fitilaMuted,
-                        fontSize: 9.8,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _lessonList(List<WebClasseLesson> all) {
-    final lessons = _forLevel(all);
-    final groups = _grouped(lessons);
-    return ListView(
-      children: [
-        Row(
-          children: [
-            IconButton(
-              tooltip: 'Retour',
-              onPressed: () => setState(() => _section = 'home'),
-              icon: const Icon(Icons.arrow_back_rounded),
-            ),
-            const SizedBox(width: 4),
-            const Expanded(
-              child: Text(
-                '📖 Leçons',
-                style: TextStyle(
-                  color: _fitilaInk,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: _level == 'N1'
-                    ? _fitilaPrimarySoft
-                    : const Color(0xFFE5E1FA),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                _level == 'N1' ? '🔥 N1' : '🚀 N2',
-                style: TextStyle(
-                  color: _level == 'N1'
-                      ? _fitilaGoldDeep
-                      : const Color(0xFF6758C9),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        for (final group in groups.entries) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(6, 12, 6, 8),
-            child: Text(
-              '📖  ${group.key}',
-              style: const TextStyle(
-                color: _fitilaInk,
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          for (final lesson in group.value)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 9),
-              child: _WebLessonTile(
-                lesson: lesson,
-                done: _completed.contains('${lesson.level}-${lesson.id}'),
-                onTap: () => _openLesson(lesson),
-              ),
-            ),
-        ],
-      ],
-    );
-  }
-
-  List<({String id, String label, String emoji})> _tabs(
-    WebClasseLesson lesson,
-  ) {
-    return [
-      (id: 'text', label: 'Texte', emoji: '📖'),
-      if (lesson.observe.isNotEmpty)
-        (id: 'observe', label: 'Mɛɛrio', emoji: '👁️'),
-      if (lesson.ecoute.isNotEmpty) (id: 'ecoute', label: 'Faagi', emoji: '🎧'),
-      if (lesson.reagis.isNotEmpty) (id: 'reagis', label: 'Geruo', emoji: '💬'),
-      if (lesson.retiens.isNotEmpty)
-        (id: 'retiens', label: 'Weenɛ', emoji: '🧠'),
-      if (lesson.reading.isNotEmpty || lesson.writing.isNotEmpty)
-        (id: 'phonetics', label: 'Sɔ̃ɔsiru', emoji: '✍️'),
-    ];
-  }
-
-  Widget _questionList(
-    WebClasseLesson lesson,
-    String section,
-    List<String> questions,
-  ) {
-    return ListView(
-      padding: const EdgeInsets.only(top: 4),
-      children: [
-        for (var i = 0; i < questions.length; i++)
-          Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: _fitilaCard,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: _fitilaBorder),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Q${i + 1}',
-                  style: const TextStyle(
-                    color: _fitilaGoldDeep,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  questions[i],
-                  style: const TextStyle(
-                    color: _fitilaInk,
-                    fontSize: 14,
-                    height: 1.4,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  initialValue:
-                      _lessonAnswers['${lesson.level}-${lesson.id}-$section-$i'],
-                  minLines: 2,
-                  maxLines: 5,
-                  onChanged: (value) {
-                    _lessonAnswers['${lesson.level}-${lesson.id}-$section-$i'] =
-                        value;
-                  },
-                  decoration: const InputDecoration(
-                    hintText: 'Votre réponse...',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Réponse vocale prête à enregistrer.',
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.mic_rounded),
-                      label: const Text('Vocal'),
-                    ),
-                    const Spacer(),
-                    FilledButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Réponse enregistrée localement.'),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.check_rounded),
-                      label: const Text('Soumettre'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _lessonContent(WebClasseLesson lesson) {
-    switch (_lessonTab) {
-      case 'observe':
-        return _questionList(lesson, 'observe', lesson.observe);
-      case 'ecoute':
-        return _questionList(lesson, 'ecoute', lesson.ecoute);
-      case 'reagis':
-        return _questionList(lesson, 'reagis', lesson.reagis);
-      case 'retiens':
-        return _questionList(lesson, 'retiens', lesson.retiens);
-      case 'phonetics':
-        return ListView(
-          children: [
-            if (lesson.phoneticLabel.isNotEmpty)
-              Text(
-                lesson.phoneticLabel,
-                style: const TextStyle(
-                  color: _fitilaGoldDeep,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            if (lesson.phoneticLabel.isNotEmpty) const SizedBox(height: 10),
-            if (lesson.reading.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: _fitilaCard,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: _fitilaBorder),
-                ),
-                child: Column(
-                  children: [
-                    for (var i = 0; i < lesson.reading.length; i++)
-                      ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          lesson.reading[i],
-                          style: const TextStyle(
-                            color: _fitilaInk,
-                            fontFamily: 'monospace',
-                            fontSize: 15,
-                          ),
-                        ),
-                        trailing: IconButton(
-                          tooltip: 'Écouter',
-                          onPressed: () => _playApprovedAudio(
-                            lesson,
-                            section: 'phonetics/reading',
-                            itemIndex: i,
-                          ),
-                          icon: const Icon(Icons.volume_up_rounded),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            if (lesson.writing.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: _fitilaCard,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: _fitilaBorder),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '✍️ Exercices d’écriture',
-                      style: TextStyle(
-                        color: _fitilaInk,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    for (var i = 0; i < lesson.writing.length; i++)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 9),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 84,
-                              child: Text(
-                                lesson.writing[i],
-                                style: const TextStyle(
-                                  color: _fitilaGoldDeep,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: TextFormField(
-                                initialValue:
-                                    _lessonAnswers['${lesson.level}-${lesson.id}-write-$i'],
-                                onChanged: (value) {
-                                  _lessonAnswers['${lesson.level}-${lesson.id}-write-$i'] =
-                                      value;
-                                },
-                                decoration: const InputDecoration(
-                                  hintText: 'Écris...',
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        );
-      default:
-        return ListView(
-          children: [
-            if (lesson.imageUrl.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  color: _fitilaCard,
-                  child: Image.network(
-                    'https://fitila.bj${lesson.imageUrl}',
-                    fit: BoxFit.contain,
-                    height: 310,
-                    errorBuilder: (_, _, _) => Container(
-                      height: 180,
-                      alignment: Alignment.center,
-                      color: _fitilaSurfaceAlt,
-                      child: const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.image_not_supported_outlined,
-                            color: _fitilaMuted,
-                            size: 38,
-                          ),
-                          SizedBox(height: 7),
-                          Text(
-                            'Illustration indisponible hors connexion',
-                            style: TextStyle(color: _fitilaMuted),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            if (lesson.imageUrl.isNotEmpty) const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: _fitilaCard,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _fitilaBorder),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: IconButton(
-                      tooltip: 'Écouter le texte',
-                      onPressed: () => _playApprovedAudio(lesson),
-                      icon: const Icon(Icons.volume_up_rounded),
-                    ),
-                  ),
-                  Text(
-                    lesson.text,
-                    style: const TextStyle(
-                      color: _fitilaInkSoft,
-                      fontSize: 15,
-                      height: 1.55,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: _fitilaSage,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                final tabs = _tabs(lesson);
-                final idx = tabs.indexWhere((tab) => tab.id == _lessonTab);
-                if (idx < tabs.length - 1) {
-                  setState(() => _lessonTab = tabs[idx + 1].id);
-                } else {
-                  setState(() {
-                    _completed.add('${lesson.level}-${lesson.id}');
-                  });
-                }
-              },
-              icon: const Icon(Icons.check_rounded),
-              label: const Text('J’ai lu'),
-            ),
-          ],
-        );
-    }
-  }
-
-  Widget _lessonDetail(List<WebClasseLesson> all) {
-    final lessons = _forLevel(all);
-    final lesson = lessons.firstWhere(
-      (item) => item.id == _selectedLessonId,
-      orElse: () => lessons.first,
-    );
-    final tabs = _tabs(lesson);
-    if (!tabs.any((tab) => tab.id == _lessonTab)) {
-      _lessonTab = 'text';
-    }
-
-    return Column(
-      children: [
-        Row(
-          children: [
-            IconButton(
-              tooltip: 'Leçons',
-              onPressed: () => setState(() => _section = 'lessons'),
-              icon: const Icon(Icons.arrow_back_rounded),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                '🏫 ${lesson.title}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _fitilaInk,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-              decoration: BoxDecoration(
-                color: _level == 'N1'
-                    ? _fitilaPrimarySoft
-                    : const Color(0xFFE5E1FA),
-                borderRadius: BorderRadius.circular(99),
-              ),
-              child: Text(
-                _level == 'N1' ? '🔥 N1' : '🚀 N2',
-                style: TextStyle(
-                  color: _level == 'N1'
-                      ? _fitilaGoldDeep
-                      : const Color(0xFF6758C9),
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: _level == 'N1'
-                  ? const [Color(0xFFFFF1C7), Color(0xFFFFE4B8)]
-                  : const [Color(0xFFE5E1FA), Color(0xFFD9D0F7)],
-            ),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: _level == 'N1'
-                  ? const Color(0xFFE9C86F)
-                  : const Color(0xFFB7A9EC),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _level == 'N1'
-                          ? const Color(0xFFFFE49A)
-                          : const Color(0xFFD2C7F2),
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                    child: Text(
-                      'Leçon ${lesson.id}',
-                      style: const TextStyle(
-                        color: _fitilaGoldDeep,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      lesson.themeLabel,
-                      style: const TextStyle(color: _fitilaMuted, fontSize: 11),
-                    ),
-                  ),
-                  const Text(
-                    '☆ ☆ ☆ ☆ ☆',
-                    style: TextStyle(color: _fitilaGoldDeep, fontSize: 13),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                lesson.title,
-                style: const TextStyle(
-                  color: _fitilaInk,
-                  fontSize: 21,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              if (lesson.phoneticLabel.isNotEmpty) ...[
-                const SizedBox(height: 5),
-                Text(
-                  lesson.phoneticLabel,
-                  style: const TextStyle(color: _fitilaGoldDeep, fontSize: 12),
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 43,
-          child: ListView.separated(
-            key: const ValueKey('classe-lesson-tabs'),
-            scrollDirection: Axis.horizontal,
-            itemCount: tabs.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 7),
-            itemBuilder: (context, index) {
-              final tab = tabs[index];
-              final selected = tab.id == _lessonTab;
-              return ChoiceChip(
-                selected: selected,
-                label: Text('${tab.emoji} ${tab.label}'),
-                onSelected: (_) => setState(() => _lessonTab = tab.id),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 10),
-        Expanded(child: _lessonContent(lesson)),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            OutlinedButton.icon(
-              onPressed: lesson.id <= 1
-                  ? null
-                  : () {
-                      final previous = lessons
-                          .where((e) => e.id < lesson.id)
-                          .lastOrNull;
-                      if (previous != null) {
-                        _openLesson(previous);
-                      }
-                    },
-              icon: const Icon(Icons.chevron_left_rounded),
-              label: const Text('Précédent'),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: () {
-                  final idx = tabs.indexWhere((tab) => tab.id == _lessonTab);
-                  if (idx < tabs.length - 1) {
-                    setState(() => _lessonTab = tabs[idx + 1].id);
-                    return;
-                  }
-                  setState(() {
-                    _completed.add('${lesson.level}-${lesson.id}');
-                  });
-                  final next = lessons
-                      .where((e) => e.id > lesson.id)
-                      .firstOrNull;
-                  if (next != null) {
-                    _openLesson(next);
-                  } else {
-                    setState(() => _section = 'lessons');
-                  }
-                },
-                icon: const Icon(Icons.check_rounded),
-                label: Text(
-                  tabs.last.id == _lessonTab ? 'Terminer la leçon' : 'Suivant',
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _secondarySection(String section) {
-    final config = switch (section) {
-      'alphabet' => (
-        icon: Icons.abc_rounded,
-        title: _level == 'N1' ? 'Alphabet' : 'Calcul',
-        text: _level == 'N1'
-            ? 'Voyelles, consonnes, tons, écoute et saisie Bàátɔ̀nú.'
-            : 'Nombres, calculs, problèmes et situations pratiques.',
-      ),
-      'evaluations' => (
-        icon: Icons.assignment_rounded,
-        title: 'Évaluations',
-        text: 'Questions langue/calcul, score et progression.',
-      ),
-      'grammaire' => (
-        icon: Icons.rule_rounded,
-        title: 'Grammaire',
-        text: 'Classes grammaticales, tons, verbes et structures.',
-      ),
-      'textprod' => (
-        icon: Icons.edit_note_rounded,
-        title: 'Production de textes',
-        text: 'Récit, description, dialogue, lettre et résumé.',
-      ),
-      'gestion' => (
-        icon: Icons.business_center_rounded,
-        title: 'Gestion',
-        text: 'Fiches, registres, annonces et documents pratiques.',
-      ),
-      'corrections' => (
-        icon: Icons.fact_check_rounded,
-        title: 'Mes corrections',
-        text: 'Notes, commentaires, corrigés et remédiation.',
-      ),
-      _ => (
-        icon: Icons.workspace_premium_rounded,
-        title: 'Facilitateur',
-        text: 'Guide pédagogique, objectifs et animation de classe.',
-      ),
-    };
-
-    return ListView(
-      children: [
-        Row(
-          children: [
-            IconButton(
-              onPressed: () => setState(() => _section = 'home'),
-              icon: const Icon(Icons.arrow_back_rounded),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              config.title,
-              style: const TextStyle(
-                color: _fitilaInk,
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Container(
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: _fitilaCard,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: _fitilaBorder),
-          ),
-          child: Column(
-            children: [
-              Icon(config.icon, color: _fitilaGoldDeep, size: 44),
-              const SizedBox(height: 12),
-              Text(
-                config.title,
-                style: const TextStyle(
-                  color: _fitilaInk,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 7),
-              Text(
-                config.text,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: _fitilaMuted, height: 1.45),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _renderLessons(List<WebClasseLesson> all) {
-    return switch (_section) {
-      'home' => _home(all),
-      'lessons' => _lessonList(all),
-      'detail' => _lessonDetail(all),
-      _ => _secondarySection(_section),
-    };
+  @override
+  void dispose() {
+    if (_ownsSession) _session.dispose();
+    super.dispose();
   }
 
   @override
@@ -13685,73 +12677,15 @@ class _ClasseScreenState extends State<ClasseScreen> {
     return _PageFrame(
       title: 'Classe',
       subtitle: _level == 'N1' ? '🔥 N1 — Bàátɔ̀nú' : '🚀 N2 — Bàátɔ̀nú',
-      child: widget.initialLessons != null
-          ? _renderLessons(widget.initialLessons!)
-          : FutureBuilder<List<WebClasseLesson>>(
-              future: _webLessons,
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(
-                    child: FilledButton.icon(
-                      onPressed: () => setState(
-                        () => _webLessons = WebClasseContent.loadLessons(),
-                      ),
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('Recharger les leçons'),
-                    ),
-                  );
-                }
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                return _renderLessons(snapshot.data!);
-              },
-            ),
-    );
-  }
-}
-
-class _WebClassStat extends StatelessWidget {
-  const _WebClassStat({
-    required this.value,
-    required this.label,
-    required this.tone,
-  });
-
-  final String value;
-  final String label;
-  final Color tone;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      decoration: BoxDecoration(
-        color: _fitilaCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _fitilaBorder),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              color: tone,
-              fontSize: 19,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            maxLines: 1,
-            style: const TextStyle(color: _fitilaMuted, fontSize: 9.8),
-          ),
-        ],
+      child: ClasseHub(
+        session: _session,
+        initialLessons: widget.initialLessons,
+        onLevelChanged: (l) => setState(() => _level = l),
       ),
     );
   }
 }
+
 
 class _WebLessonTile extends StatelessWidget {
   const _WebLessonTile({
@@ -15284,15 +14218,36 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
   late final TextEditingController _gradeCtrl;
   late final TextEditingController _commentCtrl;
   bool _saving = false;
-  bool _showPalette = false;
   final _media = FitilaMediaController();
   String? _recording; // 'personal' | 'generic' | null
   FitilaMediaAsset? _personalAsset;
   FitilaMediaAsset? _genericAsset;
+  ({String where, String question})? _described;
+
+  Future<void> _describe() async {
+    try {
+      final a = widget.answer;
+      final content = await ClasseContent.load();
+      final lessons = await WebClasseContent.loadLessons();
+      final d = describeAnswer(
+        level: '${a['level'] ?? 'N1'}',
+        module: '${a['module'] ?? ''}',
+        lessonId: '${a['lesson_id'] ?? ''}',
+        sectionKey: '${a['section_key'] ?? ''}',
+        questionIdx: (a['question_idx'] as num?)?.toInt() ?? 0,
+        content: content,
+        lessons: lessons,
+      );
+      if (mounted) setState(() => _described = d);
+    } catch (_) {
+      /* le libellé générique reste affiché */
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _describe();
     final grade = widget.answer['teacher_grade'];
     _gradeCtrl = TextEditingController(text: grade != null ? '$grade' : '');
     _commentCtrl = TextEditingController(
@@ -15306,18 +14261,6 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
     _commentCtrl.dispose();
     _media.dispose();
     super.dispose();
-  }
-
-  void _insertBariba(String letter) {
-    final sel = _commentCtrl.selection;
-    final text = _commentCtrl.text;
-    final start = sel.start < 0 ? text.length : sel.start;
-    final end = sel.end < 0 ? text.length : sel.end;
-    final next = text.replaceRange(start, end, letter);
-    _commentCtrl.value = TextEditingValue(
-      text: next,
-      selection: TextSelection.collapsed(offset: start + letter.length),
-    );
   }
 
   Future<void> _toggleRecording(String which) async {
@@ -15438,7 +14381,9 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Q${(a['question_idx'] as int? ?? 0) + 1} — ${a['module']} · ${a['level']} · L${a['lesson_id']}',
+            _described == null
+                ? 'Q${(a['question_idx'] as int? ?? 0) + 1} — ${a['module']} · ${a['level']} · L${a['lesson_id']}'
+                : '${_described!.where} — ${_described!.question}',
             style: const TextStyle(
               fontSize: 10,
               color: _fitilaMuted,
@@ -15447,29 +14392,12 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
           ),
           const SizedBox(height: 6),
           if (hasAudio)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: _fitilaSurfaceAlt,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.graphic_eq_rounded,
-                    size: 18,
-                    color: _fitilaClay,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Réponse audio · ${a['answer_audio_duration'] ?? '—'}s',
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      color: _fitilaInkSoft,
-                    ),
-                  ),
-                ],
-              ),
+            ClasseStoragePlayer(
+              id: 'ans-${a['id']}',
+              bucket: 'classe-answers-audio',
+              path: a['answer_audio_path'] as String,
+              label: 'Réponse vocale de l\'élève',
+              duration: (a['answer_audio_duration'] as num?)?.toDouble(),
             )
           else
             Container(
@@ -15539,35 +14467,19 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: TextField(
+                child: BaribaTextField(
                   controller: _commentCtrl,
-                  style: const TextStyle(fontSize: 11.5),
+                  maxLines: 3,
+                  minLines: 1,
+                  style: const TextStyle(fontSize: 12.5),
                   decoration: InputDecoration(
                     isDense: true,
-                    hintText: 'Commentaire (optionnel)',
-                    hintStyle: const TextStyle(
-                      fontSize: 11,
-                      color: _fitilaMuted,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
+                    hintText: 'Commentaire (clavier Bariba disponible)',
+                    hintStyle: const TextStyle(fontSize: 11, color: _fitilaMuted),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(9),
                       borderSide: const BorderSide(color: _fitilaBorder),
-                    ),
-                    suffixIcon: IconButton(
-                      iconSize: 16,
-                      icon: Text(
-                        'ɔɛŋ',
-                        style: TextStyle(
-                          color: _showPalette ? _fitilaGoldDeep : _fitilaMuted,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      onPressed: () =>
-                          setState(() => _showPalette = !_showPalette),
                     ),
                   ),
                 ),
@@ -15605,37 +14517,6 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
               ),
             ],
           ),
-          if (_showPalette)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Wrap(
-                spacing: 5,
-                runSpacing: 5,
-                children: [
-                  for (final letter in _baribaLetters)
-                    InkWell(
-                      onTap: () => _insertBariba(letter),
-                      borderRadius: BorderRadius.circular(7),
-                      child: Container(
-                        width: 26,
-                        height: 26,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: _fitilaSurfaceAlt,
-                          borderRadius: BorderRadius.circular(7),
-                        ),
-                        child: Text(
-                          letter,
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
           const SizedBox(height: 10),
           Text(
             'Correction vocale',
@@ -20467,26 +19348,28 @@ class _LanguageSwitch extends StatefulWidget {
 }
 
 class _LanguageSwitchState extends State<_LanguageSwitch> {
-  static const _key = 'fitila_language';
-  String _lang = 'fr';
-
   @override
   void initState() {
     super.initState();
-    SharedPreferences.getInstance().then((p) {
-      final saved = p.getString(_key);
-      if (mounted && saved != null) {
-        setState(() => _lang = saved);
-      }
-    }).catchError((_) {});
+    FitilaLanguage.ensureLoaded();
+    FitilaLanguage.current.addListener(_changed);
   }
 
-  Future<void> _set(String code) async {
-    setState(() => _lang = code);
-    try {
-      (await SharedPreferences.getInstance()).setString(_key, code);
-    } catch (_) {}
+  void _changed() {
+    if (mounted) {
+      setState(() {});
+    }
   }
+
+  @override
+  void dispose() {
+    FitilaLanguage.current.removeListener(_changed);
+    super.dispose();
+  }
+
+  String get _lang => FitilaLanguage.current.value;
+
+  Future<void> _set(String code) => FitilaLanguage.set(code);
 
   @override
   Widget build(BuildContext context) {
