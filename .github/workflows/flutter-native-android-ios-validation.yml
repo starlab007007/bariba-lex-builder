@@ -111,7 +111,14 @@ jobs:
       - name: Compile iOS app and keyboard extension
         run: |
           flutter build ios --simulator --debug
-          xcodebuild             -project ios/Runner.xcodeproj             -scheme Runner             -configuration Debug             -sdk iphonesimulator             -destination 'generic/platform=iOS Simulator'             CODE_SIGNING_ALLOWED=NO             build
+          xcodebuild \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
 
       - name: Verify keyboard extension
         run: |
