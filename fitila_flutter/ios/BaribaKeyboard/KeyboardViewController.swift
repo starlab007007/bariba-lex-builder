@@ -58,10 +58,23 @@ final class KeyboardViewController: UIInputViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        // Lets the Flutter app show "Accès complet détecté" (best effort; the
-        // shared container is only writable when Full Access is granted).
-        if hasFullAccess { defaults?.set(true, forKey: "full_access") }
+        // Best-effort status handshake with the containing Flutter app.
+        // With Full Access, the shared App Group is writable. When access is
+        // later revoked iOS can make the shared container unavailable, so the
+        // containing app treats this value as advisory only.
+        defaults?.set(hasFullAccess, forKey: "full_access")
+        defaults?.set(Date().timeIntervalSince1970, forKey: "keyboard_seen_at")
         _ = BaribaDictionary.shared // warm the dictionary off the first keystroke
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        debounce?.invalidate()
+        debounce = nil
+        repeatTimer?.invalidate()
+        repeatTimer = nil
+        translationTask?.cancel()
+        translationTask = nil
     }
 
     override func textDidChange(_ textInput: UITextInput?) {
