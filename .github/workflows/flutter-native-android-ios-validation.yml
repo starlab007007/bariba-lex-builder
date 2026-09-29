@@ -95,7 +95,10 @@ jobs:
           swift --version
 
       - name: Resolve dependencies
-        run: flutter pub get
+        run: |
+          flutter pub get
+          cd ios
+          pod install
 
       - name: Validate Xcode project
         run: |
