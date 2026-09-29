@@ -1,3 +1,5 @@
+import dictionaryUrl from '@/assets/bariba_dictionary.json?url';
+
 /**
  * Moteur de texte Bàátɔ̀nú de l'Espace : pliage typographique, prédiction, vérification orthographique.
  * Même dictionnaire et mêmes règles que le clavier Flutter/Android/iOS (`bariba_dictionary.json`).
@@ -64,7 +66,18 @@ export function sanitizeHtml(html: string): string {
 }
 
 export type LexEntry = { ba: string; fr: string; freq: number };
-type RawDict = { entries: LexEntry[]; bigrams: Record<string, string[]> };
+type RawDict = { entries: LexEntry[]; bigrams: Record<string, string[]>; phrases?: { ba: string; fr: string }[] };
+
+export type TranslationDirection = 'ba-fr' | 'fr-ba';
+export type Translation = { text: string; kind: 'phrase' | 'word' | 'words'; direction: TranslationDirection };
+
+/** « venir, arriver (voir …) » -> « venir » : la tête de définition sert de clé de traduction. */
+const GRAMMAR_TAG = /^(inv|int|n:?|num|poss|nég|interrog|base:?|sub|dém|et dém|coord|post pos|adj|adv|v|prép|conj|pron|›)\.?$/i;
+export function glossHead(gloss: string): string {
+  const head = (gloss.split(/[;,(]/)[0] ?? gloss).trim();
+  // Certaines entrées ne portent qu'une étiquette grammaticale (« inv », « int »…) : pas de vraie traduction.
+  return GRAMMAR_TAG.test(head) ? '' : head;
+}
 
 export class BaribaLexicon {
   private entries: LexEntry[] = [];
@@ -72,6 +85,9 @@ export class BaribaLexicon {
   private words = new Set<string>();
   private bigrams = new Map<string, string[]>();
   private byInitial = new Map<string, LexEntry[]>();
+  private byFrench = new Map<string, LexEntry[]>();
+  private phraseBa = new Map<string, string>();
+  private phraseFr = new Map<string, string>();
 
   constructor(raw: RawDict) {
     this.entries = raw.entries.filter((e) => e.ba).sort((a, b) => (b.freq ?? 0) - (a.freq ?? 0));
@@ -84,6 +100,63 @@ export class BaribaLexicon {
       this.byInitial.get(ini)!.push(e);
     }
     for (const [k, v] of Object.entries(raw.bigrams ?? {})) this.bigrams.set(foldText(k), v);
+    for (const e of this.entries) {
+      const head = foldText(glossHead(e.fr));
+      if (!head) continue;
+      const list = this.byFrench.get(head) ?? [];
+      if (list.length < 6) list.push(e);
+      this.byFrench.set(head, list);
+    }
+    for (const p of raw.phrases ?? []) {
+      this.phraseBa.set(foldText(p.ba), p.fr);
+      this.phraseFr.set(foldText(p.fr), p.ba);
+    }
+  }
+
+  /** Toutes les entrées Bariba dont la forme repliée correspond (homonymes : ba, bà, bá…). */
+  lookup(word: string): LexEntry[] {
+    const key = foldText(word);
+    return this.entries.filter((e) => foldText(e.ba) === key).slice(0, 6);
+  }
+
+  /** Mots Bariba possibles pour un mot français (classés par fréquence). */
+  lookupFrench(word: string): LexEntry[] {
+    return this.byFrench.get(foldText(word)) ?? [];
+  }
+
+  /** Devine le sens de traduction : plus de mots reconnus en Bariba qu'en français -> ba-fr. */
+  detectDirection(text: string): TranslationDirection {
+    let ba = 0;
+    let fr = 0;
+    for (const { word } of tokenize(text)) {
+      const k = foldText(word);
+      if (this.byKey.has(k) && k.length > 1) ba++;
+      if (this.byFrench.has(k)) fr++;
+    }
+    return ba > fr ? 'ba-fr' : fr > ba ? 'fr-ba' : this.isKnown(text.split(/\s+/)[0] ?? '') ? 'ba-fr' : 'fr-ba';
+  }
+
+  /** Traduction hors ligne : phrase exacte, mot, sinon mot à mot si au moins la moitié est connue. */
+  translate(text: string, direction: TranslationDirection): Translation | null {
+    const trimmed = text.trim();
+    if (!trimmed) return null;
+    const key = foldText(trimmed);
+    const toFr = direction === 'ba-fr';
+    const phrase = toFr ? this.phraseBa.get(key) : this.phraseFr.get(key);
+    if (phrase) return { text: phrase, kind: 'phrase', direction };
+    const one = toFr ? glossHead(this.byKey.get(key)?.fr ?? '') : this.byFrench.get(key)?.[0]?.ba;
+    if (one) return { text: one, kind: 'word', direction };
+    let known = 0;
+    let total = 0;
+    const out = trimmed.replace(WORD_RE, (w) => {
+      total++;
+      const k = foldText(w);
+      const hit = toFr ? glossHead(this.byKey.get(k)?.fr ?? '') : this.byFrench.get(k)?.[0]?.ba;
+      if (!hit) return w;
+      known++;
+      return hit;
+    });
+    return known > 0 && known * 2 >= total ? { text: out, kind: 'words', direction } : null;
   }
 
   get size() {
@@ -169,9 +242,9 @@ function withinOneEdit(a: string, b: string): boolean {
 }
 
 let lexiconPromise: Promise<BaribaLexicon | null> | null = null;
-/** Charge (une fois) le dictionnaire partagé avec les claviers natifs. */
+/** Charge (une fois) le dictionnaire partagé avec les claviers natifs (fichier empaqueté par Vite, donc toujours déployé). */
 export function loadLexicon(): Promise<BaribaLexicon | null> {
-  lexiconPromise ??= fetch('/data/bariba_dictionary.json')
+  lexiconPromise ??= fetch(dictionaryUrl)
     .then((r) => (r.ok ? (r.json() as Promise<RawDict>) : Promise.reject(new Error(String(r.status)))))
     .then((raw) => new BaribaLexicon(raw))
     .catch(() => {

@@ -224,3 +224,17 @@ export async function espaceStats() {
   ]);
   return { docs: docs.count ?? 0, archived: archived.count ?? 0, folders: folders.count ?? 0, scans: jobs.count ?? 0 };
 }
+
+/** Traduction en ligne (moteur `ai-translate`) ; renvoie null si indisponible (hors ligne, non connecté). */
+export async function translateRemote(text: string, direction: 'ba-fr' | 'fr-ba'): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('ai-translate', {
+      body: { text, sourceLang: direction === 'ba-fr' ? 'bariba' : 'french', targetLang: direction === 'ba-fr' ? 'french' : 'bariba' },
+    });
+    if (error) return null;
+    const t = typeof data?.translation === 'string' ? data.translation.trim() : '';
+    return t || null;
+  } catch {
+    return null;
+  }
+}
