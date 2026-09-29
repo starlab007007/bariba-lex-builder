@@ -53,6 +53,12 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.raconte-moi]
+verify_jwt = true
+
+[functions.set-security]
+verify_jwt = true
+
+[functions.reset-pin]
 verify_jwt = false
 
 [functions.agri-advisor]

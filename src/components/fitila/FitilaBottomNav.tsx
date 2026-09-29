@@ -37,7 +37,7 @@ export default function FitilaBottomNav() {
   return (
     <nav
       aria-label="Navigation principale FITILA"
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-[90] px-3 pb-[max(10px,env(safe-area-inset-bottom))]"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[90] px-3 pb-[max(10px,env(safe-area-inset-bottom))] lg:hidden"
     >
       <div
         className="pointer-events-auto mx-auto flex h-[72px] w-full max-w-[920px] items-stretch rounded-[26px] border bg-white/95 px-1.5 shadow-[0_18px_45px_-24px_rgba(36,31,46,.55)] backdrop-blur-xl"

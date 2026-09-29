@@ -124,13 +124,18 @@ export function ApGuideHero({ title, subtitle, action, onTap }: { title: string;
       style={{ background: `radial-gradient(circle at 90% -20%, #4A3B2A, ${AP_COLORS.night})` }}
     >
       <div className="flex items-start gap-3.5">
-        <div
-          className="flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-full text-[28px]"
-          style={{ background: `linear-gradient(135deg, ${AP_COLORS.gold}, ${AP_COLORS.goldDeep})` }}
-          aria-hidden
-        >
-          🦉
-        </div>
+        <svg width="68" height="68" viewBox="0 0 68 68" aria-hidden className="shrink-0">
+          <defs><clipPath id="ap-guide-clip"><circle cx="34" cy="34" r="32" /></clipPath></defs>
+          <circle cx="34" cy="34" r="33" fill="#2E2A3B" stroke={AP_COLORS.gold} strokeWidth="2" />
+          <g clipPath="url(#ap-guide-clip)">
+            <ellipse cx="34" cy="70" rx="26" ry="20" fill="#C99530" />
+            <rect x="29" y="40" width="10" height="9" rx="4" fill="#A9682F" />
+            <circle cx="34" cy="31" r="12" fill="#B9793A" />
+            <path d="M21.5 27c1-9 7-14 13-14s11.5 5 12.5 14c-4-4-8-5.500-12.500-5.500S25 23 21.500 27z" fill="#F4EBD8" />
+            <circle cx="30" cy="33" r="1.200" fill="#241F2E" /><circle cx="38.500" cy="33" r="1.200" fill="#241F2E" />
+            <path d="M31 38.500q3 2 6 0" stroke="#241F2E" strokeWidth="1.200" fill="none" strokeLinecap="round" />
+          </g>
+        </svg>
         <div className="min-w-0 flex-1">
           <p className="text-[11.5px] font-bold tracking-wide" style={{ color: AP_COLORS.goldTint }}>TON GUIDE TE PROPOSE</p>
           <p className="mt-1 text-xl font-semibold leading-tight text-white">{title}</p>
@@ -164,7 +169,7 @@ export function ApDailySessionCard({
   return (
     <ApHubCardBox color={AP_COLORS.goldGlow} borderColor={AP_COLORS.gold} radius={24} padding={16}>
       <p className="text-[11.5px] font-bold tracking-wide" style={{ color: AP_COLORS.goldDeep }}>SÉANCE DU JOUR</p>
-      <p className="mt-1 text-lg font-semibold" style={{ color: AP_COLORS.ink }}>{skills.length} types d’exercices · environ 8 min</p>
+      <p className="mt-1 text-[20px] font-semibold leading-tight" style={{ color: AP_COLORS.ink, fontFamily: 'Fraunces, ui-serif, Georgia, serif' }}>{skills.length} types d’exercices · environ 8 min</p>
       <p className="mt-0.5 text-sm" style={{ color: AP_COLORS.muted }}>Nouveaux mots, révisions et correction immédiate.</p>
       <div className="mt-3 flex flex-wrap gap-1.5">
         {skills.map((skill) => {

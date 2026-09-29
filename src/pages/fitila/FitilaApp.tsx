@@ -1,11 +1,11 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, createContext, useContext } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { FitilaLanguageProvider, useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { AudioDescriptionProvider } from '@/contexts/AudioDescriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTamTamProfile } from '@/hooks/useTamTamProfile';
-import { Home, User, Settings, X, Bell, Globe, BookOpen, Shield, LayoutDashboard, Package, Sparkles, Menu } from 'lucide-react';
+import { Home, User, Settings, X, Bell, Globe, BookOpen, Shield, LayoutDashboard, Package, Sparkles, Menu, Search } from 'lucide-react';
 import { HelpCircle } from 'lucide-react';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { AdminFloatingButton } from '@/components/admin/AdminFloatingButton';
@@ -16,6 +16,7 @@ import AppTourProvider, { TOUR_STORAGE_KEY } from '@/components/onboarding/AppTo
 import SafeBoundary from '@/components/common/SafeBoundary';
 import FitilaBottomNav from '@/components/fitila/FitilaBottomNav';
 import FitilaCanonicalDrawer from '@/components/fitila/FitilaCanonicalDrawer';
+import FitilaNavPanel from '@/components/fitila/FitilaNavPanel';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📱 FITILA APP V7 - MENU SIMPLIFIÉ
@@ -329,6 +330,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
 function AppContent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const reduceMotion = useReducedMotion();
 
   useHFPreWarm();
   useExtendedNotifications();
@@ -347,35 +349,82 @@ function AppContent() {
   return (
     <SideMenuContext.Provider value={menuContext}>
       <AppTourProvider>
-        <div className="fixed inset-0 w-full h-full overflow-hidden kuaishou-bg">
-          <FitilaCanonicalDrawer open={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+        <div className="fixed inset-0 flex h-full w-full overflow-hidden fitila-app-bg">
+          {/* Bureau (≥1024 px) : menu latéral permanent, comme le shell large de Flutter Build19 */}
+          <aside className="hidden w-[304px] shrink-0 border-r lg:block" style={{ borderColor: '#E4DFCC' }} aria-label="Navigation FITILA">
+            <FitilaNavPanel />
+          </aside>
 
-          {!isMenuOpen && (
-            <button
-              type="button"
-              onClick={() => setIsMenuOpen(true)}
-              aria-label="Ouvrir le menu FITILA"
-              className="fixed top-[max(14px,env(safe-area-inset-top))] z-[85] flex h-12 w-12 items-center justify-center rounded-full border bg-white/95 shadow-sm backdrop-blur-xl transition-transform active:scale-95"
-              style={{
-                left: 'max(14px, calc(50% - 450px))',
-                borderColor: '#E4DFCC',
-                color: '#241F2E',
-              }}
-            >
-              <Menu className="h-6 w-6" strokeWidth={2.2} />
-            </button>
-          )}
+          {/* Mobile : tiroir + bouton menu flottant */}
+          <div className="lg:hidden">
+            <FitilaCanonicalDrawer open={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+            {!isMenuOpen && (
+              <button
+                type="button"
+                onClick={() => setIsMenuOpen(true)}
+                aria-label="Ouvrir le menu FITILA"
+                className="fixed left-[14px] top-[max(14px,env(safe-area-inset-top))] z-[85] flex h-12 w-12 items-center justify-center rounded-full border bg-white/95 shadow-sm backdrop-blur-xl transition-transform active:scale-95"
+                style={{ borderColor: '#E4DFCC', color: '#241F2E' }}
+              >
+                <Menu className="h-6 w-6" strokeWidth={2.2} />
+              </button>
+            )}
+          </div>
 
-          <main className="w-full h-full overflow-hidden pb-[92px]">
-            <SafeBoundary label="Page Fitila">
-              <Outlet />
-            </SafeBoundary>
-          </main>
+          <div className="relative flex min-w-0 flex-1 flex-col">
+            <DesktopTopBar />
+            <main className="min-h-0 w-full flex-1 overflow-hidden pb-[92px] lg:pb-0">
+              <SafeBoundary label="Page Fitila">
+                <motion.div
+                  key={location.pathname.split('/')[1] || 'home'}
+                  className="h-full"
+                  initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.22, ease: 'easeOut' }}
+                >
+                  <Outlet />
+                </motion.div>
+              </SafeBoundary>
+            </main>
+          </div>
           <FitilaBottomNav />
           <AdminFloatingButton />
         </div>
       </AppTourProvider>
     </SideMenuContext.Provider>
+  );
+}
+
+/** Barre supérieure du bureau : recherche globale, notifications, compte. */
+function DesktopTopBar() {
+  const nav = useNavigate();
+  const { user } = useAuth();
+  const [q, setQ] = useState('');
+  const name = (user?.user_metadata?.display_name as string | undefined) || (user ? 'Mon compte' : 'Se connecter');
+  return (
+    <div className="hidden items-center gap-3 px-[18px] py-3 lg:flex">
+      <form
+        className="relative flex-1"
+        onSubmit={(e) => { e.preventDefault(); nav(q.trim() ? `/dictionary?q=${encodeURIComponent(q.trim())}` : '/dictionary'); }}
+        role="search"
+      >
+        <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2" style={{ color: '#8C8571' }} />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Recherche globale : dictionnaire, classe, posts…"
+          aria-label="Recherche globale"
+          className="h-[56px] w-full rounded-[18px] border bg-white pl-12 pr-4 text-[15px] outline-none placeholder:text-[#8C8571] focus:border-[#C99530]"
+          style={{ borderColor: '#E4DFCC', color: '#241F2E' }}
+        />
+      </form>
+      <button type="button" onClick={() => nav('/messages')} aria-label="Notifications" className="flex h-[40px] w-[40px] items-center justify-center rounded-full border bg-white" style={{ borderColor: '#E4DFCC', color: '#241F2E' }}>
+        <Bell className="h-5 w-5" />
+      </button>
+      <button type="button" onClick={() => nav(user ? '/profile' : '/auth')} className="flex h-[48px] min-w-[220px] items-center justify-center gap-3 rounded-full px-5 text-[14px] font-extrabold" style={{ background: '#C99530', color: '#2B2110' }}>
+        <User className="h-4 w-4" /> {name}
+      </button>
+    </div>
   );
 }
 

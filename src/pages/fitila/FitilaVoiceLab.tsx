@@ -68,7 +68,7 @@ function WaveBars({ active }: { active: boolean }) {
       {[0, 1, 2, 3, 4].map(i => (
         <motion.span
           key={i}
-          className="w-2 rounded-full bg-gradient-to-t from-rose-500 to-pink-400"
+          className="w-2 rounded-full bg-[#C99530]"
           animate={active ? { height: ['20%', '90%', '40%', '100%', '30%'] } : { height: '15%' }}
           transition={active ? { duration: 0.8 + i * 0.1, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
         />
@@ -280,25 +280,19 @@ export default function FitilaVoiceLab() {
     `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-rose-50 via-pink-50 to-amber-50 overflow-y-auto">
+    <div className="h-full bg-[#F7F5EC] text-[#241F2E] overflow-y-auto">
       {/* Header */}
-      <header className="sticky top-0 z-10 backdrop-blur-xl bg-white/70 border-b border-rose-200/50 px-4 py-3">
+      <header className="z-10 pl-[74px] lg:pl-[18px] pr-4 pt-[14px] pb-2">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
-          <button
-            onClick={() => navigate('/fitila')}
-            className="w-10 h-10 rounded-full bg-white/80 hover:bg-white shadow-sm flex items-center justify-center transition-all"
-          >
-            <ArrowLeft className="w-5 h-5 text-rose-700" />
-          </button>
           <div className="flex-1">
-            <h1 className="text-lg font-black text-gray-900 flex items-center gap-2">
-              🎙️ <span>Bariba Voice Lab</span>
+            <h1 className="text-[17px] font-extrabold text-[#241F2E] flex items-center gap-2">
+              <span>Voice Lab</span>
             </h1>
-            <p className="text-xs text-gray-500">Aide à construire la voix de demain</p>
+            <p className="text-xs text-[#8C8571]">Aide à construire la voix de demain</p>
           </div>
           <div className="text-right">
-            <div className="text-xs text-gray-400 font-medium">Vos contributions</div>
-            <div className="text-lg font-black bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent">
+            <div className="text-xs text-[#8C8571] font-medium">Vos contributions</div>
+            <div className="text-lg font-black text-[#9C6B1D]">
               {stats.user_recorded}
             </div>
           </div>
@@ -307,9 +301,9 @@ export default function FitilaVoiceLab() {
 
       <main className="max-w-3xl mx-auto px-4 py-5 space-y-5">
         {/* ─── Two-level theme selector ─── */}
-        <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-white/80 space-y-3">
+        <div className="bg-white rounded-[18px] p-4 border border-[#E4DFCC] space-y-3">
           <div>
-            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-2 block">
+            <label className="text-[10px] font-bold text-[#8C8571] uppercase tracking-wide mb-2 block">
               Catégorie principale
             </label>
             <div className="flex flex-wrap gap-2">
@@ -319,8 +313,8 @@ export default function FitilaVoiceLab() {
                   onClick={() => { setMacro(m.key); if (m.key === 'all') setCategory('all'); }}
                   className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
                     macro === m.key
-                      ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md'
-                      : 'bg-white text-gray-700 hover:bg-rose-50 border border-gray-200'
+                      ? 'bg-[#C99530] text-[#2B2110] shadow-sm'
+                      : 'bg-white text-[#241F2E] hover:bg-[#F3E3B9]/50 border border-[#E4DFCC]'
                   }`}
                 >
                   {m.emoji} {m.label}
@@ -331,7 +325,7 @@ export default function FitilaVoiceLab() {
 
           {(filteredCategories.length > 0 || macro === 'all') && (
             <div>
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-2 block">
+              <label className="text-[10px] font-bold text-[#8C8571] uppercase tracking-wide mb-2 block">
                 Thème précis
               </label>
               <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
@@ -339,8 +333,8 @@ export default function FitilaVoiceLab() {
                   onClick={() => setCategory('all')}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                     category === 'all'
-                      ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md'
-                      : 'bg-white text-gray-700 hover:bg-rose-50 border border-gray-200'
+                      ? 'bg-[#C99530] text-[#2B2110] shadow-sm'
+                      : 'bg-white text-[#241F2E] hover:bg-[#F3E3B9]/50 border border-[#E4DFCC]'
                   }`}
                 >
                   ✨ Tous mélangés
@@ -355,13 +349,13 @@ export default function FitilaVoiceLab() {
                       className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
                         isActive
                           ? `bg-gradient-to-r ${m.gradient} text-white shadow-md`
-                          : 'bg-white text-gray-700 hover:bg-rose-50 border border-gray-200'
+                          : 'bg-white text-[#241F2E] hover:bg-[#F3E3B9]/50 border border-[#E4DFCC]'
                       }`}
                     >
                       <span>{m.emoji}</span>
                       <span>{c.name}</span>
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                        isActive ? 'bg-white/25' : 'bg-gray-100 text-gray-500'
+                        isActive ? 'bg-white/25' : 'bg-gray-100 text-[#8C8571]'
                       }`}>
                         {c.remaining}
                       </span>
@@ -382,11 +376,11 @@ export default function FitilaVoiceLab() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
-              className="bg-white rounded-3xl shadow-xl overflow-hidden border border-rose-100"
+              className="bg-white rounded-[24px] overflow-hidden border border-[#E4DFCC]"
             >
               {/* Top status banner */}
               {phase === 'recording' && (
-                <div className="bg-gradient-to-r from-red-500 to-rose-500 px-5 py-2.5 flex items-center justify-center gap-2 animate-pulse">
+                <div className="bg-[#B54E33] px-5 py-2.5 flex items-center justify-center gap-2 animate-pulse">
                   <span className="w-2.5 h-2.5 bg-white rounded-full" />
                   <span className="text-white font-bold text-sm tracking-wide">
                     🔴 Enregistrement en cours · {formatTime(duration)}
@@ -394,7 +388,7 @@ export default function FitilaVoiceLab() {
                 </div>
               )}
               {phase === 'paused' && (
-                <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-2.5 flex items-center justify-center gap-2">
+                <div className="bg-[#C99530] px-5 py-2.5 flex items-center justify-center gap-2">
                   <Pause className="w-4 h-4 text-white" />
                   <span className="text-white font-bold text-sm tracking-wide">
                     En pause · {formatTime(duration)}
@@ -402,7 +396,7 @@ export default function FitilaVoiceLab() {
                 </div>
               )}
               {phase === 'recorded' && (
-                <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-2.5 flex items-center justify-center gap-2">
+                <div className="bg-[#3F6E52] px-5 py-2.5 flex items-center justify-center gap-2">
                   <Check className="w-4 h-4 text-white" />
                   <span className="text-white font-bold text-sm tracking-wide">
                     Enregistré · {formatTime(recordedDuration)} · Écoutez avant de valider
@@ -410,7 +404,7 @@ export default function FitilaVoiceLab() {
                 </div>
               )}
               {phase === 'submitting' && (
-                <div className="bg-gradient-to-r from-blue-500 to-indigo-500 px-5 py-2.5 flex items-center justify-center gap-2">
+                <div className="bg-[#241F2E] px-5 py-2.5 flex items-center justify-center gap-2">
                   <Loader2 className="w-4 h-4 text-white animate-spin" />
                   <span className="text-white font-bold text-sm tracking-wide">
                     Envoi de votre voix…
@@ -432,25 +426,25 @@ export default function FitilaVoiceLab() {
 
               {/* Phrase text */}
               <div className="p-6 md:p-8 text-center min-h-[180px] flex flex-col justify-center">
-                <p className="text-xs uppercase tracking-wider text-gray-400 font-bold mb-3">
+                <p className="text-xs uppercase tracking-wider text-[#8C8571] font-bold mb-3">
                   {phase === 'idle' && 'Lisez à voix haute'}
                   {phase === 'recording' && '🎤 Lisez maintenant…'}
                   {phase === 'paused' && '⏸ Reprenez quand vous voulez'}
                   {phase === 'recorded' && '✓ Réécoutez votre lecture'}
                   {phase === 'submitting' && 'Merci pour votre contribution'}
                 </p>
-                <p className="text-2xl md:text-3xl font-black text-gray-900 leading-snug" style={{ fontFamily: 'Georgia, serif' }}>
+                <p className="text-2xl md:text-3xl font-black text-[#241F2E] leading-snug" style={{ fontFamily: 'Georgia, serif' }}>
                   « {current.text_bariba} »
                 </p>
                 {current.text_french && showFrench && (
-                  <p className="mt-4 text-sm text-gray-500 italic">
+                  <p className="mt-4 text-sm text-[#8C8571] italic">
                     🇫🇷 {current.text_french}
                   </p>
                 )}
                 {current.text_french && (
                   <button
                     onClick={() => setShowFrench(s => !s)}
-                    className="mt-3 text-xs text-rose-500 hover:text-rose-600 underline"
+                    className="mt-3 text-xs text-[#9C6B1D] hover:text-[#7A5215] underline"
                   >
                     {showFrench ? 'Masquer la traduction' : 'Voir la traduction'}
                   </button>
@@ -478,7 +472,7 @@ export default function FitilaVoiceLab() {
                     ) : vad.isVoice ? (
                       <span className="text-emerald-600">🎙️ Voix bien détectée</span>
                     ) : (
-                      <span className="text-gray-500">🤫 Silence — parlez plus fort</span>
+                      <span className="text-[#8C8571]">🤫 Silence — parlez plus fort</span>
                     )}
                   </div>
                 </div>
@@ -488,14 +482,14 @@ export default function FitilaVoiceLab() {
               {phase === 'recorded' && (
                 <div className="px-6 pb-2 space-y-2">
                   {processing && (
-                    <div className="flex items-center justify-center gap-2 text-xs text-gray-500 py-2">
+                    <div className="flex items-center justify-center gap-2 text-xs text-[#8C8571] py-2">
                       <Loader2 className="w-4 h-4 animate-spin" /> Traitement audio (nettoyage, normalisation)…
                     </div>
                   )}
                   {processedUrl && processed && (
                     <>
                       <audio ref={audioPlayerRef} src={processedUrl} controls className="w-full" />
-                      <div className="flex items-center justify-center gap-3 text-[11px] text-gray-500 font-semibold">
+                      <div className="flex items-center justify-center gap-3 text-[11px] text-[#8C8571] font-semibold">
                         <span>⏱ {processed.durationSec.toFixed(1)}s</span>
                         <span>·</span>
                         <span>📊 Pic {isFinite(processed.peakDb) ? processed.peakDb.toFixed(1) : '–'} dB</span>
@@ -524,16 +518,16 @@ export default function FitilaVoiceLab() {
                       whileTap={{ scale: 0.95 }}
                       whileHover={{ scale: 1.05 }}
                       onClick={handleStart}
-                      className="group relative w-24 h-24 rounded-full bg-gradient-to-br from-rose-500 to-pink-600 shadow-xl shadow-rose-500/40 flex items-center justify-center transition-all"
+                      className="group relative w-24 h-24 rounded-full bg-[#B54E33] shadow-lg shadow-[#B54E33]/30 flex items-center justify-center transition-all"
                       aria-label="Commencer l'enregistrement"
                     >
                       <Mic className="w-10 h-10 text-white" />
-                      <span className="absolute inset-0 rounded-full bg-rose-400/30 group-hover:animate-ping" />
+                      <span className="absolute inset-0 rounded-full bg-[#B54E33]/25 group-hover:animate-ping" />
                     </motion.button>
-                    <p className="text-sm font-bold text-gray-700">Commencer l'enregistrement</p>
+                    <p className="text-sm font-bold text-[#241F2E]">Commencer l'enregistrement</p>
                     <button
                       onClick={handleSkip}
-                      className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1 mt-1"
+                      className="text-xs text-[#8C8571] hover:text-gray-600 inline-flex items-center gap-1 mt-1"
                     >
                       <SkipForward className="w-3 h-3" />
                       Passer cette phrase
@@ -555,13 +549,13 @@ export default function FitilaVoiceLab() {
                       animate={{ scale: [1, 1.06, 1] }}
                       transition={{ repeat: Infinity, duration: 1.4 }}
                       onClick={handleStop}
-                      className="px-6 py-3 rounded-full bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-red-500/40"
+                      className="px-6 py-3 rounded-full bg-[#B54E33] text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-red-500/40"
                     >
                       <Square className="w-4 h-4" fill="white" /> Terminer
                     </motion.button>
                     <button
                       onClick={handleCancel}
-                      className="px-4 py-2.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm flex items-center gap-2 transition-all"
+                      className="px-4 py-2.5 rounded-full bg-gray-100 hover:bg-gray-200 text-[#241F2E] font-bold text-sm flex items-center gap-2 transition-all"
                     >
                       <X className="w-4 h-4" /> Annuler
                     </button>
@@ -579,13 +573,13 @@ export default function FitilaVoiceLab() {
                     </button>
                     <button
                       onClick={handleStop}
-                      className="px-5 py-2.5 rounded-full bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold text-sm flex items-center gap-2 shadow-md"
+                      className="px-5 py-2.5 rounded-full bg-[#B54E33] text-white font-bold text-sm flex items-center gap-2 shadow-md"
                     >
                       <Square className="w-4 h-4" fill="white" /> Terminer
                     </button>
                     <button
                       onClick={handleCancel}
-                      className="px-4 py-2.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm flex items-center gap-2 transition-all"
+                      className="px-4 py-2.5 rounded-full bg-gray-100 hover:bg-gray-200 text-[#241F2E] font-bold text-sm flex items-center gap-2 transition-all"
                     >
                       <X className="w-4 h-4" /> Annuler
                     </button>
@@ -605,7 +599,7 @@ export default function FitilaVoiceLab() {
                       whileTap={{ scale: 0.95 }}
                       onClick={handleValidate}
                       disabled={processing || !processed}
-                      className="px-6 py-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-6 py-3 rounded-full bg-[#3F6E52] hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Check className="w-4 h-4" /> Valider & suivante
                     </motion.button>
@@ -621,7 +615,7 @@ export default function FitilaVoiceLab() {
                 {/* SUBMITTING */}
                 {phase === 'submitting' && (
                   <div className="flex items-center justify-center py-2">
-                    <Loader2 className="w-6 h-6 text-rose-500 animate-spin" />
+                    <Loader2 className="w-6 h-6 text-[#C99530] animate-spin" />
                   </div>
                 )}
               </div>
@@ -630,14 +624,14 @@ export default function FitilaVoiceLab() {
             <div className="bg-white rounded-3xl p-12 text-center shadow-sm">
               {loading ? (
                 <>
-                  <Loader2 className="w-10 h-10 mx-auto text-rose-500 animate-spin mb-3" />
-                  <p className="text-gray-500">Chargement des phrases…</p>
+                  <Loader2 className="w-10 h-10 mx-auto text-[#C99530] animate-spin mb-3" />
+                  <p className="text-[#8C8571]">Chargement des phrases…</p>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-10 h-10 mx-auto text-amber-500 mb-3" />
-                  <p className="text-gray-700 font-bold">Bravo ! Vous avez tout enregistré dans cette catégorie.</p>
-                  <p className="text-sm text-gray-500 mt-1">Choisissez un autre thème pour continuer.</p>
+                  <p className="text-[#241F2E] font-bold">Bravo ! Vous avez tout enregistré dans cette catégorie.</p>
+                  <p className="text-sm text-[#8C8571] mt-1">Choisissez un autre thème pour continuer.</p>
                 </>
               )}
             </div>
@@ -647,13 +641,13 @@ export default function FitilaVoiceLab() {
         {/* Upcoming preview */}
         {upcoming.length > 0 && phase === 'idle' && (
           <div className="bg-white/60 backdrop-blur-md rounded-2xl p-4 border border-white/80">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+            <p className="text-xs font-bold text-[#8C8571] uppercase tracking-wide mb-2">
               File d'attente ({queue.length} phrases)
             </p>
             <div className="space-y-1.5">
               {upcoming.map((p, i) => (
                 <div key={p.id} className="flex items-center gap-2 text-xs">
-                  <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-bold flex items-center justify-center text-[10px]">
+                  <span className="w-5 h-5 rounded-full bg-[#F3E3B9] text-[#9C6B1D] font-bold flex items-center justify-center text-[10px]">
                     {i + 2}
                   </span>
                   <span className="text-gray-600 truncate flex-1">{p.text_bariba}</span>
@@ -666,20 +660,20 @@ export default function FitilaVoiceLab() {
         {/* Stats footer */}
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-white/70 backdrop-blur-md rounded-2xl p-3 text-center border border-white/80">
-            <div className="text-xl font-black text-gray-900">{stats.total_phrases}</div>
-            <div className="text-[10px] text-gray-500 uppercase font-bold">Total corpus</div>
+            <div className="text-xl font-black text-[#241F2E]">{stats.total_phrases}</div>
+            <div className="text-[10px] text-[#8C8571] uppercase font-bold">Total corpus</div>
           </div>
           <div className="bg-white/70 backdrop-blur-md rounded-2xl p-3 text-center border border-white/80">
             <div className="text-xl font-black text-emerald-600">{stats.user_recorded}</div>
-            <div className="text-[10px] text-gray-500 uppercase font-bold">Vous avez lu</div>
+            <div className="text-[10px] text-[#8C8571] uppercase font-bold">Vous avez lu</div>
           </div>
           <div className="bg-white/70 backdrop-blur-md rounded-2xl p-3 text-center border border-white/80">
-            <div className="text-xl font-black text-rose-600">{stats.remaining}</div>
-            <div className="text-[10px] text-gray-500 uppercase font-bold">À lire</div>
+            <div className="text-xl font-black text-[#9C6B1D]">{stats.remaining}</div>
+            <div className="text-[10px] text-[#8C8571] uppercase font-bold">À lire</div>
           </div>
         </div>
 
-        <p className="text-center text-[11px] text-gray-400 italic pb-6">
+        <p className="text-center text-[11px] text-[#8C8571] italic pb-6">
           🎯 Chaque enregistrement aide à entraîner un modèle de voix Bariba.
         </p>
       </main>

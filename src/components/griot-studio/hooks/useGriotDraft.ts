@@ -142,7 +142,7 @@ export function useGriotDraft(): UseGriotDraftReturn {
         // Update existing
         const { data: updated, error } = await supabase
           .from('griot_drafts')
-          .update(payload)
+          .update(payload as never)
           .eq('id', draftIdRef.current)
           .select()
           .single();

@@ -368,11 +368,20 @@ const TamTamCreator: React.FC = () => {
         mediaUrl = urlData.publicUrl;
       }
 
-      // 3. Create post in tamtam_posts
+      // 3. Create post in tamtam_posts (RLS : user_id = auth.uid() ; la colonne de texte est `transcript`)
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) {
+        toast.error('Connectez-vous pour publier');
+        setIsPublishing(false);
+        setPhase('finalizing');
+        return;
+      }
       const { data: postData, error: postError } = await supabase
         .from('tamtam_posts')
         .insert({
-          content: caption || '',
+          user_id: authData.user.id,
+          is_public: true,
+          transcript: caption || '',
           audio_url: mediaUrl || 'local://preview',
           media_type: 'video',
           media_url: mediaUrl,
@@ -470,10 +479,10 @@ const TamTamCreator: React.FC = () => {
         // Can't go back during publish
         break;
       case 'success':
-        navigate('/tamtam');
+        navigate('/');
         break;
       default:
-        navigate('/tamtam');
+        navigate('/');
     }
   }, [phase, currentSegmentIndex, navigate]);
 
@@ -542,7 +551,7 @@ const TamTamCreator: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors"
-          onClick={() => navigate('/tamtam')}
+          onClick={() => navigate('/')}
         >
           <X className="w-5 h-5" />
         </motion.button>
@@ -576,7 +585,7 @@ const TamTamCreator: React.FC = () => {
             >
               <UnifiedTemplateSelector
                 onSelect={handleTemplateSelect}
-                onClose={() => navigate('/tamtam')}
+                onClose={() => navigate('/')}
               />
             </motion.div>
           )}
@@ -732,7 +741,7 @@ const TamTamCreator: React.FC = () => {
               postId={publishedPostId}
               templateName={selectedTemplate?.name}
               onCreateAnother={handleCreateAnother}
-              onGoHome={() => navigate('/tamtam')}
+              onGoHome={() => navigate('/')}
             />
           )}
         </AnimatePresence>

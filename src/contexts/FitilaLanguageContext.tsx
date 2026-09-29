@@ -1,5 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
+/** Libellés français de secours : clés utilisées par l'interface mais absentes de i18n-platform.json. */
+const FR_FALLBACK: Record<string, string> = {
+  addComment: 'Ajouter un commentaire', addContact: 'Ajouter un contact de confiance', audioComments: 'Commentaires audio',
+  badges: 'Badges', cancel: 'Annuler', followers: 'Abonnés', following: 'Abonnements', friends: 'Amis',
+  hideTranscription: 'Masquer la transcription', showTranscription: 'Afficher la transcription', language: 'Langue',
+  loading: 'Chargement…', logout: 'Se déconnecter', noComments: 'Aucun commentaire', poll: 'Sondage',
+  profile_logout_confirm: 'Voulez-vous vous déconnecter ?', screenHome: 'Accueil', screenProfile: 'Profil', screenSOS: 'Écran SOS',
+  search: 'Rechercher', tapToListen: 'Touchez pour écouter', tapToVote: 'Touchez pour voter', transcribing: 'Transcription…',
+  translate: 'Traduire', vocalStats: 'Statistiques vocales',
+  emergency: 'Urgence', tapToSpeak: 'Touchez pour parler', location: 'Localisation', emergencyContacts: 'Contacts de confiance',
+  family: 'Famille', hospital: 'Hôpital', police: 'Police', cancelAlert: 'Alerte annulée', callEmergency: "Appel d'urgence en cours",
+};
+
 export type FitilaLang = 'fr' | 'ba';
 
 interface TranslationDict {
@@ -58,14 +71,14 @@ export const FitilaLanguageProvider: React.FC<{ children: ReactNode }> = ({ chil
   const t = useCallback((key: string): string => {
     const translation = translations[key];
     if (!translation) {
-      return key;
+      return FR_FALLBACK[key] ?? key;
     }
     // Return target lang; if empty string, fallback to french; if french empty, return key
     const value = translation[currentLang];
     if (value && value.trim() !== '') return value;
     // Fallback to french
     if (translation.fr && translation.fr.trim() !== '') return translation.fr;
-    return key;
+    return FR_FALLBACK[key] ?? key;
   }, [currentLang, translations]);
 
   const translateText = useCallback(async (text: string, from: FitilaLang, to: FitilaLang): Promise<string> => {

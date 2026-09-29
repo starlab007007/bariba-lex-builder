@@ -12,7 +12,7 @@ import { TemplatePublishFlow } from '@/components/tamtam/templates/TemplatePubli
 import { Template } from '@/components/tamtam/creator/TemplateSystem/types';
 import { allTemplates } from '@/components/tamtam/creator/TemplateSystem/templates';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Home } from 'lucide-react';
+import FitilaPageHeader from '@/components/fitila/FitilaPageHeader';
 
 export type GalleryViewMode = 'browse' | 'preview' | 'capture' | 'publish';
 
@@ -75,30 +75,9 @@ export default function TamTamTemplates() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20 overflow-x-hidden">
+    <div className="h-full overflow-y-auto overflow-x-hidden bg-[#F7F5EC] text-[#241F2E]">
       
-      {/* Navigation Header - Large Touch Targets */}
-      <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border/30">
-        <div className="flex items-center justify-between px-4 py-3">
-          <button
-            onClick={() => { if ('vibrate' in navigator) navigator.vibrate(20); navigate(-1); }}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-muted/50 hover:bg-muted active:scale-95 transition-all min-h-[48px]"
-            aria-label="Retour"
-          >
-            <ChevronLeft className="w-5 h-5" />
-            <span className="font-medium">Retour</span>
-          </button>
-          
-          <button
-            onClick={() => { if ('vibrate' in navigator) navigator.vibrate(20); navigate('/tamtam'); }}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-muted/50 hover:bg-muted active:scale-95 transition-all min-h-[48px]"
-            aria-label="Accueil"
-          >
-            <Home className="w-5 h-5" />
-            <span className="font-medium hidden sm:inline">Accueil</span>
-          </button>
-        </div>
-      </div>
+      <FitilaPageHeader title="Templates" subtitle="Galerie premium avec recherche, catégories, prévisualisation" />
 
       {/* Hero Section with Filters */}
       <TemplateHeroSection 

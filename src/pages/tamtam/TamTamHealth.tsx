@@ -5,11 +5,17 @@ import { ArrowLeft, Volume2, Phone, AlertTriangle } from 'lucide-react';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
 import { useAudioDescription } from '@/contexts/AudioDescriptionContext';
 import { useBilingualAudio } from '@/hooks/useBilingualAudio';
+import FitilaPageHeader from '@/components/fitila/FitilaPageHeader';
+import { SectionTiles } from '@/components/fitila/FitilaUi';
+import type { LucideIcon } from 'lucide-react';
+import { Asterisk, Pill, PersonStanding, Bug, UtensilsCrossed, PlusSquare, Sparkles } from 'lucide-react';
 import { tamtamFeedback } from '@/utils/tamtamFeedback';
 import { DomainChatbot, DomainContext } from '@/components/tamtam/DomainChatbot';
 import { useToast } from '@/hooks/use-toast';
 
 // Health sub-sections configuration
+const TILE_ICONS: Record<string, LucideIcon> = { first_aid: Asterisk, medication: Pill, maternity: PersonStanding, diseases: Bug, nutrition: UtensilsCrossed, emergency: PlusSquare };
+
 const sections = [
   { 
     id: 'first_aid', 
@@ -133,7 +139,7 @@ export default function TamTamHealth() {
   const activeSectionData = sections.find(s => s.id === activeSection);
 
   return (
-    <div className="min-h-screen bg-tamtam-bg px-4 pb-24">
+    <div className="mx-auto h-full w-full max-w-[1100px] overflow-y-auto bg-[#F7F5EC] text-[#241F2E] px-[18px] pb-28">
       <AnimatePresence mode="wait">
         {!activeSection ? (
           // Main Health Grid
@@ -143,68 +149,32 @@ export default function TamTamHealth() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            {/* Header */}
-            <div className="text-center mb-6">
-              <span className="text-5xl">🏥</span>
-              <h1 className="text-xl font-bold text-tamtam-text mt-2">
-                {currentLang === 'fr' ? 'Santé' : 'Ìlera'}
-              </h1>
-              <p className="text-sm text-tamtam-text-muted">
-                {currentLang === 'fr' 
-                  ? 'Conseils et assistance médicale' 
-                  : 'Ìmọ̀ràn àti ìrànlọ́wọ́ ìlera'}
-              </p>
-            </div>
+            <div className="-mx-[18px] mb-4"><FitilaPageHeader title="Santé" subtitle="Santé, prévention et assistance" /></div>
 
             {/* Emergency Alert Banner */}
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3"
+              className="mb-3 p-3 bg-[#F4DED2] border border-[#E5B9A6] rounded-[16px] flex items-center gap-3"
             >
-              <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
-              <p className="text-xs text-red-700">
+              <AlertTriangle className="w-5 h-5 text-[#B54E33] flex-shrink-0" />
+              <p className="text-[12px] font-extrabold text-[#B54E33]">
                 {currentLang === 'fr'
                   ? 'En cas d\'urgence grave, appelez immédiatement le 112'
                   : 'Tí ó bá jẹ́ pàjáwìrì, pe 112 lẹ́sẹ̀kẹsẹ̀'}
               </p>
             </motion.div>
 
-            {/* Sections grid 2x3 */}
-            <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
-              {sections.map((section, index) => (
-                <motion.button
-                  key={section.id}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.1 }}
-                  onClick={() => handleSectionSelect(section)}
-                  className={`aspect-square ${section.bgLight} rounded-3xl shadow-tamtam-soft flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform relative ${
-                    section.isEmergency ? 'ring-2 ring-red-400 ring-offset-2' : ''
-                  }`}
-                >
-                  <div className={`w-16 h-16 ${section.color} rounded-2xl flex items-center justify-center`}>
-                    <span className="text-3xl">{section.icon}</span>
-                  </div>
-                  <span className="text-xs font-medium text-tamtam-text text-center px-2">
-                    {currentLang === 'fr' ? section.labelFr : section.labelBa}
-                  </span>
-                  
-                  {/* Audio button */}
-                  <button
-                    onClick={(e) => handleSpeakLabel(section.labelFr, section.labelBa, e)}
-                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/80 flex items-center justify-center"
-                  >
-                    <Volume2 className="w-3 h-3 text-tamtam-primary" />
-                  </button>
-
-                  {/* Emergency indicator */}
-                  {section.isEmergency && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full animate-pulse" />
-                  )}
-                </motion.button>
-              ))}
-            </div>
+            <SectionTiles
+              items={sections.map((s) => ({
+                id: s.id,
+                label: currentLang === 'fr' ? s.labelFr : s.labelBa,
+                Icon: TILE_ICONS[s.id] ?? Sparkles,
+                danger: (s as { isEmergency?: boolean }).isEmergency,
+                onClick: () => handleSectionSelect(s),
+                onSpeak: (e) => handleSpeakLabel(s.labelFr, s.labelBa, e),
+              }))}
+            />
           </motion.div>
         ) : (
           // Active section view
@@ -219,14 +189,15 @@ export default function TamTamHealth() {
             <div className="flex items-center gap-4 mb-4">
               <button
                 onClick={handleBack}
-                className="w-12 h-12 bg-tamtam-surface rounded-2xl flex items-center justify-center shadow-tamtam-soft"
-              >
-                <ArrowLeft className="w-6 h-6 text-tamtam-text" />
-              </button>
-              <div className={`w-12 h-12 ${activeSectionData?.color} rounded-2xl flex items-center justify-center`}>
-                <span className="text-2xl">{activeSectionData?.icon}</span>
+                aria-label="Retour"
+                className="w-[42px] h-[42px] bg-white border border-[#E4DFCC] rounded-full flex items-center justify-center"
+                >
+                  <ArrowLeft className="w-5 h-5 text-[#241F2E]" />
+                </button>
+              <div className={`w-[42px] h-[42px] bg-[#F3E3B9] rounded-[14px] flex items-center justify-center`}>
+                <span className="text-[20px]">{activeSectionData?.icon}</span>
               </div>
-              <span className="text-lg font-bold text-tamtam-text">
+              <span className="text-[17px] font-extrabold text-[#241F2E]">
                 {currentLang === 'fr' ? activeSectionData?.labelFr : activeSectionData?.labelBa}
               </span>
             </div>

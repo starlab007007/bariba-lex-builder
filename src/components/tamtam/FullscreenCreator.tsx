@@ -2793,7 +2793,7 @@ export default function FullscreenCreator({
             }}
             onGoHome={() => {
               onClose?.();
-              navigate('/tamtam');
+              navigate('/');
             }}
           />
         )}

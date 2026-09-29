@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Send, Mic, MicOff, Loader2, Scale, User, BookOpen, ShieldCheck, WifiOff } from 'lucide-react';
+import { Send, Mic, MicOff, Loader2, Scale, User, BookOpen, ShieldCheck, WifiOff } from 'lucide-react';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useBaribaSTT } from '@/hooks/useBaribaSTT';
 import { toast } from 'sonner';
@@ -53,7 +52,6 @@ function TypingText({ content, onComplete }: { content: string; onComplete: () =
 }
 
 export default function FitilaTemIA() {
-  const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -151,28 +149,22 @@ export default function FitilaTemIA() {
   const isBusy = isProcessing || isTranscribing;
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full bg-gradient-to-b from-emerald-50 via-white to-teal-50">
+    <div className="mx-auto flex h-full w-full max-w-[960px] flex-col bg-[#F7F5EC] text-[#241F2E]">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white/80 backdrop-blur-md z-10 shadow-sm">
-        <motion.button whileTap={{ scale: 0.9 }} onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
-        </motion.button>
-        <div className="flex items-center gap-2.5 flex-1">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-md">
-            <Scale className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-gray-800 font-bold text-base">Fitila Tem IA</h1>
-            <p className="text-gray-400 text-[10px]">Tem bausu sariaba sɔ̃ɔsiru · 100% local</p>
+      <div className="flex items-center gap-3 pl-[74px] lg:pl-[18px] pr-4 pt-[14px] pb-2 z-10">
+                <div className="flex items-center gap-2.5 flex-1">
+                    <div>
+            <h1 className="text-[#241F2E] font-extrabold text-[17px] leading-tight">Fitila Tem IA</h1>
+            <p className="text-[#8C8571] text-[11px] leading-tight">Tem bausu sariaba sɔ̃ɔsiru · 100% local</p>
           </div>
         </div>
       </div>
 
       {/* Specialization badge */}
       <div className="px-4 pt-3 pb-1">
-        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
-          <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-          <p className="text-[11px] text-emerald-800 font-medium leading-tight">
+        <div className="flex items-center gap-2 bg-[#DCEAE0] border border-[#3F6E52]/30 rounded-[16px] px-3 py-2">
+          <ShieldCheck className="w-4 h-4 text-[#3F6E52] flex-shrink-0" />
+          <p className="text-[11px] text-[#3F6E52] font-extrabold leading-tight">
             🔒 Assistant basé uniquement sur le <strong>Code Foncier (Bariba)</strong> — Loi n° 2013-01
           </p>
         </div>
@@ -181,14 +173,14 @@ export default function FitilaTemIA() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-4 opacity-80">
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center border border-emerald-200/50 shadow-lg">
-              <Scale className="w-10 h-10 text-emerald-500" />
+          <div className="flex flex-col items-center justify-center h-full gap-4">
+            <div className="w-[86px] h-[86px] rounded-[28px] bg-[#DCEAE0] flex items-center justify-center border border-[#3F6E52]/25">
+              <Scale className="w-10 h-10 text-[#3F6E52]" />
             </div>
-            <p className="text-gray-700 text-sm text-center max-w-[280px] font-medium">
+            <p className="text-[#241F2E] text-[16px] text-center max-w-[320px] font-extrabold">
               Yaa sɔ̃ɔ tem bausu gari Baribarum.
             </p>
-            <p className="text-gray-400 text-xs text-center max-w-[280px]">
+            <p className="text-[#8C8571] text-[12px] text-center max-w-[280px]">
               Posez votre question directement en Bariba
             </p>
             <div className="flex flex-wrap gap-2 justify-center max-w-[320px] mt-2">
@@ -200,7 +192,7 @@ export default function FitilaTemIA() {
                 <button
                   key={q}
                   onClick={() => sendMessage(q)}
-                  className="text-[11px] px-3 py-1.5 rounded-full bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50 transition-colors"
+                  className="text-[12px] font-bold px-4 py-2 rounded-full bg-white border border-[#E4DFCC] text-[#241F2E] hover:bg-[#F3E3B9]/50 transition-colors"
                 >
                   {q}
                 </button>
@@ -234,7 +226,7 @@ export default function FitilaTemIA() {
                       ? 'bg-orange-500 text-white rounded-tr-md'
                       : msg.isFallback
                         ? 'bg-amber-50 text-amber-900 rounded-tl-md border border-amber-200'
-                        : 'bg-white text-gray-800 rounded-tl-md border border-gray-100'
+                        : 'bg-white text-[#241F2E] rounded-tl-md border border-gray-100'
                   }`}>
                     {msg.isTyping ? (
                       <TypingText content={msg.content} onComplete={() => handleTypingComplete(msg.id)} />
@@ -247,7 +239,7 @@ export default function FitilaTemIA() {
                   {msg.role === 'assistant' && !msg.isTyping && msg.sources && msg.sources.length > 0 && (
                     <button
                       onClick={() => setOpenSources(msg.sources!)}
-                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 hover:bg-emerald-100 transition-colors mt-1 self-start"
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-[#DCEAE0] border border-[#3F6E52]/20 text-[#3F6E52] hover:bg-[#CFE2D5] transition-colors mt-1 self-start"
                     >
                       <BookOpen className="w-3.5 h-3.5" />
                       <span className="font-medium">
@@ -268,17 +260,17 @@ export default function FitilaTemIA() {
               className="flex justify-start"
             >
               <div className="flex items-start gap-2">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
+                <div className="w-7 h-7 rounded-full bg-[#3F6E52] flex items-center justify-center flex-shrink-0 mt-1">
                   <Scale className="w-3.5 h-3.5 text-white" />
                 </div>
-                <div className="px-4 py-3 rounded-2xl bg-white text-gray-800 rounded-tl-md border border-gray-100 shadow-sm">
+                <div className="px-4 py-3 rounded-[18px] bg-white text-[#241F2E] rounded-tl-md border border-[#E4DFCC]">
                   <div className="flex items-center gap-2 py-1">
                     <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      <span className="w-2 h-2 bg-[#3F6E52] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-2 h-2 bg-[#3F6E52] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-2 h-2 bg-[#3F6E52] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
-                    <span className="text-gray-400 text-xs">Sariaba kasuamɔ...</span>
+                    <span className="text-[#8C8571] text-xs">Sariaba kasuamɔ...</span>
                   </div>
                 </div>
               </div>
@@ -289,7 +281,7 @@ export default function FitilaTemIA() {
       </div>
 
       {/* Smart Input */}
-      <form onSubmit={handleSubmit} className="px-4 py-3 border-t border-gray-200 bg-white/80 backdrop-blur-md">
+      <form onSubmit={handleSubmit} className="px-[18px] py-3 border-t border-[#E4DFCC] bg-[#F7F5EC]">
         <div className="flex items-end gap-2">
           <div className="flex-1 min-w-0">
             <BaribaSmartTextarea
@@ -306,12 +298,12 @@ export default function FitilaTemIA() {
             whileTap={{ scale: 0.9 }}
             onClick={handleVoiceToggle}
             disabled={isProcessing || isTranscribing}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${
+            className={`w-[46px] h-[46px] rounded-[14px] flex items-center justify-center transition-all flex-shrink-0 ${
               isRecording
                 ? 'bg-red-500 animate-pulse shadow-lg shadow-red-200'
                 : isTranscribing
                   ? 'bg-amber-100'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-500'
+                  : 'bg-white border border-[#E4DFCC] text-[#241F2E] hover:bg-[#F1EDDF]'
             }`}
           >
             {isTranscribing
@@ -326,7 +318,7 @@ export default function FitilaTemIA() {
             type="submit"
             whileTap={{ scale: 0.9 }}
             disabled={!input.trim() || isBusy}
-            className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center disabled:opacity-30 transition-opacity shadow-md shadow-emerald-200 flex-shrink-0"
+            className="w-[46px] h-[46px] rounded-[14px] bg-[#3F6E52] flex items-center justify-center disabled:opacity-50 transition-opacity flex-shrink-0"
           >
             {isProcessing
               ? <Loader2 className="w-5 h-5 text-white animate-spin" />
@@ -336,8 +328,8 @@ export default function FitilaTemIA() {
         </div>
 
         <div className="flex items-center justify-center gap-1.5 mt-2">
-          <WifiOff className="w-3 h-3 text-emerald-600" />
-          <p className="text-[10px] text-emerald-700/80 text-center">
+          <WifiOff className="w-3 h-3 text-[#3F6E52]" />
+          <p className="text-[10px] text-[#3F6E52] text-center">
             Posez votre question directement en Bariba — recherche 100% locale, sans Internet
           </p>
         </div>

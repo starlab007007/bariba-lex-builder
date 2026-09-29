@@ -167,7 +167,7 @@ export const useGamification = () => {
           [type]: newValue,
           total_points: newPoints,
           level: newLevel,
-        })
+        } as never)
         .eq('user_id', user.id)
         .select()
         .single();

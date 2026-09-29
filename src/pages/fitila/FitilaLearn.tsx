@@ -1,4 +1,4 @@
-// Point d'entrée web du module Apprendre (route `/fitila/learn`).
+// Point d'entrée web du module Apprendre (route `/learn`).
 //
 // Bascule vers le moteur porté fidèlement depuis
 // fitila_flutter (branche feat/apprendre-v2.4-build19-20260927) :

@@ -171,7 +171,7 @@ export function TemplateCardPremium({
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold shadow-lg"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#C99530] text-[#2B2110] text-xs font-extrabold"
               >
                 <Crown className="w-3.5 h-3.5" />
                 <span>PRO</span>
@@ -235,7 +235,7 @@ export function TemplateCardPremium({
               </button>
               <button
                 onClick={handleUse}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary text-white text-sm font-bold shadow-lg active:scale-95 transition-transform min-h-[44px]"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#C99530] text-[#2B2110] text-sm font-extrabold active:scale-95 transition-transform min-h-[44px]"
                 aria-label="Utiliser ce template"
               >
                 <Play className="w-4 h-4" />
@@ -248,7 +248,7 @@ export function TemplateCardPremium({
               <div className="mt-2">
                 <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
                   <motion.div
-                    className="h-full bg-primary"
+                    className="h-full bg-[#C99530]"
                     initial={{ width: 0 }}
                     animate={{ width: `${assetProgress}%` }}
                   />
@@ -352,7 +352,7 @@ export function TemplateCardPremium({
       {/* Action Button - Large Touch Target */}
       <button
         onClick={handleUse}
-        className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-white text-sm font-bold shadow-md active:scale-95 transition-transform min-h-[48px]"
+        className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#C99530] text-[#2B2110] text-sm font-extrabold active:scale-95 transition-transform min-h-[48px]"
         aria-label="Utiliser ce template"
       >
         <Play className="w-5 h-5" />

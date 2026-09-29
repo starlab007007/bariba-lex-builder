@@ -94,7 +94,7 @@ export function TemplateGalleryGrid({
       <div className="flex items-center justify-between px-1">
         {/* Results count with emoji */}
         <div className="flex items-center gap-2">
-          <span className="text-xl">📦</span>
+          <span className="hidden"></span>
           <p className="text-sm text-muted-foreground">
             <span className="font-bold text-foreground text-lg">{templates.length}</span>
             <span className="ml-1">templates</span>
@@ -102,13 +102,13 @@ export function TemplateGalleryGrid({
         </div>
         
         {/* View mode toggle - Large touch targets */}
-        <div className="flex gap-1 bg-white/90 backdrop-blur-sm rounded-xl p-1 shadow-sm border border-white/50">
+        <div className="flex gap-1 bg-white rounded-[14px] p-1 border border-[#E4DFCC]">
           <button
             onClick={() => setViewMode('grid')}
             className={cn(
               "flex items-center justify-center w-11 h-11 rounded-lg transition-all",
               viewMode === 'grid' 
-                ? "bg-primary text-white shadow-md" 
+                ? "bg-[#C99530] text-[#2B2110]" 
                 : "text-muted-foreground hover:bg-muted active:scale-95"
             )}
             aria-label="Vue grille"
@@ -120,7 +120,7 @@ export function TemplateGalleryGrid({
             className={cn(
               "flex items-center justify-center w-11 h-11 rounded-lg transition-all",
               viewMode === 'list' 
-                ? "bg-primary text-white shadow-md" 
+                ? "bg-[#C99530] text-[#2B2110]" 
                 : "text-muted-foreground hover:bg-muted active:scale-95"
             )}
             aria-label="Vue liste"

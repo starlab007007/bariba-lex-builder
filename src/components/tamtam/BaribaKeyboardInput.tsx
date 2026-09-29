@@ -118,19 +118,19 @@ export function BaribaKeyboardInput({
       <div className="flex items-center gap-2 mb-2">
         <button
           onClick={toggleLanguage}
-          className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-xl text-sm font-medium text-gray-800 hover:bg-indigo-50 transition-colors"
+          className="flex items-center gap-2 px-3 py-2 bg-[#C99530] border border-[#C99530] rounded-full text-[13px] font-extrabold text-[#2B2110] hover:bg-[#B98626] transition-colors"
         >
-          <Globe className="w-4 h-4 text-indigo-500" />
+          <Globe className="w-4 h-4 text-[#2B2110]" />
           <span>{currentLang === 'ba' ? '🇧🇯 Bariba' : '🇫🇷 Français'}</span>
         </button>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-[#8C8571]">
           {currentLang === 'ba' ? t('keyboard_to_french') : t('keyboard_to_bariba')}
         </span>
       </div>
 
       {/* Input */}
       <div className="relative">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8C8571]">
           <Search className="w-5 h-5" />
         </div>
         
@@ -145,20 +145,20 @@ export function BaribaKeyboardInput({
           onFocus={() => query.length >= 1 && setShowSuggestions(true)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder || defaultPlaceholder}
-          className="w-full pl-12 pr-28 py-4 bg-white rounded-2xl border-2 border-gray-200 focus:border-indigo-400 text-gray-800 text-lg font-medium placeholder:text-gray-400 outline-none transition-all"
+          className="w-full pl-12 pr-28 py-4 bg-white rounded-[16px] border border-[#E4DFCC] focus:border-[#C99530] text-[#241F2E] text-[16px] font-medium placeholder:text-[#8C8571] outline-none transition-all"
         />
         
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
           <button
             onClick={() => setShowSpecialChars(!showSpecialChars)}
-            className={`p-2 rounded-xl transition-colors ${showSpecialChars ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-indigo-50'}`}
+            className={`p-2 rounded-xl transition-colors ${showSpecialChars ? 'bg-[#241F2E] text-white' : 'bg-white border border-[#E4DFCC] text-[#241F2E] hover:bg-[#F3E3B9]/50'}`}
             title={currentLang === 'ba' ? t('keyboard_special_bariba') : t('keyboard_special_french')}
           >
             <Keyboard className="w-5 h-5" />
           </button>
           
           {query && (
-            <button onClick={clearQuery} className="p-2 rounded-xl bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-500 transition-colors">
+            <button onClick={clearQuery} className="p-2 rounded-xl bg-gray-100 text-[#8C8571] hover:bg-red-100 hover:text-red-500 transition-colors">
               <X className="w-5 h-5" />
             </button>
           )}
@@ -168,13 +168,13 @@ export function BaribaKeyboardInput({
       {/* Special chars */}
       <AnimatePresence>
         {showSpecialChars && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-2 p-3 bg-white rounded-2xl shadow-md overflow-hidden">
-            <p className="text-xs text-gray-500 mb-2">
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-2 p-3 bg-white rounded-[18px] border border-[#E4DFCC] overflow-hidden">
+            <p className="text-xs text-[#8C8571] mb-2">
               {currentLang === 'ba' ? t('keyboard_special_bariba') : t('keyboard_special_french')}
             </p>
             <div className="flex flex-wrap gap-1">
               {SPECIAL_CHARS.map((char) => (
-                <button key={char} onClick={() => insertSpecialChar(char)} className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-xl text-lg font-medium text-gray-800 hover:bg-indigo-500 hover:text-white transition-colors active:scale-95">
+                <button key={char} onClick={() => insertSpecialChar(char)} className="w-10 h-10 flex items-center justify-center bg-[#F1EDDF] rounded-xl text-lg font-medium text-[#241F2E] hover:bg-[#C99530] hover:text-[#2B2110] transition-colors active:scale-95">
                   {char}
                 </button>
               ))}
@@ -186,13 +186,13 @@ export function BaribaKeyboardInput({
       {/* Suggestions */}
       <AnimatePresence>
         {showSuggestions && suggestions.length > 0 && (
-          <motion.div ref={suggestionsRef} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-2 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+          <motion.div ref={suggestionsRef} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-2 bg-white rounded-[18px] border border-[#E4DFCC] overflow-hidden">
             {isLoading ? (
-              <div className="p-4 text-center text-gray-500">{t('keyboard_loading')}</div>
+              <div className="p-4 text-center text-[#8C8571]">{t('keyboard_loading')}</div>
             ) : (
               <>
                 <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-[#8C8571]">
                     {suggestions.length} {t('keyboard_suggestions')} {totalEntries.toLocaleString()} {t('keyboard_words')}
                   </p>
                 </div>
@@ -207,17 +207,17 @@ export function BaribaKeyboardInput({
                     whileTap={{ scale: 0.98 }}
                   >
                     <div className="flex items-center gap-2 w-full">
-                      <span className="font-bold text-gray-800 text-lg">
+                      <span className="font-bold text-[#241F2E] text-lg">
                         {currentLang === 'fr' ? entry.definition : entry.word}
                       </span>
                       {currentLang === 'ba' && entry.phonetic && entry.phonetic !== entry.word && (
-                        <span className="text-sm text-indigo-500">[{entry.phonetic}]</span>
+                        <span className="text-sm text-[#9C6B1D]">[{entry.phonetic}]</span>
                       )}
-                      <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                      <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-gray-100 text-[#8C8571]">
                         {entry.part_of_speech}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 line-clamp-1 mt-1">
+                    <p className="text-sm text-[#8C8571] line-clamp-1 mt-1">
                       {currentLang === 'fr' ? entry.word : entry.definition}
                     </p>
                   </motion.button>
@@ -231,9 +231,9 @@ export function BaribaKeyboardInput({
       {/* No results */}
       <AnimatePresence>
         {showSuggestions && query.length >= 1 && suggestions.length === 0 && !isLoading && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-2 bg-white rounded-2xl shadow-lg p-4 text-center">
-            <p className="text-gray-500">{t('keyboard_no_result')} "{query}"</p>
-            <p className="text-xs text-gray-400 mt-1">{t('keyboard_try_other')}</p>
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-2 bg-white rounded-[18px] border border-[#E4DFCC] p-4 text-center">
+            <p className="text-[#8C8571]">{t('keyboard_no_result')} "{query}"</p>
+            <p className="text-xs text-[#8C8571] mt-1">{t('keyboard_try_other')}</p>
           </motion.div>
         )}
       </AnimatePresence>
