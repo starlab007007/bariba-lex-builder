@@ -26,10 +26,16 @@ class BaribaKeyboardEngine {
   ) {
     for (final entry in _entries) {
       _byKey.putIfAbsent(foldKey(entry.ba), () => entry);
-      final fr = foldKey(entry.fr);
+      final fr = foldKey(glossHead(entry.fr));
       if (fr.isNotEmpty) {
         _byFrench.putIfAbsent(fr, () => entry);
+        final list = _frenchList.putIfAbsent(fr, () => []);
+        if (list.length < 6) {
+          list.add(entry);
+        }
       }
+      _exact.add(_stripTones(entry.ba.toLowerCase()));
+      _full.add(entry.ba.toLowerCase());
     }
     for (final phrase in _phrases) {
       _phraseBa[foldKey(phrase.ba)] = phrase.fr;
@@ -45,6 +51,9 @@ class BaribaKeyboardEngine {
   final Map<String, List<String>> _bigrams;
   final Map<String, KeyboardEntry> _byKey = {};
   final Map<String, KeyboardEntry> _byFrench = {};
+  final Map<String, List<KeyboardEntry>> _frenchList = {};
+  final Set<String> _exact = {};
+  final Set<String> _full = {};
   final Map<String, String> _phraseBa = {};
   final Map<String, String> _phraseFr = {};
 
@@ -87,6 +96,100 @@ class BaribaKeyboardEngine {
   }
 
   int get entryCount => _entries.length;
+
+  // ── Glosses ────────────────────────────────────────────────────────────
+
+  static final _grammarTag = RegExp(
+    r'^(inv|int|n:?|num|poss|nég|interrog|base:?|sub|dém|et dém|coord|post pos|adj|adv|v|prép|conj|pron|›)\.?$',
+    caseSensitive: false,
+  );
+
+  /// « venir, arriver (voir …) » -> « venir ». Les étiquettes grammaticales
+  /// seules (« inv », « int »…) ne sont pas des traductions : chaîne vide.
+  static String glossHead(String gloss) {
+    final head = gloss.split(RegExp(r'[;,(]')).first.trim();
+    return _grammarTag.hasMatch(head) ? '' : head;
+  }
+
+  // Voyelles précomposées portant un ton grave/aigu (les nasales ã ẽ… restent).
+  static const _tonedVowels = {
+    'à': 'a', 'á': 'a', 'è': 'e', 'é': 'e', 'ì': 'i', 'í': 'i',
+    'ò': 'o', 'ó': 'o', 'ù': 'u', 'ú': 'u', 'ǹ': 'n', 'ń': 'n',
+  };
+
+  static String _stripTones(String w) {
+    final buf = StringBuffer();
+    for (final r in w.runes) {
+      if (r == 0x0300 || r == 0x0301 || r == 0x0304) {
+        continue;
+      }
+      final ch = String.fromCharCode(r);
+      buf.write(_tonedVowels[ch] ?? ch);
+    }
+    return buf.toString();
+  }
+
+  /// Vrai si le mot est connu (les tons grave/aigu/macron sont tolérés).
+  bool isKnown(String word) => _exact.contains(_stripTones(word.toLowerCase()));
+
+  /// Homonymes Bariba dont la forme repliée correspond à [word].
+  List<KeyboardEntry> lookup(String word) {
+    final key = foldKey(word);
+    return [
+      for (final e in _entries)
+        if (foldKey(e.ba) == key) e,
+    ].take(6).toList(growable: false);
+  }
+
+  /// Mots Bariba possibles pour un mot français.
+  List<KeyboardEntry> lookupFrench(String word) =>
+      _frenchList[foldKey(word)] ?? const [];
+
+  /// Sens probable : plus de mots reconnus en Bariba qu'en français -> ba→fr.
+  KeyboardTranslationDirection detectDirection(String text) {
+    var ba = 0;
+    var fr = 0;
+    for (final m in _tokenizer.allMatches(text)) {
+      final token = m.group(0)!;
+      if (!_isWordRune(token.runes.first)) {
+        continue;
+      }
+      final k = foldKey(token);
+      if (_byKey.containsKey(k) && k.length > 1) {
+        ba++;
+      }
+      if (_byFrench.containsKey(k)) {
+        fr++;
+      }
+    }
+    return ba > fr
+        ? KeyboardTranslationDirection.baribaToFrench
+        : KeyboardTranslationDirection.frenchToBariba;
+  }
+
+  /// Correction post-OCR : « nee » -> « nɛɛ » quand un seul mot connu correspond.
+  ({String text, int corrections}) correctText(String text) {
+    var corrections = 0;
+    final out = text.replaceAllMapped(_tokenizer, (m) {
+      final w = m.group(0)!;
+      final lower = w.toLowerCase();
+      // Seuls les mots sans ton sont rétablis : un ton saisi est un choix de l'auteur.
+      if (w.runes.length < 3 ||
+          !_isWordRune(w.runes.first) ||
+          _full.contains(lower) ||
+          _stripTones(lower) != lower) {
+        return w;
+      }
+      final hit = _byKey[foldKey(w)];
+      if (hit == null) {
+        return w;
+      }
+      corrections++;
+      final upper = w[0] != w[0].toLowerCase();
+      return upper ? hit.ba[0].toUpperCase() + hit.ba.substring(1) : hit.ba;
+    });
+    return (text: out, corrections: corrections);
+  }
 
   // ── Folding ────────────────────────────────────────────────────────────
 
@@ -230,9 +333,11 @@ class BaribaKeyboardEngine {
     if (phrase != null) {
       return phrase;
     }
-    final single = toFrench ? _byKey[key]?.fr : _byFrench[key]?.ba;
+    final single = toFrench
+        ? glossHead(_byKey[key]?.fr ?? '')
+        : _byFrench[key]?.ba;
     if (single != null && single.isNotEmpty) {
-      return _cleanGloss(single, toFrench);
+      return single;
     }
     // Word by word; unknown words are kept verbatim inside brackets-free text.
     var known = 0;
@@ -245,24 +350,17 @@ class BaribaKeyboardEngine {
         continue;
       }
       words++;
-      final hit = toFrench ? _byKey[foldKey(token)]?.fr : _byFrench[foldKey(token)]?.ba;
+      final hit = toFrench
+          ? glossHead(_byKey[foldKey(token)]?.fr ?? '')
+          : _byFrench[foldKey(token)]?.ba;
       if (hit != null && hit.isNotEmpty) {
         known++;
-        out.write(_cleanGloss(hit, toFrench));
+        out.write(hit);
       } else {
         out.write(token);
       }
     }
     return known > 0 && known * 2 >= words ? out.toString() : null;
-  }
-
-  /// Dictionary glosses can be long ("venir, arriver (voir …)"): keep the head.
-  static String _cleanGloss(String gloss, bool toFrench) {
-    if (!toFrench) {
-      return gloss;
-    }
-    final head = gloss.split(RegExp(r'[;,(]')).first.trim();
-    return head.isEmpty ? gloss.trim() : head;
   }
 
   // ── Tone / nasal composition ───────────────────────────────────────────

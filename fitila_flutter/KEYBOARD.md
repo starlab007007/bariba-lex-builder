@@ -43,3 +43,16 @@ instantanée (dictionnaire/phrases), améliorée par le moteur en ligne puis le 
 
 `flutter test test/bariba_keyboard_test.dart` (moteur, clavier virtuel, onboarding, champ). Les parties
 Kotlin/Java/Swift/Xcode n'ont pas pu être compilées dans l'environnement de développement (pas de SDK).
+
+## Module Espace (Flutter) — `lib/espace/`
+
+Même modèle de données que le web (`espace_*`, RPC de partage, edge function `espace-ocr`) : `docs/ESPACE_MODULE.md` du dépôt web.
+
+* `EspaceHome` : tableau de bord (recherche sans diacritiques, dossiers, archives, cartes responsives 1/2/3 colonnes).
+* `EspaceSmartEditor` : saisie intelligente — prédiction + traduction du mot en cours, traduction en direct du paragraphe
+  (dictionnaire puis moteur IA), carte de traduction sur sélection avec équivalents à choisir, clavier Bàátɔ̀nú intégré
+  si le clavier système n'est pas activé.
+* `EspaceEditorScreen` : enregistrement automatique, versions (restauration), partage par e-mail / lien temporaire.
+  L'édition mobile est en texte brut : la mise en forme riche créée sur le web est conservée tant que le texte n'est pas modifié.
+* `EspaceScanScreen` : photo/galerie -> `espace-ocr` -> correction par le dictionnaire -> document. Les PDF se numérisent sur le web.
+* Moteur commun : `BaribaKeyboardEngine` (`lookup`, `lookupFrench`, `detectDirection`, `correctText`, glosses grammaticales ignorées).

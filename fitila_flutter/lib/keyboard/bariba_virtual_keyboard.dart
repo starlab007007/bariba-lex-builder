@@ -22,6 +22,7 @@ class BaribaVirtualKeyboard extends StatefulWidget {
     this.onClose,
     this.onSubmit,
     this.initialTranslateMode = false,
+    this.assistBar = true,
   });
 
   final TextEditingController controller;
@@ -32,6 +33,10 @@ class BaribaVirtualKeyboard extends StatefulWidget {
   final VoidCallback? onClose;
   final VoidCallback? onSubmit;
   final bool initialTranslateMode;
+
+  /// Barre de suggestions + « Saisir et Traduire ». Désactivée quand l'écran
+  /// (ex. l'éditeur de l'Espace) fournit déjà sa propre assistance de saisie.
+  final bool assistBar;
 
   @override
   State<BaribaVirtualKeyboard> createState() => _BaribaVirtualKeyboardState();
@@ -279,13 +284,15 @@ class _BaribaVirtualKeyboardState extends State<BaribaVirtualKeyboard> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildTopBar(),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOutCubic,
-                alignment: Alignment.topCenter,
-                child: _translateMode ? _buildTranslationStrip() : const SizedBox(width: double.infinity),
-              ),
+              if (widget.assistBar) ...[
+                _buildTopBar(),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topCenter,
+                  child: _translateMode ? _buildTranslationStrip() : const SizedBox(width: double.infinity),
+                ),
+              ],
               const SizedBox(height: 4),
               if (_symbols) ...[
                 _letterRow(_sym1),

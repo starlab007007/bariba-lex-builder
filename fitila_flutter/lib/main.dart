@@ -34,6 +34,7 @@ import 'handunia/handunia_creation_ai_route.dart';
 import 'handunia/handunia_map_data.dart';
 import 'handunia/handunia_unified_map.dart';
 import 'handunia/handunia_consultation_ui.dart';
+import 'espace/espace_home.dart';
 import 'keyboard/bariba_input.dart';
 import 'keyboard/bariba_keyboard_engine.dart';
 import 'keyboard/keyboard_bridge.dart';
@@ -770,6 +771,7 @@ enum FitilaPage {
   temIa,
   learn,
   classe,
+  espace,
   keyboard,
   voiceLab,
   teacher,
@@ -805,6 +807,7 @@ extension FitilaPageMeta on FitilaPage {
       FitilaPage.temIa => 'Tem-IA',
       FitilaPage.learn => 'Apprendre',
       FitilaPage.classe => 'Classe',
+      FitilaPage.espace => 'Espace',
       FitilaPage.keyboard => 'Clavier',
       FitilaPage.voiceLab => 'Voice Lab',
       FitilaPage.teacher => 'Enseignant',
@@ -840,6 +843,7 @@ extension FitilaPageMeta on FitilaPage {
       FitilaPage.temIa => 'Assistant foncier avec sources citees',
       FitilaPage.learn => 'Cours guidés et parcours culture',
       FitilaPage.classe => 'Niveaux, exercices, notes et corrections',
+      FitilaPage.espace => 'Coffre-fort, éditeur et scan OCR Bàátɔ̀nú',
       FitilaPage.keyboard => 'Clavier natif Bariba intégré',
       FitilaPage.voiceLab => 'TTS, STT et corpus vocal',
       FitilaPage.teacher => 'Suivi enseignant et correction',
@@ -875,6 +879,7 @@ extension FitilaPageMeta on FitilaPage {
       FitilaPage.temIa => Icons.gavel_rounded,
       FitilaPage.learn => Icons.school_rounded,
       FitilaPage.classe => Icons.assignment_rounded,
+      FitilaPage.espace => Icons.enhanced_encryption_rounded,
       FitilaPage.keyboard => Icons.keyboard_alt_rounded,
       FitilaPage.voiceLab => Icons.graphic_eq_rounded,
       FitilaPage.teacher => Icons.workspace_premium_rounded,
@@ -1946,6 +1951,7 @@ class _FitilaShellState extends State<FitilaShell> {
   ],
 ),
       FitilaPage.classe => const ClasseScreen(),
+      FitilaPage.espace => const EspaceScreen(),
       FitilaPage.keyboard => const KeyboardScreen(),
       FitilaPage.voiceLab => const VoiceLabScreen(),
       FitilaPage.teacher => const TeacherScreen(),
@@ -2075,6 +2081,7 @@ class _NavigationPanel extends StatelessWidget {
       FitilaPage.learn,
       FitilaPage.templates,
       FitilaPage.creator,
+      FitilaPage.espace,
     ];
     final culture = [
       FitilaPage.voiceLab,
@@ -13826,6 +13833,19 @@ class _WebLessonTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class EspaceScreen extends StatelessWidget {
+  const EspaceScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const _PageFrame(
+      title: 'Espace',
+      subtitle: 'Coffre-fort numérique · éditeur intelligent · scan OCR',
+      child: EspaceHome(),
     );
   }
 }
