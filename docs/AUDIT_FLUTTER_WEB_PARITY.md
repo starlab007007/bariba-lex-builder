@@ -37,3 +37,24 @@ Méthode : chaque écran web est capturé au même format (Playwright) et compar
 - **Publication Handunia** : le Flutter a un assistant en 4 étapes ; le web garde un formulaire unique restylé.
 - **SOS** : la saisie vocale et l'indicateur de localisation du web sont conservés (absents du rendu Flutter).
 - **Boutons audio** des tuiles métier conservés (accessibilité), en style discret.
+
+## Vérification Supabase (projet `fitila`, `dvswhjawiooprghzeyol`)
+
+- Types régénérés depuis le schéma réel : `tsc` passe de 49 erreurs à 0.
+- Corrigés (échecs certains à l'exécution) : publication du Créateur (`tamtam_posts` n'a pas de colonne `content`
+  et la RLS exige `user_id`), réponse Sagesse Battle (`answer_text` et prompts NOT NULL), séance de thème Apprendre
+  (`themeSession` manquant).
+- SOS : contacts de confiance branchés sur `tamtam_emergency_contacts` (ajout, appel, suppression).
+- Contenu Apprendre en base : `core` et `scenes` en `v2.4-build19-20260927` (cohérent avec le JSON embarqué).
+- Valeurs `scope_level` de Handunia confirmées : `community`, `elders`, `lineage`.
+
+### Points à traiter côté Supabase (non modifiés)
+- Fonctions Edge appelées par l'interface mais **non déployées** : `set-security`, `reset-pin`, `raconte-moi`,
+  `smart-assistant`, `french-stt`, `recognize-handwriting`, `generate-content`, `generate-content-stream`,
+  `hf-keep-alive`, `health-check`, `analyze-asset`, `analyze-news`, `analyze-story`, `clone-voice`,
+  `enhance-training-data`, `generate-3d-avatar`, `generate-anime-story`, `generate-beat`,
+  `generate-character-asset`, `generate-image-animation`, `generate-template-assets`, `retrain-model`,
+  `synthesize-speech`, `elevenlabs-music`.
+- `public.get_user_phone(uuid)` est exécutable par `anon` (SECURITY DEFINER) : à restreindre.
+- Deux index uniques identiques sur `battle_responses (challenge_id, user_id)`.
+- Protection contre les mots de passe compromis désactivée ; `pg_net` dans le schéma `public`.
