@@ -12,8 +12,6 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "FitilaKeyboardChannel") {
-      KeyboardChannel.register(with: registrar.messenger())
-    }
+    KeyboardChannel.register(with: engineBridge.applicationRegistrar.messenger())
   }
 }
