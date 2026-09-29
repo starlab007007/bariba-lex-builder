@@ -41,6 +41,10 @@ const FitilaTemIA = lazy(() => import("./pages/fitila/FitilaTemIA"));
 const FitilaVoiceLab = lazy(() => import("./pages/fitila/FitilaVoiceLab"));
 const VoiceCorpusAdmin = lazy(() => import("./pages/admin/VoiceCorpusAdmin"));
 const InstallPage = lazy(() => import("./pages/fitila/InstallPage"));
+const FitilaEspace = lazy(() => import("./pages/fitila/espace/FitilaEspace"));
+const EspaceEditorPage = lazy(() => import("./pages/fitila/espace/EspaceEditorPage"));
+const EspaceScanPage = lazy(() => import("./pages/fitila/espace/EspaceScanPage"));
+const EspaceSharedPage = lazy(() => import("./pages/fitila/espace/EspaceSharedPage"));
 const FloatingKeyboardPage = lazy(() => import("./pages/fitila/FloatingKeyboardPage"));
 
 const TeacherLayout = lazy(() => import("./pages/teacher/TeacherLayout"));
@@ -143,6 +147,10 @@ const App = () => (
                   <Route path="discover" element={<FitilaUtilityParity />} />
                   <Route path="install" element={<InstallPage />} />
                   <Route path="keyboard" element={<FloatingKeyboardPage />} />
+                  <Route path="espace" element={<FitilaEspace />} />
+                  <Route path="espace/document/:id" element={<EspaceEditorPage />} />
+                  <Route path="espace/scanner" element={<EspaceScanPage />} />
+                  <Route path="espace/partage/:token" element={<EspaceSharedPage />} />
 
                 <Route path="teacher" element={<ProtectedRoute requireTeacher><TeacherLayout /></ProtectedRoute>}>
                   <Route index element={<TeacherDashboard />} />

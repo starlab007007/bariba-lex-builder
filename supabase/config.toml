@@ -67,6 +67,9 @@ verify_jwt = false
 [functions.smart-assistant]
 verify_jwt = false
 
+[functions.espace-ocr]
+verify_jwt = true
+
 [functions.ocr-translate]
 verify_jwt = false
 
