@@ -4,6 +4,7 @@ import 'package:fitila_native/classe/classe_content.dart';
 import 'package:fitila_native/classe/classe_session.dart';
 import 'package:fitila_native/classe/classe_store.dart';
 import 'package:fitila_native/main.dart';
+import 'package:fitila_native/translator/translator_chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -65,7 +66,10 @@ void main() {
   testWidgets('translator exposes all web multimodal modes on phone', (
     tester,
   ) async {
-    await pumpPhone(tester, const TranslatorScreen(accessToken: ''));
+    await pumpPhone(
+      tester,
+      TranslatorScreen(accessToken: '', ports: TranslatorPorts(translate: (t, b) async => t)),
+    );
 
     expect(find.text('Traducteur IA'), findsOneWidget);
     expect(find.text('Voix'), findsOneWidget);

@@ -43,6 +43,7 @@ import 'classe/classe_store.dart';
 import 'classe/classe_widgets.dart' show ClasseStoragePlayer;
 import 'espace/espace_home.dart';
 import 'keyboard/bariba_input.dart';
+import 'translator/translator_chat.dart';
 import 'keyboard/bariba_keyboard_engine.dart';
 import 'keyboard/keyboard_bridge.dart';
 import 'keyboard/keyboard_onboarding.dart';
@@ -8396,949 +8397,131 @@ class _WebDictionaryInfo extends StatelessWidget {
 }
 
 class TranslatorScreen extends StatefulWidget {
-  const TranslatorScreen({super.key, required this.accessToken});
+  const TranslatorScreen({super.key, required this.accessToken, this.ports});
 
   final String accessToken;
+
+  /// Services injectés (tests) ; par défaut : moteur FITILA réel.
+  final TranslatorPorts? ports;
 
   @override
   State<TranslatorScreen> createState() => _TranslatorScreenState();
 }
 
 class _TranslatorScreenState extends State<TranslatorScreen> {
-  final _input = TextEditingController();
-  final _output = TextEditingController();
-  TranslationDirection _direction = TranslationDirection.frenchToBariba;
-  String _mode = 'Texte';
-  bool _autoDetect = true;
-  bool _conversationMode = true;
-  bool _busy = false;
-  bool _voiceRecording = false;
-  bool _speaking = false;
-  String? _detectedLanguage;
   final _voiceMedia = FitilaMediaController();
   final _voicePlayer = audio.AudioPlayer();
-  final List<({String source, String result})> _history = [];
 
   @override
   void dispose() {
-    _input.dispose();
-    _output.dispose();
     _voiceMedia.dispose();
     _voicePlayer.dispose();
     super.dispose();
   }
 
-  String get _sourceLabel => _direction == TranslationDirection.frenchToBariba
-      ? '🇫🇷 Français'
-      : '🇧🇯 Bàátɔ̀nú';
+  TranslationDirection _dir(bool toBariba) => toBariba
+      ? TranslationDirection.frenchToBariba
+      : TranslationDirection.baribaToFrench;
 
-  String get _targetLabel => _direction == TranslationDirection.frenchToBariba
-      ? '🇧🇯 Bàátɔ̀nú'
-      : '🇫🇷 Français';
-
-  void _swapLanguages() {
-    setState(() {
-      _direction = _direction == TranslationDirection.frenchToBariba
-          ? TranslationDirection.baribaToFrench
-          : TranslationDirection.frenchToBariba;
-      final input = _input.text;
-      _input.text = _output.text;
-      _output.text = input;
-      _detectedLanguage = null;
-    });
-  }
-
-  void _detectFromText(String value) {
-    if (!_autoDetect || value.trim().length < 3) {
-      return;
-    }
-    final lower = value.toLowerCase();
-    final baribaSignals = [
-      'ɔ',
-      'ɛ',
-      'ŋ',
-      'sɔ̃',
-      'gari',
-      'mba',
-      'wɛɛ',
-      'bɛɛ',
-      'tem',
-    ];
-    final likelyBariba = baribaSignals.any(lower.contains);
-    setState(() {
-      _detectedLanguage = likelyBariba ? 'Bàátɔ̀nú' : 'Français';
-      _direction = likelyBariba
-          ? TranslationDirection.baribaToFrench
-          : TranslationDirection.frenchToBariba;
-    });
-  }
-
-  Future<void> _translate() async {
-    final source = _input.text.trim();
-    if (source.isEmpty || _busy) {
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      final translated = await FitilaServices.translate(
-        source,
-        _direction,
-        accessToken: widget.accessToken,
-      );
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _output.text = translated;
-        if (translated.isNotEmpty) {
-          _history.insert(0, (source: source, result: translated));
-          if (_history.length > 20) {
-            _history.removeLast();
-          }
-        }
-      });
-      if (translated.isNotEmpty && FitilaBackend.configured) {
-        FitilaBackend.saveTranslationHistory(
-          sourceLang: _direction == TranslationDirection.frenchToBariba
-              ? 'fr'
-              : 'ba',
-          targetLang: _direction == TranslationDirection.frenchToBariba
-              ? 'ba'
-              : 'fr',
-          sourceText: source,
-          translatedText: translated,
-          mode: _mode,
-        ).catchError((_) => <String, dynamic>{});
-      }
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error is StateError
-                ? error.message
-                : 'Traduction indisponible. Réessayez.',
-          ),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _busy = false);
-      }
-    }
-  }
-
-  Future<void> _toggleVoiceCapture() async {
-    if (_busy) return;
-    if (!_voiceRecording) {
-      try {
-        await _voiceMedia.startAudio();
-        if (!mounted) return;
-        setState(() {
-          _mode = 'Voix';
-          _voiceRecording = true;
-        });
-      } catch (error) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Micro indisponible : $error')),
-        );
-      }
-      return;
-    }
-
-    setState(() {
-      _voiceRecording = false;
-      _busy = true;
-    });
-    try {
+  TranslatorPorts _livePorts() => TranslatorPorts(
+    translate: (text, toBariba) => FitilaServices.translate(
+      text,
+      _dir(toBariba),
+      accessToken: widget.accessToken,
+    ),
+    startVoice: _voiceMedia.startAudio,
+    stopVoice: (sourceIsBariba) async {
       final asset = await _voiceMedia.stopAudio();
       if (asset == null) {
         throw StateError('Aucun enregistrement audio exploitable.');
       }
-      final sourceIsBariba =
-          _direction == TranslationDirection.baribaToFrench;
-      final transcript = await FitilaTranslationAudio.transcribe(
+      return FitilaTranslationAudio.transcribe(
         asset: asset,
         sourceIsBariba: sourceIsBariba,
       );
-      if (!mounted) return;
-      setState(() {
-        _input.text = transcript;
-        _detectedLanguage = sourceIsBariba ? 'Bàátɔ̀nú' : 'Français';
-      });
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error is StateError
-                ? error.message
-                : 'Transcription vocale indisponible. Réessayez.',
-          ),
-        ),
-      );
-      return;
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-    await _translate();
-  }
-
-  Future<void> _speakText(
-    String text, {
-    required bool bariba,
-  }) async {
-    final value = text.trim();
-    if (value.isEmpty || _speaking) return;
-    setState(() => _speaking = true);
-    try {
+    },
+    speak: (text, bariba) async {
       await _voicePlayer.stop();
       final generated = await FitilaTranslationAudio.synthesize(
-        text: value,
+        text: text,
         bariba: bariba,
       );
       final url = generated.url?.trim() ?? '';
       if (url.isNotEmpty) {
         await _voicePlayer.play(audio.UrlSource(url));
+        return;
+      }
+      final path = await generated.materialize();
+      if (path == null || path.isEmpty) {
+        throw StateError('Audio non disponible.');
+      }
+      await _voicePlayer.play(audio.DeviceFileSource(path));
+    },
+    ocr: (toBariba, document) async {
+      if (!FitilaBackend.configured) {
+        throw StateError('Serveur FITILA indisponible.');
+      }
+      List<int>? bytes;
+      var name = 'photo.jpg';
+      if (document) {
+        final selection = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: const ['pdf', 'png', 'jpg', 'jpeg', 'webp'],
+          withData: true,
+        );
+        if (selection == null || selection.files.isEmpty) return null;
+        bytes = selection.files.first.bytes;
+        name = selection.files.first.name;
+        if (bytes == null) throw StateError('Impossible de lire le document.');
       } else {
-        final path = await generated.materialize();
-        if (path == null || path.isEmpty) {
-          throw StateError('Audio non disponible.');
-        }
-        await _voicePlayer.play(audio.DeviceFileSource(path));
+        final file = await ImagePicker().pickImage(
+          source: ImageSource.gallery,
+          imageQuality: 88,
+          maxWidth: 1800,
+        );
+        if (file == null) return null;
+        bytes = await file.readAsBytes();
+        name = file.name;
       }
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error is StateError
-                ? error.message
-                : 'Lecture vocale momentanément indisponible.',
-          ),
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _speaking = false);
-    }
-  }
-
-  Future<void> _pasteAndTranslate() async {
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    final text = data?.text?.trim() ?? '';
-    if (text.isEmpty) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Le presse-papiers est vide.')),
-      );
-      return;
-    }
-    setState(() {
-      _mode = 'Coller';
-      _input.text = text;
-    });
-    _detectFromText(text);
-    await _translate();
-  }
-
-  Future<void> _translateImage() async {
-    if (!FitilaBackend.configured) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Serveur FITILA indisponible.')),
-      );
-      return;
-    }
-    final file = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 88,
-      maxWidth: 1800,
-    );
-    if (file == null) {
-      return;
-    }
-    final bytes = await file.readAsBytes();
-    await _ocrTranslate(bytes, file.name);
-  }
-
-  Future<void> _translateDocument() async {
-    if (!FitilaBackend.configured) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Serveur FITILA indisponible.')),
-      );
-      return;
-    }
-    final selection = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['pdf', 'png', 'jpg', 'jpeg', 'webp'],
-      withData: true,
-    );
-    if (selection == null || selection.files.isEmpty) {
-      return;
-    }
-    final file = selection.files.first;
-    final bytes = file.bytes;
-    if (bytes == null) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossible de lire le document.')),
-      );
-      return;
-    }
-    await _ocrTranslate(bytes, file.name);
-  }
-
-  Future<void> _ocrTranslate(List<int> bytes, String fileName) async {
-    if (_busy) {
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      final target = _direction == TranslationDirection.frenchToBariba
-          ? 'bariba'
-          : 'french';
       final response = await FitilaBackend.client.functions.invoke(
         'ocr-translate',
         body: {
           'document': base64Encode(bytes),
-          'fileName': fileName,
-          'targetLanguage': target,
+          'fileName': name,
+          'targetLanguage': toBariba ? 'bariba' : 'french',
           'translateMode': 'combined',
         },
       );
       final data = response.data;
-      if (data is! Map) {
-        throw StateError('Réponse OCR invalide.');
-      }
-      final extracted = data['extractedText']?.toString().trim() ?? '';
-      final translation = data['translation']?.toString().trim() ?? '';
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _input.text = extracted;
-        _output.text = translation;
-        if (extracted.isNotEmpty || translation.isNotEmpty) {
-          _history.insert(0, (
-            source: extracted.isEmpty ? fileName : extracted,
-            result: translation,
-          ));
-        }
-      });
-      if (translation.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Texte détecté, mais aucune traduction n’a été produite.',
-            ),
-          ),
-        );
-      }
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Lecture du document impossible. Vérifiez le réseau puis réessayez.',
-          ),
-        ),
+      if (data is! Map) throw StateError('Réponse OCR invalide.');
+      return (
+        extracted: data['extractedText']?.toString().trim() ?? '',
+        translation: data['translation']?.toString().trim() ?? '',
       );
-    } finally {
-      if (mounted) {
-        setState(() => _busy = false);
-      }
-    }
-  }
+    },
+    saveHistory: (source, result, toBariba, mode) {
+      if (!FitilaBackend.configured) return;
+      FitilaBackend.saveTranslationHistory(
+        sourceLang: toBariba ? 'fr' : 'ba',
+        targetLang: toBariba ? 'ba' : 'fr',
+        sourceText: source,
+        translatedText: result,
+        mode: mode,
+      ).catchError((_) => <String, dynamic>{});
+    },
+    openHistory: () => Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const TranslationHistoryScreen()),
+    ),
+  );
 
-  void _selectMode(String mode) {
-    setState(() => _mode = mode);
-    switch (mode) {
-      case 'Coller':
-        _pasteAndTranslate();
-      case 'Photo':
-        _translateImage();
-      case 'Doc':
-        _translateDocument();
-    }
-  }
-
-  Widget _modeButton(String mode, IconData icon, Color tone) {
-    final selected = _mode == mode;
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: _busy ? null : () => _selectMode(mode),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? tone : _fitilaCard,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: selected ? tone : _fitilaBorder),
-          boxShadow: selected
-              ? const [
-                  BoxShadow(
-                    color: Color(0x18241F2E),
-                    blurRadius: 14,
-                    offset: Offset(0, 7),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 21, color: selected ? Colors.white : _fitilaMuted),
-            const SizedBox(height: 5),
-            Text(
-              mode,
-              style: TextStyle(
-                color: selected ? Colors.white : _fitilaMuted,
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _welcomeState() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
-      child: Column(
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: _fitilaPrimarySoft,
-            ),
-            child: const Icon(
-              Icons.language_rounded,
-              size: 43,
-              color: _fitilaGoldDeep,
-            ),
-          ),
-          const SizedBox(height: 14),
-          const Text(
-            'Bienvenue ! 👋',
-            style: TextStyle(
-              color: _fitilaInk,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 7),
-          const Text(
-            'Je traduis entre Français et Bàátɔ̀nú',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: _fitilaMuted, fontSize: 14),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (_autoDetect)
-                const _StatusChip(
-                  icon: Icons.auto_awesome_rounded,
-                  label: 'Détection automatique',
-                ),
-              if (_conversationMode)
-                const _StatusChip(
-                  icon: Icons.chat_bubble_outline_rounded,
-                  label: 'Mode conversation',
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  late final TranslatorPorts _ports = widget.ports ?? _livePorts();
 
   @override
   Widget build(BuildContext context) {
     return _PageFrame(
       title: 'Traducteur IA',
-      subtitle: 'Voix, texte, photo, presse-papiers et documents.',
-      action: IconButton(
-        tooltip: 'Historique et favoris',
-        icon: const Icon(Icons.history_rounded),
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const TranslationHistoryScreen()),
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-            decoration: BoxDecoration(
-              color: _fitilaCard,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: _fitilaBorder),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.wifi_rounded,
-                      color: _fitilaSage,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'Auto',
-                      style: TextStyle(
-                        color: _fitilaSage,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      _detectedLanguage == null
-                          ? 'Détection active'
-                          : 'Détecté : $_detectedLanguage',
-                      style: const TextStyle(
-                        color: _fitilaMuted,
-                        fontSize: 10.5,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 7),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      ChoiceChip(
-                        selected:
-                            _direction == TranslationDirection.frenchToBariba,
-                        label: const Text('🇫🇷 Français'),
-                        onSelected: (_) => setState(() {
-                          _direction = TranslationDirection.frenchToBariba;
-                        }),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        child: IconButton.filled(
-                          tooltip: 'Inverser',
-                          onPressed: _swapLanguages,
-                          icon: const Icon(Icons.swap_horiz_rounded),
-                        ),
-                      ),
-                      ChoiceChip(
-                        selected:
-                            _direction == TranslationDirection.baribaToFrench,
-                        label: const Text('🇧🇯 Bariba'),
-                        onSelected: (_) => setState(() {
-                          _direction = TranslationDirection.baribaToFrench;
-                        }),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 14,
-                  runSpacing: 6,
-                  children: [
-                    FilterChip(
-                      selected: _autoDetect,
-                      avatar: const Icon(Icons.auto_awesome_rounded, size: 16),
-                      label: Text(
-                        _detectedLanguage == null
-                            ? 'Détection auto'
-                            : 'Détecté : $_detectedLanguage',
-                      ),
-                      onSelected: (value) =>
-                          setState(() => _autoDetect = value),
-                    ),
-                    FilterChip(
-                      selected: _conversationMode,
-                      avatar: const Icon(
-                        Icons.chat_bubble_outline_rounded,
-                        size: 16,
-                      ),
-                      label: const Text('Mode conversation'),
-                      onSelected: (value) =>
-                          setState(() => _conversationMode = value),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: ListView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              children: [
-                if (_input.text.isEmpty && _output.text.isEmpty)
-                  _welcomeState(),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _modeButton('Voix', Icons.mic_rounded, _fitilaClay),
-                      const SizedBox(width: 7),
-                      _modeButton(
-                        'Texte',
-                        Icons.keyboard_alt_rounded,
-                        const Color(0xFF4D73E6),
-                      ),
-                      const SizedBox(width: 7),
-                      _modeButton(
-                        'Photo',
-                        Icons.photo_camera_rounded,
-                        const Color(0xFF9A62D6),
-                      ),
-                      const SizedBox(width: 7),
-                      _modeButton(
-                        'Coller',
-                        Icons.content_paste_rounded,
-                        _fitilaSage,
-                      ),
-                      const SizedBox(width: 7),
-                      _modeButton(
-                        'Doc',
-                        Icons.description_rounded,
-                        _fitilaGoldDeep,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (_mode == 'Voix') ...[
-                  Container(
-                    padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
-                      color: _fitilaCard,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: _fitilaBorder),
-                    ),
-                    child: Column(
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          width: 72,
-                          height: 72,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _voiceRecording
-                                ? _fitilaClay.withValues(alpha: .14)
-                                : _fitilaPrimarySoft,
-                          ),
-                          child: Icon(
-                            _voiceRecording
-                                ? Icons.graphic_eq_rounded
-                                : Icons.mic_rounded,
-                            color: _voiceRecording
-                                ? _fitilaClay
-                                : _fitilaGoldDeep,
-                            size: 38,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          _voiceRecording
-                              ? 'Je vous écoute…'
-                              : 'Traduction vocale directe',
-                          style: const TextStyle(
-                            color: _fitilaInk,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _voiceRecording
-                              ? 'Parlez en $_sourceLabel puis appuyez pour terminer.'
-                              : 'Parlez en $_sourceLabel : FITILA transcrit, traduit et permet d’écouter le résultat.',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: _fitilaMuted,
-                            height: 1.4,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: FilledButton.icon(
-                            onPressed: _busy ? null : _toggleVoiceCapture,
-                            icon: _busy
-                                ? const SizedBox.square(
-                                    dimension: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Icon(
-                                    _voiceRecording
-                                        ? Icons.stop_circle_rounded
-                                        : Icons.mic_rounded,
-                                  ),
-                            label: Text(
-                              _voiceRecording
-                                  ? 'Terminer et traduire'
-                                  : 'Parler et traduire',
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_input.text.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    _TextPanel(
-                      title: _sourceLabel,
-                      controller: _input,
-                      hint: 'Transcription',
-                      readOnly: false,
-                      maxLines: 6,
-                    ),
-                  ],
-                  if (_output.text.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    _TextPanel(
-                      title: _targetLabel,
-                      controller: _output,
-                      hint: 'Traduction',
-                      readOnly: true,
-                      maxLines: 6,
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: _speaking
-                              ? null
-                              : () => _speakText(
-                                    _input.text,
-                                    bariba: _direction ==
-                                        TranslationDirection.baribaToFrench,
-                                  ),
-                          icon: const Icon(Icons.hearing_rounded),
-                          label: const Text('Écouter source'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: _speaking
-                              ? null
-                              : () => _speakText(
-                                    _output.text,
-                                    bariba: _direction ==
-                                        TranslationDirection.frenchToBariba,
-                                  ),
-                          icon: const Icon(Icons.volume_up_rounded),
-                          label: const Text('Écouter traduction'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ]
-                else ...[
-                  Container(
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      color: _fitilaCard,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: _fitilaBorder),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _sourceLabel.toUpperCase(),
-                          style: const TextStyle(
-                            color: _fitilaGoldDeep,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: .3,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        TextField(
-                          controller: _input,
-                          minLines: 3,
-                          maxLines: 7,
-                          onChanged: _detectFromText,
-                          decoration: InputDecoration(
-                            hintText: 'Tapez dans n’importe quelle langue...',
-                            fillColor: Colors.transparent,
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            contentPadding: EdgeInsets.zero,
-                            suffixIcon: IconButton(
-                              tooltip: 'Clavier Bàátɔ̀nú',
-                              onPressed: () => _showKeyboard(context, _input),
-                              icon: const Icon(Icons.keyboard_rounded),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 50,
-                    child: FilledButton.icon(
-                      onPressed: _busy ? null : _translate,
-                      icon: _busy
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.send_rounded),
-                      label: const Text('Traduire'),
-                    ),
-                  ),
-                  if (_output.text.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    _TextPanel(
-                      title: _targetLabel,
-                      controller: _output,
-                      hint: 'Résultat',
-                      readOnly: true,
-                      maxLines: 7,
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: _speaking
-                              ? null
-                              : () => _speakText(
-                                    _input.text,
-                                    bariba: _direction ==
-                                        TranslationDirection.baribaToFrench,
-                                  ),
-                          icon: const Icon(Icons.hearing_rounded),
-                          label: const Text('Source'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: _speaking
-                              ? null
-                              : () => _speakText(
-                                    _output.text,
-                                    bariba: _direction ==
-                                        TranslationDirection.frenchToBariba,
-                                  ),
-                          icon: const Icon(Icons.volume_up_rounded),
-                          label: const Text('Traduction'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () async {
-                            final messenger = ScaffoldMessenger.of(context);
-                            await Clipboard.setData(
-                              ClipboardData(text: _output.text),
-                            );
-                            if (!mounted) {
-                              return;
-                            }
-                            messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text('Traduction copiée.'),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.copy_rounded),
-                          label: const Text('Copier'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              _input.clear();
-                              _output.clear();
-                              _detectedLanguage = null;
-                            });
-                          },
-                          icon: const Icon(Icons.delete_outline_rounded),
-                          label: const Text('Effacer'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-                if (_history.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Historique récent',
-                        style: TextStyle(
-                          color: _fitilaMuted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const TranslationHistoryScreen(),
-                          ),
-                        ),
-                        child: const Text(
-                          'Tout voir',
-                          style: TextStyle(fontSize: 11.5),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 7),
-                  for (final item in _history.take(5))
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 7),
-                      child: Material(
-                        color: _fitilaCard,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          side: const BorderSide(color: _fitilaBorder),
-                        ),
-                        child: ListTile(
-                          dense: true,
-                          onTap: () => setState(() {
-                            _input.text = item.source;
-                            _output.text = item.result;
-                          }),
-                          leading: const Icon(Icons.history_rounded),
-                          title: Text(
-                            item.source,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(
-                            item.result,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
+      subtitle: 'Discutez : voix, texte, photo, presse-papiers et documents.',
+      child: TranslatorChat(ports: _ports),
     );
   }
 }
@@ -18633,15 +17816,13 @@ class _TextPanel extends StatelessWidget {
     required this.title,
     required this.controller,
     required this.hint,
-    this.readOnly = false,
-    this.maxLines = 6,
   });
 
   final String title;
   final TextEditingController controller;
   final String hint;
-  final bool readOnly;
-  final int maxLines;
+  static const readOnly = false;
+  static const maxLines = 6;
 
   @override
   Widget build(BuildContext context) {
