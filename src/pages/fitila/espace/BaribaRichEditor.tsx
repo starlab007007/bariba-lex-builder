@@ -1,7 +1,8 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { AlignCenter, AlignJustify, AlignLeft, Bold, Check, Eraser, Italic, Keyboard, List, ListOrdered, Quote, Redo2, SpellCheck2, Underline, Undo2, X } from 'lucide-react';
+import { AlignCenter, AlignJustify, AlignLeft, Bold, Check, Eraser, Italic, Keyboard, Languages, List, ListOrdered, Quote, Redo2, SpellCheck2, Underline, Undo2, X } from 'lucide-react';
 import { SIG } from '@/components/fitila/signatureTheme';
-import { BARIBA_LETTERS, BARIBA_TONES, findMisspelled, foldText, htmlToText, sanitizeHtml, type BaribaLexicon, type LexEntry } from '@/lib/espace/baribaText';
+import { BARIBA_LETTERS, BARIBA_TONES, findMisspelled, foldText, glossHead, htmlToText, sanitizeHtml, type BaribaLexicon, type LexEntry } from '@/lib/espace/baribaText';
+import { LiveStrip, SelectionPopover, type DirMode, type Pick } from './SmartAssist';
 
 export type BaribaEditorHandle = {
   getHtml: () => string;
@@ -65,6 +66,13 @@ const BaribaRichEditor = forwardRef<BaribaEditorHandle, Props>(function BaribaRi
   const [text, setText] = useState('');
   const [ignored, setIgnored] = useState<Set<string>>(new Set());
   const [formats, setFormats] = useState<Record<string, boolean>>({});
+  const [live, setLive] = useState(() => {
+    try { return localStorage.getItem('espace:live') !== 'off'; } catch { return true; }
+  });
+  const [dirMode, setDirMode] = useState<DirMode>('auto');
+  const [paragraph, setParagraph] = useState('');
+  const [lastWord, setLastWord] = useState<{ word: string; gloss: string } | null>(null);
+  const [pick, setPick] = useState<Pick | null>(null);
 
   const emit = useCallback(() => {
     const html = el.current?.innerHTML ?? '';
@@ -124,9 +132,31 @@ const BaribaRichEditor = forwardRef<BaribaEditorHandle, Props>(function BaribaRi
       ul: document.queryCommandState('insertUnorderedList'),
       ol: document.queryCommandState('insertOrderedList'),
     });
+    const sel = window.getSelection();
+    const inside = !!sel && !!sel.anchorNode && !!el.current?.contains(sel.anchorNode);
+    // Sélection de texte : fenêtre de traduction / choix des mots.
+    if (inside && sel && !sel.isCollapsed && lexicon) {
+      const t = sel.toString().replace(/\s+/g, ' ').trim();
+      if (t.length >= 1 && t.length <= 300) {
+        const r = sel.getRangeAt(0).getBoundingClientRect();
+        if (r.width > 0) setPick({ text: t, rect: { left: r.left, top: r.top, bottom: r.bottom, width: r.width } });
+      }
+    } else setPick(null);
+    // Paragraphe en cours (traduction en direct).
+    if (inside && sel && sel.isCollapsed && el.current) {
+      let n: Node | null = sel.anchorNode;
+      while (n && n.parentNode !== el.current) n = n.parentNode;
+      setParagraph((n ?? sel.anchorNode)?.textContent ?? '');
+    }
     const ctx = caretContext();
-    if (!ctx || !lexicon) return setSuggestions({ prefix: '', items: [] });
+    if (!ctx || !lexicon) {
+      setLastWord(null);
+      return setSuggestions({ prefix: '', items: [] });
+    }
     setSuggestions({ prefix: ctx.prefix, items: lexicon.predict(ctx.prefix, ctx.previous, 5) });
+    const w = ctx.prefix || ctx.previous;
+    const hit = w ? lexicon.lookup(w)[0] : undefined;
+    setLastWord(hit && hit.fr ? { word: w, gloss: glossHead(hit.fr) } : null);
   }, [caretContext, lexicon, readOnly]);
 
   useEffect(() => {
@@ -147,7 +177,65 @@ const BaribaRichEditor = forwardRef<BaribaEditorHandle, Props>(function BaribaRi
     emit();
   };
 
+  const replaceSelection = (t: string) => {
+    el.current?.focus();
+    document.execCommand('insertText', false, t);
+    setPick(null);
+    emit();
+  };
+  const appendToSelection = (t: string) => {
+    el.current?.focus();
+    window.getSelection()?.collapseToEnd();
+    document.execCommand('insertText', false, ` (${t})`);
+    setPick(null);
+    emit();
+  };
+  const currentBlock = (): Element | null => {
+    const sel = window.getSelection();
+    let n: Node | null = sel?.anchorNode ?? null;
+    while (n && n.parentNode !== el.current) n = n.parentNode;
+    return n && n.nodeType === Node.ELEMENT_NODE ? (n as Element) : null;
+  };
+  const replaceParagraph = (t: string) => {
+    const block = currentBlock();
+    if (block) {
+      const r = document.createRange();
+      r.selectNodeContents(block);
+      const sel = window.getSelection()!;
+      sel.removeAllRanges();
+      sel.addRange(r);
+    } else document.execCommand('selectAll');
+    document.execCommand('insertText', false, t);
+    emit();
+  };
+  const insertBelow = (t: string) => {
+    const block = currentBlock();
+    const p = document.createElement('p');
+    p.textContent = t;
+    if (block) block.after(p);
+    else el.current?.append(p);
+    const r = document.createRange();
+    r.selectNodeContents(p);
+    r.collapse(false);
+    const sel = window.getSelection()!;
+    sel.removeAllRanges();
+    sel.addRange(r);
+    emit();
+  };
+  const toggleLive = () => {
+    setLive((v) => {
+      try { localStorage.setItem('espace:live', v ? 'off' : 'on'); } catch { /* stockage indisponible */ }
+      return !v;
+    });
+  };
+
   const onKeyDown = (e: React.KeyboardEvent) => {
+    // Alt+1…5 : choisit directement une suggestion.
+    if (e.altKey && /^[1-5]$/.test(e.key) && suggestions.items[Number(e.key) - 1]) {
+      e.preventDefault();
+      accept(suggestions.items[Number(e.key) - 1].ba);
+      return;
+    }
     if (e.key === 'Tab' && !e.shiftKey && suggestions.prefix && suggestions.items[0]) {
       e.preventDefault();
       accept(suggestions.items[0].ba);
@@ -223,18 +311,30 @@ const BaribaRichEditor = forwardRef<BaribaEditorHandle, Props>(function BaribaRi
             </button>
           </div>
           {showKeys && <div className="border-t px-3 py-2" style={{ borderColor: SIG.hairline, background: SIG.appBackground }}><BaribaCharPalette onInsert={insert} /></div>}
-          <div className="flex min-h-[38px] items-center gap-1.5 overflow-x-auto border-t px-3 py-1.5 [scrollbar-width:none]" style={{ borderColor: SIG.hairline }} aria-live="polite">
-            {suggestions.items.length === 0 ? (
-              <span className="text-[12px]" style={{ color: SIG.muted }}>{lexicon ? 'Suggestions du dictionnaire dès la première lettre' : 'Chargement du dictionnaire…'}</span>
-            ) : (
-              suggestions.items.map((s, i) => (
-                <button key={s.ba} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => accept(s.ba)} title={s.fr || undefined}
-                  className="shrink-0 rounded-full border px-3 py-1 text-[13.5px] font-extrabold transition-transform active:scale-95" style={{ borderColor: i === 0 ? SIG.gold : SIG.hairline, background: i === 0 ? SIG.goldTint : '#fff', color: SIG.goldDeep }}>
-                  {s.ba}{s.fr && <span className="ml-1.5 hidden text-[11px] font-medium sm:inline" style={{ color: SIG.muted }}>{s.fr.split(/[;,(]/)[0].slice(0, 18)}</span>}
-                </button>
-              ))
-            )}
+          <div className="flex min-h-[42px] items-center gap-1.5 border-t px-3 py-1.5" style={{ borderColor: SIG.hairline }} aria-live="polite">
+            <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none]">
+              {lastWord && (
+                <span className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-[12.5px]" style={{ background: SIG.sageTint, color: SIG.sage }} title="Traduction du mot">
+                  <b>{lastWord.word}</b> = {lastWord.gloss}
+                </span>
+              )}
+              {suggestions.items.length === 0 ? (
+                !lastWord && <span className="text-[12px]" style={{ color: SIG.muted }}>{lexicon ? 'Suggestions dès la première lettre · sélectionnez un mot pour le traduire' : 'Chargement du dictionnaire…'}</span>
+              ) : (
+                suggestions.items.map((s, i) => (
+                  <button key={s.ba} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => accept(s.ba)} title={`${s.fr || ''} (Alt+${i + 1})`}
+                    className="shrink-0 rounded-full border px-3 py-1 text-[13.5px] font-extrabold transition-transform active:scale-95" style={{ borderColor: i === 0 ? SIG.gold : SIG.hairline, background: i === 0 ? SIG.goldTint : '#fff', color: SIG.goldDeep }}>
+                    {s.ba}{s.fr && <span className="ml-1.5 hidden text-[11px] font-medium sm:inline" style={{ color: SIG.muted }}>{glossHead(s.fr).slice(0, 18)}</span>}
+                  </button>
+                ))
+              )}
+            </div>
+            <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={toggleLive} aria-pressed={live} title="Traduction en direct du paragraphe"
+              className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12px] font-extrabold" style={{ borderColor: live ? SIG.gold : SIG.hairline, background: live ? SIG.goldTint : '#fff', color: live ? SIG.goldDeep : SIG.muted }}>
+              <Languages className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Traduire</span>
+            </button>
           </div>
+          {live && lexicon && <LiveStrip lexicon={lexicon} paragraph={paragraph} mode={dirMode} onMode={setDirMode} onReplace={replaceParagraph} onInsertBelow={insertBelow} />}
         </div>
       )}
 
@@ -292,6 +392,8 @@ const BaribaRichEditor = forwardRef<BaribaEditorHandle, Props>(function BaribaRi
           </aside>
         )}
       </div>
+
+      {pick && lexicon && !readOnly && <SelectionPopover lexicon={lexicon} pick={pick} onReplace={replaceSelection} onAppend={appendToSelection} onClose={() => setPick(null)} />}
 
       <div className="flex items-center justify-between border-t px-4 py-1.5 text-[11.5px]" style={{ borderColor: SIG.hairline, color: SIG.muted }}>
         <span>{wordCount} mot{wordCount > 1 ? 's' : ''} · {text.length} caractères</span>
