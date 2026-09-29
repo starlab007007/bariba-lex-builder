@@ -18,8 +18,6 @@ serve(async (req) => {
       throw new Error("MISTRAL_API_KEY is not configured");
     }
 
-    console.log("[raconte-moi] Processing command:", command, "Language:", language);
-
     const systemPrompt = language === 'ba' 
       ? `Tu es "Raconte-Moi", un assistant vocal IA pour la plateforme TAM-TAM, conçu pour les utilisateurs qui parlent Bariba (Bàátɔ̀nú).
 Tu dois comprendre les commandes vocales en Bariba et répondre en Bariba.
@@ -81,7 +79,7 @@ Réponds TOUJOURS dans ce format JSON:
         model: "mistral-small-latest",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: command }
+          { role: "user", content: String(command ?? "").slice(0, 1000) }
         ],
         temperature: 0.3,
       }),
@@ -118,8 +116,6 @@ Réponds TOUJOURS dans ce format JSON:
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
     
-    console.log("[raconte-moi] AI response:", content);
-
     // Try to parse JSON response
     try {
       const parsed = JSON.parse(content);

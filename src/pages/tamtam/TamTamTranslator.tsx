@@ -401,13 +401,13 @@ export default function TamTamTranslator() {
   );
 
   return (
-    <div className="h-full bg-[#F7F5EC] text-[#241F2E] flex flex-col overflow-hidden">
+    <div className="mx-auto h-full w-full max-w-[960px] bg-[#F7F5EC] text-[#241F2E] flex flex-col overflow-hidden">
       <FitilaPageHeader title="Traducteur IA" subtitle="Voix, texte, photo, presse-papiers et documents." />
 
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* Sub-header with language toggle */}
         <div className="mx-[18px] mt-3 px-4 py-3 rounded-[24px] border border-[#E4DFCC] bg-white">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <OfflineIndicator />
               {autoDetectEnabled && (
@@ -418,7 +418,7 @@ export default function TamTamTranslator() {
               )}
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <button
                 onClick={() => { setShowHistory(true); navigate('/translator/history'); }}
                 className="p-2 rounded-[12px] bg-white border border-[#E4DFCC] hover:bg-[#F1EDDF] transition-colors"

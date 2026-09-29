@@ -170,7 +170,7 @@ export default function TamTamEducation() {
   const courses = activeCategory ? mockCourses[activeCategory] || [] : [];
 
   return (
-    <div className="h-full overflow-y-auto bg-[#F7F5EC] text-[#241F2E] px-[18px] pb-28">
+    <div className="mx-auto h-full w-full max-w-[1100px] overflow-y-auto bg-[#F7F5EC] text-[#241F2E] px-[18px] pb-28">
       <AnimatePresence mode="wait">
         {!activeCategory ? (
           <motion.div

@@ -5,7 +5,7 @@ import { SIG } from './signatureTheme';
 export function FitilaPage({ children }: { children: React.ReactNode }) {
   return (
     <div className="h-full overflow-y-auto pb-6" style={{ background: SIG.appBackground, color: SIG.ink }}>
-      {children}
+      <div className="mx-auto w-full max-w-[1100px]">{children}</div>
     </div>
   );
 }
@@ -55,7 +55,7 @@ export type Feature = { icon: LucideIcon; title: string; desc: string; onClick?:
 /** Grille 2 colonnes de cartes (Flutter _FeatureGrid). */
 export function FeatureGrid({ items }: { items: Feature[] }) {
   return (
-    <div className="grid grid-cols-2 gap-[10px] px-[18px]">
+    <div className="grid grid-cols-2 gap-[10px] px-[18px] md:grid-cols-3 xl:grid-cols-4">
       {items.map(({ icon: Icon, title, desc, onClick }) => (
         <button
           key={title}
@@ -134,7 +134,7 @@ export type DomainTile = {
 /** Grille de sections des écrans métier (Santé, Agriculture, Finance, Éducation…). */
 export function SectionTiles({ items }: { items: DomainTile[] }) {
   return (
-    <div className="grid grid-cols-2 gap-[10px]">
+    <div className="grid grid-cols-2 gap-[10px] md:grid-cols-3 xl:grid-cols-4">
       {items.map(({ id, label, Icon, danger, onClick, onSpeak }) => (
         <div key={id} className="relative">
           <button

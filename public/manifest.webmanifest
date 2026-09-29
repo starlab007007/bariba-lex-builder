@@ -1,12 +1,12 @@
 {
   "name": "FITILA - Langue Bariba, Culture & IA",
   "short_name": "FITILA",
-  "description": "Plateforme africaine pour apprendre le Bariba, traduire, écouter la radio et utiliser l'IA Bariba",
+  "description": "Plateforme africaine pour apprendre le Bariba, traduire, apprendre en s'amusant et utiliser l'IA Bariba",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#D97706",
-  "orientation": "portrait-primary",
+  "background_color": "#F7F5EC",
+  "theme_color": "#C99530",
+  "orientation": "any",
   "icons": [
     {
       "src": "/fitila-icon-192.png",

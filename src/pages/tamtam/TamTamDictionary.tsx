@@ -173,7 +173,7 @@ export default function TamTamDictionary() {
     }`;
 
   return (
-    <div className="h-full flex flex-col overflow-hidden" style={{ background: SIG.appBackground, color: SIG.ink }}>
+    <div className="mx-auto h-full w-full max-w-[960px] flex flex-col overflow-hidden" style={{ background: SIG.appBackground, color: SIG.ink }}>
       <FitilaPageHeader title={t('dict_title')} subtitle="Recherche Bàátɔ̀nú ↔ Français, clavier et recherche vocale" />
       <div className="flex-shrink-0 z-40 px-[18px] pt-[30px] pb-2">
         <div className="flex gap-[10px]">

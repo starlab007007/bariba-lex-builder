@@ -158,7 +158,7 @@ export default function TamTamMarket() {
   ];
 
   return (
-    <div className="h-full overflow-y-auto bg-[#F7F5EC] text-[#241F2E] px-[18px] pb-28">
+    <div className="mx-auto h-full w-full max-w-[1100px] overflow-y-auto bg-[#F7F5EC] text-[#241F2E] px-[18px] pb-28">
       {/* Header with global audio help */}
       <div className="-mx-[18px] mb-4 flex items-center justify-between pr-[18px]">
         <FitilaPageHeader title={t('market_title')} subtitle="Produits, jobs et annonces du marché" />
@@ -166,7 +166,6 @@ export default function TamTamMarket() {
           textFr={t('market_welcome_desc_fr')}
           textBa={t('market_welcome_desc_fr')}
           variant="full"
-          showLabel
           size="md"
         />
       </div>

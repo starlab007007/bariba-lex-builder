@@ -26,7 +26,7 @@ export default function TamTamServices() {
   const navigate = useNavigate();
   return (
     <div className="h-full overflow-y-auto pb-6" style={{ background: SIG.appBackground, color: SIG.ink }}>
-      <div>
+      <div className="mx-auto w-full max-w-[1100px]">
         <FitilaPageHeader title="Services" subtitle="Services communautaires et outils locaux" />
 
         <div className="mt-[38px] grid grid-cols-3 gap-[10px] px-[18px]">
@@ -38,7 +38,7 @@ export default function TamTamServices() {
           ))}
         </div>
 
-        <div className="mt-[14px] grid grid-cols-2 gap-[10px] px-[18px]">
+        <div className="mt-[14px] grid grid-cols-2 gap-[10px] px-[18px] md:grid-cols-3 xl:grid-cols-4">
           {SERVICES.map(({ icon: Icon, title, subtitle, route }) => (
             <button
               key={title}

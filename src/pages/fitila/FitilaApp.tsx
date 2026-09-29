@@ -1,6 +1,6 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, createContext, useContext } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { FitilaLanguageProvider, useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { AudioDescriptionProvider } from '@/contexts/AudioDescriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -330,6 +330,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
 function AppContent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const reduceMotion = useReducedMotion();
 
   useHFPreWarm();
   useExtendedNotifications();
@@ -374,7 +375,15 @@ function AppContent() {
             <DesktopTopBar />
             <main className="min-h-0 w-full flex-1 overflow-hidden pb-[92px] lg:pb-0">
               <SafeBoundary label="Page Fitila">
-                <Outlet />
+                <motion.div
+                  key={location.pathname.split('/')[1] || 'home'}
+                  className="h-full"
+                  initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.22, ease: 'easeOut' }}
+                >
+                  <Outlet />
+                </motion.div>
               </SafeBoundary>
             </main>
           </div>
