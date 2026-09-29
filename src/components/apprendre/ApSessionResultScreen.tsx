@@ -97,7 +97,7 @@ export default function ApSessionResultScreen({ title, result, missed, store, fo
   const ringColor = percent >= PASS_MARK ? AP_COLORS.sage : AP_COLORS.clay;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: AP_COLORS.ivory, color: AP_COLORS.ink }}>
+    <div className="absolute inset-0 z-10 overflow-y-auto" style={{ backgroundColor: AP_COLORS.ivory, color: AP_COLORS.ink }}>
       <div className="mx-auto max-w-lg px-5 pb-8 pt-8">
         <div className="flex justify-center">
           <PercentRing percent={percent} color={ringColor} />

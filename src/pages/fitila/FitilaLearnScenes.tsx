@@ -58,7 +58,7 @@ export default function FitilaLearnScenes() {
   }, [data]);
 
   return (
-    <div className="min-h-[100dvh] bg-[#F7F5EC] text-[#241F2E]">
+    <div className="h-full overflow-y-auto bg-[#F7F5EC] text-[#241F2E]">
       <div className="sticky top-0 z-20 border-b border-[#E4DFCC] bg-[#F7F5EC]/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center gap-3">
           <button onClick={() => navigate('/')} className="h-11 w-11 rounded-full border border-[#E4DFCC] bg-white flex items-center justify-center">
