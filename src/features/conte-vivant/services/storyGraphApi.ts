@@ -79,7 +79,7 @@ export async function updateStory(id: string, updates: Partial<{
   }
   const { error } = await supabase
     .from('conte_vivant_stories')
-    .update(payload)
+    .update(payload as never)
     .eq('id', id);
   if (error) throw error;
 }

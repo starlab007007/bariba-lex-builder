@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_deletion_requests: {
+        Row: {
+          id: string
+          reason: string | null
+          requested_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          reason?: string | null
+          requested_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          reason?: string | null
+          requested_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_generated_templates: {
         Row: {
           ai_analysis: Json | null
@@ -256,6 +280,465 @@ export type Database = {
           },
         ]
       }
+      apprendre_audio_assignments: {
+        Row: {
+          audio_keys: string[]
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          filter: Json
+          id: string
+          reviewer_id: string | null
+          speaker_id: string
+          status: string
+          title: string
+          updated_at: string
+          voice: string
+        }
+        Insert: {
+          audio_keys: string[]
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          filter?: Json
+          id?: string
+          reviewer_id?: string | null
+          speaker_id: string
+          status?: string
+          title: string
+          updated_at?: string
+          voice?: string
+        }
+        Update: {
+          audio_keys?: string[]
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          filter?: Json
+          id?: string
+          reviewer_id?: string | null
+          speaker_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          voice?: string
+        }
+        Relationships: []
+      }
+      apprendre_audio_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          detail: Json
+          id: number
+          target: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          detail?: Json
+          id?: number
+          target?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          detail?: Json
+          id?: number
+          target?: string | null
+        }
+        Relationships: []
+      }
+      apprendre_audio_items: {
+        Row: {
+          audio_key: string
+          content_version: string
+          created_at: string
+          in_content: boolean
+          kind: string
+          pack: string
+          priority: number
+          ref: string | null
+          source_page: number | null
+          text_ba: string
+          text_fr: string | null
+          text_hash: string
+          updated_at: string
+        }
+        Insert: {
+          audio_key: string
+          content_version: string
+          created_at?: string
+          in_content?: boolean
+          kind: string
+          pack: string
+          priority?: number
+          ref?: string | null
+          source_page?: number | null
+          text_ba: string
+          text_fr?: string | null
+          text_hash: string
+          updated_at?: string
+        }
+        Update: {
+          audio_key?: string
+          content_version?: string
+          created_at?: string
+          in_content?: boolean
+          kind?: string
+          pack?: string
+          priority?: number
+          ref?: string | null
+          source_page?: number | null
+          text_ba?: string
+          text_fr?: string | null
+          text_hash?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      apprendre_audio_reviews: {
+        Row: {
+          comment: string | null
+          created_at: string
+          decision: string
+          id: string
+          reason: string | null
+          reviewer_id: string
+          score_clarity: number | null
+          score_natural: number | null
+          score_noise: number | null
+          score_tone: number | null
+          take_id: string
+          tone_confirmed: boolean
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          decision: string
+          id?: string
+          reason?: string | null
+          reviewer_id: string
+          score_clarity?: number | null
+          score_natural?: number | null
+          score_noise?: number | null
+          score_tone?: number | null
+          take_id: string
+          tone_confirmed?: boolean
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          decision?: string
+          id?: string
+          reason?: string | null
+          reviewer_id?: string
+          score_clarity?: number | null
+          score_natural?: number | null
+          score_noise?: number | null
+          score_tone?: number | null
+          take_id?: string
+          tone_confirmed?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apprendre_audio_reviews_take_id_fkey"
+            columns: ["take_id"]
+            isOneToOne: false
+            referencedRelation: "apprendre_audio_takes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      apprendre_audio_settings: {
+        Row: {
+          allow_tts_fallback: boolean
+          approvals_required: number
+          auto_activate: boolean
+          compare_calibrated: boolean
+          compare_close: number
+          compare_mfcc_bad: number
+          compare_mfcc_good: number
+          compare_very_close: number
+          consent_text: string
+          consent_version: string
+          default_variant: string
+          id: number
+          min_quality_score: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          allow_tts_fallback?: boolean
+          approvals_required?: number
+          auto_activate?: boolean
+          compare_calibrated?: boolean
+          compare_close?: number
+          compare_mfcc_bad?: number
+          compare_mfcc_good?: number
+          compare_very_close?: number
+          consent_text?: string
+          consent_version?: string
+          default_variant?: string
+          id?: number
+          min_quality_score?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          allow_tts_fallback?: boolean
+          approvals_required?: number
+          auto_activate?: boolean
+          compare_calibrated?: boolean
+          compare_close?: number
+          compare_mfcc_bad?: number
+          compare_mfcc_good?: number
+          compare_very_close?: number
+          consent_text?: string
+          consent_version?: string
+          default_variant?: string
+          id?: number
+          min_quality_score?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      apprendre_audio_takes: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          approvals: number
+          audio_key: string
+          created_at: string
+          duration_ms: number | null
+          id: string
+          is_active: boolean
+          mime_type: string
+          peak_db: number | null
+          quality_score: number | null
+          reviewed_at: string | null
+          rms_db: number | null
+          silence_ratio: number | null
+          snr_db: number | null
+          speaker_id: string
+          status: string
+          storage_path: string
+          submitted_at: string | null
+          text_hash: string
+          updated_at: string
+          variant: string
+          version: number
+          voice: string
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          approvals?: number
+          audio_key: string
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          is_active?: boolean
+          mime_type?: string
+          peak_db?: number | null
+          quality_score?: number | null
+          reviewed_at?: string | null
+          rms_db?: number | null
+          silence_ratio?: number | null
+          snr_db?: number | null
+          speaker_id: string
+          status?: string
+          storage_path: string
+          submitted_at?: string | null
+          text_hash: string
+          updated_at?: string
+          variant?: string
+          version?: number
+          voice: string
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          approvals?: number
+          audio_key?: string
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          is_active?: boolean
+          mime_type?: string
+          peak_db?: number | null
+          quality_score?: number | null
+          reviewed_at?: string | null
+          rms_db?: number | null
+          silence_ratio?: number | null
+          snr_db?: number | null
+          speaker_id?: string
+          status?: string
+          storage_path?: string
+          submitted_at?: string | null
+          text_hash?: string
+          updated_at?: string
+          variant?: string
+          version?: number
+          voice?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apprendre_audio_takes_audio_key_fkey"
+            columns: ["audio_key"]
+            isOneToOne: false
+            referencedRelation: "apprendre_audio_items"
+            referencedColumns: ["audio_key"]
+          },
+        ]
+      }
+      apprendre_content_audit: {
+        Row: {
+          actor: string | null
+          content_hash: string
+          content_id: string
+          content_version: string
+          created_at: string
+          id: number
+          item_count: number
+        }
+        Insert: {
+          actor?: string | null
+          content_hash: string
+          content_id: string
+          content_version: string
+          created_at?: string
+          id?: number
+          item_count: number
+        }
+        Update: {
+          actor?: string | null
+          content_hash?: string
+          content_id?: string
+          content_version?: string
+          created_at?: string
+          id?: number
+          item_count?: number
+        }
+        Relationships: []
+      }
+      apprendre_module_content: {
+        Row: {
+          content: Json
+          content_hash: string
+          content_version: string
+          id: string
+          item_count: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          content: Json
+          content_hash?: string
+          content_version: string
+          id: string
+          item_count?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          content?: Json
+          content_hash?: string
+          content_version?: string
+          id?: string
+          item_count?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      apprendre_text_issues: {
+        Row: {
+          audio_key: string
+          created_at: string
+          detail: string | null
+          id: string
+          kind: string
+          reporter_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+        }
+        Insert: {
+          audio_key: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          kind: string
+          reporter_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Update: {
+          audio_key?: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          kind?: string
+          reporter_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apprendre_text_issues_audio_key_fkey"
+            columns: ["audio_key"]
+            isOneToOne: false
+            referencedRelation: "apprendre_audio_items"
+            referencedColumns: ["audio_key"]
+          },
+        ]
+      }
+      apprendre_voice_consents: {
+        Row: {
+          allow_ai_training: boolean
+          consent_version: string
+          display_name: string | null
+          show_name: boolean
+          signed_at: string
+          updated_at: string
+          user_id: string
+          variant: string
+          voice: string
+          withdrawn_at: string | null
+        }
+        Insert: {
+          allow_ai_training?: boolean
+          consent_version: string
+          display_name?: string | null
+          show_name?: boolean
+          signed_at?: string
+          updated_at?: string
+          user_id: string
+          variant?: string
+          voice?: string
+          withdrawn_at?: string | null
+        }
+        Update: {
+          allow_ai_training?: boolean
+          consent_version?: string
+          display_name?: string | null
+          show_name?: boolean
+          signed_at?: string
+          updated_at?: string
+          user_id?: string
+          variant?: string
+          voice?: string
+          withdrawn_at?: string | null
+        }
+        Relationships: []
+      }
       asset_imports: {
         Row: {
           ai_analysis_status: string | null
@@ -364,106 +847,6 @@ export type Database = {
         }
         Relationships: []
       }
-      // Ajoutée additivement : table utilisée par
-      // `src/components/fitila/BaribaAudioText.tsx` (catalogue de voix de
-      // référence Apprendre, branche feat/apprendre-v2.4-build19-20260927)
-      // mais absente de ce fichier généré — seules les colonnes déjà
-      // sélectionnées par le code existant sont typées, sans rien inventer
-      // au-delà.
-      apprendre_audio_published: {
-        Row: {
-          audio_key: string
-          voice: string | null
-          variant: string | null
-          storage_path: string
-          duration_ms: number | null
-          speaker_name: string | null
-        }
-        Insert: {
-          audio_key: string
-          voice?: string | null
-          variant?: string | null
-          storage_path: string
-          duration_ms?: number | null
-          speaker_name?: string | null
-        }
-        Update: {
-          audio_key?: string
-          voice?: string | null
-          variant?: string | null
-          storage_path?: string
-          duration_ms?: number | null
-          speaker_name?: string | null
-        }
-        Relationships: []
-      }
-      // Ajoutée additivement : table créée par la migration
-      // `20260928090000_apprendre_module_content.sql` (branche de travail web
-      // parity, contenu centralisé Apprendre — mots + scènes — pour que web
-      // et Flutter lisent la même source). Absente de ce fichier généré tant
-      // que la migration n'a pas été appliquée à un projet dont le schéma a
-      // servi à régénérer ces types ; typée ici à l'identique du SQL de la
-      // migration, sans rien inventer au-delà.
-      apprendre_module_content: {
-        Row: {
-          id: string
-          content: Json
-          content_version: string
-          content_hash: string
-          item_count: number
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          id: string
-          content: Json
-          content_version: string
-          content_hash?: string
-          item_count?: number
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          id?: string
-          content?: Json
-          content_version?: string
-          content_hash?: string
-          item_count?: number
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: []
-      }
-      apprendre_content_audit: {
-        Row: {
-          id: number
-          content_id: string
-          content_version: string
-          content_hash: string
-          item_count: number
-          actor: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: number
-          content_id: string
-          content_version: string
-          content_hash: string
-          item_count: number
-          actor?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: number
-          content_id?: string
-          content_version?: string
-          content_hash?: string
-          item_count?: number
-          actor?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
       bariba_corpus_phrases: {
         Row: {
           category: string
@@ -562,6 +945,38 @@ export type Database = {
           },
         ]
       }
+      battle_challenge_ratings: {
+        Row: {
+          challenge_id: string
+          created_at: string
+          rating: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          created_at?: string
+          rating: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          created_at?: string
+          rating?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_challenge_ratings_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "battle_user_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       battle_challenges: {
         Row: {
           challenge_date: string
@@ -597,20 +1012,17 @@ export type Database = {
       }
       battle_response_votes: {
         Row: {
-          created_at: string
-          id: string
+          created_at: string | null
           response_id: string
           user_id: string
         }
         Insert: {
-          created_at?: string
-          id?: string
+          created_at?: string | null
           response_id: string
           user_id: string
         }
         Update: {
-          created_at?: string
-          id?: string
+          created_at?: string | null
           response_id?: string
           user_id?: string
         }
@@ -628,13 +1040,16 @@ export type Database = {
         Row: {
           ai_feedback: string | null
           ai_score: number | null
-          audio_url: string | null
+          answer_text: string
           challenge_id: string
-          created_at: string
+          created_at: string | null
           id: string
           local_score: number | null
+          prompt_bariba: string
+          prompt_francais: string
           response_lang: string
           response_text: string
+          score: number
           scoring_method: string
           updated_at: string
           user_id: string
@@ -644,13 +1059,16 @@ export type Database = {
         Insert: {
           ai_feedback?: string | null
           ai_score?: number | null
-          audio_url?: string | null
+          answer_text: string
           challenge_id: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           local_score?: number | null
+          prompt_bariba: string
+          prompt_francais: string
           response_lang?: string
           response_text: string
+          score?: number
           scoring_method?: string
           updated_at?: string
           user_id: string
@@ -660,28 +1078,89 @@ export type Database = {
         Update: {
           ai_feedback?: string | null
           ai_score?: number | null
-          audio_url?: string | null
+          answer_text?: string
           challenge_id?: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           local_score?: number | null
+          prompt_bariba?: string
+          prompt_francais?: string
           response_lang?: string
           response_text?: string
+          score?: number
           scoring_method?: string
           updated_at?: string
           user_id?: string
           votes_count?: number
           xp_awarded?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "battle_responses_challenge_id_fkey"
-            columns: ["challenge_id"]
-            isOneToOne: false
-            referencedRelation: "battle_challenges"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      battle_user_challenges: {
+        Row: {
+          accepted_answers: string[]
+          answer_key: string | null
+          challenge_type: string
+          context_text: string
+          created_at: string
+          created_by: string
+          duration_hours: number
+          expires_at: string | null
+          id: string
+          moderation_status: string
+          prompt_bariba: string
+          prompt_francais: string
+          published_at: string | null
+          response_mode: string
+          status: string
+          theme: string
+          title: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          accepted_answers?: string[]
+          answer_key?: string | null
+          challenge_type?: string
+          context_text?: string
+          created_at?: string
+          created_by: string
+          duration_hours?: number
+          expires_at?: string | null
+          id?: string
+          moderation_status?: string
+          prompt_bariba: string
+          prompt_francais?: string
+          published_at?: string | null
+          response_mode?: string
+          status?: string
+          theme?: string
+          title: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          accepted_answers?: string[]
+          answer_key?: string | null
+          challenge_type?: string
+          context_text?: string
+          created_at?: string
+          created_by?: string
+          duration_hours?: number
+          expires_at?: string | null
+          id?: string
+          moderation_status?: string
+          prompt_bariba?: string
+          prompt_francais?: string
+          published_at?: string | null
+          response_mode?: string
+          status?: string
+          theme?: string
+          title?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: []
       }
       character_references: {
         Row: {
@@ -1034,7 +1513,11 @@ export type Database = {
           section_key: string
           submitted_at: string
           teacher_audio_duration: number | null
+          teacher_audio_generic_duration: number | null
+          teacher_audio_generic_path: string | null
           teacher_audio_path: string | null
+          teacher_audio_personal_duration: number | null
+          teacher_audio_personal_path: string | null
           teacher_comment: string | null
           teacher_grade: number | null
           updated_at: string
@@ -1057,7 +1540,11 @@ export type Database = {
           section_key?: string
           submitted_at?: string
           teacher_audio_duration?: number | null
+          teacher_audio_generic_duration?: number | null
+          teacher_audio_generic_path?: string | null
           teacher_audio_path?: string | null
+          teacher_audio_personal_duration?: number | null
+          teacher_audio_personal_path?: string | null
           teacher_comment?: string | null
           teacher_grade?: number | null
           updated_at?: string
@@ -1080,7 +1567,11 @@ export type Database = {
           section_key?: string
           submitted_at?: string
           teacher_audio_duration?: number | null
+          teacher_audio_generic_duration?: number | null
+          teacher_audio_generic_path?: string | null
           teacher_audio_path?: string | null
+          teacher_audio_personal_duration?: number | null
+          teacher_audio_personal_path?: string | null
           teacher_comment?: string | null
           teacher_grade?: number | null
           updated_at?: string
@@ -1299,38 +1790,32 @@ export type Database = {
       corpus_contributions: {
         Row: {
           audio_url: string | null
-          consent_given: boolean
-          created_at: string
+          created_at: string | null
           id: string
-          origin: string
           source_lang: string
           source_text: string
           target_lang: string
-          target_text: string
+          translated_text: string
           user_id: string
         }
         Insert: {
           audio_url?: string | null
-          consent_given?: boolean
-          created_at?: string
+          created_at?: string | null
           id?: string
-          origin?: string
           source_lang: string
           source_text: string
           target_lang: string
-          target_text: string
+          translated_text: string
           user_id: string
         }
         Update: {
           audio_url?: string | null
-          consent_given?: boolean
-          created_at?: string
+          created_at?: string | null
           id?: string
-          origin?: string
           source_lang?: string
           source_text?: string
           target_lang?: string
-          target_text?: string
+          translated_text?: string
           user_id?: string
         }
         Relationships: []
@@ -1597,23 +2082,297 @@ export type Database = {
         }
         Relationships: []
       }
-      handunia_fragment_likes: {
+      handunia_ai_scope_suggestions: {
         Row: {
+          accepted: boolean | null
+          confidence: number | null
           created_at: string
           fragment_id: string
           id: string
+          reason: string | null
+          suggested_scope: string
+          user_id: string
+        }
+        Insert: {
+          accepted?: boolean | null
+          confidence?: number | null
+          created_at?: string
+          fragment_id: string
+          id?: string
+          reason?: string | null
+          suggested_scope: string
+          user_id: string
+        }
+        Update: {
+          accepted?: boolean | null
+          confidence?: number | null
+          created_at?: string
+          fragment_id?: string
+          id?: string
+          reason?: string | null
+          suggested_scope?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handunia_ai_scope_suggestions_fragment_id_fkey"
+            columns: ["fragment_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_fragments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      handunia_ai_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          initial_question: string | null
+          language_code: string
+          lieu_id: string
+          status: string
+          updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
-          fragment_id: string
           id?: string
+          initial_question?: string | null
+          language_code?: string
+          lieu_id: string
+          status?: string
+          updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          id?: string
+          initial_question?: string | null
+          language_code?: string
+          lieu_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handunia_ai_sessions_lieu_id_fkey"
+            columns: ["lieu_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_lieux"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handunia_ai_sessions_lieu_id_fkey"
+            columns: ["lieu_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_place_memory_stats"
+            referencedColumns: ["lieu_id"]
+          },
+        ]
+      }
+      handunia_corroborations: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          fragment_id: string
+          user_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          fragment_id: string
+          user_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          fragment_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handunia_corroborations_fragment_id_fkey"
+            columns: ["fragment_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_fragments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      handunia_divergences: {
+        Row: {
+          detected_at: string
+          id: string
+          lieu_id: string
+          status: string
+          subject: string
+          version_a_id: string | null
+          version_b_id: string | null
+        }
+        Insert: {
+          detected_at?: string
+          id?: string
+          lieu_id: string
+          status?: string
+          subject: string
+          version_a_id?: string | null
+          version_b_id?: string | null
+        }
+        Update: {
+          detected_at?: string
+          id?: string
+          lieu_id?: string
+          status?: string
+          subject?: string
+          version_a_id?: string | null
+          version_b_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handunia_divergences_lieu_id_fkey"
+            columns: ["lieu_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_lieux"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handunia_divergences_lieu_id_fkey"
+            columns: ["lieu_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_place_memory_stats"
+            referencedColumns: ["lieu_id"]
+          },
+          {
+            foreignKeyName: "handunia_divergences_version_a_id_fkey"
+            columns: ["version_a_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_fragments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handunia_divergences_version_b_id_fkey"
+            columns: ["version_b_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_fragments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      handunia_fragment_claims: {
+        Row: {
+          claim_text: string
+          confidence: number | null
+          created_at: string
+          end_ms: number | null
+          evidence_text: string | null
+          fragment_id: string
+          id: string
+          start_ms: number | null
+          user_id: string
+          validated: boolean
+        }
+        Insert: {
+          claim_text: string
+          confidence?: number | null
+          created_at?: string
+          end_ms?: number | null
+          evidence_text?: string | null
+          fragment_id: string
+          id?: string
+          start_ms?: number | null
+          user_id: string
+          validated?: boolean
+        }
+        Update: {
+          claim_text?: string
+          confidence?: number | null
+          created_at?: string
+          end_ms?: number | null
+          evidence_text?: string | null
           fragment_id?: string
           id?: string
+          start_ms?: number | null
+          user_id?: string
+          validated?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handunia_fragment_claims_fragment_id_fkey"
+            columns: ["fragment_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_fragments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      handunia_fragment_entities: {
+        Row: {
+          confidence: number | null
+          corrected_value: string | null
+          created_at: string
+          end_ms: number | null
+          entity_type: string
+          entity_value: string
+          evidence_text: string | null
+          fragment_id: string
+          id: string
+          start_ms: number | null
+          user_id: string
+          validated: boolean
+        }
+        Insert: {
+          confidence?: number | null
+          corrected_value?: string | null
+          created_at?: string
+          end_ms?: number | null
+          entity_type: string
+          entity_value: string
+          evidence_text?: string | null
+          fragment_id: string
+          id?: string
+          start_ms?: number | null
+          user_id: string
+          validated?: boolean
+        }
+        Update: {
+          confidence?: number | null
+          corrected_value?: string | null
+          created_at?: string
+          end_ms?: number | null
+          entity_type?: string
+          entity_value?: string
+          evidence_text?: string | null
+          fragment_id?: string
+          id?: string
+          start_ms?: number | null
+          user_id?: string
+          validated?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handunia_fragment_entities_fragment_id_fkey"
+            columns: ["fragment_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_fragments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      handunia_fragment_likes: {
+        Row: {
+          created_at: string | null
+          fragment_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          fragment_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          fragment_id?: string
           user_id?: string
         }
         Relationships: [
@@ -1629,36 +2388,114 @@ export type Database = {
       handunia_fragments: {
         Row: {
           ai_assisted: boolean
+          ai_confidence: number | null
+          ai_generated: boolean
+          ai_summary: string | null
+          audio_bitrate_kbps: number
+          audio_codec: string
+          audio_duration_ms: number | null
           audio_url: string | null
-          content_ba: string | null
-          content_fr: string | null
-          created_at: string
+          created_at: string | null
           id: string
+          lacuna_filled: boolean
+          language_code: string | null
+          latitude: number | null
           lieu_id: string
-          likes_count: number
+          lineage_key: string | null
+          longitude: number | null
+          memory_state: string
+          period_label: string | null
+          period_year: number | null
+          review_status: string
+          scope_level: string
+          seal_hash: string | null
+          sealed_at: string | null
+          sensitivity_level: string | null
+          source_fragment_id: string | null
+          suggested_scope: string | null
+          synchronized_at: string | null
+          text: string
+          theme_key: string | null
+          transcript_reviewed_by_guardian: boolean
+          transcript_segments: Json
+          transcript_text: string | null
           user_id: string
+          withdrawn_at: string | null
+          witness_gender: string | null
         }
         Insert: {
           ai_assisted?: boolean
+          ai_confidence?: number | null
+          ai_generated?: boolean
+          ai_summary?: string | null
+          audio_bitrate_kbps?: number
+          audio_codec?: string
+          audio_duration_ms?: number | null
           audio_url?: string | null
-          content_ba?: string | null
-          content_fr?: string | null
-          created_at?: string
+          created_at?: string | null
           id?: string
+          lacuna_filled?: boolean
+          language_code?: string | null
+          latitude?: number | null
           lieu_id: string
-          likes_count?: number
+          lineage_key?: string | null
+          longitude?: number | null
+          memory_state?: string
+          period_label?: string | null
+          period_year?: number | null
+          review_status?: string
+          scope_level?: string
+          seal_hash?: string | null
+          sealed_at?: string | null
+          sensitivity_level?: string | null
+          source_fragment_id?: string | null
+          suggested_scope?: string | null
+          synchronized_at?: string | null
+          text: string
+          theme_key?: string | null
+          transcript_reviewed_by_guardian?: boolean
+          transcript_segments?: Json
+          transcript_text?: string | null
           user_id: string
+          withdrawn_at?: string | null
+          witness_gender?: string | null
         }
         Update: {
           ai_assisted?: boolean
+          ai_confidence?: number | null
+          ai_generated?: boolean
+          ai_summary?: string | null
+          audio_bitrate_kbps?: number
+          audio_codec?: string
+          audio_duration_ms?: number | null
           audio_url?: string | null
-          content_ba?: string | null
-          content_fr?: string | null
-          created_at?: string
+          created_at?: string | null
           id?: string
+          lacuna_filled?: boolean
+          language_code?: string | null
+          latitude?: number | null
           lieu_id?: string
-          likes_count?: number
+          lineage_key?: string | null
+          longitude?: number | null
+          memory_state?: string
+          period_label?: string | null
+          period_year?: number | null
+          review_status?: string
+          scope_level?: string
+          seal_hash?: string | null
+          sealed_at?: string | null
+          sensitivity_level?: string | null
+          source_fragment_id?: string | null
+          suggested_scope?: string | null
+          synchronized_at?: string | null
+          text?: string
+          theme_key?: string | null
+          transcript_reviewed_by_guardian?: boolean
+          transcript_segments?: Json
+          transcript_text?: string | null
           user_id?: string
+          withdrawn_at?: string | null
+          witness_gender?: string | null
         }
         Relationships: [
           {
@@ -1668,38 +2505,376 @@ export type Database = {
             referencedRelation: "handunia_lieux"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "handunia_fragments_lieu_id_fkey"
+            columns: ["lieu_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_place_memory_stats"
+            referencedColumns: ["lieu_id"]
+          },
+          {
+            foreignKeyName: "handunia_fragments_source_fragment_id_fkey"
+            columns: ["source_fragment_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_fragments"
+            referencedColumns: ["id"]
+          },
         ]
       }
-      handunia_lieux: {
+      handunia_guardian_opinions: {
         Row: {
           created_at: string
-          created_by: string | null
-          description: string | null
-          fragments_count: number
+          divergence_id: string
+          guardian_user_id: string
           id: string
-          name: string
-          name_normalized: string
-          region: string | null
+          opinion: string
         }
         Insert: {
           created_at?: string
-          created_by?: string | null
-          description?: string | null
-          fragments_count?: number
+          divergence_id: string
+          guardian_user_id: string
           id?: string
-          name: string
-          name_normalized: string
-          region?: string | null
+          opinion: string
         }
         Update: {
           created_at?: string
-          created_by?: string | null
-          description?: string | null
-          fragments_count?: number
+          divergence_id?: string
+          guardian_user_id?: string
           id?: string
+          opinion?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handunia_guardian_opinions_divergence_id_fkey"
+            columns: ["divergence_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_divergences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      handunia_guardians: {
+        Row: {
+          active: boolean
+          designated_at: string
+          designated_by_community: boolean
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          designated_at?: string
+          designated_by_community?: boolean
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          designated_at?: string
+          designated_by_community?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      handunia_lieux: {
+        Row: {
+          arrondissement: string | null
+          commune: string | null
+          created_at: string | null
+          created_by: string | null
+          department: string | null
+          description: string
+          geo_provider: string | null
+          geo_verified_at: string | null
+          icon: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string
+          osm_id: string | null
+          osm_type: string | null
+          sort_order: number
+          village_quartier: string | null
+        }
+        Insert: {
+          arrondissement?: string | null
+          commune?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          department?: string | null
+          description?: string
+          geo_provider?: string | null
+          geo_verified_at?: string | null
+          icon?: string
+          id: string
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          osm_id?: string | null
+          osm_type?: string | null
+          sort_order?: number
+          village_quartier?: string | null
+        }
+        Update: {
+          arrondissement?: string | null
+          commune?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          department?: string | null
+          description?: string
+          geo_provider?: string | null
+          geo_verified_at?: string | null
+          icon?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
           name?: string
-          name_normalized?: string
-          region?: string | null
+          osm_id?: string | null
+          osm_type?: string | null
+          sort_order?: number
+          village_quartier?: string | null
+        }
+        Relationships: []
+      }
+      handunia_lineage_memberships: {
+        Row: {
+          active: boolean
+          designated_at: string
+          lineage_key: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          designated_at?: string
+          lineage_key: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          designated_at?: string
+          lineage_key?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      handunia_memory_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event_type: string
+          fragment_id: string | null
+          id: string
+          memory_id: string
+          payload: Json
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event_type: string
+          fragment_id?: string | null
+          id?: string
+          memory_id: string
+          payload?: Json
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event_type?: string
+          fragment_id?: string | null
+          id?: string
+          memory_id?: string
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handunia_memory_events_fragment_id_fkey"
+            columns: ["fragment_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_fragments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      handunia_memory_gaps: {
+        Row: {
+          detected_at: string
+          gap_type: string
+          gap_value: string
+          id: string
+          lieu_id: string
+          resolved_at: string | null
+          severity: number
+          source_count: number
+        }
+        Insert: {
+          detected_at?: string
+          gap_type: string
+          gap_value: string
+          id?: string
+          lieu_id: string
+          resolved_at?: string | null
+          severity?: number
+          source_count?: number
+        }
+        Update: {
+          detected_at?: string
+          gap_type?: string
+          gap_value?: string
+          id?: string
+          lieu_id?: string
+          resolved_at?: string | null
+          severity?: number
+          source_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handunia_memory_gaps_lieu_id_fkey"
+            columns: ["lieu_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_lieux"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handunia_memory_gaps_lieu_id_fkey"
+            columns: ["lieu_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_place_memory_stats"
+            referencedColumns: ["lieu_id"]
+          },
+        ]
+      }
+      handunia_memory_links: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          id: string
+          link_type: string
+          rationale: string | null
+          source_fragment_id: string
+          target_fragment_id: string | null
+          user_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          link_type: string
+          rationale?: string | null
+          source_fragment_id: string
+          target_fragment_id?: string | null
+          user_id: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          link_type?: string
+          rationale?: string | null
+          source_fragment_id?: string
+          target_fragment_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handunia_memory_links_source_fragment_id_fkey"
+            columns: ["source_fragment_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_fragments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "handunia_memory_links_target_fragment_id_fkey"
+            columns: ["target_fragment_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_fragments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      handunia_memory_paths: {
+        Row: {
+          captured_at: string
+          distance_m: number | null
+          duration_s: number | null
+          end_name: string | null
+          fragment_id: string
+          geometry_type: string
+          id: string
+          path_points: Json
+          provider: string | null
+          road_matched: boolean
+          route_mode: string
+          route_places: Json
+          start_name: string | null
+          user_id: string
+        }
+        Insert: {
+          captured_at?: string
+          distance_m?: number | null
+          duration_s?: number | null
+          end_name?: string | null
+          fragment_id: string
+          geometry_type?: string
+          id?: string
+          path_points?: Json
+          provider?: string | null
+          road_matched?: boolean
+          route_mode?: string
+          route_places?: Json
+          start_name?: string | null
+          user_id: string
+        }
+        Update: {
+          captured_at?: string
+          distance_m?: number | null
+          duration_s?: number | null
+          end_name?: string | null
+          fragment_id?: string
+          geometry_type?: string
+          id?: string
+          path_points?: Json
+          provider?: string | null
+          road_matched?: boolean
+          route_mode?: string
+          route_places?: Json
+          start_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handunia_memory_paths_fragment_id_fkey"
+            columns: ["fragment_id"]
+            isOneToOne: false
+            referencedRelation: "handunia_fragments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      handunia_village_returns: {
+        Row: {
+          active: boolean
+          id: string
+          published_at: string
+          resource_url: string | null
+          return_type: string
+          title: string
+        }
+        Insert: {
+          active?: boolean
+          id?: string
+          published_at?: string
+          resource_url?: string | null
+          return_type: string
+          title: string
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          published_at?: string
+          resource_url?: string | null
+          return_type?: string
+          title?: string
         }
         Relationships: []
       }
@@ -1805,6 +2980,108 @@ export type Database = {
           quiz_index?: number | null
           section_index?: number | null
           status?: string
+        }
+        Relationships: []
+      }
+      learning_progress: {
+        Row: {
+          created_at: string | null
+          current_direction: string
+          last_active_date: string | null
+          perfect_scores: number
+          streak_days: number
+          updated_at: string | null
+          user_id: string
+          words_mastered: number
+          xp: number
+        }
+        Insert: {
+          created_at?: string | null
+          current_direction?: string
+          last_active_date?: string | null
+          perfect_scores?: number
+          streak_days?: number
+          updated_at?: string | null
+          user_id: string
+          words_mastered?: number
+          xp?: number
+        }
+        Update: {
+          created_at?: string | null
+          current_direction?: string
+          last_active_date?: string | null
+          perfect_scores?: number
+          streak_days?: number
+          updated_at?: string | null
+          user_id?: string
+          words_mastered?: number
+          xp?: number
+        }
+        Relationships: []
+      }
+      learning_session_log: {
+        Row: {
+          correct_count: number | null
+          created_at: string | null
+          direction: string | null
+          id: string
+          session_type: string
+          theme_or_lesson_ref: string | null
+          total_count: number | null
+          user_id: string
+          xp_earned: number
+        }
+        Insert: {
+          correct_count?: number | null
+          created_at?: string | null
+          direction?: string | null
+          id?: string
+          session_type: string
+          theme_or_lesson_ref?: string | null
+          total_count?: number | null
+          user_id: string
+          xp_earned?: number
+        }
+        Update: {
+          correct_count?: number | null
+          created_at?: string | null
+          direction?: string | null
+          id?: string
+          session_type?: string
+          theme_or_lesson_ref?: string | null
+          total_count?: number | null
+          user_id?: string
+          xp_earned?: number
+        }
+        Relationships: []
+      }
+      learning_theme_mastery: {
+        Row: {
+          correct_count: number
+          id: string
+          mastery_pct: number | null
+          theme_key: string
+          total_count: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          correct_count?: number
+          id?: string
+          mastery_pct?: number | null
+          theme_key: string
+          total_count?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          correct_count?: number
+          id?: string
+          mastery_pct?: number | null
+          theme_key?: string
+          total_count?: number
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -2113,31 +3390,34 @@ export type Database = {
       }
       tamtam_comments: {
         Row: {
-          audio_url: string
+          audio_url: string | null
           created_at: string | null
           duration_seconds: number | null
           id: string
           post_id: string | null
+          text_content: string | null
           transcript_ba: string | null
           transcript_fr: string | null
           user_id: string | null
         }
         Insert: {
-          audio_url: string
+          audio_url?: string | null
           created_at?: string | null
           duration_seconds?: number | null
           id?: string
           post_id?: string | null
+          text_content?: string | null
           transcript_ba?: string | null
           transcript_fr?: string | null
           user_id?: string | null
         }
         Update: {
-          audio_url?: string
+          audio_url?: string | null
           created_at?: string | null
           duration_seconds?: number | null
           id?: string
           post_id?: string | null
+          text_content?: string | null
           transcript_ba?: string | null
           transcript_fr?: string | null
           user_id?: string | null
@@ -2674,21 +3954,24 @@ export type Database = {
       }
       tamtam_live_chat_messages: {
         Row: {
-          created_at: string
+          created_at: string | null
+          display_name: string | null
           id: string
           live_id: string
           message: string
           user_id: string
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
+          display_name?: string | null
           id?: string
           live_id: string
           message: string
           user_id: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
+          display_name?: string | null
           id?: string
           live_id?: string
           message?: string
@@ -2738,31 +4021,31 @@ export type Database = {
       }
       tamtam_live_signals: {
         Row: {
-          created_at: string
+          created_at: string | null
           from_user: string
           id: string
           live_id: string
           payload: Json
           signal_type: string
-          to_user: string | null
+          to_user: string
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           from_user: string
           id?: string
           live_id: string
           payload: Json
           signal_type: string
-          to_user?: string | null
+          to_user: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           from_user?: string
           id?: string
           live_id?: string
           payload?: Json
           signal_type?: string
-          to_user?: string | null
+          to_user?: string
         }
         Relationships: [
           {
@@ -2806,9 +4089,13 @@ export type Database = {
       tamtam_lives: {
         Row: {
           community_id: string | null
+          description: string | null
           ended_at: string | null
           host_id: string | null
           id: string
+          language: string
+          room_name: string | null
+          source_module: string
           started_at: string | null
           status: string | null
           title: string
@@ -2817,9 +4104,13 @@ export type Database = {
         }
         Insert: {
           community_id?: string | null
+          description?: string | null
           ended_at?: string | null
           host_id?: string | null
           id?: string
+          language?: string
+          room_name?: string | null
+          source_module?: string
           started_at?: string | null
           status?: string | null
           title: string
@@ -2828,9 +4119,13 @@ export type Database = {
         }
         Update: {
           community_id?: string | null
+          description?: string | null
           ended_at?: string | null
           host_id?: string | null
           id?: string
+          language?: string
+          room_name?: string | null
+          source_module?: string
           started_at?: string | null
           status?: string | null
           title?: string
@@ -3320,6 +4615,8 @@ export type Database = {
           location: string | null
           phone_number: string | null
           posts_count: number | null
+          preferences: Json
+          privacy: Json
           updated_at: string | null
           user_id: string | null
           username: string
@@ -3342,6 +4639,8 @@ export type Database = {
           location?: string | null
           phone_number?: string | null
           posts_count?: number | null
+          preferences?: Json
+          privacy?: Json
           updated_at?: string | null
           user_id?: string | null
           username: string
@@ -3364,6 +4663,8 @@ export type Database = {
           location?: string | null
           phone_number?: string | null
           posts_count?: number | null
+          preferences?: Json
+          privacy?: Json
           updated_at?: string | null
           user_id?: string | null
           username?: string
@@ -3824,37 +5125,49 @@ export type Database = {
           created_at: string | null
           feedback_given: number | null
           id: string
+          learning_streak_days: number
+          lessons_completed: number
           level: number | null
           phrases_contributed: number | null
           phrases_validated: number | null
+          themes_completed: number
           total_points: number | null
           translations_made: number | null
           updated_at: string | null
           user_id: string
+          words_mastered: number
         }
         Insert: {
           created_at?: string | null
           feedback_given?: number | null
           id?: string
+          learning_streak_days?: number
+          lessons_completed?: number
           level?: number | null
           phrases_contributed?: number | null
           phrases_validated?: number | null
+          themes_completed?: number
           total_points?: number | null
           translations_made?: number | null
           updated_at?: string | null
           user_id: string
+          words_mastered?: number
         }
         Update: {
           created_at?: string | null
           feedback_given?: number | null
           id?: string
+          learning_streak_days?: number
+          lessons_completed?: number
           level?: number | null
           phrases_contributed?: number | null
           phrases_validated?: number | null
+          themes_completed?: number
           total_points?: number | null
           translations_made?: number | null
           updated_at?: string | null
           user_id?: string
+          words_mastered?: number
         }
         Relationships: []
       }
@@ -4056,6 +5369,7 @@ export type Database = {
       }
       videos: {
         Row: {
+          comments_count: number
           created_at: string | null
           description: string | null
           duration_seconds: number | null
@@ -4074,6 +5388,7 @@ export type Database = {
           views_count: number | null
         }
         Insert: {
+          comments_count?: number
           created_at?: string | null
           description?: string | null
           duration_seconds?: number | null
@@ -4092,6 +5407,7 @@ export type Database = {
           views_count?: number | null
         }
         Update: {
+          comments_count?: number
           created_at?: string | null
           description?: string | null
           duration_seconds?: number | null
@@ -4181,24 +5497,207 @@ export type Database = {
       }
     }
     Views: {
-      // Ajoutée additivement : vue créée par la même migration que
-      // `apprendre_module_content` (lecture publique du statut de contenu,
-      // sans exposer le JSON complet — voir `20260928090000_apprendre_module_content.sql`).
+      apprendre_audio_published: {
+        Row: {
+          activated_at: string | null
+          audio_key: string | null
+          duration_ms: number | null
+          kind: string | null
+          pack: string | null
+          priority: number | null
+          speaker_name: string | null
+          storage_path: string | null
+          text_hash: string | null
+          variant: string | null
+          voice: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apprendre_audio_takes_audio_key_fkey"
+            columns: ["audio_key"]
+            isOneToOne: false
+            referencedRelation: "apprendre_audio_items"
+            referencedColumns: ["audio_key"]
+          },
+        ]
+      }
       apprendre_module_content_status: {
         Row: {
-          id: string
-          content_version: string
-          content_hash: string
-          item_count: number
-          updated_at: string
+          content_hash: string | null
+          content_version: string | null
+          id: string | null
+          item_count: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          content_hash?: string | null
+          content_version?: string | null
+          id?: string | null
+          item_count?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          content_hash?: string | null
+          content_version?: string | null
+          id?: string | null
+          item_count?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      handunia_place_memory_stats: {
+        Row: {
+          corroborated_count: number | null
+          density_score: number | null
+          distinct_voice_count: number | null
+          divergence_count: number | null
+          gap_count: number | null
+          generation_count: number | null
+          latest_memory_year: number | null
+          lieu_id: string | null
+          lineage_count: number | null
+          memory_count: number | null
+          oldest_memory_year: number | null
+          period_count: number | null
+          topic_count: number | null
         }
         Relationships: []
       }
     }
     Functions: {
+      adjust_live_viewer_count: {
+        Args: { p_delta: number; p_live_id: string }
+        Returns: undefined
+      }
+      apprendre_activate_internal: {
+        Args: { _active: boolean; _take_id: string }
+        Returns: undefined
+      }
+      apprendre_activate_take: {
+        Args: { _active: boolean; _take_id: string }
+        Returns: undefined
+      }
+      apprendre_audio_stats: { Args: never; Returns: Json }
+      apprendre_audit: {
+        Args: { _action: string; _detail: Json; _target: string }
+        Returns: undefined
+      }
+      apprendre_can_review: { Args: { _uid: string }; Returns: boolean }
+      apprendre_can_speak: { Args: { _uid: string }; Returns: boolean }
+      apprendre_import_catalog: {
+        Args: { _content_version: string; _final: boolean; _items: Json }
+        Returns: Json
+      }
+      apprendre_import_content: {
+        Args: { _content: Json; _id: string; _version: string }
+        Returns: Json
+      }
+      apprendre_is_active_audio: { Args: { _path: string }; Returns: boolean }
+      apprendre_is_admin: { Args: { _uid: string }; Returns: boolean }
+      apprendre_review_take: {
+        Args: {
+          _comment: string
+          _decision: string
+          _reason: string
+          _score_clarity: number
+          _score_natural: number
+          _score_noise: number
+          _score_tone: number
+          _take_id: string
+          _tone_confirmed: boolean
+        }
+        Returns: string
+      }
+      apprendre_sign_consent: {
+        Args: {
+          _allow_ai_training: boolean
+          _display_name: string
+          _show_name: boolean
+          _variant: string
+          _voice: string
+        }
+        Returns: undefined
+      }
+      apprendre_submit_take: { Args: { _take_id: string }; Returns: undefined }
+      apprendre_withdraw_consent: { Args: never; Returns: undefined }
+      battle_user_challenge_metrics: {
+        Args: { p_challenge_id: string }
+        Returns: {
+          avg_response_score: number
+          quality_score: number
+          rating_average: number
+          rating_count: number
+          response_count: number
+        }[]
+      }
       calculate_level: { Args: { points: number }; Returns: number }
       corpus_contribution_count_this_month: { Args: never; Returns: number }
+      fitila_content_modules_schema_version: { Args: never; Returns: string }
       get_user_phone: { Args: { target_user_id: string }; Returns: string }
+      handunia_memory_gap_priorities: {
+        Args: { p_limit?: number }
+        Returns: {
+          detected_at: string
+          gap_type: string
+          gap_value: string
+          id: string
+          lieu_id: string
+          resolved_at: string | null
+          severity: number
+          source_count: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "handunia_memory_gaps"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      handunia_memory_neighborhood: {
+        Args: { p_depth?: number; p_fragment_id: string }
+        Returns: {
+          created_at: string
+          depth: number
+          fragment_id: string
+          lieu_id: string
+          memory_text: string
+          period_label: string
+          relation_type: string
+          theme_key: string
+        }[]
+      }
+      handunia_next_memory: {
+        Args: { p_fragment_id: string; p_limit?: number }
+        Returns: {
+          fragment_id: string
+          heritage_hint: number
+          transition_reason: string
+        }[]
+      }
+      handunia_place_memory_summary: {
+        Args: { p_lieu_id: string }
+        Returns: {
+          corroborated_count: number | null
+          density_score: number | null
+          distinct_voice_count: number | null
+          divergence_count: number | null
+          gap_count: number | null
+          generation_count: number | null
+          latest_memory_year: number | null
+          lieu_id: string | null
+          lineage_count: number | null
+          memory_count: number | null
+          oldest_memory_year: number | null
+          period_count: number | null
+          topic_count: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "handunia_place_memory_stats"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -4206,15 +5705,11 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_teacher_or_admin: { Args: { _user_id: string }; Returns: boolean }
-      // Ajoutée additivement : fonction SECURITY DEFINER créée par la même
-      // migration que `apprendre_module_content` (import admin-only du
-      // contenu Apprendre — mots ou scènes — avec calcul de hash/compteur
-      // et journal d'audit).
-      apprendre_import_content: {
-        Args: { _id: string; _content: Json; _version: string }
-        Returns: Json
+      is_live_participant: {
+        Args: { p_live_id: string; p_user_id: string }
+        Returns: boolean
       }
+      is_teacher_or_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role:

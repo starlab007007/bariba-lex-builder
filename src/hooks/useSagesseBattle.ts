@@ -155,6 +155,9 @@ export function useSagesseBattle() {
           {
             challenge_id: challenge.id,
             user_id: user.id,
+            prompt_bariba: challenge.prompt_ba ?? '',
+            prompt_francais: challenge.prompt_fr,
+            answer_text: clean,
             response_text: clean,
             response_lang: lang,
             local_score: fallback,

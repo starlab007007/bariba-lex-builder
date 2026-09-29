@@ -5,7 +5,7 @@
 // Référence : apprendre_v24_spec.md §3 (ApTaskFactory) et §7 (buildSceneQuiz,
 // dans scenes.ts) pour les règles exactes de distracteurs à reproduire.
 
-import { ApCard, ApFoundation, ApprendreContent, baseForm, cardConjugation, cardHasExample, cardSource, cardVerified, sentenceWords } from './content';
+import { ApCard, ApFoundation, ApTheme, ApprendreContent, baseForm, cardConjugation, cardHasExample, cardSource, cardVerified, sentenceWords } from './content';
 import type { ApprendreProgress } from './store';
 
 export type ApTaskKind = 'choice' | 'order' | 'speak';
@@ -168,6 +168,35 @@ export class ApTaskFactory {
       .map((id) => this.content.cards.get(id))
       .filter((c): c is ApCard => !!c);
     return cards.map((card) => this.practice(card, this.poolFor(card), progress));
+  }
+
+  /**
+   * Séance de vocabulaire d'un thème : révisions dues du thème puis nouveaux mots.
+   * Portage de `ApTaskFactory.themeSession` (apprendre_tasks.dart, Build19).
+   */
+  themeSession(
+    theme: ApTheme,
+    progress: ApprendreProgress,
+    { now, newWords = 6, maxTasks = 12 }: { now: number; newWords?: number; maxTasks?: number },
+  ): ApTask[] {
+    const pool = this.content.cardsOf(theme);
+    const inTheme = new Set(theme.cards);
+    const due = progress
+      .dueCardIds(now)
+      .filter((id) => inTheme.has(id))
+      .map((id) => this.content.cards.get(id))
+      .filter((c): c is ApCard => !!c)
+      .slice(0, 6);
+    const fresh = progress
+      .newCardIds(theme, newWords)
+      .map((id) => this.content.cards.get(id))
+      .filter((c): c is ApCard => !!c);
+    const tasks: ApTask[] = [];
+    for (const card of fresh) tasks.push(this.recognize(card, pool));
+    for (const card of due) tasks.push(this.practice(card, pool, progress));
+    for (const card of fresh.slice(0, 3)) tasks.push(this.practice(card, pool, progress));
+    if (progress.profile === 'oral' && fresh.length > 0) tasks.push(this.speak(fresh[0]));
+    return tasks.slice(0, maxTasks);
   }
 
   /** Choisit aléatoirement un exercice pertinent pour [card] selon le profil. */

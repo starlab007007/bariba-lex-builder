@@ -368,11 +368,20 @@ const TamTamCreator: React.FC = () => {
         mediaUrl = urlData.publicUrl;
       }
 
-      // 3. Create post in tamtam_posts
+      // 3. Create post in tamtam_posts (RLS : user_id = auth.uid() ; la colonne de texte est `transcript`)
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) {
+        toast.error('Connectez-vous pour publier');
+        setIsPublishing(false);
+        setPhase('finalizing');
+        return;
+      }
       const { data: postData, error: postError } = await supabase
         .from('tamtam_posts')
         .insert({
-          content: caption || '',
+          user_id: authData.user.id,
+          is_public: true,
+          transcript: caption || '',
           audio_url: mediaUrl || 'local://preview',
           media_type: 'video',
           media_url: mediaUrl,
