@@ -19,7 +19,7 @@ function Shell({children}:{children:React.ReactNode}) {
 
 /** En-tête Flutter : titre + sous-titre ; le bouton menu flottant du shell occupe l'emplacement du bouton retour. */
 function BackTitle({title,subtitle}:{title:string;subtitle?:string}) {
-  return <div className="mb-5 flex min-h-[48px] items-center pl-[56px] lg:pl-0">
+  return <div className="mb-5 flex min-h-[48px] items-center pl-[56px] md:pl-0">
     <div className="min-w-0">
       <h1 className="truncate text-[20px] font-semibold leading-tight" style={{fontFamily:'Fraunces, ui-serif, serif'}}>{title}</h1>
       {subtitle&&<p className="text-[11px]" style={{color:C.muted}}>{subtitle}</p>}
@@ -63,7 +63,7 @@ function HanduniaFeed({embedded=false}:{embedded?:boolean}) {
   const shownItems=items.filter(f=>mode==='discover'?true:mode==='lineage'?f.scope_level==='lineage':f.scope_level!=='lineage'&&f.scope_level!=='elders');
   const tabs=[['around','Autour',MapPin],['lineage','Lignée',Users],['discover','Découvrir',Globe]] as const;
   return <div className="-mx-[18px] -mt-[14px] min-h-full px-[18px] pt-[14px]" style={{background:'#FFF6E6'}}>
-    <h1 className="mb-4 pl-[56px] lg:pl-0 pr-[56px] text-center text-[26px] font-semibold leading-[48px]" style={{fontFamily:'Fraunces, ui-serif, serif',color:'#3B2314'}}>Handunia</h1>
+    <h1 className="mb-4 pl-[56px] md:pl-0 pr-[56px] text-center text-[26px] font-semibold leading-[48px]" style={{fontFamily:'Fraunces, ui-serif, serif',color:'#3B2314'}}>Handunia</h1>
     <div className="mb-3 grid grid-cols-3 gap-[10px]">
       {tabs.map(([k,label,Icon])=><button key={k} onClick={()=>setMode(k)} className="flex h-[54px] flex-col items-center justify-center gap-1 rounded-[16px] border text-[11px] font-extrabold" style={mode===k?{background:'linear-gradient(135deg,#F0C15A,#B98626)',borderColor:'#C99530',color:'#fff'}:{background:'#FFFBF2',borderColor:'#EAD9B0',color:'#3B2314'}}><Icon className="h-[18px] w-[18px]"/>{label}</button>)}
     </div>
@@ -123,7 +123,7 @@ function HanduniaPublish() {
   const onMic=async()=>{try{await toggle();}catch{alert("Micro indisponible : autorisez l'accès au micro ou écrivez votre souvenir.");}};
   return <div className="h-full overflow-y-auto" style={{background:C.bg,color:C.ink}}>
     <div className="bg-white px-[18px] pb-3 pt-[14px]" style={{borderBottom:'1px solid '+C.border}}>
-      <div className="flex min-h-[48px] items-center pl-[56px] lg:pl-0"><div><h1 className="text-[17px] font-extrabold leading-tight">Publier un souvenir</h1><p className="text-[11px]" style={{color:C.muted}}>Étape {step+1} sur 4</p></div></div>
+      <div className="flex min-h-[48px] items-center pl-[56px] md:pl-0"><div><h1 className="text-[17px] font-extrabold leading-tight">Publier un souvenir</h1><p className="text-[11px]" style={{color:C.muted}}>Étape {step+1} sur 4</p></div></div>
       <ol className="mt-3 flex items-center" aria-label="Progression">
         {steps.map((label,i)=><li key={label} className="flex flex-1 items-center last:flex-none">
           <div className="flex flex-col items-center gap-1">
@@ -180,7 +180,7 @@ function HanduniaPublish() {
         </div>
       </>}
     </div>
-    <div className="fixed inset-x-0 bottom-[calc(92px+env(safe-area-inset-bottom))] z-[80] px-[18px] lg:bottom-4 lg:left-[304px]">
+    <div className="fixed inset-x-0 bottom-[max(12px,env(safe-area-inset-bottom))] z-[80] px-[18px] md:left-[76px] lg:left-[304px]">
       <div className="mx-auto flex max-w-[720px] gap-2">
         {step>0&&<button onClick={()=>setStep(step-1)} className="h-[54px] rounded-full border bg-white px-6 text-[15px] font-extrabold" style={{borderColor:C.border}}>Retour</button>}
         <button disabled={busy||!canNext} onClick={()=>step<3?setStep(step+1):submit()} className="flex h-[54px] flex-1 items-center justify-center gap-2 rounded-full text-[15px] font-extrabold disabled:opacity-50" style={{background:'linear-gradient(135deg,#D6A53A,#B37A20)',color:'#2B2110'}}>
@@ -357,7 +357,7 @@ function SagesseBattle({embedded=false}:{embedded?:boolean}) {
 
 export function FitilaSocialCanonical() {
   const loc=useLocation(); const nav=useNavigate(); const isSagesse=loc.pathname.includes('sagesse-battle');
-  return <Shell><div className="mb-4 grid grid-cols-2 gap-2 pl-[56px] lg:pl-0"><button onClick={()=>nav('/social/handunia')} className="rounded-full px-4 py-3 text-[13px] font-extrabold" style={{background:!isSagesse?'linear-gradient(90deg,#4A3B78,#241F2E)':'#fff',color:!isSagesse?'#fff':C.ink,border:'1px solid '+C.border}}>Handunia Wasa</button><button onClick={()=>nav('/social/sagesse-battle')} className="rounded-full px-4 py-3 text-[13px] font-extrabold" style={{background:isSagesse?C.gold:'#fff',color:'#2B2110',border:'1px solid '+C.border}}>Sagesse Battle</button></div>{isSagesse?<SagesseBattle embedded/>:<HanduniaFeed embedded/>}</Shell>;
+  return <Shell><div className="mb-4 grid grid-cols-2 gap-2 pl-[56px] md:pl-0"><button onClick={()=>nav('/social/handunia')} className="rounded-full px-4 py-3 text-[13px] font-extrabold" style={{background:!isSagesse?'linear-gradient(90deg,#4A3B78,#241F2E)':'#fff',color:!isSagesse?'#fff':C.ink,border:'1px solid '+C.border}}>Handunia Wasa</button><button onClick={()=>nav('/social/sagesse-battle')} className="rounded-full px-4 py-3 text-[13px] font-extrabold" style={{background:isSagesse?C.gold:'#fff',color:'#2B2110',border:'1px solid '+C.border}}>Sagesse Battle</button></div>{isSagesse?<SagesseBattle embedded/>:<HanduniaFeed embedded/>}</Shell>;
 }
 
 export function FitilaCreatorCanonical() {
@@ -367,7 +367,7 @@ export function FitilaCreatorCanonical() {
     {to:'/creator/sagesse-battle',icon:Brain,title:'Sagesse Battle',desc:'Répondre au défi du jour et rejoindre la chaîne.'},
   ];
   return <div className="relative h-full overflow-y-auto" style={{background:'#F7F5EC',color:C.ink}}>
-    <header className="flex items-center gap-3 pl-[74px] lg:pl-[18px] pr-5 pt-[14px]">
+    <header className="flex items-center gap-3 pl-[74px] md:pl-[18px] pr-5 pt-[14px]">
       <div className="min-w-0"><h1 className="text-[26px] font-semibold leading-none" style={{fontFamily:'Fraunces, ui-serif, serif'}}>Créer</h1><p className="mt-1 text-[11px] font-bold" style={{color:'#8C8571'}}>Deux actions, rien de plus.</p></div>
     </header>
     <div className="mt-[34px] space-y-[13px] px-5">

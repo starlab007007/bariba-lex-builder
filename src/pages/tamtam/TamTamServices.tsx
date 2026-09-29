@@ -39,13 +39,13 @@ export default function TamTamServices() {
         </div>
 
         <div className="mt-[14px] grid grid-cols-2 gap-[10px] px-[18px] md:grid-cols-3 xl:grid-cols-4">
-          {SERVICES.map(({ icon: Icon, title, subtitle, route }) => (
+          {SERVICES.map(({ icon: Icon, title, subtitle, route }, i) => (
             <button
               key={title}
               type="button"
               onClick={() => navigate(route)}
-              className="flex h-[156px] flex-col rounded-[18px] border bg-white p-[12px] text-left transition-transform active:scale-[0.98]"
-              style={{ borderColor: SIG.hairline }}
+              className="fitila-rise fitila-lift flex h-[156px] flex-col rounded-[18px] border bg-white p-[12px] text-left"
+              style={{ borderColor: SIG.hairline, ["--i" as string]: i }}
             >
               <span className="flex h-[44px] w-[44px] items-center justify-center rounded-full" style={{ background: SIG.goldTint, color: SIG.goldDeep }}>
                 <Icon className="h-[22px] w-[22px]" />

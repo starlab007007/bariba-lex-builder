@@ -34,7 +34,9 @@ export default function AppTourProvider({ children }: { children: React.ReactNod
     return false;
   })();
 
-  const shouldShow = isFreshInstall || !localStorage.getItem(TOUR_STORAGE_KEY);
+  // Le guide d'accueil ne s'ouvre plus automatiquement ; il reste lançable à la demande via startTour().
+  const shouldShow = false;
+  void isFreshInstall;
   const [isActive, setIsActive] = useState(shouldShow);
   const [currentStep, setCurrentStep] = useState(0);
   const [lang, setLang] = useState<'fr' | 'ba'>('fr');

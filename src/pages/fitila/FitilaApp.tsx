@@ -14,7 +14,6 @@ import { useHFPreWarm } from '@/hooks/useHFPreWarm';
 import { useExtendedNotifications } from '@/hooks/useExtendedNotifications';
 import AppTourProvider, { TOUR_STORAGE_KEY } from '@/components/onboarding/AppTourProvider';
 import SafeBoundary from '@/components/common/SafeBoundary';
-import FitilaBottomNav from '@/components/fitila/FitilaBottomNav';
 import FitilaCanonicalDrawer from '@/components/fitila/FitilaCanonicalDrawer';
 import FitilaNavPanel from '@/components/fitila/FitilaNavPanel';
 
@@ -352,13 +351,16 @@ function AppContent() {
     <SideMenuContext.Provider value={menuContext}>
       <AppTourProvider>
         <div className="fixed inset-0 flex h-full w-full overflow-hidden fitila-app-bg">
-          {/* Bureau (≥1024 px) : menu latéral permanent, comme le shell large de Flutter Build19 */}
+          {/* Tablette (768–1023 px) : rail d'icônes ; bureau (≥1024 px) : menu latéral complet, comme le shell large du Flutter */}
+          <aside className="hidden w-[76px] shrink-0 border-r md:block lg:hidden" style={{ borderColor: '#E4DFCC' }} aria-label="Navigation FITILA">
+            <FitilaNavPanel compact />
+          </aside>
           <aside className="hidden w-[304px] shrink-0 border-r lg:block" style={{ borderColor: '#E4DFCC' }} aria-label="Navigation FITILA">
             <FitilaNavPanel />
           </aside>
 
           {/* Mobile : tiroir + bouton menu flottant */}
-          <div className="lg:hidden">
+          <div className="md:hidden">
             <FitilaCanonicalDrawer open={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
             {!isMenuOpen && !hideMenuButton && (
               <button
@@ -375,7 +377,7 @@ function AppContent() {
 
           <div className="relative flex min-w-0 flex-1 flex-col">
             <DesktopTopBar />
-            <main className="min-h-0 w-full flex-1 overflow-hidden pb-[92px] lg:pb-0">
+            <main className="fitila-ambient min-h-0 w-full flex-1 overflow-hidden">
               <SafeBoundary label="Page Fitila">
                 <motion.div
                   key={location.pathname.split('/')[1] || 'home'}
@@ -389,7 +391,6 @@ function AppContent() {
               </SafeBoundary>
             </main>
           </div>
-          <FitilaBottomNav />
           <AdminFloatingButton />
         </div>
       </AppTourProvider>
@@ -404,7 +405,7 @@ function DesktopTopBar() {
   const [q, setQ] = useState('');
   const name = (user?.user_metadata?.display_name as string | undefined) || (user ? 'Mon compte' : 'Se connecter');
   return (
-    <div className="hidden items-center gap-3 px-[18px] py-3 lg:flex">
+    <div className="hidden items-center gap-3 px-[18px] py-3 md:flex">
       <form
         className="relative flex-1"
         onSubmit={(e) => { e.preventDefault(); nav(q.trim() ? `/dictionary?q=${encodeURIComponent(q.trim())}` : '/dictionary'); }}

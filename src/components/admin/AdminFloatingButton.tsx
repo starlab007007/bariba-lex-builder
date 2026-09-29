@@ -53,7 +53,7 @@ export const AdminFloatingButton: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-[calc(104px+env(safe-area-inset-bottom))] right-4 z-[95] lg:bottom-6 lg:right-6">
+    <div className="fixed bottom-[max(20px,env(safe-area-inset-bottom))] right-4 z-[95] md:bottom-6 md:right-6">
       <AnimatePresence>
         {isOpen && (
           <motion.div

@@ -17,7 +17,7 @@ export default function FloatingKeyboardPage() {
   return (
     <div className="flex flex-col h-full bg-[#F7F5EC] text-[#241F2E]">
       {/* Header */}
-      <div className="flex items-center gap-2 pl-[74px] lg:pl-[18px] pr-3 pt-[14px] pb-2">
+      <div className="flex items-center gap-2 pl-[74px] md:pl-[18px] pr-3 pt-[14px] pb-2">
         <div className="flex-1 min-w-0">
           <h1 className="text-[17px] font-extrabold leading-tight truncate">Clavier Bàátɔ̀nú</h1>
           <p className="text-[11px] leading-tight text-[#8C8571] truncate">Clavier système natif — activable dans toutes vos applications</p>
