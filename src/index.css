@@ -1856,3 +1856,19 @@
   .fitila-rise, .fitila-skeleton { animation: none !important; }
   .fitila-lift:hover { transform: none; }
 }
+
+
+/* ── Espace : typographie du texte Bàátɔ̀nú (ɛ ɔ ŋ et diacritiques combinants) ── */
+.espace-prose {
+  font-family: "Charis SIL", "Gentium Plus", "Noto Serif", "DejaVu Serif", "Segoe UI", Fraunces, Georgia, serif;
+  font-size: 17px; line-height: 1.75; color: #241F2E; font-kerning: normal; text-rendering: geometricPrecision;
+  font-variant-ligatures: none; overflow-wrap: anywhere;
+}
+.espace-prose:empty::before { content: attr(data-placeholder); color: #8C8571; pointer-events: none; }
+.espace-prose h1 { font-size: 1.75em; font-weight: 700; margin: .6em 0 .35em; line-height: 1.25; }
+.espace-prose h2 { font-size: 1.4em; font-weight: 700; margin: .6em 0 .3em; line-height: 1.3; }
+.espace-prose h3 { font-size: 1.2em; font-weight: 700; margin: .5em 0 .25em; }
+.espace-prose p, .espace-prose div { margin: 0 0 .7em; }
+.espace-prose ul { list-style: disc; padding-left: 1.4em; margin: 0 0 .7em; }
+.espace-prose ol { list-style: decimal; padding-left: 1.4em; margin: 0 0 .7em; }
+.espace-prose blockquote { border-left: 3px solid #C99530; padding-left: 1em; margin: 0 0 .8em; color: #3A3448; font-style: italic; }

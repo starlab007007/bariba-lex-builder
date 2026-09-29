@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Award, AudioLines, BookOpen, ClipboardList, Clapperboard, GraduationCap, Globe, Keyboard, Languages, Layers, Settings, Sparkles, User } from 'lucide-react';
+import { Award, AudioLines, BookOpen, ClipboardList, Clapperboard, GraduationCap, Globe, Keyboard, Vault, Languages, Layers, Settings, Sparkles, User } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +16,7 @@ const EXPLORER: Item[] = [
   { label: 'Traducteur', path: '/translator', icon: Languages },
   { label: 'Apprendre', path: '/learn', icon: GraduationCap },
   { label: 'Créateur', path: '/creator', icon: Clapperboard },
+  { label: 'Espace', path: '/espace', icon: Vault, desc: 'Coffre-fort, éditeur et scan OCR Bàátɔ̀nú' },
 ];
 const CULTURE: Item[] = [{ label: 'Voice Lab', path: '/voice-lab', icon: AudioLines }];
 const COMPTE: Item[] = [
