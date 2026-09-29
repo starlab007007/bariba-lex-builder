@@ -783,7 +783,7 @@ extension FitilaPageMeta on FitilaPage {
   String get title {
     return switch (this) {
       FitilaPage.feed => 'Fil',
-      FitilaPage.creator => 'Createur',
+      FitilaPage.creator => 'Créateur',
       FitilaPage.templates => 'Templates',
       FitilaPage.services => 'Services',
       FitilaPage.market => 'Marche',
@@ -2070,97 +2070,109 @@ class _NavigationPanel extends StatelessWidget {
   final FitilaSession session;
   final ValueChanged<FitilaPage> onSelected;
 
+  // Menu identique au web (barre latérale de fitila.bj) : même ordre, mêmes modules.
+  static const _explorer = [
+    FitilaPage.feed,
+    FitilaPage.dictionary,
+    FitilaPage.classe,
+    FitilaPage.ia,
+    FitilaPage.translator,
+    FitilaPage.learn,
+    FitilaPage.creator,
+    FitilaPage.espace,
+  ];
+  static const _culture = [FitilaPage.voiceLab];
+  static const _account = [
+    FitilaPage.keyboard,
+    FitilaPage.teacher,
+    FitilaPage.profile,
+    FitilaPage.settings,
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final explorer = [
-      FitilaPage.feed,
-      FitilaPage.dictionary,
-      FitilaPage.classe,
-      FitilaPage.ia,
-      FitilaPage.translator,
-      FitilaPage.learn,
-      FitilaPage.templates,
-      FitilaPage.creator,
-      FitilaPage.espace,
-    ];
-    final culture = [
-      FitilaPage.voiceLab,
-      FitilaPage.education,
-      FitilaPage.discover,
-      FitilaPage.messages,
-    ];
-    final services = [
-      FitilaPage.services,
-      FitilaPage.market,
-      FitilaPage.agriculture,
-      FitilaPage.finance,
-      FitilaPage.health,
-      FitilaPage.sos,
-      FitilaPage.install,
-    ];
-    final account = [
-      FitilaPage.keyboard,
-      FitilaPage.teacher,
-      FitilaPage.drafts,
-      FitilaPage.offline,
-      FitilaPage.wallet,
-      FitilaPage.history,
-      FitilaPage.scan,
-      FitilaPage.shop,
-      FitilaPage.profile,
-      FitilaPage.settings,
-    ];
+    final isAdmin = session.role == 'Administrateur';
+    Widget group(List<FitilaPage> pages) => Column(
+      children: [
+        for (final item in pages)
+          _NavItem(
+            page: item,
+            selected: item == page,
+            onTap: () => onSelected(item),
+          ),
+      ],
+    );
 
     return Material(
       color: _fitilaCard,
       child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
-          children: [
-            const Text(
-              'FITILA',
-              style: TextStyle(
-                color: _fitilaGoldDeep,
-                fontFamily: 'serif',
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                letterSpacing: .2,
+        child: LayoutBuilder(
+          builder: (context, box) => SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: box.maxHeight - 42),
+              child: IntrinsicHeight(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'FITILA',
+                      style: TextStyle(
+                        color: _fitilaGoldDeep,
+                        fontFamily: 'serif',
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: .2,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    const Text(
+                      'Bàátɔ̀nú · Langue, Culture & IA',
+                      style: TextStyle(color: _fitilaMuted, fontSize: 11.5),
+                    ),
+                    const SizedBox(height: 18),
+                    const _SectionLabel('Explorer'),
+                    group(_explorer),
+                    const _SectionLabel('Culture'),
+                    group(_culture),
+                    const _SectionLabel('Compte'),
+                    group(_account),
+                    const _SectionLabel('Langue'),
+                    const _LanguageSwitch(),
+                    if (isAdmin) ...[
+                      const SizedBox(height: 14),
+                      Material(
+                        color: _fitilaSurfaceAlt,
+                        borderRadius: BorderRadius.circular(14),
+                        child: InkWell(
+                          key: const ValueKey('nav-admin'),
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () => launchUrl(
+                            Uri.parse('https://fitila.bj/admin'),
+                            mode: LaunchMode.externalApplication,
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.all(13),
+                            child: Text(
+                              'Administration',
+                              style: TextStyle(
+                                color: _fitilaInk,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const Spacer(),
+                    const SizedBox(height: 18),
+                    _ProfileTile(session: session),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 3),
-            const Text(
-              'Bàátɔ̀nú · Langue, Culture & IA',
-              style: TextStyle(color: _fitilaMuted, fontSize: 11.5),
-            ),
-            const SizedBox(height: 18),
-            const _SectionLabel('Explorer'),
-            for (final item in explorer)
-              _NavItem(
-                page: item,
-                selected: item == page,
-                onTap: () => onSelected(item),
-              ),
-            const _SectionLabel('Culture'),
-            for (final item in culture)
-              _NavItem(
-                page: item,
-                selected: item == page,
-                onTap: () => onSelected(item),
-              ),
-            const _SectionLabel('Services'),
-            _NavGrid(pages: services, selected: page, onSelected: onSelected),
-            const _SectionLabel('Compte'),
-            for (final item in account)
-              _NavItem(
-                page: item,
-                selected: item == page,
-                onTap: () => onSelected(item),
-              ),
-            const SizedBox(height: 12),
-            _ProfileTile(session: session),
-            const SizedBox(height: 12),
-            const _LanguageSwitch(),
-          ],
+          ),
         ),
       ),
     );
@@ -20425,78 +20437,6 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-class _NavGrid extends StatelessWidget {
-  const _NavGrid({
-    required this.pages,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final List<FitilaPage> pages;
-  final FitilaPage selected;
-  final ValueChanged<FitilaPage> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.builder(
-      itemCount: pages.length,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisExtent: 88,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemBuilder: (context, index) {
-        final page = pages[index];
-        final active = page == selected;
-        return InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () => onSelected(page),
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: active ? _fitilaPrimarySoft : _fitilaSurfaceAlt,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: active ? _fitilaPrimary : _fitilaBorder,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  page.icon,
-                  size: 19,
-                  color: active ? _fitilaGoldDeep : _fitilaMuted,
-                ),
-                const Spacer(),
-                Text(
-                  page.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _fitilaInk,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  page.description,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: _fitilaMuted, fontSize: 9.5),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);
 
@@ -20519,29 +20459,80 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-class _LanguageSwitch extends StatelessWidget {
+class _LanguageSwitch extends StatefulWidget {
   const _LanguageSwitch();
 
   @override
+  State<_LanguageSwitch> createState() => _LanguageSwitchState();
+}
+
+class _LanguageSwitchState extends State<_LanguageSwitch> {
+  static const _key = 'fitila_language';
+  String _lang = 'fr';
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((p) {
+      final saved = p.getString(_key);
+      if (mounted && saved != null) {
+        setState(() => _lang = saved);
+      }
+    }).catchError((_) {});
+  }
+
+  Future<void> _set(String code) async {
+    setState(() => _lang = code);
+    try {
+      (await SharedPreferences.getInstance()).setString(_key, code);
+    } catch (_) {}
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: _fitilaSurfaceAlt,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _fitilaBorder),
-      ),
-      child: const Row(
-        children: [
-          Expanded(
-            child: _DarkChip(icon: Icons.language_rounded, label: 'Français'),
+    Widget button(String code, String label) {
+      final selected = _lang == code;
+      return Expanded(
+        child: Semantics(
+          button: true,
+          selected: selected,
+          label: label,
+          child: InkWell(
+            key: ValueKey('lang-$code'),
+            borderRadius: BorderRadius.circular(999),
+            onTap: () => _set(code),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: selected ? _fitilaPrimary : Colors.white,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: selected ? _fitilaPrimary : _fitilaBorder),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.language_rounded, size: 16, color: selected ? const Color(0xFF2B2110) : _fitilaInk),
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: selected ? const Color(0xFF2B2110) : _fitilaInk,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          SizedBox(width: 8),
-          Expanded(
-            child: _DarkChip(icon: Icons.translate_rounded, label: 'Bariba'),
-          ),
-        ],
-      ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [button('fr', 'Français'), const SizedBox(width: 8), button('ba', 'Bàátɔ̀nú')],
     );
   }
 }
