@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowRight, Globe, Lock, Users, BookOpen, Brain, ChevronRight, MapPin, Mic, Pause, Play, Plus,
+  ArrowRight, Check, Globe, Lock, PenLine, Square, Users, Zap, BookOpen, Brain, ChevronRight, MapPin, Mic, Pause, Play, Plus,
   RefreshCw, Send, Sparkles, Swords, Trash2, Volume2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -104,6 +104,7 @@ function HanduniaPublish() {
   const [lieux,setLieux]=useState<Lieu[]>([]); const [lieu,setLieu]=useState(''); const [text,setText]=useState('');
   const [period,setPeriod]=useState(''); const [scope,setScope]=useState('community'); const [busy,setBusy]=useState(false);
   const [recording,setRecording]=useState(false); const [blob,setBlob]=useState<Blob|null>(null);
+  const [step,setStep]=useState(0);
   const rec=useRef<MediaRecorder|null>(null); const chunks=useRef<Blob[]>([]);
   useEffect(()=>{supabase.from('handunia_lieux').select('id,name,commune,village_quartier').order('sort_order').then(({data})=>{const a=(data??[]) as any;setLieux(a);if(a[0])setLieu(a[0].id);});},[]);
   const toggle=async()=>{if(recording){rec.current?.stop();setRecording(false);return;} const stream=await navigator.mediaDevices.getUserMedia({audio:true}); chunks.current=[]; const r=new MediaRecorder(stream); rec.current=r;r.ondataavailable=e=>{if(e.data.size)chunks.current.push(e.data)};r.onstop=()=>{setBlob(new Blob(chunks.current,{type:r.mimeType||'audio/webm'}));stream.getTracks().forEach(t=>t.stop());};r.start();setRecording(true);};
@@ -114,17 +115,80 @@ function HanduniaPublish() {
     if(ins.error)throw ins.error; nav('/social/handunia');
   }catch(e:any){alert(e?.message||'Publication impossible');}finally{setBusy(false);}};
   if(user===null)return <LoginRequired/>;
-  return <Shell><BackTitle title="Publier un souvenir" subtitle="Collecter → lieu → préciser → vérifier"/>
-    <div className="space-y-4">
-      <button onClick={toggle} className="flex w-full items-center justify-center gap-3 rounded-[28px] border py-8 text-lg font-black" style={{borderColor:C.border,background:recording?'#4A2020':'#fff',color:C.gold2}}><Mic/>{recording?'Arrêter la voix':'Tisser par la voix'}</button>
-      {blob&&<audio controls className="w-full" src={URL.createObjectURL(blob)}/>}
-      <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Ou écrire le souvenir…" className="min-h-36 w-full rounded-3xl border bg-transparent p-4 outline-none" style={{borderColor:C.border}}/>
-      <select value={lieu} onChange={e=>setLieu(e.target.value)} className="w-full rounded-2xl border p-4 text-black" style={{borderColor:C.border}}>{lieux.map(l=><option key={l.id} value={l.id}>{l.village_quartier||l.name}{l.commune?' · '+l.commune:''}</option>)}</select>
-      <input value={period} onChange={e=>setPeriod(e.target.value)} placeholder="Période — ex. Avant 1960" className="w-full rounded-2xl border bg-transparent p-4 outline-none" style={{borderColor:C.border}}/>
-      <select value={scope} onChange={e=>setScope(e.target.value)} className="w-full rounded-2xl border p-4 text-black"><option value="community">Communauté</option><option value="lineage">Lignée</option><option value="elders">Anciens</option><option value="all">Tous</option></select>
-      <button disabled={busy} onClick={submit} className="w-full rounded-full py-4 text-lg font-black disabled:opacity-50" style={{background:C.gold,color:'#2B2110'}}>{busy?'Publication…':'Publier le souvenir'}</button>
+  const steps=['Raconter','Lieu','Détails','Publier'];
+  const canNext=step===0?(!!text.trim()||!!blob):step===1?!!lieu:true;
+  const lieuLabel=(l:Lieu)=>(l.village_quartier||l.name)+(l.commune?' · '+l.commune:'');
+  const scopes:[string,string,string][]=[['community','Communauté','Visible par toute la communauté'],['lineage','Lignée','Réservé à ma lignée'],['elders','Anciens','Confié aux gardiens de la mémoire'],['all','Tous','Visible publiquement']];
+  const pill='rounded-[18px] border bg-white';
+  const onMic=async()=>{try{await toggle();}catch{alert("Micro indisponible : autorisez l'accès au micro ou écrivez votre souvenir.");}};
+  return <div className="h-full overflow-y-auto" style={{background:C.bg,color:C.ink}}>
+    <div className="bg-white px-[18px] pb-3 pt-[14px]" style={{borderBottom:'1px solid '+C.border}}>
+      <div className="flex min-h-[48px] items-center pl-[56px] lg:pl-0"><div><h1 className="text-[17px] font-extrabold leading-tight">Publier un souvenir</h1><p className="text-[11px]" style={{color:C.muted}}>Étape {step+1} sur 4</p></div></div>
+      <ol className="mt-3 flex items-center" aria-label="Progression">
+        {steps.map((label,i)=><li key={label} className="flex flex-1 items-center last:flex-none">
+          <div className="flex flex-col items-center gap-1">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full border text-[13px] font-extrabold" style={i<=step?{background:C.gold,borderColor:C.gold,color:'#2B2110'}:{background:'#fff',borderColor:C.border,color:C.muted}} aria-current={i===step?'step':undefined}>{i<step?<Check className="h-4 w-4"/>:i+1}</span>
+            <span className="text-[10.5px] font-bold" style={{color:i<=step?C.ink:C.muted}}>{label}</span>
+          </div>
+          {i<steps.length-1&&<span className="mx-1 mb-4 h-px flex-1" style={{background:i<step?C.gold:C.border}}/>}
+        </li>)}
+      </ol>
     </div>
-  </Shell>;
+    <div className="mx-auto max-w-[720px] space-y-4 px-[18px] pb-28 pt-5">
+      {step===0&&<>
+        <h2 className="text-center text-[22px] font-semibold leading-tight" style={{fontFamily:'Fraunces, ui-serif, serif'}}>Que veux-tu transmettre ?</h2>
+        <p className="text-center text-[13px]" style={{color:C.muted}}>Parlez naturellement, ou écrivez quelques mots.</p>
+        <div className="flex flex-col items-center gap-2 pt-1">
+          <button onClick={onMic} aria-label={recording?'Arrêter la voix':'Parler'} className="flex h-[72px] w-[72px] items-center justify-center rounded-[18px] shadow-sm active:scale-95" style={{background:recording?'#B54E33':C.gold,color:recording?'#fff':'#2B2110'}}>{recording?<Square className="h-7 w-7"/>:<Mic className="h-8 w-8"/>}</button>
+          <span className="text-[11px] font-black tracking-wide" style={{color:C.gold2}}>{recording?'ENREGISTREMENT… TOUCHER POUR ARRÊTER':'PARLER'}</span>
+          {blob&&<audio controls className="mt-2 w-full max-w-sm" src={URL.createObjectURL(blob)}/>}
+        </div>
+        <div className={pill+' p-3'} style={{borderColor:C.border}}>
+          <label className="flex items-center gap-2 text-[13px]" style={{color:C.muted}}><PenLine className="h-4 w-4" style={{color:C.ink}}/>Ou écrire</label>
+          <textarea value={text} maxLength={1800} onChange={e=>setText(e.target.value)} className="mt-1 min-h-28 w-full resize-none bg-transparent text-[15px] outline-none" aria-label="Texte du souvenir"/>
+        </div>
+        <div className="text-right text-[11px]" style={{color:C.muted}}>{text.length}/1800</div>
+        <p className="flex items-center gap-2 rounded-[14px] px-3 py-2 text-[12px] font-bold" style={{background:'#F1EDDF',color:C.gold2}}><Zap className="h-4 w-4"/>Vous pouvez continuer même sans Internet.</p>
+      </>}
+      {step===1&&<>
+        <h2 className="text-center text-[22px] font-semibold" style={{fontFamily:'Fraunces, ui-serif, serif'}}>Où se passe ce souvenir ?</h2>
+        <div className="space-y-2" role="radiogroup" aria-label="Lieu">
+          {lieux.map(l=><button key={l.id} role="radio" aria-checked={lieu===l.id} onClick={()=>setLieu(l.id)} className={pill+' flex w-full items-center gap-3 p-3 text-left'} style={{borderColor:lieu===l.id?C.gold:C.border,borderWidth:lieu===l.id?2:1,background:lieu===l.id?'#FFFBF0':'#fff'}}>
+            <MapPin className="h-5 w-5 shrink-0" style={{color:C.gold2}}/><span className="text-[14px] font-extrabold">{lieuLabel(l)}</span></button>)}
+          {lieux.length===0&&<p className="text-center text-[13px]" style={{color:C.muted}}>Chargement des lieux…</p>}
+        </div>
+      </>}
+      {step===2&&<>
+        <h2 className="text-center text-[22px] font-semibold" style={{fontFamily:'Fraunces, ui-serif, serif'}}>Précisons</h2>
+        <label className="block"><span className="mb-1 block text-[12px] font-bold" style={{color:C.muted}}>Période (facultatif)</span>
+          <input value={period} onChange={e=>setPeriod(e.target.value)} placeholder="ex. Avant 1960" className={pill+' h-[52px] w-full px-4 text-[15px] outline-none focus:border-[#C99530]'} style={{borderColor:C.border}}/></label>
+        <div><span className="mb-2 block text-[12px] font-bold" style={{color:C.muted}}>Qui peut l'écouter ?</span>
+          <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Portée">
+            {scopes.map(([k,l,d])=><button key={k} role="radio" aria-checked={scope===k} onClick={()=>setScope(k)} className={pill+' p-3 text-left'} style={{borderColor:scope===k?C.gold:C.border,borderWidth:scope===k?2:1,background:scope===k?'#FFFBF0':'#fff'}}><span className="block text-[14px] font-extrabold">{l}</span><span className="block text-[11.5px]" style={{color:C.muted}}>{d}</span></button>)}
+          </div></div>
+      </>}
+      {step===3&&<>
+        <h2 className="text-center text-[22px] font-semibold" style={{fontFamily:'Fraunces, ui-serif, serif'}}>Vérifions avant de publier</h2>
+        <div className={pill+' space-y-3 p-4'} style={{borderColor:C.border}}>
+          {blob&&<audio controls className="w-full" src={URL.createObjectURL(blob)}/>}
+          {text.trim()&&<p className="text-[15px] leading-relaxed">“{text.trim()}”</p>}
+          <div className="flex flex-wrap gap-2 text-[12px] font-bold">
+            <span className="rounded-full bg-[#F3E3B9] px-3 py-1" style={{color:C.gold2}}>{lieux.find(l=>l.id===lieu)?lieuLabel(lieux.find(l=>l.id===lieu)!):'Lieu'}</span>
+            {period.trim()&&<span className="rounded-full bg-[#F1EDDF] px-3 py-1">{period.trim()}</span>}
+            <span className="rounded-full bg-[#DCEAE0] px-3 py-1" style={{color:'#3F6E52'}}>{scopes.find(x=>x[0]===scope)?.[1]}</span>
+          </div>
+        </div>
+      </>}
+    </div>
+    <div className="fixed inset-x-0 bottom-[calc(92px+env(safe-area-inset-bottom))] z-[80] px-[18px] lg:bottom-4 lg:left-[304px]">
+      <div className="mx-auto flex max-w-[720px] gap-2">
+        {step>0&&<button onClick={()=>setStep(step-1)} className="h-[54px] rounded-full border bg-white px-6 text-[15px] font-extrabold" style={{borderColor:C.border}}>Retour</button>}
+        <button disabled={busy||!canNext} onClick={()=>step<3?setStep(step+1):submit()} className="flex h-[54px] flex-1 items-center justify-center gap-2 rounded-full text-[15px] font-extrabold disabled:opacity-50" style={{background:'linear-gradient(135deg,#D6A53A,#B37A20)',color:'#2B2110'}}>
+          {step<3?<><ArrowRight className="h-5 w-5"/>Continuer</>:busy?'Publication…':'Publier le souvenir'}
+        </button>
+      </div>
+    </div>
+  </div>;
 }
 
 function HanduniaMemory() {

@@ -34,7 +34,6 @@ Méthode : chaque écran web est capturé au même format (Playwright) et compar
 - **Écrans Flutter à onglets** (Marché, Finance, Éducation, Santé, Agriculture) : le web conserve sa logique
   (chatbots, TTS, sous-routes) ; seul l'habillage est aligné.
 - **Onglets Autour / Lignée** (Handunia) : filtrés par `scope_level` (hypothèse), à confirmer côté produit.
-- **Publication Handunia** : le Flutter a un assistant en 4 étapes ; le web garde un formulaire unique restylé.
 - **SOS** : la saisie vocale et l'indicateur de localisation du web sont conservés (absents du rendu Flutter).
 - **Boutons audio** des tuiles métier conservés (accessibilité), en style discret.
 
@@ -55,6 +54,17 @@ Méthode : chaque écran web est capturé au même format (Playwright) et compar
   `enhance-training-data`, `generate-3d-avatar`, `generate-anime-story`, `generate-beat`,
   `generate-character-asset`, `generate-image-animation`, `generate-template-assets`, `retrain-model`,
   `synthesize-speech`, `elevenlabs-music`.
-- `public.get_user_phone(uuid)` est exécutable par `anon` (SECURITY DEFINER) : à restreindre.
-- Deux index uniques identiques sur `battle_responses (challenge_id, user_id)`.
+- `public.get_user_phone(uuid)` : exécutable par `anon` mais ne renvoie le numéro que si `auth.uid() = target_user_id` (pas de fuite) ; l'alerte du linter est informative.
+- Index unique en double sur `battle_responses` : supprimé (migration `20260929090000`).
 - Protection contre les mots de passe compromis désactivée ; `pg_net` dans le schéma `public`.
+
+## Mise à jour finale
+- Publication Handunia : assistant en 4 étapes (Raconter → Lieu → Détails → Publier) comme le Flutter.
+- Fonctions Edge déployées (JWT requis) : `set-security`, `reset-pin` (sans JWT, verrouillage), `raconte-moi`, `french-stt`,
+  `hf-keep-alive`, `generate-content`, `generate-content-stream`, `recognize-handwriting`, `analyze-news`,
+  `analyze-story`, `analyze-asset`, `smart-assistant`.
+- Secrets à définir dans Supabase : `MISTRAL_API_KEY` (raconte-moi, recognize-handwriting, analyze-asset et les
+  fonctions de génération), `HUGGING_FACE_API_TOKEN` si utilisé.
+- Non déployées car absentes du dépôt ou dépendantes de `FITILA_IMAGE_API_URL` : `clone-voice`, `enhance-training-data`,
+  `generate-3d-avatar`, `generate-anime-story`, `generate-beat`, `generate-character-asset`, `generate-image-animation`,
+  `generate-template-assets`, `retrain-model`, `synthesize-speech`, `elevenlabs-music`, `health-check`.
