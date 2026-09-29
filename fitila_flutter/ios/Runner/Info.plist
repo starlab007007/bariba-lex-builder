@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Fitila Flutter</string>
+	<string>FITILA</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -30,7 +30,11 @@
 	<string>Fitila a besoin du microphone pour enregistrer vos messages audio, vos réponses de prononciation et diffuser vos directs Live Griot IA.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Fitila a besoin de l'appareil photo pour prendre des photos de vos produits et publications.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>\n\t<string>Handunia Wasa utilise votre position approximative pour ordonner les souvenirs autour de vous. La position n'est pas publiée.</string>\n\t<key>UIApplicationSceneManifest</key>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Fitila a besoin d'accéder à vos photos lorsque vous choisissez une image à publier, analyser ou joindre à un contenu.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Handunia Wasa utilise votre position approximative pour ordonner les souvenirs autour de vous. La position n'est pas publiée.</string>
+	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>

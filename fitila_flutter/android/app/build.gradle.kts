@@ -3,6 +3,10 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
+    // AGP 9 is running in Flutter's legacy-KGP compatibility mode
+    // (android.builtInKotlin=false), so the app must apply KGP explicitly
+    // because MainActivity/KeyboardChannel contain Kotlin sources.
+    id("org.jetbrains.kotlin.android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
