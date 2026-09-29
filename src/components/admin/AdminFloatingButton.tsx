@@ -53,7 +53,7 @@ export const AdminFloatingButton: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[200]">
+    <div className="fixed bottom-[calc(104px+env(safe-area-inset-bottom))] right-4 z-[95] lg:bottom-6 lg:right-6">
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -106,15 +106,15 @@ export const AdminFloatingButton: React.FC = () => {
         onClick={() => setIsOpen(!isOpen)}
         className="relative w-14 h-14 rounded-full flex items-center justify-center shadow-2xl"
         style={{
-          background: 'linear-gradient(135deg, #FF7A00 0%, #FF5500 100%)',
-          boxShadow: '0 4px 20px rgba(255, 122, 0, 0.4), 0 0 30px rgba(255, 122, 0, 0.2)',
+          background: 'linear-gradient(135deg, #D6A53A 0%, #B37A20 100%)',
+          boxShadow: '0 8px 24px -8px rgba(156, 107, 29, 0.6)',
         }}
       >
         {/* Pulse Animation */}
         <motion.div
           animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
           transition={{ duration: 2, repeat: Infinity }}
-          className="absolute inset-0 rounded-full bg-[#FF7A00]"
+          className="absolute inset-0 rounded-full bg-[#C99530]"
         />
 
         {/* Icon */}

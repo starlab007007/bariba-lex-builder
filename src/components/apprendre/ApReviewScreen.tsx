@@ -260,7 +260,7 @@ export default function ApReviewScreen({ content, store, onBack, onWordTap }: Ap
   }
 
   return (
-    <div className="flex h-full min-h-screen flex-col" style={{ backgroundColor: AP_COLORS.ivory }}>
+    <div className="flex h-full flex-col" style={{ backgroundColor: AP_COLORS.ivory, paddingInline: 'max(0px, calc((100% - 900px) / 2))' }}>
       <div className="shrink-0 px-4 pb-2 pt-3">
         <div className="mx-auto flex max-w-3xl items-center gap-3">
           <button

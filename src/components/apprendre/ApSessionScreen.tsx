@@ -168,7 +168,7 @@ function ApSessionRun({
 
   if (tasks.length === 0) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: AP_COLORS.ivory, color: AP_COLORS.ink }}>
+      <div className="absolute inset-0 z-10 flex flex-col" style={{ backgroundColor: AP_COLORS.ivory, color: AP_COLORS.ink, paddingInline: 'max(0px, calc((100% - 760px) / 2))' }}>
         <div className="flex items-center gap-3.5 px-4 pt-3">
           <button onClick={onClose} aria-label="Quitter la séance" className="flex h-11 w-11 items-center justify-center rounded-full border" style={{ borderColor: AP_COLORS.line, backgroundColor: AP_COLORS.surface }}>
             <X className="h-5 w-5" />
@@ -237,7 +237,7 @@ function ApSessionRun({
   const showAnswer = !wasCorrect && task.kind !== 'speak';
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: AP_COLORS.ivory, color: AP_COLORS.ink }}>
+    <div className="absolute inset-0 z-10 flex flex-col" style={{ backgroundColor: AP_COLORS.ivory, color: AP_COLORS.ink, paddingInline: 'max(0px, calc((100% - 760px) / 2))' }}>
       {finishing ? (
         <div className="flex flex-1 items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin" style={{ color: AP_COLORS.gold }} />

@@ -331,6 +331,8 @@ function AppContent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const reduceMotion = useReducedMotion();
+  // Écrans « flux » (séance, révision, scènes, fondation, thème, souvenir) : leur bouton retour prend la place du menu.
+  const hideMenuButton = /^\/(learn\/(daily|review|scenes|foundations|themes|voice)|handunia\/memory)/.test(location.pathname);
 
   useHFPreWarm();
   useExtendedNotifications();
@@ -358,7 +360,7 @@ function AppContent() {
           {/* Mobile : tiroir + bouton menu flottant */}
           <div className="lg:hidden">
             <FitilaCanonicalDrawer open={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
-            {!isMenuOpen && (
+            {!isMenuOpen && !hideMenuButton && (
               <button
                 type="button"
                 onClick={() => setIsMenuOpen(true)}
@@ -377,7 +379,7 @@ function AppContent() {
               <SafeBoundary label="Page Fitila">
                 <motion.div
                   key={location.pathname.split('/')[1] || 'home'}
-                  className="h-full"
+                  className="relative h-full overflow-y-auto overscroll-contain"
                   initial={reduceMotion ? false : { opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.22, ease: 'easeOut' }}

@@ -336,7 +336,7 @@ export default function ApSceneDetailScreen({ scene, content, progress, store, o
   }
 
   return (
-    <div className="flex h-full min-h-screen flex-col" style={{ backgroundColor: AP_COLORS.ivory }}>
+    <div className="flex h-full flex-col" style={{ backgroundColor: AP_COLORS.ivory, paddingInline: 'max(0px, calc((100% - 900px) / 2))' }}>
       <div className="shrink-0 pb-4" style={{ background: `linear-gradient(135deg, ${AP_COLORS.clay}, ${AP_COLORS.goldDeep})` }}>
         <div className="flex items-center gap-3 px-4 pb-1 pt-3">
           <button

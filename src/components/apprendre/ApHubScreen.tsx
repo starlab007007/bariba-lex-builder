@@ -191,7 +191,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: AP_COLORS.ivory }}>
+      <div className="flex h-full items-center justify-center" style={{ backgroundColor: AP_COLORS.ivory }}>
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: `${AP_COLORS.gold} transparent transparent transparent` }} />
           <p className="text-sm" style={{ color: AP_COLORS.muted }}>Chargement du contenu Apprendre…</p>
@@ -201,7 +201,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
   }
   if (error || !content || !scenesContent) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center" style={{ backgroundColor: AP_COLORS.ivory }}>
+      <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center" style={{ backgroundColor: AP_COLORS.ivory }}>
         <p className="text-sm" style={{ color: AP_COLORS.ink }}>Le contenu Apprendre n’a pas pu être chargé.</p>
         <button onClick={() => refetch()} className="rounded-full px-4 py-2 text-sm font-bold" style={{ backgroundColor: AP_COLORS.gold, color: AP_COLORS.goldInk }}>
           Réessayer
@@ -218,7 +218,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
   const proverb = proverbs.length > 0 ? proverbs[new Date(now).getDate() % proverbs.length] : undefined;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: AP_COLORS.ivory }}>
+    <div className="h-full overflow-y-auto" style={{ backgroundColor: AP_COLORS.ivory }}>
       <div className="mx-auto max-w-[900px] px-5 pb-10 pt-4">
         <div className="mb-4 flex min-h-12 items-center pl-14">
           <div className="min-w-0">

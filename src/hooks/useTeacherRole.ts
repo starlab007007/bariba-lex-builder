@@ -3,16 +3,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function useTeacherRole() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const [isTeacher, setIsTeacher] = useState(false);
-  const [loading, setLoading] = useState(true);
+  // Identifiant pour lequel le rôle a été vérifié : tant qu'il diffère de l'utilisateur courant, on reste en chargement
+  // (évite une redirection prématurée vers l'accueil au rechargement de /teacher).
+  const [checkedFor, setCheckedFor] = useState<string | null>(null);
 
   useEffect(() => {
+    if (authLoading) return;
     let cancelled = false;
     async function check() {
       if (!user) {
         setIsTeacher(false);
-        setLoading(false);
+        setCheckedFor('anonymous');
         return;
       }
       const { data, error } = await supabase
@@ -23,11 +26,12 @@ export function useTeacherRole() {
       if (cancelled) return;
       if (error) console.warn('useTeacherRole', error);
       setIsTeacher((data ?? []).length > 0);
-      setLoading(false);
+      setCheckedFor(user.id);
     }
     void check();
     return () => { cancelled = true; };
-  }, [user]);
+  }, [user, authLoading]);
 
+  const loading = authLoading || checkedFor !== (user ? user.id : 'anonymous');
   return { isTeacher: isTeacher || isAdmin, loading };
 }

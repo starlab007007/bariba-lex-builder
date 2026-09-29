@@ -111,6 +111,8 @@ const App = () => (
                   <Route path="learn/voice-studio" element={<FitilaVoiceLab />} />
                   <Route path="learn/voice-review" element={<FitilaVoiceLab />} />
 
+                <Route path="classe/corrections" element={<ProtectedRoute><ClasseCorrections /></ProtectedRoute>} />
+                <Route path="classe/notes" element={<ProtectedRoute><MyGradeReport /></ProtectedRoute>} />
                   <Route path="classe" element={<FitilaClasse />} />
                   <Route path="classe/:level/*" element={<FitilaClasse />} />
 
@@ -142,12 +144,7 @@ const App = () => (
                   <Route path="install" element={<InstallPage />} />
                   <Route path="keyboard" element={<FloatingKeyboardPage />} />
 
-                  <Route path="profile" element={<ProtectedRoute><SafeBoundary label="Profil"><TamTamProfile /></SafeBoundary></ProtectedRoute>} />
-                  <Route path="user/:userId" element={<TamTamPublicProfile />} />
-                  <Route path="profile/:userId" element={<TamTamPublicProfile />} />
-                </Route>
-
-                <Route path="/teacher" element={<ProtectedRoute requireTeacher><TeacherLayout /></ProtectedRoute>}>
+                <Route path="teacher" element={<ProtectedRoute requireTeacher><TeacherLayout /></ProtectedRoute>}>
                   <Route index element={<TeacherDashboard />} />
                   <Route path="students" element={<StudentList />} />
                   <Route path="student/:id" element={<StudentDetail />} />
@@ -160,9 +157,10 @@ const App = () => (
                   <Route path="voice-reading/:level/:module" element={<VoiceReadingLessons />} />
                   <Route path="voice-reading/:level/:module/:lessonId" element={<VoiceReadingStudio />} />
                 </Route>
-
-                <Route path="/classe/corrections" element={<ProtectedRoute><ClasseCorrections /></ProtectedRoute>} />
-                <Route path="/classe/notes" element={<ProtectedRoute><MyGradeReport /></ProtectedRoute>} />
+                  <Route path="profile" element={<ProtectedRoute><SafeBoundary label="Profil"><TamTamProfile /></SafeBoundary></ProtectedRoute>} />
+                  <Route path="user/:userId" element={<TamTamPublicProfile />} />
+                  <Route path="profile/:userId" element={<TamTamPublicProfile />} />
+                </Route>
 
                 <Route path="/admin/voice-corpus" element={<ProtectedRoute requireAdmin><VoiceCorpusAdmin /></ProtectedRoute>} />
                 <Route path="/admin/*" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
