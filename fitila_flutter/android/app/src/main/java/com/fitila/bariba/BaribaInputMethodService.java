@@ -66,11 +66,12 @@ public class BaribaInputMethodService extends InputMethodService {
     private static final String COMBINING_ACUTE = "\u0301";
     private static final String COMBINING_TILDE = "\u0303";
 
-    // Edge function URL (anon key embedded — public publishable key, safe).
-    private static final String TRANSLATE_URL =
-            "https://dvswhjawiooprghzeyol.supabase.co/functions/v1/bariba-translate";
-    private static final String ANON_KEY =
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcmhlemdueWZmaXNrYmFpdWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyODgzNzAsImV4cCI6MjA3ODg2NDM3MH0.BRqdPly5tClRwhuQes1dckaTNQkbjIqZ5I8q6km_lZ4";
+    // Remote translation config is pushed by the Flutter app through the
+    // `fitila/keyboard` MethodChannel (syncConfig) into the shared prefs, so no
+    // key is hardcoded here. Without it the keyboard stays fully offline.
+    private static final String PREF_SUPABASE_URL = "supabase_url";
+    private static final String PREF_SUPABASE_KEY = "supabase_key";
+    private static final String[] TRANSLATE_FUNCTIONS = {"ai-translate", "byt5-bariba-translate"};
 
     private static final List<String> ROW1 =
             Arrays.asList("a","z","e","r","t","y","u","i","o","p");
@@ -738,31 +739,38 @@ public class BaribaInputMethodService extends InputMethodService {
     private interface RemoteTranslateCallback { void onResult(String translated); }
 
     private void fetchRemoteTranslation(String text, String direction, RemoteTranslateCallback cb) {
-        try {
-            URL url = new URL(TRANSLATE_URL);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("POST");
-            conn.setConnectTimeout(2500);
-            conn.setReadTimeout(4000);
-            conn.setDoOutput(true);
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setRequestProperty("apikey", ANON_KEY);
-            conn.setRequestProperty("Authorization", "Bearer " + ANON_KEY);
-            String payload = "{\"text\":" + jsonStr(text) + ",\"direction\":\"" + direction + "\"}";
-            conn.getOutputStream().write(payload.getBytes(StandardCharsets.UTF_8));
-            int code = conn.getResponseCode();
-            if (code < 200 || code >= 300) return;
-            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            String l; while ((l = br.readLine()) != null) sb.append(l);
-            br.close();
-            String body = sb.toString();
-            String t = extractField(body, "translation");
-            if (t == null) t = extractField(body, "result");
-            if (t == null) t = extractField(body, "text");
-            if (t == null || t.isEmpty()) return;
-            cb.onResult(t);
-        } catch (Throwable t) { /* silent */ }
+        SharedPreferences prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        String base = prefs.getString(PREF_SUPABASE_URL, "");
+        String key = prefs.getString(PREF_SUPABASE_KEY, "");
+        if (base == null || base.isEmpty() || key == null || key.isEmpty()) return;
+        boolean baToFr = "ba-fr".equals(direction);
+        String payload = "{\"text\":" + jsonStr(text)
+                + ",\"sourceLang\":\"" + (baToFr ? "bariba" : "french") + "\""
+                + ",\"targetLang\":\"" + (baToFr ? "french" : "bariba") + "\"}";
+        for (String fn : TRANSLATE_FUNCTIONS) {
+            try {
+                URL url = new URL(base + "/functions/v1/" + fn);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setConnectTimeout(2500);
+                conn.setReadTimeout(6000);
+                conn.setDoOutput(true);
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("apikey", key);
+                conn.setRequestProperty("Authorization", "Bearer " + key);
+                conn.getOutputStream().write(payload.getBytes(StandardCharsets.UTF_8));
+                int code = conn.getResponseCode();
+                if (code < 200 || code >= 300) { conn.disconnect(); continue; }
+                BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
+                StringBuilder sb = new StringBuilder();
+                String l; while ((l = br.readLine()) != null) sb.append(l);
+                br.close();
+                String t = extractField(sb.toString(), "translation");
+                if (t == null || t.isEmpty()) continue;
+                cb.onResult(t);
+                return;
+            } catch (Throwable t) { /* try next engine, stay silent */ }
+        }
     }
 
     private static String extractField(String json, String key) {

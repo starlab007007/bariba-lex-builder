@@ -34,12 +34,45 @@ import 'handunia/handunia_creation_ai_route.dart';
 import 'handunia/handunia_map_data.dart';
 import 'handunia/handunia_unified_map.dart';
 import 'handunia/handunia_consultation_ui.dart';
+import 'keyboard/bariba_input.dart';
+import 'keyboard/bariba_keyboard_engine.dart';
+import 'keyboard/keyboard_bridge.dart';
+import 'keyboard/keyboard_onboarding.dart';
+import 'keyboard/keyboard_prompt.dart';
 import 'ui/reference_creation_ui.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await FitilaBackend.initialize();
+  _wireBaribaKeyboard();
   runApp(const FitilaApp());
+}
+
+/// Shares config with the native keyboards and plugs the online translator
+/// used by the keyboard's "Saisir et Traduire" mode.
+void _wireBaribaKeyboard() {
+  if (FitilaBackend.configured) {
+    unawaited(
+      KeyboardBridge.instance.syncConfig(
+        supabaseUrl: FitilaBackend.supabaseUrl,
+        anonKey: FitilaBackend.supabaseAnonKey,
+      ),
+    );
+  }
+  BaribaKeyboardServices.translator = (text, direction) async {
+    final token = FitilaBackend.client.auth.currentSession?.accessToken;
+    if (token == null || token.isEmpty) {
+      return null; // engine falls back to the embedded dictionary
+    }
+    return FitilaServices.translate(
+      text,
+      direction == KeyboardTranslationDirection.frenchToBariba
+          ? TranslationDirection.frenchToBariba
+          : TranslationDirection.baribaToFrench,
+      accessToken: token,
+      dictionaryLoader: () async => const <DictionaryEntry>[],
+    );
+  };
 }
 
 const _fitilaPrimary = Color(0xFFC99530);
@@ -1771,6 +1804,15 @@ class _FitilaShellState extends State<FitilaShell> {
       _posts.clear();
       _loadFeed();
     }
+    // Offer the system Bariba keyboard once, after the first frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) {
+        return;
+      }
+      if (await maybeOfferBaribaKeyboard(context) && mounted) {
+        _navigate(FitilaPage.keyboard);
+      }
+    });
   }
 
   Future<void> _loadFeed() async {
@@ -13788,359 +13830,16 @@ class _WebLessonTile extends StatelessWidget {
   }
 }
 
-class KeyboardScreen extends StatefulWidget {
+class KeyboardScreen extends StatelessWidget {
   const KeyboardScreen({super.key});
 
   @override
-  State<KeyboardScreen> createState() => _KeyboardScreenState();
-}
-
-class _KeyboardScreenState extends State<KeyboardScreen>
-    with WidgetsBindingObserver {
-  static const _channel = MethodChannel('fitila/keyboard');
-  final _controller = TextEditingController();
-  bool? _enabled;
-  bool? _selected;
-  bool _checking = true;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _refreshStatus();
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Re-vérifie le statut quand l'utilisateur revient des réglages Android.
-    if (state == AppLifecycleState.resumed) {
-      _refreshStatus();
-    }
-  }
-
-  Future<void> _refreshStatus() async {
-    setState(() => _checking = true);
-    try {
-      final result = await _channel.invokeMapMethod<String, dynamic>(
-        'getKeyboardStatus',
-      );
-      setState(() {
-        _enabled = result?['enabled'] as bool? ?? false;
-        _selected = result?['selected'] as bool? ?? false;
-        _checking = false;
-      });
-    } on PlatformException catch (_) {
-      setState(() {
-        _enabled = null;
-        _selected = null;
-        _checking = false;
-      });
-    } on MissingPluginException catch (_) {
-      // Environnement de test/desktop sans canal natif enregistré.
-      setState(() {
-        _enabled = null;
-        _selected = null;
-        _checking = false;
-      });
-    }
-  }
-
-  Future<void> _openSettings() async {
-    try {
-      await _channel.invokeMethod('openInputMethodSettings');
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Impossible d'ouvrir les réglages Android depuis cet appareil.",
-          ),
-        ),
-      );
-    }
-  }
-
-  Future<void> _showPicker() async {
-    try {
-      await _channel.invokeMethod('showInputMethodPicker');
-      await Future.delayed(const Duration(milliseconds: 500));
-      await _refreshStatus();
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Sélecteur de clavier indisponible sur cet appareil.'),
-        ),
-      );
-    }
-  }
-
-  void _insert(String letter) {
-    final selection = _controller.selection;
-    final text = _controller.text;
-    final start = selection.start < 0 ? text.length : selection.start;
-    final end = selection.end < 0 ? text.length : selection.end;
-    final next = text.replaceRange(start, end, letter);
-    _controller.value = TextEditingValue(
-      text: next,
-      selection: TextSelection.collapsed(offset: start + letter.length),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final isActive = _enabled == true && _selected == true;
-    return _PageFrame(
+    return const _PageFrame(
       title: 'Clavier Bariba',
       subtitle:
           'Clavier système natif — activable dans toutes vos applications.',
-      child: RefreshIndicator(
-        onRefresh: _refreshStatus,
-        color: _fitilaPrimary,
-        child: ListView(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: isActive
-                      ? [_fitilaSage, const Color(0xFF2C5039)]
-                      : [const Color(0xFF5B5460), _fitilaInk],
-                ),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Statut',
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
-                      ),
-                      if (_checking)
-                        const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      else
-                        Icon(
-                          isActive
-                              ? Icons.check_circle_rounded
-                              : Icons.circle_outlined,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _checking
-                        ? 'Vérification…'
-                        : isActive
-                        ? 'Actif ✓'
-                        : (_enabled ?? false)
-                        ? 'Activé, non sélectionné'
-                        : 'Non activé',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 19,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Fraunces',
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    isActive
-                        ? 'Le clavier Bariba est activé et sélectionné comme méthode de saisie par défaut.'
-                        : "Le clavier est installé avec FITILA mais doit être activé puis sélectionné pour fonctionner dans vos applications.",
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 11.5,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            _KeyboardStepCard(
-              done: true,
-              number: '✓',
-              title: 'Clavier installé',
-              subtitle:
-                  'Installé automatiquement avec FITILA — aucune action requise.',
-            ),
-            _KeyboardStepCard(
-              done: _enabled == true,
-              number: '1',
-              title: 'Activer dans les réglages Android',
-              subtitle:
-                  'Réglages → Langues et saisie → Claviers, puis active « Clavier Bariba Fitila ».',
-              actionLabel: 'Ouvrir les réglages',
-              onAction: _openSettings,
-            ),
-            _KeyboardStepCard(
-              done: _selected == true,
-              number: '2',
-              title: 'Sélectionner comme clavier actif',
-              subtitle:
-                  'Choisis « Clavier Bariba Fitila » dans le sélecteur de clavier.',
-              actionLabel: 'Choisir le clavier',
-              onAction: _showPicker,
-            ),
-            const SizedBox(height: 6),
-            OutlinedButton.icon(
-              onPressed: _refreshStatus,
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Vérifier le statut'),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Aperçu — clavier de démonstration',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Reproduit les caractères Bariba disponibles sur le clavier natif (rangée dédiée + variantes par appui long).',
-              style: TextStyle(fontSize: 11.5, color: _fitilaMuted),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _controller,
-              minLines: 3,
-              maxLines: 5,
-              decoration: const InputDecoration(
-                hintText: 'Écrire ici avec les caractères Bariba...',
-                prefixIcon: Icon(Icons.edit_rounded),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _BaribaKeyboard(onInsert: _insert),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _KeyboardStepCard extends StatelessWidget {
-  const _KeyboardStepCard({
-    required this.done,
-    required this.number,
-    required this.title,
-    required this.subtitle,
-    this.actionLabel,
-    this.onAction,
-  });
-
-  final bool done;
-  final String number;
-  final String title;
-  final String subtitle;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _fitilaSurface,
-        border: Border.all(color: _fitilaBorder),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 26,
-            height: 26,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: done
-                  ? _fitilaSage.withValues(alpha: .16)
-                  : _fitilaGoldDeep.withValues(alpha: .14),
-            ),
-            child: Text(
-              number,
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 12.5,
-                color: done ? _fitilaSage : _fitilaGoldDeep,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: _fitilaMuted,
-                    height: 1.4,
-                  ),
-                ),
-                if (actionLabel != null && !done) ...[
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 32,
-                    child: ElevatedButton(
-                      onPressed: onAction,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _fitilaInk,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(9),
-                        ),
-                      ),
-                      child: Text(
-                        actionLabel!,
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
+      child: KeyboardOnboarding(),
     );
   }
 }
@@ -21009,25 +20708,7 @@ void _showContribution(BuildContext context) {
 }
 
 void _showKeyboard(BuildContext context, TextEditingController controller) {
-  void insert(String letter) {
-    final selection = controller.selection;
-    final text = controller.text;
-    final start = selection.start < 0 ? text.length : selection.start;
-    final end = selection.end < 0 ? text.length : selection.end;
-    controller.value = TextEditingValue(
-      text: text.replaceRange(start, end, letter),
-      selection: TextSelection.collapsed(offset: start + letter.length),
-    );
-  }
-
-  showModalBottomSheet<void>(
-    context: context,
-    showDragHandle: true,
-    builder: (_) => Padding(
-      padding: const EdgeInsets.all(16),
-      child: _BaribaKeyboard(onInsert: insert),
-    ),
-  );
+  showBaribaKeyboardSheet(context, controller);
 }
 
 void _showLesson(BuildContext context, LessonCardData lesson) {
