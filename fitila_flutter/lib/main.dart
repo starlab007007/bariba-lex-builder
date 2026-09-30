@@ -22,6 +22,8 @@ import 'core/fitila_backend.dart';
 import 'core/fitila_language.dart';
 import 'core/fitila_live.dart';
 import 'core/fitila_media.dart';
+import 'core/local_speech.dart';
+import 'core/offline.dart';
 import 'core/fitila_translation_audio.dart';
 import 'core/foncier_rag.dart';
 import 'core/signature_theme.dart';
@@ -40,12 +42,14 @@ import 'classe/classe_content.dart';
 import 'classe/classe_hub.dart';
 import 'classe/classe_lookup.dart';
 import 'classe/classe_session.dart';
+import 'classe/classe_offline.dart';
 import 'classe/classe_store.dart';
 import 'classe/classe_widgets.dart' show ClasseStoragePlayer;
 import 'espace/espace_home.dart';
 import 'keyboard/bariba_input.dart';
 import 'dictionary/dictionary_experience.dart';
 import 'translator/translator_chat.dart';
+import 'ui/offline_banner.dart';
 import 'ui/premium_widgets.dart';
 import 'keyboard/bariba_keyboard_engine.dart';
 import 'keyboard/keyboard_bridge.dart';
@@ -56,6 +60,10 @@ import 'ui/reference_creation_ui.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await FitilaBackend.initialize();
+  if (FitilaBackend.configured) {
+    OfflineClasseStore.registerHandlers(SupabaseClasseStore.new);
+    FitilaOffline.start();
+  }
   _wireBaribaKeyboard();
   runApp(const FitilaApp());
 }
@@ -73,7 +81,7 @@ void _wireBaribaKeyboard() {
   }
   BaribaKeyboardServices.translator = (text, direction) async {
     final token = FitilaBackend.client.auth.currentSession?.accessToken;
-    if (token == null || token.isEmpty) {
+    if (token == null || token.isEmpty || !FitilaOffline.online.value) {
       return null; // engine falls back to the embedded dictionary
     }
     return FitilaServices.translate(
@@ -85,6 +93,40 @@ void _wireBaribaKeyboard() {
       dictionaryLoader: () async => const <DictionaryEntry>[],
     );
   };
+}
+
+/// Lit un texte : voix FITILA en ligne, sinon voix locale (téléphone / voix Apprendre déjà téléchargées).
+Future<void> _speakAnywhere(audio.AudioPlayer player, String text, {required bool bariba}) async {
+  Future<void> offlineSpeak() async {
+    if (await LocalSpeech.speak(text, bariba: bariba)) return;
+    throw StateError(
+      bariba
+          ? 'Hors connexion : cette voix Bàátɔ̀nú n’est pas encore téléchargée (Apprendre › Voix hors-ligne).'
+          : 'Voix indisponible hors connexion sur cet appareil.',
+    );
+  }
+
+  if (!FitilaOffline.online.value || !FitilaBackend.configured) {
+    return offlineSpeak();
+  }
+  try {
+    await player.stop();
+    final generated = await FitilaTranslationAudio.synthesize(text: text, bariba: bariba);
+    final url = generated.url?.trim() ?? '';
+    if (url.isNotEmpty) {
+      await player.play(audio.UrlSource(url));
+      return;
+    }
+    final path = await generated.materialize();
+    if (path == null || path.isEmpty) throw StateError('Audio non disponible.');
+    await player.play(audio.DeviceFileSource(path));
+  } catch (e) {
+    if (FitilaOffline.isNetworkError(e)) {
+      FitilaOffline.reportFailure(e);
+      return offlineSpeak();
+    }
+    rethrow;
+  }
 }
 
 const _fitilaPrimary = Color(0xFFC99530);
@@ -571,7 +613,9 @@ class FitilaServices {
     // 1. ai-translate (Lovable/Gemini when configured)
     // 2. byt5-bariba-translate (FITILA Bariba model)
     // 3. embedded dictionary exact match below.
-    if (accessToken != null && accessToken.isNotEmpty) {
+    if (accessToken != null &&
+        accessToken.isNotEmpty &&
+        FitilaOffline.online.value) {
       final transport = client ?? http.Client();
       final body = jsonEncode({
         'text': trimmed,
@@ -617,8 +661,13 @@ class FitilaServices {
                 return translated;
               }
             }
-          } catch (_) {
-            // Continue to the next real translation engine.
+          } catch (e) {
+            // Réseau coupé : inutile d'essayer les autres moteurs, on bascule hors-ligne.
+            if (FitilaOffline.isNetworkError(e)) {
+              FitilaOffline.reportFailure(e);
+              break;
+            }
+            // Sinon on continue vers le moteur suivant.
           }
         }
       } finally {
@@ -628,6 +677,23 @@ class FitilaServices {
       }
     }
 
+    // Hors-ligne : moteur local (phrases connues, puis mot à mot) du dictionnaire embarqué.
+    if (dictionaryLoader == null) {
+      try {
+        final engine = await BaribaKeyboardEngine.load();
+        final local = engine.translateOffline(
+          trimmed,
+          direction == TranslationDirection.frenchToBariba
+              ? KeyboardTranslationDirection.frenchToBariba
+              : KeyboardTranslationDirection.baribaToFrench,
+        );
+        if (local != null && local.trim().isNotEmpty) {
+          return local.trim();
+        }
+      } catch (_) {
+        /* moteur indisponible : dictionnaire exact ci-dessous */
+      }
+    }
     final entries = await (dictionaryLoader ?? loadDictionary)();
     final query = trimmed.toLowerCase();
     for (final entry in entries) {
@@ -641,7 +707,9 @@ class FitilaServices {
       }
     }
     throw StateError(
-      'Aucune traduction disponible. Vérifiez la connexion puis réessayez.',
+      FitilaOffline.online.value
+          ? 'Aucune traduction disponible. Vérifiez la connexion puis réessayez.'
+          : 'Hors connexion : ce texte n’est pas dans le dictionnaire local. Essayez un mot ou une phrase courante.',
     );
   }
 
@@ -998,10 +1066,25 @@ class FitilaShell extends StatefulWidget {
   State<FitilaShell> createState() => _FitilaShellState();
 }
 
-class _FitilaShellState extends State<FitilaShell> {
+class _FitilaShellState extends State<FitilaShell>
+    with WidgetsBindingObserver {
   FitilaPage _page = FitilaPage.feed;
   final Set<FitilaPage> _visited = {FitilaPage.feed};
   final List<FitilaPage> _history = [];
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Au retour dans l'app : on resonde le réseau et on renvoie les modifications en attente.
+    if (state == AppLifecycleState.resumed && FitilaBackend.configured) {
+      FitilaOffline.refresh();
+    }
+  }
 
   void _navigate(FitilaPage page) {
     if (page == _page) {
@@ -1120,6 +1203,7 @@ class _FitilaShellState extends State<FitilaShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (widget.session.accessToken.isNotEmpty) {
       _posts.clear();
       _loadFeed();
@@ -1322,6 +1406,7 @@ class _FitilaShellState extends State<FitilaShell> {
                             session: widget.session,
                             onProfile: () => _navigate(FitilaPage.profile),
                           ),
+                        const OfflineBanner(),
                         Expanded(
                           child: IndexedStack(
                             index: FitilaPage.values.indexOf(_page),
@@ -7059,18 +7144,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     super.dispose();
   }
 
-  Future<void> _speak(String text, bool bariba) async {
-    await _player.stop();
-    final generated = await FitilaTranslationAudio.synthesize(text: text, bariba: bariba);
-    final url = generated.url?.trim() ?? '';
-    if (url.isNotEmpty) {
-      await _player.play(audio.UrlSource(url));
-      return;
-    }
-    final path = await generated.materialize();
-    if (path == null || path.isEmpty) throw StateError('Audio non disponible.');
-    await _player.play(audio.DeviceFileSource(path));
-  }
+  Future<void> _speak(String text, bool bariba) => _speakAnywhere(_player, text, bariba: bariba);
 
   Future<String> _stopVoice(bool baToFr) async {
     final asset = await _voiceMedia.stopAudio();
@@ -7159,23 +7233,7 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
         sourceIsBariba: sourceIsBariba,
       );
     },
-    speak: (text, bariba) async {
-      await _voicePlayer.stop();
-      final generated = await FitilaTranslationAudio.synthesize(
-        text: text,
-        bariba: bariba,
-      );
-      final url = generated.url?.trim() ?? '';
-      if (url.isNotEmpty) {
-        await _voicePlayer.play(audio.UrlSource(url));
-        return;
-      }
-      final path = await generated.materialize();
-      if (path == null || path.isEmpty) {
-        throw StateError('Audio non disponible.');
-      }
-      await _voicePlayer.play(audio.DeviceFileSource(path));
-    },
+    speak: (text, bariba) => _speakAnywhere(_voicePlayer, text, bariba: bariba),
     ocr: (toBariba, document) async {
       if (!FitilaBackend.configured) {
         throw StateError('Serveur FITILA indisponible.');
@@ -10565,7 +10623,7 @@ class _ClasseScreenState extends State<ClasseScreen> {
   void initState() {
     super.initState();
     _ownsSession = widget.session == null;
-    _session = widget.session ?? ClasseSession(store: SupabaseClasseStore());
+    _session = widget.session ?? ClasseSession(store: OfflineClasseStore(SupabaseClasseStore()));
   }
 
   @override
@@ -12233,7 +12291,7 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     } finally {
       if (mounted) {
         setState(() => _saving = false);
@@ -12979,7 +13037,7 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     } finally {
       if (mounted) {
         setState(() => _saving = false);
@@ -13300,7 +13358,7 @@ class _TeacherWeightsTabState extends State<_TeacherWeightsTab> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     } finally {
       if (mounted) {
         setState(() => _saving = false);
@@ -14092,7 +14150,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadClasse() async {
-    final store = SupabaseClasseStore();
+    final store = OfflineClasseStore(SupabaseClasseStore());
     for (final level in const ['N1', 'N2']) {
       try {
         final p = await store.loadProgress(level);
@@ -14137,7 +14195,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     }
   }
 
@@ -14179,7 +14237,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     } finally {
       if (mounted) {
         setState(() => _uploadingAvatar = false);
@@ -14218,7 +14276,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+        ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
       } finally {
         if (mounted) {
           setState(() => _uploadingBio = false);
@@ -14323,8 +14381,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     }
+  }
+
+  File? _avatarFile;
+
+  Future<void> _prepareAvatar() async {
+    final url = (_profile?['avatar_url'] as String?) ?? '';
+    final file = await FitilaOffline.cachedFile(url);
+    if (mounted && file?.path != _avatarFile?.path) setState(() => _avatarFile = file);
+  }
+
+  ImageProvider? get _avatarImage {
+    final url = (_profile?['avatar_url'] as String?) ?? '';
+    if (url.isEmpty) return null;
+    return _avatarFile != null ? FileImage(_avatarFile!) : NetworkImage(url);
   }
 
   Future<void> _loadProfile() async {
@@ -14333,6 +14405,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final profile = await FitilaBackend.fetchProfile(widget.session.userId);
       if (mounted) {
         setState(() => _profile = profile);
+        unawaited(_prepareAvatar());
       }
     } catch (_) {
       if (mounted) {
@@ -14503,7 +14576,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: Colors.white,
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 3),
-                    image: avatar.isNotEmpty ? DecorationImage(image: NetworkImage(avatar), fit: BoxFit.cover) : null,
+                    image: avatar.isNotEmpty ? DecorationImage(image: _avatarImage ?? NetworkImage(avatar), fit: BoxFit.cover, onError: (_, _) {}) : null,
                   ),
                   child: avatar.isNotEmpty
                       ? null
@@ -14911,7 +14984,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erreur export : $e')));
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e, prefix: 'Erreur export'))));
     } finally {
       if (mounted) {
         setState(() => _exporting = false);
@@ -14964,7 +15037,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     }
   }
 
@@ -14998,6 +15071,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.only(bottom: 28),
         children: [
           if (_loadingPrefs) const LinearProgressIndicator(minHeight: 3),
+          Reveal(
+            child: ListenableBuilder(
+              listenable: Listenable.merge([FitilaOffline.online, FitilaOffline.pending]),
+              builder: (context, _) {
+                final online = FitilaOffline.online.value;
+                final pending = FitilaOffline.pending.value;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionLabel('Connexion et synchronisation'),
+                    PremiumCard(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      child: PremiumActionRow(
+                        icon: online ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
+                        title: online ? 'En ligne' : 'Hors connexion',
+                        subtitle: pending == 0
+                            ? (online ? 'Tout est synchronisé.' : 'Dictionnaire, Apprendre, clavier et profil restent disponibles.')
+                            : '$pending modification${pending > 1 ? 's' : ''} en attente d’envoi.',
+                        trailing: TextButton(
+                          key: const ValueKey('sync-now'),
+                          onPressed: () async {
+                            final ok = await FitilaOffline.refresh();
+                            final sent = ok ? await FitilaOffline.flush() : 0;
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  !ok
+                                      ? 'Toujours hors connexion.'
+                                      : sent > 0
+                                      ? '$sent modification${sent > 1 ? 's' : ''} envoyée${sent > 1 ? 's' : ''}.'
+                                      : 'Tout est à jour.',
+                                ),
+                              ),
+                            );
+                          },
+                          child: const Text('Synchroniser'),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
           _group(0, 'Langue et affichage', [
             PremiumSwitchRow(
               icon: Icons.language_rounded,

@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'offline.dart';
+
 class FitilaBackendSession {
   const FitilaBackendSession({
     required this.userId,
@@ -18,6 +20,14 @@ class FitilaBackendSession {
   final String username;
   final String accessToken;
   final bool isAdmin;
+
+  Map<String, dynamic> toJson() => {
+    'userId': userId,
+    'phone': phone,
+    'displayName': displayName,
+    'username': username,
+    'isAdmin': isAdmin,
+  };
 }
 
 class FitilaBackend {
@@ -40,6 +50,27 @@ class FitilaBackend {
         authFlowType: AuthFlowType.pkce,
       ),
     );
+    registerOfflineHandlers();
+  }
+
+  /// Rejeu des écritures faites hors-ligne (voir [FitilaOffline]).
+  static void registerOfflineHandlers() {
+    FitilaOffline.register('prefs', (p) => _pushPreferences(p));
+    FitilaOffline.register('privacy', (p) => _pushPrivacy(p));
+    FitilaOffline.register('profile', (p) => _pushProfile(p['userId'] as String, Map<String, dynamic>.from(p['updates'] as Map)));
+    FitilaOffline.register('learning', (p) async {
+      await _recordLearningSessionRemote(
+        sessionType: p['sessionType'] as String,
+        themeKey: p['themeKey'] as String?,
+        lessonRef: p['lessonRef'] as String?,
+        direction: p['direction'] as String?,
+        correctCount: p['correctCount'] as int,
+        totalCount: p['totalCount'] as int,
+      );
+    });
+    FitilaOffline.register('history', (p) async {
+      await _insertTranslationHistory(p);
+    });
   }
 
   static SupabaseClient get client {
@@ -177,7 +208,7 @@ class FitilaBackend {
         .maybeSingle();
 
     final metadata = session.user.userMetadata ?? const <String, dynamic>{};
-    return FitilaBackendSession(
+    final built = FitilaBackendSession(
       userId: userId,
       phone:
           resolvedProfile?['phone_number']?.toString() ??
@@ -193,6 +224,8 @@ class FitilaBackend {
       accessToken: session.accessToken,
       isAdmin: role != null,
     );
+    await FitilaOffline.putJson('session', built.toJson());
+    return built;
   }
 
   static Future<FitilaBackendSession?> restoreSession() async {
@@ -204,17 +237,54 @@ class FitilaBackend {
       return null;
     }
     try {
-      return await sessionFromSupabase(session);
-    } on AuthException {
-      await client.auth.signOut();
-      return null;
+      final restored = await sessionFromSupabase(session).timeout(const Duration(seconds: 8));
+      FitilaOffline.reportSuccess();
+      return restored;
+    } catch (e) {
+      // Pas de réseau : on rouvre l'app avec la dernière identité connue (jamais de déconnexion forcée).
+      if (FitilaOffline.isNetworkError(e)) {
+        FitilaOffline.reportFailure(e);
+        final cached = await FitilaOffline.getJson<Map<String, dynamic>>('session');
+        if (cached != null && cached['userId'] == session.user.id) {
+          return FitilaBackendSession(
+            userId: session.user.id,
+            phone: (cached['phone'] ?? '').toString(),
+            displayName: (cached['displayName'] ?? 'Utilisateur FITILA').toString(),
+            username: (cached['username'] ?? '').toString(),
+            accessToken: session.accessToken,
+            isAdmin: cached['isAdmin'] == true,
+          );
+        }
+        final meta = session.user.userMetadata ?? const <String, dynamic>{};
+        return FitilaBackendSession(
+          userId: session.user.id,
+          phone: (meta['phone_number'] ?? '').toString(),
+          displayName: (meta['display_name'] ?? 'Utilisateur FITILA').toString(),
+          username: '',
+          accessToken: session.accessToken,
+          isAdmin: false,
+        );
+      }
+      if (e is AuthException) {
+        await client.auth.signOut();
+        return null;
+      }
+      rethrow;
     }
   }
 
   static Future<void> signOut() async {
     if (configured) {
-      await client.auth.signOut();
+      try {
+        await client.auth.signOut();
+      } catch (_) {
+        // Hors-ligne : la session locale est tout de même supprimée.
+        try {
+          await client.auth.signOut(scope: SignOutScope.local);
+        } catch (_) {}
+      }
     }
+    await FitilaOffline.clearUserData();
   }
 
   static Future<String> askFitilaIa(String message) async {
@@ -242,7 +312,20 @@ class FitilaBackend {
     return answer.replaceAll(RegExp(r'\.\s+'), '.\n\n').trim();
   }
 
-  static Future<List<Map<String, dynamic>>> fetchPublicFeed({
+  /// Fil public : dernière version lue gardée sur l'appareil pour la lecture hors-ligne.
+  static Future<List<Map<String, dynamic>>> fetchPublicFeed({int limit = 40}) {
+    return offlineFirst<List<Map<String, dynamic>>>(() async {
+      final feed = await _fetchPublicFeedRemote(limit: limit);
+      await FitilaOffline.putJson('feed', feed);
+      return feed;
+    }, () async {
+      final cached = await FitilaOffline.getJson<List<dynamic>>('feed');
+      if (cached == null) throw const SocketExceptionLike();
+      return [for (final e in cached) Map<String, dynamic>.from(e as Map)];
+    });
+  }
+
+  static Future<List<Map<String, dynamic>>> _fetchPublicFeedRemote({
     int limit = 40,
   }) async {
     final results = await Future.wait<dynamic>([
@@ -409,22 +492,46 @@ class FitilaBackend {
     return {...data, '_source': 'post'};
   }
 
-  static Future<Map<String, dynamic>?> fetchProfile(String userId) async {
-    return client
-        .from('tamtam_profiles')
-        .select()
-        .eq('user_id', userId)
-        .maybeSingle();
+  static Future<Map<String, dynamic>?> fetchProfile(String userId) {
+    return offlineFirst<Map<String, dynamic>?>(() async {
+      final row = await client
+          .from('tamtam_profiles')
+          .select()
+          .eq('user_id', userId)
+          .maybeSingle();
+      if (row != null) await FitilaOffline.putJson('profile:$userId', row);
+      return row;
+    }, () async {
+      final cached = await FitilaOffline.getJson<Map<String, dynamic>>('profile:$userId');
+      if (cached == null) throw const SocketExceptionLike();
+      return cached;
+    });
   }
 
-  static Future<void> updateProfile(
-    String userId,
-    Map<String, dynamic> updates,
-  ) async {
+  static Future<void> _pushProfile(String userId, Map<String, dynamic> updates) async {
     await client
         .from('tamtam_profiles')
         .update({...updates, 'updated_at': DateTime.now().toIso8601String()})
         .eq('user_id', userId);
+  }
+
+  /// Met à jour le profil : copie locale immédiate, envoi différé si le réseau manque.
+  static Future<void> updateProfile(
+    String userId,
+    Map<String, dynamic> updates,
+  ) async {
+    final cached = await FitilaOffline.getJson<Map<String, dynamic>>('profile:$userId');
+    if (cached != null) {
+      await FitilaOffline.putJson('profile:$userId', {...cached, ...updates});
+    }
+    try {
+      await _pushProfile(userId, updates);
+      FitilaOffline.reportSuccess();
+    } catch (e) {
+      if (!FitilaOffline.isNetworkError(e)) rethrow;
+      FitilaOffline.reportFailure(e);
+      await FitilaOffline.enqueue('profile', {'userId': userId, 'updates': updates}, dedupeKey: 'profile:$userId', merge: false);
+    }
   }
 
   static Future<Map<String, dynamic>> fetchVoiceLab() async {
@@ -1246,75 +1353,92 @@ class FitilaBackend {
   // Paramètres & Profil — préférences, confidentialité, avatar, bio audio
   // ---------------------------------------------------------------------
 
-  static Future<Map<String, dynamic>> fetchPreferences() async {
+  static Future<Map<String, dynamic>> _fetchJsonColumn(String column) async {
     final user = client.auth.currentUser;
     if (user == null) {
       return const {};
     }
     final row = await client
         .from('tamtam_profiles')
-        .select('preferences')
+        .select(column)
         .eq('user_id', user.id)
         .maybeSingle();
-    final prefs = row?['preferences'];
-    return prefs is Map
-        ? Map<String, dynamic>.from(prefs)
-        : <String, dynamic>{};
+    final v = row?[column];
+    return v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
   }
 
-  static Future<Map<String, dynamic>> updatePreferences(
-    Map<String, dynamic> partial,
-  ) async {
+  static Future<Map<String, dynamic>> _readColumn(String column) {
+    final uid = client.auth.currentUser?.id ?? '_';
+    return offlineFirst<Map<String, dynamic>>(() async {
+      final remote = await _fetchJsonColumn(column);
+      // Les changements encore en file priment sur la valeur serveur.
+      final local = await FitilaOffline.getJson<Map<String, dynamic>>('$column:$uid:pending') ?? const {};
+      final merged = {...remote, ...local};
+      await FitilaOffline.putJson('$column:$uid', merged);
+      return merged;
+    }, () async {
+      final cached = await FitilaOffline.getJson<Map<String, dynamic>>('$column:$uid');
+      return cached ?? <String, dynamic>{};
+    });
+  }
+
+  static Future<Map<String, dynamic>> _writeColumn(String column, String kind, Map<String, dynamic> partial) async {
     final user = client.auth.currentUser;
     if (user == null) {
       throw const AuthException('Connexion requise.');
     }
-    final current = await fetchPreferences();
-    final merged = {...current, ...partial};
-    await client
-        .from('tamtam_profiles')
-        .update({
-          'preferences': merged,
-          'updated_at': DateTime.now().toIso8601String(),
-        })
-        .eq('user_id', user.id);
+    final uid = user.id;
+    final cached = await FitilaOffline.getJson<Map<String, dynamic>>('$column:$uid') ?? <String, dynamic>{};
+    final merged = {...cached, ...partial};
+    await FitilaOffline.putJson('$column:$uid', merged);
+    final pending = await FitilaOffline.getJson<Map<String, dynamic>>('$column:$uid:pending') ?? <String, dynamic>{};
+    await FitilaOffline.putJson('$column:$uid:pending', {...pending, ...partial});
+    try {
+      await _pushColumn(column, {...pending, ...partial});
+      await FitilaOffline.removeJson('$column:$uid:pending');
+      FitilaOffline.reportSuccess();
+    } catch (e) {
+      if (!FitilaOffline.isNetworkError(e)) rethrow;
+      FitilaOffline.reportFailure(e);
+      await FitilaOffline.enqueue(kind, partial, dedupeKey: kind, merge: true);
+    }
     return merged;
   }
 
-  static Future<Map<String, dynamic>> fetchPrivacy() async {
-    final user = client.auth.currentUser;
-    if (user == null) {
-      return const {};
-    }
-    final row = await client
-        .from('tamtam_profiles')
-        .select('privacy')
-        .eq('user_id', user.id)
-        .maybeSingle();
-    final privacy = row?['privacy'];
-    return privacy is Map
-        ? Map<String, dynamic>.from(privacy)
-        : <String, dynamic>{};
-  }
-
-  static Future<Map<String, dynamic>> updatePrivacy(
-    Map<String, dynamic> partial,
-  ) async {
+  static Future<void> _pushColumn(String column, Map<String, dynamic> partial) async {
     final user = client.auth.currentUser;
     if (user == null) {
       throw const AuthException('Connexion requise.');
     }
-    final current = await fetchPrivacy();
-    final merged = {...current, ...partial};
+    final current = await _fetchJsonColumn(column);
     await client
         .from('tamtam_profiles')
         .update({
-          'privacy': merged,
+          column: {...current, ...partial},
           'updated_at': DateTime.now().toIso8601String(),
         })
         .eq('user_id', user.id);
-    return merged;
   }
+
+  static Future<void> _pushPreferences(Map<String, dynamic> partial) async {
+    await _pushColumn('preferences', partial);
+    final uid = client.auth.currentUser?.id ?? '_';
+    await FitilaOffline.removeJson('preferences:$uid:pending');
+  }
+
+  static Future<void> _pushPrivacy(Map<String, dynamic> partial) async {
+    await _pushColumn('privacy', partial);
+    final uid = client.auth.currentUser?.id ?? '_';
+    await FitilaOffline.removeJson('privacy:$uid:pending');
+  }
+
+  static Future<Map<String, dynamic>> fetchPreferences() => _readColumn('preferences');
+
+  static Future<Map<String, dynamic>> updatePreferences(Map<String, dynamic> partial) => _writeColumn('preferences', 'prefs', partial);
+
+  static Future<Map<String, dynamic>> fetchPrivacy() => _readColumn('privacy');
+
+  static Future<Map<String, dynamic>> updatePrivacy(Map<String, dynamic> partial) => _writeColumn('privacy', 'privacy', partial);
 
   static Future<String> uploadAvatar({
     required Uint8List bytes,
@@ -1425,6 +1549,19 @@ class FitilaBackend {
   // Traducteur IA — historique & favoris
   // ---------------------------------------------------------------------
 
+  static Future<Map<String, dynamic>> _insertTranslationHistory(Map<String, dynamic> row) async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Connexion requise.');
+    }
+    return client
+        .from('translation_history')
+        .insert({'user_id': user.id, ...row})
+        .select()
+        .single();
+  }
+
+  /// Enregistre une traduction dans l'historique ; mise en file si le réseau manque.
   static Future<Map<String, dynamic>> saveTranslationHistory({
     required String sourceLang,
     required String targetLang,
@@ -1432,23 +1569,23 @@ class FitilaBackend {
     required String translatedText,
     String mode = 'texte',
   }) async {
-    final user = client.auth.currentUser;
-    if (user == null) {
-      throw const AuthException('Connexion requise.');
+    final row = {
+      'source_lang': sourceLang,
+      'target_lang': targetLang,
+      'source_text': sourceText,
+      'translated_text': translatedText,
+      'mode': mode,
+    };
+    try {
+      final saved = await _insertTranslationHistory(row);
+      FitilaOffline.reportSuccess();
+      return saved;
+    } catch (e) {
+      if (!FitilaOffline.isNetworkError(e)) rethrow;
+      FitilaOffline.reportFailure(e);
+      await FitilaOffline.enqueue('history', row);
+      return {...row, '_queued': true};
     }
-    final data = await client
-        .from('translation_history')
-        .insert({
-          'user_id': user.id,
-          'source_lang': sourceLang,
-          'target_lang': targetLang,
-          'source_text': sourceText,
-          'translated_text': translatedText,
-          'mode': mode,
-        })
-        .select()
-        .single();
-    return data;
   }
 
   static Future<List<Map<String, dynamic>>> fetchTranslationHistory({
@@ -1622,6 +1759,41 @@ class FitilaBackend {
   /// tente de débloquer les badges correspondants. Retourne un résumé
   /// {xpEarned, newStreak, unlockedBadges} pour l'écran de résultat.
   static Future<Map<String, dynamic>> recordLearningSession({
+    required String sessionType,
+    String? themeKey,
+    String? lessonRef,
+    String? direction,
+    required int correctCount,
+    required int totalCount,
+  }) async {
+    try {
+      final r = await _recordLearningSessionRemote(
+        sessionType: sessionType,
+        themeKey: themeKey,
+        lessonRef: lessonRef,
+        direction: direction,
+        correctCount: correctCount,
+        totalCount: totalCount,
+      );
+      FitilaOffline.reportSuccess();
+      return r;
+    } catch (e) {
+      if (!FitilaOffline.isNetworkError(e)) rethrow;
+      FitilaOffline.reportFailure(e);
+      await FitilaOffline.enqueue('learning', {
+        'sessionType': sessionType,
+        'themeKey': themeKey,
+        'lessonRef': lessonRef,
+        'direction': direction,
+        'correctCount': correctCount,
+        'totalCount': totalCount,
+      });
+      final perfect = totalCount > 0 && correctCount == totalCount;
+      return {'xpEarned': (correctCount * 8) + (perfect ? 20 : 0), 'queued': true, 'unlockedBadges': const <dynamic>[]};
+    }
+  }
+
+  static Future<Map<String, dynamic>> _recordLearningSessionRemote({
     required String
     sessionType, // 'exercise' | 'classe_lesson' | 'pronunciation'
     String? themeKey,
@@ -3235,4 +3407,12 @@ class FitilaBackend {
               .toList(growable: false);
         });
   }
+}
+
+
+/// Signal interne : aucune copie locale disponible pour une lecture hors-ligne.
+class SocketExceptionLike implements Exception {
+  const SocketExceptionLike();
+  @override
+  String toString() => 'SocketException: aucune copie locale (hors-ligne)';
 }

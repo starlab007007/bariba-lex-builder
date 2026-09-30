@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../core/offline.dart';
 import '../core/signature_theme.dart';
 import '../keyboard/bariba_input.dart';
 
@@ -71,6 +72,9 @@ class ChatMessage {
   String? result;
   String? error;
   bool pending;
+
+  /// Traduction produite sans réseau (dictionnaire embarqué).
+  bool offline = false;
 }
 
 String _errorText(Object e) {
@@ -181,6 +185,7 @@ class _TranslatorChatState extends State<TranslatorChat> {
       setState(() {
         msg
           ..result = out.trim()
+          ..offline = !FitilaOffline.online.value
           ..pending = false;
         // Mode conversation sans détection : on répond dans l'autre sens.
         if (_conversation && !_auto) _toBariba = !msg.toBariba;
@@ -739,6 +744,12 @@ class _Turn extends StatelessWidget {
           const Icon(Icons.auto_awesome_rounded, size: 14, color: Color(0xFF6758C9)),
           const SizedBox(width: 5),
           Text(targetBariba ? '🇧🇯 Bàátɔ̀nú' : '🇫🇷 Français', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: SignatureTheme.muted)),
+          if (msg.offline) ...[
+            const SizedBox(width: 8),
+            const Icon(Icons.cloud_off_rounded, size: 12, color: SignatureTheme.sage),
+            const SizedBox(width: 3),
+            const Text('dictionnaire local', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: SignatureTheme.sage)),
+          ],
         ]),
         const SizedBox(height: 3),
         SelectableText(msg.result!, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, height: 1.4, color: SignatureTheme.ink)),
