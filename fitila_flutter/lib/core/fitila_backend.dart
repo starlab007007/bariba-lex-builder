@@ -103,6 +103,60 @@ class FitilaBackend {
     return sessionFromSupabase(session, profile: profile);
   }
 
+  /// Création de compte : même schéma que le web (e-mail dérivé du numéro, PIN = mot de passe).
+  static Future<FitilaBackendSession> signUpWithPhone({
+    required String name,
+    required String phone,
+    required String pin,
+  }) async {
+    final localPhone = normalizeLocalPhone(phone);
+    final displayName = name.trim();
+    if (displayName.length < 2) {
+      throw const AuthException('Entrez votre nom.');
+    }
+    if (localPhone.length < 8) {
+      throw const AuthException('Entrez au moins 8 chiffres.');
+    }
+    if (!RegExp(r'^\d{6}$').hasMatch(pin)) {
+      throw const AuthException('Le PIN doit contenir exactement 6 chiffres.');
+    }
+    if (await findProfileByPhone(localPhone) != null) {
+      throw const AuthException(
+        'Un compte existe déjà avec ce numéro. Connectez-vous.',
+      );
+    }
+    final created = await client.auth.signUp(
+      email: emailFromPhone(localPhone),
+      password: pin,
+      data: {
+        'display_name': displayName,
+        'phone_number': fullPhone(localPhone),
+      },
+    );
+    var session = created.session;
+    session ??= (await client.auth.signInWithPassword(
+      email: emailFromPhone(localPhone),
+      password: pin,
+    )).session;
+    if (session == null) {
+      throw const AuthException('Le compte a été créé mais la session a échoué. Connectez-vous.');
+    }
+    // Le profil est créé par un déclencheur côté serveur ; on complète les champs (comme le web).
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    try {
+      await client
+          .from('tamtam_profiles')
+          .update({
+            'display_name': displayName,
+            'phone_number': fullPhone(localPhone),
+          })
+          .eq('user_id', session.user.id);
+    } catch (_) {
+      /* non bloquant : le profil pourra être complété depuis « Modifier mon profil » */
+    }
+    return sessionFromSupabase(session);
+  }
+
   static Future<FitilaBackendSession> sessionFromSupabase(
     Session session, {
     Map<String, dynamic>? profile,

@@ -7,8 +7,10 @@ void main() {
     await tester.pumpWidget(const FitilaApp(demoMode: true));
 
     expect(find.text('FITILA'), findsWidgets);
-    expect(find.text('Bienvenue'), findsOneWidget);
+    expect(find.text('Parlez sans frontières'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Se connecter'));
+    await tester.pump();
     await tester.tap(find.text('Se connecter'));
     await tester.pump(const Duration(milliseconds: 650));
     await tester.pump();
