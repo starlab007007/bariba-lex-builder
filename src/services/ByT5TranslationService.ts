@@ -1,7 +1,8 @@
 /**
- * Service de traduction utilisant uniquement le modèle ByT5 Expert
- * via l'API Gradio Space de Hugging Face.
- * Aucun fallback — ByT5 uniquement.
+ * Service de traduction FITILA (fonction edge byt5-bariba-translate).
+ * Moteur principal : ByT5 Expert (Space Hugging Face). Si ce moteur est
+ * indisponible, la fonction edge répond avec le corpus validé FITILA
+ * (method « fitila-corpus:* », fallback: true) au lieu d'une erreur.
  */
 
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +12,8 @@ export interface ByT5TranslationResult {
   confidence: number;
   duration: number;
   method: string;
+  fallback?: boolean;
+  notice?: string;
   suggestions?: string;
   modelInfo?: {
     name: string;
@@ -54,11 +57,6 @@ class ByT5TranslationService {
       t.trim().length > 0 &&
       !invalidPatterns.some((p) => t.toLowerCase().includes(p.toLowerCase()));
 
-    // Skip if known unhealthy
-    if (!this.isHealthy && Date.now() - this.lastHealthCheck < this.healthCheckInterval) {
-      throw new Error('ByT5 service is currently unavailable');
-    }
-
     try {
       console.log(`🤖 ByT5TranslationService: Calling Edge Function...`);
 
@@ -70,7 +68,16 @@ class ByT5TranslationService {
         console.error('❌ ByT5 Edge Function error:', error);
         this.isHealthy = false;
         this.lastHealthCheck = Date.now();
-        throw new Error(error.message || 'ByT5 edge function error');
+        // FunctionsHttpError : le corps JSON de la réponse porte le vrai message.
+        let message = error.message || 'Erreur du service de traduction';
+        const ctx = (error as { context?: Response }).context;
+        if (ctx && typeof ctx.json === 'function') {
+          try {
+            const body = await ctx.json();
+            message = body?.details || body?.error || message;
+          } catch { /* corps non JSON */ }
+        }
+        throw new Error(message);
       }
 
       if (data?.error) {
@@ -96,7 +103,9 @@ class ByT5TranslationService {
         translation: data.translation,
         confidence: data.confidence || 85,
         duration: data.duration || (Date.now() - startTime),
-        method: 'byt5-expert',
+        method: data.method || 'byt5-expert',
+        fallback: !!data.fallback,
+        notice: data.notice,
         suggestions: data.suggestions,
         modelInfo: data.modelInfo,
       };

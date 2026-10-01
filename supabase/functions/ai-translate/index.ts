@@ -53,9 +53,42 @@ serve(async (req) => {
       );
     }
 
+    // Repli FITILA : si le moteur IA (Mistral) est absent ou en panne, on
+    // traduit à partir du corpus validé (RPC public.fitila_corpus_translate).
+    const corpusFallback = async (reason: string): Promise<Response> => {
+      console.warn(`ai-translate: ${reason} — repli corpus FITILA`);
+      const { data: fb, error: fbError } = await supabaseClient.rpc('fitila_corpus_translate', {
+        p_text: String(text), p_source: sourceLang, p_target: targetLang,
+      });
+      if (fbError) console.error('corpus fallback error:', fbError.message);
+      if (fb && typeof fb.translation === 'string' && fb.translation.trim()) {
+        return new Response(
+          JSON.stringify({
+            ...fb,
+            translation: fb.translation,
+            confidence: fb.confidence,
+            model: 'fitila-corpus',
+            method: `fitila-corpus:${fb.method}`,
+            fallback: true,
+            engineError: reason,
+            notice: 'Moteur IA indisponible : traduction issue du corpus et du dictionnaire FITILA.',
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          error: 'Traduction indisponible',
+          details: "Le moteur de traduction IA est momentanément indisponible et aucune correspondance fiable n'a été trouvée dans le corpus FITILA.",
+          engineError: reason,
+        }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    };
+
     const MISTRAL_API_KEY = Deno.env.get('MISTRAL_API_KEY');
     if (!MISTRAL_API_KEY) {
-      throw new Error('MISTRAL_API_KEY not configured');
+      return await corpusFallback('MISTRAL_API_KEY not configured');
     }
 
     // Get comprehensive training context (220k+ pairs)
@@ -221,7 +254,9 @@ Translate the following text applying all linguistic rules above:`;
     console.log(`Translating from ${sourceLang} to ${targetLang}:`, text);
 
     // Call Mistral AI for translation
-    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    let response: Response;
+    try {
+      response = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${MISTRAL_API_KEY}`,
@@ -235,7 +270,11 @@ Translate the following text applying all linguistic rules above:`;
         ],
         temperature: 0.3, // Lower temperature for more consistent translations
       }),
+      signal: AbortSignal.timeout(25_000),
     });
+    } catch (e) {
+      return await corpusFallback(`AI request failed: ${e instanceof Error ? e.message : e}`);
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -255,11 +294,14 @@ Translate the following text applying all linguistic rules above:`;
         );
       }
 
-      throw new Error(`AI Gateway error: ${response.status}`);
+      return await corpusFallback(`AI Gateway error: ${response.status}`);
     }
 
     const data = await response.json();
-    const translation = data.choices[0].message.content;
+    const translation = data?.choices?.[0]?.message?.content;
+    if (typeof translation !== 'string' || !translation.trim()) {
+      return await corpusFallback('AI returned an empty translation');
+    }
 
     // Calculate confidence score based on response quality
     const confidence = Math.min(95, 70 + Math.random() * 25); // Simulated confidence score
