@@ -304,6 +304,7 @@ export function useUpdateAudioStatus() {
       qc.invalidateQueries({ queryKey: ['classe-audio-module-counts', row.level, row.module] });
       qc.invalidateQueries({ queryKey: ['classe-audio-approved', row.content_key] });
       qc.invalidateQueries({ queryKey: ['classe-audio-admin-queue'] });
+      qc.invalidateQueries({ queryKey: ['classe-audio-coverage'] });
     },
   });
 }
@@ -321,6 +322,7 @@ export function useDeleteAudio() {
       qc.invalidateQueries({ queryKey: ['classe-audio-lesson', row.level, row.module, row.lesson_id] });
       qc.invalidateQueries({ queryKey: ['classe-audio-module-counts', row.level, row.module] });
       qc.invalidateQueries({ queryKey: ['classe-audio-approved', row.content_key] });
+      qc.invalidateQueries({ queryKey: ['classe-audio-coverage'] });
     },
   });
 }
