@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronRight, Check, X, RotateCcw } from 'lucide-react';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { GRAMMAR_N2_SECTIONS, GrammarSection, GrammarQuiz } from '@/data/classeContentN2Grammar';
+import ListenButton from './ListenButton';
 
-function QuizCard({ quiz, index, lang, onResult }: { quiz: GrammarQuiz; index: number; lang: string; onResult: (c: boolean) => void }) {
+function QuizCard({ quiz, index, lessonId, lang, onResult }: { quiz: GrammarQuiz; index: number; lessonId: number; lang: string; onResult: (c: boolean) => void }) {
   const [selected, setSelected] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
 
@@ -17,9 +18,12 @@ function QuizCard({ quiz, index, lang, onResult }: { quiz: GrammarQuiz; index: n
 
   return (
     <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm">
-      <p className="text-gray-700 font-semibold text-sm mb-3">
-        {index + 1}. {lang === 'ba' ? quiz.question : quiz.questionFr}
-      </p>
+      <div className="mb-3 flex items-start gap-2">
+        <p className="min-w-0 flex-1 text-gray-700 font-semibold text-sm">
+          {index + 1}. {lang === 'ba' ? quiz.question : quiz.questionFr}
+        </p>
+        <ListenButton contentKey={`classe/N2/grammaire/${lessonId}/quiz/${index}/q`} size="sm" />
+      </div>
       <div className="space-y-2">
         {quiz.options.map((opt, i) => (
           <motion.button
@@ -38,15 +42,23 @@ function QuizCard({ quiz, index, lang, onResult }: { quiz: GrammarQuiz; index: n
           >
             <span className="font-bold mr-2">{String.fromCharCode(65 + i)}.</span>
             {opt}
-            {showResult && i === quiz.correct && <Check className="w-4 h-4 inline ml-2 text-emerald-500" />}
+            {showResult && i === quiz.correct && (
+              <>
+                <Check className="w-4 h-4 inline ml-2 text-emerald-500" />
+                <span className="ml-2 inline-flex align-middle">
+                  <ListenButton contentKey={`classe/N2/grammaire/${lessonId}/quiz/${index}/answer`} size="sm" />
+                </span>
+              </>
+            )}
             {showResult && i === selected && i !== quiz.correct && <X className="w-4 h-4 inline ml-2 text-red-500" />}
           </motion.button>
         ))}
       </div>
       {showResult && (
-        <motion.p initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="mt-3 text-xs text-indigo-600 bg-indigo-50 p-2 rounded-lg">
-          💡 {lang === 'ba' ? (quiz.explanation || '') : (quiz.explanationFr || '')}
-        </motion.p>
+        <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="mt-3 flex items-start gap-2 text-xs text-indigo-600 bg-indigo-50 p-2 rounded-lg">
+          <span className="min-w-0 flex-1">💡 {lang === 'ba' ? (quiz.explanation || '') : (quiz.explanationFr || '')}</span>
+          {quiz.explanation && <ListenButton contentKey={`classe/N2/grammaire/${lessonId}/quiz/${index}/explanation`} size="sm" />}
+        </motion.div>
       )}
     </div>
   );
@@ -89,7 +101,7 @@ export default function ClasseGrammaireN2() {
       </div>
 
       {/* Sections */}
-      {GRAMMAR_N2_SECTIONS.map((section) => {
+      {GRAMMAR_N2_SECTIONS.map((section, sectionIndex) => {
         const isExpanded = expandedId === section.id;
         const score = scores[section.id];
 
@@ -104,7 +116,10 @@ export default function ClasseGrammaireN2() {
                 <span className="text-2xl">{section.emoji}</span>
               </div>
               <div className="flex-1 text-left">
-                <p className="text-gray-800 font-bold text-sm">{currentLang === 'ba' ? section.title : section.titleFr}</p>
+                <div className="flex items-start gap-2">
+                  <p className="min-w-0 flex-1 text-gray-800 font-bold text-sm">{currentLang === 'ba' ? section.title : section.titleFr}</p>
+                  <ListenButton contentKey={`classe/N2/grammaire/${sectionIndex + 1}/title`} size="sm" />
+                </div>
                 <p className="text-gray-400 text-xs">{section.quiz.length} quiz • {section.content.length} {currentLang === 'ba' ? 'garibu' : 'blocs'}</p>
               </div>
               {score && (
@@ -144,16 +159,22 @@ export default function ClasseGrammaireN2() {
                     {activeTab === 'content' && section.content.map((block, bi) => (
                       <div key={bi} className="rounded-2xl bg-gray-50 p-3">
                         {block.title && (
-                          <h4 className="text-gray-700 font-bold text-xs mb-2 flex items-center gap-1">
-                            {block.type === 'rule' && '📐'} {block.type === 'table' && '📊'} {block.type === 'list' && '📋'} {block.type === 'example' && '💡'}
-                            {' '}{currentLang === 'ba' ? block.title : (block.titleFr || block.title)}
-                          </h4>
+                          <div className="mb-2 flex items-start gap-2">
+                            <h4 className="min-w-0 flex-1 text-gray-700 font-bold text-xs">
+                              {block.type === 'rule' && '📐'} {block.type === 'table' && '📊'} {block.type === 'list' && '📋'} {block.type === 'example' && '💡'}
+                              {' '}{currentLang === 'ba' ? block.title : (block.titleFr || block.title)}
+                            </h4>
+                            <ListenButton contentKey={`classe/N2/grammaire/${sectionIndex + 1}/block/${bi}/title`} size="sm" />
+                          </div>
                         )}
 
                         {(block.type === 'text' || block.type === 'rule' || block.type === 'example') && (
-                          <p className="text-gray-600 text-xs leading-relaxed whitespace-pre-line">
-                            {currentLang === 'ba' ? block.content : (block.contentFr || block.content)}
-                          </p>
+                          <div className="flex items-start gap-2">
+                            <p className="min-w-0 flex-1 text-gray-600 text-xs leading-relaxed whitespace-pre-line">
+                              {currentLang === 'ba' ? block.content : (block.contentFr || block.content)}
+                            </p>
+                            {block.content && <ListenButton contentKey={`classe/N2/grammaire/${sectionIndex + 1}/block/${bi}/content`} size="sm" />}
+                          </div>
                         )}
 
                         {block.type === 'list' && (
@@ -161,7 +182,8 @@ export default function ClasseGrammaireN2() {
                             {(currentLang === 'ba' ? block.items : (block.itemsFr || block.items))?.map((item, ii) => (
                               <li key={ii} className="text-gray-600 text-xs flex items-start gap-2">
                                 <span className="text-indigo-400 mt-0.5">●</span>
-                                <span>{item}</span>
+                                <span className="min-w-0 flex-1">{item}</span>
+                                <ListenButton contentKey={`classe/N2/grammaire/${sectionIndex + 1}/block/${bi}/item/${ii}`} size="sm" />
                               </li>
                             ))}
                           </ul>
@@ -175,6 +197,7 @@ export default function ClasseGrammaireN2() {
                                   {block.headers.map((h, hi) => (
                                     <th key={hi} className="p-2 text-left text-indigo-700 font-bold border-b border-indigo-100">{h}</th>
                                   ))}
+                                  <th className="w-10 p-2 border-b border-indigo-100"><span className="sr-only">Voix</span></th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -183,6 +206,9 @@ export default function ClasseGrammaireN2() {
                                     {row.map((cell, ci) => (
                                       <td key={ci} className="p-2 text-gray-600 border-b border-gray-100">{cell}</td>
                                     ))}
+                                    <td className="p-1 border-b border-gray-100">
+                                      <ListenButton contentKey={`classe/N2/grammaire/${sectionIndex + 1}/block/${bi}/row/${ri}`} size="sm" />
+                                    </td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -199,6 +225,7 @@ export default function ClasseGrammaireN2() {
                             key={qi}
                             quiz={q}
                             index={qi}
+                            lessonId={sectionIndex + 1}
                             lang={currentLang}
                             onResult={(c) => handleQuizResult(section.id, c)}
                           />
