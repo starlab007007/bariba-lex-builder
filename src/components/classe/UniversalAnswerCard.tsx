@@ -42,6 +42,8 @@ interface Props {
   questionIdx?: number;
   question: string;
   questionLabel?: string; // ex: "Q1", "1.", "I-"
+  /** Canonical pedagogical audio key when answer persistence uses a legacy/string lesson id. */
+  audioContentKey?: string;
   initialAnswer?: string;
   rows?: number;
   /** Couleur du gradient principal (Tailwind 'from-x-500 to-y-500') */
@@ -76,6 +78,7 @@ function UniversalAnswerCardInner({
   questionIdx = 0,
   question,
   questionLabel,
+  audioContentKey,
   initialAnswer = '',
   rows = 2,
   accent = 'from-amber-500 to-orange-500',
@@ -97,7 +100,7 @@ function UniversalAnswerCardInner({
   const [personalTeacherAudioPath, setPersonalTeacherAudioPath] = useState<string | null>(null);
   const [personalTeacherAudioDuration, setPersonalTeacherAudioDuration] = useState<number | null>(null);
 
-  const contentKey = buildContentKey(level, module, lessonId, sectionKey || undefined, questionIdx);
+  const contentKey = audioContentKey ?? buildContentKey(level, module, lessonId, sectionKey || undefined, questionIdx);
   const storageSubpath = `${level}/${moduleToContentKey(module)}/${lessonId}/${sectionKey || 'q'}/${questionIdx}`;
 
   // ─────────────────────────────────────────────
