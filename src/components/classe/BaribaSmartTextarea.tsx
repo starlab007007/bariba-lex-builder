@@ -5,10 +5,11 @@ import { usePhoneticSuggestions, PhoneticEntry } from '@/hooks/usePhoneticSugges
 import { supabase } from '@/integrations/supabase/client';
 
 const BARIBA_CHARS = [
-  'ɔ', 'ɛ', 'ŋ', 'ã', 'ɔ̀', 'ɔ́', 'ɔ̃',
-  'ɛ̀', 'ɛ́', 'ɛ̃', 'à', 'á', 'è', 'é',
-  'ì', 'í', 'ĩ', 'ò', 'ó', 'ù', 'ú', 'ũ',
-  'ǹ', 'Ɔ', 'Ɛ', 'Ŋ',
+  'ɔ', 'ɛ', 'ŋ', 'ə',
+  'ã', 'ẽ', 'ĩ', 'õ', 'ũ', 'ɔ̃', 'ɛ̃',
+  'ɔ̀', 'ɔ́', 'ɛ̀', 'ɛ́',
+  'à', 'á', 'è', 'é', 'ë', 'ì', 'í', 'ò', 'ó', 'ô', 'ù', 'ú', 'ü',
+  'ā', 'ē', 'ǹ', 'Ɔ', 'Ɛ', 'Ŋ', 'Ə',
 ];
 
 interface Props {
@@ -36,7 +37,7 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
 
   const getCurrentWord = useCallback((text: string, cursorPos: number): string => {
     const before = text.slice(0, cursorPos);
-    const match = before.match(/[\wɔɛŋãàáèéìíòóùúũĩɔ̀ɔ́ɔ̃ɛ̀ɛ́ɛ̃ǹ]+$/u);
+    const match = before.match(/[\p{L}\p{M}]+$/u);
     return match ? match[0] : '';
   }, []);
 
@@ -359,7 +360,7 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
             {/* Quick character fallback row */}
             <div className="flex gap-1 flex-wrap p-2 border-t border-purple-100 bg-purple-50/50">
               {['a', 'b', 'd', 'e', 'g', 'i', 'k', 'm', 'n', 'o', 'r', 's', 'u', 'w', 'y',
-                'ɔ', 'ɛ', 'ŋ', 'ã', 'ɔ̃', 'ɛ̃'].map(c => (
+                'ɔ', 'ɛ', 'ŋ', 'ə', 'ã', 'ẽ', 'ĩ', 'õ', 'ũ', 'ɔ̃', 'ɛ̃'].map(c => (
                 <button
                   key={c}
                   type="button"
