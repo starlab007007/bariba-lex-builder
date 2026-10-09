@@ -1,6 +1,8 @@
 name: Validate Apprendre Voice
 
 on:
+  push:
+    branches: [feat/apprendre-reference-voice-publishing-20261009]
   pull_request:
     branches: [main]
     paths:
