@@ -119,4 +119,4 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.recognize-handwriting]
-verify_jwt = false
+verify_jwt = true
