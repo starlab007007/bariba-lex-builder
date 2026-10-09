@@ -111,11 +111,12 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('key-ɛ')));
       await tester.tap(find.byKey(const ValueKey('key-◌̃')));
       await tester.tap(find.byKey(const ValueKey('key-ã')));
-      expect(c.text, 'nɛ̃ã');
+      await tester.tap(find.byKey(const ValueKey('key-ə')));
+      expect(c.text, 'nɛ̃ãə');
       await tester.tap(find.byKey(const ValueKey('key-backspace')));
       await tester.pump(const Duration(milliseconds: 20));
       await tester.pump(const Duration(milliseconds: 500));
-      expect(c.text, 'nɛ̃');
+      expect(c.text, 'nɛ̃ã');
     });
 
     testWidgets('fits a 320dp phone in translate mode without overflow', (tester) async {
