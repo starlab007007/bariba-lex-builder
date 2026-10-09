@@ -34,6 +34,9 @@ void main() {
   test('normalizeAnswer/matchAnswer ignore case, tones and punctuation but keep ɛ ɔ ŋ', () {
     expect(normalizeAnswer('Bàátɔ̀nú!'), normalizeAnswer('baatɔnu'));
     expect(normalizeAnswer('ɛ'), isNot(normalizeAnswer('e')));
+    expect(normalizeAnswer('ə'), isNotEmpty);
+    expect(normalizeAnswer('mə'), isNot(normalizeAnswer('m')));
+    expect(matchAnswer('mə', ['mə']), isTrue);
     expect(matchAnswer('  Tíí Dobonu ', ['tii dobonu']), isTrue);
     expect(matchAnswer('', ['x']), isFalse);
     expect(matchAnswer('non', []), isFalse);
