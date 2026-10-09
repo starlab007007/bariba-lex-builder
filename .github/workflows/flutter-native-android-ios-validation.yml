@@ -5,12 +5,14 @@ on:
     branches:
       - claude/audit-routes-consolidation-2c51cu
       - feat/apprendre-v2.4-build19-20260927
+      - release/fitila-v1.8.9-build20
     paths:
       - 'fitila_flutter/**'
       - '.github/workflows/flutter-native-android-ios-validation.yml'
   pull_request:
     branches:
       - feat/apprendre-v2.4-build19-20260927
+      - release/fitila-v1.8.9-build20
     paths:
       - 'fitila_flutter/**'
       - '.github/workflows/flutter-native-android-ios-validation.yml'
