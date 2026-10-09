@@ -61,7 +61,9 @@ export interface ClasseAudioRow {
   updated_at: string;
 }
 
-/** Teacher: list current audios for a given (level, module, lessonId). */
+/** Teacher: latest workflow version per content key for a lesson.
+ * Published audio and the newest draft/submission are separate concepts:
+ * recording a replacement must not hide the currently approved learner audio. */
 export function useLessonAudios(level: string, module: string, lessonId: number) {
   const { user } = useAuth();
   return useQuery({
@@ -75,36 +77,95 @@ export function useLessonAudios(level: string, module: string, lessonId: number)
         .eq('level', level)
         .eq('module', module)
         .eq('lesson_id', lessonId)
-        .eq('is_current', true)
+        .order('version', { ascending: false })
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data ?? []) as ClasseAudioRow[];
+
+      const latest = new Map<string, ClasseAudioRow>();
+      for (const row of (data ?? []) as ClasseAudioRow[]) {
+        if (!latest.has(row.content_key)) latest.set(row.content_key, row);
+      }
+      return [...latest.values()];
     },
   });
 }
 
-/** Teacher: counts per lesson for a (level, module). */
+type ModuleAudioCounts = { total: number; approved: number; submitted: number; rejected: number; draft: number };
+
+/** Teacher: published coverage + newest workflow state per lesson.
+ * A content key can legitimately be both "approved" (published version) and
+ * "draft/submitted" (replacement being prepared). */
 export function useModuleAudioCounts(level: string, module: string) {
   return useQuery({
     queryKey: ['classe-audio-module-counts', level, module],
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('classe_content_audios')
-        .select('lesson_id,status,is_current')
-        .eq('level', level)
-        .eq('module', module)
-        .eq('is_current', true);
-      if (error) throw error;
-      const map = new Map<number, { total: number; approved: number; submitted: number; rejected: number; draft: number }>();
-      for (const row of (data ?? []) as any[]) {
-        const k = row.lesson_id ?? -1;
+      type Row = Pick<ClasseAudioRow, 'content_key' | 'lesson_id' | 'status' | 'is_current' | 'version'>;
+      const rows: Row[] = [];
+      const pageSize = 1000;
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await supabase
+          .from('classe_content_audios')
+          .select('content_key,lesson_id,status,is_current,version')
+          .eq('level', level)
+          .eq('module', module)
+          .order('version', { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        const page = (data ?? []) as Row[];
+        rows.push(...page);
+        if (page.length < pageSize) break;
+      }
+
+      const perKey = new Map<string, { latest: Row; published: boolean }>();
+      for (const row of rows) {
+        const existing = perKey.get(row.content_key);
+        if (!existing) {
+          perKey.set(row.content_key, {
+            latest: row,
+            published: row.status === 'approved' && row.is_current,
+          });
+        } else if (row.status === 'approved' && row.is_current) {
+          existing.published = true;
+        }
+      }
+
+      const map = new Map<number, ModuleAudioCounts>();
+      for (const { latest, published } of perKey.values()) {
+        const k = latest.lesson_id ?? -1;
         const cur = map.get(k) ?? { total: 0, approved: 0, submitted: 0, rejected: 0, draft: 0 };
         cur.total += 1;
-        cur[row.status as keyof typeof cur] = (cur[row.status as keyof typeof cur] as number) + 1;
+        if (published) cur.approved += 1;
+        if (latest.status !== 'approved') cur[latest.status] += 1;
         map.set(k, cur);
       }
       return map;
+    },
+  });
+}
+
+/** Admin/QA: complete set of learner-visible approved content keys. */
+export function useClasseAudioCoverage() {
+  return useQuery({
+    queryKey: ['classe-audio-coverage'],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const keys = new Set<string>();
+      const pageSize = 1000;
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await supabase
+          .from('classe_content_audios')
+          .select('content_key')
+          .eq('status', 'approved')
+          .eq('is_current', true)
+          .order('content_key')
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        const page = (data ?? []) as Array<{ content_key: string }>;
+        for (const row of page) keys.add(row.content_key);
+        if (page.length < pageSize) break;
+      }
+      return keys;
     },
   });
 }
@@ -213,6 +274,7 @@ export function useUploadClasseAudio() {
       qc.invalidateQueries({ queryKey: ['classe-audio-lesson', row.level, row.module, row.lesson_id] });
       qc.invalidateQueries({ queryKey: ['classe-audio-module-counts', row.level, row.module] });
       qc.invalidateQueries({ queryKey: ['classe-audio-approved', row.content_key] });
+      qc.invalidateQueries({ queryKey: ['classe-audio-coverage'] });
     },
   });
 }
