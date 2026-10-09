@@ -43,11 +43,11 @@ serve(async (req) => {
 
 L'alphabet Bariba comprend ces lettres et caractères spéciaux :
 - Consonnes : b, d, g, k, m, n, ŋ, r, s, w, y
-- Voyelles simples : a, e, i, o, u, ɔ, ɛ
-- Voyelles avec tons : à, á, è, é, ì, í, ò, ó, ù, ú, ɔ̀, ɔ́, ɛ̀, ɛ́
-- Voyelles nasalisées : ã, ĩ, ũ, ɔ̃, ɛ̃
+- Voyelles simples : a, e, i, o, u, ɔ, ɛ, ə
+- Voyelles avec tons : à, á, è, é, ë, ì, í, ò, ó, ô, ù, ú, ü, ā, ē, ɔ̀, ɔ́, ɛ̀, ɛ́
+- Voyelles nasalisées : ã, ẽ, ĩ, õ, ũ, ɔ̃, ɛ̃
 - Consonnes avec tons : ǹ
-- Majuscules spéciales : Ɔ, Ɛ, Ŋ
+- Majuscules spéciales : Ɔ, Ɛ, Ŋ, Ə
 
 Analyse l'image d'écriture manuscrite et identifie les caractères ou mots écrits.
 
@@ -113,7 +113,7 @@ Si tu vois plusieurs caractères formant un mot ou syllabe, retourne des mots/sy
       candidates = parsed.candidates || [];
     } catch {
       // Fallback: extract any recognizable characters from the response
-      const matches = content.match(/[a-zA-Zɔɛŋãĩũàáèéìíòóùúɔ̀ɔ́ɔ̃ɛ̀ɛ́ɛ̃ǹƆƐŊ]+/gu);
+      const matches = content.match(/[a-zA-Zɔɛŋəãẽĩõũàáèéëìíòóôùúüāēɔ̀ɔ́ɔ̃ɛ̀ɛ́ɛ̃ǹƆƐŊƏ]+/gu);
       candidates = matches ? matches.slice(0, 5) : [];
     }
 
