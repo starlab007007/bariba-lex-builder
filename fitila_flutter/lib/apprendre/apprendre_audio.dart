@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/fitila_backend.dart';
+import '../core/offline.dart';
 import 'apprendre_ui.dart';
 import 'apprendre_voice_analysis.dart';
 
@@ -171,7 +172,7 @@ class ApAudioService {
 
   /// Télécharge la liste des voix actives (vue `apprendre_audio_published`).
   Future<bool> refresh() async {
-    if (_refreshing || !FitilaBackend.configured) {
+    if (_refreshing || !FitilaBackend.configured || !FitilaOffline.online.value) {
       return false;
     }
     _refreshing = true;

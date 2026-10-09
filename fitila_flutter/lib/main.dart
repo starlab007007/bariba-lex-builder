@@ -19,8 +19,11 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import 'core/fitila_backend.dart';
+import 'core/fitila_language.dart';
 import 'core/fitila_live.dart';
 import 'core/fitila_media.dart';
+import 'core/local_speech.dart';
+import 'core/offline.dart';
 import 'core/fitila_translation_audio.dart';
 import 'core/foncier_rag.dart';
 import 'core/signature_theme.dart';
@@ -34,8 +37,20 @@ import 'handunia/handunia_creation_ai_route.dart';
 import 'handunia/handunia_map_data.dart';
 import 'handunia/handunia_unified_map.dart';
 import 'handunia/handunia_consultation_ui.dart';
+import 'auth/auth_flow.dart';
+import 'classe/classe_content.dart';
+import 'classe/classe_hub.dart';
+import 'classe/classe_lookup.dart';
+import 'classe/classe_session.dart';
+import 'classe/classe_offline.dart';
+import 'classe/classe_store.dart';
+import 'classe/classe_widgets.dart' show ClasseStoragePlayer;
 import 'espace/espace_home.dart';
 import 'keyboard/bariba_input.dart';
+import 'dictionary/dictionary_experience.dart';
+import 'translator/translator_chat.dart';
+import 'ui/offline_banner.dart';
+import 'ui/premium_widgets.dart';
 import 'keyboard/bariba_keyboard_engine.dart';
 import 'keyboard/keyboard_bridge.dart';
 import 'keyboard/keyboard_onboarding.dart';
@@ -45,6 +60,10 @@ import 'ui/reference_creation_ui.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await FitilaBackend.initialize();
+  if (FitilaBackend.configured) {
+    OfflineClasseStore.registerHandlers(SupabaseClasseStore.new);
+    FitilaOffline.start();
+  }
   _wireBaribaKeyboard();
   runApp(const FitilaApp());
 }
@@ -62,7 +81,7 @@ void _wireBaribaKeyboard() {
   }
   BaribaKeyboardServices.translator = (text, direction) async {
     final token = FitilaBackend.client.auth.currentSession?.accessToken;
-    if (token == null || token.isEmpty) {
+    if (token == null || token.isEmpty || !FitilaOffline.online.value) {
       return null; // engine falls back to the embedded dictionary
     }
     return FitilaServices.translate(
@@ -74,6 +93,40 @@ void _wireBaribaKeyboard() {
       dictionaryLoader: () async => const <DictionaryEntry>[],
     );
   };
+}
+
+/// Lit un texte : voix FITILA en ligne, sinon voix locale (téléphone / voix Apprendre déjà téléchargées).
+Future<void> _speakAnywhere(audio.AudioPlayer player, String text, {required bool bariba}) async {
+  Future<void> offlineSpeak() async {
+    if (await LocalSpeech.speak(text, bariba: bariba)) return;
+    throw StateError(
+      bariba
+          ? 'Hors connexion : cette voix Bàátɔ̀nú n’est pas encore téléchargée (Apprendre › Voix hors-ligne).'
+          : 'Voix indisponible hors connexion sur cet appareil.',
+    );
+  }
+
+  if (!FitilaOffline.online.value || !FitilaBackend.configured) {
+    return offlineSpeak();
+  }
+  try {
+    await player.stop();
+    final generated = await FitilaTranslationAudio.synthesize(text: text, bariba: bariba);
+    final url = generated.url?.trim() ?? '';
+    if (url.isNotEmpty) {
+      await player.play(audio.UrlSource(url));
+      return;
+    }
+    final path = await generated.materialize();
+    if (path == null || path.isEmpty) throw StateError('Audio non disponible.');
+    await player.play(audio.DeviceFileSource(path));
+  } catch (e) {
+    if (FitilaOffline.isNetworkError(e)) {
+      FitilaOffline.reportFailure(e);
+      return offlineSpeak();
+    }
+    rethrow;
+  }
 }
 
 const _fitilaPrimary = Color(0xFFC99530);
@@ -560,7 +613,9 @@ class FitilaServices {
     // 1. ai-translate (Lovable/Gemini when configured)
     // 2. byt5-bariba-translate (FITILA Bariba model)
     // 3. embedded dictionary exact match below.
-    if (accessToken != null && accessToken.isNotEmpty) {
+    if (accessToken != null &&
+        accessToken.isNotEmpty &&
+        FitilaOffline.online.value) {
       final transport = client ?? http.Client();
       final body = jsonEncode({
         'text': trimmed,
@@ -606,8 +661,13 @@ class FitilaServices {
                 return translated;
               }
             }
-          } catch (_) {
-            // Continue to the next real translation engine.
+          } catch (e) {
+            // Réseau coupé : inutile d'essayer les autres moteurs, on bascule hors-ligne.
+            if (FitilaOffline.isNetworkError(e)) {
+              FitilaOffline.reportFailure(e);
+              break;
+            }
+            // Sinon on continue vers le moteur suivant.
           }
         }
       } finally {
@@ -617,6 +677,23 @@ class FitilaServices {
       }
     }
 
+    // Hors-ligne : moteur local (phrases connues, puis mot à mot) du dictionnaire embarqué.
+    if (dictionaryLoader == null) {
+      try {
+        final engine = await BaribaKeyboardEngine.load();
+        final local = engine.translateOffline(
+          trimmed,
+          direction == TranslationDirection.frenchToBariba
+              ? KeyboardTranslationDirection.frenchToBariba
+              : KeyboardTranslationDirection.baribaToFrench,
+        );
+        if (local != null && local.trim().isNotEmpty) {
+          return local.trim();
+        }
+      } catch (_) {
+        /* moteur indisponible : dictionnaire exact ci-dessous */
+      }
+    }
     final entries = await (dictionaryLoader ?? loadDictionary)();
     final query = trimmed.toLowerCase();
     for (final entry in entries) {
@@ -630,7 +707,9 @@ class FitilaServices {
       }
     }
     throw StateError(
-      'Aucune traduction disponible. Vérifiez la connexion puis réessayez.',
+      FitilaOffline.online.value
+          ? 'Aucune traduction disponible. Vérifiez la connexion puis réessayez.'
+          : 'Hors connexion : ce texte n’est pas dans le dictionnaire local. Essayez un mot ou une phrase courante.',
     );
   }
 
@@ -783,7 +862,7 @@ extension FitilaPageMeta on FitilaPage {
   String get title {
     return switch (this) {
       FitilaPage.feed => 'Fil',
-      FitilaPage.creator => 'Createur',
+      FitilaPage.creator => 'Créateur',
       FitilaPage.templates => 'Templates',
       FitilaPage.services => 'Services',
       FitilaPage.market => 'Marche',
@@ -889,7 +968,7 @@ extension FitilaPageMeta on FitilaPage {
   }
 }
 
-class AuthScreen extends StatefulWidget {
+class AuthScreen extends StatelessWidget {
   const AuthScreen({
     super.key,
     required this.onSignedIn,
@@ -899,772 +978,76 @@ class AuthScreen extends StatefulWidget {
   final ValueChanged<FitilaSession> onSignedIn;
   final bool demoMode;
 
-  @override
-  State<AuthScreen> createState() => _AuthScreenState();
-}
-
-class _AuthScreenState extends State<AuthScreen>
-    with SingleTickerProviderStateMixin {
-  final _phone = TextEditingController();
-  final _password = TextEditingController();
-  bool _busy = false;
-  bool _obscure = true;
-  bool _remember = true;
-  bool _biometric = false;
-
-  late final AnimationController _introController;
-  late final Animation<double> _introOpacity;
-  late final Animation<Offset> _heroSlide;
-  late final Animation<Offset> _formSlide;
-
-  @override
-  void initState() {
-    super.initState();
-    _introController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 950),
-    );
-    final curve = CurvedAnimation(
-      parent: _introController,
-      curve: Curves.easeOutCubic,
-    );
-    _introOpacity = Tween<double>(begin: 0, end: 1).animate(curve);
-    _heroSlide = Tween<Offset>(
-      begin: const Offset(0, .06),
-      end: Offset.zero,
-    ).animate(curve);
-    _formSlide = Tween<Offset>(begin: const Offset(0, .09), end: Offset.zero)
-        .animate(
-          CurvedAnimation(
-            parent: _introController,
-            curve: const Interval(.18, 1, curve: Curves.easeOutCubic),
-          ),
-        );
-    _introController.forward();
-
-    if (widget.demoMode) {
-      _phone.text = '65653468';
-      _password.text = '123456';
+  Future<void> _signIn(String phone, String pin) async {
+    if (demoMode) {
+      onSignedIn(
+        FitilaSession(
+          userId: 'widget-test-user',
+          phone: '+229$phone',
+          displayName: 'Utilisateur Fitila',
+          role: 'Membre',
+          accessToken: '',
+        ),
+      );
+      return;
     }
-  }
-
-  @override
-  void dispose() {
-    _introController.dispose();
-    _phone.dispose();
-    _password.dispose();
-    super.dispose();
-  }
-
-  Future<void> _signIn() async {
-    FocusScope.of(context).unfocus();
-    setState(() => _busy = true);
-    final phone = _phone.text.trim();
-    final pin = _password.text.trim();
+    if (!FitilaBackend.configured) {
+      throw StateError(
+        'Configuration serveur non intégrée à cette APK. Installez une version FITILA configurée.',
+      );
+    }
     try {
-      if (widget.demoMode) {
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-        widget.onSignedIn(
-          FitilaSession(
-            userId: 'widget-test-user',
-            phone: '+229$phone',
-            displayName: 'Utilisateur Fitila',
-            role: 'Membre',
-            accessToken: '',
-          ),
-        );
-        return;
-      }
-      if (!FitilaBackend.configured) {
-        throw StateError(
-          'Configuration serveur non intégrée à cette APK. Installez une version FITILA configurée.',
-        );
-      }
       final backendSession = await FitilaBackend.signInWithPhone(
         phone: phone,
         pin: pin,
       );
-      if (!mounted) {
-        return;
-      }
-      widget.onSignedIn(FitilaSession.fromBackend(backendSession));
-    } on AuthException catch (_) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Numéro ou PIN incorrect. Vérifiez vos informations.'),
+      onSignedIn(FitilaSession.fromBackend(backendSession));
+    } on AuthException catch (e) {
+      throw StateError(
+        e.message.contains('Aucun compte') || e.message.contains('PIN')
+            ? e.message
+            : 'Numéro ou PIN incorrect. Vérifiez vos informations.',
+      );
+    }
+  }
+
+  Future<void> _signUp(String name, String phone, String pin) async {
+    if (demoMode) {
+      onSignedIn(
+        FitilaSession(
+          userId: 'widget-test-user',
+          phone: '+229$phone',
+          displayName: name,
+          role: 'Membre',
+          accessToken: '',
         ),
       );
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Connexion au serveur FITILA impossible. Vérifiez votre réseau puis réessayez.',
-          ),
-        ),
+      return;
+    }
+    if (!FitilaBackend.configured) {
+      throw StateError(
+        'Configuration serveur non intégrée à cette APK. Installez une version FITILA configurée.',
       );
-    } finally {
-      if (mounted) {
-        setState(() => _busy = false);
-      }
+    }
+    try {
+      final backendSession = await FitilaBackend.signUpWithPhone(
+        name: name,
+        phone: phone,
+        pin: pin,
+      );
+      onSignedIn(FitilaSession.fromBackend(backendSession));
+    } on AuthException catch (e) {
+      throw StateError(e.message);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final wide = MediaQuery.sizeOf(context).width > 760;
-
-    final hero = FadeTransition(
-      opacity: _introOpacity,
-      child: SlideTransition(
-        position: _heroSlide,
-        child: const _PremiumLandingHero(),
-      ),
-    );
-
-    final form = FadeTransition(
-      opacity: _introOpacity,
-      child: SlideTransition(position: _formSlide, child: _authCard()),
-    );
-
-    return Scaffold(
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: _fitilaSurface,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFF9F7F0), Color(0xFFF3F0E5), Color(0xFFF7F5EC)],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1080),
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  wide ? 24 : 16,
-                  wide ? 22 : 14,
-                  wide ? 24 : 16,
-                  wide ? 22 : 18,
-                ),
-                child: wide
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(flex: 11, child: hero),
-                          const SizedBox(width: 24),
-                          Expanded(
-                            flex: 10,
-                            child: SingleChildScrollView(child: form),
-                          ),
-                        ],
-                      )
-                    : ListView(
-                        keyboardDismissBehavior:
-                            ScrollViewKeyboardDismissBehavior.onDrag,
-                        children: [
-                          hero,
-                          const SizedBox(height: 14),
-                          form,
-                          const SizedBox(height: 10),
-                        ],
-                      ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _authCard() {
-    final configured = FitilaBackend.configured;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Bienvenue',
-                        style: TextStyle(
-                          color: _fitilaInk,
-                          fontFamily: 'serif',
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -.2,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      const Text(
-                        'Connectez-vous pour retrouver votre univers FITILA.',
-                        style: TextStyle(
-                          color: _fitilaMuted,
-                          fontSize: 13.5,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: const BoxDecoration(
-                    color: _fitilaPrimarySoft,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.lock_person_rounded,
-                    color: _fitilaGoldDeep,
-                    size: 20,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(
-                color: configured
-                    ? const Color(0xFFDCEAE0)
-                    : const Color(0xFFF4DED2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    configured
-                        ? Icons.verified_rounded
-                        : Icons.cloud_off_rounded,
-                    size: 17,
-                    color: configured ? _fitilaSage : _fitilaClay,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      configured
-                          ? 'Serveur FITILA prêt · connexion sécurisée'
-                          : 'Configuration serveur absente de cette APK',
-                      style: TextStyle(
-                        color: configured ? _fitilaSage : _fitilaClay,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.phone_android_rounded,
-                  size: 18,
-                  color: _fitilaGoldDeep,
-                ),
-                SizedBox(width: 7),
-                Flexible(
-                  child: Text(
-                    '+229 · Compte FITILA',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: _fitilaInkSoft,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _phone,
-              keyboardType: TextInputType.phone,
-              autofillHints: const [AutofillHints.telephoneNumber],
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(11),
-              ],
-              decoration: const InputDecoration(
-                labelText: 'Numéro de téléphone',
-                prefixText: '+229 ',
-                prefixIcon: Icon(Icons.phone_rounded),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _password,
-              obscureText: _obscure,
-              keyboardType: TextInputType.number,
-              autofillHints: const [AutofillHints.password],
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(6),
-              ],
-              decoration: InputDecoration(
-                labelText: 'Code PIN',
-                helperText: '6 chiffres',
-                prefixIcon: const Icon(Icons.lock_rounded),
-                suffixIcon: IconButton(
-                  tooltip: _obscure ? 'Afficher' : 'Masquer',
-                  onPressed: () => setState(() => _obscure = !_obscure),
-                  icon: Icon(
-                    _obscure
-                        ? Icons.visibility_rounded
-                        : Icons.visibility_off_rounded,
-                  ),
-                ),
-              ),
-              onSubmitted: (_) => _signIn(),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 52,
-              child: FilledButton.icon(
-                onPressed: _busy ? null : _signIn,
-                icon: _busy
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.login_rounded),
-                label: Text(_busy ? 'Connexion...' : 'Se connecter'),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Theme(
-              data: Theme.of(context).copyWith(
-                listTileTheme: const ListTileThemeData(
-                  minVerticalPadding: 0,
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    value: _remember,
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (value) => setState(() => _remember = value),
-                    secondary: const Icon(
-                      Icons.verified_user_rounded,
-                      color: _fitilaGoldDeep,
-                    ),
-                    title: const Text(
-                      'Mémoriser cette session',
-                      style: TextStyle(fontSize: 13),
-                    ),
-                  ),
-                  SwitchListTile(
-                    value: _biometric,
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (value) => setState(() => _biometric = value),
-                    secondary: const Icon(
-                      Icons.fingerprint_rounded,
-                      color: _fitilaGoldDeep,
-                    ),
-                    title: const Text(
-                      'Préparer PIN / biométrie',
-                      style: TextStyle(fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _StatusChip(icon: Icons.shield_rounded, label: 'Sécurisé'),
-                _StatusChip(
-                  icon: Icons.offline_bolt_rounded,
-                  label: 'Offline-ready',
-                ),
-                _StatusChip(
-                  icon: Icons.keyboard_alt_rounded,
-                  label: 'Clavier Bàátɔ̀nú',
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PremiumLandingHero extends StatelessWidget {
-  const _PremiumLandingHero();
-
-  @override
-  Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 760;
-    return Container(
-      constraints: BoxConstraints(minHeight: compact ? 190 : 500),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(compact ? 26 : 32),
-        border: Border.all(color: _fitilaBorder),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFFFFFFF), Color(0xFFF7F0DF), Color(0xFFF1EDDF)],
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1E241F2E),
-            blurRadius: 32,
-            offset: Offset(0, 18),
-            spreadRadius: -18,
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(compact ? 26 : 32),
-        child: Stack(
-          children: [
-            Positioned(
-              right: compact ? -26 : -38,
-              top: compact ? -32 : -44,
-              child: Container(
-                width: compact ? 118 : 178,
-                height: compact ? 118 : 178,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0x33C99530),
-                ),
-              ),
-            ),
-            Positioned(
-              left: compact ? -36 : -62,
-              bottom: compact ? -45 : -70,
-              child: Container(
-                width: compact ? 120 : 210,
-                height: compact ? 120 : 210,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0x263F6E52),
-                ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.all(compact ? 18 : 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: compact ? 44 : 58,
-                        height: compact ? 44 : 58,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [_fitilaPrimary, Color(0xFFA6721F)],
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.auto_awesome_rounded,
-                          color: Color(0xFF2B2110),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'FITILA',
-                            style: TextStyle(
-                              color: _fitilaGoldDeep,
-                              fontFamily: 'serif',
-                              fontSize: 25,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: .5,
-                            ),
-                          ),
-                          Text(
-                            'Bàátɔ̀nú · Culture · IA',
-                            style: TextStyle(
-                              color: _fitilaMuted,
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: compact ? 14 : 34),
-                  Text(
-                    'La langue vivante,\naugmentée par l’IA.',
-                    style: TextStyle(
-                      color: _fitilaInk,
-                      fontFamily: 'serif',
-                      fontSize: compact ? 25 : 42,
-                      height: 1.06,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -.5,
-                    ),
-                  ),
-                  SizedBox(height: compact ? 8 : 12),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 460),
-                    child: Text(
-                      compact
-                          ? 'Traduire, apprendre et transmettre le Bàátɔ̀nú, simplement.'
-                          : 'Traduire, apprendre, partager et préserver le Bàátɔ̀nú dans une expérience mobile élégante et accessible.',
-                      style: TextStyle(
-                        color: _fitilaInkSoft,
-                        fontSize: compact ? 12.5 : 15,
-                        height: 1.5,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: compact ? 12 : 28),
-                  if (compact)
-                    const Row(
-                      children: [
-                        Expanded(
-                          child: _LandingCompactFeature(
-                            icon: Icons.translate_rounded,
-                            label: 'Traduire',
-                            tone: _fitilaPrimarySoft,
-                            ink: _fitilaGoldDeep,
-                          ),
-                        ),
-                        SizedBox(width: 7),
-                        Expanded(
-                          child: _LandingCompactFeature(
-                            icon: Icons.auto_awesome_rounded,
-                            label: 'IA',
-                            tone: Color(0xFFF4DED2),
-                            ink: _fitilaClay,
-                          ),
-                        ),
-                        SizedBox(width: 7),
-                        Expanded(
-                          child: _LandingCompactFeature(
-                            icon: Icons.school_rounded,
-                            label: 'Apprendre',
-                            tone: Color(0xFFDCEAE0),
-                            ink: _fitilaSage,
-                          ),
-                        ),
-                      ],
-                    )
-                  else
-                    const Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _LandingFeatureChip(
-                          icon: Icons.translate_rounded,
-                          label: 'Traduction',
-                          tone: _fitilaPrimarySoft,
-                          ink: _fitilaGoldDeep,
-                        ),
-                        _LandingFeatureChip(
-                          icon: Icons.auto_awesome_rounded,
-                          label: 'IA culturelle',
-                          tone: Color(0xFFF4DED2),
-                          ink: _fitilaClay,
-                        ),
-                        _LandingFeatureChip(
-                          icon: Icons.school_rounded,
-                          label: 'Apprentissage',
-                          tone: Color(0xFFDCEAE0),
-                          ink: _fitilaSage,
-                        ),
-                      ],
-                    ),
-                  if (!compact) ...[
-                    const SizedBox(height: 34),
-                    const Row(
-                      children: [
-                        Expanded(
-                          child: _LandingMiniCard(
-                            icon: Icons.menu_book_rounded,
-                            title: 'Dictionnaire',
-                            subtitle: 'Bàátɔ̀nú ↔ Français',
-                          ),
-                        ),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: _LandingMiniCard(
-                            icon: Icons.graphic_eq_rounded,
-                            title: 'Voix',
-                            subtitle: 'Écouter & prononcer',
-                          ),
-                        ),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: _LandingMiniCard(
-                            icon: Icons.groups_rounded,
-                            title: 'Communauté',
-                            subtitle: 'Partager & transmettre',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LandingCompactFeature extends StatelessWidget {
-  const _LandingCompactFeature({
-    required this.icon,
-    required this.label,
-    required this.tone,
-    required this.ink,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color tone;
-  final Color ink;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: 7),
-      decoration: BoxDecoration(
-        color: tone,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 14, color: ink),
-          const SizedBox(width: 5),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: ink,
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LandingFeatureChip extends StatelessWidget {
-  const _LandingFeatureChip({
-    required this.icon,
-    required this.label,
-    required this.tone,
-    required this.ink,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color tone;
-  final Color ink;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-      decoration: BoxDecoration(
-        color: tone,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15, color: ink),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: ink,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LandingMiniCard extends StatelessWidget {
-  const _LandingMiniCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .78),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _fitilaBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: _fitilaGoldDeep, size: 20),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            style: const TextStyle(
-              color: _fitilaInk,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: const TextStyle(color: _fitilaMuted, fontSize: 10.5),
-          ),
-        ],
-      ),
+    return AuthFlow(
+      prefill: demoMode,
+      autoPlay: !demoMode,
+      onSignIn: _signIn,
+      onSignUp: _signUp,
     );
   }
 }
@@ -1683,10 +1066,25 @@ class FitilaShell extends StatefulWidget {
   State<FitilaShell> createState() => _FitilaShellState();
 }
 
-class _FitilaShellState extends State<FitilaShell> {
+class _FitilaShellState extends State<FitilaShell>
+    with WidgetsBindingObserver {
   FitilaPage _page = FitilaPage.feed;
   final Set<FitilaPage> _visited = {FitilaPage.feed};
   final List<FitilaPage> _history = [];
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Au retour dans l'app : on resonde le réseau et on renvoie les modifications en attente.
+    if (state == AppLifecycleState.resumed && FitilaBackend.configured) {
+      FitilaOffline.refresh();
+    }
+  }
 
   void _navigate(FitilaPage page) {
     if (page == _page) {
@@ -1805,6 +1203,7 @@ class _FitilaShellState extends State<FitilaShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (widget.session.accessToken.isNotEmpty) {
       _posts.clear();
       _loadFeed();
@@ -2007,6 +1406,7 @@ class _FitilaShellState extends State<FitilaShell> {
                             session: widget.session,
                             onProfile: () => _navigate(FitilaPage.profile),
                           ),
+                        const OfflineBanner(),
                         Expanded(
                           child: IndexedStack(
                             index: FitilaPage.values.indexOf(_page),
@@ -2070,97 +1470,109 @@ class _NavigationPanel extends StatelessWidget {
   final FitilaSession session;
   final ValueChanged<FitilaPage> onSelected;
 
+  // Menu identique au web (barre latérale de fitila.bj) : même ordre, mêmes modules.
+  static const _explorer = [
+    FitilaPage.feed,
+    FitilaPage.dictionary,
+    FitilaPage.classe,
+    FitilaPage.ia,
+    FitilaPage.translator,
+    FitilaPage.learn,
+    FitilaPage.creator,
+    FitilaPage.espace,
+  ];
+  static const _culture = [FitilaPage.voiceLab];
+  static const _account = [
+    FitilaPage.keyboard,
+    FitilaPage.teacher,
+    FitilaPage.profile,
+    FitilaPage.settings,
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final explorer = [
-      FitilaPage.feed,
-      FitilaPage.dictionary,
-      FitilaPage.classe,
-      FitilaPage.ia,
-      FitilaPage.translator,
-      FitilaPage.learn,
-      FitilaPage.templates,
-      FitilaPage.creator,
-      FitilaPage.espace,
-    ];
-    final culture = [
-      FitilaPage.voiceLab,
-      FitilaPage.education,
-      FitilaPage.discover,
-      FitilaPage.messages,
-    ];
-    final services = [
-      FitilaPage.services,
-      FitilaPage.market,
-      FitilaPage.agriculture,
-      FitilaPage.finance,
-      FitilaPage.health,
-      FitilaPage.sos,
-      FitilaPage.install,
-    ];
-    final account = [
-      FitilaPage.keyboard,
-      FitilaPage.teacher,
-      FitilaPage.drafts,
-      FitilaPage.offline,
-      FitilaPage.wallet,
-      FitilaPage.history,
-      FitilaPage.scan,
-      FitilaPage.shop,
-      FitilaPage.profile,
-      FitilaPage.settings,
-    ];
+    final isAdmin = session.role == 'Administrateur';
+    Widget group(List<FitilaPage> pages) => Column(
+      children: [
+        for (final item in pages)
+          _NavItem(
+            page: item,
+            selected: item == page,
+            onTap: () => onSelected(item),
+          ),
+      ],
+    );
 
     return Material(
       color: _fitilaCard,
       child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
-          children: [
-            const Text(
-              'FITILA',
-              style: TextStyle(
-                color: _fitilaGoldDeep,
-                fontFamily: 'serif',
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                letterSpacing: .2,
+        child: LayoutBuilder(
+          builder: (context, box) => SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: box.maxHeight - 42),
+              child: IntrinsicHeight(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'FITILA',
+                      style: TextStyle(
+                        color: _fitilaGoldDeep,
+                        fontFamily: 'serif',
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: .2,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    const Text(
+                      'Bàátɔ̀nú · Langue, Culture & IA',
+                      style: TextStyle(color: _fitilaMuted, fontSize: 11.5),
+                    ),
+                    const SizedBox(height: 18),
+                    const _SectionLabel('Explorer'),
+                    group(_explorer),
+                    const _SectionLabel('Culture'),
+                    group(_culture),
+                    const _SectionLabel('Compte'),
+                    group(_account),
+                    const _SectionLabel('Langue'),
+                    const _LanguageSwitch(),
+                    if (isAdmin) ...[
+                      const SizedBox(height: 14),
+                      Material(
+                        color: _fitilaSurfaceAlt,
+                        borderRadius: BorderRadius.circular(14),
+                        child: InkWell(
+                          key: const ValueKey('nav-admin'),
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () => launchUrl(
+                            Uri.parse('https://fitila.bj/admin'),
+                            mode: LaunchMode.externalApplication,
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.all(13),
+                            child: Text(
+                              'Administration',
+                              style: TextStyle(
+                                color: _fitilaInk,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const Spacer(),
+                    const SizedBox(height: 18),
+                    _ProfileTile(session: session),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 3),
-            const Text(
-              'Bàátɔ̀nú · Langue, Culture & IA',
-              style: TextStyle(color: _fitilaMuted, fontSize: 11.5),
-            ),
-            const SizedBox(height: 18),
-            const _SectionLabel('Explorer'),
-            for (final item in explorer)
-              _NavItem(
-                page: item,
-                selected: item == page,
-                onTap: () => onSelected(item),
-              ),
-            const _SectionLabel('Culture'),
-            for (final item in culture)
-              _NavItem(
-                page: item,
-                selected: item == page,
-                onTap: () => onSelected(item),
-              ),
-            const _SectionLabel('Services'),
-            _NavGrid(pages: services, selected: page, onSelected: onSelected),
-            const _SectionLabel('Compte'),
-            for (final item in account)
-              _NavItem(
-                page: item,
-                selected: item == page,
-                onTap: () => onSelected(item),
-              ),
-            const SizedBox(height: 12),
-            _ProfileTile(session: session),
-            const SizedBox(height: 12),
-            const _LanguageSwitch(),
-          ],
+          ),
         ),
       ),
     );
@@ -7699,354 +7111,63 @@ class DictionaryScreen extends StatefulWidget {
 }
 
 class _DictionaryScreenState extends State<DictionaryScreen> {
-  late Future<List<DictionaryEntry>> _entries;
-  final _query = TextEditingController();
-  String _inputMode = 'Clavier';
-  bool _baribaToFrench = true;
-  bool _showChars = false;
-  bool _voiceRecording = false;
+  late Future<List<DictEntry>> _entries;
   final _voiceMedia = FitilaMediaController();
-  DictionaryEntry? _selectedEntry;
+  final _player = audio.AudioPlayer();
 
   @override
   void initState() {
     super.initState();
-    _entries = (widget.loadEntries ?? FitilaServices.loadDictionary)();
-    _query.addListener(() {
-      if (mounted) {
-        setState(() {});
-      }
-    });
+    _entries = _load();
+  }
+
+  Future<List<DictEntry>> _load() async {
+    final raw = await (widget.loadEntries ?? FitilaServices.loadDictionary)();
+    return [
+      for (final e in raw)
+        if (e.word.isNotEmpty)
+          DictEntry(
+            word: e.word,
+            definition: e.definition,
+            phonetic: e.phonetic,
+            partOfSpeech: e.partOfSpeech,
+            exampleBariba: e.exampleBariba,
+            exampleFrench: e.exampleFrancais,
+          ),
+    ];
   }
 
   @override
   void dispose() {
-    _query.dispose();
     _voiceMedia.dispose();
+    _player.dispose();
     super.dispose();
   }
 
-  Future<void> _toggleVoiceSearch() async {
-    if (_voiceRecording) {
-      setState(() => _voiceRecording = false);
-      try {
-        final asset = await _voiceMedia.stopAudio();
-        if (asset == null) return;
-        String transcript;
-        try {
-          transcript = await FitilaTranslationAudio.transcribe(
-            asset: asset,
-            sourceIsBariba: _baribaToFrench,
-          );
-        } catch (_) {
-          transcript = await FitilaTranslationAudio.transcribe(
-            asset: asset,
-            sourceIsBariba: !_baribaToFrench,
-          );
-        }
-        if (!mounted) return;
-        setState(() {
-          _query.text = transcript;
-          _query.selection = TextSelection.collapsed(offset: transcript.length);
-          _inputMode = 'Clavier';
-        });
-      } catch (error) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              error is StateError
-                  ? error.message
-                  : 'Recherche vocale indisponible.',
-            ),
-          ),
-        );
-      }
-      return;
-    }
+  Future<void> _speak(String text, bool bariba) => _speakAnywhere(_player, text, bariba: bariba);
+
+  Future<String> _stopVoice(bool baToFr) async {
+    final asset = await _voiceMedia.stopAudio();
+    if (asset == null) throw StateError('Aucun enregistrement audio exploitable.');
     try {
-      await _voiceMedia.startAudio();
-      if (mounted) setState(() => _voiceRecording = true);
+      return await FitilaTranslationAudio.transcribe(asset: asset, sourceIsBariba: baToFr);
     } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Micro indisponible.')),
-      );
+      return FitilaTranslationAudio.transcribe(asset: asset, sourceIsBariba: !baToFr);
     }
-  }
-
-  List<DictionaryEntry> _matches(List<DictionaryEntry> entries) {
-    final q = _query.text.trim().toLowerCase();
-    if (q.isEmpty) {
-      return const [];
-    }
-    final exact = <DictionaryEntry>[];
-    final starts = <DictionaryEntry>[];
-    final contains = <DictionaryEntry>[];
-
-    for (final entry in entries) {
-      final word = entry.word.toLowerCase();
-      final definition = entry.definition.toLowerCase();
-      final target = _baribaToFrench ? word : definition;
-      if (target == q) {
-        exact.add(entry);
-      } else if (target.startsWith(q)) {
-        starts.add(entry);
-      } else if (target.contains(q)) {
-        contains.add(entry);
-      }
-      if (exact.length + starts.length + contains.length >= 24) {
-        break;
-      }
-    }
-    return [...exact, ...starts, ...contains].take(12).toList(growable: false);
-  }
-
-  void _select(DictionaryEntry entry) {
-    setState(() {
-      _selectedEntry = entry;
-      _query.text = _baribaToFrench ? entry.word : entry.definition;
-      _query.selection = TextSelection.collapsed(offset: _query.text.length);
-    });
-    FocusScope.of(context).unfocus();
-  }
-
-  void _search(List<DictionaryEntry> entries) {
-    final matches = _matches(entries);
-    if (matches.isNotEmpty) {
-      _select(matches.first);
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _query.text.trim().isEmpty
-              ? 'Saisissez un mot à rechercher.'
-              : 'Aucun résultat pour « ${_query.text.trim()} ».',
-        ),
-      ),
-    );
-  }
-
-  void _insertCharacter(String char) {
-    final selection = _query.selection;
-    final text = _query.text;
-    final start = selection.start < 0 ? text.length : selection.start;
-    final end = selection.end < 0 ? text.length : selection.end;
-    _query.value = TextEditingValue(
-      text: text.replaceRange(start, end, char),
-      selection: TextSelection.collapsed(offset: start + char.length),
-    );
-  }
-
-  Widget _modeButton(String label, IconData icon) {
-    final selected = _inputMode == label;
-    return Expanded(
-      child: Material(
-        color: selected ? _fitilaCard : _fitilaCard.withValues(alpha: .62),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: selected ? _fitilaPrimary : _fitilaBorder),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => setState(() => _inputMode = label),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 13),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: selected ? _fitilaGoldDeep : _fitilaMuted,
-                ),
-                const SizedBox(width: 7),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: selected ? _fitilaInk : _fitilaMuted,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _resultCard(DictionaryEntry entry) {
-    final part = switch (entry.partOfSpeech?.trim()) {
-      'n' => 'n:y',
-      'v' => 'verbe',
-      'adj' => 'adjectif',
-      'adv' => 'adverbe',
-      final value when value != null && value.isNotEmpty => value,
-      _ => null,
-    };
-
-    return Container(
-      decoration: BoxDecoration(
-        color: _fitilaCard,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _fitilaBorder),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1B241F2E),
-            blurRadius: 26,
-            offset: Offset(0, 12),
-            spreadRadius: -16,
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 20, 16, 20),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [_fitilaPrimary, _fitilaClay],
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('🇧🇯', style: TextStyle(fontSize: 30)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        entry.word,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontFamily: 'serif',
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      if (entry.phonetic?.trim().isNotEmpty == true) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          '[${entry.phonetic}]',
-                          style: const TextStyle(
-                            color: Color(0xE6FFFFFF),
-                            fontSize: 17,
-                          ),
-                        ),
-                      ],
-                      if (part != null) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: .20),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            part,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Fermer',
-                  onPressed: () => setState(() => _selectedEntry = null),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: .18),
-                    foregroundColor: Colors.white,
-                    side: BorderSide.none,
-                  ),
-                  icon: const Icon(Icons.close_rounded),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _WebDictionaryInfo(
-                  icon: Icons.menu_book_rounded,
-                  iconBackground: const Color(0xFFE6F0FF),
-                  iconColor: const Color(0xFF3178D4),
-                  label: '🇫🇷  Définition',
-                  value: entry.definition,
-                  onAudio: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Lecture audio de la définition.'),
-                      ),
-                    );
-                  },
-                ),
-                if (entry.exampleBariba?.trim().isNotEmpty == true) ...[
-                  const SizedBox(height: 12),
-                  _WebDictionaryInfo(
-                    icon: Icons.chat_bubble_outline_rounded,
-                    iconBackground: const Color(0xFFFFF1C7),
-                    iconColor: _fitilaGoldDeep,
-                    label: '🇧🇯  Exemple en Bàátɔ̀nú',
-                    value: entry.exampleBariba!,
-                  ),
-                ],
-                if (entry.exampleFrancais?.trim().isNotEmpty == true) ...[
-                  const SizedBox(height: 12),
-                  _WebDictionaryInfo(
-                    icon: Icons.swap_horiz_rounded,
-                    iconBackground: const Color(0xFFE8F5EC),
-                    iconColor: _fitilaSage,
-                    label: '🇫🇷  Traduction de l’exemple',
-                    value: entry.exampleFrancais!,
-                    onAudio: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Lecture audio de l’exemple.'),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return _PageFrame(
       title: 'Dictionnaire',
-      subtitle: 'Recherche Bàátɔ̀nú ↔ Français, clavier et recherche vocale.',
-      child: FutureBuilder<List<DictionaryEntry>>(
+      subtitle: 'Recherche intelligente, écoute, favoris et exemples.',
+      child: FutureBuilder<List<DictEntry>>(
         future: _entries,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(
               child: FilledButton.icon(
-                onPressed: () => setState(() {
-                  _entries =
-                      (widget.loadEntries ?? FitilaServices.loadDictionary)();
-                }),
+                onPressed: () => setState(() => _entries = _load()),
                 icon: const Icon(Icons.refresh_rounded),
                 label: const Text('Recharger le dictionnaire'),
               ),
@@ -8055,238 +7176,12 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-
-          final entries = snapshot.data!;
-          final matches = _matches(entries);
-
-          return ListView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            children: [
-              Row(
-                children: [
-                  _modeButton('Clavier', Icons.keyboard_alt_rounded),
-                  const SizedBox(width: 10),
-                  _modeButton('Vocal', Icons.mic_rounded),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                '${entries.length.toString().replaceAllMapped(RegExp(r"(?=(\d{3})+(?!\d))"), (m) => " ")} mots',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: _fitilaMuted,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (_inputMode == 'Clavier')
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: _fitilaCard,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: _fitilaBorder),
-                  ),
-                  child: Column(
-                    children: [
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 7,
-                        runSpacing: 7,
-                        children: [
-                          ChoiceChip(
-                            selected: _baribaToFrench,
-                            label: const Text('🇧🇯 Bàátɔ̀nú'),
-                            onSelected: (_) {
-                              setState(() {
-                                _baribaToFrench = true;
-                                _selectedEntry = null;
-                                _query.clear();
-                              });
-                            },
-                          ),
-                          const Icon(
-                            Icons.arrow_forward_rounded,
-                            color: _fitilaMuted,
-                            size: 18,
-                          ),
-                          ChoiceChip(
-                            selected: !_baribaToFrench,
-                            label: const Text('🇫🇷 Français'),
-                            onSelected: (_) {
-                              setState(() {
-                                _baribaToFrench = false;
-                                _selectedEntry = null;
-                                _query.clear();
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _query,
-                        textInputAction: TextInputAction.search,
-                        onSubmitted: (_) => _search(entries),
-                        decoration: InputDecoration(
-                          hintText: _baribaToFrench
-                              ? 'Tapez un mot Bàátɔ̀nú'
-                              : 'Tapez un mot français',
-                          prefixIcon: const Icon(Icons.search_rounded),
-                          suffixIcon: SizedBox(
-                            width: 104,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                IconButton(
-                                  tooltip: 'Caractères spéciaux',
-                                  onPressed: () =>
-                                      setState(() => _showChars = !_showChars),
-                                  icon: const Icon(Icons.keyboard_alt_rounded),
-                                ),
-                                if (_query.text.isNotEmpty)
-                                  IconButton(
-                                    tooltip: 'Effacer',
-                                    onPressed: () {
-                                      _query.clear();
-                                      setState(() => _selectedEntry = null);
-                                    },
-                                    icon: const Icon(Icons.close_rounded),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (_showChars) ...[
-                        const SizedBox(height: 10),
-                        _BaribaKeyboard(onInsert: _insertCharacter),
-                      ],
-                      if (matches.isNotEmpty && _selectedEntry == null) ...[
-                        const SizedBox(height: 10),
-                        Material(
-                          color: _fitilaSurfaceAlt,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: const BorderSide(color: _fitilaBorder),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Column(
-                            children: [
-                              for (final entry in matches.take(8))
-                                ListTile(
-                                  dense: true,
-                                  onTap: () => _select(entry),
-                                  leading: const Icon(
-                                    Icons.menu_book_rounded,
-                                    color: _fitilaGoldDeep,
-                                  ),
-                                  title: Text(
-                                    _baribaToFrench
-                                        ? entry.word
-                                        : entry.definition,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  subtitle: Text(
-                                    _baribaToFrench
-                                        ? entry.definition
-                                        : entry.word,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  trailing: const Icon(
-                                    Icons.chevron_right_rounded,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.all(22),
-                  decoration: BoxDecoration(
-                    color: _fitilaCard,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: _fitilaBorder),
-                  ),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: const BoxDecoration(
-                          color: _fitilaPrimarySoft,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.mic_rounded,
-                          color: _fitilaGoldDeep,
-                          size: 30,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Recherche vocale',
-                        style: TextStyle(
-                          color: _fitilaInk,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Prononcez un mot en Bàátɔ̀nú ou en français. Le résultat s’affichera dans la même fiche détaillée.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: _fitilaMuted, height: 1.4),
-                      ),
-                      const SizedBox(height: 14),
-                      FilledButton.icon(
-                        onPressed: _toggleVoiceSearch,
-                        icon: Icon(
-                          _voiceRecording
-                              ? Icons.stop_circle_rounded
-                              : Icons.mic_rounded,
-                        ),
-                        label: Text(
-                          _voiceRecording
-                              ? 'Terminer la recherche'
-                              : 'Parler maintenant',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 14),
-              SizedBox(
-                height: 52,
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _fitilaSage,
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () => _showContribution(context),
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Proposer un mot'),
-                ),
-              ),
-              const SizedBox(height: 16),
-              if (_selectedEntry != null)
-                _resultCard(_selectedEntry!)
-              else if (_query.text.trim().isEmpty)
-                const _EmptyState(
-                  icon: Icons.menu_book_rounded,
-                  title: 'Cherchez un mot',
-                  text:
-                      'Le dictionnaire embarqué reprend le parcours du site FITILA avec recherche et fiche détaillée.',
-                ),
-            ],
+          return DictionaryExperience(
+            entries: snapshot.data!,
+            speak: _speak,
+            startVoice: _voiceMedia.startAudio,
+            stopVoice: _stopVoice,
+            onPropose: () => _showContribution(context),
           );
         },
       ),
@@ -8294,1032 +7189,116 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   }
 }
 
-class _WebDictionaryInfo extends StatelessWidget {
-  const _WebDictionaryInfo({
-    required this.icon,
-    required this.iconBackground,
-    required this.iconColor,
-    required this.label,
-    required this.value,
-    this.onAudio,
-  });
-
-  final IconData icon;
-  final Color iconBackground;
-  final Color iconColor;
-  final String label;
-  final String value;
-  final VoidCallback? onAudio;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _fitilaSurface.withValues(alpha: .70),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _fitilaBorder),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: iconBackground,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: iconColor, size: 21),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          color: iconColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    if (onAudio != null)
-                      IconButton(
-                        tooltip: 'Écouter',
-                        onPressed: onAudio,
-                        icon: const Icon(Icons.volume_up_rounded),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    color: _fitilaInk,
-                    fontSize: 16,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class TranslatorScreen extends StatefulWidget {
-  const TranslatorScreen({super.key, required this.accessToken});
+  const TranslatorScreen({super.key, required this.accessToken, this.ports});
 
   final String accessToken;
+
+  /// Services injectés (tests) ; par défaut : moteur FITILA réel.
+  final TranslatorPorts? ports;
 
   @override
   State<TranslatorScreen> createState() => _TranslatorScreenState();
 }
 
 class _TranslatorScreenState extends State<TranslatorScreen> {
-  final _input = TextEditingController();
-  final _output = TextEditingController();
-  TranslationDirection _direction = TranslationDirection.frenchToBariba;
-  String _mode = 'Texte';
-  bool _autoDetect = true;
-  bool _conversationMode = true;
-  bool _busy = false;
-  bool _voiceRecording = false;
-  bool _speaking = false;
-  String? _detectedLanguage;
   final _voiceMedia = FitilaMediaController();
   final _voicePlayer = audio.AudioPlayer();
-  final List<({String source, String result})> _history = [];
 
   @override
   void dispose() {
-    _input.dispose();
-    _output.dispose();
     _voiceMedia.dispose();
     _voicePlayer.dispose();
     super.dispose();
   }
 
-  String get _sourceLabel => _direction == TranslationDirection.frenchToBariba
-      ? '🇫🇷 Français'
-      : '🇧🇯 Bàátɔ̀nú';
+  TranslationDirection _dir(bool toBariba) => toBariba
+      ? TranslationDirection.frenchToBariba
+      : TranslationDirection.baribaToFrench;
 
-  String get _targetLabel => _direction == TranslationDirection.frenchToBariba
-      ? '🇧🇯 Bàátɔ̀nú'
-      : '🇫🇷 Français';
-
-  void _swapLanguages() {
-    setState(() {
-      _direction = _direction == TranslationDirection.frenchToBariba
-          ? TranslationDirection.baribaToFrench
-          : TranslationDirection.frenchToBariba;
-      final input = _input.text;
-      _input.text = _output.text;
-      _output.text = input;
-      _detectedLanguage = null;
-    });
-  }
-
-  void _detectFromText(String value) {
-    if (!_autoDetect || value.trim().length < 3) {
-      return;
-    }
-    final lower = value.toLowerCase();
-    final baribaSignals = [
-      'ɔ',
-      'ɛ',
-      'ŋ',
-      'sɔ̃',
-      'gari',
-      'mba',
-      'wɛɛ',
-      'bɛɛ',
-      'tem',
-    ];
-    final likelyBariba = baribaSignals.any(lower.contains);
-    setState(() {
-      _detectedLanguage = likelyBariba ? 'Bàátɔ̀nú' : 'Français';
-      _direction = likelyBariba
-          ? TranslationDirection.baribaToFrench
-          : TranslationDirection.frenchToBariba;
-    });
-  }
-
-  Future<void> _translate() async {
-    final source = _input.text.trim();
-    if (source.isEmpty || _busy) {
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      final translated = await FitilaServices.translate(
-        source,
-        _direction,
-        accessToken: widget.accessToken,
-      );
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _output.text = translated;
-        if (translated.isNotEmpty) {
-          _history.insert(0, (source: source, result: translated));
-          if (_history.length > 20) {
-            _history.removeLast();
-          }
-        }
-      });
-      if (translated.isNotEmpty && FitilaBackend.configured) {
-        FitilaBackend.saveTranslationHistory(
-          sourceLang: _direction == TranslationDirection.frenchToBariba
-              ? 'fr'
-              : 'ba',
-          targetLang: _direction == TranslationDirection.frenchToBariba
-              ? 'ba'
-              : 'fr',
-          sourceText: source,
-          translatedText: translated,
-          mode: _mode,
-        ).catchError((_) => <String, dynamic>{});
-      }
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error is StateError
-                ? error.message
-                : 'Traduction indisponible. Réessayez.',
-          ),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _busy = false);
-      }
-    }
-  }
-
-  Future<void> _toggleVoiceCapture() async {
-    if (_busy) return;
-    if (!_voiceRecording) {
-      try {
-        await _voiceMedia.startAudio();
-        if (!mounted) return;
-        setState(() {
-          _mode = 'Voix';
-          _voiceRecording = true;
-        });
-      } catch (error) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Micro indisponible : $error')),
-        );
-      }
-      return;
-    }
-
-    setState(() {
-      _voiceRecording = false;
-      _busy = true;
-    });
-    try {
+  TranslatorPorts _livePorts() => TranslatorPorts(
+    translate: (text, toBariba) => FitilaServices.translate(
+      text,
+      _dir(toBariba),
+      accessToken: widget.accessToken,
+    ),
+    startVoice: _voiceMedia.startAudio,
+    stopVoice: (sourceIsBariba) async {
       final asset = await _voiceMedia.stopAudio();
       if (asset == null) {
         throw StateError('Aucun enregistrement audio exploitable.');
       }
-      final sourceIsBariba =
-          _direction == TranslationDirection.baribaToFrench;
-      final transcript = await FitilaTranslationAudio.transcribe(
+      return FitilaTranslationAudio.transcribe(
         asset: asset,
         sourceIsBariba: sourceIsBariba,
       );
-      if (!mounted) return;
-      setState(() {
-        _input.text = transcript;
-        _detectedLanguage = sourceIsBariba ? 'Bàátɔ̀nú' : 'Français';
-      });
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error is StateError
-                ? error.message
-                : 'Transcription vocale indisponible. Réessayez.',
-          ),
-        ),
-      );
-      return;
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-    await _translate();
-  }
-
-  Future<void> _speakText(
-    String text, {
-    required bool bariba,
-  }) async {
-    final value = text.trim();
-    if (value.isEmpty || _speaking) return;
-    setState(() => _speaking = true);
-    try {
-      await _voicePlayer.stop();
-      final generated = await FitilaTranslationAudio.synthesize(
-        text: value,
-        bariba: bariba,
-      );
-      final url = generated.url?.trim() ?? '';
-      if (url.isNotEmpty) {
-        await _voicePlayer.play(audio.UrlSource(url));
+    },
+    speak: (text, bariba) => _speakAnywhere(_voicePlayer, text, bariba: bariba),
+    ocr: (toBariba, document) async {
+      if (!FitilaBackend.configured) {
+        throw StateError('Serveur FITILA indisponible.');
+      }
+      List<int>? bytes;
+      var name = 'photo.jpg';
+      if (document) {
+        final selection = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: const ['pdf', 'png', 'jpg', 'jpeg', 'webp'],
+          withData: true,
+        );
+        if (selection == null || selection.files.isEmpty) return null;
+        bytes = selection.files.first.bytes;
+        name = selection.files.first.name;
+        if (bytes == null) throw StateError('Impossible de lire le document.');
       } else {
-        final path = await generated.materialize();
-        if (path == null || path.isEmpty) {
-          throw StateError('Audio non disponible.');
-        }
-        await _voicePlayer.play(audio.DeviceFileSource(path));
+        final file = await ImagePicker().pickImage(
+          source: ImageSource.gallery,
+          imageQuality: 88,
+          maxWidth: 1800,
+        );
+        if (file == null) return null;
+        bytes = await file.readAsBytes();
+        name = file.name;
       }
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error is StateError
-                ? error.message
-                : 'Lecture vocale momentanément indisponible.',
-          ),
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _speaking = false);
-    }
-  }
-
-  Future<void> _pasteAndTranslate() async {
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    final text = data?.text?.trim() ?? '';
-    if (text.isEmpty) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Le presse-papiers est vide.')),
-      );
-      return;
-    }
-    setState(() {
-      _mode = 'Coller';
-      _input.text = text;
-    });
-    _detectFromText(text);
-    await _translate();
-  }
-
-  Future<void> _translateImage() async {
-    if (!FitilaBackend.configured) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Serveur FITILA indisponible.')),
-      );
-      return;
-    }
-    final file = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 88,
-      maxWidth: 1800,
-    );
-    if (file == null) {
-      return;
-    }
-    final bytes = await file.readAsBytes();
-    await _ocrTranslate(bytes, file.name);
-  }
-
-  Future<void> _translateDocument() async {
-    if (!FitilaBackend.configured) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Serveur FITILA indisponible.')),
-      );
-      return;
-    }
-    final selection = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['pdf', 'png', 'jpg', 'jpeg', 'webp'],
-      withData: true,
-    );
-    if (selection == null || selection.files.isEmpty) {
-      return;
-    }
-    final file = selection.files.first;
-    final bytes = file.bytes;
-    if (bytes == null) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossible de lire le document.')),
-      );
-      return;
-    }
-    await _ocrTranslate(bytes, file.name);
-  }
-
-  Future<void> _ocrTranslate(List<int> bytes, String fileName) async {
-    if (_busy) {
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      final target = _direction == TranslationDirection.frenchToBariba
-          ? 'bariba'
-          : 'french';
       final response = await FitilaBackend.client.functions.invoke(
         'ocr-translate',
         body: {
           'document': base64Encode(bytes),
-          'fileName': fileName,
-          'targetLanguage': target,
+          'fileName': name,
+          'targetLanguage': toBariba ? 'bariba' : 'french',
           'translateMode': 'combined',
         },
       );
       final data = response.data;
-      if (data is! Map) {
-        throw StateError('Réponse OCR invalide.');
-      }
-      final extracted = data['extractedText']?.toString().trim() ?? '';
-      final translation = data['translation']?.toString().trim() ?? '';
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _input.text = extracted;
-        _output.text = translation;
-        if (extracted.isNotEmpty || translation.isNotEmpty) {
-          _history.insert(0, (
-            source: extracted.isEmpty ? fileName : extracted,
-            result: translation,
-          ));
-        }
-      });
-      if (translation.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Texte détecté, mais aucune traduction n’a été produite.',
-            ),
-          ),
-        );
-      }
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Lecture du document impossible. Vérifiez le réseau puis réessayez.',
-          ),
-        ),
+      if (data is! Map) throw StateError('Réponse OCR invalide.');
+      return (
+        extracted: data['extractedText']?.toString().trim() ?? '',
+        translation: data['translation']?.toString().trim() ?? '',
       );
-    } finally {
-      if (mounted) {
-        setState(() => _busy = false);
-      }
-    }
-  }
+    },
+    saveHistory: (source, result, toBariba, mode) {
+      if (!FitilaBackend.configured) return;
+      FitilaBackend.saveTranslationHistory(
+        sourceLang: toBariba ? 'fr' : 'ba',
+        targetLang: toBariba ? 'ba' : 'fr',
+        sourceText: source,
+        translatedText: result,
+        mode: mode,
+      ).catchError((_) => <String, dynamic>{});
+    },
+    openHistory: () => Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const TranslationHistoryScreen()),
+    ),
+  );
 
-  void _selectMode(String mode) {
-    setState(() => _mode = mode);
-    switch (mode) {
-      case 'Coller':
-        _pasteAndTranslate();
-      case 'Photo':
-        _translateImage();
-      case 'Doc':
-        _translateDocument();
-    }
-  }
-
-  Widget _modeButton(String mode, IconData icon, Color tone) {
-    final selected = _mode == mode;
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: _busy ? null : () => _selectMode(mode),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? tone : _fitilaCard,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: selected ? tone : _fitilaBorder),
-          boxShadow: selected
-              ? const [
-                  BoxShadow(
-                    color: Color(0x18241F2E),
-                    blurRadius: 14,
-                    offset: Offset(0, 7),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 21, color: selected ? Colors.white : _fitilaMuted),
-            const SizedBox(height: 5),
-            Text(
-              mode,
-              style: TextStyle(
-                color: selected ? Colors.white : _fitilaMuted,
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _welcomeState() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
-      child: Column(
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: _fitilaPrimarySoft,
-            ),
-            child: const Icon(
-              Icons.language_rounded,
-              size: 43,
-              color: _fitilaGoldDeep,
-            ),
-          ),
-          const SizedBox(height: 14),
-          const Text(
-            'Bienvenue ! 👋',
-            style: TextStyle(
-              color: _fitilaInk,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 7),
-          const Text(
-            'Je traduis entre Français et Bàátɔ̀nú',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: _fitilaMuted, fontSize: 14),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (_autoDetect)
-                const _StatusChip(
-                  icon: Icons.auto_awesome_rounded,
-                  label: 'Détection automatique',
-                ),
-              if (_conversationMode)
-                const _StatusChip(
-                  icon: Icons.chat_bubble_outline_rounded,
-                  label: 'Mode conversation',
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  late final TranslatorPorts _ports = widget.ports ?? _livePorts();
 
   @override
   Widget build(BuildContext context) {
     return _PageFrame(
       title: 'Traducteur IA',
-      subtitle: 'Voix, texte, photo, presse-papiers et documents.',
-      action: IconButton(
-        tooltip: 'Historique et favoris',
-        icon: const Icon(Icons.history_rounded),
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const TranslationHistoryScreen()),
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-            decoration: BoxDecoration(
-              color: _fitilaCard,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: _fitilaBorder),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.wifi_rounded,
-                      color: _fitilaSage,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'Auto',
-                      style: TextStyle(
-                        color: _fitilaSage,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      _detectedLanguage == null
-                          ? 'Détection active'
-                          : 'Détecté : $_detectedLanguage',
-                      style: const TextStyle(
-                        color: _fitilaMuted,
-                        fontSize: 10.5,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 7),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      ChoiceChip(
-                        selected:
-                            _direction == TranslationDirection.frenchToBariba,
-                        label: const Text('🇫🇷 Français'),
-                        onSelected: (_) => setState(() {
-                          _direction = TranslationDirection.frenchToBariba;
-                        }),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        child: IconButton.filled(
-                          tooltip: 'Inverser',
-                          onPressed: _swapLanguages,
-                          icon: const Icon(Icons.swap_horiz_rounded),
-                        ),
-                      ),
-                      ChoiceChip(
-                        selected:
-                            _direction == TranslationDirection.baribaToFrench,
-                        label: const Text('🇧🇯 Bariba'),
-                        onSelected: (_) => setState(() {
-                          _direction = TranslationDirection.baribaToFrench;
-                        }),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 14,
-                  runSpacing: 6,
-                  children: [
-                    FilterChip(
-                      selected: _autoDetect,
-                      avatar: const Icon(Icons.auto_awesome_rounded, size: 16),
-                      label: Text(
-                        _detectedLanguage == null
-                            ? 'Détection auto'
-                            : 'Détecté : $_detectedLanguage',
-                      ),
-                      onSelected: (value) =>
-                          setState(() => _autoDetect = value),
-                    ),
-                    FilterChip(
-                      selected: _conversationMode,
-                      avatar: const Icon(
-                        Icons.chat_bubble_outline_rounded,
-                        size: 16,
-                      ),
-                      label: const Text('Mode conversation'),
-                      onSelected: (value) =>
-                          setState(() => _conversationMode = value),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: ListView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              children: [
-                if (_input.text.isEmpty && _output.text.isEmpty)
-                  _welcomeState(),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _modeButton('Voix', Icons.mic_rounded, _fitilaClay),
-                      const SizedBox(width: 7),
-                      _modeButton(
-                        'Texte',
-                        Icons.keyboard_alt_rounded,
-                        const Color(0xFF4D73E6),
-                      ),
-                      const SizedBox(width: 7),
-                      _modeButton(
-                        'Photo',
-                        Icons.photo_camera_rounded,
-                        const Color(0xFF9A62D6),
-                      ),
-                      const SizedBox(width: 7),
-                      _modeButton(
-                        'Coller',
-                        Icons.content_paste_rounded,
-                        _fitilaSage,
-                      ),
-                      const SizedBox(width: 7),
-                      _modeButton(
-                        'Doc',
-                        Icons.description_rounded,
-                        _fitilaGoldDeep,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (_mode == 'Voix') ...[
-                  Container(
-                    padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
-                      color: _fitilaCard,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: _fitilaBorder),
-                    ),
-                    child: Column(
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          width: 72,
-                          height: 72,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _voiceRecording
-                                ? _fitilaClay.withValues(alpha: .14)
-                                : _fitilaPrimarySoft,
-                          ),
-                          child: Icon(
-                            _voiceRecording
-                                ? Icons.graphic_eq_rounded
-                                : Icons.mic_rounded,
-                            color: _voiceRecording
-                                ? _fitilaClay
-                                : _fitilaGoldDeep,
-                            size: 38,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          _voiceRecording
-                              ? 'Je vous écoute…'
-                              : 'Traduction vocale directe',
-                          style: const TextStyle(
-                            color: _fitilaInk,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _voiceRecording
-                              ? 'Parlez en $_sourceLabel puis appuyez pour terminer.'
-                              : 'Parlez en $_sourceLabel : FITILA transcrit, traduit et permet d’écouter le résultat.',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: _fitilaMuted,
-                            height: 1.4,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: FilledButton.icon(
-                            onPressed: _busy ? null : _toggleVoiceCapture,
-                            icon: _busy
-                                ? const SizedBox.square(
-                                    dimension: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Icon(
-                                    _voiceRecording
-                                        ? Icons.stop_circle_rounded
-                                        : Icons.mic_rounded,
-                                  ),
-                            label: Text(
-                              _voiceRecording
-                                  ? 'Terminer et traduire'
-                                  : 'Parler et traduire',
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_input.text.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    _TextPanel(
-                      title: _sourceLabel,
-                      controller: _input,
-                      hint: 'Transcription',
-                      readOnly: false,
-                      maxLines: 6,
-                    ),
-                  ],
-                  if (_output.text.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    _TextPanel(
-                      title: _targetLabel,
-                      controller: _output,
-                      hint: 'Traduction',
-                      readOnly: true,
-                      maxLines: 6,
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: _speaking
-                              ? null
-                              : () => _speakText(
-                                    _input.text,
-                                    bariba: _direction ==
-                                        TranslationDirection.baribaToFrench,
-                                  ),
-                          icon: const Icon(Icons.hearing_rounded),
-                          label: const Text('Écouter source'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: _speaking
-                              ? null
-                              : () => _speakText(
-                                    _output.text,
-                                    bariba: _direction ==
-                                        TranslationDirection.frenchToBariba,
-                                  ),
-                          icon: const Icon(Icons.volume_up_rounded),
-                          label: const Text('Écouter traduction'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ]
-                else ...[
-                  Container(
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      color: _fitilaCard,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: _fitilaBorder),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _sourceLabel.toUpperCase(),
-                          style: const TextStyle(
-                            color: _fitilaGoldDeep,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: .3,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        TextField(
-                          controller: _input,
-                          minLines: 3,
-                          maxLines: 7,
-                          onChanged: _detectFromText,
-                          decoration: InputDecoration(
-                            hintText: 'Tapez dans n’importe quelle langue...',
-                            fillColor: Colors.transparent,
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            contentPadding: EdgeInsets.zero,
-                            suffixIcon: IconButton(
-                              tooltip: 'Clavier Bàátɔ̀nú',
-                              onPressed: () => _showKeyboard(context, _input),
-                              icon: const Icon(Icons.keyboard_rounded),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 50,
-                    child: FilledButton.icon(
-                      onPressed: _busy ? null : _translate,
-                      icon: _busy
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.send_rounded),
-                      label: const Text('Traduire'),
-                    ),
-                  ),
-                  if (_output.text.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    _TextPanel(
-                      title: _targetLabel,
-                      controller: _output,
-                      hint: 'Résultat',
-                      readOnly: true,
-                      maxLines: 7,
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: _speaking
-                              ? null
-                              : () => _speakText(
-                                    _input.text,
-                                    bariba: _direction ==
-                                        TranslationDirection.baribaToFrench,
-                                  ),
-                          icon: const Icon(Icons.hearing_rounded),
-                          label: const Text('Source'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: _speaking
-                              ? null
-                              : () => _speakText(
-                                    _output.text,
-                                    bariba: _direction ==
-                                        TranslationDirection.frenchToBariba,
-                                  ),
-                          icon: const Icon(Icons.volume_up_rounded),
-                          label: const Text('Traduction'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () async {
-                            final messenger = ScaffoldMessenger.of(context);
-                            await Clipboard.setData(
-                              ClipboardData(text: _output.text),
-                            );
-                            if (!mounted) {
-                              return;
-                            }
-                            messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text('Traduction copiée.'),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.copy_rounded),
-                          label: const Text('Copier'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              _input.clear();
-                              _output.clear();
-                              _detectedLanguage = null;
-                            });
-                          },
-                          icon: const Icon(Icons.delete_outline_rounded),
-                          label: const Text('Effacer'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-                if (_history.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Historique récent',
-                        style: TextStyle(
-                          color: _fitilaMuted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const TranslationHistoryScreen(),
-                          ),
-                        ),
-                        child: const Text(
-                          'Tout voir',
-                          style: TextStyle(fontSize: 11.5),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 7),
-                  for (final item in _history.take(5))
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 7),
-                      child: Material(
-                        color: _fitilaCard,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          side: const BorderSide(color: _fitilaBorder),
-                        ),
-                        child: ListTile(
-                          dense: true,
-                          onTap: () => setState(() {
-                            _input.text = item.source;
-                            _output.text = item.result;
-                          }),
-                          leading: const Icon(Icons.history_rounded),
-                          title: Text(
-                            item.source,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(
-                            item.result,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
+      subtitle: 'Discutez : voix, texte, photo, presse-papiers et documents.',
+      child: TranslatorChat(ports: _ports),
     );
   }
 }
@@ -12626,1046 +10605,31 @@ class _LearnerProfileScreenState extends State<LearnerProfileScreen> {
 }
 
 class ClasseScreen extends StatefulWidget {
-  const ClasseScreen({super.key, this.initialLessons});
+  const ClasseScreen({super.key, this.initialLessons, this.session});
 
   final List<WebClasseLesson>? initialLessons;
+  final ClasseSession? session;
 
   @override
   State<ClasseScreen> createState() => _ClasseScreenState();
 }
 
 class _ClasseScreenState extends State<ClasseScreen> {
-  late Future<List<WebClasseLesson>> _webLessons;
+  late final ClasseSession _session;
+  late final bool _ownsSession;
   String _level = 'N1';
-  String _section = 'home';
-  int _selectedLessonId = 1;
-  String _lessonTab = 'text';
-  final Map<String, String> _lessonAnswers = {};
-  final Set<String> _completed = {};
 
   @override
   void initState() {
     super.initState();
-    _webLessons = widget.initialLessons == null
-        ? WebClasseContent.loadLessons()
-        : Future.value(widget.initialLessons!);
+    _ownsSession = widget.session == null;
+    _session = widget.session ?? ClasseSession(store: OfflineClasseStore(SupabaseClasseStore()));
   }
 
-  void _setLevel(String level) {
-    setState(() {
-      _level = level;
-      _section = 'home';
-      _selectedLessonId = 1;
-      _lessonTab = 'text';
-    });
-  }
-
-  List<WebClasseLesson> _forLevel(List<WebClasseLesson> all) =>
-      all.where((lesson) => lesson.level == _level).toList(growable: false);
-
-  Map<String, List<WebClasseLesson>> _grouped(List<WebClasseLesson> lessons) {
-    final groups = <String, List<WebClasseLesson>>{};
-    for (final lesson in lessons) {
-      groups.putIfAbsent(lesson.themeLabel, () => []).add(lesson);
-    }
-    return groups;
-  }
-
-  void _openLesson(WebClasseLesson lesson) {
-    setState(() {
-      _selectedLessonId = lesson.id;
-      _lessonTab = 'text';
-      _section = 'detail';
-    });
-  }
-
-  Future<void> _playApprovedAudio(
-    WebClasseLesson lesson, {
-    String section = 'text',
-    int? itemIndex,
-  }) async {
-    if (!FitilaBackend.configured) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Serveur audio FITILA indisponible.')),
-      );
-      return;
-    }
-    final suffix = itemIndex == null ? section : '$section/$itemIndex';
-    final contentKey = 'classe/${lesson.level}/lang/${lesson.id}/$suffix';
-    try {
-      final row = await FitilaBackend.client
-          .from('classe_content_audios')
-          .select('storage_path')
-          .eq('content_key', contentKey)
-          .eq('is_current', true)
-          .eq('status', 'approved')
-          .maybeSingle();
-      if (row == null) {
-        if (!mounted) {
-          return;
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Audio validé non disponible pour ce contenu.'),
-          ),
-        );
-        return;
-      }
-      final signed = await FitilaBackend.client.storage
-          .from('classe-audio')
-          .createSignedUrl(row['storage_path'].toString(), 3600);
-      final url = signed;
-      final player = audio.AudioPlayer();
-      await player.play(audio.UrlSource(url));
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lecture audio impossible.')),
-      );
-    }
-  }
-
-  Widget _levelSelector(List<WebClasseLesson> all) {
-    final n1 = all.where((e) => e.level == 'N1').length;
-    final n2 = all.where((e) => e.level == 'N2').length;
-    Widget levelCard({
-      required String level,
-      required String title,
-      required String emoji,
-      required int count,
-      required Color tone,
-    }) {
-      final selected = _level == level;
-      return Expanded(
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => _setLevel(level),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(
-              color: selected ? tone.withValues(alpha: .15) : _fitilaCard,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: selected ? tone : _fitilaBorder,
-                width: selected ? 1.5 : 1,
-              ),
-              boxShadow: selected
-                  ? const [
-                      BoxShadow(
-                        color: Color(0x17241F2E),
-                        blurRadius: 20,
-                        offset: Offset(0, 9),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Column(
-              children: [
-                Text(
-                  '$emoji $title',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: selected ? tone : _fitilaMuted,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  '$count leçons',
-                  style: const TextStyle(color: _fitilaMuted, fontSize: 10.5),
-                ),
-                if (selected) ...[
-                  const SizedBox(height: 9),
-                  LinearProgressIndicator(
-                    value: .0,
-                    minHeight: 6,
-                    borderRadius: BorderRadius.circular(99),
-                    color: tone,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Row(
-      children: [
-        levelCard(
-          level: 'N1',
-          title: 'Niveau 1',
-          emoji: '🔥',
-          count: n1,
-          tone: _fitilaGoldDeep,
-        ),
-        const SizedBox(width: 10),
-        levelCard(
-          level: 'N2',
-          title: 'Niveau 2',
-          emoji: '🚀',
-          count: n2,
-          tone: const Color(0xFF6758C9),
-        ),
-      ],
-    );
-  }
-
-  Widget _home(List<WebClasseLesson> all) {
-    final lessons = _forLevel(all);
-    final completed = lessons
-        .where((lesson) => _completed.contains('${lesson.level}-${lesson.id}'))
-        .length;
-    final isN2 = _level == 'N2';
-
-    final sections =
-        <({String id, String emoji, String title, String subtitle})>[
-          (
-            id: 'lessons',
-            emoji: '📖',
-            title: isN2 ? 'Part 1 — Langue' : 'Leçons',
-            subtitle: '${lessons.length} leçons',
-          ),
-          (
-            id: 'alphabet',
-            emoji: isN2 ? '🔢' : '🔤',
-            title: isN2 ? 'Part 2 — Calcul' : 'Alphabet',
-            subtitle: isN2 ? 'Calcul & problèmes' : 'Voyelles & consonnes',
-          ),
-          (
-            id: 'evaluations',
-            emoji: '📝',
-            title: 'Évaluations',
-            subtitle: 'Questions & scores',
-          ),
-          if (isN2)
-            (
-              id: 'grammaire',
-              emoji: '📐',
-              title: 'Grammaire',
-              subtitle: 'Classes, tons, verbes',
-            ),
-          if (isN2)
-            (
-              id: 'textprod',
-              emoji: '✍️',
-              title: 'Production de textes',
-              subtitle: '6 types de textes',
-            ),
-          if (isN2)
-            (
-              id: 'gestion',
-              emoji: '💼',
-              title: 'Gestion',
-              subtitle: 'Documents pratiques',
-            ),
-          (
-            id: 'facilitateur',
-            emoji: '👨‍🏫',
-            title: 'Facilitateur',
-            subtitle: 'Guide pédagogique',
-          ),
-          (
-            id: 'corrections',
-            emoji: '✅',
-            title: 'Mes corrections',
-            subtitle: 'Notes & commentaires',
-          ),
-        ];
-
-    return ListView(
-      children: [
-        _levelSelector(all),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _WebClassStat(
-                value: '$completed',
-                label: 'Leçons',
-                tone: _fitilaInk,
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: _WebClassStat(
-                value: '0',
-                label: 'Évaluations',
-                tone: _fitilaInk,
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: _WebClassStat(
-                value: '0%',
-                label: 'Progression',
-                tone: _fitilaGoldDeep,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        GridView.builder(
-          itemCount: sections.length,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisExtent: 152,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-          ),
-          itemBuilder: (context, index) {
-            final section = sections[index];
-            return InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: () {
-                if (section.id == 'lessons') {
-                  setState(() => _section = 'lessons');
-                } else {
-                  setState(() => _section = section.id);
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: _fitilaCard,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: _fitilaBorder),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 54,
-                      height: 54,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: index.isEven
-                            ? _fitilaPrimarySoft
-                            : const Color(0xFFDCEAE0),
-                        borderRadius: BorderRadius.circular(17),
-                      ),
-                      child: Text(
-                        section.emoji,
-                        style: const TextStyle(fontSize: 25),
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      section.title,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _fitilaInk,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      section.subtitle,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _fitilaMuted,
-                        fontSize: 9.8,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _lessonList(List<WebClasseLesson> all) {
-    final lessons = _forLevel(all);
-    final groups = _grouped(lessons);
-    return ListView(
-      children: [
-        Row(
-          children: [
-            IconButton(
-              tooltip: 'Retour',
-              onPressed: () => setState(() => _section = 'home'),
-              icon: const Icon(Icons.arrow_back_rounded),
-            ),
-            const SizedBox(width: 4),
-            const Expanded(
-              child: Text(
-                '📖 Leçons',
-                style: TextStyle(
-                  color: _fitilaInk,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: _level == 'N1'
-                    ? _fitilaPrimarySoft
-                    : const Color(0xFFE5E1FA),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                _level == 'N1' ? '🔥 N1' : '🚀 N2',
-                style: TextStyle(
-                  color: _level == 'N1'
-                      ? _fitilaGoldDeep
-                      : const Color(0xFF6758C9),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        for (final group in groups.entries) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(6, 12, 6, 8),
-            child: Text(
-              '📖  ${group.key}',
-              style: const TextStyle(
-                color: _fitilaInk,
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          for (final lesson in group.value)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 9),
-              child: _WebLessonTile(
-                lesson: lesson,
-                done: _completed.contains('${lesson.level}-${lesson.id}'),
-                onTap: () => _openLesson(lesson),
-              ),
-            ),
-        ],
-      ],
-    );
-  }
-
-  List<({String id, String label, String emoji})> _tabs(
-    WebClasseLesson lesson,
-  ) {
-    return [
-      (id: 'text', label: 'Texte', emoji: '📖'),
-      if (lesson.observe.isNotEmpty)
-        (id: 'observe', label: 'Mɛɛrio', emoji: '👁️'),
-      if (lesson.ecoute.isNotEmpty) (id: 'ecoute', label: 'Faagi', emoji: '🎧'),
-      if (lesson.reagis.isNotEmpty) (id: 'reagis', label: 'Geruo', emoji: '💬'),
-      if (lesson.retiens.isNotEmpty)
-        (id: 'retiens', label: 'Weenɛ', emoji: '🧠'),
-      if (lesson.reading.isNotEmpty || lesson.writing.isNotEmpty)
-        (id: 'phonetics', label: 'Sɔ̃ɔsiru', emoji: '✍️'),
-    ];
-  }
-
-  Widget _questionList(
-    WebClasseLesson lesson,
-    String section,
-    List<String> questions,
-  ) {
-    return ListView(
-      padding: const EdgeInsets.only(top: 4),
-      children: [
-        for (var i = 0; i < questions.length; i++)
-          Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: _fitilaCard,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: _fitilaBorder),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Q${i + 1}',
-                  style: const TextStyle(
-                    color: _fitilaGoldDeep,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  questions[i],
-                  style: const TextStyle(
-                    color: _fitilaInk,
-                    fontSize: 14,
-                    height: 1.4,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  initialValue:
-                      _lessonAnswers['${lesson.level}-${lesson.id}-$section-$i'],
-                  minLines: 2,
-                  maxLines: 5,
-                  onChanged: (value) {
-                    _lessonAnswers['${lesson.level}-${lesson.id}-$section-$i'] =
-                        value;
-                  },
-                  decoration: const InputDecoration(
-                    hintText: 'Votre réponse...',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Réponse vocale prête à enregistrer.',
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.mic_rounded),
-                      label: const Text('Vocal'),
-                    ),
-                    const Spacer(),
-                    FilledButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Réponse enregistrée localement.'),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.check_rounded),
-                      label: const Text('Soumettre'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _lessonContent(WebClasseLesson lesson) {
-    switch (_lessonTab) {
-      case 'observe':
-        return _questionList(lesson, 'observe', lesson.observe);
-      case 'ecoute':
-        return _questionList(lesson, 'ecoute', lesson.ecoute);
-      case 'reagis':
-        return _questionList(lesson, 'reagis', lesson.reagis);
-      case 'retiens':
-        return _questionList(lesson, 'retiens', lesson.retiens);
-      case 'phonetics':
-        return ListView(
-          children: [
-            if (lesson.phoneticLabel.isNotEmpty)
-              Text(
-                lesson.phoneticLabel,
-                style: const TextStyle(
-                  color: _fitilaGoldDeep,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            if (lesson.phoneticLabel.isNotEmpty) const SizedBox(height: 10),
-            if (lesson.reading.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: _fitilaCard,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: _fitilaBorder),
-                ),
-                child: Column(
-                  children: [
-                    for (var i = 0; i < lesson.reading.length; i++)
-                      ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          lesson.reading[i],
-                          style: const TextStyle(
-                            color: _fitilaInk,
-                            fontFamily: 'monospace',
-                            fontSize: 15,
-                          ),
-                        ),
-                        trailing: IconButton(
-                          tooltip: 'Écouter',
-                          onPressed: () => _playApprovedAudio(
-                            lesson,
-                            section: 'phonetics/reading',
-                            itemIndex: i,
-                          ),
-                          icon: const Icon(Icons.volume_up_rounded),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            if (lesson.writing.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: _fitilaCard,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: _fitilaBorder),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '✍️ Exercices d’écriture',
-                      style: TextStyle(
-                        color: _fitilaInk,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    for (var i = 0; i < lesson.writing.length; i++)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 9),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 84,
-                              child: Text(
-                                lesson.writing[i],
-                                style: const TextStyle(
-                                  color: _fitilaGoldDeep,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: TextFormField(
-                                initialValue:
-                                    _lessonAnswers['${lesson.level}-${lesson.id}-write-$i'],
-                                onChanged: (value) {
-                                  _lessonAnswers['${lesson.level}-${lesson.id}-write-$i'] =
-                                      value;
-                                },
-                                decoration: const InputDecoration(
-                                  hintText: 'Écris...',
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        );
-      default:
-        return ListView(
-          children: [
-            if (lesson.imageUrl.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  color: _fitilaCard,
-                  child: Image.network(
-                    'https://fitila.bj${lesson.imageUrl}',
-                    fit: BoxFit.contain,
-                    height: 310,
-                    errorBuilder: (_, _, _) => Container(
-                      height: 180,
-                      alignment: Alignment.center,
-                      color: _fitilaSurfaceAlt,
-                      child: const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.image_not_supported_outlined,
-                            color: _fitilaMuted,
-                            size: 38,
-                          ),
-                          SizedBox(height: 7),
-                          Text(
-                            'Illustration indisponible hors connexion',
-                            style: TextStyle(color: _fitilaMuted),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            if (lesson.imageUrl.isNotEmpty) const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: _fitilaCard,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _fitilaBorder),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: IconButton(
-                      tooltip: 'Écouter le texte',
-                      onPressed: () => _playApprovedAudio(lesson),
-                      icon: const Icon(Icons.volume_up_rounded),
-                    ),
-                  ),
-                  Text(
-                    lesson.text,
-                    style: const TextStyle(
-                      color: _fitilaInkSoft,
-                      fontSize: 15,
-                      height: 1.55,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: _fitilaSage,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                final tabs = _tabs(lesson);
-                final idx = tabs.indexWhere((tab) => tab.id == _lessonTab);
-                if (idx < tabs.length - 1) {
-                  setState(() => _lessonTab = tabs[idx + 1].id);
-                } else {
-                  setState(() {
-                    _completed.add('${lesson.level}-${lesson.id}');
-                  });
-                }
-              },
-              icon: const Icon(Icons.check_rounded),
-              label: const Text('J’ai lu'),
-            ),
-          ],
-        );
-    }
-  }
-
-  Widget _lessonDetail(List<WebClasseLesson> all) {
-    final lessons = _forLevel(all);
-    final lesson = lessons.firstWhere(
-      (item) => item.id == _selectedLessonId,
-      orElse: () => lessons.first,
-    );
-    final tabs = _tabs(lesson);
-    if (!tabs.any((tab) => tab.id == _lessonTab)) {
-      _lessonTab = 'text';
-    }
-
-    return Column(
-      children: [
-        Row(
-          children: [
-            IconButton(
-              tooltip: 'Leçons',
-              onPressed: () => setState(() => _section = 'lessons'),
-              icon: const Icon(Icons.arrow_back_rounded),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                '🏫 ${lesson.title}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _fitilaInk,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-              decoration: BoxDecoration(
-                color: _level == 'N1'
-                    ? _fitilaPrimarySoft
-                    : const Color(0xFFE5E1FA),
-                borderRadius: BorderRadius.circular(99),
-              ),
-              child: Text(
-                _level == 'N1' ? '🔥 N1' : '🚀 N2',
-                style: TextStyle(
-                  color: _level == 'N1'
-                      ? _fitilaGoldDeep
-                      : const Color(0xFF6758C9),
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: _level == 'N1'
-                  ? const [Color(0xFFFFF1C7), Color(0xFFFFE4B8)]
-                  : const [Color(0xFFE5E1FA), Color(0xFFD9D0F7)],
-            ),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: _level == 'N1'
-                  ? const Color(0xFFE9C86F)
-                  : const Color(0xFFB7A9EC),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _level == 'N1'
-                          ? const Color(0xFFFFE49A)
-                          : const Color(0xFFD2C7F2),
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                    child: Text(
-                      'Leçon ${lesson.id}',
-                      style: const TextStyle(
-                        color: _fitilaGoldDeep,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      lesson.themeLabel,
-                      style: const TextStyle(color: _fitilaMuted, fontSize: 11),
-                    ),
-                  ),
-                  const Text(
-                    '☆ ☆ ☆ ☆ ☆',
-                    style: TextStyle(color: _fitilaGoldDeep, fontSize: 13),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                lesson.title,
-                style: const TextStyle(
-                  color: _fitilaInk,
-                  fontSize: 21,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              if (lesson.phoneticLabel.isNotEmpty) ...[
-                const SizedBox(height: 5),
-                Text(
-                  lesson.phoneticLabel,
-                  style: const TextStyle(color: _fitilaGoldDeep, fontSize: 12),
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 43,
-          child: ListView.separated(
-            key: const ValueKey('classe-lesson-tabs'),
-            scrollDirection: Axis.horizontal,
-            itemCount: tabs.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 7),
-            itemBuilder: (context, index) {
-              final tab = tabs[index];
-              final selected = tab.id == _lessonTab;
-              return ChoiceChip(
-                selected: selected,
-                label: Text('${tab.emoji} ${tab.label}'),
-                onSelected: (_) => setState(() => _lessonTab = tab.id),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 10),
-        Expanded(child: _lessonContent(lesson)),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            OutlinedButton.icon(
-              onPressed: lesson.id <= 1
-                  ? null
-                  : () {
-                      final previous = lessons
-                          .where((e) => e.id < lesson.id)
-                          .lastOrNull;
-                      if (previous != null) {
-                        _openLesson(previous);
-                      }
-                    },
-              icon: const Icon(Icons.chevron_left_rounded),
-              label: const Text('Précédent'),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: () {
-                  final idx = tabs.indexWhere((tab) => tab.id == _lessonTab);
-                  if (idx < tabs.length - 1) {
-                    setState(() => _lessonTab = tabs[idx + 1].id);
-                    return;
-                  }
-                  setState(() {
-                    _completed.add('${lesson.level}-${lesson.id}');
-                  });
-                  final next = lessons
-                      .where((e) => e.id > lesson.id)
-                      .firstOrNull;
-                  if (next != null) {
-                    _openLesson(next);
-                  } else {
-                    setState(() => _section = 'lessons');
-                  }
-                },
-                icon: const Icon(Icons.check_rounded),
-                label: Text(
-                  tabs.last.id == _lessonTab ? 'Terminer la leçon' : 'Suivant',
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _secondarySection(String section) {
-    final config = switch (section) {
-      'alphabet' => (
-        icon: Icons.abc_rounded,
-        title: _level == 'N1' ? 'Alphabet' : 'Calcul',
-        text: _level == 'N1'
-            ? 'Voyelles, consonnes, tons, écoute et saisie Bàátɔ̀nú.'
-            : 'Nombres, calculs, problèmes et situations pratiques.',
-      ),
-      'evaluations' => (
-        icon: Icons.assignment_rounded,
-        title: 'Évaluations',
-        text: 'Questions langue/calcul, score et progression.',
-      ),
-      'grammaire' => (
-        icon: Icons.rule_rounded,
-        title: 'Grammaire',
-        text: 'Classes grammaticales, tons, verbes et structures.',
-      ),
-      'textprod' => (
-        icon: Icons.edit_note_rounded,
-        title: 'Production de textes',
-        text: 'Récit, description, dialogue, lettre et résumé.',
-      ),
-      'gestion' => (
-        icon: Icons.business_center_rounded,
-        title: 'Gestion',
-        text: 'Fiches, registres, annonces et documents pratiques.',
-      ),
-      'corrections' => (
-        icon: Icons.fact_check_rounded,
-        title: 'Mes corrections',
-        text: 'Notes, commentaires, corrigés et remédiation.',
-      ),
-      _ => (
-        icon: Icons.workspace_premium_rounded,
-        title: 'Facilitateur',
-        text: 'Guide pédagogique, objectifs et animation de classe.',
-      ),
-    };
-
-    return ListView(
-      children: [
-        Row(
-          children: [
-            IconButton(
-              onPressed: () => setState(() => _section = 'home'),
-              icon: const Icon(Icons.arrow_back_rounded),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              config.title,
-              style: const TextStyle(
-                color: _fitilaInk,
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Container(
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: _fitilaCard,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: _fitilaBorder),
-          ),
-          child: Column(
-            children: [
-              Icon(config.icon, color: _fitilaGoldDeep, size: 44),
-              const SizedBox(height: 12),
-              Text(
-                config.title,
-                style: const TextStyle(
-                  color: _fitilaInk,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 7),
-              Text(
-                config.text,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: _fitilaMuted, height: 1.45),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _renderLessons(List<WebClasseLesson> all) {
-    return switch (_section) {
-      'home' => _home(all),
-      'lessons' => _lessonList(all),
-      'detail' => _lessonDetail(all),
-      _ => _secondarySection(_section),
-    };
+  @override
+  void dispose() {
+    if (_ownsSession) _session.dispose();
+    super.dispose();
   }
 
   @override
@@ -13673,73 +10637,15 @@ class _ClasseScreenState extends State<ClasseScreen> {
     return _PageFrame(
       title: 'Classe',
       subtitle: _level == 'N1' ? '🔥 N1 — Bàátɔ̀nú' : '🚀 N2 — Bàátɔ̀nú',
-      child: widget.initialLessons != null
-          ? _renderLessons(widget.initialLessons!)
-          : FutureBuilder<List<WebClasseLesson>>(
-              future: _webLessons,
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(
-                    child: FilledButton.icon(
-                      onPressed: () => setState(
-                        () => _webLessons = WebClasseContent.loadLessons(),
-                      ),
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('Recharger les leçons'),
-                    ),
-                  );
-                }
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                return _renderLessons(snapshot.data!);
-              },
-            ),
-    );
-  }
-}
-
-class _WebClassStat extends StatelessWidget {
-  const _WebClassStat({
-    required this.value,
-    required this.label,
-    required this.tone,
-  });
-
-  final String value;
-  final String label;
-  final Color tone;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      decoration: BoxDecoration(
-        color: _fitilaCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _fitilaBorder),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              color: tone,
-              fontSize: 19,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            maxLines: 1,
-            style: const TextStyle(color: _fitilaMuted, fontSize: 9.8),
-          ),
-        ],
+      child: ClasseHub(
+        session: _session,
+        initialLessons: widget.initialLessons,
+        onLevelChanged: (l) => setState(() => _level = l),
       ),
     );
   }
 }
+
 
 class _WebLessonTile extends StatelessWidget {
   const _WebLessonTile({
@@ -15272,15 +12178,36 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
   late final TextEditingController _gradeCtrl;
   late final TextEditingController _commentCtrl;
   bool _saving = false;
-  bool _showPalette = false;
   final _media = FitilaMediaController();
   String? _recording; // 'personal' | 'generic' | null
   FitilaMediaAsset? _personalAsset;
   FitilaMediaAsset? _genericAsset;
+  ({String where, String question})? _described;
+
+  Future<void> _describe() async {
+    try {
+      final a = widget.answer;
+      final content = await ClasseContent.load();
+      final lessons = await WebClasseContent.loadLessons();
+      final d = describeAnswer(
+        level: '${a['level'] ?? 'N1'}',
+        module: '${a['module'] ?? ''}',
+        lessonId: '${a['lesson_id'] ?? ''}',
+        sectionKey: '${a['section_key'] ?? ''}',
+        questionIdx: (a['question_idx'] as num?)?.toInt() ?? 0,
+        content: content,
+        lessons: lessons,
+      );
+      if (mounted) setState(() => _described = d);
+    } catch (_) {
+      /* le libellé générique reste affiché */
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _describe();
     final grade = widget.answer['teacher_grade'];
     _gradeCtrl = TextEditingController(text: grade != null ? '$grade' : '');
     _commentCtrl = TextEditingController(
@@ -15294,18 +12221,6 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
     _commentCtrl.dispose();
     _media.dispose();
     super.dispose();
-  }
-
-  void _insertBariba(String letter) {
-    final sel = _commentCtrl.selection;
-    final text = _commentCtrl.text;
-    final start = sel.start < 0 ? text.length : sel.start;
-    final end = sel.end < 0 ? text.length : sel.end;
-    final next = text.replaceRange(start, end, letter);
-    _commentCtrl.value = TextEditingValue(
-      text: next,
-      selection: TextSelection.collapsed(offset: start + letter.length),
-    );
   }
 
   Future<void> _toggleRecording(String which) async {
@@ -15376,7 +12291,7 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     } finally {
       if (mounted) {
         setState(() => _saving = false);
@@ -15426,7 +12341,9 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Q${(a['question_idx'] as int? ?? 0) + 1} — ${a['module']} · ${a['level']} · L${a['lesson_id']}',
+            _described == null
+                ? 'Q${(a['question_idx'] as int? ?? 0) + 1} — ${a['module']} · ${a['level']} · L${a['lesson_id']}'
+                : '${_described!.where} — ${_described!.question}',
             style: const TextStyle(
               fontSize: 10,
               color: _fitilaMuted,
@@ -15435,29 +12352,12 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
           ),
           const SizedBox(height: 6),
           if (hasAudio)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: _fitilaSurfaceAlt,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.graphic_eq_rounded,
-                    size: 18,
-                    color: _fitilaClay,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Réponse audio · ${a['answer_audio_duration'] ?? '—'}s',
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      color: _fitilaInkSoft,
-                    ),
-                  ),
-                ],
-              ),
+            ClasseStoragePlayer(
+              id: 'ans-${a['id']}',
+              bucket: 'classe-answers-audio',
+              path: a['answer_audio_path'] as String,
+              label: 'Réponse vocale de l\'élève',
+              duration: (a['answer_audio_duration'] as num?)?.toDouble(),
             )
           else
             Container(
@@ -15527,35 +12427,19 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: TextField(
+                child: BaribaTextField(
                   controller: _commentCtrl,
-                  style: const TextStyle(fontSize: 11.5),
+                  maxLines: 3,
+                  minLines: 1,
+                  style: const TextStyle(fontSize: 12.5),
                   decoration: InputDecoration(
                     isDense: true,
-                    hintText: 'Commentaire (optionnel)',
-                    hintStyle: const TextStyle(
-                      fontSize: 11,
-                      color: _fitilaMuted,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
+                    hintText: 'Commentaire (clavier Bariba disponible)',
+                    hintStyle: const TextStyle(fontSize: 11, color: _fitilaMuted),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(9),
                       borderSide: const BorderSide(color: _fitilaBorder),
-                    ),
-                    suffixIcon: IconButton(
-                      iconSize: 16,
-                      icon: Text(
-                        'ɔɛŋ',
-                        style: TextStyle(
-                          color: _showPalette ? _fitilaGoldDeep : _fitilaMuted,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      onPressed: () =>
-                          setState(() => _showPalette = !_showPalette),
                     ),
                   ),
                 ),
@@ -15593,37 +12477,6 @@ class _AnswerGradeCardState extends State<_AnswerGradeCard> {
               ),
             ],
           ),
-          if (_showPalette)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Wrap(
-                spacing: 5,
-                runSpacing: 5,
-                children: [
-                  for (final letter in _baribaLetters)
-                    InkWell(
-                      onTap: () => _insertBariba(letter),
-                      borderRadius: BorderRadius.circular(7),
-                      child: Container(
-                        width: 26,
-                        height: 26,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: _fitilaSurfaceAlt,
-                          borderRadius: BorderRadius.circular(7),
-                        ),
-                        child: Text(
-                          letter,
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
           const SizedBox(height: 10),
           Text(
             'Correction vocale',
@@ -16184,7 +13037,7 @@ class _AnswerKeyEditorSheetState extends State<_AnswerKeyEditorSheet> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     } finally {
       if (mounted) {
         setState(() => _saving = false);
@@ -16505,7 +13358,7 @@ class _TeacherWeightsTabState extends State<_TeacherWeightsTab> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     } finally {
       if (mounted) {
         setState(() => _saving = false);
@@ -17268,7 +14121,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String _tab = 'Posts';
+  String _tab = 'Aperçu';
+  final Map<String, int> _classeDone = {};
   Map<String, dynamic>? _profile;
   bool _loading = false;
   bool _uploadingAvatar = false;
@@ -17291,6 +14145,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (widget.session.accessToken.isNotEmpty) {
       _loadProfile();
       _loadPrivacy();
+      _loadClasse();
+    }
+  }
+
+  Future<void> _loadClasse() async {
+    final store = OfflineClasseStore(SupabaseClasseStore());
+    for (final level in const ['N1', 'N2']) {
+      try {
+        final p = await store.loadProgress(level);
+        if (!mounted) return;
+        setState(() => _classeDone[level] = p.completedLessons.length);
+      } catch (_) {
+        /* progression indisponible hors connexion */
+      }
     }
   }
 
@@ -17327,7 +14195,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     }
   }
 
@@ -17369,7 +14237,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     } finally {
       if (mounted) {
         setState(() => _uploadingAvatar = false);
@@ -17408,7 +14276,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+        ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
       } finally {
         if (mounted) {
           setState(() => _uploadingBio = false);
@@ -17513,8 +14381,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     }
+  }
+
+  File? _avatarFile;
+
+  Future<void> _prepareAvatar() async {
+    final url = (_profile?['avatar_url'] as String?) ?? '';
+    final file = await FitilaOffline.cachedFile(url);
+    if (mounted && file?.path != _avatarFile?.path) setState(() => _avatarFile = file);
+  }
+
+  ImageProvider? get _avatarImage {
+    final url = (_profile?['avatar_url'] as String?) ?? '';
+    if (url.isEmpty) return null;
+    return _avatarFile != null ? FileImage(_avatarFile!) : NetworkImage(url);
   }
 
   Future<void> _loadProfile() async {
@@ -17523,6 +14405,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final profile = await FitilaBackend.fetchProfile(widget.session.userId);
       if (mounted) {
         setState(() => _profile = profile);
+        unawaited(_prepareAvatar());
       }
     } catch (_) {
       if (mounted) {
@@ -17635,466 +14518,331 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Widget _profileTab(String value, IconData icon) {
-    return ChoiceChip(
-      selected: _tab == value,
-      avatar: Icon(icon, size: 18),
-      label: Text(value),
-      onSelected: (_) => setState(() => _tab = value),
+  Widget _statTile(int i, int value, String label, IconData icon) {
+    return Expanded(
+      child: Reveal(
+        index: i,
+        child: PremiumCard(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+          child: Column(
+            children: [
+              Icon(icon, size: 18, color: _fitilaGoldDeep),
+              const SizedBox(height: 4),
+              CountUp(
+                value: value,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _fitilaInk),
+              ),
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: _fitilaMuted)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _profileBody() {
-    return switch (_tab) {
-      'Vidéos' => const _FeatureGrid(
-        items: [
-          (
-            Icons.play_circle_rounded,
-            'Vidéos publiées',
-            'Preview verticale, vues, likes, commentaires et partage.',
-          ),
-          (
-            Icons.movie_filter_rounded,
-            'Templates utilisés',
-            'Historique des modèles et performances par format.',
-          ),
-          (
-            Icons.analytics_rounded,
-            'Statistiques',
-            'Rétention, complétion, audience et meilleure heure.',
-          ),
-        ],
+  Widget _hero() {
+    final avatar = (_profile?['avatar_url'] as String?) ?? '';
+    final bio = (_profile?['bio'] as String?)?.trim() ?? '';
+    final location = (_profile?['location'] as String?)?.trim() ?? '';
+    final signedIn = widget.session.accessToken.isNotEmpty;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFFFFF), Color(0xFFF9EFD3), Color(0xFFF3E3B9)],
+        ),
+        border: Border.all(color: _fitilaBorder),
+        boxShadow: [BoxShadow(color: _fitilaInk.withValues(alpha: .08), blurRadius: 30, offset: const Offset(0, 16), spreadRadius: -14)],
       ),
-      'Audio' => const _FeatureGrid(
-        items: [
-          (
-            Icons.mic_rounded,
-            'Posts vocaux',
-            'Radio, proverbes, dictées, transcription et qualité audio.',
-          ),
-          (
-            Icons.graphic_eq_rounded,
-            'Voice Lab',
-            'Contributions au corpus et diagnostics de prononciation.',
-          ),
-          (
-            Icons.volume_up_rounded,
-            'Lecture publique',
-            'Contrôles accessibles et écoute bilingue.',
-          ),
-        ],
-      ),
-      'Badges' => _ActionList(
-        items: const [
-          _ActionItem(
-            Icons.emoji_events_rounded,
-            'Badges culture',
-            'Culture Bariba, alphabet, conversation et partage communautaire.',
-          ),
-          _ActionItem(
-            Icons.school_rounded,
-            'Réussites apprentissage',
-            'Leçons terminées, série, quiz et progression classe.',
-          ),
-          _ActionItem(
-            Icons.verified_rounded,
-            'Contributeur validé',
-            'Dictionnaire, audio, corrections et contenus approuvés.',
-          ),
-        ],
-      ),
-      'Sécurité' => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
         children: [
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.lock_rounded),
-              title: const Text('Changer le mot de passe'),
-              subtitle: const Text(
-                'Met à jour votre mot de passe de connexion.',
+          Stack(
+            alignment: Alignment.bottomRight,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(colors: [Color(0xFFC99530), Color(0xFFB54E33)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                ),
+                child: Container(
+                  width: 96,
+                  height: 96,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 3),
+                    image: avatar.isNotEmpty ? DecorationImage(image: _avatarImage ?? NetworkImage(avatar), fit: BoxFit.cover, onError: (_, _) {}) : null,
+                  ),
+                  child: avatar.isNotEmpty
+                      ? null
+                      : Text(
+                          _displayName.isEmpty ? '?' : _displayName.characters.first.toUpperCase(),
+                          style: const TextStyle(color: _fitilaGoldDeep, fontFamily: 'serif', fontSize: 38, fontWeight: FontWeight.w700),
+                        ),
+                ),
               ),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: widget.session.accessToken.isEmpty
-                  ? null
-                  : _changePassword,
+              if (signedIn)
+                Semantics(
+                  button: true,
+                  label: 'Changer la photo',
+                  child: GestureDetector(
+                    onTap: _uploadingAvatar ? null : _pickAndUploadAvatar,
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(color: _fitilaInk, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)),
+                      child: _uploadingAvatar
+                          ? const SizedBox.square(dimension: 15, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.photo_camera_rounded, size: 16, color: Colors.white),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(_displayName, textAlign: TextAlign.center, style: const TextStyle(color: _fitilaInk, fontFamily: 'serif', fontSize: 25, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              _pill(Icons.verified_rounded, widget.session.role),
+              if (widget.session.phone.isNotEmpty) _pill(Icons.phone_rounded, widget.session.phone),
+              if (location.isNotEmpty) _pill(Icons.place_rounded, location),
+            ],
+          ),
+          if (bio.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(bio, textAlign: TextAlign.center, style: const TextStyle(color: _fitilaInkSoft, height: 1.45, fontSize: 13.5)),
+          ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: FilledButton.icon(
+              onPressed: signedIn ? _editProfile : null,
+              icon: const Icon(Icons.edit_rounded, size: 18),
+              label: const Text('Modifier mon profil'),
             ),
           ),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.manage_accounts_rounded),
-              title: const Text('Modifier profil'),
-              subtitle: const Text(
-                'Photo, nom, téléphone, localisation et bio.',
-              ),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: widget.session.accessToken.isEmpty ? null : _editProfile,
+        ],
+      ),
+    );
+  }
+
+  Widget _pill(IconData icon, String text) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    decoration: BoxDecoration(color: Colors.white.withValues(alpha: .75), borderRadius: BorderRadius.circular(99), border: Border.all(color: _fitilaBorder)),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 13, color: _fitilaGoldDeep),
+      const SizedBox(width: 5),
+      Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _fitilaInk))),
+    ]),
+  );
+
+  Widget _progressRow(String label, int done, int total, Color color) {
+    final ratio = total == 0 ? 0.0 : (done / total).clamp(0.0, 1.0);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        children: [
+          Row(children: [
+            Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5))),
+            Text('$done/$total leçons', style: const TextStyle(fontSize: 12, color: _fitilaMuted)),
+          ]),
+          const SizedBox(height: 6),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: ratio),
+            duration: const Duration(milliseconds: 900),
+            curve: Curves.easeOutCubic,
+            builder: (_, v, _) => ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(value: v, minHeight: 9, backgroundColor: _fitilaSurfaceAlt, color: color),
             ),
           ),
         ],
       ),
-      'Identité' => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    );
+  }
+
+  Widget _overviewTab() {
+    final joined = DateTime.tryParse('${_profile?['created_at'] ?? ''}');
+    final n1 = _classeDone['N1'] ?? 0;
+    final n2 = _classeDone['N2'] ?? 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionLabel('Ma progression en classe'),
+        PremiumCard(
+          child: Column(
+            children: [
+              _progressRow('🔥 Niveau 1', n1, 32, _fitilaGoldDeep),
+              _progressRow('🚀 Niveau 2', n2, 25, const Color(0xFF6758C9)),
+            ],
+          ),
+        ),
+        const SectionLabel('Informations'),
+        PremiumCard(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Column(
+            children: [
+              PremiumActionRow(icon: Icons.phone_rounded, title: 'Téléphone', subtitle: '${_profile?['phone_number'] ?? widget.session.phone}'),
+              const RowDivider(),
+              PremiumActionRow(icon: Icons.place_rounded, title: 'Localisation', subtitle: '${_profile?['location'] ?? 'Non renseignée'}'),
+              if (joined != null) ...[
+                const RowDivider(),
+                PremiumActionRow(icon: Icons.event_rounded, title: 'Membre depuis', subtitle: '${joined.day.toString().padLeft(2, '0')}/${joined.month.toString().padLeft(2, '0')}/${joined.year}'),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _voiceTab() {
+    final url = (_profile?['bio_audio_url'] as String?) ?? '';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionLabel('Ma présentation vocale'),
+        PremiumCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Présente-toi en Bàátɔ̀nú ou en français. Ta voix est visible sur ton profil public.', style: TextStyle(color: _fitilaMuted, height: 1.4, fontSize: 13)),
+              const SizedBox(height: 14),
+              Row(
                 children: [
-                  const Text(
-                    'Bio audio',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    "Présente-toi en Bariba ou en français — visible sur ton profil public.",
-                    style: TextStyle(fontSize: 11, color: _fitilaMuted),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      if ((_profile?['bio_audio_url'] as String?)?.isNotEmpty ==
-                          true)
-                        IconButton.filled(
-                          onPressed: _bioPlaying
-                              ? null
-                              : () => _playBioAudio(
-                                  _profile!['bio_audio_url'] as String,
-                                ),
-                          icon: Icon(
-                            _bioPlaying
-                                ? Icons.graphic_eq_rounded
-                                : Icons.play_arrow_rounded,
-                          ),
-                        ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _uploadingBio ? null : _toggleBioRecording,
-                          icon: _uploadingBio
-                              ? const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Icon(
-                                  _recordingBio
-                                      ? Icons.stop_circle_rounded
-                                      : Icons.mic_rounded,
-                                  color: _recordingBio ? Colors.red : null,
-                                ),
-                          label: Text(
-                            _recordingBio
-                                ? 'Arrêter l\'enregistrement'
-                                : 'Enregistrer ma bio audio',
-                          ),
-                        ),
+                  if (url.isNotEmpty) ...[
+                    IconButton.filledTonal(
+                      tooltip: 'Écouter ma bio',
+                      onPressed: _bioPlaying ? null : () => _playBioAudio(url),
+                      icon: Icon(_bioPlaying ? Icons.graphic_eq_rounded : Icons.play_arrow_rounded),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: FilledButton.icon(
+                        style: _recordingBio ? FilledButton.styleFrom(backgroundColor: _fitilaClay, foregroundColor: Colors.white) : null,
+                        onPressed: _uploadingBio || widget.session.accessToken.isEmpty ? null : _toggleBioRecording,
+                        icon: _uploadingBio
+                            ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                            : Icon(_recordingBio ? Icons.stop_rounded : Icons.mic_rounded),
+                        label: Text(_recordingBio ? 'Arrêter l’enregistrement' : url.isEmpty ? 'Enregistrer ma bio' : 'Refaire ma bio'),
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
-            ),
-          ),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.badge_rounded),
-              title: const Text('Informations profil'),
-              subtitle: Text(
-                'Localisation : ${_profile?['location'] ?? '—'}\nTéléphone : ${_profile?['phone_number'] ?? widget.session.phone}',
-              ),
-              isThreeLine: true,
-              trailing: const Icon(Icons.edit_rounded),
-              onTap: widget.session.accessToken.isEmpty ? null : _editProfile,
-            ),
-          ),
-        ],
-      ),
-      'Activité' => const _FeatureGrid(
-        items: [
-          (
-            Icons.timeline_rounded,
-            'Timeline personnelle',
-            'Posts, commentaires, leçons, corrections, scans et recherches.',
-          ),
-          (
-            Icons.bookmark_rounded,
-            'Favoris',
-            'Mots, templates, leçons, contenus IA et posts sauvegardés.',
-          ),
-          (
-            Icons.download_rounded,
-            'Export données',
-            'Archive activité, profil, notes, contributions et historique.',
-          ),
-        ],
-      ),
-      'Confidentialité' => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_loadingPrivacy) const LinearProgressIndicator(),
-          const SizedBox(height: 8),
-          const Text(
-            'Visibilité du profil',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final option in const [
-                ('public', 'Public'),
-                ('community', 'Communauté'),
-                ('private', 'Privé'),
-              ])
-                ChoiceChip(
-                  selected:
-                      (_privacy['profile_visibility'] as String? ?? 'public') ==
-                      option.$1,
-                  label: Text(option.$2),
-                  onSelected: (_) =>
-                      _setPrivacy('profile_visibility', option.$1),
-                ),
             ],
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Historique de traduction',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final option in const [
-                ('private', 'Privé (par défaut)'),
-                ('shared_teacher', 'Visible enseignant'),
-              ])
-                ChoiceChip(
-                  selected:
-                      (_privacy['translation_history_visibility'] as String? ??
-                          'private') ==
-                      option.$1,
-                  label: Text(option.$2),
-                  onSelected: (_) =>
-                      _setPrivacy('translation_history_visibility', option.$1),
-                ),
-            ],
-          ),
-        ],
-      ),
-      'Backend' => _ActionList(
-        items: const [
-          _ActionItem(
-            Icons.storage_rounded,
-            'tamtam_profiles',
-            'Champs profil, avatar, rôle, langue, village et statut IA.',
-          ),
-          _ActionItem(
-            Icons.sync_rounded,
-            'Synchronisation',
-            'Profil local, session, cache, conflit et mise à jour Supabase.',
-          ),
-          _ActionItem(
-            Icons.security_rounded,
-            'RLS / permissions',
-            'Lecture publique, édition propriétaire et accès enseignant/admin.',
-          ),
-        ],
-      ),
-      _ => const _FeatureGrid(
-        items: [
-          (
-            Icons.grid_view_rounded,
-            'Posts',
-            'Texte, audio, vidéo, templates, brouillons et favoris.',
-          ),
-          (
-            Icons.chat_bubble_rounded,
-            'Interactions',
-            'Commentaires, mentions, partages, réponses et signalements.',
-          ),
-          (
-            Icons.person_search_rounded,
-            'Profil public',
-            'Vue visiteur, bio, village, rôle et contenus visibles.',
-          ),
-        ],
-      ),
-    };
+        ),
+      ],
+    );
   }
+
+  Widget _privacyTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_loadingPrivacy) const LinearProgressIndicator(minHeight: 3),
+        const SectionLabel('Qui voit mon profil ?'),
+        ChoiceCards(
+          selected: (_privacy['profile_visibility'] as String?) ?? 'public',
+          onChanged: (v) => _setPrivacy('profile_visibility', v),
+          options: const [
+            (value: 'public', title: 'Public', subtitle: 'Tout le monde peut voir mon profil.', icon: Icons.public_rounded),
+            (value: 'community', title: 'Communauté', subtitle: 'Seulement les membres FITILA.', icon: Icons.groups_rounded),
+            (value: 'private', title: 'Privé', subtitle: 'Uniquement moi.', icon: Icons.lock_rounded),
+          ],
+        ),
+        const SectionLabel('Historique de traduction'),
+        ChoiceCards(
+          selected: (_privacy['translation_history_visibility'] as String?) ?? 'private',
+          onChanged: (v) => _setPrivacy('translation_history_visibility', v),
+          options: const [
+            (value: 'private', title: 'Privé', subtitle: 'Personne d’autre ne le voit (par défaut).', icon: Icons.visibility_off_rounded),
+            (value: 'shared_teacher', title: 'Visible par l’enseignant', subtitle: 'Pour être suivi dans votre apprentissage.', icon: Icons.school_rounded),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _securityTab() {
+    final signedIn = widget.session.accessToken.isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionLabel('Compte'),
+        PremiumCard(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Column(
+            children: [
+              PremiumActionRow(icon: Icons.manage_accounts_rounded, title: 'Modifier mon profil', subtitle: 'Nom, téléphone, localisation et bio.', onTap: signedIn ? _editProfile : null),
+              const RowDivider(),
+              PremiumActionRow(icon: Icons.lock_reset_rounded, title: 'Changer mon code', subtitle: 'Met à jour votre code de connexion.', onTap: signedIn ? _changePassword : null),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _profileBody() => switch (_tab) {
+    'Voix' => _voiceTab(),
+    'Confidentialité' => _privacyTab(),
+    'Sécurité' => _securityTab(),
+    _ => _overviewTab(),
+  };
 
   @override
   Widget build(BuildContext context) {
-    final posts = '${_profile?['posts_count'] ?? 0}';
-    final followers = '${_profile?['followers_count'] ?? 0}';
-    final following = '${_profile?['following_count'] ?? 0}';
+    final posts = int.tryParse('${_profile?['posts_count'] ?? 0}') ?? 0;
+    final followers = int.tryParse('${_profile?['followers_count'] ?? 0}') ?? 0;
+    final following = int.tryParse('${_profile?['following_count'] ?? 0}') ?? 0;
+    final tab = const ['Aperçu', 'Voix', 'Confidentialité', 'Sécurité'].contains(_tab) ? _tab : 'Aperçu';
 
     return _PageFrame(
       title: 'Profil',
-      subtitle: 'Compte, progression et paramètres personnels.',
+      subtitle: 'Votre identité, votre progression et vos choix.',
       child: ListView(
+        padding: const EdgeInsets.only(bottom: 28),
         children: [
-          if (_loading) const LinearProgressIndicator(),
-          if (_loading) const SizedBox(height: 8),
-          Stack(
-            alignment: Alignment.topRight,
-            children: [
-              Column(
-                children: [
-                  Stack(
-                    children: [
-                      Container(
-                        width: 84,
-                        height: 84,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: _fitilaSurfaceAlt,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: _fitilaPrimary, width: 2),
-                          image:
-                              (_profile?['avatar_url'] as String?)
-                                      ?.isNotEmpty ==
-                                  true
-                              ? DecorationImage(
-                                  image: NetworkImage(
-                                    _profile!['avatar_url'] as String,
-                                  ),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
-                        ),
-                        child:
-                            (_profile?['avatar_url'] as String?)?.isNotEmpty ==
-                                true
-                            ? null
-                            : Text(
-                                _displayName.characters.first,
-                                style: const TextStyle(
-                                  color: _fitilaGoldDeep,
-                                  fontFamily: 'serif',
-                                  fontSize: 30,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                      ),
-                      if (widget.session.accessToken.isNotEmpty)
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: GestureDetector(
-                            onTap: _uploadingAvatar
-                                ? null
-                                : _pickAndUploadAvatar,
-                            child: Container(
-                              width: 26,
-                              height: 26,
-                              alignment: Alignment.center,
-                              decoration: const BoxDecoration(
-                                color: _fitilaGoldDeep,
-                                shape: BoxShape.circle,
-                              ),
-                              child: _uploadingAvatar
-                                  ? const SizedBox(
-                                      width: 12,
-                                      height: 12,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Icon(
-                                      Icons.camera_alt_rounded,
-                                      size: 13,
-                                      color: Colors.white,
-                                    ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _displayName,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: _fitilaInk,
-                      fontFamily: 'serif',
-                      fontSize: 19,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${widget.session.phone} · ${widget.session.role}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: _fitilaMuted, fontSize: 12),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _PremiumProfileStat(
-                          value: posts,
-                          label: 'posts',
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _PremiumProfileStat(
-                          value: followers,
-                          label: 'abonnés',
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _PremiumProfileStat(
-                          value: following,
-                          label: 'abonnements',
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              _PremiumTopIcon(
-                icon: Icons.edit_rounded,
-                tooltip: 'Modifier',
-                onPressed: widget.session.accessToken.isEmpty
-                    ? () {}
-                    : _editProfile,
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            'Paramètres & activité',
-            style: TextStyle(
-              color: _fitilaMuted,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _profileTab('Posts', Icons.grid_view_rounded),
-              _profileTab('Identité', Icons.badge_rounded),
-              _profileTab('Vidéos', Icons.play_circle_rounded),
-              _profileTab('Audio', Icons.mic_rounded),
-              _profileTab('Badges', Icons.emoji_events_rounded),
-              _profileTab('Activité', Icons.timeline_rounded),
-              _profileTab('Confidentialité', Icons.visibility_off_rounded),
-              _profileTab('Sécurité', Icons.lock_rounded),
-              _profileTab('Backend', Icons.storage_rounded),
-            ],
-          ),
+          if (_loading) const LinearProgressIndicator(minHeight: 3),
+          Reveal(child: _hero()),
           const SizedBox(height: 12),
-          _profileBody(),
+          Row(
+            children: [
+              _statTile(1, posts, 'posts', Icons.dynamic_feed_rounded),
+              const SizedBox(width: 10),
+              _statTile(2, followers, 'abonnés', Icons.favorite_rounded),
+              const SizedBox(width: 10),
+              _statTile(3, following, 'abonnements', Icons.people_alt_rounded),
+            ],
+          ),
+          const SizedBox(height: 16),
+          PremiumSegmented(
+            labels: const ['Aperçu', 'Voix', 'Confidentialité', 'Sécurité'],
+            icons: const [Icons.dashboard_rounded, Icons.mic_rounded, Icons.visibility_rounded, Icons.shield_rounded],
+            selected: tab,
+            onChanged: (v) => setState(() => _tab = v),
+          ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 240),
+            switchInCurve: Curves.easeOutCubic,
+            child: KeyedSubtree(key: ValueKey(tab), child: _profileBody()),
+          ),
         ],
       ),
     );
@@ -18151,7 +14899,6 @@ class _PremiumProfileStat extends StatelessWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String _section = 'Général';
   bool _baribaFirst = false;
   bool _offline = true;
   bool _audio = true;
@@ -18159,7 +14906,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _largeTouch = false;
   bool _visualSecurity = true;
   bool _analytics = false;
-  bool _adminMode = false;
   bool _pinLock = false;
   bool _loadingPrefs = true;
   bool _exporting = false;
@@ -18238,7 +14984,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erreur export : $e')));
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e, prefix: 'Erreur export'))));
     } finally {
       if (mounted) {
         setState(() => _exporting = false);
@@ -18291,288 +15037,190 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     }
   }
 
-  Widget _settingsChip(String value, IconData icon) {
-    return ChoiceChip(
-      selected: _section == value,
-      avatar: Icon(icon, size: 18),
-      label: Text(value),
-      onSelected: (_) => setState(() => _section = value),
-    );
-  }
-
-  Widget _settingsBody() {
-    return switch (_section) {
-      'Sécurité' => Column(
+  Widget _group(int i, String label, List<Widget> rows) {
+    final children = <Widget>[];
+    for (var k = 0; k < rows.length; k++) {
+      if (k > 0) children.add(const RowDivider());
+      children.add(rows[k]);
+    }
+    return Reveal(
+      index: i,
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SwitchTile(
-            icon: Icons.lock_rounded,
-            title: 'Verrouillage par code / biométrie',
-            value: _pinLock,
-            onChanged: (v) => _setPref('pin_lock', v, (val) => _pinLock = val),
-          ),
-          _SwitchTile(
-            icon: Icons.visibility_rounded,
-            title: 'Confirmation avant actions sensibles',
-            value: _visualSecurity,
-            onChanged: (v) =>
-                _setPref('visual_security', v, (val) => _visualSecurity = val),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Données',
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w800,
-              color: _fitilaMuted,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.download_rounded),
-              title: const Text('Exporter mes données'),
-              subtitle: const Text(
-                'Profil, historique de traduction et progression d\'apprentissage (JSON).',
-              ),
-              trailing: _exporting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.chevron_right_rounded),
-              onTap: _exporting ? null : _exportData,
-            ),
-          ),
-          Card(
-            child: ListTile(
-              leading: const Icon(
-                Icons.delete_forever_rounded,
-                color: Colors.red,
-              ),
-              title: const Text(
-                'Supprimer mon compte',
-                style: TextStyle(color: Colors.red),
-              ),
-              subtitle: const Text(
-                'Envoie une demande de suppression à un administrateur.',
-              ),
-              onTap: _confirmDeleteAccount,
-            ),
+          SectionLabel(label),
+          PremiumCard(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Column(children: children),
           ),
         ],
       ),
-      'Offline' => const _FeatureGrid(
-        items: [
-          (
-            Icons.storage_rounded,
-            'Stockage local',
-            'Dictionnaire, leçons, templates, posts, brouillons et paramètres.',
-          ),
-          (
-            Icons.sync_problem_rounded,
-            'File de synchronisation',
-            'Réponses classe, médias, contributions, messages et paiements.',
-          ),
-          (
-            Icons.cleaning_services_rounded,
-            'Nettoyage cache',
-            'Taille, purge sélective, migration et diagnostic.',
-          ),
-        ],
-      ),
-      'Notifications' => const _FeatureGrid(
-        items: [
-          (
-            Icons.dynamic_feed_rounded,
-            'Fil et messages',
-            'Mentions, commentaires, nouveaux posts et messages vocaux.',
-          ),
-          (
-            Icons.school_rounded,
-            'Classe',
-            'Corrections, notes, devoirs, relances et feedback enseignant.',
-          ),
-          (
-            Icons.warning_rounded,
-            'Alertes',
-            'SOS, santé, sécurité, sync bloquée et actions sensibles.',
-          ),
-        ],
-      ),
-      'Accessibilité' => const _FeatureGrid(
-        items: [
-          (
-            Icons.touch_app_rounded,
-            'Ergonomie',
-            'Grands boutons, contrastes, densité UI et lecture facile.',
-          ),
-          (
-            Icons.volume_up_rounded,
-            'Audio',
-            'TTS, STT, lecture automatique, vitesse et mode classe.',
-          ),
-          (
-            Icons.keyboard_alt_rounded,
-            'Clavier Bariba',
-            'Suggestions, haptique, normalisation et compagnon flottant.',
-          ),
-        ],
-      ),
-      'Backend' => _ActionList(
-        items: const [
-          _ActionItem(
-            Icons.api_rounded,
-            'Supabase endpoints',
-            'Auth, profils, feed, classe, dictionnaire, storage, IA et realtime.',
-          ),
-          _ActionItem(
-            Icons.health_and_safety_rounded,
-            'Diagnostic système',
-            'Statut services, latence, erreurs, logs et version app.',
-          ),
-          _ActionItem(
-            Icons.admin_panel_settings_rounded,
-            'Administration',
-            'Modération, audit, imports, exports et outils de maintenance.',
-          ),
-        ],
-      ),
-      _ => Column(
-        children: [
-          if (_loadingPrefs) const LinearProgressIndicator(),
-          if (_loadingPrefs) const SizedBox(height: 8),
-          _SwitchTile(
-            icon: Icons.language_rounded,
-            title: 'Afficher le Bariba en premier',
-            value: _baribaFirst,
-            onChanged: (value) =>
-                _setPref('bariba_first', value, (v) => _baribaFirst = v),
-          ),
-          _SwitchTile(
-            icon: Icons.offline_bolt_rounded,
-            title: 'Activer le cache offline',
-            value: _offline,
-            onChanged: (value) =>
-                _setPref('offline_cache', value, (v) => _offline = v),
-          ),
-          _SwitchTile(
-            icon: Icons.volume_up_rounded,
-            title: 'Lecture audio automatique',
-            value: _audio,
-            onChanged: (value) =>
-                _setPref('auto_audio', value, (v) => _audio = v),
-          ),
-          _SwitchTile(
-            icon: Icons.notifications_rounded,
-            title: 'Notifications fil, classe et corrections',
-            value: _push,
-            onChanged: (value) =>
-                _setPref('notifications', value, (v) => _push = v),
-          ),
-          _SwitchTile(
-            icon: Icons.touch_app_rounded,
-            title: 'Grands contrôles tactiles',
-            value: _largeTouch,
-            onChanged: (value) =>
-                _setPref('large_touch', value, (v) => _largeTouch = v),
-          ),
-          _SwitchTile(
-            icon: Icons.analytics_rounded,
-            title: 'Partager diagnostics anonymes',
-            value: _analytics,
-            onChanged: (value) =>
-                _setPref('share_diagnostics', value, (v) => _analytics = v),
-          ),
-          _SwitchTile(
-            icon: Icons.admin_panel_settings_rounded,
-            title: 'Afficher les outils admin',
-            value: _adminMode,
-            onChanged: (value) => setState(() => _adminMode = value),
-          ),
-        ],
-      ),
-    };
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return _PageFrame(
       title: 'Paramètres',
-      subtitle: 'Langue, mode offline, audio, sécurité et session.',
+      subtitle: 'Langue, audio, hors-ligne, sécurité et session.',
       child: ListView(
+        padding: const EdgeInsets.only(bottom: 28),
         children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _settingsChip('Général', Icons.tune_rounded),
-              _settingsChip('Sécurité', Icons.lock_rounded),
-              _settingsChip('Offline', Icons.cloud_off_rounded),
-              _settingsChip('Notifications', Icons.notifications_rounded),
-              _settingsChip('Accessibilité', Icons.accessibility_new_rounded),
-              _settingsChip('Backend', Icons.api_rounded),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _settingsBody(),
-          const SizedBox(height: 12),
-          const _FeatureGrid(
-            items: [
-              (
-                Icons.language_rounded,
-                'Langues',
-                'Français, Bàátɔ̀nú, affichage prioritaire et clavier.',
-              ),
-              (
-                Icons.storage_rounded,
-                'Cache offline',
-                'Dictionnaire, leçons, brouillons, posts et file de sync.',
-              ),
-              (
-                Icons.security_rounded,
-                'Sécurité',
-                'Session, PIN, contrôle visuel, confidentialité et consentement.',
-              ),
-              (
-                Icons.api_rounded,
-                'Backend',
-                'Endpoints Supabase, realtime, storage, fonctions IA et logs.',
-              ),
-            ],
-          ),
-          if (_adminMode) ...[
-            const SizedBox(height: 12),
-            _ActionList(
-              items: const [
-                _ActionItem(
-                  Icons.health_and_safety_rounded,
-                  'Diagnostic système',
-                  'Auth, dictionnaire, feed, templates, IA, traduction et classe.',
-                ),
-                _ActionItem(
-                  Icons.sync_problem_rounded,
-                  'Queue de synchronisation',
-                  'Brouillons, médias, réponses classe et contributions offline.',
-                ),
-                _ActionItem(
-                  Icons.rule_folder_rounded,
-                  'Règles de modération',
-                  'Signalements, publication, visibilité et validation humaine.',
-                ),
-              ],
+          if (_loadingPrefs) const LinearProgressIndicator(minHeight: 3),
+          Reveal(
+            child: ListenableBuilder(
+              listenable: Listenable.merge([FitilaOffline.online, FitilaOffline.pending]),
+              builder: (context, _) {
+                final online = FitilaOffline.online.value;
+                final pending = FitilaOffline.pending.value;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionLabel('Connexion et synchronisation'),
+                    PremiumCard(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      child: PremiumActionRow(
+                        icon: online ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
+                        title: online ? 'En ligne' : 'Hors connexion',
+                        subtitle: pending == 0
+                            ? (online ? 'Tout est synchronisé.' : 'Dictionnaire, Apprendre, clavier et profil restent disponibles.')
+                            : '$pending modification${pending > 1 ? 's' : ''} en attente d’envoi.',
+                        trailing: TextButton(
+                          key: const ValueKey('sync-now'),
+                          onPressed: () async {
+                            final ok = await FitilaOffline.refresh();
+                            final sent = ok ? await FitilaOffline.flush() : 0;
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  !ok
+                                      ? 'Toujours hors connexion.'
+                                      : sent > 0
+                                      ? '$sent modification${sent > 1 ? 's' : ''} envoyée${sent > 1 ? 's' : ''}.'
+                                      : 'Tout est à jour.',
+                                ),
+                              ),
+                            );
+                          },
+                          child: const Text('Synchroniser'),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
-          ],
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: widget.onSignedOut,
-            icon: const Icon(Icons.logout_rounded),
-            label: const Text('Se déconnecter'),
+          ),
+          _group(0, 'Langue et affichage', [
+            PremiumSwitchRow(
+              icon: Icons.language_rounded,
+              title: 'Bàátɔ̀nú en premier',
+              subtitle: 'Affiche le Bariba avant le français partout où c’est possible.',
+              value: _baribaFirst,
+              onChanged: (v) => _setPref('bariba_first', v, (x) => _baribaFirst = x),
+            ),
+            PremiumSwitchRow(
+              icon: Icons.touch_app_rounded,
+              title: 'Grands contrôles tactiles',
+              subtitle: 'Boutons plus larges, plus faciles à toucher.',
+              value: _largeTouch,
+              onChanged: (v) => _setPref('large_touch', v, (x) => _largeTouch = x),
+            ),
+          ]),
+          _group(1, 'Audio et clavier', [
+            PremiumSwitchRow(
+              icon: Icons.volume_up_rounded,
+              title: 'Lecture audio automatique',
+              subtitle: 'Lit les mots et phrases dès qu’ils s’affichent.',
+              value: _audio,
+              onChanged: (v) => _setPref('auto_audio', v, (x) => _audio = x),
+            ),
+            PremiumActionRow(
+              icon: Icons.keyboard_alt_rounded,
+              title: 'Clavier Bàátɔ̀nú',
+              subtitle: 'Activer le clavier natif dans toutes vos applications.',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const KeyboardScreen()),
+              ),
+            ),
+          ]),
+          _group(2, 'Hors-ligne et notifications', [
+            PremiumSwitchRow(
+              icon: Icons.offline_bolt_rounded,
+              title: 'Cache hors-ligne',
+              subtitle: 'Garde dictionnaire et leçons disponibles sans réseau.',
+              value: _offline,
+              onChanged: (v) => _setPref('offline_cache', v, (x) => _offline = x),
+            ),
+            PremiumSwitchRow(
+              icon: Icons.notifications_rounded,
+              title: 'Notifications',
+              subtitle: 'Fil, classe, corrections et notes de l’enseignant.',
+              value: _push,
+              onChanged: (v) => _setPref('notifications', v, (x) => _push = x),
+            ),
+          ]),
+          _group(3, 'Sécurité', [
+            PremiumSwitchRow(
+              icon: Icons.lock_rounded,
+              title: 'Verrouillage par code',
+              subtitle: 'Demande votre code à l’ouverture de l’application.',
+              value: _pinLock,
+              onChanged: (v) => _setPref('pin_lock', v, (x) => _pinLock = x),
+            ),
+            PremiumSwitchRow(
+              icon: Icons.verified_user_rounded,
+              title: 'Confirmer les actions sensibles',
+              subtitle: 'Une confirmation avant de supprimer ou publier.',
+              value: _visualSecurity,
+              onChanged: (v) => _setPref('visual_security', v, (x) => _visualSecurity = x),
+            ),
+          ]),
+          _group(4, 'Mes données', [
+            PremiumSwitchRow(
+              icon: Icons.analytics_rounded,
+              title: 'Diagnostics anonymes',
+              subtitle: 'Aide à corriger les bogues, sans contenu personnel.',
+              value: _analytics,
+              onChanged: (v) => _setPref('share_diagnostics', v, (x) => _analytics = x),
+            ),
+            PremiumActionRow(
+              icon: Icons.download_rounded,
+              title: 'Exporter mes données',
+              subtitle: 'Profil, traductions et progression (JSON).',
+              onTap: _exporting ? null : _exportData,
+              trailing: _exporting
+                  ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : null,
+            ),
+            PremiumActionRow(
+              icon: Icons.delete_forever_rounded,
+              title: 'Supprimer mon compte',
+              subtitle: 'Envoie une demande à un administrateur.',
+              danger: true,
+              onTap: _confirmDeleteAccount,
+            ),
+          ]),
+          const SizedBox(height: 22),
+          Reveal(
+            index: 5,
+            child: SizedBox(
+              height: 52,
+              child: OutlinedButton.icon(
+                onPressed: widget.onSignedOut,
+                icon: const Icon(Icons.logout_rounded),
+                label: const Text('Se déconnecter'),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Center(
+            child: Text('FITILA · Bàátɔ̀nú', style: TextStyle(fontSize: 11, color: _fitilaMuted)),
           ),
         ],
       ),
@@ -19740,15 +16388,13 @@ class _TextPanel extends StatelessWidget {
     required this.title,
     required this.controller,
     required this.hint,
-    this.readOnly = false,
-    this.maxLines = 6,
   });
 
   final String title;
   final TextEditingController controller;
   final String hint;
-  final bool readOnly;
-  final int maxLines;
+  static const readOnly = false;
+  static const maxLines = 6;
 
   @override
   Widget build(BuildContext context) {
@@ -20425,78 +17071,6 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-class _NavGrid extends StatelessWidget {
-  const _NavGrid({
-    required this.pages,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final List<FitilaPage> pages;
-  final FitilaPage selected;
-  final ValueChanged<FitilaPage> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.builder(
-      itemCount: pages.length,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisExtent: 88,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemBuilder: (context, index) {
-        final page = pages[index];
-        final active = page == selected;
-        return InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () => onSelected(page),
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: active ? _fitilaPrimarySoft : _fitilaSurfaceAlt,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: active ? _fitilaPrimary : _fitilaBorder,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  page.icon,
-                  size: 19,
-                  color: active ? _fitilaGoldDeep : _fitilaMuted,
-                ),
-                const Spacer(),
-                Text(
-                  page.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _fitilaInk,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  page.description,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: _fitilaMuted, fontSize: 9.5),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);
 
@@ -20519,29 +17093,82 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-class _LanguageSwitch extends StatelessWidget {
+class _LanguageSwitch extends StatefulWidget {
   const _LanguageSwitch();
 
   @override
+  State<_LanguageSwitch> createState() => _LanguageSwitchState();
+}
+
+class _LanguageSwitchState extends State<_LanguageSwitch> {
+  @override
+  void initState() {
+    super.initState();
+    FitilaLanguage.ensureLoaded();
+    FitilaLanguage.current.addListener(_changed);
+  }
+
+  void _changed() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    FitilaLanguage.current.removeListener(_changed);
+    super.dispose();
+  }
+
+  String get _lang => FitilaLanguage.current.value;
+
+  Future<void> _set(String code) => FitilaLanguage.set(code);
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: _fitilaSurfaceAlt,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _fitilaBorder),
-      ),
-      child: const Row(
-        children: [
-          Expanded(
-            child: _DarkChip(icon: Icons.language_rounded, label: 'Français'),
+    Widget button(String code, String label) {
+      final selected = _lang == code;
+      return Expanded(
+        child: Semantics(
+          button: true,
+          selected: selected,
+          label: label,
+          child: InkWell(
+            key: ValueKey('lang-$code'),
+            borderRadius: BorderRadius.circular(999),
+            onTap: () => _set(code),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: selected ? _fitilaPrimary : Colors.white,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: selected ? _fitilaPrimary : _fitilaBorder),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.language_rounded, size: 16, color: selected ? const Color(0xFF2B2110) : _fitilaInk),
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: selected ? const Color(0xFF2B2110) : _fitilaInk,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          SizedBox(width: 8),
-          Expanded(
-            child: _DarkChip(icon: Icons.translate_rounded, label: 'Bariba'),
-          ),
-        ],
-      ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [button('fr', 'Français'), const SizedBox(width: 8), button('ba', 'Bàátɔ̀nú')],
     );
   }
 }
