@@ -86,7 +86,7 @@ export function matchAnswer(studentAnswer: string, accepted: string[]): boolean 
     s.toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9ɔɛŋɲɓɗƴ\s]/gi, '')
+      .replace(/[^a-z0-9ɔɛŋɲɓɗƴə\s]/gi, '')
       .replace(/\s+/g, ' ')
       .trim();
   const studentNorm = normalize(studentAnswer);
