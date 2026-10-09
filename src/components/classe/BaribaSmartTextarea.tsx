@@ -28,6 +28,7 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
   const [suggestions, setSuggestions] = useState<PhoneticEntry[]>([]);
   const [hwCandidates, setHwCandidates] = useState<string[]>([]);
   const [hwLoading, setHwLoading] = useState(false);
+  const [hwError, setHwError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
@@ -96,6 +97,7 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
     if (!hasContent) return;
 
     setHwLoading(true);
+    setHwError(null);
     try {
       const base64 = canvas.toDataURL('image/png');
       const { data, error } = await supabase.functions.invoke('recognize-handwriting', {
@@ -107,6 +109,7 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
       setHwCandidates(candidates.slice(0, 5));
     } catch (err) {
       console.error('Handwriting recognition failed:', err);
+      setHwError('Reconnaissance IA indisponible. Le clavier Bàátɔ̀nú reste utilisable.');
       // Fallback: candidates stay empty, quick-char buttons still available
     } finally {
       setHwLoading(false);
@@ -315,7 +318,7 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
 
             {/* AI-recognized candidates */}
             <AnimatePresence>
-              {(hwCandidates.length > 0 || hwLoading) && (
+              {(hwCandidates.length > 0 || hwLoading || hwError) && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -327,6 +330,8 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       <span>Reconnaissance en cours…</span>
                     </div>
+                  ) : hwError ? (
+                    <div className="text-[11px] font-semibold text-amber-700">{hwError}</div>
                   ) : (
                     <div>
                       <span className="text-purple-400 text-[9px] font-bold uppercase mb-1 block">
