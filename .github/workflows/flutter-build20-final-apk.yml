@@ -5,7 +5,7 @@ on:
     branches:
       - release/fitila-v1.8.9-build20
     paths:
-      - '.github/workflows/flutter-build19-final-apk.yml'
+      - '.github/workflows/flutter-build20-final-apk.yml'
   workflow_dispatch:
 
 concurrency:
