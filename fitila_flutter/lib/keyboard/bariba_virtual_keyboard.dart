@@ -46,7 +46,7 @@ class _BaribaVirtualKeyboardState extends State<BaribaVirtualKeyboard> {
   static const _row1 = ['a', 'z', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'];
   static const _row2 = ['q', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'm'];
   static const _row3 = ['w', 'x', 'c', 'v', 'b', 'n'];
-  static const _special = ['ɔ', 'ɛ', 'ŋ'];
+  static const _special = ['ɔ', 'ɛ', 'ŋ', 'ə'];
   static const _nasal = ['ã', 'ĩ', 'ũ', 'õ', 'ẽ', 'ɛ̃', 'ɔ̃'];
   static const _tones = [
     (BaribaKeyboardEngine.combiningGrave, 'ton bas'),
