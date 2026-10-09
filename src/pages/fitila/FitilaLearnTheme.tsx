@@ -7,6 +7,7 @@ import { ApTaskFactory } from '@/lib/apprendre/tasks';
 import { baseForm } from '@/lib/apprendre/content';
 import ApSessionScreen from '@/components/apprendre/ApSessionScreen';
 import { AP_COLORS } from '@/components/apprendre/apColors';
+import { BaribaAudioButton } from '@/components/fitila/BaribaAudioText';
 
 export default function FitilaLearnTheme(){
   const nav=useNavigate(); const {id}=useParams(); const {data,isLoading,error}=useApprendreContent();
@@ -34,7 +35,7 @@ export default function FitilaLearnTheme(){
       </div>
       <button disabled={!cards.length} onClick={()=>setSession(true)} className="mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-full text-base font-black disabled:opacity-50" style={{background:AP_COLORS.gold,color:AP_COLORS.goldInk}}><Play className="h-5 w-5"/>{learned===0?'Commencer la séance':'Continuer la séance'}</button>
       <div className="relative mt-5"><Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2" style={{color:AP_COLORS.muted}}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Chercher un mot (bàátɔ̀nú ou français)" className="w-full rounded-2xl border py-4 pl-12 pr-4 outline-none" style={{borderColor:AP_COLORS.line,background:AP_COLORS.surface}}/></div>
-      <div className="mt-3 space-y-2">{visible.slice(0,120).map(card=>{const state=store.progress.srs[card.id];const dot=!state?AP_COLORS.line:state.active?AP_COLORS.sage:AP_COLORS.gold;return <div key={card.id} className="flex items-center rounded-2xl border px-4 py-3" style={{borderColor:AP_COLORS.line,background:AP_COLORS.surface}}><div className="min-w-0 flex-1"><div className="text-lg font-bold">{card.ba}</div><div className="text-sm" style={{color:AP_COLORS.quiet}}>{card.fr}</div></div><span className="mx-2 h-2.5 w-2.5 rounded-full" style={{background:dot}}/></div>})}</div>
+      <div className="mt-3 space-y-2">{visible.slice(0,120).map(card=>{const state=store.progress.srs[card.id];const dot=!state?AP_COLORS.line:state.active?AP_COLORS.sage:AP_COLORS.gold;return <div key={card.id} className="flex items-center rounded-2xl border px-4 py-3" style={{borderColor:AP_COLORS.line,background:AP_COLORS.surface}}><div className="min-w-0 flex-1"><div className="text-lg font-bold">{card.ba}</div><div className="text-sm" style={{color:AP_COLORS.quiet}}>{card.fr}</div></div><BaribaAudioButton text={card.ba} compact hideUnavailable /><span className="mx-2 h-2.5 w-2.5 rounded-full" style={{background:dot}}/></div>})}</div>
     </div>
   </div>;
 }
