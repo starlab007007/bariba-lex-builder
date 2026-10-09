@@ -170,7 +170,8 @@ class ApAudioService {
     revision.value++;
   }
 
-  /// Télécharge la liste publique sécurisée des voix validées et publiées.\n  Future<bool> refresh() async {
+  /// Télécharge la liste publique sécurisée des voix validées et publiées.
+  Future<bool> refresh() async {
     if (_refreshing || !FitilaBackend.configured || !FitilaOffline.online.value) {
       return false;
     }
