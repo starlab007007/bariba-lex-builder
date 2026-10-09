@@ -380,7 +380,7 @@ String normalizeAnswer(String s) {
   }
   return buf
       .toString()
-      .replaceAll(RegExp(r'[^a-z0-9ɔɛŋɲɓɗƴ\s]'), '')
+      .replaceAll(RegExp(r'[^a-z0-9ɔɛŋɲɓɗƴə\s]'), '')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
 }
