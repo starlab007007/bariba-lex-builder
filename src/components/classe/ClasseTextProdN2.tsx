@@ -4,6 +4,7 @@ import { ChevronRight, Eye, EyeOff, PenLine } from 'lucide-react';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { TEXT_PRODUCTION_TYPES, TextType } from '@/data/classeContentN2TextProd';
 import UniversalAnswerCard from './UniversalAnswerCard';
+import ListenButton from './ListenButton';
 
 function TextTypeCard({ tt, lang, onSelect }: { tt: TextType; lang: string; onSelect: () => void }) {
   return (
@@ -24,7 +25,7 @@ function TextTypeCard({ tt, lang, onSelect }: { tt: TextType; lang: string; onSe
   );
 }
 
-function TextTypeDetail({ tt, lang, onBack }: { tt: TextType; lang: string; onBack: () => void }) {
+function TextTypeDetail({ tt, lessonId, lang, onBack }: { tt: TextType; lessonId: number; lang: string; onBack: () => void }) {
   const [activeTab, setActiveTab] = useState<'learn' | 'practice'>('learn');
   const [showExample, setShowExample] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({});
@@ -36,7 +37,10 @@ function TextTypeDetail({ tt, lang, onBack }: { tt: TextType; lang: string; onBa
         <div className="flex items-center gap-3">
           <span className="text-4xl">{tt.emoji}</span>
           <div>
-            <h3 className="text-white font-black text-lg">{lang === 'ba' ? tt.title : tt.titleFr}</h3>
+            <div className="flex items-start gap-2">
+              <h3 className="min-w-0 flex-1 text-white font-black text-lg">{lang === 'ba' ? tt.title : tt.titleFr}</h3>
+              <ListenButton contentKey={`classe/N2/textprod/${lessonId}/title`} size="sm" className="bg-white/20 text-white" />
+            </div>
           </div>
         </div>
       </div>
@@ -62,7 +66,10 @@ function TextTypeDetail({ tt, lang, onBack }: { tt: TextType; lang: string; onBa
           {/* Definition */}
           <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm">
             <h4 className="text-gray-700 font-bold text-xs mb-2">📝 {lang === 'ba' ? 'Kɔ̀kɔrɔ' : 'Définition'}</h4>
-            <p className="text-gray-600 text-xs leading-relaxed">{lang === 'ba' ? tt.definition : tt.definitionFr}</p>
+            <div className="flex items-start gap-2">
+              <p className="min-w-0 flex-1 text-gray-600 text-xs leading-relaxed">{lang === 'ba' ? tt.definition : tt.definitionFr}</p>
+              <ListenButton contentKey={`classe/N2/textprod/${lessonId}/definition`} size="sm" />
+            </div>
           </div>
 
           {/* Characteristics */}
@@ -72,7 +79,8 @@ function TextTypeDetail({ tt, lang, onBack }: { tt: TextType; lang: string; onBa
               {(lang === 'ba' ? tt.characteristics : tt.characteristicsFr).map((c, i) => (
                 <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
                   <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold flex-shrink-0">{i + 1}</span>
-                  {c}
+                  <span className="min-w-0 flex-1">{c}</span>
+                  <ListenButton contentKey={`classe/N2/textprod/${lessonId}/characteristic/${i}`} size="sm" />
                 </li>
               ))}
             </ul>
@@ -84,7 +92,10 @@ function TextTypeDetail({ tt, lang, onBack }: { tt: TextType; lang: string; onBa
             <div className="space-y-2">
               {tt.structure.map((field, i) => (
                 <div key={i} className={`p-3 rounded-xl border ${field.color}`}>
-                  <p className="text-xs font-bold text-gray-700">{lang === 'ba' ? field.label : field.labelFr}</p>
+                  <div className="flex items-start gap-2">
+                    <p className="min-w-0 flex-1 text-xs font-bold text-gray-700">{lang === 'ba' ? field.label : field.labelFr}</p>
+                    <ListenButton contentKey={`classe/N2/textprod/${lessonId}/structure/${i}`} size="sm" />
+                  </div>
                   <p className="text-[10px] text-gray-400 mt-0.5">{field.placeholder}</p>
                 </div>
               ))}
@@ -110,9 +121,12 @@ function TextTypeDetail({ tt, lang, onBack }: { tt: TextType; lang: string; onBa
                 className="overflow-hidden"
               >
                 <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200">
-                  <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
-                    {lang === 'ba' ? tt.example : tt.exampleFr}
-                  </pre>
+                  <div className="flex items-start gap-2">
+                    <pre className="min-w-0 flex-1 text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
+                      {lang === 'ba' ? tt.example : tt.exampleFr}
+                    </pre>
+                    <ListenButton contentKey={`classe/N2/textprod/${lessonId}/example`} size="sm" />
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -128,7 +142,10 @@ function TextTypeDetail({ tt, lang, onBack }: { tt: TextType; lang: string; onBa
               <PenLine className="w-4 h-4 text-indigo-600" />
               <h4 className="text-indigo-700 font-bold text-xs">{lang === 'ba' ? 'Sɔmbu' : 'Exercice'}</h4>
             </div>
-            <p className="text-indigo-600 text-xs">{lang === 'ba' ? tt.exercisePrompt : tt.exercisePromptFr}</p>
+            <div className="flex items-start gap-2">
+              <p className="min-w-0 flex-1 text-indigo-600 text-xs">{lang === 'ba' ? tt.exercisePrompt : tt.exercisePromptFr}</p>
+              <ListenButton contentKey={`classe/N2/textprod/${lessonId}/exercise`} size="sm" />
+            </div>
           </div>
 
           {/* Interactive form with submit + verify per field */}
@@ -143,6 +160,7 @@ function TextTypeDetail({ tt, lang, onBack }: { tt: TextType; lang: string; onBa
                 questionIdx={i}
                 question={lang === 'ba' ? field.label : field.labelFr}
                 questionLabel={`${i + 1}`}
+                audioContentKey={`classe/N2/textprod/${lessonId}/structure/${i}`}
                 initialAnswer={formData[field.key] || ''}
                 rows={field.type === 'long' ? 4 : 2}
                 accent="from-indigo-500 to-purple-500"
@@ -179,10 +197,11 @@ export default function ClasseTextProdN2() {
   const { currentLang } = useFitilaLanguage();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const selected = TEXT_PRODUCTION_TYPES.find(t => t.id === selectedId);
+  const selectedIndex = TEXT_PRODUCTION_TYPES.findIndex(t => t.id === selectedId);
+  const selected = selectedIndex >= 0 ? TEXT_PRODUCTION_TYPES[selectedIndex] : undefined;
 
   if (selected) {
-    return <TextTypeDetail tt={selected} lang={currentLang} onBack={() => setSelectedId(null)} />;
+    return <TextTypeDetail tt={selected} lessonId={selectedIndex + 1} lang={currentLang} onBack={() => setSelectedId(null)} />;
   }
 
   return (
