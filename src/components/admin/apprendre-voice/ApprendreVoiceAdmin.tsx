@@ -214,7 +214,7 @@ function DashboardTab() {
 }
 
 // ───────────────────────── Validation ─────────────────────────
-function ReviewTab() {
+export function ApprendreVoiceReviewPanel() {
   const [takes, setTakes] = useState<Take[]>([]);
   const [items, setItems] = useState<Record<string, Item>>({});
   const [reason, setReason] = useState<Record<string, string>>({});
@@ -878,7 +878,7 @@ export default function ApprendreVoiceAdmin() {
           <TabsTrigger value="audit"><BookOpenCheck className="mr-1 h-4 w-4" />Journal</TabsTrigger>
         </TabsList>
         <TabsContent value="dashboard"><DashboardTab /></TabsContent>
-        <TabsContent value="review"><ReviewTab /></TabsContent>
+        <TabsContent value="review"><ApprendreVoiceReviewPanel /></TabsContent>
         <TabsContent value="publish"><PublishTab /></TabsContent>
         <TabsContent value="lots"><LotsTab /></TabsContent>
         <TabsContent value="contributors"><ContributorsTab /></TabsContent>
