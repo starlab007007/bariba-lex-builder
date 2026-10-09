@@ -5,6 +5,7 @@ on:
     branches:
       - release/fitila-v1.8.10-build21
     paths:
+      - 'fitila_flutter/**'
       - '.github/workflows/flutter-build21-final-apk.yml'
   workflow_dispatch:
 
