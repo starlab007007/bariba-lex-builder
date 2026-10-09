@@ -27,7 +27,7 @@
 
 import type { ComponentType, CSSProperties, ReactNode } from 'react';
 import {
-  Lightbulb, Flame, Volume2, CheckCircle2, HelpCircle, ArrowLeftRight,
+  Lightbulb, Flame, CheckCircle2, HelpCircle, ArrowLeftRight,
   Mic2, AudioLines, LayoutGrid, Users2, Zap, Wand2, History, Pin, Network,
   Hand, UsersRound, Home, UtensilsCrossed, Clock, Heart, Wheat, Store, Trees,
   Smile, MessagesSquare, Landmark, PersonStanding, Ear, BookMarked, RefreshCw,
@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { type ApExample, type ApFoundationSection, exampleVerified } from '@/lib/apprendre/content';
 import { AP_COLORS } from './apColors';
+import { BaribaAudioButton as PublishedBaribaAudioButton } from '@/components/fitila/BaribaAudioText';
 
 type IconComp = ComponentType<{ className?: string; style?: CSSProperties }>;
 
@@ -77,35 +78,10 @@ export function apIcon(name: string): IconComp {
   return AP_ICONS[name] ?? BookOpen;
 }
 
-/** Meilleur effort, hors-ligne : synthèse vocale du navigateur — voir note
- *  d'en-tête. Même repli que `ApSceneDetailScreen.tsx`/`ApSessionScreen.tsx`. */
-function speakBariba(text: string) {
-  try {
-    if (!('speechSynthesis' in window)) return;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'fr-FR';
-    utterance.rate = 0.8;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-  } catch {
-    // Synthèse vocale indisponible sur cet appareil — pas de repli nécessaire.
-  }
-}
-
-/** Équivalent réduit de `ApAudioButton` (spec §13.4) : la clé de lookup
- *  reste le texte bariba brut (`text`), voir note d'en-tête. */
+/** Voix de référence validée/published. Le bouton disparaît tant qu'aucune
+ * prise approuvée et activée n'existe pour ce texte. */
 export function ApAudioButton({ text, size = 34 }: { text: string; size?: number }) {
-  return (
-    <button
-      type="button"
-      onClick={(event) => { event.stopPropagation(); speakBariba(text); }}
-      aria-label={`Écouter : ${text}`}
-      className="inline-flex shrink-0 items-center justify-center rounded-full"
-      style={{ width: size, height: size, backgroundColor: AP_COLORS.goldTint }}
-    >
-      <Volume2 style={{ width: size * 0.5, height: size * 0.5, color: AP_COLORS.goldDeep }} />
-    </button>
-  );
+  return <PublishedBaribaAudioButton text={text} compact={size <= 32} hideUnavailable />;
 }
 
 /** Portage fidèle de `ApSourceTag` (spec §13.4) : icône `verified_rounded`
