@@ -7,6 +7,7 @@ on:
       - feat/apprendre-v2.4-build19-20260927
       - release/fitila-v1.8.9-build20
       - release/fitila-v1.8.10-build21
+      - release/fitila-v1.8.11-build22
     paths:
       - 'fitila_flutter/**'
       - '.github/workflows/flutter-native-android-ios-validation.yml'
@@ -15,6 +16,7 @@ on:
       - feat/apprendre-v2.4-build19-20260927
       - release/fitila-v1.8.9-build20
       - release/fitila-v1.8.10-build21
+      - release/fitila-v1.8.11-build22
     paths:
       - 'fitila_flutter/**'
       - '.github/workflows/flutter-native-android-ios-validation.yml'
