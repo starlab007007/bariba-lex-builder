@@ -1,0 +1,34 @@
+name: Validate Apprendre Voice
+
+on:
+  push:
+    branches: [feat/apprendre-reference-voice-publishing-20261009]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'supabase/migrations/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/validate-apprendre-voice.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npm run build
+        env:
+          VITE_BUILD_SHA: ${{ github.sha }}
+          VITE_SUPABASE_URL: https://dvswhjawiooprghzeyol.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_Rs6ysvbwQ0oGpHuYulZ5Hw_loUqyGKw

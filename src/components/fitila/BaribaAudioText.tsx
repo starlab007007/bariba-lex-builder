@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Volume2, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+
+const db = supabase as unknown as SupabaseClient;
 
 type PublishedAudio = {
   audio_key: string;
@@ -39,10 +42,8 @@ async function loadPublishedAudioManifest(): Promise<Map<string, PublishedAudio[
   const pageSize = 1000;
 
   for (let from = 0; ; from += pageSize) {
-    const { data, error } = await supabase
-      .from('apprendre_audio_published')
-      .select('audio_key, voice, variant, storage_path, duration_ms, speaker_name')
-      .order('audio_key')
+    const { data, error } = await db
+      .rpc('apprendre_audio_manifest')
       .range(from, from + pageSize - 1);
 
     if (error) throw error;
@@ -171,5 +172,95 @@ export default function BaribaAudioText({
         <span className="shrink-0 text-[10px] font-semibold text-[#9C9480]">voix bientôt</span>
       )}
     </span>
+  );
+}
+
+
+export interface BaribaAudioButtonProps {
+  text: string;
+  preferredVoice?: 'femme' | 'homme' | 'auto';
+  hideUnavailable?: boolean;
+  compact?: boolean;
+  dark?: boolean;
+  className?: string;
+}
+
+/** Bouton d'écoute seul, pour les cartes Apprendre qui affichent déjà le texte.
+ * Il n'utilise que les prises validées et publiées du manifeste sécurisé. */
+export function BaribaAudioButton({
+  text,
+  preferredVoice = 'auto',
+  hideUnavailable = true,
+  compact = false,
+  dark = false,
+  className = '',
+}: BaribaAudioButtonProps) {
+  const { data: manifest, isLoading } = useApprendrePublishedAudio();
+  const [playing, setPlaying] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const entry = useMemo(() => {
+    const rows = manifest?.get(apprendreAudioKey(text)) || [];
+    if (!rows.length) return null;
+    if (preferredVoice !== 'auto') return rows.find(r => r.voice === preferredVoice) || rows[0];
+    return rows[0];
+  }, [manifest, preferredVoice, text]);
+
+  const play = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+    event.preventDefault();
+    if (!entry || playing) return;
+    setFailed(false);
+    setPlaying(true);
+    try {
+      if (activeAudio) {
+        activeAudio.pause();
+        activeAudio = null;
+      }
+      const url = await signedUrl(entry.storage_path);
+      const audio = new Audio(url);
+      activeAudio = audio;
+      audio.preload = 'auto';
+      audio.onended = () => {
+        setPlaying(false);
+        if (activeAudio === audio) activeAudio = null;
+      };
+      audio.onerror = () => {
+        setPlaying(false);
+        setFailed(true);
+        if (activeAudio === audio) activeAudio = null;
+      };
+      await audio.play();
+    } catch {
+      setPlaying(false);
+      setFailed(true);
+    }
+  };
+
+  if (!isLoading && !entry && hideUnavailable) return null;
+  const size = compact ? 'h-7 w-7' : 'h-9 w-9';
+  const iconSize = compact ? 'h-3.5 w-3.5' : 'h-4 w-4';
+
+  return (
+    <button
+      type="button"
+      onClick={play}
+      disabled={!entry || playing}
+      aria-label={entry ? `Écouter : ${text}` : `Voix en préparation : ${text}`}
+      title={entry ? (entry.speaker_name ? `Voix de ${entry.speaker_name}` : 'Écouter la voix de référence') : failed ? 'Lecture impossible' : 'Voix en préparation'}
+      className={`inline-flex shrink-0 items-center justify-center rounded-full border transition-all ${size} ${className} ${
+        entry
+          ? dark
+            ? 'border-white/30 bg-white/15 text-white hover:bg-white/25 active:scale-95'
+            : 'border-[#D8B86A] bg-[#FFF8E7] text-[#9C6B1D] hover:bg-[#F3E3B9] active:scale-95'
+          : dark
+            ? 'border-white/15 bg-white/10 text-white/50 opacity-70'
+            : 'border-[#E4DFCC] bg-[#F5F2E8] text-[#B8B19D] opacity-70'
+      }`}
+    >
+      {playing || isLoading
+        ? <Loader2 className={`${iconSize} animate-spin`} />
+        : <Volume2 className={iconSize} />}
+    </button>
   );
 }

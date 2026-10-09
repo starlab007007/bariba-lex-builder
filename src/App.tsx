@@ -39,6 +39,8 @@ const FitilaClasse = lazy(() => import("./pages/fitila/FitilaClasse"));
 const FitilaIA = lazy(() => import("./pages/fitila/FitilaIA"));
 const FitilaTemIA = lazy(() => import("./pages/fitila/FitilaTemIA"));
 const FitilaVoiceLab = lazy(() => import("./pages/fitila/FitilaVoiceLab"));
+const FitilaApprendreVoiceStudio = lazy(() => import("./pages/fitila/FitilaApprendreVoiceStudio"));
+const FitilaApprendreVoiceReview = lazy(() => import("./pages/fitila/FitilaApprendreVoiceReview"));
 const VoiceCorpusAdmin = lazy(() => import("./pages/admin/VoiceCorpusAdmin"));
 const InstallPage = lazy(() => import("./pages/fitila/InstallPage"));
 const FitilaEspace = lazy(() => import("./pages/fitila/espace/FitilaEspace"));
@@ -112,8 +114,8 @@ const App = () => (
                   <Route path="learn/foundations/:id" element={<FitilaLearn />} />
                   <Route path="learn/themes/:id" element={<FitilaLearnTheme />} />
                   <Route path="learn/scenes" element={<FitilaLearn />} />
-                  <Route path="learn/voice-studio" element={<FitilaVoiceLab />} />
-                  <Route path="learn/voice-review" element={<FitilaVoiceLab />} />
+                  <Route path="learn/voice-studio" element={<FitilaApprendreVoiceStudio />} />
+                  <Route path="learn/voice-review" element={<FitilaApprendreVoiceReview />} />
 
                 <Route path="classe/corrections" element={<ProtectedRoute><ClasseCorrections /></ProtectedRoute>} />
                 <Route path="classe/notes" element={<ProtectedRoute><MyGradeReport /></ProtectedRoute>} />

@@ -19,6 +19,7 @@ import { ApSessionRunner, type ApSessionResult, retryTasks, sessionPercent } fro
 import { PASS_MARK } from '@/lib/apprendre/store';
 import { AP_COLORS } from './apColors';
 import ApSessionResultScreen from './ApSessionResultScreen';
+import { BaribaAudioButton } from '@/components/fitila/BaribaAudioText';
 
 export interface ApSessionScreenProps {
   /** Titre affiché en haut de l'écran (ex. « Séance du jour », « Fondation : Tons »). */
@@ -278,7 +279,10 @@ function ApSessionRun({
 
             <div className="mt-2.5 rounded-[24px] border p-5" style={{ borderColor: AP_COLORS.line, backgroundColor: AP_COLORS.surface }}>
               {task.promptIsBariba ? (
-                <p className={`font-bold ${oral ? 'text-[30px]' : 'text-[26px]'}`}>{task.prompt}</p>
+                <div className="flex items-start gap-3">
+                  <p className={`min-w-0 flex-1 font-bold ${oral ? 'text-[30px]' : 'text-[26px]'}`}>{task.prompt}</p>
+                  <BaribaAudioButton text={task.prompt} hideUnavailable />
+                </div>
               ) : (
                 <p className={`font-extrabold ${oral ? 'text-[26px]' : 'text-[22px]'}`}>{task.prompt}</p>
               )}

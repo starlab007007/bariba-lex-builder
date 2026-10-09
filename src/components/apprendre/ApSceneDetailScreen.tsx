@@ -36,7 +36,7 @@
 import { useEffect, useRef, useState, type ComponentType, type CSSProperties } from 'react';
 import {
   ArrowLeft, SignalHigh, MessagesSquare, Mic, Ear, Play, Flame, ListChecks,
-  ArrowRightLeft, ArrowRight, Eye, ArrowDown, Volume2,
+  ArrowRightLeft, ArrowRight, Eye, ArrowDown,
 } from 'lucide-react';
 import {
   type ScScene, type ScLine, type ScenesContent,
@@ -48,6 +48,7 @@ import type { ApTask } from '@/lib/apprendre/tasks';
 import { sessionPercent } from '@/lib/apprendre/session';
 import { AP_COLORS } from './apColors';
 import ApSessionScreen from './ApSessionScreen';
+import { BaribaAudioButton } from '@/components/fitila/BaribaAudioText';
 
 // AP_COLORS n'expose pas encore `nightText`/`quiet` (apprendre_v24_spec.md
 // §13.1) — valeurs ajoutées localement plutôt que de modifier apColors.ts
@@ -184,36 +185,9 @@ function ModeCard({
   );
 }
 
-/** Meilleur effort, hors-ligne : synthèse vocale du navigateur (pas de voix
- *  bariba disponible côté navigateur — même repli que le bouton « Lire la
- *  consigne » déjà présent dans `ApSessionScreen.tsx`). Équivalent réduit de
- *  `ApAudioButton` (spec §13.4) : pas de bibliothèque de voix de référence
- *  pré-enregistrées côté web pour l'instant. */
-function speakBariba(text: string) {
-  try {
-    if (!('speechSynthesis' in window)) return;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'fr-FR';
-    utterance.rate = 0.8;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-  } catch {
-    // Synthèse vocale indisponible sur cet appareil — pas de repli nécessaire.
-  }
-}
-
+/** Référence humaine publiée pour la réplique. */
 function AudioButton({ text, size = 30, dark = false }: { text: string; size?: number; dark?: boolean }) {
-  return (
-    <button
-      type="button"
-      onClick={(event) => { event.stopPropagation(); speakBariba(text); }}
-      aria-label={`Écouter : ${text}`}
-      className="inline-flex shrink-0 items-center justify-center rounded-full"
-      style={{ width: size, height: size, backgroundColor: dark ? 'rgba(255,255,255,0.18)' : AP_COLORS.goldTint }}
-    >
-      <Volume2 style={{ width: size * 0.5, height: size * 0.5, color: dark ? '#FFFFFF' : AP_COLORS.goldDeep }} />
-    </button>
-  );
+  return <BaribaAudioButton text={text} compact={size <= 32} dark={dark} hideUnavailable />;
 }
 
 function Narration({ text }: { text: string }) {
@@ -391,7 +365,10 @@ export default function ApSceneDetailScreen({ scene, content, progress, store, o
             <div className="flex flex-wrap gap-2">
               {scene.vocab.map((word, i) => (
                 <div key={i} className="rounded-[14px] border px-3 py-2" style={{ borderColor: AP_COLORS.line, backgroundColor: AP_COLORS.surface }}>
-                  <p className="text-[15px] font-bold" style={{ color: AP_COLORS.ink }}>{word.ba}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[15px] font-bold" style={{ color: AP_COLORS.ink }}>{word.ba}</p>
+                    <BaribaAudioButton text={word.ba} compact hideUnavailable />
+                  </div>
                   <p className="text-[11.5px]" style={{ color: AP_COLORS.muted }}>{word.fr}</p>
                 </div>
               ))}

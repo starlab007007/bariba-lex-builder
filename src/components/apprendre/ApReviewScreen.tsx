@@ -34,6 +34,7 @@ import { ApSessionPlanner, skillsFor } from '@/lib/apprendre/planner';
 import { type ApSkillIconName, skillIconName } from '@/lib/apprendre/session';
 import { AP_COLORS } from './apColors';
 import ApSessionScreen from './ApSessionScreen';
+import { BaribaAudioButton } from '@/components/fitila/BaribaAudioText';
 
 export interface ApReviewScreenProps {
   content: ApprendreContent;
@@ -180,9 +181,12 @@ function WordRow({ card, retention, onClick }: { card: ApCard; retention: number
   const pct = Math.round(retention * 100);
   const color = pct < 50 ? AP_COLORS.clay : pct < 70 ? AP_COLORS.gold : AP_COLORS.sage;
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-[18px] border px-3.5 py-2.5 text-left"
+      onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onClick(); }}
+      className="flex w-full cursor-pointer items-center gap-3 rounded-[18px] border px-3.5 py-2.5 text-left"
       style={{ borderColor: AP_COLORS.line, backgroundColor: AP_COLORS.surface }}
     >
       <RetentionRing value={retention} label={`${pct} %`} color={color} />
@@ -190,8 +194,9 @@ function WordRow({ card, retention, onClick }: { card: ApCard; retention: number
         <p className="text-[16px] font-bold" style={{ color: AP_COLORS.ink }}>{card.ba}</p>
         <p className="truncate text-sm" style={{ color: AP_COLORS.muted }}>{card.fr}</p>
       </div>
+      <BaribaAudioButton text={card.ba} compact hideUnavailable />
       <ChevronRight className="h-5 w-5 shrink-0" style={{ color: AP_COLORS.muted }} />
-    </button>
+    </div>
   );
 }
 

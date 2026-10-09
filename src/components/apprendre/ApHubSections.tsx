@@ -17,6 +17,7 @@ import {
 import type { ApFoundation, ApProverb, ApTheme } from '@/lib/apprendre/content';
 import { AP_COLORS } from './apColors';
 import { apIcon } from './ApFoundationSections';
+import { BaribaAudioButton } from '@/components/fitila/BaribaAudioText';
 
 type IconComp = ComponentType<{ className?: string; style?: CSSProperties }>;
 
@@ -334,7 +335,10 @@ export function ApProverbCard({ proverb }: { proverb: ApProverb }) {
   return (
     <div className="rounded-[24px] p-[18px]" style={{ backgroundColor: AP_COLORS.night }}>
       <p className="text-[11.5px] font-bold tracking-wide" style={{ color: AP_COLORS.goldTint }}>SAGESSE DU JOUR</p>
-      <p className="mt-2 text-lg font-bold leading-[1.35] text-white">{proverb.ba}</p>
+      <div className="mt-2 flex items-start gap-2">
+        <p className="min-w-0 flex-1 text-lg font-bold leading-[1.35] text-white">{proverb.ba}</p>
+        <BaribaAudioButton text={proverb.ba} compact dark hideUnavailable />
+      </div>
       <p className="mt-1.5 text-sm" style={{ color: AP_COLORS.nightText }}>{proverb.fr}</p>
       <p className="mt-1.5 text-[11px]" style={{ color: '#B7AF98' }}>Dictionnaire, {proverb.src}</p>
     </div>
