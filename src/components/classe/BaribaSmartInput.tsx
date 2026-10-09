@@ -12,10 +12,11 @@ import { usePhoneticSuggestions, PhoneticEntry } from '@/hooks/usePhoneticSugges
 import { supabase } from '@/integrations/supabase/client';
 
 const BARIBA_CHARS = [
-  'ɔ', 'ɛ', 'ŋ', 'ã', 'ɔ̀', 'ɔ́', 'ɔ̃',
-  'ɛ̀', 'ɛ́', 'ɛ̃', 'à', 'á', 'è', 'é',
-  'ì', 'í', 'ĩ', 'ò', 'ó', 'ù', 'ú', 'ũ',
-  'ǹ', 'Ɔ', 'Ɛ', 'Ŋ',
+  'ɔ', 'ɛ', 'ŋ', 'ə',
+  'ã', 'ẽ', 'ĩ', 'õ', 'ũ', 'ɔ̃', 'ɛ̃',
+  'ɔ̀', 'ɔ́', 'ɛ̀', 'ɛ́',
+  'à', 'á', 'è', 'é', 'ë', 'ì', 'í', 'ò', 'ó', 'ô', 'ù', 'ú', 'ü',
+  'ā', 'ē', 'ǹ', 'Ɔ', 'Ɛ', 'Ŋ', 'Ə',
 ];
 
 interface Props {
@@ -40,7 +41,7 @@ export default function BaribaSmartInput({ value, onChange, placeholder, classNa
 
   const getCurrentWord = useCallback((text: string, cursor: number): string => {
     const before = text.slice(0, cursor);
-    const m = before.match(/[\wɔɛŋãàáèéìíòóùúũĩɔ̀ɔ́ɔ̃ɛ̀ɛ́ɛ̃ǹ]+$/u);
+    const m = before.match(/[\p{L}\p{M}]+$/u);
     return m ? m[0] : '';
   }, []);
 
