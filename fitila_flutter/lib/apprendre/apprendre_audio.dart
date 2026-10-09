@@ -170,8 +170,7 @@ class ApAudioService {
     revision.value++;
   }
 
-  /// Télécharge la liste des voix actives (vue `apprendre_audio_published`).
-  Future<bool> refresh() async {
+  /// Télécharge la liste publique sécurisée des voix validées et publiées.\n  Future<bool> refresh() async {
     if (_refreshing || !FitilaBackend.configured || !FitilaOffline.online.value) {
       return false;
     }
@@ -182,9 +181,7 @@ class ApAudioService {
       const page = 1000;
       for (var from = 0; ; from += page) {
         final rows = await client
-            .from('apprendre_audio_published')
-            .select('audio_key, voice, variant, storage_path, duration_ms, speaker_name')
-            .order('audio_key')
+            .rpc('apprendre_audio_manifest')
             .range(from, from + page - 1);
         for (final row in rows) {
           entries.add(
