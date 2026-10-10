@@ -83,7 +83,8 @@ public class BaribaInputMethodService extends InputMethodService {
     private static final String[][] SPECIALS = new String[][] {
         {"\u0254", "\u0186"},   // ɔ Ɔ
         {"\u025B", "\u0190"},   // ɛ Ɛ
-        {"\u014B", "\u014A"}    // ŋ Ŋ
+        {"\u014B", "\u014A"},   // ŋ Ŋ
+        {"\u0259", "\u018F"}    // ə Ə
     };
     private static final String[][] NASALS = new String[][] {
         {"\u00E3", "\u00C3"},          // ã Ã
@@ -317,7 +318,7 @@ public class BaribaInputMethodService extends InputMethodService {
         return row;
     }
 
-    /** Unique Bariba row: 7 nasals (jaune) + 3 specials (ɔ ɛ ŋ) + ◌̀ combining grave. */
+    /** Unique Bariba row: 7 nasals + 4 specials (ɔ ɛ ŋ ə) + ◌̀ combining grave. */
     private LinearLayout buildBaribaRow(Context ctx) {
         LinearLayout row = new LinearLayout(ctx);
         row.setLayoutParams(rowParams(ctx, 46));
