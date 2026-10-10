@@ -234,7 +234,7 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
       </div>
 
       {/* Tab content */}
-      <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3 sm:space-y-4"
+      <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3 sm:space-y-4">
         {activeTab === 'text' && (
           <div className="space-y-4">
             {(lesson.images?.length ? lesson.images : lesson.imageUrl ? [lesson.imageUrl] : []).map((src, imageIndex) => (
