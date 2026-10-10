@@ -12,10 +12,11 @@ import { usePhoneticSuggestions, PhoneticEntry } from '@/hooks/usePhoneticSugges
 import { supabase } from '@/integrations/supabase/client';
 
 const BARIBA_CHARS = [
-  'ɔ', 'ɛ', 'ŋ', 'ã', 'ɔ̀', 'ɔ́', 'ɔ̃',
-  'ɛ̀', 'ɛ́', 'ɛ̃', 'à', 'á', 'è', 'é',
-  'ì', 'í', 'ĩ', 'ò', 'ó', 'ù', 'ú', 'ũ',
-  'ǹ', 'Ɔ', 'Ɛ', 'Ŋ',
+  'ɔ', 'ɛ', 'ŋ', 'ə',
+  'ã', 'ẽ', 'ĩ', 'õ', 'ũ', 'ɔ̃', 'ɛ̃',
+  'ɔ̀', 'ɔ́', 'ɛ̀', 'ɛ́',
+  'à', 'á', 'è', 'é', 'ë', 'ì', 'í', 'ò', 'ó', 'ô', 'ù', 'ú', 'ü',
+  'ā', 'ē', 'ǹ', 'Ɔ', 'Ɛ', 'Ŋ', 'Ə',
 ];
 
 interface Props {
@@ -33,6 +34,7 @@ export default function BaribaSmartInput({ value, onChange, placeholder, classNa
   const [suggestions, setSuggestions] = useState<PhoneticEntry[]>([]);
   const [hwCandidates, setHwCandidates] = useState<string[]>([]);
   const [hwLoading, setHwLoading] = useState(false);
+  const [hwError, setHwError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
@@ -40,7 +42,7 @@ export default function BaribaSmartInput({ value, onChange, placeholder, classNa
 
   const getCurrentWord = useCallback((text: string, cursor: number): string => {
     const before = text.slice(0, cursor);
-    const m = before.match(/[\wɔɛŋãàáèéìíòóùúũĩɔ̀ɔ́ɔ̃ɛ̀ɛ́ɛ̃ǹ]+$/u);
+    const m = before.match(/[\p{L}\p{M}]+$/u);
     return m ? m[0] : '';
   }, []);
 
@@ -85,12 +87,17 @@ export default function BaribaSmartInput({ value, onChange, placeholder, classNa
     const hasContent = imageData.data.some((v, i) => i % 4 === 3 && v > 0);
     if (!hasContent) return;
     setHwLoading(true);
+    setHwError(null);
     try {
       const base64 = canvas.toDataURL('image/png');
-      const { data } = await supabase.functions.invoke('recognize-handwriting', { body: { image_base64: base64 } });
-      setHwCandidates((data?.candidates || []).slice(0, 5));
+      const { data, error } = await supabase.functions.invoke('recognize-handwriting', { body: { image_base64: base64 } });
+      if (error) throw error;
+      const candidates = (data?.candidates || []).slice(0, 5);
+      setHwCandidates(candidates);
+      if (candidates.length === 0) setHwError('Aucun caractère reconnu. Utilisez le clavier Bàátɔ̀nú ci-dessous.');
     } catch (err) {
       console.error('HW recognition failed', err);
+      setHwError('Reconnaissance IA indisponible. Le clavier Bàátɔ̀nú reste utilisable.');
     } finally {
       setHwLoading(false);
     }
@@ -105,6 +112,7 @@ export default function BaribaSmartInput({ value, onChange, placeholder, classNa
     const ctx = canvasRef.current?.getContext('2d');
     if (ctx && canvasRef.current) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     setHwCandidates([]);
+    setHwError(null);
   };
 
   const insertHwCandidate = (c: string) => {
@@ -213,10 +221,12 @@ export default function BaribaSmartInput({ value, onChange, placeholder, classNa
               className="w-full bg-white cursor-crosshair touch-none"
               onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw}
               onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw} />
-            {(hwCandidates.length > 0 || hwLoading) && (
+            {(hwCandidates.length > 0 || hwLoading || hwError) && (
               <div className="px-2.5 py-2 border-t border-purple-100 bg-gradient-to-r from-purple-50 to-violet-50">
                 {hwLoading && hwCandidates.length === 0 ? (
                   <div className="flex items-center gap-2 text-purple-400 text-xs"><Loader2 className="w-3.5 h-3.5 animate-spin" />Reconnaissance…</div>
+                ) : hwError ? (
+                  <div className="text-[11px] font-semibold text-amber-700">{hwError}</div>
                 ) : (
                   <div className="flex gap-1.5 flex-wrap">
                     {hwCandidates.map((c, i) => (
@@ -230,7 +240,7 @@ export default function BaribaSmartInput({ value, onChange, placeholder, classNa
               </div>
             )}
             <div className="flex gap-1 flex-wrap p-2 border-t border-purple-100 bg-purple-50/50">
-              {['a','b','d','e','g','i','k','m','n','o','r','s','u','w','y','ɔ','ɛ','ŋ','ã','ɔ̃','ɛ̃'].map(c => (
+              {['a','b','d','e','g','i','k','m','n','o','r','s','u','w','y','ɔ','ɛ','ŋ','ə','ã','ẽ','ĩ','õ','ũ','ɔ̃','ɛ̃'].map(c => (
                 <button key={c} type="button" onClick={() => insertAtCursor(c)}
                   className="w-7 h-7 rounded bg-white border border-purple-200 text-gray-700 text-xs font-bold hover:bg-purple-100">
                   {c}

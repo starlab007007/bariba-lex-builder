@@ -5,10 +5,11 @@ import { usePhoneticSuggestions, PhoneticEntry } from '@/hooks/usePhoneticSugges
 import { supabase } from '@/integrations/supabase/client';
 
 const BARIBA_CHARS = [
-  'ɔ', 'ɛ', 'ŋ', 'ã', 'ɔ̀', 'ɔ́', 'ɔ̃',
-  'ɛ̀', 'ɛ́', 'ɛ̃', 'à', 'á', 'è', 'é',
-  'ì', 'í', 'ĩ', 'ò', 'ó', 'ù', 'ú', 'ũ',
-  'ǹ', 'Ɔ', 'Ɛ', 'Ŋ',
+  'ɔ', 'ɛ', 'ŋ', 'ə',
+  'ã', 'ẽ', 'ĩ', 'õ', 'ũ', 'ɔ̃', 'ɛ̃',
+  'ɔ̀', 'ɔ́', 'ɛ̀', 'ɛ́',
+  'à', 'á', 'è', 'é', 'ë', 'ì', 'í', 'ò', 'ó', 'ô', 'ù', 'ú', 'ü',
+  'ā', 'ē', 'ǹ', 'Ɔ', 'Ɛ', 'Ŋ', 'Ə',
 ];
 
 interface Props {
@@ -27,6 +28,7 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
   const [suggestions, setSuggestions] = useState<PhoneticEntry[]>([]);
   const [hwCandidates, setHwCandidates] = useState<string[]>([]);
   const [hwLoading, setHwLoading] = useState(false);
+  const [hwError, setHwError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
@@ -36,7 +38,7 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
 
   const getCurrentWord = useCallback((text: string, cursorPos: number): string => {
     const before = text.slice(0, cursorPos);
-    const match = before.match(/[\wɔɛŋãàáèéìíòóùúũĩɔ̀ɔ́ɔ̃ɛ̀ɛ́ɛ̃ǹ]+$/u);
+    const match = before.match(/[\p{L}\p{M}]+$/u);
     return match ? match[0] : '';
   }, []);
 
@@ -95,6 +97,7 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
     if (!hasContent) return;
 
     setHwLoading(true);
+    setHwError(null);
     try {
       const base64 = canvas.toDataURL('image/png');
       const { data, error } = await supabase.functions.invoke('recognize-handwriting', {
@@ -106,6 +109,7 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
       setHwCandidates(candidates.slice(0, 5));
     } catch (err) {
       console.error('Handwriting recognition failed:', err);
+      setHwError('Reconnaissance IA indisponible. Le clavier Bàátɔ̀nú reste utilisable.');
       // Fallback: candidates stay empty, quick-char buttons still available
     } finally {
       setHwLoading(false);
@@ -314,7 +318,7 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
 
             {/* AI-recognized candidates */}
             <AnimatePresence>
-              {(hwCandidates.length > 0 || hwLoading) && (
+              {(hwCandidates.length > 0 || hwLoading || hwError) && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -326,6 +330,8 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       <span>Reconnaissance en cours…</span>
                     </div>
+                  ) : hwError ? (
+                    <div className="text-[11px] font-semibold text-amber-700">{hwError}</div>
                   ) : (
                     <div>
                       <span className="text-purple-400 text-[9px] font-bold uppercase mb-1 block">
@@ -359,7 +365,7 @@ export default function BaribaSmartTextarea({ value, onChange, placeholder, rows
             {/* Quick character fallback row */}
             <div className="flex gap-1 flex-wrap p-2 border-t border-purple-100 bg-purple-50/50">
               {['a', 'b', 'd', 'e', 'g', 'i', 'k', 'm', 'n', 'o', 'r', 's', 'u', 'w', 'y',
-                'ɔ', 'ɛ', 'ŋ', 'ã', 'ɔ̃', 'ɛ̃'].map(c => (
+                'ɔ', 'ɛ', 'ŋ', 'ə', 'ã', 'ẽ', 'ĩ', 'õ', 'ũ', 'ɔ̃', 'ɛ̃'].map(c => (
                 <button
                   key={c}
                   type="button"

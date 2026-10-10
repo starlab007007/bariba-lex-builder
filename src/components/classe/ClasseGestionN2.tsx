@@ -15,9 +15,10 @@ import {
 } from '@/data/classeContentN2';
 import BaribaSmartTextarea from './BaribaSmartTextarea';
 import UniversalAnswerCard from './UniversalAnswerCard';
+import ListenButton from './ListenButton';
 
 // ============ Q&A Field (using UniversalAnswerCard for full feedback flow) ============
-function QAField({ docId, qIdx, question, lang }: { docId: string; qIdx: number; question: { ba: string; fr: string }; lang: string }) {
+function QAField({ docId, lessonId, qIdx, question, lang }: { docId: string; lessonId: number; qIdx: number; question: { ba: string; fr: string }; lang: string }) {
   const initial = getGestionN2QA(docId, qIdx);
   return (
     <UniversalAnswerCard
@@ -28,6 +29,7 @@ function QAField({ docId, qIdx, question, lang }: { docId: string; qIdx: number;
       questionIdx={qIdx}
       question={lang === 'ba' ? question.ba : question.fr}
       questionLabel={`Q${qIdx + 1}`}
+      audioContentKey={`classe/N2/gestion/${lessonId}/qa/${qIdx}`}
       initialAnswer={initial}
       accent="from-teal-500 to-cyan-500"
       rows={3}
@@ -38,7 +40,7 @@ function QAField({ docId, qIdx, question, lang }: { docId: string; qIdx: number;
 }
 
 // ============ Document Detail ============
-function GestionDocDetail({ doc, lang, onBack }: { doc: GestionDocument; lang: string; onBack: () => void }) {
+function GestionDocDetail({ doc, lessonId, lang, onBack }: { doc: GestionDocument; lessonId: number; lang: string; onBack: () => void }) {
   const state = getGestionN2State();
   const savedForm = state.formData[doc.id] || {};
   const savedTable = state.tableData[doc.id];
@@ -174,7 +176,10 @@ function GestionDocDetail({ doc, lang, onBack }: { doc: GestionDocument; lang: s
         <div className="flex items-center gap-3">
           <span className="text-4xl">{doc.emoji}</span>
           <div className="flex-1">
-            <h3 className="text-white font-black text-lg">{lang === 'ba' ? doc.title : doc.titleFr}</h3>
+            <div className="flex items-start gap-2">
+              <h3 className="min-w-0 flex-1 text-white font-black text-lg">{lang === 'ba' ? doc.title : doc.titleFr}</h3>
+              <ListenButton contentKey={`classe/N2/gestion/${lessonId}/title`} size="sm" className="bg-white/20 text-white" />
+            </div>
             <div className="mt-1 flex items-center gap-2">
               <div className="flex-1 h-1.5 bg-white/30 rounded-full overflow-hidden">
                 <div className="h-full bg-white rounded-full transition-all" style={{ width: `${completionPct}%` }} />
@@ -188,7 +193,10 @@ function GestionDocDetail({ doc, lang, onBack }: { doc: GestionDocument; lang: s
       {/* Definition */}
       <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm">
         <h4 className="text-gray-700 font-bold text-xs mb-2">📝 {lang === 'ba' ? 'Kɔ̀kɔrɔ' : 'Définition'}</h4>
-        <p className="text-gray-600 text-xs leading-relaxed">{lang === 'ba' ? doc.definition : doc.definitionFr}</p>
+        <div className="flex items-start gap-2">
+          <p className="min-w-0 flex-1 text-gray-600 text-xs leading-relaxed">{lang === 'ba' ? doc.definition : doc.definitionFr}</p>
+          <ListenButton contentKey={`classe/N2/gestion/${lessonId}/definition`} size="sm" />
+        </div>
       </div>
 
       {/* Formula */}
@@ -208,7 +216,10 @@ function GestionDocDetail({ doc, lang, onBack }: { doc: GestionDocument; lang: s
             {showFormula && (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                 <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200">
-                  <pre className="text-xs text-amber-800 whitespace-pre-wrap font-mono">{lang === 'ba' ? doc.formula : doc.formulaFr}</pre>
+                  <div className="flex items-start gap-2">
+                    <pre className="min-w-0 flex-1 text-xs text-amber-800 whitespace-pre-wrap font-mono">{lang === 'ba' ? doc.formula : doc.formulaFr}</pre>
+                    <ListenButton contentKey={`classe/N2/gestion/${lessonId}/formula`} size="sm" />
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -222,11 +233,14 @@ function GestionDocDetail({ doc, lang, onBack }: { doc: GestionDocument; lang: s
           ✍️ {lang === 'ba' ? 'Bweseru bù dokeo' : 'Remplissez les champs'}
           <span className="ml-2 text-emerald-600">{filledFields}/{totalFields}</span>
         </h4>
-        {doc.fields.map(field => (
+        {doc.fields.map((field, fieldIndex) => (
           <div key={field.key} className="p-3 rounded-xl bg-white border border-gray-100">
-            <label className="text-xs font-bold text-gray-700 block mb-1">
-              {lang === 'ba' ? field.label : field.labelFr}
-            </label>
+            <div className="mb-1 flex items-start gap-2">
+              <label className="min-w-0 flex-1 text-xs font-bold text-gray-700">
+                {lang === 'ba' ? field.label : field.labelFr}
+              </label>
+              <ListenButton contentKey={`classe/N2/gestion/${lessonId}/field/${fieldIndex}`} size="sm" />
+            </div>
             {field.type === 'computed' ? (
               <div className={`p-2 rounded-lg text-sm font-bold ${computed[field.key] !== undefined && computed[field.key] >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
                 {computed[field.key] !== undefined ? `F ${computed[field.key].toLocaleString()}` : '—'}

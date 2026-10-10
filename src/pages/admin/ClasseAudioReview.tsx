@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useAdminAudioQueue, useUpdateAudioStatus, useGetSignedUrl, type ClasseAudioRow, type AudioStatus } from '@/hooks/useClasseAudio';
+import { useAdminAudioQueue, useUpdateAudioStatus, useGetSignedUrl, useClasseAudioCoverage, type ClasseAudioRow, type AudioStatus } from '@/hooks/useClasseAudio';
 import { MODULE_CATALOG, getAllContentItems } from '@/lib/classeContentKeys';
 import QualityBadge from '@/components/teacher/voice/QualityBadge';
 import { Loader2, CheckCircle2, XCircle, Volume2 } from 'lucide-react';
@@ -10,6 +10,7 @@ export default function ClasseAudioReview() {
   const [level, setLevel] = useState<string | undefined>();
   const [module, setModule] = useState<string | undefined>();
   const { data = [], isLoading, refetch } = useAdminAudioQueue({ status, level, module });
+  const { data: publishedKeys = new Set<string>(), isLoading: coverageLoading } = useClasseAudioCoverage();
   const update = useUpdateAudioStatus();
   const getSignedUrl = useGetSignedUrl();
   const [urls, setUrls] = useState<Record<string, string>>({});
@@ -32,15 +33,23 @@ export default function ClasseAudioReview() {
     catch (e: any) { toast.error(e?.message ?? 'Erreur'); }
   }
 
-  // Coverage
+  // Canonical coverage: catalogue expected vs learner-visible approved keys.
   const coverage = useMemo(() => {
-    const all = getAllContentItems();
-    const totals = new Map<string, number>(); // key: level|module
-    for (const it of all) {
+    const groups = new Map<string, { total: number; keys: string[] }>();
+    for (const it of getAllContentItems()) {
       const k = `${it.level}|${it.module}`;
-      totals.set(k, (totals.get(k) ?? 0) + 1);
+      const group = groups.get(k) ?? { total: 0, keys: [] };
+      group.total += 1;
+      group.keys.push(it.content_key);
+      groups.set(k, group);
     }
-    return totals;
+    return groups;
+  }, []);
+
+  const moduleOptions = useMemo(() => {
+    const options = new Map<string, string>();
+    for (const item of MODULE_CATALOG) if (!options.has(item.module)) options.set(item.module, item.label);
+    return [...options.entries()];
   }, []);
 
   return (
@@ -66,7 +75,7 @@ export default function ClasseAudioReview() {
           <label className="text-xs font-semibold">Module</label>
           <select value={module ?? ''} onChange={e => setModule(e.target.value || undefined)} className="px-2 py-1 rounded border border-border bg-background text-sm">
             <option value="">Tous</option>
-            <option value="lang">Langue</option><option value="calcul">Calcul</option><option value="eval">Évaluations</option>
+            {moduleOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
         </div>
       </div>
@@ -75,10 +84,18 @@ export default function ClasseAudioReview() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         {MODULE_CATALOG.map(m => {
           const k = `${m.level}|${m.module}`;
+          const group = coverage.get(k) ?? { total: 0, keys: [] };
+          const approved = group.keys.reduce((n, key) => n + (publishedKeys.has(key) ? 1 : 0), 0);
+          const missing = Math.max(0, group.total - approved);
+          const pct = group.total ? Math.round((approved / group.total) * 100) : 0;
           return (
             <div key={k} className="p-3 rounded-lg border border-border bg-card text-sm">
               <div className="font-bold">{m.emoji} {m.level} · {m.label}</div>
-              <div className="text-muted-foreground text-xs">{coverage.get(k) ?? 0} éléments à enregistrer</div>
+              <div className="mt-1 text-xs font-semibold">{coverageLoading ? 'Calcul…' : `${approved}/${group.total} publiés · ${pct}%`}</div>
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                <div className="h-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+              </div>
+              {!coverageLoading && <div className="mt-1 text-[11px] text-muted-foreground">{missing} à enregistrer/valider</div>}
             </div>
           );
         })}
