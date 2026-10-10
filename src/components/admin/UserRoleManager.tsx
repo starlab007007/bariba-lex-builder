@@ -74,7 +74,7 @@ export default function UserRoleManager() {
   const handleGrantRole = async (userId: string, role: string) => {
     try {
       setActionLoading(userId);
-      const { error } = await supabase.from('user_roles').insert({ user_id: userId, role: role as AppRole });
+      const { error } = await (supabase as any).from('user_roles').insert({ user_id: userId, role: role as AppRole });
       if (error) throw error;
       toast({ title: 'Succès', description: `Rôle ${role} attribué` });
       await loadUsers();
@@ -89,7 +89,7 @@ export default function UserRoleManager() {
     if (!revokeInfo) return;
     try {
       setActionLoading(revokeInfo.user.id);
-      const { error } = await supabase.from('user_roles').delete().eq('user_id', revokeInfo.user.id).eq('role', revokeInfo.role as AppRole);
+      const { error } = await (supabase as any).from('user_roles').delete().eq('user_id', revokeInfo.user.id).eq('role', revokeInfo.role as AppRole);
       if (error) throw error;
       toast({ title: 'Succès', description: `Rôle ${revokeInfo.role} révoqué` });
       await loadUsers();

@@ -59,7 +59,7 @@ export function useSagesseBattle() {
     setError(null);
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const { data: ch, error: chErr } = await supabase
+      const { data: ch, error: chErr } = await (supabase as any)
         .from('battle_challenges')
         .select('id, challenge_date, prompt_fr, prompt_ba, proverb_fr, proverb_ba')
         .lte('challenge_date', today)
@@ -71,7 +71,7 @@ export function useSagesseBattle() {
       setChallenge(ch as BattleChallenge | null);
 
       if (ch) {
-        const { data: resp, error: rErr } = await supabase
+        const { data: resp, error: rErr } = await (supabase as any)
           .from('battle_responses')
           .select('*')
           .eq('challenge_id', ch.id)
@@ -84,13 +84,13 @@ export function useSagesseBattle() {
       }
 
       if (user) {
-        const { data: votes } = await supabase
+        const { data: votes } = await (supabase as any)
           .from('battle_response_votes')
           .select('response_id')
           .eq('user_id', user.id);
         setMyVotes((votes || []).map((v: { response_id: string }) => v.response_id));
 
-        const { data: mine } = await supabase
+        const { data: mine } = await (supabase as any)
           .from('battle_responses')
           .select('*')
           .eq('user_id', user.id)
@@ -149,7 +149,7 @@ export function useSagesseBattle() {
       const fallback = localScore(clean);
 
       // 1. La réponse est enregistrée d'abord, avec la note locale.
-      const { data: saved, error: insErr } = await supabase
+      const { data: saved, error: insErr } = await (supabase as any)
         .from('battle_responses')
         .upsert(
           {
@@ -189,7 +189,7 @@ export function useSagesseBattle() {
         if (!aiErr && match) {
           const score = Math.max(0, Math.min(100, parseInt(match[1], 10)));
           const feedback = raw.split('|').slice(1).join('|').trim() || null;
-          const { data: updated } = await supabase
+          const { data: updated } = await (supabase as any)
             .from('battle_responses')
             .update({
               ai_score: score,
@@ -218,7 +218,7 @@ export function useSagesseBattle() {
       if (!user) throw new Error('Connectez-vous pour voter');
       const has = myVotes.includes(responseId);
       if (has) {
-        const { error: delErr } = await supabase
+        const { error: delErr } = await (supabase as any)
           .from('battle_response_votes')
           .delete()
           .eq('response_id', responseId)
@@ -227,7 +227,7 @@ export function useSagesseBattle() {
         setMyVotes((v) => v.filter((x) => x !== responseId));
         setResponses((r) => r.map((x) => (x.id === responseId ? { ...x, votes_count: Math.max(0, x.votes_count - 1) } : x)));
       } else {
-        const { error: insErr } = await supabase
+        const { error: insErr } = await (supabase as any)
           .from('battle_response_votes')
           .insert({ response_id: responseId, user_id: user.id });
         if (insErr) throw new Error(insErr.message);

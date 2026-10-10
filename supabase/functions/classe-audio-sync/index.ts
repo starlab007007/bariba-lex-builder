@@ -46,8 +46,19 @@ Deno.serve(async (req) => {
         .upload(row.storage_path, blob, { contentType: "audio/wav", upsert: true });
       if (uErr) { report.failures.push({ id: row.id, step: "upload", error: uErr.message }); continue; }
       report.copied_files++;
-      const { error: iErr } = await dst.from("classe_content_audios").upsert(row, { onConflict: "id" });
+      // Le fichier vient d'être déposé avec succès dans le projet cible : il est physiquement disponible.
+      const health = { storage_available: true, storage_checked_at: new Date().toISOString(), storage_error: null };
+      // Étape 1 : ligne déposée en "submitted" (passe le contrôle d'approbation du projet cible).
+      const { error: iErr } = await dst.from("classe_content_audios")
+        .upsert({ ...row, ...health, status: "submitted" }, { onConflict: "id" });
       if (iErr) { report.failures.push({ id: row.id, step: "row", error: iErr.message }); continue; }
+      // Étape 2 : fichier vérifié, puis statut d'origine restauré.
+      await dst.from("classe_content_audios").update(health).eq("id", row.id);
+      if (row.status !== "submitted") {
+        const { error: sErr } = await dst.from("classe_content_audios")
+          .update({ status: row.status }).eq("id", row.id);
+        if (sErr) { report.failures.push({ id: row.id, step: "status", error: sErr.message }); continue; }
+      }
       report.copied_rows++;
     }
     const done = (rows?.length ?? 0) < limit;

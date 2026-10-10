@@ -354,7 +354,7 @@ function GestionDocDetail({ doc, lessonId, lang, onBack }: { doc: GestionDocumen
             </p>
           </div>
           {doc.qaQuestions.map((q, i) => (
-            <QAField key={i} docId={doc.id} qIdx={i} question={q} lang={lang} />
+            <QAField key={i} docId={doc.id} lessonId={lessonId} qIdx={i} question={q} lang={lang} />
           ))}
         </div>
       )}
@@ -434,7 +434,7 @@ export default function ClasseGestionN2() {
   const state = getGestionN2State();
 
   if (selected) {
-    return <GestionDocDetail doc={selected} lang={currentLang} onBack={() => setSelectedId(null)} />;
+    return <GestionDocDetail doc={selected} lessonId={GESTION_N2_DOCUMENTS.indexOf(selected) + 1} lang={currentLang} onBack={() => setSelectedId(null)} />;
   }
 
   const completedCount = state.completed.length;

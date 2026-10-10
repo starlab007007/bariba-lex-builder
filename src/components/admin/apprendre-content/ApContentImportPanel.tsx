@@ -41,7 +41,7 @@ interface RowResult {
 const CONTENT_VERSION = 'v2.4-build19-20260927';
 
 async function importOne(id: 'core' | 'scenes', content: ApprendreContentJson | ScenesContentJson): Promise<ImportOutcome> {
-  const { data, error } = await supabase.rpc('apprendre_import_content', {
+  const { data, error } = await (supabase as any).rpc('apprendre_import_content', {
     _id: id,
     _content: content as unknown as Json,
     _version: CONTENT_VERSION,

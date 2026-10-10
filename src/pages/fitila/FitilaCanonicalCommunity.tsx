@@ -52,8 +52,8 @@ function HanduniaFeed({embedded=false}:{embedded?:boolean}) {
   const [mode,setMode]=useState<'around'|'lineage'|'discover'>('discover');
   const load=async()=>{setLoading(true);setError(''); try{
     const [{data:f,error:fe},{data:l,error:le}]=await Promise.all([
-      supabase.from('handunia_fragments').select('id,user_id,lieu_id,text,transcript_text,audio_url,period_label,scope_level,created_at,latitude,longitude').is('withdrawn_at',null).order('created_at',{ascending:false}).limit(50),
-      supabase.from('handunia_lieux').select('id,name,commune,village_quartier,latitude,longitude')
+      (supabase as any).from('handunia_fragments').select('id,user_id,lieu_id,text,transcript_text,audio_url,period_label,scope_level,created_at,latitude,longitude').is('withdrawn_at',null).order('created_at',{ascending:false}).limit(50),
+      (supabase as any).from('handunia_lieux').select('id,name,commune,village_quartier,latitude,longitude')
     ]);
     if(fe) throw fe; if(le) throw le; setItems((f??[]) as any); setLieux(Object.fromEntries(((l??[]) as any[]).map(x=>[x.id,x])));
   }catch(e:any){setError(e?.message||'En attente de réseau');} finally{setLoading(false);}};
@@ -106,12 +106,12 @@ function HanduniaPublish() {
   const [recording,setRecording]=useState(false); const [blob,setBlob]=useState<Blob|null>(null);
   const [step,setStep]=useState(0);
   const rec=useRef<MediaRecorder|null>(null); const chunks=useRef<Blob[]>([]);
-  useEffect(()=>{supabase.from('handunia_lieux').select('id,name,commune,village_quartier').order('sort_order').then(({data})=>{const a=(data??[]) as any;setLieux(a);if(a[0])setLieu(a[0].id);});},[]);
+  useEffect(()=>{(supabase as any).from('handunia_lieux').select('id,name,commune,village_quartier').order('sort_order').then(({data})=>{const a=(data??[]) as any;setLieux(a);if(a[0])setLieu(a[0].id);});},[]);
   const toggle=async()=>{if(recording){rec.current?.stop();setRecording(false);return;} const stream=await navigator.mediaDevices.getUserMedia({audio:true}); chunks.current=[]; const r=new MediaRecorder(stream); rec.current=r;r.ondataavailable=e=>{if(e.data.size)chunks.current.push(e.data)};r.onstop=()=>{setBlob(new Blob(chunks.current,{type:r.mimeType||'audio/webm'}));stream.getTracks().forEach(t=>t.stop());};r.start();setRecording(true);};
   const submit=async()=>{if(!user){nav('/auth');return;} if(!lieu||(!text.trim()&&!blob))return; setBusy(true); try{
     let audio_url:string|null=null;
     if(blob){const ext=blob.type.includes('ogg')?'ogg':'webm'; const path=`handunia/${user.id}/${Date.now()}.${ext}`; const up=await supabase.storage.from('tamtam-audio').upload(path,blob,{contentType:blob.type,upsert:false}); if(up.error)throw up.error; audio_url=supabase.storage.from('tamtam-audio').getPublicUrl(path).data.publicUrl;}
-    const ins=await supabase.from('handunia_fragments').insert({user_id:user.id,lieu_id:lieu,text:text.trim()||'Souvenir vocal',transcript_text:text.trim()||null,audio_url,period_label:period.trim()||null,scope_level:scope,language_code:'ba',ai_generated:false,ai_assisted:false});
+    const ins=await (supabase as any).from('handunia_fragments').insert({user_id:user.id,lieu_id:lieu,text:text.trim()||'Souvenir vocal',transcript_text:text.trim()||null,audio_url,period_label:period.trim()||null,scope_level:scope,language_code:'ba',ai_generated:false,ai_assisted:false});
     if(ins.error)throw ins.error; nav('/social/handunia');
   }catch(e:any){alert(e?.message||'Publication impossible');}finally{setBusy(false);}};
   if(user===null)return <LoginRequired/>;
@@ -200,32 +200,32 @@ function HanduniaMemory() {
   const load=async()=>{
     if(!id)return;
     setLoading(true);
-    const {data}=await supabase.from('handunia_fragments').select('*').eq('id',id).maybeSingle();
+    const {data}=await (supabase as any).from('handunia_fragments').select('*').eq('id',id).maybeSingle();
     setItem(data); setEditText((data?.transcript_text||data?.text||'').trim());
-    if(data?.lieu_id){const l=await supabase.from('handunia_lieux').select('*').eq('id',data.lieu_id).maybeSingle();setLieu(l.data);}
-    const co=await supabase.from('handunia_corroborations').select('fragment_id',{count:'exact',head:true}).eq('fragment_id',id);
+    if(data?.lieu_id){const l=await (supabase as any).from('handunia_lieux').select('*').eq('id',data.lieu_id).maybeSingle();setLieu(l.data);}
+    const co=await (supabase as any).from('handunia_corroborations').select('fragment_id',{count:'exact',head:true}).eq('fragment_id',id);
     setCorroborations(co.count??0); setLoading(false);
   };
   useEffect(()=>{load();},[id]);
 
   const corroborate=async()=>{
     if(!user){nav('/auth');return;} if(!id)return; setBusy(true);
-    const {error}=await supabase.from('handunia_corroborations').insert({fragment_id:id,user_id:user.id});
+    const {error}=await (supabase as any).from('handunia_corroborations').insert({fragment_id:id,user_id:user.id});
     setBusy(false); if(error&&!String(error.message).toLowerCase().includes('duplicate')){alert(error.message);return;} load();
   };
   const saveEdit=async()=>{
     if(!item||!user||item.user_id!==user.id||!editText.trim())return; setBusy(true);
-    const {error}=await supabase.from('handunia_fragments').update({text:editText.trim(),transcript_text:editText.trim()}).eq('id',item.id).eq('user_id',user.id);
+    const {error}=await (supabase as any).from('handunia_fragments').update({text:editText.trim(),transcript_text:editText.trim()}).eq('id',item.id).eq('user_id',user.id);
     setBusy(false); if(error){alert(error.message);return;} setEditing(false); load();
   };
   const withdraw=async()=>{
     if(!item||!user||item.user_id!==user.id)return; if(!confirm('Retirer ce souvenir du fil ?'))return;
-    const {error}=await supabase.from('handunia_fragments').update({withdrawn_at:new Date().toISOString()}).eq('id',item.id).eq('user_id',user.id);
+    const {error}=await (supabase as any).from('handunia_fragments').update({withdrawn_at:new Date().toISOString()}).eq('id',item.id).eq('user_id',user.id);
     if(error){alert(error.message);return;} nav('/social/handunia');
   };
   const addNuance=async()=>{
     if(!item||!nuance.trim())return; if(!user){nav('/auth');return;} setBusy(true);
-    const {error}=await supabase.from('handunia_fragments').insert({user_id:user.id,lieu_id:item.lieu_id,text:nuance.trim(),transcript_text:nuance.trim(),scope_level:item.scope_level||'community',period_label:item.period_label,source_fragment_id:item.id,language_code:item.language_code||'ba',ai_generated:false,ai_assisted:false});
+    const {error}=await (supabase as any).from('handunia_fragments').insert({user_id:user.id,lieu_id:item.lieu_id,text:nuance.trim(),transcript_text:nuance.trim(),scope_level:item.scope_level||'community',period_label:item.period_label,source_fragment_id:item.id,language_code:item.language_code||'ba',ai_generated:false,ai_assisted:false});
     setBusy(false); if(error){alert(error.message);return;} setNuance(''); alert('Nuance ajoutée à la mémoire.');
   };
 
@@ -259,7 +259,7 @@ function HanduniaAsk() {
 
 function HanduniaMap() {
   const [lieux,setLieux]=useState<Lieu[]>([]); const [q,setQ]=useState('');
-  useEffect(()=>{supabase.from('handunia_lieux').select('id,name,commune,village_quartier,latitude,longitude').order('sort_order').then(({data})=>setLieux((data??[]) as any));},[]);
+  useEffect(()=>{(supabase as any).from('handunia_lieux').select('id,name,commune,village_quartier,latitude,longitude').order('sort_order').then(({data})=>setLieux((data??[]) as any));},[]);
   const visible=useMemo(()=>lieux.filter(l=>(l.name+' '+(l.commune||'')+' '+(l.village_quartier||'')).toLowerCase().includes(q.toLowerCase())),[lieux,q]);
   return <Shell><BackTitle title="Carte vivante" subtitle="Quartiers → villages → communes → villes"/>
     <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher un lieu…" className="mb-4 w-full rounded-2xl border bg-transparent p-4 outline-none" style={{borderColor:C.border}}/>
@@ -277,8 +277,8 @@ function SagesseBattle({embedded=false}:{embedded?:boolean}) {
   const selected=detailId?items.find(x=>String(x.id)===detailId):undefined;
 
   const load=async()=>{
-    const sys=await supabase.from('battle_challenges').select('id,prompt_ba,prompt_fr,proverb_ba,proverb_fr,created_at').eq('is_active',true);
-    const usr=await supabase.from('battle_user_challenges').select('*').order('created_at',{ascending:false});
+    const sys=await (supabase as any).from('battle_challenges').select('id,prompt_ba,prompt_fr,proverb_ba,proverb_fr,created_at').eq('is_active',true);
+    const usr=await (supabase as any).from('battle_user_challenges').select('*').order('created_at',{ascending:false});
     const a:any[]=[];
     (sys.data??[]).forEach((x:any)=>a.push({id:x.id,title:'Défi FITILA',challenge_type:'system',prompt_bariba:x.prompt_ba||x.proverb_ba,prompt_francais:x.prompt_fr||x.proverb_fr}));
     (usr.data??[]).forEach((x:any)=>a.push(x));
@@ -286,12 +286,12 @@ function SagesseBattle({embedded=false}:{embedded?:boolean}) {
   };
   useEffect(()=>{load();},[]);
   useEffect(()=>{ if(location.pathname.startsWith('/creator/sagesse-battle')) setTab('create'); },[location.pathname]);
-  useEffect(()=>{if(!detailId){setResponses([]);return;} supabase.from('battle_responses').select('*').eq('challenge_id',detailId).order('created_at',{ascending:false}).then(({data})=>setResponses((data??[]) as any));},[detailId]);
+  useEffect(()=>{if(!detailId){setResponses([]);return;} (supabase as any).from('battle_responses').select('*').eq('challenge_id',detailId).order('created_at',{ascending:false}).then(({data})=>setResponses((data??[]) as any));},[detailId]);
 
   const create=async()=>{
     if(!user){nav('/auth');return;} if(!title.trim()||!prompt.trim())return;
     setBusy(true);
-    const {error}=await supabase.from('battle_user_challenges').insert({created_by:user.id,title:title.trim(),challenge_type:type,prompt_bariba:prompt.trim(),prompt_francais:fr.trim(),status:'published',moderation_status:'approved',visibility:'public',published_at:new Date().toISOString()});
+    const {error}=await (supabase as any).from('battle_user_challenges').insert({created_by:user.id,title:title.trim(),challenge_type:type,prompt_bariba:prompt.trim(),prompt_francais:fr.trim(),status:'published',moderation_status:'approved',visibility:'public',published_at:new Date().toISOString()});
     setBusy(false); if(error){alert(error.message);return;}
     setTitle('');setPrompt('');setFr('');setTab('community');load();
   };
@@ -300,7 +300,7 @@ function SagesseBattle({embedded=false}:{embedded?:boolean}) {
     if(!selected||!response.trim())return;
     if(!user){nav('/auth');return;}
     setBusy(true);
-    const {error}=await supabase.from('battle_responses').insert({
+    const {error}=await (supabase as any).from('battle_responses').insert({
       user_id:user.id,
       challenge_id:String(selected.id),
       prompt_bariba:selected.prompt_bariba||'',
@@ -315,14 +315,14 @@ function SagesseBattle({embedded=false}:{embedded?:boolean}) {
     setBusy(false);
     if(error){alert(error.message);return;}
     setResponse('');
-    const r=await supabase.from('battle_responses').select('*').eq('challenge_id',String(selected.id)).order('created_at',{ascending:false});
+    const r=await (supabase as any).from('battle_responses').select('*').eq('challenge_id',String(selected.id)).order('created_at',{ascending:false});
     setResponses((r.data??[]) as any);
   };
 
   const removeChallenge=async()=>{
     if(!selected||!user||selected.created_by!==user.id)return;
     if(!confirm('Supprimer ce défi ?'))return;
-    const {error}=await supabase.from('battle_user_challenges').delete().eq('id',selected.id);
+    const {error}=await (supabase as any).from('battle_user_challenges').delete().eq('id',selected.id);
     if(error){alert(error.message);return;}
     nav('/social/sagesse-battle'); load();
   };

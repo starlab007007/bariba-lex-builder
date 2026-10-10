@@ -54,7 +54,7 @@ function looksLikeUsableScenesJson(value: unknown): value is ScenesContentJson {
 /** Charge les deux lignes de contenu (`core`, `scenes`) depuis Supabase, ou `null` si indisponible/incomplet. */
 async function loadFromSupabase(): Promise<{ core: ApprendreContentJson; scenes: ScenesContentJson; version: string } | null> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('apprendre_module_content')
       .select('id, content, content_version')
       .in('id', ['core', 'scenes']);
