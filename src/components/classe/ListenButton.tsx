@@ -44,7 +44,7 @@ export default function ListenButton({ contentKey, size = 'md', className, label
   const iconSz = size === 'sm' ? 'w-3.5 h-3.5' : size === 'lg' ? 'w-5 h-5' : 'w-4 h-4';
 
   const storageBroken = data?.storage_broken === true;
-  const available = !!data?.signed_url && !storageBroken && !playbackFailed;
+  const available = !!data?.signed_url && !storageBroken;
 
   const stop = () => {
     try {
