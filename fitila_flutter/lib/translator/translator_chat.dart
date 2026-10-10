@@ -534,7 +534,7 @@ class _TranslatorChatState extends State<TranslatorChat> {
     return Container(
       padding: EdgeInsets.fromLTRB(4, keyboardOpen ? 4 : 6, 4, keyboardOpen ? 2 : 6),
       decoration: const BoxDecoration(
-        color: SignatureTheme.background,
+        color: SignatureTheme.appBackground,
         border: Border(top: BorderSide(color: SignatureTheme.hairline)),
       ),
       child: Column(
