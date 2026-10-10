@@ -1,12 +1,13 @@
+# FITILA Build23 final APK
 name: FITILA Build23 Final APK
 
 on:
   push:
     branches:
-      - release/fitila-v1.8.12-build23-final-20261010
+      - release/fitila-v1.8.11-build23
     paths:
       - 'fitila_flutter/**'
-      - '.github/workflows/flutter-build22-final-apk.yml'
+      - '.github/workflows/flutter-build23-final-apk.yml'
   workflow_dispatch:
 
 concurrency:
@@ -29,7 +30,7 @@ jobs:
         working-directory: fitila_flutter
 
     steps:
-      - name: Checkout final Build23
+      - name: Checkout canonical Build23
         uses: actions/checkout@v4
 
       - name: Setup Java 21
@@ -168,7 +169,7 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs "$src"
 
           mkdir -p build/final-apk
-          target="build/final-apk/FITILA-Android-v1.8.12-build23-final-native.apk"
+          target="build/final-apk/FITILA-Android-v1.8.11-build23-final-native.apk"
           cp "$src" "$target"
           cp build/SIGNING_MODE.txt build/final-apk/
           cp -R build/symbols build/final-apk/symbols
@@ -179,7 +180,7 @@ jobs:
       - name: Upload final APK
         uses: actions/upload-artifact@v4
         with:
-          name: FITILA-Android-v1.8.12-build23-final-native
+          name: FITILA-Android-v1.8.11-build23-final-native
           path: fitila_flutter/build/final-apk/
           if-no-files-found: error
           compression-level: 6

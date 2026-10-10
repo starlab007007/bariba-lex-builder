@@ -310,12 +310,61 @@ class _TranslatorChatState extends State<TranslatorChat> {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 80;
     return Column(
       children: [
-        _topBar(),
-        Expanded(child: _messages.isEmpty ? _welcome() : _list()),
-        _composer(),
+        keyboardOpen ? _compactLangBar() : _topBar(),
+        Expanded(
+          child: _messages.isEmpty
+              ? (keyboardOpen ? const SizedBox.shrink() : _welcome())
+              : _list(),
+        ),
+        SafeArea(
+          top: false,
+          minimum: const EdgeInsets.only(bottom: 2),
+          child: _composer(keyboardOpen: keyboardOpen),
+        ),
       ],
+    );
+  }
+
+  Widget _compactLangBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: const BoxDecoration(
+        color: SignatureTheme.surface,
+        border: Border(bottom: BorderSide(color: SignatureTheme.hairline)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: FittedBox(
+              alignment: Alignment.centerLeft,
+              fit: BoxFit.scaleDown,
+              child: Row(
+                children: [
+                  _langPill(!_toBariba, detected: _detected != null && (_detected == ChatLang.bariba) == !_toBariba),
+                  IconButton(
+                    key: const ValueKey('swap-compact'),
+                    tooltip: 'Inverser',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _swap,
+                    icon: const Icon(Icons.swap_horiz_rounded, color: SignatureTheme.goldDeep),
+                  ),
+                  _langPill(_toBariba),
+                ],
+              ),
+            ),
+          ),
+          if (_p.openHistory != null)
+            IconButton(
+              tooltip: 'Historique',
+              visualDensity: VisualDensity.compact,
+              onPressed: _p.openHistory,
+              icon: const Icon(Icons.history_rounded, size: 20),
+            ),
+        ],
+      ),
     );
   }
 
@@ -417,17 +466,17 @@ class _TranslatorChatState extends State<TranslatorChat> {
                     curve: Curves.elasticOut,
                     builder: (_, v, child) => Transform.scale(scale: v, child: child),
                     child: Container(
-                      width: 72,
-                      height: 72,
+                      width: 50,
+                      height: 50,
                       decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [SignatureTheme.goldTint, Color(0xFFF7E9C4)], begin: Alignment.topLeft, end: Alignment.bottomRight)),
-                      child: const Icon(Icons.translate_rounded, size: 34, color: SignatureTheme.goldDeep),
+                      child: const Icon(Icons.translate_rounded, size: 24, color: SignatureTheme.goldDeep),
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  const Text('Bienvenue !', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: SignatureTheme.ink)),
-                  const SizedBox(height: 4),
-                  const Text('Je traduis entre Français et Bàátɔ̀nú', style: TextStyle(color: SignatureTheme.muted)),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 8),
+                  const Text('Traduisez simplement', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: SignatureTheme.ink)),
+                  const SizedBox(height: 3),
+                  const Text('Français ⇄ Bàátɔ̀nú', style: TextStyle(color: SignatureTheme.muted, fontSize: 13)),
+                  const SizedBox(height: 10),
                   Wrap(
                     alignment: WrapAlignment.center,
                     spacing: 8,
@@ -484,30 +533,51 @@ class _TranslatorChatState extends State<TranslatorChat> {
     );
   }
 
-  Widget _composer() {
+  Widget _composer({required bool keyboardOpen}) {
     const modes = [('Voix', Icons.mic_rounded), ('Texte', Icons.keyboard_alt_rounded), ('Photo', Icons.photo_camera_rounded), ('Coller', Icons.content_paste_rounded), ('Doc', Icons.description_rounded)];
-    return Padding(
-      padding: const EdgeInsets.only(top: 6),
+    return Container(
+      padding: EdgeInsets.fromLTRB(4, keyboardOpen ? 4 : 6, 4, keyboardOpen ? 2 : 6),
+      decoration: const BoxDecoration(
+        color: SignatureTheme.appBackground,
+        border: Border(top: BorderSide(color: SignatureTheme.hairline)),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              for (final m in modes)
-                Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 3), child: _modeChip(m.$1, m.$2))),
-            ],
+          // Les modes restent compacts au-dessus ; le champ d'écriture est toujours
+          // l'élément le plus proche du clavier et ne peut plus être poussé hors écran.
+          SizedBox(
+            height: keyboardOpen ? 38 : 44,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Row(
+                children: [
+                  for (var i = 0; i < modes.length; i++) ...[
+                    SizedBox(
+                      width: keyboardOpen ? 58 : 66,
+                      child: _modeChip(modes[i].$1, modes[i].$2, compact: true),
+                    ),
+                    if (i != modes.length - 1) const SizedBox(width: 5),
+                  ],
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: keyboardOpen ? 4 : 6),
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: _mode == 'Voix' ? _voiceComposer() : _textComposer(),
+            duration: const Duration(milliseconds: 160),
+            child: _mode == 'Voix'
+                ? _voiceComposer(compact: keyboardOpen)
+                : _textComposer(compact: keyboardOpen),
           ),
         ],
       ),
     );
   }
 
-  Widget _modeChip(String label, IconData icon) {
+  Widget _modeChip(String label, IconData icon, {bool compact = false}) {
     final selected = _mode == label;
     final fg = selected ? const Color(0xFF2B2110) : SignatureTheme.muted;
     return Semantics(
@@ -518,7 +588,7 @@ class _TranslatorChatState extends State<TranslatorChat> {
         onTap: () => _selectMode(label),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(vertical: 7),
+          padding: EdgeInsets.symmetric(vertical: compact ? 4 : 6),
           decoration: BoxDecoration(
             color: selected ? SignatureTheme.gold : SignatureTheme.surface,
             borderRadius: BorderRadius.circular(16),
@@ -526,16 +596,16 @@ class _TranslatorChatState extends State<TranslatorChat> {
             boxShadow: selected ? [BoxShadow(color: SignatureTheme.gold.withValues(alpha: .3), blurRadius: 10, offset: const Offset(0, 4))] : null,
           ),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 20, color: fg),
-            const SizedBox(height: 2),
-            Text(label, maxLines: 1, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: fg)),
+            Icon(icon, size: compact ? 17 : 19, color: fg),
+            SizedBox(height: compact ? 0 : 2),
+            Text(label, maxLines: 1, style: TextStyle(fontSize: compact ? 9.5 : 10.5, fontWeight: FontWeight.w800, color: fg)),
           ]),
         ),
       ),
     );
   }
 
-  Widget _textComposer() {
+  Widget _textComposer({bool compact = false}) {
     final canSend = !_busy && _input.text.trim().isNotEmpty;
     return Row(
       key: const ValueKey('text-composer'),
@@ -544,16 +614,17 @@ class _TranslatorChatState extends State<TranslatorChat> {
         Expanded(
           child: BaribaTextField(
             controller: _input,
-            minLines: 1,
-            maxLines: 4,
+            minLines: compact ? 1 : 2,
+            maxLines: compact ? 3 : 4,
             onSubmitted: (_) => _send(),
             decoration: InputDecoration(
               hintText: _toBariba ? 'Écrivez en français…' : 'Écrivez en Bàátɔ̀nú…',
               filled: true,
               fillColor: SignatureTheme.surface,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: const BorderSide(color: SignatureTheme.hairline)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: const BorderSide(color: SignatureTheme.hairline)),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: compact ? 10 : 13),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: const BorderSide(color: SignatureTheme.gold, width: 1.6)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: const BorderSide(color: SignatureTheme.gold, width: 1.6)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: const BorderSide(color: SignatureTheme.goldDeep, width: 2)),
             ),
           ),
         ),
@@ -566,7 +637,7 @@ class _TranslatorChatState extends State<TranslatorChat> {
               key: const ValueKey('send'),
               tooltip: 'Traduire',
               onPressed: can ? _send : null,
-              style: IconButton.styleFrom(backgroundColor: SignatureTheme.gold, foregroundColor: const Color(0xFF2B2110), disabledBackgroundColor: SignatureTheme.surfaceAlt, minimumSize: const Size(50, 50)),
+              style: IconButton.styleFrom(backgroundColor: SignatureTheme.gold, foregroundColor: const Color(0xFF2B2110), disabledBackgroundColor: SignatureTheme.surfaceAlt, minimumSize: const Size(52, 52), maximumSize: const Size(52, 52)),
               icon: _busy && !canSend && _messages.isNotEmpty && _messages.last.pending
                   ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.arrow_upward_rounded),
@@ -577,10 +648,10 @@ class _TranslatorChatState extends State<TranslatorChat> {
     );
   }
 
-  Widget _voiceComposer() {
+  Widget _voiceComposer({bool compact = false}) {
     return Container(
       key: const ValueKey('voice-composer'),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: compact ? 6 : 10),
       decoration: BoxDecoration(color: SignatureTheme.surface, borderRadius: BorderRadius.circular(24), border: Border.all(color: _recording ? SignatureTheme.clay : SignatureTheme.hairline)),
       child: Row(children: [
         _Pulse(active: _recording, child: IconButton.filled(
@@ -594,7 +665,8 @@ class _TranslatorChatState extends State<TranslatorChat> {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(_recording ? 'Je vous écoute…' : _busy ? 'Transcription…' : 'Appuyez pour parler', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5, color: SignatureTheme.ink)),
-            Text(_recording ? 'Appuyez pour terminer et traduire.' : 'Parlez en ${_toBariba ? 'français' : 'Bàátɔ̀nú'}, je transcris puis je traduis.', style: const TextStyle(fontSize: 11.5, color: SignatureTheme.muted, height: 1.3)),
+            if (!compact)
+              Text(_recording ? 'Appuyez pour terminer et traduire.' : 'Parlez en ${_toBariba ? 'français' : 'Bàátɔ̀nú'}, je transcris puis je traduis.', style: const TextStyle(fontSize: 11.5, color: SignatureTheme.muted, height: 1.3)),
           ]),
         ),
       ]),
