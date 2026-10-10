@@ -78,6 +78,7 @@ class ClasseAudio {
         .like('content_key', '$prefix%')
         .eq('status', 'approved')
         .eq('is_current', true)
+        .eq('storage_available', true)
         .limit(5000);
     return {for (final r in rows) r['content_key'] as String: r['storage_path'] as String};
   }
@@ -88,7 +89,8 @@ class ClasseAudio {
     return b;
   }
 
-  /// Registre des audios validés d'un préfixe (`classe/N1/lang/`), chargé une seule fois.
+  /// Registre des audios validés ET physiquement disponibles d'un préfixe
+  /// (`classe/N1/lang/`), chargé une seule fois.
   Future<Map<String, String>> approvedFor(String prefix) => _approved.putIfAbsent(prefix, () async {
     try {
       return await _approvedLoader(prefix);
@@ -104,7 +106,7 @@ class ClasseAudio {
     final prefix = parts.length >= 3 ? '${parts.take(3).join('/')}/' : contentKey;
     final path = (await approvedFor(prefix))[contentKey];
     if (path == null) {
-      error.value = 'Audio validé non disponible pour ce contenu.';
+      error.value = 'Voix de référence non disponible ou à restaurer pour ce contenu.';
       return false;
     }
     return playStorage(contentKey, 'classe-audio', path);
