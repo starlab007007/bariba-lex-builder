@@ -192,6 +192,7 @@ export function useApprovedAudio(contentKey: string | undefined) {
         .eq('content_key', contentKey!)
         .eq('is_current', true)
         .eq('status', 'approved')
+        .eq('storage_available', true)
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
