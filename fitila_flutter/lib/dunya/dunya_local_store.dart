@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
+
 import 'package:sqflite/sqflite.dart';
 
 import 'dunya_models.dart';
@@ -414,6 +416,124 @@ class DunyaLocalStore {
       'attempts': 0,
       'created_at': now.toIso8601String(),
     });
+  }
+
+  Future<void> ensureEmbeddedKnowledgeIndex(List<DunyaSource> sources) async {
+    final db = await database;
+    final existing = Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM dunya_knowledge_chunks c '
+            'JOIN dunya_knowledge_items i ON i.id = c.item_id '
+            'WHERE i.pack_id = ?',
+            ['fitila-core'],
+          ),
+        ) ??
+        0;
+    if (existing == sources.length && existing > 0) return;
+
+    await db.transaction((txn) async {
+      final oldChunks = await txn.rawQuery(
+        'SELECT c.id FROM dunya_knowledge_chunks c '
+        'JOIN dunya_knowledge_items i ON i.id = c.item_id '
+        'WHERE i.pack_id = ?',
+        ['fitila-core'],
+      );
+      final oldIds = oldChunks.map((row) => row['id']?.toString()).whereType<String>().toList();
+      for (final chunkId in oldIds) {
+        await txn.delete('dunya_chunks_fts', where: 'chunk_id = ?', whereArgs: [chunkId]);
+      }
+      await txn.delete('dunya_knowledge_items', where: 'pack_id = ?', whereArgs: ['fitila-core']);
+
+      final batch = txn.batch();
+      final now = DateTime.now().toUtc().toIso8601String();
+      for (var i = 0; i < sources.length; i++) {
+        final source = sources[i];
+        final itemId = 'fitila-core-item-$i';
+        final chunkId = 'fitila-core-chunk-$i';
+        final hash = sha256.convert(utf8.encode(source.text)).toString();
+        batch.insert('dunya_knowledge_items', {
+          'id': itemId,
+          'pack_id': 'fitila-core',
+          'title': source.title,
+          'kind': source.kind,
+          'language': null,
+          'source_ref': source.ref,
+          'license': null,
+          'validation_status': 'embedded',
+          'content_hash': hash,
+          'created_at': now,
+        });
+        batch.insert('dunya_knowledge_chunks', {
+          'id': chunkId,
+          'item_id': itemId,
+          'ordinal': 0,
+          'content': source.text,
+          'start_offset': 0,
+          'end_offset': source.text.length,
+          'token_count': source.text.split(RegExp(r'\s+')).where((x) => x.isNotEmpty).length,
+        });
+        batch.insert('dunya_chunks_fts', {
+          'chunk_id': chunkId,
+          'content': source.text,
+        });
+      }
+      await batch.commit(noResult: true);
+    });
+
+    await audit('dunya_knowledge_indexed', {
+      'pack_id': 'fitila-core',
+      'chunks': sources.length,
+      'engine': 'sqlite-fts5',
+    });
+  }
+
+  Future<List<DunyaSource>> searchKnowledgeFts(
+    String query, {
+    int limit = 8,
+  }) async {
+    final terms = query
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9à-ÿɔɛãĩũõñœ\s-]'), ' ')
+        .split(RegExp(r'\s+'))
+        .where((term) => term.length > 2)
+        .take(8)
+        .toList(growable: false);
+    if (terms.isEmpty) return const [];
+
+    final match = terms.map((term) => '"${term.replaceAll('"', '""')}"').join(' OR ');
+    final db = await database;
+    try {
+      final rows = await db.rawQuery(
+        '''
+        SELECT i.title, i.source_ref, i.kind, c.content,
+               bm25(dunya_chunks_fts) AS rank
+        FROM dunya_chunks_fts
+        JOIN dunya_knowledge_chunks c ON c.id = dunya_chunks_fts.chunk_id
+        JOIN dunya_knowledge_items i ON i.id = c.item_id
+        WHERE dunya_chunks_fts MATCH ?
+          AND i.pack_id = 'fitila-core'
+        ORDER BY rank ASC
+        LIMIT ?
+        ''',
+        [match, limit],
+      );
+      return [
+        for (final row in rows)
+          DunyaSource(
+            title: row['title']?.toString() ?? 'FITILA',
+            text: row['content']?.toString() ?? '',
+            ref: row['source_ref']?.toString(),
+            kind: row['kind']?.toString() ?? 'knowledge',
+          ),
+      ];
+    } catch (error) {
+      await audit(
+        'dunya_fts_error',
+        {'error': error.toString()},
+        severity: 'warning',
+      );
+      return const [];
+    }
   }
 
   Future<Map<String, int>> stats() async {
