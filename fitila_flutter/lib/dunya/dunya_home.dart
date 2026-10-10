@@ -124,7 +124,9 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
       final combined = _norm('${source.title} ${source.text}');
       var score = combined.contains(clean) && clean.isNotEmpty ? 10 : 0;
       for (final term in terms) {
-        if (combined.contains(term)) score += 2;
+        if (combined.contains(term)) {
+          score += 2;
+        }
       }
       if (score > 0) sources.add((score: score, source: source));
     }
