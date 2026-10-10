@@ -83,6 +83,7 @@ class ClasseAudio {
         .like('content_key', '$prefix%')
         .eq('status', 'approved')
         .eq('is_current', true)
+        .eq('storage_available', true)
         .limit(5000);
     return {for (final r in rows) r['content_key'] as String: r['storage_path'] as String};
   }
