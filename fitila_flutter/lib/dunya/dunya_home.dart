@@ -78,7 +78,9 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
           return;
         }
         if (value is List) {
-          for (final item in value) walk(item, title);
+          for (final item in value) {
+            walk(item, title);
+          }
           return;
         }
         if (value is Map) {
