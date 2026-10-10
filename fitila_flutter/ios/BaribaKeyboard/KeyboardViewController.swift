@@ -9,7 +9,7 @@ final class KeyboardViewController: UIInputViewController {
 
     private let row1 = ["a", "z", "e", "r", "t", "y", "u", "i", "o", "p"]
     private let row2 = ["q", "s", "d", "f", "g", "h", "j", "k", "l", "m"]
-    private let row3 = ["w", "x", "c", "v", "b", "n", "ɔ", "ɛ", "ŋ"]
+    private let row3 = ["w", "x", "c", "v", "b", "n", "ɔ", "ɛ", "ŋ", "ə"]
     private let nasals = ["ã", "ĩ", "ũ", "õ", "ẽ", "ɛ̃", "ɔ̃"]
     private let tones: [(String, String)] = [("\u{0300}", "◌̀"), ("\u{0301}", "◌́"), ("\u{0303}", "◌̃")]
     private let sym1 = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
@@ -221,7 +221,7 @@ final class KeyboardViewController: UIInputViewController {
         let shift = key(shifted ? "⇧" : "⇪", tint: shifted ? gold : .white, action: #selector(shiftTapped))
         var views: [UIView] = [shift]
         for k in row3 {
-            let special = ["ɔ", "ɛ", "ŋ"].contains(k)
+            let special = ["ɔ", "ɛ", "ŋ", "ə"].contains(k)
             views.append(key(display(k), tint: special ? goldTint : .white))
         }
         return makeRow(views, weights: [1.6] + Array(repeating: 1, count: row3.count))
