@@ -56,6 +56,14 @@ BEGIN
      AND NOT public.is_teacher_or_admin(_uid) THEN
     RAISE EXCEPTION 'Not allowed to publish this audio path';
   END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM storage.objects o
+    WHERE o.bucket_id = 'classe-answers-audio'
+      AND o.name = _path
+  ) THEN
+    RAISE EXCEPTION 'Audio object metadata not found';
+  END IF;
 
   INSERT INTO public.classe_answer_audio_health(path, available, checked_at, error)
   VALUES (_path, true, now(), NULL)
