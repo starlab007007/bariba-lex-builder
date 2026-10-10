@@ -1,0 +1,33 @@
+name: Validate FITILA IA Local
+
+on:
+  pull_request:
+    paths:
+      - 'src/pages/fitila/FitilaTemIA.tsx'
+      - 'src/lib/foncierRAG.ts'
+      - 'src/data/foncier_bariba_corpus.json'
+      - 'supabase/functions/_shared/foncier_bariba_corpus.json'
+      - 'src/App.tsx'
+      - 'scripts/validate-fitila-ia-corpus.mjs'
+  push:
+    branches: [main]
+    paths:
+      - 'src/pages/fitila/FitilaTemIA.tsx'
+      - 'src/lib/foncierRAG.ts'
+      - 'src/data/foncier_bariba_corpus.json'
+      - 'supabase/functions/_shared/foncier_bariba_corpus.json'
+      - 'src/App.tsx'
+      - 'scripts/validate-fitila-ia-corpus.mjs'
+
+jobs:
+  local-corpus-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: node scripts/validate-fitila-ia-corpus.mjs
+      - run: npm ci --legacy-peer-deps
+      - run: npm run build

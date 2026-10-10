@@ -248,7 +248,7 @@ const BottomTabBar: React.FC<{
   const rightTabs: { id: BottomTab; icon: typeof Home; label: string; path?: string }[] = [
     { id: 'dictionary', icon: Book, label: 'Dico', path: '/dictionary' },
     { id: 'translator', icon: BookText, label: 'Traduc.', path: '/translator' },
-    { id: 'tem-ia', icon: Bot, label: 'Fitila IA', path: '/tem-ia' },
+    { id: 'tem-ia', icon: Bot, label: 'Fitila IA', path: '/ia' },
   ];
 
   const tourMap: Record<string, string> = {
