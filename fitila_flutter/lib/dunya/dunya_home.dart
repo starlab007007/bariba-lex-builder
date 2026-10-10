@@ -397,18 +397,25 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  SizedBox(
-                    width: 54, height: 54,
-                    child: FilledButton(
-                      onPressed: _send,
-                      tooltip: _generating ? 'Arrêter la génération' : 'Envoyer',
-                      style: FilledButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        backgroundColor: gold,
-                        foregroundColor: ink,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  Tooltip(
+                    message: _generating ? 'Arrêter la génération' : 'Envoyer',
+                    child: SizedBox(
+                      width: 54,
+                      height: 54,
+                      child: FilledButton(
+                        onPressed: _send,
+                        style: FilledButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          backgroundColor: gold,
+                          foregroundColor: ink,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: Icon(
+                          _generating ? Icons.stop_rounded : Icons.send_rounded,
+                        ),
                       ),
-                      child: Icon(_generating ? Icons.stop_rounded : Icons.send_rounded),
                     ),
                   ),
                 ],
