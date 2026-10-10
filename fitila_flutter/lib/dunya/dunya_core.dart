@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
+import 'dunya_local_store.dart';
 import 'dunya_models.dart';
 
 abstract interface class DunyaKnowledgeRepository {
@@ -33,8 +34,13 @@ abstract interface class DunyaInferenceEngine {
 }
 
 class DunyaAssetKnowledgeRepository implements DunyaKnowledgeRepository {
+  DunyaAssetKnowledgeRepository({DunyaLocalStore? store})
+      : _store = store ?? DunyaLocalStore.instance;
+
+  final DunyaLocalStore _store;
   List<Map<String, String>> _dictionary = const [];
   List<DunyaSource> _learning = const [];
+  List<DunyaSource> _allSources = const [];
   bool _ready = false;
 
   @override
@@ -45,6 +51,16 @@ class DunyaAssetKnowledgeRepository implements DunyaKnowledgeRepository {
     if (_ready) return;
     _dictionary = await _loadDictionary();
     _learning = await _loadLearningKnowledge();
+    _allSources = [
+      for (final row in _dictionary)
+        DunyaSource(
+          title: 'Dictionnaire FITILA · ${row['word'] ?? ''}',
+          text: '${row['word'] ?? ''} — ${row['definition'] ?? ''}',
+          kind: 'dictionary',
+        ),
+      ..._learning,
+    ];
+    await _store.ensureEmbeddedKnowledgeIndex(_allSources);
     _ready = true;
   }
 
@@ -55,6 +71,9 @@ class DunyaAssetKnowledgeRepository implements DunyaKnowledgeRepository {
     int limit = 8,
   }) async {
     await initialize();
+    final fts = await _store.searchKnowledgeFts(query, limit: limit);
+    if (fts.isNotEmpty) return fts;
+
     final clean = _norm(query);
     final terms = clean.split(' ').where((e) => e.length > 2).toList();
     final ranked = <({int score, DunyaSource source})>[];
