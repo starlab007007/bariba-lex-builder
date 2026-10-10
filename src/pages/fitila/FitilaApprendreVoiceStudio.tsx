@@ -117,13 +117,17 @@ function ConsentPanel({
             <ShieldCheck className="h-6 w-6" style={{ color: AP_COLORS.goldDeep }} />
           </div>
           <div>
-            <h2 className="text-xl font-black">Activer mon rôle de locuteur</h2>
-            <p className="text-sm" style={{ color: AP_COLORS.muted }}>Un accord est requis avant le premier enregistrement.</p>
+            <h2 className="text-lg font-black">Activer Locuteur</h2>
+            <p className="text-xs" style={{ color: AP_COLORS.muted }}>Une fois, puis vous enregistrez.</p>
           </div>
         </div>
 
-        <div className="mt-5 rounded-2xl p-4 text-sm leading-relaxed whitespace-pre-wrap" style={{ background: AP_COLORS.surfaceAlt, color: AP_COLORS.inkSoft }}>
-          {settings.consent_text || 'J’autorise FITILA à utiliser mes enregistrements validés comme voix de référence dans le module Apprendre. Je peux retirer mon consentement ultérieurement.'}
+        <div className="mt-4 rounded-2xl p-3 text-xs" style={{ background: AP_COLORS.surfaceAlt, color: AP_COLORS.inkSoft }}>
+          <p className="font-bold">Voix de référence FITILA · retrait possible à tout moment.</p>
+          <details className="mt-2">
+            <summary className="cursor-pointer font-bold" style={{ color: AP_COLORS.goldDeep }}>Voir l’accord</summary>
+            <p className="mt-2 whitespace-pre-wrap leading-relaxed">{settings.consent_text || 'J’autorise FITILA à utiliser mes enregistrements validés comme voix de référence dans le module Apprendre. Je peux retirer mon consentement ultérieurement.'}</p>
+          </details>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -143,18 +147,18 @@ function ConsentPanel({
         </div>
         <label className="mt-4 flex items-start gap-3 text-sm">
           <input type="checkbox" checked={showName} onChange={e => setShowName(e.target.checked)} className="mt-1" />
-          <span>Afficher mon nom avec les audios publiés.</span>
+          <span>Afficher mon nom</span>
         </label>
         <label className="mt-3 flex items-start gap-3 text-sm">
           <input type="checkbox" checked={allowAi} onChange={e => setAllowAi(e.target.checked)} className="mt-1" />
-          <span>J’accepte aussi que mes enregistrements servent à améliorer les modèles vocaux FITILA. <strong>Facultatif.</strong></span>
+          <span>Amélioration IA <strong>(facultatif)</strong></span>
         </label>
         <label className="mt-3 flex items-start gap-3 text-sm font-semibold">
           <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} className="mt-1" />
-          <span>J’ai lu et j’accepte l’accord d’utilisation de ma voix.</span>
+          <span>J’accepte l’usage de ma voix.</span>
         </label>
         <button disabled={!agree || !name.trim() || busy} onClick={sign} className="mt-5 flex h-13 w-full items-center justify-center gap-2 rounded-full px-4 py-3.5 font-extrabold disabled:opacity-40" style={{ background: AP_COLORS.gold, color: AP_COLORS.goldInk }}>
-          {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mic className="h-5 w-5" />} Signer et commencer
+          {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mic className="h-5 w-5" />} Accepter et enregistrer
         </button>
       </div>
     </div>
@@ -492,7 +496,7 @@ export default function FitilaApprendreVoiceStudio() {
                 {processing ? <Loader2 className="h-9 w-9 animate-spin" /> : recorder.isRecording ? <Square className="h-9 w-9 fill-current" /> : <Mic className="h-10 w-10" />}
               </button>
               <p className="mt-3 text-sm font-semibold" style={{ color: AP_COLORS.inkSoft }}>
-                {processing ? 'Analyse de la prise…' : recorder.isRecording ? `Enregistrement… ${recorder.duration}s · appuyez pour arrêter` : wavBlob ? 'Réécoutez puis confirmez l’envoi.' : 'Micro à 15–20 cm · dites uniquement le texte affiché.'}
+                {processing ? 'Analyse de la prise…' : recorder.isRecording ? `Enregistrement… ${recorder.duration}s · appuyez pour arrêter` : wavBlob ? 'Écoutez puis envoyez.' : 'Appuyez puis lisez le texte.'}
               </p>
             </div>
 
