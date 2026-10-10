@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart' as ap;
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 import '../core/fitila_backend.dart';
 
@@ -20,7 +21,20 @@ class AudioplayersBackend implements AudioBackend {
   final ap.AudioPlayer _player = ap.AudioPlayer();
 
   @override
-  Future<void> play(String url) => _player.play(ap.UrlSource(url));
+  Future<void> play(String url) async {
+    // Charger les octets nous-mêmes évite les différences de gestion
+    // des redirections/URLs signées entre Android et iOS.
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('HTTP audio ${response.statusCode}');
+    }
+    if (response.bodyBytes.length < 44) {
+      throw StateError('Fichier audio vide ou tronqué');
+    }
+    await _player.play(
+      ap.BytesSource(response.bodyBytes, mimeType: 'audio/wav'),
+    );
+  }
 
   @override
   Future<void> stop() => _player.stop();
