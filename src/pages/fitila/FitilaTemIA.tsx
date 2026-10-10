@@ -19,7 +19,8 @@ interface ChatMessage {
   sources?: FoncierSource[];
 }
 
-const STORAGE_KEY = 'fitila-tem-ia-history';
+const STORAGE_KEY = 'fitila-ia-history';
+const LEGACY_STORAGE_KEY = 'fitila-tem-ia-history';
 
 function TypingText({ content, onComplete }: { content: string; onComplete: () => void }) {
   const [displayed, setDisplayed] = useState('');
@@ -54,7 +55,7 @@ function TypingText({ content, onComplete }: { content: string; onComplete: () =
 export default function FitilaTemIA() {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw) as ChatMessage[];
       return parsed.map(m => ({ ...m, isLoading: false, isTyping: false }));
@@ -134,6 +135,10 @@ export default function FitilaTemIA() {
   };
 
   const handleVoiceToggle = async () => {
+    if (!navigator.onLine) {
+      toast.info('Mode hors ligne : écrivez votre question. La recherche IA locale reste disponible.');
+      return;
+    }
     if (isRecording) {
       const base64 = await stopRecording();
       if (base64) {
@@ -154,8 +159,8 @@ export default function FitilaTemIA() {
       <div className="flex items-center gap-3 pl-[74px] md:pl-[18px] pr-4 pt-[14px] pb-2 z-10">
                 <div className="flex items-center gap-2.5 flex-1">
                     <div>
-            <h1 className="text-[#241F2E] font-extrabold text-[17px] leading-tight">Fitila Tem IA</h1>
-            <p className="text-[#8C8571] text-[11px] leading-tight">Tem bausu sariaba sɔ̃ɔsiru · 100% local</p>
+            <h1 className="text-[#241F2E] font-extrabold text-[17px] leading-tight">Fitila IA</h1>
+            <p className="text-[#8C8571] text-[11px] leading-tight">Documents locaux · 100% hors ligne</p>
           </div>
         </div>
       </div>
@@ -165,7 +170,7 @@ export default function FitilaTemIA() {
         <div className="flex items-center gap-2 bg-[#DCEAE0] border border-[#3F6E52]/30 rounded-[16px] px-3 py-2">
           <ShieldCheck className="w-4 h-4 text-[#3F6E52] flex-shrink-0" />
           <p className="text-[11px] text-[#3F6E52] font-extrabold leading-tight">
-            🔒 Assistant basé uniquement sur le <strong>Code Foncier (Bariba)</strong> — Loi n° 2013-01
+            🔒 Source locale embarquée : <strong>Code Foncier Bariba</strong> — 207 articles
           </p>
         </div>
       </div>
@@ -181,7 +186,7 @@ export default function FitilaTemIA() {
               Yaa sɔ̃ɔ tem bausu gari Baribarum.
             </p>
             <p className="text-[#8C8571] text-[12px] text-center max-w-[280px]">
-              Posez votre question directement en Bariba
+              Posez votre question sur les documents locaux FITILA
             </p>
             <div className="flex flex-wrap gap-2 justify-center max-w-[320px] mt-2">
               {[
@@ -330,7 +335,7 @@ export default function FitilaTemIA() {
         <div className="flex items-center justify-center gap-1.5 mt-2">
           <WifiOff className="w-3 h-3 text-[#3F6E52]" />
           <p className="text-[10px] text-[#3F6E52] text-center">
-            Posez votre question directement en Bariba — recherche 100% locale, sans Internet
+            Réponses locales, sans Internet · la voix nécessite une connexion
           </p>
         </div>
       </form>
