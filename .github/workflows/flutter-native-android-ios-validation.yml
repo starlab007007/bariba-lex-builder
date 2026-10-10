@@ -68,6 +68,14 @@ jobs:
       - name: Flutter tests
         run: flutter test --reporter compact
 
+      - name: Validate Android Bàátɔ̀nú key coverage
+        run: |
+          grep -q '\\u0259' android/app/src/main/java/com/fitila/bariba/BaribaInputMethodService.java
+          grep -q '\\u018F' android/app/src/main/java/com/fitila/bariba/BaribaInputMethodService.java
+          grep -q '\\u014B' android/app/src/main/java/com/fitila/bariba/BaribaInputMethodService.java
+          grep -q '\\u0254' android/app/src/main/java/com/fitila/bariba/BaribaInputMethodService.java
+          grep -q '\\u025B' android/app/src/main/java/com/fitila/bariba/BaribaInputMethodService.java
+
       - name: Compile Android native debug
         run: |
           cd android
@@ -113,6 +121,15 @@ jobs:
           plutil -lint ios/Runner/Runner.entitlements
           plutil -lint ios/BaribaKeyboard/Info.plist
           plutil -lint ios/BaribaKeyboard/BaribaKeyboard.entitlements
+
+      - name: Validate iOS Bàátɔ̀nú key coverage
+        run: |
+          grep -q '"ə"' ios/BaribaKeyboard/KeyboardViewController.swift
+          grep -q '"ɔ"' ios/BaribaKeyboard/KeyboardViewController.swift
+          grep -q '"ɛ"' ios/BaribaKeyboard/KeyboardViewController.swift
+          grep -q '"ŋ"' ios/BaribaKeyboard/KeyboardViewController.swift
+          grep -q '\\u{0300}' ios/BaribaKeyboard/KeyboardViewController.swift
+          grep -q '\\u{0303}' ios/BaribaKeyboard/KeyboardViewController.swift
 
       - name: Compile iOS app and keyboard extension
         run: |
