@@ -86,7 +86,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Fil'), findsWidgets);
-    expect(find.text('Apprendre'), findsOneWidget);
+    expect(find.text('Apprendre'), findsWidgets);
     expect(find.text('Classe'), findsWidgets);
     expect(find.bySemanticsLabel('Création'), findsWidgets);
     expect(find.text('Dico'), findsOneWidget);

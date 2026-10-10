@@ -15,7 +15,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 650));
     await tester.pump();
 
-    expect(find.text('Fil'), findsWidgets);
+    expect(find.text('Apprendre'), findsWidgets);
   });
 
   sidebarMatchesWeb();
@@ -36,7 +36,8 @@ void sidebarMatchesWeb() {
 
     final scaffold = tester.stateList<ScaffoldState>(find.byType(Scaffold)).firstWhere((s) => s.hasDrawer);
     scaffold.openDrawer();
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pump();
 
     const expected = [
       'Explorer', 'Fil', 'Dictionnaire', 'Classe', 'IA', 'Traducteur', 'Apprendre', 'Créateur', 'Espace',

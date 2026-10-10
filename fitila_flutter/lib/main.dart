@@ -29,6 +29,8 @@ import 'core/foncier_rag.dart';
 import 'core/signature_theme.dart';
 import 'core/web_parity_models.dart';
 import 'apprendre/apprendre_hub.dart';
+import 'apprendre/apprendre_voice_studio.dart';
+import 'apprendre/apprendre_voice_ui.dart';
 import 'handunia/handunia_consultation_data.dart';
 import 'handunia/handunia_consultation_extended_data.dart';
 import 'handunia/handunia_consultation_model.dart';
@@ -1068,8 +1070,8 @@ class FitilaShell extends StatefulWidget {
 
 class _FitilaShellState extends State<FitilaShell>
     with WidgetsBindingObserver {
-  FitilaPage _page = FitilaPage.feed;
-  final Set<FitilaPage> _visited = {FitilaPage.feed};
+  FitilaPage _page = FitilaPage.learn;
+  final Set<FitilaPage> _visited = {FitilaPage.learn};
   final List<FitilaPage> _history = [];
 
   @override
@@ -14121,729 +14123,532 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String _tab = 'Aperçu';
-  final Map<String, int> _classeDone = {};
+  bool _loading = true;
   Map<String, dynamic>? _profile;
-  bool _loading = false;
-  bool _uploadingAvatar = false;
-  bool _recordingBio = false;
-  bool _uploadingBio = false;
-  bool _bioPlaying = false;
-  final _mediaController = FitilaMediaController();
-  audio.AudioPlayer? _bioPlayer;
-  Map<String, dynamic> _privacy = const {};
-  bool _loadingPrivacy = true;
+  ApVoiceAccess _access = ApVoiceAccess.none;
 
-  String get _displayName =>
-      _profile?['display_name']?.toString().trim().isNotEmpty == true
-      ? _profile!['display_name'].toString().trim()
-      : widget.session.displayName;
+  String get _displayName {
+    final fromProfile = _profile?['display_name']?.toString().trim() ?? '';
+    return fromProfile.isNotEmpty ? fromProfile : widget.session.displayName;
+  }
+
+  String get _contact {
+    final profilePhone = _profile?['phone_number']?.toString().trim() ?? '';
+    return profilePhone.isNotEmpty ? profilePhone : widget.session.phone;
+  }
+
+  Set<String> get _roles {
+    final roles = <String>{..._access.roles};
+    if (roles.isEmpty) roles.add('user');
+    return roles;
+  }
 
   @override
   void initState() {
     super.initState();
-    if (widget.session.accessToken.isNotEmpty) {
-      _loadProfile();
-      _loadPrivacy();
-      _loadClasse();
-    }
+    _load();
   }
 
-  Future<void> _loadClasse() async {
-    final store = OfflineClasseStore(SupabaseClasseStore());
-    for (final level in const ['N1', 'N2']) {
-      try {
-        final p = await store.loadProgress(level);
-        if (!mounted) return;
-        setState(() => _classeDone[level] = p.completedLessons.length);
-      } catch (_) {
-        /* progression indisponible hors connexion */
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _mediaController.dispose();
-    _bioPlayer?.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadPrivacy() async {
-    try {
-      final privacy = await FitilaBackend.fetchPrivacy();
-      if (mounted) {
-        setState(() {
-          _privacy = privacy;
-          _loadingPrivacy = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _loadingPrivacy = false);
-      }
-    }
-  }
-
-  Future<void> _setPrivacy(String key, String value) async {
-    setState(() => _privacy = {..._privacy, key: value});
-    try {
-      await FitilaBackend.updatePrivacy({key: value});
-    } catch (e) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
-    }
-  }
-
-  Future<void> _pickAndUploadAvatar() async {
-    final picker = ImagePicker();
-    final file = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-      maxWidth: 1080,
-    );
-    if (file == null) {
-      return;
-    }
-    setState(() => _uploadingAvatar = true);
-    try {
-      final bytes = await file.readAsBytes();
-      final ext = file.name.contains('.')
-          ? file.name.split('.').last.toLowerCase()
-          : 'jpg';
-      final contentType = ext == 'png' ? 'image/png' : 'image/jpeg';
-      await FitilaBackend.uploadAvatar(
-        bytes: bytes,
-        extension: ext,
-        contentType: contentType,
-      );
-      await _loadProfile();
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✓ Photo de profil mise à jour'),
-          backgroundColor: _fitilaSage,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
-    } finally {
-      if (mounted) {
-        setState(() => _uploadingAvatar = false);
-      }
-    }
-  }
-
-  Future<void> _toggleBioRecording() async {
-    if (_recordingBio) {
-      final asset = await _mediaController.stopAudio();
-      setState(() => _recordingBio = false);
-      if (asset == null) {
-        return;
-      }
-      setState(() => _uploadingBio = true);
-      try {
-        final bytes = await asset.readBytes();
-        await FitilaBackend.uploadBioAudio(
-          bytes: bytes,
-          contentType: asset.contentType,
-          durationSeconds: 0,
-        );
-        await _loadProfile();
-        if (!mounted) {
-          return;
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✓ Bio audio enregistrée'),
-            backgroundColor: _fitilaSage,
-          ),
-        );
-      } catch (e) {
-        if (!mounted) {
-          return;
-        }
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
-      } finally {
-        if (mounted) {
-          setState(() => _uploadingBio = false);
-        }
-      }
-    } else {
-      try {
-        await _mediaController.startAudio();
-        setState(() => _recordingBio = true);
-      } catch (e) {
-        if (!mounted) {
-          return;
-        }
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Micro indisponible : $e')));
-      }
-    }
-  }
-
-  Future<void> _playBioAudio(String url) async {
-    _bioPlayer ??= audio.AudioPlayer();
-    setState(() => _bioPlaying = true);
-    try {
-      await _bioPlayer!.play(audio.UrlSource(url));
-      _bioPlayer!.onPlayerComplete.first.then((_) {
-        if (mounted) {
-          setState(() => _bioPlaying = false);
-        }
-      });
-    } catch (_) {
-      if (mounted) {
-        setState(() => _bioPlaying = false);
-      }
-    }
-  }
-
-  Future<void> _changePassword() async {
-    final pass1 = TextEditingController();
-    final pass2 = TextEditingController();
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Changer le mot de passe'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: pass1,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Nouveau mot de passe',
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: pass2,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Confirmer'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (pass1.text.length < 6) {
-                return;
-              }
-              if (pass1.text != pass2.text) {
-                return;
-              }
-              Navigator.pop(ctx, pass1.text);
-            },
-            child: const Text('Enregistrer'),
-          ),
-        ],
-      ),
-    );
-    pass1.dispose();
-    pass2.dispose();
-    if (result == null) {
-      return;
-    }
-    try {
-      await FitilaBackend.updatePassword(result);
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✓ Mot de passe mis à jour'),
-          backgroundColor: _fitilaSage,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
-    }
-  }
-
-  File? _avatarFile;
-
-  Future<void> _prepareAvatar() async {
-    final url = (_profile?['avatar_url'] as String?) ?? '';
-    final file = await FitilaOffline.cachedFile(url);
-    if (mounted && file?.path != _avatarFile?.path) setState(() => _avatarFile = file);
-  }
-
-  ImageProvider? get _avatarImage {
-    final url = (_profile?['avatar_url'] as String?) ?? '';
-    if (url.isEmpty) return null;
-    return _avatarFile != null ? FileImage(_avatarFile!) : NetworkImage(url);
-  }
-
-  Future<void> _loadProfile() async {
+  Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final profile = await FitilaBackend.fetchProfile(widget.session.userId);
-      if (mounted) {
-        setState(() => _profile = profile);
-        unawaited(_prepareAvatar());
-      }
+      final results = await Future.wait<dynamic>([
+        if (widget.session.accessToken.isNotEmpty)
+          FitilaBackend.fetchProfile(widget.session.userId)
+        else
+          Future<Map<String, dynamic>?>.value(null),
+        ApVoiceAccess.load(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _profile = results[0] as Map<String, dynamic>?;
+        _access = results[1] as ApVoiceAccess;
+        _loading = false;
+      });
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-              'Le profil ne peut pas être chargé pour le moment.',
-            ),
-            action: SnackBarAction(label: 'Réessayer', onPressed: _loadProfile),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+      if (!mounted) return;
+      setState(() => _loading = false);
     }
   }
 
-  Future<void> _editProfile() async {
-    final name = TextEditingController(text: _displayName);
-    final location = TextEditingController(
-      text: _profile?['location']?.toString() ?? '',
+  String _roleLabel(String role) => switch (role) {
+        'voice_speaker' => 'Locuteur',
+        'voice_reviewer' => 'Validateur',
+        'teacher' => 'Enseignant',
+        'editor' => 'Éditeur',
+        'admin' => 'Administrateur',
+        _ => 'Utilisateur',
+      };
+
+  String _roleDescription(String role) => switch (role) {
+        'voice_speaker' => 'Enregistrer les voix humaines de référence.',
+        'voice_reviewer' => 'Écouter, contrôler et valider les prises soumises.',
+        'teacher' => 'Suivre les apprenants et corriger les activités de classe.',
+        'editor' => 'Contribuer aux contenus et documents autorisés.',
+        'admin' => 'Administrer la plateforme et les habilitations.',
+        _ => 'Apprendre et utiliser les fonctions personnelles.',
+      };
+
+  IconData _roleIcon(String role) => switch (role) {
+        'voice_speaker' => Icons.mic_rounded,
+        'voice_reviewer' => Icons.fact_check_rounded,
+        'teacher' => Icons.school_rounded,
+        'editor' => Icons.edit_note_rounded,
+        'admin' => Icons.admin_panel_settings_rounded,
+        _ => Icons.person_rounded,
+      };
+
+  List<String> get _sortedRoles {
+    const order = [
+      'voice_speaker',
+      'voice_reviewer',
+      'teacher',
+      'editor',
+      'admin',
+      'user',
+    ];
+    final roles = _roles.toList();
+    roles.sort((a, b) => order.indexOf(a).compareTo(order.indexOf(b)));
+    return roles;
+  }
+
+  Future<void> _open(Widget screen) {
+    return Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => screen),
     );
-    final phone = TextEditingController(
-      text: _profile?['phone_number']?.toString() ?? '',
-    );
-    final bio = TextEditingController(text: _profile?['bio']?.toString() ?? '');
-    final result = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Modifier le profil'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: name,
-                decoration: const InputDecoration(labelText: 'Nom affiché'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: location,
-                decoration: const InputDecoration(labelText: 'Localisation'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: phone,
-                decoration: const InputDecoration(labelText: 'Téléphone'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: bio,
-                maxLines: 3,
-                decoration: const InputDecoration(labelText: 'Bio'),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final value = name.text.trim();
-              if (value.isEmpty) {
-                return;
-              }
-              Navigator.pop(context, {
-                'display_name': value,
-                'location': location.text.trim().isEmpty
-                    ? null
-                    : location.text.trim(),
-                'phone_number': phone.text.trim().isEmpty
-                    ? null
-                    : phone.text.trim(),
-                'bio': bio.text.trim().isEmpty ? null : bio.text.trim(),
-              });
-            },
-            child: const Text('Enregistrer'),
-          ),
-        ],
-      ),
-    );
-    name.dispose();
-    location.dispose();
-    phone.dispose();
-    bio.dispose();
-    if (result == null || !mounted) {
-      return;
-    }
-    try {
-      await FitilaBackend.updateProfile(widget.session.userId, result);
-      await _loadProfile();
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Profil mis à jour.')));
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
+  }
+
+  Future<void> _openAdmin() async {
+    final uri = Uri.parse('https://fitila.bj/admin');
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('La mise à jour du profil a échoué.')),
+        const SnackBar(content: Text('Impossible d’ouvrir l’administration web.')),
       );
     }
   }
 
-  Widget _statTile(int i, int value, String label, IconData icon) {
-    return Expanded(
-      child: Reveal(
-        index: i,
-        child: PremiumCard(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-          child: Column(
-            children: [
-              Icon(icon, size: 18, color: _fitilaGoldDeep),
-              const SizedBox(height: 4),
-              CountUp(
-                value: value,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _fitilaInk),
-              ),
-              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: _fitilaMuted)),
-            ],
-          ),
+  List<_ProfileCapability> get _capabilities {
+    final list = <_ProfileCapability>[];
+
+    if (_access.speaker) {
+      list.add(
+        _ProfileCapability(
+          role: 'voice_speaker',
+          label: 'Locuteur',
+          description: 'Enregistrer les mots, phrases et expressions attribués.',
+          action: 'Commencer les enregistrements',
+          icon: Icons.mic_rounded,
+          onTap: () => _open(const ApVoiceStudioScreen()),
         ),
+      );
+    }
+    if (_access.reviewer) {
+      list.add(
+        _ProfileCapability(
+          role: 'voice_reviewer',
+          label: 'Validateur',
+          description: 'Contrôler les prises et décider : valider, reprendre ou rejeter.',
+          action: 'Valider les voix',
+          icon: Icons.fact_check_rounded,
+          onTap: () => _open(const ApVoiceReviewScreen()),
+        ),
+      );
+    }
+    if (_roles.contains('teacher') || _roles.contains('admin')) {
+      list.add(
+        _ProfileCapability(
+          role: 'teacher',
+          label: 'Enseignant',
+          description: 'Suivre les apprenants, corrections et résultats.',
+          action: 'Ouvrir l’espace enseignant',
+          icon: Icons.school_rounded,
+          onTap: () => _open(const TeacherScreen()),
+        ),
+      );
+    }
+    if (_roles.contains('editor') || _roles.contains('admin')) {
+      list.add(
+        _ProfileCapability(
+          role: 'editor',
+          label: 'Éditeur',
+          description: 'Contribuer aux contenus et documents autorisés.',
+          action: 'Ouvrir l’espace de travail',
+          icon: Icons.edit_note_rounded,
+          onTap: () => _open(const EspaceScreen()),
+        ),
+      );
+    }
+    if (_roles.contains('admin')) {
+      list.add(
+        _ProfileCapability(
+          role: 'admin',
+          label: 'Administrateur',
+          description: 'Gérer les contenus, utilisateurs et habilitations.',
+          action: 'Ouvrir l’administration',
+          icon: Icons.admin_panel_settings_rounded,
+          onTap: _openAdmin,
+        ),
+      );
+    }
+
+    list.add(
+      _ProfileCapability(
+        role: 'learner',
+        label: 'Apprendre',
+        description: 'Continuer mon parcours bàátɔ̀nú ⇄ français.',
+        action: 'Continuer à apprendre',
+        icon: Icons.menu_book_rounded,
+        onTap: () => _open(const ApprendreHubScreen()),
       ),
     );
+    return list;
   }
-
-  Widget _hero() {
-    final avatar = (_profile?['avatar_url'] as String?) ?? '';
-    final bio = (_profile?['bio'] as String?)?.trim() ?? '';
-    final location = (_profile?['location'] as String?)?.trim() ?? '';
-    final signedIn = widget.session.accessToken.isNotEmpty;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFFFFFFF), Color(0xFFF9EFD3), Color(0xFFF3E3B9)],
-        ),
-        border: Border.all(color: _fitilaBorder),
-        boxShadow: [BoxShadow(color: _fitilaInk.withValues(alpha: .08), blurRadius: 30, offset: const Offset(0, 16), spreadRadius: -14)],
-      ),
-      child: Column(
-        children: [
-          Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(colors: [Color(0xFFC99530), Color(0xFFB54E33)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                ),
-                child: Container(
-                  width: 96,
-                  height: 96,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
-                    image: avatar.isNotEmpty ? DecorationImage(image: _avatarImage ?? NetworkImage(avatar), fit: BoxFit.cover, onError: (_, _) {}) : null,
-                  ),
-                  child: avatar.isNotEmpty
-                      ? null
-                      : Text(
-                          _displayName.isEmpty ? '?' : _displayName.characters.first.toUpperCase(),
-                          style: const TextStyle(color: _fitilaGoldDeep, fontFamily: 'serif', fontSize: 38, fontWeight: FontWeight.w700),
-                        ),
-                ),
-              ),
-              if (signedIn)
-                Semantics(
-                  button: true,
-                  label: 'Changer la photo',
-                  child: GestureDetector(
-                    onTap: _uploadingAvatar ? null : _pickAndUploadAvatar,
-                    child: Container(
-                      width: 34,
-                      height: 34,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(color: _fitilaInk, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)),
-                      child: _uploadingAvatar
-                          ? const SizedBox.square(dimension: 15, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.photo_camera_rounded, size: 16, color: Colors.white),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(_displayName, textAlign: TextAlign.center, style: const TextStyle(color: _fitilaInk, fontFamily: 'serif', fontSize: 25, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 6),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 8,
-            runSpacing: 6,
-            children: [
-              _pill(Icons.verified_rounded, widget.session.role),
-              if (widget.session.phone.isNotEmpty) _pill(Icons.phone_rounded, widget.session.phone),
-              if (location.isNotEmpty) _pill(Icons.place_rounded, location),
-            ],
-          ),
-          if (bio.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(bio, textAlign: TextAlign.center, style: const TextStyle(color: _fitilaInkSoft, height: 1.45, fontSize: 13.5)),
-          ],
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: FilledButton.icon(
-              onPressed: signedIn ? _editProfile : null,
-              icon: const Icon(Icons.edit_rounded, size: 18),
-              label: const Text('Modifier mon profil'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _pill(IconData icon, String text) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-    decoration: BoxDecoration(color: Colors.white.withValues(alpha: .75), borderRadius: BorderRadius.circular(99), border: Border.all(color: _fitilaBorder)),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 13, color: _fitilaGoldDeep),
-      const SizedBox(width: 5),
-      Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _fitilaInk))),
-    ]),
-  );
-
-  Widget _progressRow(String label, int done, int total, Color color) {
-    final ratio = total == 0 ? 0.0 : (done / total).clamp(0.0, 1.0);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Column(
-        children: [
-          Row(children: [
-            Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5))),
-            Text('$done/$total leçons', style: const TextStyle(fontSize: 12, color: _fitilaMuted)),
-          ]),
-          const SizedBox(height: 6),
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: ratio),
-            duration: const Duration(milliseconds: 900),
-            curve: Curves.easeOutCubic,
-            builder: (_, v, _) => ClipRRect(
-              borderRadius: BorderRadius.circular(99),
-              child: LinearProgressIndicator(value: v, minHeight: 9, backgroundColor: _fitilaSurfaceAlt, color: color),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _overviewTab() {
-    final joined = DateTime.tryParse('${_profile?['created_at'] ?? ''}');
-    final n1 = _classeDone['N1'] ?? 0;
-    final n2 = _classeDone['N2'] ?? 0;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SectionLabel('Ma progression en classe'),
-        PremiumCard(
-          child: Column(
-            children: [
-              _progressRow('🔥 Niveau 1', n1, 32, _fitilaGoldDeep),
-              _progressRow('🚀 Niveau 2', n2, 25, const Color(0xFF6758C9)),
-            ],
-          ),
-        ),
-        const SectionLabel('Informations'),
-        PremiumCard(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Column(
-            children: [
-              PremiumActionRow(icon: Icons.phone_rounded, title: 'Téléphone', subtitle: '${_profile?['phone_number'] ?? widget.session.phone}'),
-              const RowDivider(),
-              PremiumActionRow(icon: Icons.place_rounded, title: 'Localisation', subtitle: '${_profile?['location'] ?? 'Non renseignée'}'),
-              if (joined != null) ...[
-                const RowDivider(),
-                PremiumActionRow(icon: Icons.event_rounded, title: 'Membre depuis', subtitle: '${joined.day.toString().padLeft(2, '0')}/${joined.month.toString().padLeft(2, '0')}/${joined.year}'),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _voiceTab() {
-    final url = (_profile?['bio_audio_url'] as String?) ?? '';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SectionLabel('Ma présentation vocale'),
-        PremiumCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Présente-toi en Bàátɔ̀nú ou en français. Ta voix est visible sur ton profil public.', style: TextStyle(color: _fitilaMuted, height: 1.4, fontSize: 13)),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  if (url.isNotEmpty) ...[
-                    IconButton.filledTonal(
-                      tooltip: 'Écouter ma bio',
-                      onPressed: _bioPlaying ? null : () => _playBioAudio(url),
-                      icon: Icon(_bioPlaying ? Icons.graphic_eq_rounded : Icons.play_arrow_rounded),
-                    ),
-                    const SizedBox(width: 10),
-                  ],
-                  Expanded(
-                    child: SizedBox(
-                      height: 48,
-                      child: FilledButton.icon(
-                        style: _recordingBio ? FilledButton.styleFrom(backgroundColor: _fitilaClay, foregroundColor: Colors.white) : null,
-                        onPressed: _uploadingBio || widget.session.accessToken.isEmpty ? null : _toggleBioRecording,
-                        icon: _uploadingBio
-                            ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                            : Icon(_recordingBio ? Icons.stop_rounded : Icons.mic_rounded),
-                        label: Text(_recordingBio ? 'Arrêter l’enregistrement' : url.isEmpty ? 'Enregistrer ma bio' : 'Refaire ma bio'),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _privacyTab() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (_loadingPrivacy) const LinearProgressIndicator(minHeight: 3),
-        const SectionLabel('Qui voit mon profil ?'),
-        ChoiceCards(
-          selected: (_privacy['profile_visibility'] as String?) ?? 'public',
-          onChanged: (v) => _setPrivacy('profile_visibility', v),
-          options: const [
-            (value: 'public', title: 'Public', subtitle: 'Tout le monde peut voir mon profil.', icon: Icons.public_rounded),
-            (value: 'community', title: 'Communauté', subtitle: 'Seulement les membres FITILA.', icon: Icons.groups_rounded),
-            (value: 'private', title: 'Privé', subtitle: 'Uniquement moi.', icon: Icons.lock_rounded),
-          ],
-        ),
-        const SectionLabel('Historique de traduction'),
-        ChoiceCards(
-          selected: (_privacy['translation_history_visibility'] as String?) ?? 'private',
-          onChanged: (v) => _setPrivacy('translation_history_visibility', v),
-          options: const [
-            (value: 'private', title: 'Privé', subtitle: 'Personne d’autre ne le voit (par défaut).', icon: Icons.visibility_off_rounded),
-            (value: 'shared_teacher', title: 'Visible par l’enseignant', subtitle: 'Pour être suivi dans votre apprentissage.', icon: Icons.school_rounded),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _securityTab() {
-    final signedIn = widget.session.accessToken.isNotEmpty;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SectionLabel('Compte'),
-        PremiumCard(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Column(
-            children: [
-              PremiumActionRow(icon: Icons.manage_accounts_rounded, title: 'Modifier mon profil', subtitle: 'Nom, téléphone, localisation et bio.', onTap: signedIn ? _editProfile : null),
-              const RowDivider(),
-              PremiumActionRow(icon: Icons.lock_reset_rounded, title: 'Changer mon code', subtitle: 'Met à jour votre code de connexion.', onTap: signedIn ? _changePassword : null),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _profileBody() => switch (_tab) {
-    'Voix' => _voiceTab(),
-    'Confidentialité' => _privacyTab(),
-    'Sécurité' => _securityTab(),
-    _ => _overviewTab(),
-  };
 
   @override
   Widget build(BuildContext context) {
-    final posts = int.tryParse('${_profile?['posts_count'] ?? 0}') ?? 0;
-    final followers = int.tryParse('${_profile?['followers_count'] ?? 0}') ?? 0;
-    final following = int.tryParse('${_profile?['following_count'] ?? 0}') ?? 0;
-    final tab = const ['Aperçu', 'Voix', 'Confidentialité', 'Sécurité'].contains(_tab) ? _tab : 'Aperçu';
+    if (_loading) {
+      return const Material(
+        color: _fitilaSurface,
+        child: Center(child: CircularProgressIndicator(color: _fitilaPrimary)),
+      );
+    }
+
+    final avatar = _profile?['avatar_url']?.toString().trim() ?? '';
+    final location = _profile?['location']?.toString().trim() ?? '';
+    final capabilities = _capabilities;
+    final primary = capabilities.first;
+    final initials = _displayName
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .take(2)
+        .map((part) => part.characters.first.toUpperCase())
+        .join();
 
     return _PageFrame(
-      title: 'Profil',
-      subtitle: 'Votre identité, votre progression et vos choix.',
+      title: 'Mon profil',
+      subtitle: 'Habilitations et accès de travail',
       child: ListView(
-        padding: const EdgeInsets.only(bottom: 28),
+        padding: const EdgeInsets.fromLTRB(18, 4, 18, 28),
         children: [
-          if (_loading) const LinearProgressIndicator(minHeight: 3),
-          Reveal(child: _hero()),
+          PremiumCard(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                Container(
+                  width: 66,
+                  height: 66,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _fitilaPrimarySoft,
+                    image: avatar.isEmpty
+                        ? null
+                        : DecorationImage(
+                            image: NetworkImage(avatar),
+                            fit: BoxFit.cover,
+                            onError: (_, _) {},
+                          ),
+                  ),
+                  alignment: Alignment.center,
+                  child: avatar.isEmpty
+                      ? Text(
+                          initials.isEmpty ? '?' : initials,
+                          style: const TextStyle(
+                            color: _fitilaGoldDeep,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'MON PROFIL',
+                        style: TextStyle(
+                          color: _fitilaGoldDeep,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: _fitilaInk,
+                          fontSize: 21,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      if (_contact.isNotEmpty)
+                        Text(
+                          _contact,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: _fitilaMuted, fontSize: 12),
+                        ),
+                      if (location.isNotEmpty)
+                        Text(
+                          location,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: _fitilaMuted, fontSize: 11),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 12),
-          Row(
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
             children: [
-              _statTile(1, posts, 'posts', Icons.dynamic_feed_rounded),
-              const SizedBox(width: 10),
-              _statTile(2, followers, 'abonnés', Icons.favorite_rounded),
-              const SizedBox(width: 10),
-              _statTile(3, following, 'abonnements', Icons.people_alt_rounded),
+              for (final role in _sortedRoles)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: _fitilaCard,
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(color: _fitilaBorder),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.check_circle_rounded, size: 15, color: _fitilaSage),
+                      const SizedBox(width: 5),
+                      Text(
+                        _roleLabel(role),
+                        style: const TextStyle(
+                          color: _fitilaInk,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
-          const SizedBox(height: 16),
-          PremiumSegmented(
-            labels: const ['Aperçu', 'Voix', 'Confidentialité', 'Sécurité'],
-            icons: const [Icons.dashboard_rounded, Icons.mic_rounded, Icons.visibility_rounded, Icons.shield_rounded],
-            selected: tab,
-            onChanged: (v) => setState(() => _tab = v),
+          if (primary.role != 'learner') ...[
+            const SizedBox(height: 16),
+            Material(
+              color: _fitilaInk,
+              borderRadius: BorderRadius.circular(24),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(24),
+                onTap: primary.onTap,
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: _fitilaPrimary,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Icon(primary.icon, color: _fitilaInk, size: 25),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'PRÊT À TRAVAILLER',
+                              style: TextStyle(
+                                color: _fitilaPrimarySoft,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              primary.action,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              primary.description,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: .67),
+                                fontSize: 12,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
+          const SectionLabel('Mes habilitations'),
+          const Text(
+            'Chaque droit ouvre directement l’espace correspondant.',
+            style: TextStyle(color: _fitilaMuted, fontSize: 12),
           ),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 240),
-            switchInCurve: Curves.easeOutCubic,
-            child: KeyedSubtree(key: ValueKey(tab), child: _profileBody()),
+          const SizedBox(height: 10),
+          for (var i = 0; i < capabilities.length; i++) ...[
+            _CapabilityCard(capability: capabilities[i]),
+            if (i != capabilities.length - 1) const SizedBox(height: 10),
+          ],
+          const SizedBox(height: 20),
+          const SectionLabel('Ce que je peux faire'),
+          PremiumCard(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Column(
+              children: [
+                for (var i = 0; i < _sortedRoles.length; i++) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(_roleIcon(_sortedRoles[i]), size: 20, color: _fitilaGoldDeep),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _roleLabel(_sortedRoles[i]),
+                                style: const TextStyle(
+                                  color: _fitilaInk,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _roleDescription(_sortedRoles[i]),
+                                style: const TextStyle(
+                                  color: _fitilaMuted,
+                                  fontSize: 11.5,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (i != _sortedRoles.length - 1) const Divider(height: 1),
+                ],
+              ],
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ProfileCapability {
+  const _ProfileCapability({
+    required this.role,
+    required this.label,
+    required this.description,
+    required this.action,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String role;
+  final String label;
+  final String description;
+  final String action;
+  final IconData icon;
+  final Future<void> Function() onTap;
+}
+
+class _CapabilityCard extends StatelessWidget {
+  const _CapabilityCard({required this.capability});
+
+  final _ProfileCapability capability;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: _fitilaCard,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => capability.onTap(),
+        child: Ink(
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _fitilaBorder),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: _fitilaPrimarySoft,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(capability.icon, color: _fitilaGoldDeep, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      capability.label,
+                      style: const TextStyle(
+                        color: _fitilaInk,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      capability.description,
+                      style: const TextStyle(
+                        color: _fitilaMuted,
+                        fontSize: 11.5,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      capability.action,
+                      style: const TextStyle(
+                        color: _fitilaGoldDeep,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_ios_rounded, size: 15, color: _fitilaMuted),
+            ],
+          ),
+        ),
       ),
     );
   }
