@@ -5,7 +5,7 @@ import { FitilaLanguageProvider, useFitilaLanguage } from '@/contexts/FitilaLang
 import { AudioDescriptionProvider } from '@/contexts/AudioDescriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTamTamProfile } from '@/hooks/useTamTamProfile';
-import { Home, User, Settings, X, Bell, Globe, BookOpen, Shield, LayoutDashboard, Package, Sparkles, Menu, Search } from 'lucide-react';
+import { Home, User, Settings, X, Bell, Globe, BookOpen, Shield, LayoutDashboard, Package, Sparkles, Menu, Search, Mic2, ClipboardCheck, GraduationCap, Edit3 } from 'lucide-react';
 import { HelpCircle } from 'lucide-react';
 import { triggerFeedback } from '@/utils/tamtamFeedback';
 import { AdminFloatingButton } from '@/components/admin/AdminFloatingButton';
@@ -16,6 +16,7 @@ import AppTourProvider, { TOUR_STORAGE_KEY } from '@/components/onboarding/AppTo
 import SafeBoundary from '@/components/common/SafeBoundary';
 import FitilaCanonicalDrawer from '@/components/fitila/FitilaCanonicalDrawer';
 import FitilaNavPanel from '@/components/fitila/FitilaNavPanel';
+import { useFitilaRoles } from '@/hooks/useFitilaRoles';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📱 FITILA APP V7 - MENU SIMPLIFIÉ
@@ -46,6 +47,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
   const location = useLocation();
   const { t, setLanguage, currentLang } = useFitilaLanguage();
   const { isAdmin } = useAuth();
+  const access = useFitilaRoles();
   const { profile } = useTamTamProfile();
 
   const navItems = [
@@ -156,6 +158,34 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                 })}
               </div>
             </div>
+
+            {(access.speaker || access.reviewer || access.teacher || access.editor || access.admin) && (
+              <div className="p-3 border-t border-white/10">
+                <p className="text-amber-300 text-[10px] font-black uppercase tracking-wider mb-2 px-1">Mes accès</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {access.speaker && (
+                    <button onClick={() => handleNavigate('/learn/voice-studio')} className="flex items-center gap-2 rounded-xl bg-white/8 px-3 py-2.5 text-left">
+                      <Mic2 className="h-4 w-4 text-amber-300" /><span className="text-xs font-bold text-white">Enregistrer</span>
+                    </button>
+                  )}
+                  {access.reviewer && (
+                    <button onClick={() => handleNavigate('/learn/voice-review')} className="flex items-center gap-2 rounded-xl bg-white/8 px-3 py-2.5 text-left">
+                      <ClipboardCheck className="h-4 w-4 text-amber-300" /><span className="text-xs font-bold text-white">Valider</span>
+                    </button>
+                  )}
+                  {access.teacher && (
+                    <button onClick={() => handleNavigate('/teacher')} className="flex items-center gap-2 rounded-xl bg-white/8 px-3 py-2.5 text-left">
+                      <GraduationCap className="h-4 w-4 text-amber-300" /><span className="text-xs font-bold text-white">Enseigner</span>
+                    </button>
+                  )}
+                  {access.editor && (
+                    <button onClick={() => handleNavigate('/espace')} className="flex items-center gap-2 rounded-xl bg-white/8 px-3 py-2.5 text-left">
+                      <Edit3 className="h-4 w-4 text-amber-300" /><span className="text-xs font-bold text-white">Éditer</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* ✨ NOUVEAUX MODULES - Mis en avant */}
             <div className="p-4 border-t border-white/10">
