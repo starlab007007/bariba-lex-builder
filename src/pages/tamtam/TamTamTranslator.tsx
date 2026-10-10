@@ -77,6 +77,7 @@ export default function TamTamTranslator() {
   const [voicePanelSuccess, setVoicePanelSuccess] = useState(false);
   const [voicePanelError, setVoicePanelError] = useState('');
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState<number>(() => window.visualViewport?.height ?? window.innerHeight);
 
   useEffect(()=>{
     const history=location.pathname.includes('/history');
@@ -90,6 +91,7 @@ export default function TamTamTranslator() {
     const update = () => {
       const covered = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
       setKeyboardOpen(covered > 120);
+      setViewportHeight(vv.height);
     };
     update();
     vv.addEventListener('resize', update);
@@ -418,7 +420,10 @@ export default function TamTamTranslator() {
   );
 
   return (
-    <div className="mx-auto h-full min-h-0 w-full max-w-[960px] bg-[#F7F5EC] text-[#241F2E] flex flex-col overflow-hidden">
+    <div
+      className="mx-auto min-h-0 w-full max-w-[960px] bg-[#F7F5EC] text-[#241F2E] flex flex-col overflow-hidden"
+      style={{ height: viewportHeight ? `${Math.floor(viewportHeight)}px` : '100dvh', maxHeight: '100dvh' }}
+    >
       {!keyboardOpen && <FitilaPageHeader title="Traducteur" subtitle="Français ⇄ Bàátɔ̀nú" />}
 
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -492,7 +497,7 @@ export default function TamTamTranslator() {
         {/* Chat Messages Area */}
         <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-[18px] py-2 sm:py-3 space-y-3">
           {/* Welcome message */}
-          {messages.length === 0 && !translator.isProcessing && !keyboardOpen && (
+          {messages.length === 0 && !translator.isProcessing && !keyboardOpen && viewportHeight >= 640 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -636,7 +641,13 @@ export default function TamTamTranslator() {
         </AnimatePresence>
 
         {/* Input Area */}
-        <div className={keyboardOpen ? "flex-shrink-0 px-2 pt-1.5 pb-1 bg-[#F7F5EC] z-50 border-t border-[#E4DFCC]/70" : "flex-shrink-0 px-3 sm:px-[18px] py-2.5 bg-[#F7F5EC] z-50 border-t border-[#E4DFCC]/70"} style={{ paddingBottom: keyboardOpen ? '4px' : 'max(10px, env(safe-area-inset-bottom))' }}>
+        <div
+          className={keyboardOpen
+            ? "sticky bottom-0 flex-shrink-0 px-2 pt-1 pb-1 bg-[#F7F5EC]/98 z-50 border-t border-[#E4DFCC] shadow-[0_-8px_24px_rgba(36,31,46,0.06)] backdrop-blur"
+            : "sticky bottom-0 flex-shrink-0 px-3 sm:px-[18px] pt-2 pb-2 bg-[#F7F5EC]/98 z-50 border-t border-[#E4DFCC] shadow-[0_-8px_24px_rgba(36,31,46,0.06)] backdrop-blur"
+          }
+          style={{ paddingBottom: keyboardOpen ? '4px' : 'max(8px, env(safe-area-inset-bottom))' }}
+        >
           {/* Clear button */}
           {messages.length > 0 && !keyboardOpen && (
             <div className="flex justify-center mb-2">
@@ -651,6 +662,25 @@ export default function TamTamTranslator() {
               </Button>
             </div>
           )}
+
+          <div className={"mb-1.5 flex items-center gap-1 overflow-x-auto scrollbar-none " + (keyboardOpen || viewportHeight < 700 ? "justify-start" : "justify-center")}>
+            {inputModes.map((mode) => (
+              <motion.button
+                key={mode.id}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => handleModeChange(mode.id)}
+                aria-label={mode.label}
+                className={(keyboardOpen || viewportHeight < 700 ? "h-9 min-w-[48px] px-2 " : "h-10 min-w-[54px] px-2.5 ") + "rounded-[13px] flex items-center justify-center gap-1 transition-all shrink-0 touch-manipulation " + (
+                  translator.currentMode === mode.id
+                    ? 'bg-[#4B6BDF] text-white shadow-sm'
+                    : 'bg-white text-[#716B5F] border border-[#E4DFCC]'
+                )}
+              >
+                {mode.icon}
+                {!keyboardOpen && viewportHeight >= 620 && <span className="text-[10px] font-extrabold">{mode.label}</span>}
+              </motion.button>
+            ))}
+          </div>
 
           {/* Dynamic input based on mode */}
           <AnimatePresence mode="wait">
@@ -714,13 +744,13 @@ export default function TamTamTranslator() {
                       if (!vv || window.innerHeight - vv.height - vv.offsetTop < 120) setKeyboardOpen(false);
                     }, 120)}
                     placeholder={translator.sourceLanguage === 'bariba' ? 'Écrivez en Bàátɔ̀nú…' : 'Écrivez en français…'}
-                    className="flex-1 min-h-[54px] max-h-[120px] text-[16px] rounded-[18px] border border-[#D8D1BE] bg-white text-[#241F2E] placeholder:text-[#9A927F] focus:border-[#C99530] focus:ring-2 focus:ring-[#C99530]/15 resize-none shadow-sm"
+                    className="flex-1 min-h-[52px] max-h-[104px] text-[16px] rounded-[18px] border-2 border-[#C99530] bg-white text-[#241F2E] placeholder:text-[#9A927F] focus:border-[#A87317] focus:ring-2 focus:ring-[#C99530]/15 resize-none shadow-sm"
                     rows={keyboardOpen ? 2 : 1}
                   />
                   <Button
                     onClick={handleTextSubmit}
                     disabled={!textInput.trim() || translator.isProcessing}
-                    className="h-auto px-4 bg-[#C99530] hover:bg-[#B98626] text-[#2B2110] rounded-[16px]"
+                    className="h-[52px] w-[52px] shrink-0 p-0 bg-[#C99530] hover:bg-[#B98626] text-[#2B2110] rounded-[16px] shadow-sm touch-manipulation"
                   >
                     <Send className="w-5 h-5" />
                   </Button>
@@ -793,23 +823,7 @@ export default function TamTamTranslator() {
             )}
           </AnimatePresence>
 
-          <div className={"mt-2 flex items-center gap-1.5 overflow-x-auto scrollbar-none " + (keyboardOpen ? "justify-start" : "justify-center")}>
-            {inputModes.map((mode) => (
-              <motion.button
-                key={mode.id}
-                whileTap={{ scale: 0.96 }}
-                onClick={() => handleModeChange(mode.id)}
-                className={(keyboardOpen ? "h-10 min-w-[54px] px-2 " : "h-12 min-w-[58px] px-2.5 ") + "rounded-[14px] flex items-center justify-center gap-1.5 transition-all shrink-0 " + (
-                  translator.currentMode === mode.id
-                    ? 'bg-[#4B6BDF] text-white shadow-sm'
-                    : 'bg-white text-[#716B5F] border border-[#E4DFCC]'
-                )}
-              >
-                {mode.icon}
-                <span className="text-[10px] font-extrabold">{mode.label}</span>
-              </motion.button>
-            ))}
-          </div>
+
         </div>
       </div>
     </div>
