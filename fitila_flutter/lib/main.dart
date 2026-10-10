@@ -1537,6 +1537,32 @@ class _NavigationPanel extends StatelessWidget {
                     group(_explorer),
                     const _SectionLabel('Culture'),
                     group(_culture),
+                    FutureBuilder<ApVoiceAccess>(
+                      future: ApVoiceAccess.load(),
+                      builder: (context, snap) {
+                        final access = snap.data ?? ApVoiceAccess.none;
+                        if (access.roles.isEmpty) return const SizedBox.shrink();
+                        Widget quick(String label, IconData icon, VoidCallback onTap) => ListTile(
+                          dense: true,
+                          visualDensity: const VisualDensity(vertical: -2),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                          leading: Icon(icon, size: 20, color: _fitilaGoldDeep),
+                          title: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+                          trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+                          onTap: onTap,
+                        );
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const _SectionLabel('Mes accès'),
+                            if (access.speaker) quick('Enregistrer', Icons.mic_rounded, () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ApVoiceStudioScreen()))),
+                            if (access.reviewer) quick('Valider', Icons.fact_check_rounded, () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ApVoiceReviewScreen()))),
+                            if (access.roles.contains('teacher') || access.admin) quick('Enseigner', Icons.school_rounded, () => onSelected(FitilaPage.teacher)),
+                            if (access.roles.contains('editor') || access.admin) quick('Éditer', Icons.edit_note_rounded, () => onSelected(FitilaPage.espace)),
+                          ],
+                        );
+                      },
+                    ),
                     const _SectionLabel('Compte'),
                     group(_account),
                     const _SectionLabel('Langue'),
@@ -14236,8 +14262,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _ProfileCapability(
           role: 'voice_speaker',
           label: 'Locuteur',
-          description: 'Enregistrer les mots, phrases et expressions attribués.',
-          action: 'Commencer les enregistrements',
+          description: 'Voix de référence',
+          action: 'Enregistrer',
           icon: Icons.mic_rounded,
           onTap: () => _open(const ApVoiceStudioScreen()),
         ),
@@ -14248,8 +14274,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _ProfileCapability(
           role: 'voice_reviewer',
           label: 'Validateur',
-          description: 'Contrôler les prises et décider : valider, reprendre ou rejeter.',
-          action: 'Valider les voix',
+          description: 'Contrôle des prises',
+          action: 'Valider',
           icon: Icons.fact_check_rounded,
           onTap: () => _open(const ApVoiceReviewScreen()),
         ),
@@ -14260,8 +14286,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _ProfileCapability(
           role: 'teacher',
           label: 'Enseignant',
-          description: 'Suivre les apprenants, corrections et résultats.',
-          action: 'Ouvrir l’espace enseignant',
+          description: 'Classe et corrections',
+          action: 'Enseigner',
           icon: Icons.school_rounded,
           onTap: () => _open(const TeacherScreen()),
         ),
@@ -14272,8 +14298,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _ProfileCapability(
           role: 'editor',
           label: 'Éditeur',
-          description: 'Contribuer aux contenus et documents autorisés.',
-          action: 'Ouvrir l’espace de travail',
+          description: 'Contenus',
+          action: 'Éditer',
           icon: Icons.edit_note_rounded,
           onTap: () => _open(const EspaceScreen()),
         ),
@@ -14284,8 +14310,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _ProfileCapability(
           role: 'admin',
           label: 'Administrateur',
-          description: 'Gérer les contenus, utilisateurs et habilitations.',
-          action: 'Ouvrir l’administration',
+          description: 'Gestion',
+          action: 'Administrer',
           icon: Icons.admin_panel_settings_rounded,
           onTap: _openAdmin,
         ),
@@ -14296,8 +14322,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _ProfileCapability(
         role: 'learner',
         label: 'Apprendre',
-        description: 'Continuer mon parcours bàátɔ̀nú ⇄ français.',
-        action: 'Continuer à apprendre',
+        description: 'Parcours',
+        action: 'Continuer',
         icon: Icons.menu_book_rounded,
         onTap: () => _open(const ApprendreHubScreen()),
       ),
@@ -14502,61 +14528,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
           const SizedBox(height: 20),
           const SectionLabel('Mes habilitations'),
-          const Text(
-            'Chaque droit ouvre directement l’espace correspondant.',
-            style: TextStyle(color: _fitilaMuted, fontSize: 12),
-          ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           for (var i = 0; i < capabilities.length; i++) ...[
             _CapabilityCard(capability: capabilities[i]),
             if (i != capabilities.length - 1) const SizedBox(height: 10),
           ],
-          const SizedBox(height: 20),
-          const SectionLabel('Ce que je peux faire'),
-          PremiumCard(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Column(
-              children: [
-                for (var i = 0; i < _sortedRoles.length; i++) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(_roleIcon(_sortedRoles[i]), size: 20, color: _fitilaGoldDeep),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _roleLabel(_sortedRoles[i]),
-                                style: const TextStyle(
-                                  color: _fitilaInk,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _roleDescription(_sortedRoles[i]),
-                                style: const TextStyle(
-                                  color: _fitilaMuted,
-                                  fontSize: 11.5,
-                                  height: 1.35,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (i != _sortedRoles.length - 1) const Divider(height: 1),
-                ],
-              ],
-            ),
-          ),
+
         ],
       ),
     );
@@ -14622,15 +14599,6 @@ class _CapabilityCard extends StatelessWidget {
                         color: _fitilaInk,
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      capability.description,
-                      style: const TextStyle(
-                        color: _fitilaMuted,
-                        fontSize: 11.5,
-                        height: 1.3,
                       ),
                     ),
                     const SizedBox(height: 5),
