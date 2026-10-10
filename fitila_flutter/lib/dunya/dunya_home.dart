@@ -1,7 +1,5 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'dunya_core.dart';
 import 'dunya_local_store.dart';
 import 'dunya_models.dart';
 
@@ -14,13 +12,18 @@ class DunyaOfflinePage extends StatefulWidget {
 
 class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
   final _store = DunyaLocalStore.instance;
+  final _knowledge = DunyaAssetKnowledgeRepository();
+  final _engine = DunyaFallbackInferenceEngine();
+  late final DunyaIntelligenceRouter _router = DunyaIntelligenceRouter(
+    knowledge: _knowledge,
+    fallbackEngine: _engine,
+  );
   final _input = TextEditingController();
   final _scroll = ScrollController();
   List<DunyaMessage> _messages = [];
   List<String> _memories = [];
-  List<Map<String, String>> _dictionary = const [];
-  List<DunyaSource> _learning = const [];
   bool _loading = true;
+  bool _generating = false;
 
   @override
   void initState() {
@@ -39,134 +42,101 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
     try {
       _messages = await _store.loadMessages();
       _memories = await _store.loadMemories();
-      await _store.audit('dunya_opened', {'offline': true});
-    } catch (_) {
+      await _knowledge.initialize();
+      await _store.audit('dunya_opened', {
+        'offline': true,
+        'model_id': _engine.modelId,
+        'profile': _engine.profile.name,
+      });
+    } catch (error) {
       _messages = const [];
       _memories = const [];
+      await _store.audit(
+        'dunya_open_error',
+        {'error': error.toString()},
+        severity: 'error',
+      );
     }
-
-    try { _dictionary = await _loadDictionary(); } catch (_) { _dictionary = const []; }
-    try { _learning = await _loadLearningKnowledge(); } catch (_) { _learning = const []; }
 
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<List<Map<String, String>>> _loadDictionary() async {
-    final raw = await rootBundle.loadString('assets/data/dictionnaire_ameliore.json');
-    final decoded = jsonDecode(raw);
-    if (decoded is! List) return const [];
-    return [
-      for (final item in decoded)
-        if (item is Map)
-          {
-            'word': (item['word'] ?? item['bariba'] ?? '').toString(),
-            'definition': (item['definition'] ?? item['french'] ?? item['fr'] ?? '').toString(),
-          },
-    ].where((e) => (e['word'] ?? '').isNotEmpty && (e['definition'] ?? '').isNotEmpty).toList(growable: false);
-  }
-
-  Future<List<DunyaSource>> _loadLearningKnowledge() async {
-    final result = <DunyaSource>[];
-    for (final asset in const ['assets/data/apprendre_v2.json', 'assets/data/scenes_v2.json']) {
-      final raw = await rootBundle.loadString(asset);
-      final decoded = jsonDecode(raw);
-      void walk(dynamic value, String title) {
-        if (value == null) return;
-        if (value is String) {
-          final text = value.trim();
-          if (text.length >= 18) result.add(DunyaSource(title: title, text: text));
-          return;
-        }
-        if (value is List) {
-          for (final item in value) {
-            walk(item, title);
-          }
-          return;
-        }
-        if (value is Map) {
-          final localTitle = (value['title_fr'] ?? value['title'] ?? value['name'] ?? value['ba'] ?? title).toString();
-          for (final entry in value.entries) {
-            if (entry.key == 'id' || entry.key == 'icon' || entry.key == 'version') continue;
-            walk(entry.value, localTitle);
-          }
-        }
-      }
-      walk(decoded, asset.contains('scenes') ? 'DUNYA Apprendre · Scènes' : 'DUNYA Apprendre');
-    }
-    return result;
-  }
-
-  static String _norm(String input) => input
-      .toLowerCase()
-      .replaceAll(RegExp(r'[^a-z0-9à-ÿɔɛãĩũõñœ\s-]'), ' ')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
-
-  DunyaMessage _answer(String query) {
-    final clean = _norm(query);
-    final terms = clean.split(' ').where((e) => e.length > 2).toList();
-    final sources = <({int score, DunyaSource source})>[];
-
-    for (final row in _dictionary) {
-      final word = row['word'] ?? '';
-      final definition = row['definition'] ?? '';
-      final combined = _norm('$word $definition');
-      var score = combined.contains(clean) && clean.isNotEmpty ? 12 : 0;
-      for (final term in terms) {
-        if (combined.contains(term)) {
-          score += 2;
-        }
-      }
-      if (score > 0) {
-        sources.add((score: score, source: DunyaSource(title: 'Dictionnaire FITILA · $word', text: '$word — $definition')));
-      }
-    }
-
-    for (final source in _learning) {
-      final combined = _norm('${source.title} ${source.text}');
-      var score = combined.contains(clean) && clean.isNotEmpty ? 10 : 0;
-      for (final term in terms) {
-        if (combined.contains(term)) {
-          score += 2;
-        }
-      }
-      if (score > 0) sources.add((score: score, source: source));
-    }
-
-    sources.sort((a, b) => b.score.compareTo(a.score));
-    final best = sources.take(4).map((e) => e.source).toList();
-    if (best.isEmpty) {
-      return const DunyaMessage(
-        role: 'assistant',
-        content: 'Je n’ai pas trouvé de source locale suffisamment pertinente. DUNYA reste hors ligne et préfère ne pas inventer une réponse sans source.',
-      );
-    }
-    final excerpt = best.first.text.length > 560 ? '${best.first.text.substring(0, 560)}…' : best.first.text;
-    return DunyaMessage(
-      role: 'assistant',
-      content: 'Voici ce que je trouve dans les ressources locales FITILA :\n\n$excerpt',
-      sources: best,
-    );
-  }
-
   Future<void> _send() async {
+    if (_generating) {
+      await _engine.cancel();
+      if (mounted) setState(() => _generating = false);
+      return;
+    }
+
     final clean = _input.text.trim();
     if (clean.isEmpty) return;
+
     final user = DunyaMessage(role: 'user', content: clean);
-    final assistant = _answer(clean);
     setState(() {
-      _messages = [..._messages, user, assistant];
+      _messages = [..._messages, user];
       _input.clear();
+      _generating = true;
     });
     await _store.appendMessage(user);
-    await _store.appendMessage(assistant);
-    await _store.audit('dunya_query', {
-      'source_count': assistant.sources.length,
-      'grounded': assistant.sources.isNotEmpty,
+
+    final routed = await _router.route(
+      query: clean,
+      history: _messages,
+    );
+
+    var generated = '';
+    final assistantIndex = _messages.length;
+    setState(() {
+      _messages = [
+        ..._messages,
+        DunyaMessage(
+          role: 'assistant',
+          content: '',
+          sources: routed.metadata.sources,
+        ),
+      ];
     });
+
+    try {
+      await for (final chunk in routed.stream) {
+        generated += chunk;
+        if (!mounted) return;
+        setState(() {
+          final next = [..._messages];
+          next[assistantIndex] = DunyaMessage(
+            role: 'assistant',
+            content: generated,
+            sources: routed.metadata.sources,
+          );
+          _messages = next;
+        });
+      }
+
+      final assistant = DunyaMessage(
+        role: 'assistant',
+        content: generated,
+        sources: routed.metadata.sources,
+      );
+      await _store.appendMessage(assistant);
+      await _store.audit('dunya_query', {
+        'execution_mode': routed.metadata.executionMode,
+        'model_id': routed.metadata.modelId,
+        'language': routed.metadata.language,
+        'confidence_status': routed.metadata.confidenceStatus.name,
+        'source_count': routed.metadata.sources.length,
+        'tools_used': routed.metadata.toolsUsed,
+      });
+    } finally {
+      if (mounted) setState(() => _generating = false);
+    }
+
     await Future<void>.delayed(const Duration(milliseconds: 80));
     if (_scroll.hasClients) {
-      await _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic);
+      await _scroll.animateTo(
+        _scroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
     }
   }
 
@@ -266,7 +236,7 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
                               children: [
                                 Expanded(child: _status(Icons.security_rounded, '100 % local', 'Aucune API requise', sage)),
                                 const SizedBox(width: 8),
-                                Expanded(child: _status(Icons.menu_book_rounded, 'Savoirs FITILA', '${_dictionary.length} mots locaux', goldDeep)),
+                                Expanded(child: _status(Icons.menu_book_rounded, 'Savoirs FITILA', '${_knowledge.dictionaryCount} mots locaux', goldDeep)),
                               ],
                             ),
                           ],
@@ -351,8 +321,14 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
                     width: 54, height: 54,
                     child: FilledButton(
                       onPressed: _send,
-                      style: FilledButton.styleFrom(padding: EdgeInsets.zero, backgroundColor: gold, foregroundColor: ink, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
-                      child: const Icon(Icons.send_rounded),
+                      tooltip: _generating ? 'Arrêter la génération' : 'Envoyer',
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        backgroundColor: gold,
+                        foregroundColor: ink,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      ),
+                      child: Icon(_generating ? Icons.stop_rounded : Icons.send_rounded),
                     ),
                   ),
                 ],
