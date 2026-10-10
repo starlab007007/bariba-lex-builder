@@ -74,7 +74,7 @@ export function useLessonAudios(level: string, module: string, lessonId: number)
     enabled: !!user,
     staleTime: 60_000,
     queryFn: async (): Promise<ClasseAudioRow[]> => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('classe_content_audios')
         .select('*')
         .eq('level', level)
@@ -107,7 +107,7 @@ export function useModuleAudioCounts(level: string, module: string) {
       const rows: Row[] = [];
       const pageSize = 1000;
       for (let from = 0; ; from += pageSize) {
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('classe_content_audios')
           .select('content_key,lesson_id,status,is_current,version,storage_available')
           .eq('level', level)
@@ -156,7 +156,7 @@ export function useClasseAudioCoverage() {
       const keys = new Set<string>();
       const pageSize = 1000;
       for (let from = 0; ; from += pageSize) {
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('classe_content_audios')
           .select('content_key')
           .eq('status', 'approved')
@@ -186,7 +186,7 @@ export function useApprovedAudio(contentKey: string | undefined) {
     staleTime: 30 * 60_000,
     gcTime: 60 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('classe_content_audios')
         .select('id,storage_path,file_name,duration_seconds,content_text,storage_available,storage_checked_at,storage_error')
         .eq('content_key', contentKey!)
@@ -244,7 +244,7 @@ export function useUploadClasseAudio() {
         .upload(path, p.wavBlob, { contentType: 'audio/wav', upsert: false });
       if (upErr) throw upErr;
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('classe_content_audios')
         .insert({
           content_key: item.content_key,
@@ -293,7 +293,7 @@ export function useUpdateAudioStatus() {
         const { data: u } = await supabase.auth.getUser();
         patch.admin_id = u.user?.id ?? null;
       }
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('classe_content_audios')
         .update(patch)
         .eq('id', params.id)

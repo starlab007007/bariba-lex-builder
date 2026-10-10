@@ -32,7 +32,7 @@ export default function FitilaLearnScenes() {
   const { data = [], isLoading, error } = useQuery({
     queryKey: ['apprendre-web-scenes'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('apprendre_audio_items')
         .select('audio_key, text_ba, text_fr, pack, priority')
         .eq('in_content', true)

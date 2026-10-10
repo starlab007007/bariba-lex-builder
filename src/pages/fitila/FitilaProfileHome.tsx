@@ -54,7 +54,7 @@ export default function FitilaProfileHome() {
   useEffect(() => {
     let cancelled = false;
     if (!user) return;
-    void supabase
+    void (supabase as any)
       .from('profiles')
       .select('display_name, avatar_url, phone_number, location')
       .eq('user_id', user.id)
