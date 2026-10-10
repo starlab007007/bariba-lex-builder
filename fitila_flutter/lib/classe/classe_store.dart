@@ -226,7 +226,17 @@ class SupabaseClasseStore implements ClasseStore {
     final ext = contentType.contains('mp4') || contentType.contains('m4a') || contentType.contains('aac') ? 'm4a' : 'webm';
     // Le premier dossier doit être l'identifiant de l'utilisateur (politique de stockage).
     final path = '$uid/$subpath/${DateTime.now().millisecondsSinceEpoch}.$ext';
-    await _db.storage.from('classe-answers-audio').uploadBinary(path, bytes, fileOptions: FileOptions(contentType: contentType, upsert: true));
+    await _db.storage.from('classe-answers-audio').uploadBinary(
+      path,
+      bytes,
+      fileOptions: FileOptions(contentType: contentType, upsert: true),
+    );
+    try {
+      await _db.rpc('classe_mark_answer_audio_available', params: {'_path': path});
+    } catch (_) {
+      // The blob is already safely uploaded. ClasseAudio will probe it on first
+      // playback and can self-heal the health registry.
+    }
     return path;
   }
 
