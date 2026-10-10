@@ -27,7 +27,8 @@ export default function ListenButton({ contentKey, size = 'md', className, label
   const sz = size === 'sm' ? 'w-7 h-7' : size === 'lg' ? 'w-11 h-11' : 'w-9 h-9';
   const iconSz = size === 'sm' ? 'w-3.5 h-3.5' : size === 'lg' ? 'w-5 h-5' : 'w-4 h-4';
 
-  const available = !!data?.signed_url && !playbackFailed;
+  const storageBroken = data?.storage_available === false || data?.storage_broken === true;
+  const available = !!data?.signed_url && !storageBroken && !playbackFailed;
 
   const onClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -54,8 +55,8 @@ export default function ListenButton({ contentKey, size = 'md', className, label
       type="button"
       onClick={onClick}
       disabled={!available}
-      title={playbackFailed ? 'Audio à restaurer' : available ? 'Écouter' : 'Audio bientôt disponible'}
-      aria-label={playbackFailed ? 'Audio indisponible, restauration nécessaire' : available ? 'Écouter ce contenu' : 'Audio non disponible'}
+      title={storageBroken || playbackFailed ? 'Audio à restaurer' : available ? 'Écouter' : 'Audio bientôt disponible'}
+      aria-label={storageBroken || playbackFailed ? 'Audio indisponible, restauration nécessaire' : available ? 'Écouter ce contenu' : 'Audio non disponible'}
       className={cn(
         'inline-flex items-center justify-center rounded-full transition-colors shrink-0',
         sz,

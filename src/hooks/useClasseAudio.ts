@@ -57,6 +57,9 @@ export interface ClasseAudioRow {
   reviewed_at: string | null;
   version: number;
   is_current: boolean;
+  storage_available: boolean | null;
+  storage_checked_at: string | null;
+  storage_error: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -100,13 +103,13 @@ export function useModuleAudioCounts(level: string, module: string) {
     queryKey: ['classe-audio-module-counts', level, module],
     staleTime: 60_000,
     queryFn: async () => {
-      type Row = Pick<ClasseAudioRow, 'content_key' | 'lesson_id' | 'status' | 'is_current' | 'version'>;
+      type Row = Pick<ClasseAudioRow, 'content_key' | 'lesson_id' | 'status' | 'is_current' | 'version' | 'storage_available'>;
       const rows: Row[] = [];
       const pageSize = 1000;
       for (let from = 0; ; from += pageSize) {
         const { data, error } = await supabase
           .from('classe_content_audios')
-          .select('content_key,lesson_id,status,is_current,version')
+          .select('content_key,lesson_id,status,is_current,version,storage_available')
           .eq('level', level)
           .eq('module', module)
           .order('version', { ascending: false })
@@ -123,9 +126,9 @@ export function useModuleAudioCounts(level: string, module: string) {
         if (!existing) {
           perKey.set(row.content_key, {
             latest: row,
-            published: row.status === 'approved' && row.is_current,
+            published: row.status === 'approved' && row.is_current && row.storage_available === true,
           });
-        } else if (row.status === 'approved' && row.is_current) {
+        } else if (row.status === 'approved' && row.is_current && row.storage_available === true) {
           existing.published = true;
         }
       }
@@ -158,6 +161,7 @@ export function useClasseAudioCoverage() {
           .select('content_key')
           .eq('status', 'approved')
           .eq('is_current', true)
+          .eq('storage_available', true)
           .order('content_key')
           .range(from, from + pageSize - 1);
         if (error) throw error;
@@ -180,13 +184,16 @@ export function useApprovedAudio(contentKey: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('classe_content_audios')
-        .select('id,storage_path,file_name,duration_seconds,content_text')
+        .select('id,storage_path,file_name,duration_seconds,content_text,storage_available,storage_checked_at,storage_error')
         .eq('content_key', contentKey!)
         .eq('is_current', true)
         .eq('status', 'approved')
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
+      if (data.storage_available === false) {
+        return { ...data, signed_url: null, storage_broken: true };
+      }
       // Cache LRU mémoire pour éviter re-fetch entre leçons
       const cached = getCachedSignedUrl(data.storage_path);
       if (cached) return { ...data, signed_url: cached };
@@ -196,7 +203,7 @@ export function useApprovedAudio(contentKey: string | undefined) {
       if (sErr) throw sErr;
       const url = signed?.signedUrl ?? null;
       if (url) setCachedSignedUrl(data.storage_path, url);
-      return { ...data, signed_url: url };
+      return { ...data, signed_url: url, storage_broken: false };
     },
   });
 }
@@ -264,6 +271,9 @@ export function useUploadClasseAudio() {
           quality_score: p.qualityScore,
           teacher_id: user.id,
           status: p.status,
+          storage_available: true,
+          storage_checked_at: new Date().toISOString(),
+          storage_error: null,
         })
         .select('*')
         .single();

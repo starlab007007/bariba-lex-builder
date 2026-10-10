@@ -37,7 +37,7 @@ export default function VoiceReadingLessons() {
               <Icon className={`w-5 h-5 ${iconCls}`} />
               <div className="flex-1 min-w-0">
                 <div className="font-semibold truncate">L{l.lesson_id} · {l.title}</div>
-                <div className="text-xs text-muted-foreground">{approved}/{total} audios approuvés</div>
+                <div className="text-xs text-muted-foreground">{approved}/{total} voix disponibles</div>
               </div>
               <ChevronRight className="w-5 h-5 text-muted-foreground" />
             </button>

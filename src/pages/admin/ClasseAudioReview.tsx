@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useAdminAudioQueue, useUpdateAudioStatus, useGetSignedUrl, useClasseAudioCoverage, type ClasseAudioRow, type AudioStatus } from '@/hooks/useClasseAudio';
 import { MODULE_CATALOG, getAllContentItems } from '@/lib/classeContentKeys';
 import QualityBadge from '@/components/teacher/voice/QualityBadge';
-import { Loader2, CheckCircle2, XCircle, Volume2 } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Volume2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ClasseAudioReview() {
@@ -16,6 +16,10 @@ export default function ClasseAudioReview() {
   const [urls, setUrls] = useState<Record<string, string>>({});
 
   async function ensureUrl(row: ClasseAudioRow) {
+    if (row.storage_available === false) {
+      toast.error('Blob audio absent du Storage : restauration ou réenregistrement requis.');
+      return null;
+    }
     if (urls[row.id]) return urls[row.id];
     const u = await getSignedUrl(row.storage_path, 3600);
     setUrls(p => ({ ...p, [row.id]: u }));
@@ -119,8 +123,21 @@ export default function ClasseAudioReview() {
                   {row.duration_seconds != null && <span className="text-xs text-muted-foreground">{row.duration_seconds.toFixed(1)}s</span>}
                   <QualityBadge score={row.quality_score} />
                   <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-muted">{row.status}</span>
+                  {row.storage_available === false ? (
+                    <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 inline-flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" /> Blob absent
+                    </span>
+                  ) : row.storage_available === true ? (
+                    <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Storage OK</span>
+                  ) : (
+                    <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Non audité</span>
+                  )}
                 </div>
-                {urls[row.id] ? (
+                {row.storage_available === false ? (
+                  <div className="max-w-[260px] rounded border border-rose-200 bg-rose-50 px-2 py-1.5 text-[11px] text-rose-700">
+                    {row.storage_error || 'Fichier audio absent du Storage'}
+                  </div>
+                ) : urls[row.id] ? (
                   <audio src={urls[row.id]} controls className="h-8" />
                 ) : (
                   <button onClick={() => ensureUrl(row)} className="text-xs px-2 py-1 rounded border border-border hover:bg-muted inline-flex items-center gap-1">
