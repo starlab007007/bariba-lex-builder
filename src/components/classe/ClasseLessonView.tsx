@@ -237,11 +237,16 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
       <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
         {activeTab === 'text' && (
           <div className="space-y-4">
-            {lesson.imageUrl && (
-              <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
-                <img src={lesson.imageUrl} alt={lesson.title} className="w-full h-auto object-contain max-h-72" />
+            {(lesson.images?.length ? lesson.images : lesson.imageUrl ? [lesson.imageUrl] : []).map((src, imageIndex) => (
+              <div key={src} className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+                <img
+                  src={src}
+                  alt={`${lesson.title} — illustration ${imageIndex + 1}`}
+                  loading="lazy"
+                  className="w-full h-auto object-contain max-h-72"
+                />
               </div>
-            )}
+            ))}
             <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm">
               <div className="flex justify-end mb-2">
                 <ListenButton contentKey={`classe/N1/lang/${lessonId}/text`} size="md" />
