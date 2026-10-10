@@ -329,7 +329,10 @@ class _ClasseLessonViewState extends State<ClasseLessonView> {
   }
 
   List<Widget> _textTab() => [
-    if (_l.imageUrl.isNotEmpty) ...[ClasseImage(url: _l.imageUrl), const SizedBox(height: 12)],
+    for (final imageUrl in _l.imageUrls) ...[
+      ClasseImage(url: imageUrl),
+      const SizedBox(height: 12),
+    ],
     ClasseBox(
       padding: const EdgeInsets.all(16),
       child: Column(
