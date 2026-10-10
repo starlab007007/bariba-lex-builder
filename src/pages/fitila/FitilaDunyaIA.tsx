@@ -1,9 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BrainCircuit, Camera, Database, HardDriveDownload, Mic, Send, ShieldCheck, Sparkles, WifiOff } from 'lucide-react';
 import { useSideMenu } from './FitilaApp';
 import { SIG } from '@/components/fitila/signatureTheme';
 import apprendreData from '@/data/apprendre_v2.json';
 import scenesData from '@/data/scenes_v2.json';
+import {
+  appendMessages,
+  audit,
+  ensureDunyaFoundation,
+  loadMemories,
+  loadMessages,
+  saveMemory as saveLocalMemory,
+} from '@/lib/dunya/localStore';
 
 type DunyaMessage = {
   id: string;
@@ -18,18 +26,6 @@ type MemoryItem = {
   content: string;
   createdAt: number;
 };
-
-const MSG_KEY = 'fitila_dunya_messages_v1';
-const MEMORY_KEY = 'fitila_dunya_memories_v1';
-
-function readJson<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 function normalize(v: string) {
   return v
@@ -101,9 +97,31 @@ function localAnswer(query: string) {
 
 export default function FitilaDunyaIA() {
   const { open } = useSideMenu();
-  const [messages, setMessages] = useState<DunyaMessage[]>(() => readJson(MSG_KEY, []));
-  const [memories, setMemories] = useState<MemoryItem[]>(() => readJson(MEMORY_KEY, []));
+  const [messages, setMessages] = useState<DunyaMessage[]>([]);
+  const [memories, setMemories] = useState<MemoryItem[]>([]);
   const [value, setValue] = useState('');
+  const [loadingLocal, setLoadingLocal] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await ensureDunyaFoundation();
+        const [storedMessages, storedMemories] = await Promise.all([loadMessages(), loadMemories()]);
+        if (cancelled) return;
+        setMessages(storedMessages as DunyaMessage[]);
+        setMemories(storedMemories.map((content, index) => ({
+          id: `memory-${index}`,
+          content,
+          createdAt: Date.now() - index,
+        })));
+        await audit('dunya_opened', { offline: true, surface: 'web' });
+      } finally {
+        if (!cancelled) setLoadingLocal(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const status = useMemo(
     () => ({
@@ -114,12 +132,7 @@ export default function FitilaDunyaIA() {
     [],
   );
 
-  const persistMessages = (next: DunyaMessage[]) => {
-    setMessages(next);
-    localStorage.setItem(MSG_KEY, JSON.stringify(next));
-  };
-
-  const ask = () => {
+  const ask = async () => {
     const clean = value.trim();
     if (!clean) return;
     const user: DunyaMessage = { id: crypto.randomUUID(), role: 'user', content: clean, createdAt: Date.now() };
@@ -131,14 +144,23 @@ export default function FitilaDunyaIA() {
       sources: result.sources,
       createdAt: Date.now() + 1,
     };
-    persistMessages([...messages, user, assistant]);
+    const next = [...messages, user, assistant];
+    setMessages(next);
     setValue('');
+    await appendMessages([user, assistant]);
+    await audit('dunya_query', {
+      grounded: assistant.sources?.length ? true : false,
+      sourceCount: assistant.sources?.length ?? 0,
+      surface: 'web',
+    });
   };
 
-  const saveMemory = (content: string) => {
+  const saveMemory = async (content: string) => {
+    if (memories.some((m) => m.content === content)) return;
     const next = [{ id: crypto.randomUUID(), content, createdAt: Date.now() }, ...memories].slice(0, 100);
     setMemories(next);
-    localStorage.setItem(MEMORY_KEY, JSON.stringify(next));
+    await saveLocalMemory(content);
+    await audit('dunya_memory_saved', { source: 'assistant', surface: 'web' });
   };
 
   return (
@@ -162,7 +184,14 @@ export default function FitilaDunyaIA() {
       </header>
 
       <main className="flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:px-5">
-        {messages.length === 0 ? (
+        {loadingLocal ? (
+          <div className="grid h-full min-h-[280px] place-items-center">
+            <div className="text-center">
+              <div className="mx-auto h-9 w-9 animate-spin rounded-full border-2 border-[#C99530]/25 border-t-[#C99530]" />
+              <p className="mt-3 text-sm font-bold" style={{ color: SIG.muted }}>Préparation de DUNYA local…</p>
+            </div>
+          </div>
+        ) : messages.length === 0 ? (
           <div className="mx-auto max-w-3xl space-y-4">
             <section className="rounded-[28px] border p-5 shadow-sm" style={{ borderColor: SIG.hairline, background: SIG.surface }}>
               <div className="flex items-start gap-4">
