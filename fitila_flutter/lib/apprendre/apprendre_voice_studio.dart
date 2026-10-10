@@ -550,14 +550,11 @@ class _ApVoiceStudioScreenState extends State<ApVoiceStudioScreen> {
         children: [
           const Icon(Icons.record_voice_over_rounded, size: 48, color: ApColors.goldDeep),
           const SizedBox(height: 12),
-          Text('Bienvenue dans le Studio Voix', style: ApText.display.copyWith(fontSize: 24)),
-          const SizedBox(height: 8),
-          const Text(
-            'Ta voix servira de référence aux apprenants. Avant d’enregistrer, lis et signe l’accord d’utilisation de ta voix.',
-            style: ApText.body,
-          ),
-          const SizedBox(height: 18),
-          ApPrimaryButton(label: 'Lire et signer l’accord', icon: Icons.draw_rounded, onPressed: _signConsent),
+          Text('Studio Voix', style: ApText.display.copyWith(fontSize: 22)),
+          const SizedBox(height: 6),
+          const Text('Active ton rôle une seule fois, puis commence.', style: ApText.small),
+          const SizedBox(height: 14),
+          ApPrimaryButton(label: 'Activer et enregistrer', icon: Icons.mic_rounded, onPressed: _signConsent),
         ],
       );
     }
@@ -655,9 +652,9 @@ class _ApVoiceStudioScreenState extends State<ApVoiceStudioScreen> {
           const SizedBox(height: 10),
           Text(
             _recording
-                ? 'Enregistrement… dis le texte naturellement, puis arrête.'
+                ? 'Enregistrement…'
                 : _take == null
-                ? 'Silence, micro à 15-20 cm, puis appuie.'
+                ? 'Appuie puis lis le texte.'
                 : 'Réécoute avant d’envoyer.',
             textAlign: TextAlign.center,
             style: ApText.small.copyWith(color: ApColors.inkSoft),
@@ -842,12 +839,20 @@ class _ConsentScreenState extends State<_ConsentScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const ApTopBar(title: 'Accord voix', subtitle: 'À lire avant d’enregistrer'),
+            const ApTopBar(title: 'Accord voix', subtitle: 'Activation rapide'),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
                 children: [
-                  ApCardBox(child: Text(widget.text, style: ApText.body)),
+                  ApCardBox(
+                    child: ExpansionTile(
+                      tilePadding: EdgeInsets.zero,
+                      childrenPadding: const EdgeInsets.only(bottom: 8),
+                      title: const Text('Voix de référence FITILA', style: TextStyle(fontWeight: FontWeight.w800)),
+                      subtitle: const Text('Retrait possible à tout moment', style: TextStyle(fontSize: 12)),
+                      children: [Text(widget.text, style: ApText.small)],
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _name,

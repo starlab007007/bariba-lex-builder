@@ -78,7 +78,6 @@ class ClasseAudio {
         .like('content_key', '$prefix%')
         .eq('status', 'approved')
         .eq('is_current', true)
-        .eq('storage_available', true)
         .limit(5000);
     return {for (final r in rows) r['content_key'] as String: r['storage_path'] as String};
   }
@@ -89,7 +88,7 @@ class ClasseAudio {
     return b;
   }
 
-  /// Registre des audios validés ET physiquement disponibles d'un préfixe
+  /// Registre des audios validés d'un préfixe. La lecture signée confirme la disponibilité réelle
   /// (`classe/N1/lang/`), chargé une seule fois.
   Future<Map<String, String>> approvedFor(String prefix) => _approved.putIfAbsent(prefix, () async {
     try {
