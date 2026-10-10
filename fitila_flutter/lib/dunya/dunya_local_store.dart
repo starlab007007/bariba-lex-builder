@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:sqflite/sqflite.dart';
 
-import 'dunya_home.dart' show DunyaMessage, DunyaSource;
+import 'dunya_models.dart';
 
 class DunyaLocalStore {
   DunyaLocalStore._();
