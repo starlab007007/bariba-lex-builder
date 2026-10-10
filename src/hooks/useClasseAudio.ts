@@ -317,7 +317,7 @@ export function useDeleteAudio() {
   return useMutation({
     mutationFn: async (row: { id: string; storage_path: string; level: string; module: string; lesson_id: number; content_key: string }) => {
       await supabase.storage.from('classe-audio').remove([row.storage_path]).catch(() => {});
-      const { error } = await supabase.from('classe_content_audios').delete().eq('id', row.id);
+      const { error } = await (supabase as any).from('classe_content_audios').delete().eq('id', row.id);
       if (error) throw error;
       return row;
     },
@@ -336,7 +336,7 @@ export function useAdminAudioQueue(filter: { status?: AudioStatus; level?: strin
     queryKey: ['classe-audio-admin-queue', filter],
     staleTime: 30_000,
     queryFn: async () => {
-      let q = supabase.from('classe_content_audios').select('*').order('created_at', { ascending: false }).limit(500);
+      let q = (supabase as any).from('classe_content_audios').select('*').order('created_at', { ascending: false }).limit(500);
       if (filter.status) q = q.eq('status', filter.status);
       if (filter.level) q = q.eq('level', filter.level);
       if (filter.module) q = q.eq('module', filter.module);
