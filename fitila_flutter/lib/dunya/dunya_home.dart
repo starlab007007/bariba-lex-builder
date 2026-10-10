@@ -2,36 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-class DunyaSource {
-  const DunyaSource({required this.title, required this.text});
-  final String title;
-  final String text;
-}
-
-class DunyaMessage {
-  const DunyaMessage({required this.role, required this.content, this.sources = const []});
-  final String role;
-  final String content;
-  final List<DunyaSource> sources;
-
-  Map<String, dynamic> toJson() => {
-    'role': role,
-    'content': content,
-    'sources': [for (final s in sources) {'title': s.title, 'text': s.text}],
-  };
-
-  factory DunyaMessage.fromJson(Map<String, dynamic> json) => DunyaMessage(
-    role: (json['role'] ?? 'assistant').toString(),
-    content: (json['content'] ?? '').toString(),
-    sources: [
-      for (final raw in (json['sources'] as List? ?? const []))
-        if (raw is Map)
-          DunyaSource(title: (raw['title'] ?? 'FITILA').toString(), text: (raw['text'] ?? '').toString()),
-    ],
-  );
-}
+import 'dunya_local_store.dart';
+import 'dunya_models.dart';
 
 class DunyaOfflinePage extends StatefulWidget {
   const DunyaOfflinePage({super.key});
@@ -41,9 +13,7 @@ class DunyaOfflinePage extends StatefulWidget {
 }
 
 class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
-  static const _messagesKey = 'dunya_messages_v1';
-  static const _memoryKey = 'dunya_memories_v1';
-
+  final _store = DunyaLocalStore.instance;
   final _input = TextEditingController();
   final _scroll = ScrollController();
   List<DunyaMessage> _messages = [];
@@ -66,20 +36,14 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
   }
 
   Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
     try {
-      final raw = prefs.getString(_messagesKey);
-      if (raw != null) {
-        _messages = [
-          for (final item in (jsonDecode(raw) as List))
-            DunyaMessage.fromJson(Map<String, dynamic>.from(item as Map)),
-        ];
-      }
-    } catch (_) {}
-    try {
-      final raw = prefs.getString(_memoryKey);
-      if (raw != null) _memories = (jsonDecode(raw) as List).map((e) => e.toString()).toList();
-    } catch (_) {}
+      _messages = await _store.loadMessages();
+      _memories = await _store.loadMemories();
+      await _store.audit('dunya_opened', {'offline': true});
+    } catch (_) {
+      _messages = const [];
+      _memories = const [];
+    }
 
     try { _dictionary = await _loadDictionary(); } catch (_) { _dictionary = const []; }
     try { _learning = await _loadLearningKnowledge(); } catch (_) { _learning = const []; }
@@ -128,12 +92,6 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
       walk(decoded, asset.contains('scenes') ? 'DUNYA Apprendre · Scènes' : 'DUNYA Apprendre');
     }
     return result;
-  }
-
-  Future<void> _persist() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_messagesKey, jsonEncode([for (final m in _messages) m.toJson()]));
-    await prefs.setString(_memoryKey, jsonEncode(_memories));
   }
 
   static String _norm(String input) => input
@@ -196,7 +154,12 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
       _messages = [..._messages, user, assistant];
       _input.clear();
     });
-    await _persist();
+    await _store.appendMessage(user);
+    await _store.appendMessage(assistant);
+    await _store.audit('dunya_query', {
+      'source_count': assistant.sources.length,
+      'grounded': assistant.sources.isNotEmpty,
+    });
     await Future<void>.delayed(const Duration(milliseconds: 80));
     if (_scroll.hasClients) {
       await _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic);
@@ -206,7 +169,8 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
   Future<void> _saveMemory(String value) async {
     if (_memories.contains(value)) return;
     setState(() => _memories = [value, ..._memories].take(100).toList());
-    await _persist();
+    await _store.saveMemory(value);
+    await _store.audit('dunya_memory_saved', {'source': 'assistant'});
   }
 
   @override
