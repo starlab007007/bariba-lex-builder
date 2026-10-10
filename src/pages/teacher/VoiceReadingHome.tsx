@@ -21,7 +21,7 @@ function ModuleCard({ level, module, label, emoji }: { level: 'N1' | 'N2'; modul
       <div className="flex-1 min-w-0">
         <div className="font-bold text-base">{label}</div>
         <div className="text-xs text-muted-foreground">
-          {lessons.length} leçons · {approved}/{totalItems} approuvés{inProgress ? ` · ${inProgress} en cours` : ''}
+          {lessons.length} leçons · {approved}/{totalItems} voix disponibles{inProgress ? ` · ${inProgress} en cours` : ''}
         </div>
         <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
           <div className="h-full bg-amber-500 transition-all" style={{ width: `${pct}%` }} />
