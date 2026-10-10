@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart' as ap;
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 import '../core/fitila_backend.dart';
 
@@ -33,18 +34,25 @@ class AudioplayersBackend implements AudioBackend {
 }
 
 typedef AudioUrlResolver = Future<String?> Function(String bucket, String path);
+typedef StorageHealthResolver = Future<bool> Function(String bucket, String path);
 
 class ClasseAudio {
-  ClasseAudio({AudioBackend? backend, AudioUrlResolver? resolver, Future<Map<String, String>> Function(String prefix)? approvedLoader})
-    : _backendFactory = backend == null ? AudioplayersBackend.new : (() => backend),
-      _resolver = resolver ?? _defaultResolver,
-      _approvedLoader = approvedLoader ?? _defaultApproved;
+  ClasseAudio({
+    AudioBackend? backend,
+    AudioUrlResolver? resolver,
+    Future<Map<String, String>> Function(String prefix)? approvedLoader,
+    StorageHealthResolver? healthResolver,
+  }) : _backendFactory = backend == null ? AudioplayersBackend.new : (() => backend),
+       _resolver = resolver ?? _defaultResolver,
+       _approvedLoader = approvedLoader ?? _defaultApproved,
+       _healthResolver = healthResolver ?? _defaultStorageHealth;
 
   static final ClasseAudio instance = ClasseAudio();
 
   final AudioBackend Function() _backendFactory;
   final AudioUrlResolver _resolver;
   final Future<Map<String, String>> Function(String prefix) _approvedLoader;
+  final StorageHealthResolver _healthResolver;
   AudioBackend? _backend;
   StreamSubscription<void>? _sub;
 
@@ -59,12 +67,54 @@ class ClasseAudio {
 
   final Map<String, String> _urlCache = {};
   final Map<String, Future<Map<String, String>>> _approved = {};
+  final Map<String, Future<bool>> _storageHealth = {};
 
   static Future<String?> _defaultResolver(String bucket, String path) async {
     try {
       return await FitilaBackend.client.storage.from(bucket).createSignedUrl(path, 3600);
     } catch (_) {
       return null;
+    }
+  }
+
+  static Future<bool> _defaultStorageHealth(String bucket, String path) async {
+    if (bucket != 'classe-answers-audio') return true;
+    if (!FitilaBackend.configured) return false;
+    try {
+      final row = await FitilaBackend.client
+          .from('classe_answer_audio_health')
+          .select('available')
+          .eq('path', path)
+          .maybeSingle();
+
+      final known = row?['available'];
+      if (known == true) return true;
+      if (known == false) return false;
+
+      // A signed URL alone is not proof that the Storage blob still exists.
+      // Probe one byte before exposing the player.
+      final url = await FitilaBackend.client.storage
+          .from(bucket)
+          .createSignedUrl(path, 120);
+      final request = http.Request('GET', Uri.parse(url))
+        ..headers['Range'] = 'bytes=0-0';
+      final response = await http.Client().send(request);
+      final ok = response.statusCode >= 200 && response.statusCode < 300;
+      await response.stream.drain<void>();
+      if (ok) {
+        try {
+          await FitilaBackend.client.rpc(
+            'classe_mark_answer_audio_available',
+            params: {'_path': path},
+          );
+        } catch (_) {
+          // The current user may be allowed to listen to a teacher correction
+          // but not to mutate its health row. Playback is still safe after probe.
+        }
+      }
+      return ok;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -112,9 +162,29 @@ class ClasseAudio {
     return playStorage(contentKey, 'classe-audio', path);
   }
 
+  /// Vrai uniquement si un fichier privé de réponse/correction est
+  /// physiquement disponible. Les autres buckets sont inchangés.
+  Future<bool> storageAvailable(String bucket, String path) {
+    if (bucket != 'classe-answers-audio') return Future.value(true);
+    final key = '$bucket/$path';
+    return _storageHealth.putIfAbsent(key, () async {
+      final ok = await _healthResolver(bucket, path);
+      if (!ok) {
+        // A later rerecording normally gets a new path. Removing failures here
+        // still permits a manual retry after restoration of the exact path.
+        _storageHealth.remove(key);
+      }
+      return ok;
+    });
+  }
+
   /// Lit un fichier du stockage (réponse d'élève, correction d'enseignant…).
   Future<bool> playStorage(String id, String bucket, String path) async {
     error.value = null;
+    if (bucket == 'classe-answers-audio' && !await storageAvailable(bucket, path)) {
+      error.value = 'Audio indisponible ou à réenregistrer.';
+      return false;
+    }
     if (playing.value == id) {
       await stop();
       return true;
