@@ -53,6 +53,14 @@
     "fr": "ChatGPT Bariba",
     "ba": "Baatɔnun chatgpt"
   },
+  "sidebar_dunya_ia": {
+    "fr": "DUNYA IA",
+    "ba": "DUNYA IA"
+  },
+  "sidebar_dunya_ia_desc": {
+    "fr": "IA locale, mémoire privée, hors Internet",
+    "ba": "IA do yɔru, memwa do, Intɛrnɛti kaa"
+  },
   "sidebar_language": {
     "fr": "Langue",
     "ba": "Barum"
