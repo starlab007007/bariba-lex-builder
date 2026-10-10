@@ -1,4 +1,4 @@
-export type DunyaStoredSource = { title: string; ref?: string };
+export type DunyaStoredSource = { title: string; ref?: string; text?: string };
 export type DunyaStoredMessage = {
   id: string;
   role: 'user' | 'assistant';
