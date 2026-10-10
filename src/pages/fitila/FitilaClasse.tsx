@@ -338,7 +338,7 @@ export default function FitilaClasse() {
   const levelBadge = activeLevel === 'N2' ? '🚀 N2' : '🔥 N1';
 
   return (
-    <div className="h-full flex flex-col bg-[#F7F5EC] text-[#241F2E]">
+    <div className="h-full min-h-0 flex flex-col bg-[#F7F5EC] text-[#241F2E] overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 pl-[74px] md:pl-[18px] pr-[18px] pt-[14px] pb-2 min-h-[62px]">
         {section !== 'home' && (
@@ -355,9 +355,9 @@ export default function FitilaClasse() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-[18px] pb-4 pt-3">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain touch-pan-y scroll-smooth px-3 sm:px-[18px] pb-6 pt-2 [-webkit-overflow-scrolling:touch]">
         <AnimatePresence mode="wait">
-          <motion.div key={`${activeLevel}-${section}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
+          <motion.div key={`${activeLevel}-${section}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.16, ease: "easeOut" }} className="mx-auto w-full max-w-5xl">
             {section === 'home' && renderHome()}
             {section === 'lessons' && renderLessonList()}
             {section === 'lesson-detail' && (
