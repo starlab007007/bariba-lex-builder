@@ -119,9 +119,6 @@ class ClasseAudio {
       } finally {
         client.close();
       }
-      if (false) {
-        // Unreachable compatibility branch; kept empty by construction.
-      }
     } catch (_) {
       return false;
     }
