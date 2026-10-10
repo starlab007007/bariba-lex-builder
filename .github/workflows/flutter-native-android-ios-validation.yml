@@ -8,6 +8,7 @@ on:
       - release/fitila-v1.8.9-build20
       - release/fitila-v1.8.10-build21
       - release/fitila-v1.8.11-build22
+      - feat/build23-dunya-ia-v1-offline-20261010
     paths:
       - 'fitila_flutter/**'
       - '.github/workflows/flutter-native-android-ios-validation.yml'
@@ -17,6 +18,7 @@ on:
       - release/fitila-v1.8.9-build20
       - release/fitila-v1.8.10-build21
       - release/fitila-v1.8.11-build22
+      - feat/build23-dunya-ia-v1-offline-20261010
     paths:
       - 'fitila_flutter/**'
       - '.github/workflows/flutter-native-android-ios-validation.yml'
