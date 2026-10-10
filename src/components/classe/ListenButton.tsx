@@ -41,7 +41,7 @@ export default function ListenButton({ contentKey, size = 'md', className, label
     audioContextRef.current = null;
   }, []);
 
-  const sz = size === 'sm' ? 'w-7 h-7' : size === 'lg' ? 'w-11 h-11' : 'w-9 h-9';
+  const sz = size === 'sm' ? 'min-w-10 h-10 px-2' : size === 'lg' ? 'min-w-12 h-12 px-3' : 'min-w-11 h-11 px-2.5';
   const iconSz = size === 'sm' ? 'w-3.5 h-3.5' : size === 'lg' ? 'w-5 h-5' : 'w-4 h-4';
 
   const storageBroken = data?.storage_broken === true;
@@ -157,12 +157,13 @@ export default function ListenButton({ contentKey, size = 'md', className, label
       title={playbackFailed ? 'Lecture impossible — réessayer après actualisation' : storageBroken ? 'Audio à restaurer' : available ? 'Écouter' : 'Audio bientôt disponible'}
       aria-label={playing ? 'Arrêter la lecture' : playbackFailed ? 'Lecture audio impossible' : available ? 'Écouter ce contenu' : 'Audio non disponible'}
       className={cn(
-        'inline-flex items-center justify-center rounded-full transition-colors shrink-0',
+        'inline-flex items-center justify-center rounded-full transition-all shrink-0 touch-manipulation select-none shadow-sm active:scale-95',
         sz,
         available
           ? 'bg-amber-500/15 text-amber-700 hover:bg-amber-500/25 dark:text-amber-400'
           : 'bg-muted text-muted-foreground/50 cursor-not-allowed',
-        playing && 'ring-2 ring-amber-500 animate-pulse',
+        playing && 'ring-2 ring-amber-500 bg-amber-500/25',
+        playbackFailed && 'ring-2 ring-red-300 text-red-600',
         className,
       )}
     >
@@ -175,7 +176,7 @@ export default function ListenButton({ contentKey, size = 'md', className, label
       ) : (
         <VolumeX className={iconSz} />
       )}
-      {label && <span className="ml-1.5 text-xs font-semibold">{label}</span>}
+      {label && <span className="ml-1.5 text-xs font-extrabold whitespace-nowrap">{label}</span>}
     </button>
   );
 }
