@@ -1,9 +1,10 @@
 import type { LucideIcon } from 'lucide-react';
-import { Award, AudioLines, BookOpen, ClipboardList, Clapperboard, GraduationCap, Globe, Keyboard, Vault, Languages, Layers, Settings, Sparkles, User } from 'lucide-react';
+import { Award, AudioLines, BookOpen, ClipboardCheck, ClipboardList, Clapperboard, Edit3, GraduationCap, Globe, Keyboard, Mic2, ShieldCheck, Vault, Languages, Layers, Settings, Sparkles, User } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { SIG } from './signatureTheme';
+import { useFitilaRoles } from '@/hooks/useFitilaRoles';
 
 type Item = { label: string; path: string; icon: LucideIcon; desc?: string };
 
@@ -45,7 +46,16 @@ export default function FitilaNavPanel({ onNavigate, compact = false }: { onNavi
   const { pathname } = useLocation();
   const { currentLang, setLanguage } = useFitilaLanguage();
   const { user, isAdmin } = useAuth();
+  const access = useFitilaRoles();
   const go = (p: string) => (onNavigate ? onNavigate(p) : nav(p));
+
+  const habilitations: Item[] = [
+    ...(access.speaker ? [{ label: 'Enregistrer', path: '/learn/voice-studio', icon: Mic2 }] : []),
+    ...(access.reviewer ? [{ label: 'Valider', path: '/learn/voice-review', icon: ClipboardCheck }] : []),
+    ...(access.teacher ? [{ label: 'Enseigner', path: '/teacher', icon: Award }] : []),
+    ...(access.editor ? [{ label: 'Éditer', path: '/espace', icon: Edit3 }] : []),
+    ...(access.admin ? [{ label: 'Admin', path: '/admin', icon: ShieldCheck }] : []),
+  ];
 
   const row = ({ label, path, icon: Icon, desc }: Item) => {
     const active = isActive(pathname, path);
@@ -84,6 +94,8 @@ export default function FitilaNavPanel({ onNavigate, compact = false }: { onNavi
       <div className={`space-y-0.5 ${compact ? 'mt-5' : ''}`}>{EXPLORER.map(row)}</div>
       {!compact && <GroupTitle>Culture</GroupTitle>}
       <div className={`space-y-0.5 ${compact ? 'mt-3 border-t pt-3' : ''}`} style={compact ? { borderColor: SIG.hairline } : undefined}>{CULTURE.map(row)}</div>
+      {user && habilitations.length > 0 && !compact && <GroupTitle>Mes accès</GroupTitle>}
+      {user && habilitations.length > 0 && <div className={`space-y-0.5 ${compact ? 'mt-3 border-t pt-3' : ''}`} style={compact ? { borderColor: SIG.hairline } : undefined}>{habilitations.map(row)}</div>}
       {!compact && <GroupTitle>Compte</GroupTitle>}
       <div className={`space-y-0.5 ${compact ? 'mt-3 border-t pt-3' : ''}`} style={compact ? { borderColor: SIG.hairline } : undefined}>{COMPTE.map(row)}</div>
 

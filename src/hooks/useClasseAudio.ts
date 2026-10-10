@@ -191,18 +191,19 @@ export function useApprovedAudio(contentKey: string | undefined) {
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
-      if (data.storage_available === false) {
-        return { ...data, signed_url: null, storage_broken: true };
-      }
+      // storage_available is advisory metadata. A previous health audit can be stale
+      // after a blob is restored, so the signed URL is the source of truth at read time.
       // Cache LRU mémoire pour éviter re-fetch entre leçons
       const cached = getCachedSignedUrl(data.storage_path);
       if (cached) return { ...data, signed_url: cached };
       const { data: signed, error: sErr } = await supabase.storage
         .from('classe-audio')
         .createSignedUrl(data.storage_path, 60 * 60);
-      if (sErr) throw sErr;
-      const url = signed?.signedUrl ?? null;
-      if (url) setCachedSignedUrl(data.storage_path, url);
+      if (sErr || !signed?.signedUrl) {
+        return { ...data, signed_url: null, storage_broken: true };
+      }
+      const url = signed.signedUrl;
+      setCachedSignedUrl(data.storage_path, url);
       return { ...data, signed_url: url, storage_broken: false };
     },
   });
