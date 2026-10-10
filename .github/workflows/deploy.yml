@@ -119,6 +119,16 @@ jobs:
             fi
             mv dist.next dist
 
+            rollback() {
+              echo "❌ Déploiement invalide : restauration du dist précédent"
+              if [ -d dist.previous ]; then
+                rm -rf dist
+                mv dist.previous dist
+                docker compose -f docker-composer.yml up -d --force-recreate --remove-orphans --no-build || true
+              fi
+            }
+            trap rollback ERR
+
             echo "🚀 Redémarrage Nginx sans build Docker..."
             docker compose -f docker-composer.yml pull react-app-bariba || true
             docker compose -f docker-composer.yml up -d --force-recreate --remove-orphans --no-build
@@ -132,6 +142,7 @@ jobs:
             curl -fsS --max-time 10 http://127.0.0.1:8085/admin/apprendre-voice >/dev/null
             curl --resolve fitila.bj:443:127.0.0.1 -fsS --max-time 10 https://fitila.bj/classe >/dev/null
 
+            trap - ERR
             echo "✅ FITILA web actif depuis le bundle GitHub ${{ github.sha }}"
 
             echo "🧹 Nettoyage léger..."
