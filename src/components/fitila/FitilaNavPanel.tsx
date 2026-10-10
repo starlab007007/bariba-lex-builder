@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Award, AudioLines, BookOpen, ClipboardCheck, ClipboardList, Clapperboard, Edit3, GraduationCap, Globe, Keyboard, Mic2, ShieldCheck, Vault, Languages, Layers, Settings, Sparkles, User } from 'lucide-react';
+import { Award, AudioLines, BookOpen, BrainCircuit, ClipboardCheck, ClipboardList, Clapperboard, Edit3, GraduationCap, Globe, Keyboard, Mic2, ShieldCheck, Vault, Languages, Layers, Settings, Sparkles, User } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,6 +14,7 @@ const EXPLORER: Item[] = [
   { label: 'Dictionnaire', path: '/dictionary', icon: BookOpen },
   { label: 'Classe', path: '/classe', icon: ClipboardList },
   { label: 'IA', path: '/ia', icon: Sparkles },
+  { label: 'DUNYA IA', path: '/dunya', icon: BrainCircuit, desc: 'Intelligence locale · mémoire privée · hors Internet' },
   { label: 'Traducteur', path: '/translator', icon: Languages },
   { label: 'Apprendre', path: '/learn', icon: GraduationCap },
   { label: 'Créateur', path: '/creator', icon: Clapperboard },
