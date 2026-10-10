@@ -29,7 +29,22 @@ void main() {
     }
     expect(find.text('Mode conversation'), findsOneWidget);
     expect(find.textContaining('Détection'), findsOneWidget);
-    expect(find.text('Bienvenue !'), findsOneWidget);
+    expect(find.text('Traduisez simplement'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('keyboard keeps text composer visible and hides non-essential welcome content', (tester) async {
+    await pumpChat(tester, TranslatorPorts(translate: (t, b) async => t), width: 320);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 320);
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('text-composer')), findsOneWidget);
+    expect(find.byKey(const ValueKey('send')), findsOneWidget);
+    expect(find.text('Traduisez simplement'), findsNothing);
+    for (final l in ['Voix', 'Texte', 'Photo', 'Coller', 'Doc']) {
+      expect(find.text(l), findsOneWidget);
+    }
     expect(tester.takeException(), isNull);
   });
 
