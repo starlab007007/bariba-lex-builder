@@ -143,7 +143,7 @@ export default function FitilaProfileHome() {
                   className="flex min-h-[108px] flex-col items-start rounded-[18px] border border-[#E4DFCC] bg-white p-3 text-left shadow-sm active:scale-[0.98]"
                 >
                   <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#F3E3B9] text-[#9C6B1D]">
-                    <Icon className="h-4.5 w-4.5" />
+                    <Icon className="h-4 w-4" />
                   </div>
                   <p className="mt-2 text-sm font-black">{item.label}</p>
                   <p className="mt-auto text-xs font-extrabold text-[#9C6B1D]">{item.action}</p>
