@@ -4,6 +4,7 @@ import { useSideMenu } from './FitilaApp';
 import { SIG } from '@/components/fitila/signatureTheme';
 import apprendreData from '@/data/apprendre_v2.json';
 import scenesData from '@/data/scenes_v2.json';
+import dictionaryData from '@/assets/bariba_dictionary.json';
 import {
   appendMessages,
   audit,
@@ -17,7 +18,7 @@ type DunyaMessage = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  sources?: { title: string; ref?: string }[];
+  sources?: { title: string; ref?: string; text?: string }[];
   createdAt: number;
 };
 
@@ -60,6 +61,7 @@ function collectText(value: unknown, path = '', out: { text: string; title: stri
 }
 
 const LOCAL_KNOWLEDGE = [
+  ...collectText(dictionaryData, 'DUNYA Dictionnaire'),
   ...collectText(apprendreData, 'DUNYA Apprendre'),
   ...collectText(scenesData, 'DUNYA Apprendre · Scènes'),
 ];
@@ -83,7 +85,7 @@ function localAnswer(query: string) {
     return {
       content:
         "Je n’ai pas trouvé de source locale suffisamment pertinente dans les ressources FITILA embarquées. DUNYA reste hors ligne et préfère ne pas inventer une réponse sans source.",
-      sources: [] as { title: string; ref?: string }[],
+      sources: [] as { title: string; ref?: string; text?: string }[],
     };
   }
 
@@ -91,7 +93,7 @@ function localAnswer(query: string) {
   const excerpt = lead.text.length > 520 ? `${lead.text.slice(0, 520)}…` : lead.text;
   return {
     content: `Voici ce que je trouve dans les ressources locales FITILA :\n\n${excerpt}`,
-    sources: ranked.map(({ title, ref }) => ({ title, ref })),
+    sources: ranked.map(({ title, ref, text }) => ({ title, ref, text })),
   };
 }
 
@@ -101,6 +103,7 @@ export default function FitilaDunyaIA() {
   const [memories, setMemories] = useState<MemoryItem[]>([]);
   const [value, setValue] = useState('');
   const [loadingLocal, setLoadingLocal] = useState(true);
+  const [selectedSource, setSelectedSource] = useState<{ title: string; ref?: string; text?: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -235,7 +238,7 @@ export default function FitilaDunyaIA() {
               <div className="rounded-2xl border bg-white p-4" style={{ borderColor: SIG.hairline }}>
                 <Database className="h-5 w-5" style={{ color: SIG.goldDeep }} />
                 <div className="mt-2 text-sm font-black">Savoirs FITILA</div>
-                <div className="text-xs" style={{ color: SIG.muted }}>Apprendre · scènes · mémoire locale</div>
+                <div className="text-xs" style={{ color: SIG.muted }}>Dictionnaire · Apprendre · scènes</div>
               </div>
             </section>
           </div>
@@ -251,9 +254,15 @@ export default function FitilaDunyaIA() {
                 {m.role === 'assistant' && (
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     {m.sources?.map((s, i) => (
-                      <span key={i} className="rounded-full border px-2.5 py-1 text-[10px] font-bold" style={{ borderColor: SIG.hairline, color: SIG.goldDeep }}>
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setSelectedSource(s)}
+                        className="rounded-full border px-2.5 py-1 text-[10px] font-bold"
+                        style={{ borderColor: SIG.hairline, color: SIG.goldDeep, background: '#F7F2E5' }}
+                      >
                         {s.title}{s.ref ? ` · ${s.ref}` : ''}
-                      </span>
+                      </button>
                     ))}
                     <button onClick={() => saveMemory(m.content)} className="rounded-full px-2.5 py-1 text-[10px] font-black" style={{ background: SIG.surfaceAlt, color: SIG.goldDeep }}>
                       Mémoriser
@@ -265,6 +274,34 @@ export default function FitilaDunyaIA() {
           </div>
         )}
       </main>
+
+      {selectedSource && (
+        <div
+          className="fixed inset-0 z-[140] grid place-items-end bg-black/35 p-3 sm:place-items-center"
+          onClick={() => setSelectedSource(null)}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Source DUNYA"
+            className="max-h-[72vh] w-full max-w-2xl overflow-y-auto rounded-[24px] border bg-[#FDFCF7] p-5 shadow-2xl"
+            style={{ borderColor: SIG.hairline }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-[11px] font-black uppercase tracking-wide" style={{ color: SIG.goldDeep }}>Source locale FITILA</div>
+                <h3 className="mt-1 text-lg font-black">{selectedSource.title}</h3>
+              </div>
+              <button type="button" onClick={() => setSelectedSource(null)} className="h-10 w-10 rounded-full border bg-white text-lg" style={{ borderColor: SIG.hairline }}>×</button>
+            </div>
+            <p className="mt-4 whitespace-pre-wrap text-[15px] leading-7" style={{ color: SIG.inkSoft }}>
+              {selectedSource.text || 'Le contenu détaillé de cette source n’est pas disponible dans cet historique.'}
+            </p>
+            {selectedSource.ref && <p className="mt-3 text-xs font-bold" style={{ color: SIG.goldDeep }}>Référence : {selectedSource.ref}</p>}
+          </section>
+        </div>
+      )}
 
       <footer className="shrink-0 border-t bg-[#F7F5EC]/95 px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 backdrop-blur sm:px-5" style={{ borderColor: SIG.hairline }}>
         <div className="mx-auto flex max-w-3xl items-end gap-2">
