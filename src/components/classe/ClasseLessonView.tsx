@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Check, X, Star, Eye } from 'lucide-react';
 import BaribaSmartTextarea from './BaribaSmartTextarea';
@@ -23,6 +23,7 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
   const [feedback, setFeedback] = useState<Record<string, 'correct' | 'wrong'>>({});
   const [showCorrection, setShowCorrection] = useState<Record<string, boolean>>({});
   const [sectionScores, setSectionScores] = useState<Record<string, { correct: number; total: number }>>({});
+  const contentTopRef = useRef<HTMLDivElement | null>(null);
 
   if (!lesson) return <p className="text-gray-400">Leçon introuvable</p>;
 
@@ -45,8 +46,7 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
     const idx = visibleTabs.findIndex(t => t.id === activeTab);
     if (idx >= 0 && idx < visibleTabs.length - 1) {
       setActiveTab(visibleTabs[idx + 1].id);
-      // Scroll to top of tab content for clarity
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      requestAnimationFrame(() => contentTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
       return true;
     }
     return false;
@@ -186,9 +186,9 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="relative space-y-3 pb-24 sm:space-y-4 sm:pb-6">
       {/* Lesson header */}
-      <div className="p-4 rounded-3xl bg-gradient-to-br from-amber-100 to-orange-100 border border-amber-200 shadow-md">
+      <div className="p-3 sm:p-4 rounded-[22px] bg-gradient-to-br from-[#FFF7DA] to-[#FBE7C8] border border-[#E7C66E] shadow-sm">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full bg-amber-200 text-amber-800 text-xs font-bold">
@@ -203,14 +203,14 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
             ))}
           </div>
         </div>
-        <h2 className="text-gray-800 font-black text-xl">{lesson.title}</h2>
+        <h2 className="text-[#241F2E] font-black text-lg sm:text-xl leading-snug">{lesson.title}</h2>
         {lesson.phonetics && (
           <p className="text-amber-700/70 text-sm mt-1">{lesson.phonetics.label}</p>
         )}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+      <div ref={contentTopRef} className="sticky top-0 z-20 -mx-1 flex gap-1.5 overflow-x-auto px-1 py-1.5 bg-[#F7F5EC]/95 backdrop-blur supports-[backdrop-filter]:bg-[#F7F5EC]/85 scrollbar-none">
         {tabs.filter(t => t.show).map(tab => {
           const tabKey = `lesson_${lessonId}_${tab.id}`;
           const isDone = progress.tabsCompleted[tabKey];
@@ -218,7 +218,7 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all relative ${
+              className={`min-h-[42px] flex items-center gap-1.5 px-3 py-2 rounded-[14px] text-xs font-extrabold whitespace-nowrap transition-all relative touch-manipulation ${
                 activeTab === tab.id
                   ? 'bg-amber-500 text-white shadow-md shadow-amber-200'
                   : isDone
@@ -234,7 +234,7 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
       </div>
 
       {/* Tab content */}
-      <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+      <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3 sm:space-y-4"
         {activeTab === 'text' && (
           <div className="space-y-4">
             {(lesson.images?.length ? lesson.images : lesson.imageUrl ? [lesson.imageUrl] : []).map((src, imageIndex) => (
@@ -247,25 +247,26 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
                 />
               </div>
             ))}
-            <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-sm">
-              <div className="flex justify-end mb-2">
-                <ListenButton contentKey={`classe/N1/lang/${lessonId}/text`} size="md" />
+            <div className="p-4 sm:p-5 rounded-[22px] bg-white border border-[#E4DFCC] shadow-sm">
+              <div className="flex items-center justify-between gap-3 mb-3"><span className="text-[11px] font-black uppercase tracking-[0.12em] text-[#9C6B1D]">Lecture</span>
+                <ListenButton contentKey={`classe/N1/lang/${lessonId}/text`} size="lg" label={currentLang === 'ba' ? 'Faagi' : 'Écouter'} />
               </div>
-              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{lesson.text}</p>
+              <p className="text-[#2F2A35] text-[16px] sm:text-[17px] leading-[1.75] whitespace-pre-line break-words">{lesson.text}</p>
             </div>
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                markTabComplete(lessonId, 'text');
-                if (!goToNextTab()) {
-                  // No more tabs — finish lesson
-                  handleComplete();
-                }
-              }}
-              className="w-full py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-bold shadow-md"
-            >
-              <Check className="w-4 h-4 inline mr-1" /> {currentLang === 'ba' ? 'Na faagi' : 'J\'ai lu'}
-            </motion.button>
+            <div className="flex justify-end">
+              <motion.button
+                whileTap={{ scale: 0.92 }}
+                onClick={() => {
+                  markTabComplete(lessonId, 'text');
+                  if (!goToNextTab()) handleComplete();
+                }}
+                aria-label={currentLang === 'ba' ? 'Valider cette lecture' : 'Valider la lecture'}
+                title={currentLang === 'ba' ? 'Valider' : 'Lecture terminée'}
+                className="h-12 w-12 rounded-full bg-[#3F6E52] text-white shadow-md shadow-emerald-900/10 grid place-items-center touch-manipulation"
+              >
+                <Check className="w-6 h-6" strokeWidth={3} />
+              </motion.button>
+            </div>
           </div>
         )}
 
@@ -348,12 +349,12 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
       </motion.div>
 
       {/* Navigation */}
-      <div className="flex gap-3 pt-4 border-t border-gray-200">
+      <div className="sticky bottom-0 z-30 -mx-2 flex gap-2 border-t border-[#E4DFCC] bg-[#F7F5EC]/96 px-2 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] backdrop-blur">
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={onPrev}
           disabled={lessonId <= 1}
-          className="flex items-center gap-1 px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-600 text-sm font-medium disabled:opacity-30 shadow-sm"
+          className="min-h-[48px] flex items-center gap-1 px-3 sm:px-4 py-3 rounded-[16px] bg-white border border-[#DCD5C2] text-[#5F594C] text-sm font-bold disabled:opacity-30 shadow-sm touch-manipulation"
         >
           <ChevronLeft className="w-4 h-4" /> {currentLang === 'ba' ? 'Yeni' : 'Précédent'}
         </motion.button>
@@ -366,7 +367,7 @@ export default function ClasseLessonView({ lessonId, onNext, onPrev }: Props) {
               handleComplete();
             }
           }}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold shadow-lg shadow-amber-200"
+          className="min-h-[48px] flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-[16px] bg-[#241F2E] text-white text-sm font-extrabold shadow-lg shadow-black/10 touch-manipulation"
         >
           <Check className="w-4 h-4" />
           {visibleTabs.findIndex(t => t.id === activeTab) < visibleTabs.length - 1
