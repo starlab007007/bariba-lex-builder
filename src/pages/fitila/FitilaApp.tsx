@@ -67,6 +67,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
     { emoji: '🌍', labelKey: 'sidebar_translator', descKey: 'sidebar_translator_desc', path: '/translator', gradient: 'from-blue-500 to-cyan-400' },
     { emoji: '📚', labelKey: 'sidebar_learn',      descKey: 'sidebar_learn_desc',      path: '/',      gradient: 'from-amber-500 to-orange-400' },
     { emoji: '🤖', labelKey: 'sidebar_fitila_ia',  descKey: 'sidebar_fitila_ia_desc',  path: '/ia',         gradient: 'from-purple-500 to-indigo-400' },
+    { emoji: '🧠', labelKey: 'sidebar_dunya_ia', descKey: 'sidebar_dunya_ia_desc', path: '/dunya', gradient: 'from-amber-600 to-stone-700' },
   ];
 
   const handleNavigate = (path: string) => {
