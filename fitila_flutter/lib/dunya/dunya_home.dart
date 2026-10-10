@@ -140,6 +140,63 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
     }
   }
 
+  Future<void> _showSource(DunyaSource source) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFFFDFCF7),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            18,
+            4,
+            18,
+            MediaQuery.viewPaddingOf(context).bottom + 20,
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * .72,
+            ),
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                Text(
+                  source.title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF241F2E),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  source.text,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    height: 1.55,
+                    color: Color(0xFF4A4454),
+                  ),
+                ),
+                if (source.ref != null && source.ref!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Référence : ${source.ref}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF9C6B1D),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _saveMemory(String value) async {
     if (_memories.contains(value)) return;
     setState(() => _memories = [value, ..._memories].take(100).toList());
@@ -234,9 +291,23 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
                             const SizedBox(height: 12),
                             Row(
                               children: [
-                                Expanded(child: _status(Icons.security_rounded, '100 % local', 'Aucune API requise', sage)),
+                                Expanded(
+                                  child: _status(
+                                    Icons.memory_rounded,
+                                    'DUNYA Fallback',
+                                    _generating ? 'Génération locale…' : 'Prêt à répondre',
+                                    sage,
+                                  ),
+                                ),
                                 const SizedBox(width: 8),
-                                Expanded(child: _status(Icons.menu_book_rounded, 'Savoirs FITILA', '${_knowledge.dictionaryCount} mots locaux', goldDeep)),
+                                Expanded(
+                                  child: _status(
+                                    Icons.menu_book_rounded,
+                                    'Savoirs FITILA',
+                                    '${_knowledge.dictionaryCount} mots locaux',
+                                    goldDeep,
+                                  ),
+                                ),
                               ],
                             ),
                           ],
@@ -271,10 +342,19 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
                                           spacing: 6, runSpacing: 6,
                                           children: [
                                             for (final source in m.sources)
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                                                decoration: BoxDecoration(color: Color(0xFFF7F2E5), borderRadius: BorderRadius.circular(999)),
-                                                child: Text(source.title, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: goldDeep)),
+                                              ActionChip(
+                                                onPressed: () => _showSource(source),
+                                                backgroundColor: const Color(0xFFF7F2E5),
+                                                side: BorderSide.none,
+                                                visualDensity: VisualDensity.compact,
+                                                label: Text(
+                                                  source.title,
+                                                  style: const TextStyle(
+                                                    fontSize: 10.5,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: goldDeep,
+                                                  ),
+                                                ),
                                               ),
                                             TextButton.icon(
                                               onPressed: () => _saveMemory(m.content),
