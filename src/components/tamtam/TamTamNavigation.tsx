@@ -11,7 +11,7 @@ import { Volume2, Loader2 } from 'lucide-react';
 import { useVoiceMenu } from '@/hooks/useVoiceMenu';
 
 const navItems = [
-  { icon: '🏠', path: '/social', id: 'home', labelKey: 'home' },
+  { icon: '🏠', path: '/learn', id: 'home', labelKey: 'home' },
   { icon: '👤', path: '/profile', id: 'profile', labelKey: 'profile' },
 ];
 
