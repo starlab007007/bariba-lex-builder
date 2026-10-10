@@ -49,7 +49,7 @@ const SideMenuDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
   const { profile } = useTamTamProfile();
 
   const navItems = [
-    { icon: Home, labelKey: 'sidebar_home', path: '/social', emoji: '🏠' },
+    { icon: Home, labelKey: 'sidebar_home', path: '/learn', emoji: '🏠' },
     { icon: User, labelKey: 'sidebar_profile', path: '/profile', emoji: '👤' },
   ];
 
