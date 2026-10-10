@@ -99,6 +99,8 @@ try {
   const webTextarea = fs.readFileSync(path.join(root, 'src/components/classe/BaribaSmartTextarea.tsx'), 'utf8');
   const answerKeys = fs.readFileSync(path.join(root, 'src/lib/answerKeys.ts'), 'utf8');
   if (!webInput.includes("'ə'") || !webTextarea.includes("'ə'")) fail('Web Bàátɔ̀nú keyboard lost schwa ə');
+  if (!webInput.includes('keyboardUppercase') || !webTextarea.includes('keyboardUppercase')) fail('Web Bàátɔ̀nú keyboard lost uppercase mode');
+  if (!webInput.includes('toUpperCase()') || !webTextarea.includes('toUpperCase()')) fail('Web Bàátɔ̀nú uppercase composition is missing');
   if (!webInput.includes('\\p{L}') || !webTextarea.includes('\\p{L}')) fail('Web input is no longer Unicode-letter aware');
   if (!answerKeys.includes('ƴə\\s')) fail('Web answer matching no longer preserves schwa ə');
 
