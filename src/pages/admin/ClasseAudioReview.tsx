@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useAdminAudioQueue, useUpdateAudioStatus, useGetSignedUrl, useClasseAudioCoverage, type ClasseAudioRow, type AudioStatus } from '@/hooks/useClasseAudio';
 import { MODULE_CATALOG, getAllContentItems } from '@/lib/classeContentKeys';
 import QualityBadge from '@/components/teacher/voice/QualityBadge';
-import { Loader2, CheckCircle2, XCircle, Volume2, AlertTriangle } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Volume2, AlertTriangle, CheckCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ClasseAudioReview() {
@@ -14,6 +15,7 @@ export default function ClasseAudioReview() {
   const update = useUpdateAudioStatus();
   const getSignedUrl = useGetSignedUrl();
   const [urls, setUrls] = useState<Record<string, string>>({});
+  const [bulkPublishing, setBulkPublishing] = useState(false);
 
   async function ensureUrl(row: ClasseAudioRow) {
     if (row.storage_available === false) {
@@ -30,6 +32,29 @@ export default function ClasseAudioReview() {
     try { await update.mutateAsync({ id: row.id, status: 'approved' }); toast.success('Audio approuvé'); refetch(); }
     catch (e: any) { toast.error(e?.message ?? 'Erreur'); }
   }
+  async function bulkApprovePlayable() {
+    setBulkPublishing(true);
+    try {
+      const { data: result, error } = await (supabase.rpc as any)('classe_audio_bulk_approve_playable');
+      if (error) throw error;
+      const approved = Number(result?.approved ?? 0);
+      const skipped = Number(result?.skipped_unplayable ?? 0);
+      if (approved > 0) {
+        toast.success(`${approved} audio${approved > 1 ? 's' : ''} approuvé${approved > 1 ? 's' : ''} et publié${approved > 1 ? 's' : ''}.`);
+      } else {
+        toast.info('Aucun audio soumis et physiquement valide à publier.');
+      }
+      if (skipped > 0) {
+        toast.warning(`${skipped} soumission${skipped > 1 ? 's' : ''} ignorée${skipped > 1 ? 's' : ''} : fichier Storage absent ou non vérifié.`);
+      }
+      await refetch();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Publication automatique impossible');
+    } finally {
+      setBulkPublishing(false);
+    }
+  }
+
   async function reject(row: ClasseAudioRow) {
     const note = prompt('Motif du rejet (visible par l\'enseignant) :');
     if (note == null) return;
@@ -81,6 +106,16 @@ export default function ClasseAudioReview() {
             <option value="">Tous</option>
             {moduleOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
+        </div>
+        <div className="ml-auto">
+          <button
+            onClick={bulkApprovePlayable}
+            disabled={bulkPublishing}
+            className="min-h-10 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-extrabold hover:bg-emerald-700 disabled:opacity-60 inline-flex items-center gap-2 shadow-sm"
+          >
+            {bulkPublishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCheck className="w-4 h-4" />}
+            Approuver & publier les audios valides
+          </button>
         </div>
       </div>
 
@@ -145,12 +180,24 @@ export default function ClasseAudioReview() {
                   </button>
                 )}
                 <div className="flex gap-2">
-                  <button onClick={() => approve(row)} disabled={update.isPending} className="text-xs px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 inline-flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> Approuver
-                  </button>
-                  <button onClick={() => reject(row)} disabled={update.isPending} className="text-xs px-2 py-1 rounded bg-rose-600 text-white hover:bg-rose-700 inline-flex items-center gap-1">
-                    <XCircle className="w-3 h-3" /> Rejeter
-                  </button>
+                  {row.status === 'submitted' && row.storage_available === true ? (
+                    <>
+                      <button onClick={() => approve(row)} disabled={update.isPending} className="text-xs px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 inline-flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Approuver
+                      </button>
+                      <button onClick={() => reject(row)} disabled={update.isPending} className="text-xs px-2 py-1 rounded bg-rose-600 text-white hover:bg-rose-700 inline-flex items-center gap-1">
+                        <XCircle className="w-3 h-3" /> Rejeter
+                      </button>
+                    </>
+                  ) : row.status === 'approved' && row.storage_available === true ? (
+                    <span className="text-xs px-2.5 py-1.5 rounded-full bg-emerald-100 text-emerald-700 font-bold inline-flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Publié
+                    </span>
+                  ) : row.storage_available === false ? (
+                    <span className="text-xs px-2.5 py-1.5 rounded-full bg-rose-100 text-rose-700 font-bold inline-flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5" /> À réenregistrer
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </li>
