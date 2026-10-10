@@ -153,7 +153,9 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
       final combined = _norm('$word $definition');
       var score = combined.contains(clean) && clean.isNotEmpty ? 12 : 0;
       for (final term in terms) {
-        if (combined.contains(term)) score += 2;
+        if (combined.contains(term)) {
+          score += 2;
+        }
       }
       if (score > 0) {
         sources.add((score: score, source: DunyaSource(title: 'Dictionnaire FITILA · $word', text: '$word — $definition')));
@@ -305,7 +307,7 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
                           controller: _scroll,
                           padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
                           itemCount: _messages.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 9),
+                          separatorBuilder: (_, _) => const SizedBox(height: 9),
                           itemBuilder: (_, index) {
                             final m = _messages[index];
                             final user = m.role == 'user';
