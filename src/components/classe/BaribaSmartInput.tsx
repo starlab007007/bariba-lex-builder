@@ -16,7 +16,7 @@ const BARIBA_CHARS = [
   'ã', 'ẽ', 'ĩ', 'õ', 'ũ', 'ɔ̃', 'ɛ̃',
   'ɔ̀', 'ɔ́', 'ɛ̀', 'ɛ́',
   'à', 'á', 'è', 'é', 'ë', 'ì', 'í', 'ò', 'ó', 'ô', 'ù', 'ú', 'ü',
-  'ā', 'ē', 'ǹ', 'Ɔ', 'Ɛ', 'Ŋ', 'Ə',
+  'ā', 'ē', 'ǹ',
 ];
 
 interface Props {
@@ -30,6 +30,7 @@ interface Props {
 export default function BaribaSmartInput({ value, onChange, placeholder, className = '', disabled }: Props) {
   const { getSuggestions } = usePhoneticSuggestions();
   const [showKeyboard, setShowKeyboard] = useState(false);
+  const [keyboardUppercase, setKeyboardUppercase] = useState(false);
   const [showCanvas, setShowCanvas] = useState(false);
   const [suggestions, setSuggestions] = useState<PhoneticEntry[]>([]);
   const [hwCandidates, setHwCandidates] = useState<string[]>([]);
@@ -189,15 +190,29 @@ export default function BaribaSmartInput({ value, onChange, placeholder, classNa
             className="mt-1.5 p-2 rounded-xl bg-white border border-gray-200 shadow-md">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-gray-400 text-[10px] font-bold uppercase">Baatonum</span>
-              <button type="button" onClick={() => setShowKeyboard(false)} className="text-gray-400"><X className="w-3 h-3" /></button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  aria-label={keyboardUppercase ? 'Minuscules Bàátɔ̀nú' : 'Majuscules Bàátɔ̀nú'}
+                  title={keyboardUppercase ? 'Minuscules' : 'Majuscules'}
+                  onClick={() => setKeyboardUppercase(v => !v)}
+                  className={`px-2 h-7 rounded-md border text-xs font-black transition-colors ${keyboardUppercase ? 'bg-amber-500 border-amber-500 text-white' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-amber-50'}`}
+                >
+                  ⇧
+                </button>
+                <button type="button" onClick={() => setShowKeyboard(false)} className="text-gray-400"><X className="w-3 h-3" /></button>
+              </div>
             </div>
             <div className="flex gap-1 flex-wrap">
-              {BARIBA_CHARS.map(c => (
-                <button key={c} type="button" onClick={() => insertAtCursor(c)}
-                  className="w-9 h-9 rounded-lg bg-gray-50 border border-gray-200 text-gray-800 text-sm font-bold hover:bg-amber-50 hover:border-amber-300">
-                  {c}
-                </button>
-              ))}
+              {BARIBA_CHARS.map(c => {
+                const rendered = keyboardUppercase ? c.toUpperCase() : c;
+                return (
+                  <button key={c} type="button" onClick={() => insertAtCursor(rendered)}
+                    className="w-9 h-9 rounded-lg bg-gray-50 border border-gray-200 text-gray-800 text-sm font-bold hover:bg-amber-50 hover:border-amber-300">
+                    {rendered}
+                  </button>
+                );
+              })}
             </div>
           </motion.div>
         )}
