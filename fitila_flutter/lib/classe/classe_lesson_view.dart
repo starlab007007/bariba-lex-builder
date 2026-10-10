@@ -44,6 +44,7 @@ class _ClasseLessonViewState extends State<ClasseLessonView> {
   String? _loadError;
   final Map<String, ({bool ok, bool checked})> _writing = {};
   final Map<int, TextEditingController> _writeCtrls = {};
+  final ScrollController _contentScroll = ScrollController();
 
   WebClasseLesson get _l => widget.lesson;
   ClasseSession get _s => widget.session;
@@ -80,6 +81,7 @@ class _ClasseLessonViewState extends State<ClasseLessonView> {
     for (final c in _writeCtrls.values) {
       c.dispose();
     }
+    _contentScroll.dispose();
     super.dispose();
   }
 
@@ -118,6 +120,15 @@ class _ClasseLessonViewState extends State<ClasseLessonView> {
 
   List<String> get _activeTabIds => [for (final t in lessonTabs(_l)) t.id];
 
+  void _selectTab(String id) {
+    setState(() => _tab = id);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_contentScroll.hasClients) {
+        _contentScroll.animateTo(0, duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic);
+      }
+    });
+  }
+
   void _onSaved(String tab, StudentAnswer saved) {
     setState(() => _answers = {..._answers, saved.slot: saved});
     final qs = _questions(tab);
@@ -131,7 +142,7 @@ class _ClasseLessonViewState extends State<ClasseLessonView> {
     final tabs = lessonTabs(_l);
     final idx = tabs.indexWhere((t) => t.id == _tab);
     if (idx < tabs.length - 1) {
-      setState(() => _tab = tabs[idx + 1].id);
+      _selectTab(tabs[idx + 1].id);
       return;
     }
     _s.completeLesson(_l.level, _l.id);
@@ -159,29 +170,50 @@ class _ClasseLessonViewState extends State<ClasseLessonView> {
         final header = _hero(stars, done);
         final content = _loading
             ? const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
-            : ListView(
-                key: ValueKey('lesson-content-$_tab'),
-                padding: const EdgeInsets.only(bottom: 16),
-                children: [
-                  if (_loadError != null) _banner(_loadError!),
-                  if (_s.syncError != null) _banner(_s.syncError!),
-                  ..._tabContent(),
-                ],
+            : Scrollbar(
+                controller: _contentScroll,
+                thumbVisibility: false,
+                child: ListView(
+                  controller: _contentScroll,
+                  key: ValueKey('lesson-content-$_tab'),
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                  padding: const EdgeInsets.fromLTRB(2, 2, 2, 88),
+                  children: [
+                    if (_loadError != null) _banner(_loadError!),
+                    if (_s.syncError != null) _banner(_s.syncError!),
+                    ..._tabContent(),
+                  ],
+                ),
               );
-        final nav = Row(
-          children: [
-            OutlinedButton.icon(onPressed: prev == null ? null : () => widget.onOpen(prev), icon: const Icon(Icons.chevron_left_rounded), label: const Text('Précédent')),
-            const SizedBox(width: 8),
-            Expanded(
-              child: FilledButton.icon(
-                key: const ValueKey('lesson-next'),
-                onPressed: _next,
-                icon: const Icon(Icons.check_rounded),
-                label: Text(tabs.last.id == _tab ? 'Terminer la leçon' : 'Suivant'),
-                style: FilledButton.styleFrom(backgroundColor: SignatureTheme.gold, foregroundColor: const Color(0xFF2B2110)),
+        final nav = SafeArea(
+          top: false,
+          minimum: const EdgeInsets.only(top: 6),
+          child: Row(
+            children: [
+              SizedBox(
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: prev == null ? null : () => widget.onOpen(prev),
+                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 14)),
+                  child: const Icon(Icons.chevron_left_rounded),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: FilledButton.icon(
+                    key: const ValueKey('lesson-next'),
+                    onPressed: _next,
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                    label: Text(tabs.last.id == _tab ? 'Terminer' : 'Suivant'),
+                    style: FilledButton.styleFrom(backgroundColor: SignatureTheme.ink, foregroundColor: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
         final body = wide
             ? Row(
@@ -204,7 +236,7 @@ class _ClasseLessonViewState extends State<ClasseLessonView> {
                   header,
                   const SizedBox(height: 10),
                   SizedBox(
-                    height: 44,
+                    height: 48,
                     child: ListView.separated(
                       key: const ValueKey('classe-lesson-tabs'),
                       scrollDirection: Axis.horizontal,
@@ -217,7 +249,7 @@ class _ClasseLessonViewState extends State<ClasseLessonView> {
                           selected: t.id == _tab,
                           label: Text('${t.emoji} ${t.label}${tabDone ? ' ✓' : ''}'),
                           selectedColor: levelTint(_l.level),
-                          onSelected: (_) => setState(() => _tab = t.id),
+                          onSelected: (_) => _selectTab(t.id),
                         );
                       },
                     ),
@@ -261,7 +293,7 @@ class _ClasseLessonViewState extends State<ClasseLessonView> {
         leading: Text(t.emoji, style: const TextStyle(fontSize: 18)),
         title: Text(t.label, style: TextStyle(fontWeight: selected ? FontWeight.w800 : FontWeight.w600)),
         trailing: progress.tabDone(_l.id, t.id) ? const Icon(Icons.check_circle_rounded, size: 18, color: SignatureTheme.sage) : null,
-        onTap: () => setState(() => _tab = t.id),
+        onTap: () => _selectTab(t.id),
       ),
     );
   }
@@ -270,7 +302,7 @@ class _ClasseLessonViewState extends State<ClasseLessonView> {
     final n2 = _l.level == 'N2';
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: n2 ? const [Color(0xFFE5E1FA), Color(0xFFD9D0F7)] : const [Color(0xFFFFF1C7), Color(0xFFFFE4B8)]),
         borderRadius: BorderRadius.circular(22),
@@ -297,7 +329,7 @@ class _ClasseLessonViewState extends State<ClasseLessonView> {
           const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(child: Text(_l.title, style: const TextStyle(color: SignatureTheme.ink, fontSize: 20, fontWeight: FontWeight.w900))),
+              Expanded(child: Text(_l.title, style: const TextStyle(color: SignatureTheme.ink, fontSize: 18, fontWeight: FontWeight.w900))),
               ClasseListenButton(contentKey: ClasseKeys.lesson(_l.level, _l.id, 'title'), audio: _s.audio, size: 36),
             ],
           ),
@@ -338,22 +370,39 @@ class _ClasseLessonViewState extends State<ClasseLessonView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Align(alignment: Alignment.centerRight, child: ClasseListenButton(contentKey: ClasseKeys.lesson(_l.level, _l.id, 'text'), audio: _s.audio, label: 'Écouter le texte', size: 38)),
-          const SizedBox(height: 6),
-          SelectableText(_l.text, key: const ValueKey('lesson-text'), style: const TextStyle(color: SignatureTheme.inkSoft, fontSize: 16, height: 1.6)),
+          Row(
+            children: [
+              const Text('Lecture', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.1, color: SignatureTheme.goldDeep)),
+              const Spacer(),
+              ClasseListenButton(contentKey: ClasseKeys.lesson(_l.level, _l.id, 'text'), audio: _s.audio, label: 'Écouter', size: 42),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SelectableText(_l.text, key: const ValueKey('lesson-text'), style: const TextStyle(color: SignatureTheme.ink, fontSize: 17, height: 1.72)),
         ],
       ),
     ),
     const SizedBox(height: 12),
-    FilledButton.icon(
-      key: const ValueKey('lesson-read'),
-      style: FilledButton.styleFrom(backgroundColor: SignatureTheme.sage, foregroundColor: Colors.white),
-      onPressed: () {
-        _s.markTab(_l.level, _l.id, 'text', _activeTabIds);
-        _next();
-      },
-      icon: const Icon(Icons.check_rounded),
-      label: const Text('J’ai lu'),
+    Align(
+      alignment: Alignment.centerRight,
+      child: Semantics(
+        button: true,
+        label: 'Valider la lecture',
+        child: IconButton.filled(
+          key: const ValueKey('lesson-read'),
+          tooltip: 'Lecture terminée',
+          onPressed: () {
+            _s.markTab(_l.level, _l.id, 'text', _activeTabIds);
+            _next();
+          },
+          style: IconButton.styleFrom(
+            backgroundColor: SignatureTheme.sage,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(50, 50),
+          ),
+          icon: const Icon(Icons.check_rounded, size: 26),
+        ),
+      ),
     ),
   ];
 
