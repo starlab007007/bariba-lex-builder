@@ -36,7 +36,6 @@ const FitilaLearn = lazy(() => import("./pages/fitila/FitilaLearn"));
 const FitilaLearnProgress = lazy(() => import("./pages/fitila/FitilaLearnProgress"));
 const FitilaLearnTheme = lazy(() => import("./pages/fitila/FitilaLearnTheme"));
 const FitilaClasse = lazy(() => import("./pages/fitila/FitilaClasse"));
-const FitilaIA = lazy(() => import("./pages/fitila/FitilaIA"));
 const FitilaTemIA = lazy(() => import("./pages/fitila/FitilaTemIA"));
 const FitilaVoiceLab = lazy(() => import("./pages/fitila/FitilaVoiceLab"));
 const FitilaApprendreVoiceStudio = lazy(() => import("./pages/fitila/FitilaApprendreVoiceStudio"));
@@ -124,7 +123,7 @@ const App = () => (
 
                   <Route path="dictionary/*" element={<TamTamDictionary />} />
                   <Route path="translator/*" element={<TamTamTranslator />} />
-                  <Route path="ia" element={<FitilaIA />} />
+                  <Route path="ia" element={<FitilaTemIA />} />
                   <Route path="tem-ia" element={<FitilaTemIA />} />
                   <Route path="voice-lab" element={<FitilaVoiceLab />} />
 
