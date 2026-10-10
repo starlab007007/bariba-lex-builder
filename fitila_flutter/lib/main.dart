@@ -50,6 +50,7 @@ import 'classe/classe_widgets.dart' show ClasseStoragePlayer;
 import 'espace/espace_home.dart';
 import 'keyboard/bariba_input.dart';
 import 'dictionary/dictionary_experience.dart';
+import 'dunya/dunya_home.dart';
 import 'translator/translator_chat.dart';
 import 'ui/offline_banner.dart';
 import 'ui/premium_widgets.dart';
@@ -849,6 +850,7 @@ enum FitilaPage {
   dictionary,
   translator,
   ia,
+  dunya,
   temIa,
   learn,
   classe,
@@ -885,6 +887,7 @@ extension FitilaPageMeta on FitilaPage {
       FitilaPage.dictionary => 'Dictionnaire',
       FitilaPage.translator => 'Traducteur',
       FitilaPage.ia => 'IA',
+      FitilaPage.dunya => 'DUNYA IA',
       FitilaPage.temIa => 'Tem-IA',
       FitilaPage.learn => 'Apprendre',
       FitilaPage.classe => 'Classe',
@@ -921,6 +924,7 @@ extension FitilaPageMeta on FitilaPage {
       FitilaPage.dictionary => 'Recherche Bariba-Français avec détails',
       FitilaPage.translator => 'Traduction IA bidirectionnelle',
       FitilaPage.ia => 'Assistant conversationnel Fitila',
+      FitilaPage.dunya => 'IA locale, mémoire privée et savoirs hors Internet',
       FitilaPage.temIa => 'Assistant foncier avec sources citees',
       FitilaPage.learn => 'Cours guidés et parcours culture',
       FitilaPage.classe => 'Niveaux, exercices, notes et corrections',
@@ -957,6 +961,7 @@ extension FitilaPageMeta on FitilaPage {
       FitilaPage.dictionary => Icons.menu_book_rounded,
       FitilaPage.translator => Icons.translate_rounded,
       FitilaPage.ia => Icons.auto_awesome_rounded,
+      FitilaPage.dunya => Icons.psychology_rounded,
       FitilaPage.temIa => Icons.gavel_rounded,
       FitilaPage.learn => Icons.school_rounded,
       FitilaPage.classe => Icons.assignment_rounded,
@@ -1326,6 +1331,7 @@ class _FitilaShellState extends State<FitilaShell>
         accessToken: widget.session.accessToken,
       ),
       FitilaPage.ia => const AiScreen(),
+      FitilaPage.dunya => const DunyaOfflinePage(),
       FitilaPage.temIa => const TemIaScreen(),
       FitilaPage.learn => ApprendreHubScreen(
   links: [
@@ -1425,6 +1431,7 @@ class _FitilaShellState extends State<FitilaShell>
                                                 FitilaPage.classe,
                                                 FitilaPage.learn,
                                                 FitilaPage.ia,
+                                                FitilaPage.dunya,
                                                 FitilaPage.temIa,
                                               }.contains(page))
                                       ? KeyedSubtree(
@@ -1478,6 +1485,7 @@ class _NavigationPanel extends StatelessWidget {
     FitilaPage.dictionary,
     FitilaPage.classe,
     FitilaPage.ia,
+    FitilaPage.dunya,
     FitilaPage.translator,
     FitilaPage.learn,
     FitilaPage.creator,
