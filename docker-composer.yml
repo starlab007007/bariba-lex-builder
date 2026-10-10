@@ -1,14 +1,11 @@
 services:
   react-app-bariba:
-    build:
-      context: .
-      args:
-        VITE_BUILD_SHA: ${VITE_BUILD_SHA:-dev}
-        VITE_BUILD_TIME: ${VITE_BUILD_TIME:-unknown}
-        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
-        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+    image: nginx:alpine
     container_name: react-app-bariba-js
     restart: always
+    volumes:
+      - ./dist:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.react-app-bariba.rule=Host(`fitila.bj`)"
@@ -16,13 +13,10 @@ services:
       - "traefik.http.routers.react-app-bariba.tls.certresolver=myresolver"
       - "traefik.http.services.react-app-bariba.loadbalancer.server.port=80"
       - "traefik.port=80"
-
-
     ports:
       - 8085:80
     networks:
       - web
-
 
 networks:
   web:
