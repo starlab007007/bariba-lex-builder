@@ -1309,6 +1309,9 @@ export type Database = {
           section_key: string | null
           status: string
           storage_path: string
+          storage_available: boolean | null
+          storage_checked_at: string | null
+          storage_error: string | null
           teacher_id: string
           updated_at: string
           version: number
@@ -1336,6 +1339,9 @@ export type Database = {
           section_key?: string | null
           status?: string
           storage_path: string
+          storage_available?: boolean | null
+          storage_checked_at?: string | null
+          storage_error?: string | null
           teacher_id: string
           updated_at?: string
           version?: number
@@ -1363,6 +1369,9 @@ export type Database = {
           section_key?: string | null
           status?: string
           storage_path?: string
+          storage_available?: boolean | null
+          storage_checked_at?: string | null
+          storage_error?: string | null
           teacher_id?: string
           updated_at?: string
           version?: number
