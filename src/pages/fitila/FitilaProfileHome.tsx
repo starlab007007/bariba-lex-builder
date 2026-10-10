@@ -208,6 +208,7 @@ export default function FitilaProfileHome() {
   }
 
   const primary = capabilities[0];
+  const PrimaryIcon = primary?.icon ?? BookOpen;
 
   return (
     <div className="min-h-full bg-[#F7F5EC] text-[#241F2E]">
@@ -249,7 +250,7 @@ export default function FitilaProfileHome() {
             className="mt-4 flex w-full items-center gap-4 rounded-[24px] bg-[#241F2E] p-5 text-left text-white shadow-lg transition active:scale-[0.99]"
           >
             <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#E0A03C] text-[#241F2E]">
-              <primary.icon className="h-6 w-6" />
+              <PrimaryIcon className="h-6 w-6" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex items-center gap-2">
