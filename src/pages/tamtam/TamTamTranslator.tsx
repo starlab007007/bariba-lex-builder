@@ -76,12 +76,29 @@ export default function TamTamTranslator() {
   const [baribaTranscribedText, setBaribaTranscribedText] = useState<string>('');
   const [voicePanelSuccess, setVoicePanelSuccess] = useState(false);
   const [voicePanelError, setVoicePanelError] = useState('');
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
 
   useEffect(()=>{
     const history=location.pathname.includes('/history');
     setShowHistory(history);
     if (location.pathname.endsWith('/conversation')) setConversationMode(true);
   },[location.pathname]);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const covered = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKeyboardOpen(covered > 120);
+    };
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, []);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -401,12 +418,12 @@ export default function TamTamTranslator() {
   );
 
   return (
-    <div className="mx-auto h-full w-full max-w-[960px] bg-[#F7F5EC] text-[#241F2E] flex flex-col overflow-hidden">
-      <FitilaPageHeader title="Traducteur IA" subtitle="Voix, texte, photo, presse-papiers et documents." />
+    <div className="mx-auto h-full min-h-0 w-full max-w-[960px] bg-[#F7F5EC] text-[#241F2E] flex flex-col overflow-hidden">
+      {!keyboardOpen && <FitilaPageHeader title="Traducteur" subtitle="Français ⇄ Bàátɔ̀nú" />}
 
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* Sub-header with language toggle */}
-        <div className="mx-[18px] mt-3 px-4 py-3 rounded-[24px] border border-[#E4DFCC] bg-white">
+        <div className={keyboardOpen ? "mx-2 mt-1 px-2.5 py-2 rounded-[18px] border border-[#E4DFCC] bg-white shrink-0" : "mx-3 sm:mx-[18px] mt-2 px-3 sm:px-4 py-2.5 rounded-[22px] border border-[#E4DFCC] bg-white shrink-0"}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <OfflineIndicator />
@@ -448,7 +465,7 @@ export default function TamTamTranslator() {
           </div>
 
           {/* Settings toggles */}
-          <div className="flex items-center gap-4 mt-2 text-xs">
+          {!keyboardOpen && <div className="flex items-center gap-3 mt-2 text-xs">
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input
                 type="checkbox"
@@ -457,7 +474,7 @@ export default function TamTamTranslator() {
                 className="w-3.5 h-3.5 rounded accent-[#C99530]"
               />
               <Sparkles className="w-3 h-3 text-[#3F6E52]" />
-              <span className="text-[#8C8571]">Détection auto</span>
+              <span className="text-[#8C8571]">Auto</span>
             </label>
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input
@@ -467,43 +484,29 @@ export default function TamTamTranslator() {
                 className="w-3.5 h-3.5 rounded accent-[#C99530]"
               />
               <MessageSquare className="w-3 h-3 text-[#9C6B1D]" />
-              <span className="text-[#8C8571]">Mode conversation</span>
+              <span className="text-[#8C8571]">Conversation</span>
             </label>
-          </div>
+          </div>}
         </div>
 
         {/* Chat Messages Area */}
-        <div className="flex-1 overflow-y-auto px-[18px] py-4 space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-[18px] py-2 sm:py-3 space-y-3">
           {/* Welcome message */}
-          {messages.length === 0 && !translator.isProcessing && (
+          {messages.length === 0 && !translator.isProcessing && !keyboardOpen && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-center py-8"
+              className="text-center py-3 sm:py-5"
             >
               <motion.div
                 animate={{ scale: [1, 1.1, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
-                className="mx-auto mb-4 flex h-[80px] w-[80px] items-center justify-center rounded-full bg-[#F3E3B9] text-[#9C6B1D]"
+                className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#F3E3B9] text-[#9C6B1D]"
               >
-                <Globe className="h-9 w-9" />
+                <Globe className="h-5 w-5" />
               </motion.div>
-              <h2 className="text-[22px] font-extrabold text-[#241F2E] mb-2">
-                Bienvenue !
-              </h2>
-              <p className="text-[#8C8571] mb-3">
-                Je traduis entre Français et Bàátɔ̀nú
-              </p>
-              <div className="flex flex-wrap justify-center gap-2 mb-4">
-                <span className="px-3 py-2 bg-white text-[#241F2E] rounded-full text-[12px] font-bold flex items-center gap-1.5 border border-[#E4DFCC]">
-                  <Sparkles className="w-3.5 h-3.5 text-[#C99530]" />
-                  Détection automatique
-                </span>
-                <span className="px-3 py-2 bg-white text-[#241F2E] rounded-full text-[12px] font-bold flex items-center gap-1.5 border border-[#E4DFCC]">
-                  <MessageSquare className="w-3.5 h-3.5 text-[#C99530]" />
-                  Mode conversation
-                </span>
-              </div>
+              <h2 className="text-lg font-black text-[#241F2E] mb-1">Traduisez simplement</h2>
+              <p className="text-[#8C8571] text-sm">Français ⇄ Bàátɔ̀nú · détection automatique</p>
 
             </motion.div>
           )}
@@ -633,9 +636,9 @@ export default function TamTamTranslator() {
         </AnimatePresence>
 
         {/* Input Area */}
-        <div className="flex-shrink-0 px-[18px] py-3 bg-[#F7F5EC] z-50" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+        <div className={keyboardOpen ? "flex-shrink-0 px-2 pt-1.5 pb-1 bg-[#F7F5EC] z-50 border-t border-[#E4DFCC]/70" : "flex-shrink-0 px-3 sm:px-[18px] py-2.5 bg-[#F7F5EC] z-50 border-t border-[#E4DFCC]/70"} style={{ paddingBottom: keyboardOpen ? '4px' : 'max(10px, env(safe-area-inset-bottom))' }}>
           {/* Clear button */}
-          {messages.length > 0 && (
+          {messages.length > 0 && !keyboardOpen && (
             <div className="flex justify-center mb-2">
               <Button
                 variant="ghost"
@@ -648,25 +651,6 @@ export default function TamTamTranslator() {
               </Button>
             </div>
           )}
-
-          {/* Mode selector */}
-          <div className="flex justify-center gap-2 mb-3">
-            {inputModes.map((mode) => (
-              <motion.button
-                key={mode.id}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => handleModeChange(mode.id)}
-                className={`w-[52px] h-[56px] rounded-[16px] flex flex-col items-center justify-center gap-0.5 transition-all ${
-                  translator.currentMode === mode.id
-                    ? 'bg-[#4B6BDF] text-white shadow-[0_6px_0_-2px_rgba(75,107,223,.35)]'
-                    : 'bg-white text-[#8C8571] hover:bg-[#F1EDDF] border border-[#E4DFCC]'
-                }`}
-              >
-                {mode.icon}
-                <span className="text-[10px] font-extrabold">{mode.label}</span>
-              </motion.button>
-            ))}
-          </div>
 
           {/* Dynamic input based on mode */}
           <AnimatePresence mode="wait">
@@ -724,9 +708,14 @@ export default function TamTamTranslator() {
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Tapez dans n'importe quelle langue..."
-                    className="flex-1 min-h-[50px] max-h-[100px] text-base rounded-[18px] border border-[#E4DFCC] bg-white text-[#241F2E] placeholder:text-[#8C8571] focus:border-[#C99530] resize-none"
-                    rows={1}
+                    onFocus={() => setKeyboardOpen(true)}
+                    onBlur={() => window.setTimeout(() => {
+                      const vv = window.visualViewport;
+                      if (!vv || window.innerHeight - vv.height - vv.offsetTop < 120) setKeyboardOpen(false);
+                    }, 120)}
+                    placeholder={translator.sourceLanguage === 'bariba' ? 'Écrivez en Bàátɔ̀nú…' : 'Écrivez en français…'}
+                    className="flex-1 min-h-[54px] max-h-[120px] text-[16px] rounded-[18px] border border-[#D8D1BE] bg-white text-[#241F2E] placeholder:text-[#9A927F] focus:border-[#C99530] focus:ring-2 focus:ring-[#C99530]/15 resize-none shadow-sm"
+                    rows={keyboardOpen ? 2 : 1}
                   />
                   <Button
                     onClick={handleTextSubmit}
@@ -803,6 +792,24 @@ export default function TamTamTranslator() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          <div className={"mt-2 flex items-center gap-1.5 overflow-x-auto scrollbar-none " + (keyboardOpen ? "justify-start" : "justify-center")}>
+            {inputModes.map((mode) => (
+              <motion.button
+                key={mode.id}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => handleModeChange(mode.id)}
+                className={(keyboardOpen ? "h-10 min-w-[54px] px-2 " : "h-12 min-w-[58px] px-2.5 ") + "rounded-[14px] flex items-center justify-center gap-1.5 transition-all shrink-0 " + (
+                  translator.currentMode === mode.id
+                    ? 'bg-[#4B6BDF] text-white shadow-sm'
+                    : 'bg-white text-[#716B5F] border border-[#E4DFCC]'
+                )}
+              >
+                {mode.icon}
+                <span className="text-[10px] font-extrabold">{mode.label}</span>
+              </motion.button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
