@@ -167,15 +167,7 @@ class ClasseAudio {
   Future<bool> storageAvailable(String bucket, String path) {
     if (bucket != 'classe-answers-audio') return Future.value(true);
     final key = '$bucket/$path';
-    return _storageHealth.putIfAbsent(key, () async {
-      final ok = await _healthResolver(bucket, path);
-      if (!ok) {
-        // A later rerecording normally gets a new path. Removing failures here
-        // still permits a manual retry after restoration of the exact path.
-        _storageHealth.remove(key);
-      }
-      return ok;
-    });
+    return _storageHealth.putIfAbsent(key, () => _healthResolver(bucket, path));
   }
 
   /// Lit un fichier du stockage (réponse d'élève, correction d'enseignant…).
