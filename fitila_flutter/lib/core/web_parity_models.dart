@@ -12,6 +12,7 @@ class WebClasseLesson {
     required this.themeLabel,
     required this.text,
     required this.imageUrl,
+    required this.imageUrls,
     required this.observe,
     required this.ecoute,
     required this.reagis,
@@ -29,6 +30,8 @@ class WebClasseLesson {
   final String themeLabel;
   final String text;
   final String imageUrl;
+  /// All pedagogical figures. [imageUrl] remains the backward-compatible primary image.
+  final List<String> imageUrls;
   final List<String> observe;
   final List<String> ecoute;
   final List<String> reagis;
@@ -58,6 +61,11 @@ class WebClasseLesson {
         .firstWhere((line) => line.isNotEmpty, orElse: () => 'Leçon');
     final title = explicitTitle.isNotEmpty ? explicitTitle : fallbackTitle;
     final explicitThemeLabel = json['themeLabel']?.toString().trim() ?? '';
+    final imageUrl = json['imageUrl']?.toString().trim() ?? '';
+    final imageUrls = strings(json['images']).where((url) => url.trim().isNotEmpty).toList(growable: false);
+    final resolvedImages = imageUrls.isNotEmpty
+        ? imageUrls
+        : (imageUrl.isNotEmpty ? <String>[imageUrl] : const <String>[]);
 
     return WebClasseLesson(
       level: json['level']?.toString() ?? 'N1',
@@ -67,7 +75,8 @@ class WebClasseLesson {
       theme: json['theme']?.toString() ?? '',
       themeLabel: explicitThemeLabel.isNotEmpty ? explicitThemeLabel : title,
       text: text,
-      imageUrl: json['imageUrl']?.toString() ?? '',
+      imageUrl: imageUrl,
+      imageUrls: resolvedImages,
       observe: strings(sections['observe']),
       ecoute: strings(sections['ecoute']),
       reagis: strings(sections['reagis']),
