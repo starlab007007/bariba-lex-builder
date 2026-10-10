@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { Loader2, Mic, Send, Square, Trash2 } from 'lucide-react';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+
+const db = supabase as unknown as SupabaseClient;
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { SoundWaveAnimation } from '@/components/voice/SoundWaveAnimation';
@@ -119,6 +122,13 @@ function VoiceAnswerRecorderInner({ storageSubpath, fullPath, onUploaded, varian
         .from('classe-answers-audio')
         .upload(path, blob, { contentType, upsert: true });
       if (error) throw error;
+
+      const { error: healthError } = await db.rpc('classe_mark_answer_audio_available', { _path: path });
+      if (healthError) {
+        // Do not lose a successfully uploaded recording because the health marker failed.
+        // The player can self-heal by probing the signed URL later.
+        console.warn('[VoiceAnswerRecorder] health marker failed', healthError);
+      }
 
       await onUploaded(path, recorder.duration);
       recorder.cancelRecording();
