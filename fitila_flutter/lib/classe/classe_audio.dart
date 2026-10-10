@@ -10,7 +10,7 @@ import '../core/fitila_backend.dart';
 ///
 /// Le moteur de lecture est injectable ([AudioBackend]) pour les tests.
 abstract class AudioBackend {
-  Future<void> play(String url);
+  Future<void> play(Uint8List bytes);
   Future<void> stop();
   Stream<void> get onComplete;
   Future<void> dispose();
@@ -20,7 +20,12 @@ class AudioplayersBackend implements AudioBackend {
   final ap.AudioPlayer _player = ap.AudioPlayer();
 
   @override
-  Future<void> play(String url) => _player.play(ap.UrlSource(url));
+  Future<void> play(Uint8List bytes) async {
+    if (bytes.length < 44) {
+      throw StateError('Fichier audio vide ou tronqué');
+    }
+    await _player.play(ap.BytesSource(bytes, mimeType: 'audio/wav'));
+  }
 
   @override
   Future<void> stop() => _player.stop();
@@ -32,10 +37,10 @@ class AudioplayersBackend implements AudioBackend {
   Future<void> dispose() => _player.dispose();
 }
 
-typedef AudioUrlResolver = Future<String?> Function(String bucket, String path);
+typedef AudioBytesResolver = Future<Uint8List?> Function(String bucket, String path);
 
 class ClasseAudio {
-  ClasseAudio({AudioBackend? backend, AudioUrlResolver? resolver, Future<Map<String, String>> Function(String prefix)? approvedLoader})
+  ClasseAudio({AudioBackend? backend, AudioBytesResolver? resolver, Future<Map<String, String>> Function(String prefix)? approvedLoader})
     : _backendFactory = backend == null ? AudioplayersBackend.new : (() => backend),
       _resolver = resolver ?? _defaultResolver,
       _approvedLoader = approvedLoader ?? _defaultApproved;
@@ -43,7 +48,7 @@ class ClasseAudio {
   static final ClasseAudio instance = ClasseAudio();
 
   final AudioBackend Function() _backendFactory;
-  final AudioUrlResolver _resolver;
+  final AudioBytesResolver _resolver;
   final Future<Map<String, String>> Function(String prefix) _approvedLoader;
   AudioBackend? _backend;
   StreamSubscription<void>? _sub;
@@ -57,12 +62,12 @@ class ClasseAudio {
   /// Dernière erreur (message affichable) ; remise à null à chaque lecture.
   final ValueNotifier<String?> error = ValueNotifier(null);
 
-  final Map<String, String> _urlCache = {};
+  final Map<String, Uint8List> _bytesCache = {};
   final Map<String, Future<Map<String, String>>> _approved = {};
 
-  static Future<String?> _defaultResolver(String bucket, String path) async {
+  static Future<Uint8List?> _defaultResolver(String bucket, String path) async {
     try {
-      return await FitilaBackend.client.storage.from(bucket).createSignedUrl(path, 3600);
+      return await FitilaBackend.client.storage.from(bucket).download(path);
     } catch (_) {
       return null;
     }
@@ -78,6 +83,7 @@ class ClasseAudio {
         .like('content_key', '$prefix%')
         .eq('status', 'approved')
         .eq('is_current', true)
+        .eq('storage_available', true)
         .limit(5000);
     return {for (final r in rows) r['content_key'] as String: r['storage_path'] as String};
   }
@@ -88,7 +94,7 @@ class ClasseAudio {
     return b;
   }
 
-  /// Registre des audios validés d'un préfixe. La lecture signée confirme la disponibilité réelle
+  /// Registre des audios validés d'un préfixe. La lecture télécharge le blob via Storage/RLS
   /// (`classe/N1/lang/`), chargé une seule fois.
   Future<Map<String, String>> approvedFor(String prefix) => _approved.putIfAbsent(prefix, () async {
     try {
@@ -121,20 +127,24 @@ class ClasseAudio {
     loading.value = id;
     try {
       final key = '$bucket/$path';
-      var url = _urlCache[key];
-      if (url == null) {
-        url = await _resolver(bucket, path);
-        if (url == null) {
-          throw StateError('URL indisponible');
+      var bytes = _bytesCache[key];
+      if (bytes == null) {
+        bytes = await _resolver(bucket, path);
+        if (bytes == null || bytes.length < 44) {
+          throw StateError('Audio indisponible');
         }
-        _urlCache[key] = url;
+        // Petit cache mémoire : évite de recharger la même voix à chaque appui.
+        if (_bytesCache.length >= 12) {
+          _bytesCache.remove(_bytesCache.keys.first);
+        }
+        _bytesCache[key] = bytes;
       }
       await _b.stop();
-      await _b.play(url);
+      await _b.play(bytes);
       playing.value = id;
       return true;
     } catch (_) {
-      _urlCache.remove('$bucket/$path'); // une URL signée expirée sera recalculée
+      _bytesCache.remove('$bucket/$path');
       error.value = 'Lecture audio impossible. Vérifiez votre connexion.';
       playing.value = null;
       return false;

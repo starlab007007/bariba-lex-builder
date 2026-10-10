@@ -138,7 +138,7 @@ class _ClasseImageState extends State<ClasseImage> {
 
 /// Bouton « Écouter » d'un contenu de la Classe. Grisé s'il n'existe pas d'audio validé.
 class ClasseListenButton extends StatefulWidget {
-  const ClasseListenButton({super.key, required this.contentKey, this.audio, this.size = 38, this.label});
+  const ClasseListenButton({super.key, required this.contentKey, this.audio, this.size = 44, this.label});
 
   final String contentKey;
   final ClasseAudio? audio;
@@ -210,10 +210,10 @@ class _ClasseListenButtonState extends State<ClasseListenButton> {
                   customBorder: widget.label == null ? const CircleBorder() : const StadiumBorder(),
                   onTap: available ? _tap : null,
                   child: SizedBox(
-                    height: widget.size,
-                    width: widget.label == null ? widget.size : null,
+                    height: widget.size < 44 ? 44 : widget.size,
+                    width: widget.label == null ? (widget.size < 44 ? 44 : widget.size) : null,
                     child: Padding(
-                      padding: widget.label == null ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 12),
+                      padding: widget.label == null ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 14),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
@@ -228,7 +228,7 @@ class _ClasseListenButtonState extends State<ClasseListenButton> {
                             ),
                           if (widget.label != null) ...[
                             const SizedBox(width: 6),
-                            Text(widget.label!, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: available ? SignatureTheme.goldDeep : SignatureTheme.muted)),
+                            Text(widget.label!, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: available ? SignatureTheme.goldDeep : SignatureTheme.muted)),
                           ],
                         ],
                       ),
