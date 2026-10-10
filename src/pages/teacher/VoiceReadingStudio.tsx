@@ -52,7 +52,7 @@ export default function VoiceReadingStudio() {
   useEffect(() => {
     setPreviewUrl(null);
     const existing = active ? audioByKey.get(active.content_key) : undefined;
-    if (existing) {
+    if (existing && existing.storage_available !== false) {
       getSignedUrl(existing.storage_path, 3600).then(setPreviewUrl).catch(() => setPreviewUrl(null));
     }
     setProcessedWav(null);
@@ -121,7 +121,11 @@ export default function VoiceReadingStudio() {
       setProcessedWav(null);
       await refetch();
       if (autoSuite && status === 'submitted') {
-        const nextIdx = items.findIndex((it, i) => i > activeIdx && !audioByKey.get(it.content_key));
+        const nextIdx = items.findIndex((it, i) => {
+          if (i <= activeIdx) return false;
+          const row = audioByKey.get(it.content_key);
+          return !row || row.storage_available === false || row.status === 'rejected';
+        });
         if (nextIdx >= 0) setActiveIdx(nextIdx);
       }
     } catch (e: any) { toast.error('Échec: ' + (e?.message ?? 'erreur')); }
@@ -158,11 +162,14 @@ export default function VoiceReadingStudio() {
         <ul className="rounded-xl border border-border bg-card overflow-hidden max-h-[60vh] lg:max-h-[70vh] overflow-y-auto">
           {items.map((it, i) => {
             const a = audioByKey.get(it.content_key);
-            const stClass = a?.status === 'approved' ? 'text-emerald-500' :
+            const storageBroken = a?.storage_available === false;
+            const stClass = storageBroken ? 'text-rose-500' :
+                            a?.status === 'approved' ? 'text-emerald-500' :
                             a?.status === 'submitted' ? 'text-amber-500' :
                             a?.status === 'rejected' ? 'text-rose-500' :
                             a?.status === 'draft' ? 'text-blue-500' : 'text-muted-foreground';
-            const StIcon = a?.status === 'approved' ? CheckCircle2 :
+            const StIcon = storageBroken ? AlertCircle :
+                           a?.status === 'approved' ? CheckCircle2 :
                            a?.status === 'rejected' ? AlertCircle :
                            a ? Clock : Mic;
             return (
@@ -193,7 +200,8 @@ export default function VoiceReadingStudio() {
           {/* Existing audio status panel */}
           {existing && !processedWav && (
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              {existing.status === 'approved' && <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-xs font-bold">✓ Validé public</span>}
+              {existing.status === 'approved' && existing.storage_available === true && <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-xs font-bold">✓ Validé et disponible</span>}
+              {existing.status === 'approved' && existing.storage_available === false && <span className="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-400 text-xs font-bold">⚠ Audio à restaurer / réenregistrer</span>}
               {existing.status === 'submitted' && <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 text-xs font-bold">⏳ En validation</span>}
               {existing.status === 'rejected' && <span className="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-400 text-xs font-bold">✗ Rejeté</span>}
               {existing.status === 'draft' && <span className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-400 text-xs font-bold">📝 Brouillon</span>}
@@ -219,7 +227,7 @@ export default function VoiceReadingStudio() {
               <button onClick={startRec} className="w-20 h-20 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-lg hover:bg-amber-600 transition-colors active:scale-95">
                 <Mic className="w-8 h-8" />
               </button>
-              <p className="text-sm text-muted-foreground">{existing ? '🔄 Nouvelle version' : '🎙️ Enregistrer'}</p>
+              <p className="text-sm text-muted-foreground">{existing?.storage_available === false ? '♻️ Réenregistrer pour restaurer la voix' : existing ? '🔄 Nouvelle version' : '🎙️ Enregistrer'}</p>
             </div>
           )}
 
