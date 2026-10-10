@@ -34,8 +34,9 @@ export default defineConfig(({ mode }) => ({
             },
           },
           {
-            // Audios pédagogiques (classe-audio) → CacheFirst, 100 entrées, 30 jours
-            urlPattern: /\/storage\/v1\/object\/sign\/classe-audio\/.*/i,
+            // Audios pédagogiques Classe : supporte le nouveau download authentifié
+            // et l'ancien endpoint signé pendant la transition.
+            urlPattern: /\/storage\/v1\/object\/(?:authenticated|sign)\/classe-audio\/.*/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'classe-audio-cache',
