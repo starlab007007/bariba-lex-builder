@@ -9,6 +9,8 @@ export interface ClasseLesson {
   themeLabel: string;
   text: string;
   imageUrl?: string;
+  /** All pedagogical figures for the lesson; imageUrl remains the legacy primary image. */
+  images?: string[];
   sections: {
     observe: string[];
     ecoute: string[];
@@ -1068,6 +1070,7 @@ export const CLASSE_LESSONS: ClasseLesson[] = [
     themeLabel: 'Dãa duurubu',
     text: 'Dãa duurubu\nYèn sɔ̃ n weenɛ bù dãa duure\nYaribori temɔ dãa ya raa yibaawa ma guraa ra nɛ to. Dãa dɔ̃ɔ goobu ka\ndii kpɛɛnu nu dera dãa kpa. Guri ku ra maa nɛ to. Tɔn ba nanda. Wɔ̃ɔ\nbaagere, wuun bukurobu ba ra dãa duurubun yarufaani gere. Ma tɔmbu\nba ka gere ye sɔmburu kua ba koo yen yarufaani di.',
     imageUrl: '/classe/img-p064.png',
+    images: ['/classe/img-p064.png', '/classe/img-p064-1.png'],
     sections: {
       observe: [
     '1- Mba a waamɔ foto yeni sɔɔ ?',
