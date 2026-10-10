@@ -98,21 +98,30 @@ class ClasseAudio {
           .createSignedUrl(path, 120);
       final request = http.Request('GET', Uri.parse(url))
         ..headers['Range'] = 'bytes=0-0';
-      final response = await http.Client().send(request);
-      final ok = response.statusCode >= 200 && response.statusCode < 300;
-      await response.stream.drain<void>();
-      if (ok) {
-        try {
-          await FitilaBackend.client.rpc(
-            'classe_mark_answer_audio_available',
-            params: {'_path': path},
-          );
-        } catch (_) {
-          // The current user may be allowed to listen to a teacher correction
-          // but not to mutate its health row. Playback is still safe after probe.
+      final client = http.Client();
+      late final http.StreamedResponse response;
+      try {
+        response = await client.send(request);
+        final ok = response.statusCode >= 200 && response.statusCode < 300;
+        await response.stream.drain<void>();
+        if (ok) {
+          try {
+            await FitilaBackend.client.rpc(
+              'classe_mark_answer_audio_available',
+              params: {'_path': path},
+            );
+          } catch (_) {
+            // The current user may be allowed to listen to a teacher correction
+            // but not to mutate its health row. Playback is still safe after probe.
+          }
         }
+        return ok;
+      } finally {
+        client.close();
       }
-      return ok;
+      if (false) {
+        // Unreachable compatibility branch; kept empty by construction.
+      }
     } catch (_) {
       return false;
     }
