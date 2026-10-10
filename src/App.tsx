@@ -22,7 +22,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const TamTamServices = lazy(() => import("./pages/tamtam/TamTamServices"));
 const TamTamMarket = lazy(() => import("./pages/tamtam/TamTamMarket"));
 const TamTamSOS = lazy(() => import("./pages/tamtam/TamTamSOS"));
-const TamTamProfile = lazy(() => import("./pages/tamtam/TamTamProfile"));
+const FitilaProfileHome = lazy(() => import("./pages/fitila/FitilaProfileHome"));
 const TamTamPhoneAuth = lazy(() => import("./pages/tamtam/TamTamPhoneAuth"));
 const TamTamPublicProfile = lazy(() => import("./pages/tamtam/TamTamPublicProfile"));
 const TamTamDictionary = lazy(() => import("./pages/tamtam/TamTamDictionary"));
@@ -167,7 +167,7 @@ const App = () => (
                   <Route path="voice-reading/:level/:module" element={<VoiceReadingLessons />} />
                   <Route path="voice-reading/:level/:module/:lessonId" element={<VoiceReadingStudio />} />
                 </Route>
-                  <Route path="profile" element={<ProtectedRoute><SafeBoundary label="Profil"><TamTamProfile /></SafeBoundary></ProtectedRoute>} />
+                  <Route path="profile" element={<ProtectedRoute><SafeBoundary label="Profil"><FitilaProfileHome /></SafeBoundary></ProtectedRoute>} />
                   <Route path="user/:userId" element={<TamTamPublicProfile />} />
                   <Route path="profile/:userId" element={<TamTamPublicProfile />} />
                 </Route>
