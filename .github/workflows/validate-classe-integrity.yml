@@ -1,0 +1,46 @@
+name: Validate Classe Integrity
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/components/classe/**'
+      - 'src/data/classe*.ts'
+      - 'src/hooks/useClasseAudio.ts'
+      - 'src/lib/answerKeys.ts'
+      - 'fitila_flutter/assets/data/classe*.json'
+      - 'public/classe/**'
+      - 'supabase/functions/recognize-handwriting/**'
+      - 'supabase/migrations/**'
+      - 'scripts/validate-classe-integrity.mjs'
+      - '.github/workflows/validate-classe-integrity.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/components/classe/**'
+      - 'src/data/classe*.ts'
+      - 'src/hooks/useClasseAudio.ts'
+      - 'src/lib/answerKeys.ts'
+      - 'fitila_flutter/assets/data/classe*.json'
+      - 'public/classe/**'
+      - 'supabase/functions/recognize-handwriting/**'
+      - 'supabase/migrations/**'
+      - 'scripts/validate-classe-integrity.mjs'
+      - '.github/workflows/validate-classe-integrity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integrity:
+    name: Canonical content / images / Baatonum characters
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Classe canonical integrity
+        run: node scripts/validate-classe-integrity.mjs
