@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DunyaSource {
@@ -33,10 +34,7 @@ class DunyaMessage {
 }
 
 class DunyaOfflinePage extends StatefulWidget {
-  const DunyaOfflinePage({super.key, required this.dictionaryLoader, required this.learningLoader});
-
-  final Future<List<Map<String, String>>> Function() dictionaryLoader;
-  final Future<List<DunyaSource>> Function() learningLoader;
+  const DunyaOfflinePage({super.key});
 
   @override
   State<DunyaOfflinePage> createState() => _DunyaOfflinePageState();
@@ -83,10 +81,53 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
       if (raw != null) _memories = (jsonDecode(raw) as List).map((e) => e.toString()).toList();
     } catch (_) {}
 
-    try { _dictionary = await widget.dictionaryLoader(); } catch (_) { _dictionary = const []; }
-    try { _learning = await widget.learningLoader(); } catch (_) { _learning = const []; }
+    try { _dictionary = await _loadDictionary(); } catch (_) { _dictionary = const []; }
+    try { _learning = await _loadLearningKnowledge(); } catch (_) { _learning = const []; }
 
     if (mounted) setState(() => _loading = false);
+  }
+
+  Future<List<Map<String, String>>> _loadDictionary() async {
+    final raw = await rootBundle.loadString('assets/data/dictionnaire_ameliore.json');
+    final decoded = jsonDecode(raw);
+    if (decoded is! List) return const [];
+    return [
+      for (final item in decoded)
+        if (item is Map)
+          {
+            'word': (item['word'] ?? item['bariba'] ?? '').toString(),
+            'definition': (item['definition'] ?? item['french'] ?? item['fr'] ?? '').toString(),
+          },
+    ].where((e) => (e['word'] ?? '').isNotEmpty && (e['definition'] ?? '').isNotEmpty).toList(growable: false);
+  }
+
+  Future<List<DunyaSource>> _loadLearningKnowledge() async {
+    final result = <DunyaSource>[];
+    for (final asset in const ['assets/data/apprendre_v2.json', 'assets/data/scenes_v2.json']) {
+      final raw = await rootBundle.loadString(asset);
+      final decoded = jsonDecode(raw);
+      void walk(dynamic value, String title) {
+        if (value == null) return;
+        if (value is String) {
+          final text = value.trim();
+          if (text.length >= 18) result.add(DunyaSource(title: title, text: text));
+          return;
+        }
+        if (value is List) {
+          for (final item in value) walk(item, title);
+          return;
+        }
+        if (value is Map) {
+          final localTitle = (value['title_fr'] ?? value['title'] ?? value['name'] ?? value['ba'] ?? title).toString();
+          for (final entry in value.entries) {
+            if (entry.key == 'id' || entry.key == 'icon' || entry.key == 'version') continue;
+            walk(entry.value, localTitle);
+          }
+        }
+      }
+      walk(decoded, asset.contains('scenes') ? 'DUNYA Apprendre · Scènes' : 'DUNYA Apprendre');
+    }
+    return result;
   }
 
   Future<void> _persist() async {
