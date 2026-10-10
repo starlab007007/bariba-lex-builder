@@ -174,7 +174,11 @@ export function useClasseAudioCoverage() {
   });
 }
 
-/** Learner: lookup approved audio for a content_key. */
+/** Learner: lookup approved audio for a content_key.
+ * The actual file is downloaded through Storage auth/RLS at play time.
+ * Signed URLs are deliberately avoided: Storage currently signs successfully
+ * but GET /object/sign/... returns HTTP 400 for these Classe objects.
+ */
 export function useApprovedAudio(contentKey: string | undefined) {
   return useQuery({
     queryKey: ['classe-audio-approved', contentKey],
@@ -191,20 +195,7 @@ export function useApprovedAudio(contentKey: string | undefined) {
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
-      // storage_available is advisory metadata. A previous health audit can be stale
-      // after a blob is restored, so the signed URL is the source of truth at read time.
-      // Cache LRU mémoire pour éviter re-fetch entre leçons
-      const cached = getCachedSignedUrl(data.storage_path);
-      if (cached) return { ...data, signed_url: cached };
-      const { data: signed, error: sErr } = await supabase.storage
-        .from('classe-audio')
-        .createSignedUrl(data.storage_path, 60 * 60);
-      if (sErr || !signed?.signedUrl) {
-        return { ...data, signed_url: null, storage_broken: true };
-      }
-      const url = signed.signedUrl;
-      setCachedSignedUrl(data.storage_path, url);
-      return { ...data, signed_url: url, storage_broken: false };
+      return { ...data, storage_broken: false };
     },
   });
 }
@@ -357,11 +348,11 @@ export function useAdminAudioQueue(filter: { status?: AudioStatus; level?: strin
 
 /** Get a signed URL for any storage_path (teacher preview / admin review). */
 export function useGetSignedUrl() {
-  return useCallback(async (storagePath: string, expiresInSec = 3600) => {
+  return useCallback(async (storagePath: string, _expiresInSec = 3600) => {
     const { data, error } = await supabase.storage
       .from('classe-audio')
-      .createSignedUrl(storagePath, expiresInSec);
+      .download(storagePath);
     if (error) throw error;
-    return data.signedUrl;
+    return URL.createObjectURL(data);
   }, []);
 }

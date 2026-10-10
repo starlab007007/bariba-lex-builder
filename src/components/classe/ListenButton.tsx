@@ -2,6 +2,7 @@ import { useApprovedAudio } from '@/hooks/useClasseAudio';
 import { Volume2, VolumeX, Loader2, Pause } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import { useAutoStopAudio } from '@/hooks/useAutoStopAudio';
 
 interface ListenButtonProps {
@@ -44,7 +45,7 @@ export default function ListenButton({ contentKey, size = 'md', className, label
   const iconSz = size === 'sm' ? 'w-3.5 h-3.5' : size === 'lg' ? 'w-5 h-5' : 'w-4 h-4';
 
   const storageBroken = data?.storage_broken === true;
-  const available = !!data?.signed_url && !storageBroken;
+  const available = !!data?.storage_path && !storageBroken;
 
   const stop = () => {
     try {
@@ -122,10 +123,11 @@ export default function ListenButton({ contentKey, size = 'md', className, label
     setPreparing(true);
     setPlaybackFailed(false);
     try {
-      const response = await fetch(data!.signed_url!, { cache: 'no-store' });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const blob = await response.blob();
-      if (blob.size < 44) throw new Error('Fichier audio vide ou tronqué');
+      const { data: blob, error } = await supabase.storage
+        .from('classe-audio')
+        .download(data!.storage_path);
+      if (error) throw error;
+      if (!blob || blob.size < 44) throw new Error('Fichier audio vide ou tronqué');
 
       const bytes = await blob.arrayBuffer();
 
