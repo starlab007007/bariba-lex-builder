@@ -548,14 +548,20 @@ class _TranslatorChatState extends State<TranslatorChat> {
           SizedBox(height: keyboardOpen ? 5 : 8),
           SizedBox(
             height: keyboardOpen ? 42 : 50,
-            child: ListView.separated(
+            child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 2),
-              itemCount: modes.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 6),
-              itemBuilder: (_, i) => SizedBox(
-                width: keyboardOpen ? 66 : 72,
-                child: _modeChip(modes[i].$1, modes[i].$2, compact: keyboardOpen),
+              child: Row(
+                children: [
+                  for (var i = 0; i < modes.length; i++) ...[
+                    SizedBox(
+                      width: keyboardOpen ? 66 : 72,
+                      child: _modeChip(modes[i].$1, modes[i].$2, compact: keyboardOpen),
+                    ),
+                    if (i != modes.length - 1) const SizedBox(width: 6),
+                  ],
+                ],
               ),
             ),
           ),
