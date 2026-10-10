@@ -245,8 +245,19 @@ class _ClasseListenButtonState extends State<ClasseListenButton> {
 }
 
 /// Lecture d'un fichier stocké (réponse vocale, correction de l'enseignant).
-class ClasseStoragePlayer extends StatelessWidget {
-  const ClasseStoragePlayer({super.key, required this.id, required this.bucket, required this.path, required this.label, this.duration, this.audio, this.tint});
+/// Les anciens chemins dont le blob a disparu restent visibles comme état
+/// historique, mais aucun faux bouton de lecture n'est proposé.
+class ClasseStoragePlayer extends StatefulWidget {
+  const ClasseStoragePlayer({
+    super.key,
+    required this.id,
+    required this.bucket,
+    required this.path,
+    required this.label,
+    this.duration,
+    this.audio,
+    this.tint,
+  });
 
   final String id;
   final String bucket;
@@ -257,35 +268,124 @@ class ClasseStoragePlayer extends StatelessWidget {
   final Color? tint;
 
   @override
+  State<ClasseStoragePlayer> createState() => _ClasseStoragePlayerState();
+}
+
+class _ClasseStoragePlayerState extends State<ClasseStoragePlayer> {
+  late Future<bool> _available;
+
+  ClasseAudio get _audio => widget.audio ?? ClasseAudio.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _available = _audio.storageAvailable(widget.bucket, widget.path);
+  }
+
+  @override
+  void didUpdateWidget(covariant ClasseStoragePlayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.path != widget.path ||
+        oldWidget.bucket != widget.bucket ||
+        oldWidget.audio != widget.audio) {
+      _available = _audio.storageAvailable(widget.bucket, widget.path);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final a = audio ?? ClasseAudio.instance;
-    return ValueListenableBuilder<String?>(
-      valueListenable: a.playing,
-      builder: (context, playingId, _) => ValueListenableBuilder<String?>(
-        valueListenable: a.loading,
-        builder: (context, loadingId, _) {
-          final playing = playingId == id;
-          final loading = loadingId == id;
+    return FutureBuilder<bool>(
+      future: _available,
+      builder: (context, availability) {
+        if (availability.connectionState != ConnectionState.done) {
           return ActionChip(
-            key: ValueKey('player-$id'),
-            backgroundColor: tint ?? SignatureTheme.surfaceAlt,
-            side: BorderSide(color: playing ? SignatureTheme.gold : SignatureTheme.hairline),
-            avatar: loading
-                ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : Icon(playing ? Icons.stop_rounded : Icons.play_arrow_rounded, size: 20, color: SignatureTheme.goldDeep),
-            label: Text(duration == null ? label : '$label · ${duration!.round()}s'),
-            labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SignatureTheme.ink),
-            onPressed: () async {
-              final ok = await a.playStorage(id, bucket, path);
-              if (!ok && context.mounted && a.error.value != null) {
-                ScaffoldMessenger.of(context)
-                  ..hideCurrentSnackBar()
-                  ..showSnackBar(SnackBar(content: Text(a.error.value!)));
-              }
-            },
+            key: ValueKey('player-loading-${widget.id}'),
+            avatar: const SizedBox.square(
+              dimension: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            label: Text(widget.label),
+            onPressed: null,
           );
-        },
-      ),
+        }
+
+        if (availability.data != true) {
+          return Tooltip(
+            message: 'Le fichier audio historique est absent du stockage.',
+            child: ActionChip(
+              key: ValueKey('player-unavailable-${widget.id}'),
+              avatar: const Icon(
+                Icons.volume_off_rounded,
+                size: 18,
+                color: SignatureTheme.muted,
+              ),
+              label: const Text('Audio à réenregistrer'),
+              labelStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: SignatureTheme.muted,
+              ),
+              onPressed: null,
+            ),
+          );
+        }
+
+        return ValueListenableBuilder<String?>(
+          valueListenable: _audio.playing,
+          builder: (context, playingId, _) => ValueListenableBuilder<String?>(
+            valueListenable: _audio.loading,
+            builder: (context, loadingId, _) {
+              final playing = playingId == widget.id;
+              final loading = loadingId == widget.id;
+              return ActionChip(
+                key: ValueKey('player-${widget.id}'),
+                backgroundColor: widget.tint ?? SignatureTheme.surfaceAlt,
+                side: BorderSide(
+                  color: playing ? SignatureTheme.gold : SignatureTheme.hairline,
+                ),
+                avatar: loading
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        playing
+                            ? Icons.stop_rounded
+                            : Icons.play_arrow_rounded,
+                        size: 20,
+                        color: SignatureTheme.goldDeep,
+                      ),
+                label: Text(
+                  widget.duration == null
+                      ? widget.label
+                      : '${widget.label} · ${widget.duration!.round()}s',
+                ),
+                labelStyle: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: SignatureTheme.ink,
+                ),
+                onPressed: () async {
+                  final ok = await _audio.playStorage(
+                    widget.id,
+                    widget.bucket,
+                    widget.path,
+                  );
+                  if (!ok &&
+                      context.mounted &&
+                      _audio.error.value != null) {
+                    ScaffoldMessenger.of(context)
+                      ..hideCurrentSnackBar()
+                      ..showSnackBar(
+                        SnackBar(content: Text(_audio.error.value!)),
+                      );
+                  }
+                },
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
