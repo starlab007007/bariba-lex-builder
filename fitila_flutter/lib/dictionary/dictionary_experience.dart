@@ -98,7 +98,7 @@ class DictionaryExperience extends StatefulWidget {
 class _DictionaryExperienceState extends State<DictionaryExperience> {
   final _query = TextEditingController();
   bool _baToFr = true;
-  String _mode = 'Clavier';
+  bool _voicePanelOpen = false;
   bool _recording = false;
   bool _voiceBusy = false;
   DictEntry? _selected;
@@ -222,7 +222,7 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
       setState(() {
         _query.text = t;
         _debounced = t;
-        _mode = 'Clavier';
+        _voicePanelOpen = false;
         _selected = null;
       });
       _query.selection = TextSelection.collapsed(offset: t.length);
@@ -268,10 +268,11 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
       padding: const EdgeInsets.only(bottom: 28),
       children: [
         _searchBar(),
-        const SizedBox(height: 10),
-        _modeStrip(),
+        if (_voicePanelOpen) ...[
+          const SizedBox(height: 10),
+          _voicePanel(),
+        ],
         const SizedBox(height: 12),
-        if (_mode == 'Vocal') _voicePanel(),
         if (_selected != null)
           AnimatedSwitcher(duration: const Duration(milliseconds: 280), child: _detail(_selected!, key: ValueKey(_selected!.key)))
         else if (q.isNotEmpty)
@@ -297,12 +298,19 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
 
   Widget _searchBar() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 9),
       decoration: BoxDecoration(
         color: SignatureTheme.surface,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: SignatureTheme.hairline),
-        boxShadow: [BoxShadow(color: SignatureTheme.ink.withValues(alpha: .06), blurRadius: 24, offset: const Offset(0, 12), spreadRadius: -10)],
+        boxShadow: [
+          BoxShadow(
+            color: SignatureTheme.ink.withValues(alpha: .055),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+            spreadRadius: -10,
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -312,50 +320,72 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
               final r = searchDict(widget.entries, _query.text, baToFr: _baToFr);
               if (r.isNotEmpty) _open(r.first);
             },
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: SignatureTheme.ink),
             decoration: InputDecoration(
-              hintText: _baToFr ? 'Cherchez un mot en Bàátɔ̀nú…' : 'Cherchez un mot en français…',
-              prefixIcon: const Icon(Icons.search_rounded, color: SignatureTheme.goldDeep),
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              filled: false,
+              hintText: _baToFr ? 'Rechercher en Bàátɔ̀nú…' : 'Rechercher en français…',
+              hintStyle: const TextStyle(color: SignatureTheme.muted, fontSize: 16),
+              prefixIcon: const Icon(Icons.search_rounded, color: SignatureTheme.goldDeep, size: 23),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_query.text.isNotEmpty)
+                    IconButton(
+                      tooltip: 'Effacer',
+                      onPressed: () => setState(() {
+                        _query.clear();
+                        _selected = null;
+                        _debounced = '';
+                      }),
+                      icon: const Icon(Icons.close_rounded, color: SignatureTheme.muted),
+                    ),
+                  IconButton(
+                    key: const ValueKey('dict-voice'),
+                    tooltip: 'Recherche vocale',
+                    onPressed: () => setState(() => _voicePanelOpen = !_voicePanelOpen),
+                    icon: Icon(
+                      _voicePanelOpen ? Icons.keyboard_rounded : Icons.mic_rounded,
+                      color: _voicePanelOpen ? SignatureTheme.goldDeep : SignatureTheme.sage,
+                    ),
+                  ),
+                ],
+              ),
+              filled: true,
+              fillColor: SignatureTheme.appBackground,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: const BorderSide(color: SignatureTheme.gold, width: 1.5),
+              ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(6, 0, 6, 2),
-            child: Row(children: [
-              Expanded(
-                child: FittedBox(
-                  alignment: Alignment.centerLeft,
-                  fit: BoxFit.scaleDown,
-                  child: Row(children: [
-                    _dirChip(true),
-                    IconButton(
-                      key: const ValueKey('dict-swap'),
-                      tooltip: 'Inverser le sens',
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () => setState(() {
-                        _baToFr = !_baToFr;
-                        _selected = null;
-                      }),
-                      icon: const Icon(Icons.swap_horiz_rounded, color: SignatureTheme.goldDeep),
-                    ),
-                    _dirChip(false),
-                  ]),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: _dirChip(true)),
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 44,
+                height: 40,
+                child: OutlinedButton(
+                  key: const ValueKey('dict-swap'),
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    side: const BorderSide(color: SignatureTheme.hairline),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+                    foregroundColor: SignatureTheme.goldDeep,
+                  ),
+                  onPressed: () => setState(() {
+                    _baToFr = !_baToFr;
+                    _selected = null;
+                  }),
+                  child: const Icon(Icons.swap_horiz_rounded, size: 21),
                 ),
               ),
-              if (_query.text.isNotEmpty)
-                IconButton(
-                  tooltip: 'Effacer',
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () => setState(() {
-                    _query.clear();
-                    _selected = null;
-                    _debounced = '';
-                  }),
-                  icon: const Icon(Icons.close_rounded, color: SignatureTheme.muted),
-                ),
-            ]),
+              const SizedBox(width: 6),
+              Expanded(child: _dirChip(false)),
+            ],
           ),
         ],
       ),
@@ -366,41 +396,15 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
     final active = _baToFr == bariba;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      alignment: Alignment.center,
+      constraints: const BoxConstraints(minHeight: 40),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
       decoration: BoxDecoration(
         color: active ? SignatureTheme.goldTint : Colors.transparent,
         borderRadius: BorderRadius.circular(99),
         border: Border.all(color: active ? SignatureTheme.gold : SignatureTheme.hairline),
       ),
-      child: Text(bariba ? '🇧🇯 Bàátɔ̀nú' : '🇫🇷 Français', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: active ? SignatureTheme.goldDeep : SignatureTheme.muted)),
-    );
-  }
-
-  Widget _modeStrip() => Row(children: [
-    Expanded(child: _modeBtn('Clavier', Icons.keyboard_alt_rounded)),
-    const SizedBox(width: 8),
-    Expanded(child: _modeBtn('Vocal', Icons.mic_rounded)),
-  ]);
-
-  Widget _modeBtn(String label, IconData icon) {
-    final on = _mode == label;
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () => setState(() => _mode = label),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: on ? SignatureTheme.surface : SignatureTheme.surface.withValues(alpha: .6),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: on ? SignatureTheme.gold : SignatureTheme.hairline, width: on ? 1.6 : 1),
-        ),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, size: 19, color: on ? SignatureTheme.goldDeep : SignatureTheme.muted),
-          const SizedBox(width: 7),
-          Text(label, style: TextStyle(fontWeight: on ? FontWeight.w800 : FontWeight.w600, color: on ? SignatureTheme.ink : SignatureTheme.muted)),
-        ]),
-      ),
+      child: Text(bariba ? '🇧🇯 Bàátɔ̀nú' : '🇫🇷 Français', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: active ? SignatureTheme.goldDeep : SignatureTheme.inkSoft)),
     );
   }
 
@@ -410,13 +414,13 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
       child: Column(children: [
         AnimatedContainer(
           duration: const Duration(milliseconds: 220),
-          width: _recording ? 84 : 72,
-          height: _recording ? 84 : 72,
+          width: _recording ? 68 : 58,
+          height: _recording ? 68 : 58,
           decoration: BoxDecoration(shape: BoxShape.circle, color: _recording ? SignatureTheme.clayTint : SignatureTheme.goldTint),
-          child: Icon(_recording ? Icons.graphic_eq_rounded : Icons.mic_rounded, size: 36, color: _recording ? SignatureTheme.clay : SignatureTheme.goldDeep),
+          child: Icon(_recording ? Icons.graphic_eq_rounded : Icons.mic_rounded, size: 28, color: _recording ? SignatureTheme.clay : SignatureTheme.goldDeep),
         ),
         const SizedBox(height: 10),
-        const Text('Recherche vocale', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+        const Text('Recherche vocale', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: SignatureTheme.ink)),
         const SizedBox(height: 4),
         Text(_recording ? 'Je vous écoute… appuyez pour terminer.' : 'Prononcez un mot en ${_baToFr ? 'Bàátɔ̀nú' : 'français'}.', textAlign: TextAlign.center, style: const TextStyle(color: SignatureTheme.muted)),
         const SizedBox(height: 12),
@@ -439,8 +443,8 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
         if (wod != null) Reveal(index: 0, child: _wordOfDay(wod)),
         if (_recent.isNotEmpty) ...[
           const SectionLabel('Recherches récentes'),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            for (final r in _recent.take(8)) ActionChip(label: Text(r), avatar: const Icon(Icons.history_rounded, size: 16), onPressed: () => _openByWord(r)),
+          Wrap(spacing: 7, runSpacing: 7, children: [
+            for (final r in _recent.take(6)) ActionChip(label: Text(r), avatar: const Icon(Icons.history_rounded, size: 16), onPressed: () => _openByWord(r)),
           ]),
         ],
         if (favs.isNotEmpty) ...[
@@ -474,10 +478,14 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
     borderRadius: BorderRadius.circular(26),
     onTap: () => _open(e),
     child: Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(18, 17, 16, 17),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(26),
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF3A3448), Color(0xFF241F2E)]),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF2F2940), Color(0xFF1F1B29)],
+        ),
         boxShadow: [BoxShadow(color: SignatureTheme.ink.withValues(alpha: .25), blurRadius: 26, offset: const Offset(0, 14), spreadRadius: -12)],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -495,7 +503,7 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
             ),
         ]),
         const SizedBox(height: 8),
-        Text(e.word, style: const TextStyle(color: Colors.white, fontFamily: 'serif', fontSize: 32, fontWeight: FontWeight.w700)),
+        Text(e.word, style: const TextStyle(color: Colors.white, fontFamily: 'serif', fontSize: 30, fontWeight: FontWeight.w700)),
         if ((e.phonetic ?? '').isNotEmpty) Text('[${e.phonetic}]', style: const TextStyle(color: Color(0xCCFFFFFF), fontSize: 15)),
         const SizedBox(height: 8),
         Text(e.definition, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 15.5, height: 1.4)),

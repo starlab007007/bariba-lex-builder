@@ -7188,7 +7188,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   Widget build(BuildContext context) {
     return _PageFrame(
       title: 'Dictionnaire',
-      subtitle: 'Recherche intelligente, écoute, favoris et exemples.',
+      subtitle: 'Recherche, écoute et favoris.',
       child: FutureBuilder<List<DictEntry>>(
         future: _entries,
         builder: (context, snapshot) {
@@ -7324,8 +7324,8 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
   @override
   Widget build(BuildContext context) {
     return _PageFrame(
-      title: 'Traducteur IA',
-      subtitle: 'Discutez : voix, texte, photo, presse-papiers et documents.',
+      title: 'Traducteur',
+      subtitle: 'Français ⇄ Bàátɔ̀nú · voix, texte et documents.',
       child: TranslatorChat(ports: _ports),
     );
   }

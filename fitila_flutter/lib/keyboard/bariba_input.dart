@@ -115,7 +115,8 @@ class _BaribaTextFieldState extends State<BaribaTextField>
   KeyboardStatus _status = KeyboardStatus.unsupported;
   bool _virtualOpen = false;
 
-  bool get _useVirtual => !_status.isReady;
+  bool get _androidNative => defaultTargetPlatform == TargetPlatform.android;
+  bool get _useVirtual => !_androidNative && !_status.isReady;
 
   @override
   void initState() {
@@ -210,7 +211,12 @@ class _BaribaTextFieldState extends State<BaribaTextField>
               setState(() => _virtualOpen = true);
             }
           },
-          decoration: base.copyWith(suffixIcon: base.suffixIcon ?? toggle),
+          decoration: base.copyWith(
+            // Android uses the native/system IME only. The embedded keyboard remains
+            // an explicit fallback for platforms where the native Bàátɔ̀nú keyboard
+            // is unavailable.
+            suffixIcon: base.suffixIcon ?? (_androidNative ? null : toggle),
+          ),
         ),
         AnimatedSize(
           duration: const Duration(milliseconds: 220),
