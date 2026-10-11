@@ -38,8 +38,12 @@ jobs:
         run: |
           df -h / | tail -1
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost \
-            /usr/share/swift /opt/hostedtoolcache/CodeQL /usr/local/lib/node_modules || true
-          sudo docker image prune -af >/dev/null 2>&1 || true
+            /usr/share/swift /opt/hostedtoolcache /usr/local/lib/node_modules \
+            /usr/local/share/powershell /usr/local/share/chromium /usr/share/miniconda \
+            /usr/local/julia* /opt/az /opt/microsoft /opt/google /usr/lib/google-cloud-sdk \
+            /usr/local/aws-cli /usr/local/aws-sam-cli /usr/share/az_* || true
+          sudo docker system prune -af >/dev/null 2>&1 || true
+          sudo apt-get clean || true
           df -h / | tail -1
 
       - name: Setup Java 21
@@ -166,24 +170,16 @@ jobs:
           print('SIGNING_MODE='+mode)
           PY
 
-      - name: Build release APKs (universal + per processor)
+      - name: Build release APKs (per processor)
         run: |
           set -o pipefail
           exec > >(tee build/ci-report/build.txt) 2>&1
-          flutter build apk --release \
-            --dart-define-from-file=.ci-dart-defines.json \
-            --obfuscate \
-            --split-debug-info=build/symbols
-          mkdir -p build/universal
-          cp build/app/outputs/flutter-apk/app-release.apk build/universal/
-          # Keep disk headroom for the second (split) build.
-          rm -rf build/app/intermediates/merged_native_libs build/app/intermediates/stripped_native_libs
-          df -h / | tail -1
           flutter build apk --release --split-per-abi \
             --target-platform android-arm,android-arm64 \
             --dart-define-from-file=.ci-dart-defines.json \
             --obfuscate \
-            --split-debug-info=build/symbols-split
+            --split-debug-info=build/symbols
+          df -h / | tail -1
 
       - name: Verify and package APKs
         run: |
@@ -191,11 +187,10 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           mkdir -p build/final-apk
           declare -A apks=(
-            [universal]=build/universal/app-release.apk
             [arm64]=build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
             [armv7]=build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
           )
-          for kind in universal arm64 armv7; do
+          for kind in arm64 armv7; do
             src="${apks[$kind]}"
             test -s "$src"
             unzip -t "$src" >/dev/null
@@ -203,7 +198,7 @@ jobs:
             "$APKSIGNER" verify "$src"
             cp "$src" "build/final-apk/FITILA-Android-v1.8.15-build26-dunya-voice-$kind.apk"
           done
-          "$APKSIGNER" verify --print-certs build/universal/app-release.apk | head -5
+          "$APKSIGNER" verify --print-certs build/final-apk/*-arm64.apk | grep -E "Signer #1 certificate (DN|SHA-256)" | tee build/final-apk/SIGNER.txt
           cp build/SIGNING_MODE.txt build/final-apk/
           cd build/final-apk
           sha256sum *.apk | tee SHA256SUMS.txt
@@ -225,7 +220,7 @@ jobs:
           set +e
           mkdir -p /tmp/report
           cp -R fitila_flutter/build/ci-report/. /tmp/report/ 2>/dev/null
-          cp fitila_flutter/build/final-apk/SIZES.txt fitila_flutter/build/final-apk/SHA256SUMS.txt /tmp/report/ 2>/dev/null
+          cp fitila_flutter/build/final-apk/SIZES.txt fitila_flutter/build/final-apk/SHA256SUMS.txt fitila_flutter/build/final-apk/SIGNER.txt fitila_flutter/build/final-apk/SIGNING_MODE.txt /tmp/report/ 2>/dev/null
           echo "${{ github.sha }} ${{ job.status }}" > /tmp/report/STATUS.txt
           header="$(git config --get http.https://github.com/.extraheader)"
           cd /tmp/report
@@ -242,7 +237,7 @@ jobs:
         run: |
           set -euo pipefail
           tag=fitila-v1.8.15-build26
-          notes="FITILA 1.8.15+26 — DUNYA voix d'abord, 100 % hors ligne (écoute FR + baatɔnum, voix baatɔnum, rappels, calculs, mémoire). APK armv7 pour les téléphones d'entrée de gamme, arm64 pour les récents, universal sinon. Installer ensuite le pack voix depuis l'app (release dunya-voice-pack-v1). Signature : $(cat SIGNING_MODE.txt)."
+          notes="FITILA 1.8.15+26 — DUNYA voix d'abord, 100 % hors ligne (écoute FR + baatɔnum, voix baatɔnum, rappels, calculs, mémoire). APK armv7 pour les téléphones d'entrée de gamme, arm64 pour les récents. Installer ensuite le pack voix depuis l'app (release dunya-voice-pack-v1). Signature : $(cat SIGNING_MODE.txt)."
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" *.apk SHA256SUMS.txt SIZES.txt --clobber
           else
