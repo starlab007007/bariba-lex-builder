@@ -188,11 +188,24 @@ class DunyaVoicePackManager {
         await sink.close();
       }
       return await installFromFile(target.path, onProgress: onProgress, deleteSource: true);
+    } on DunyaPackException {
+      _deleteQuietly(target);
+      rethrow;
     } on SocketException {
-      throw DunyaPackException('Pas de connexion. Copiez le fichier du pack sur le téléphone et utilisez « Depuis un fichier ».');
+      _deleteQuietly(target);
+      throw DunyaPackException('Pas de connexion. Copiez le fichier du pack sur le téléphone et touchez « Installer depuis un fichier du téléphone ».');
+    } catch (error) {
+      _deleteQuietly(target);
+      throw DunyaPackException('Téléchargement interrompu ($error). Réessayez en Wi-Fi.');
     } finally {
       client.close();
     }
+  }
+
+  void _deleteQuietly(File file) {
+    try {
+      if (file.existsSync()) file.deleteSync();
+    } catch (_) {}
   }
 
   /// Install a pack ZIP already on the phone. Fully offline.

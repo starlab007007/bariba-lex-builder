@@ -49,9 +49,19 @@ class DunyaAssetKnowledgeRepository implements DunyaKnowledgeRepository {
   /// Bariba headword -> French definition rows of the embedded dictionary.
   List<Map<String, String>> get dictionaryEntries => _dictionary;
 
+  Future<void>? _initializing;
+
+  /// Single shared initialisation: concurrent callers (chat page, voice brain)
+  /// wait for the same indexing instead of racing on the database.
   @override
-  Future<void> initialize() async {
-    if (_ready) return;
+  Future<void> initialize() {
+    if (_ready) return Future.value();
+    return _initializing ??= _initialize().whenComplete(() {
+      if (!_ready) _initializing = null;
+    });
+  }
+
+  Future<void> _initialize() async {
     _dictionary = await _loadDictionary();
     _learning = await _loadLearningKnowledge();
     _allSources = [
@@ -63,7 +73,12 @@ class DunyaAssetKnowledgeRepository implements DunyaKnowledgeRepository {
         ),
       ..._learning,
     ];
-    await _store.ensureEmbeddedKnowledgeIndex(_allSources);
+    try {
+      await _store.ensureEmbeddedKnowledgeIndex(_allSources);
+    } catch (error) {
+      // Index unavailable on this phone: the in-memory search below still works.
+      await _store.audit('dunya_index_error', {'error': error.toString()}, severity: 'warning');
+    }
     _ready = true;
   }
 
@@ -74,7 +89,12 @@ class DunyaAssetKnowledgeRepository implements DunyaKnowledgeRepository {
     int limit = 8,
   }) async {
     await initialize();
-    final fts = await _store.searchKnowledgeFts(query, limit: limit);
+    var fts = const <DunyaSource>[];
+    try {
+      fts = await _store.searchKnowledgeFts(query, limit: limit);
+    } catch (_) {
+      fts = const [];
+    }
     if (fts.isNotEmpty) return fts;
 
     final clean = _norm(query);

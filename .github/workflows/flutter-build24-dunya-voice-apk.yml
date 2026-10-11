@@ -22,7 +22,7 @@ env:
 
 jobs:
   build-apk:
-    name: Android release APK 1.8.13+24
+    name: Android release APK 1.8.14+25
     runs-on: ubuntu-latest
     timeout-minutes: 75
     defaults:
@@ -49,7 +49,7 @@ jobs:
       - name: Verify release metadata
         run: |
           flutter --version
-          grep -q '^version: 1.8.13+24$' pubspec.yaml
+          grep -q '^version: 1.8.14+25$' pubspec.yaml
           grep -q 'sherpa_onnx' pubspec.yaml
           test -x android/gradlew
           grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
@@ -189,7 +189,7 @@ jobs:
             unzip -t "$src" >/dev/null
             unzip -l "$src" | grep -q 'libsherpa-onnx-c-api.so'
             "$APKSIGNER" verify "$src"
-            cp "$src" "build/final-apk/FITILA-Android-v1.8.13-build24-dunya-voice-$kind.apk"
+            cp "$src" "build/final-apk/FITILA-Android-v1.8.14-build25-dunya-voice-$kind.apk"
           done
           "$APKSIGNER" verify --print-certs build/universal/app-release.apk | head -5
           cp build/SIGNING_MODE.txt build/final-apk/
@@ -200,7 +200,7 @@ jobs:
       - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: FITILA-Android-v1.8.13-build24-dunya-voice
+          name: FITILA-Android-v1.8.14-build25-dunya-voice
           path: fitila_flutter/build/final-apk/
           if-no-files-found: error
           compression-level: 0
@@ -223,16 +223,16 @@ jobs:
           git -c user.name=fitila-ci -c user.email=ci@fitila.bj commit -qm "CI report ${{ github.sha }}"
           git -c http.extraheader="$header" push -qf "https://github.com/${{ github.repository }}" ci-reports/build24
 
-      - name: Publish prerelease fitila-v1.8.13-build24
+      - name: Publish prerelease fitila-v1.8.14-build25
         env:
           GH_TOKEN: ${{ github.token }}
         working-directory: fitila_flutter/build/final-apk
         run: |
           set -euo pipefail
-          tag=fitila-v1.8.13-build24
-          notes="FITILA 1.8.13+24 — DUNYA voix d'abord, 100 % hors ligne (écoute FR + baatɔnum, voix baatɔnum, rappels, calculs, mémoire). APK armv7 pour les téléphones d'entrée de gamme, arm64 pour les récents, universal sinon. Installer ensuite le pack voix depuis l'app (release dunya-voice-pack-v1). Signature : $(cat SIGNING_MODE.txt)."
+          tag=fitila-v1.8.14-build25
+          notes="FITILA 1.8.14+25 — DUNYA voix d'abord, 100 % hors ligne (écoute FR + baatɔnum, voix baatɔnum, rappels, calculs, mémoire). APK armv7 pour les téléphones d'entrée de gamme, arm64 pour les récents, universal sinon. Installer ensuite le pack voix depuis l'app (release dunya-voice-pack-v1). Signature : $(cat SIGNING_MODE.txt)."
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" *.apk SHA256SUMS.txt SIZES.txt --clobber
           else
-            gh release create "$tag" *.apk SHA256SUMS.txt SIZES.txt --title "FITILA 1.8.13 Build24 — DUNYA Voix" --notes "$notes" --target "$GITHUB_SHA" --prerelease
+            gh release create "$tag" *.apk SHA256SUMS.txt SIZES.txt --title "FITILA 1.8.14 Build25 — DUNYA Voix" --notes "$notes" --target "$GITHUB_SHA" --prerelease
           fi

@@ -170,52 +170,80 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> {
       final heard = await _engine!.transcribe(samples);
       await _process(heard, spoken: true);
     } catch (error) {
-      await _store.audit('dunya_voice_error', {'error': error.toString()}, severity: 'error');
+      await _store.audit('dunya_voice_error', {'stage': 'listen', 'error': error.toString()}, severity: 'error');
       if (mounted) {
         setState(() => _state = _VoiceState.idle);
-        _toast('Écoute interrompue : $error');
+        _toast('Écoute interrompue. Vérifiez le micro et réessayez.');
       }
     }
   }
 
   Future<void> _process(String heard, {required bool spoken}) async {
     final clean = heard.trim();
-    if (clean.isEmpty) {
-      final reply = await _brain.respond('', _replyLanguage);
-      await _speak(reply.speech);
+    DunyaVoiceReply reply;
+    setState(() => _state = _VoiceState.thinking);
+    try {
+      reply = await _brain.respond(clean, _replyLanguage);
+    } catch (error) {
+      await _store.audit('dunya_voice_error', {'stage': 'respond', 'error': error.toString()}, severity: 'error');
+      if (mounted) {
+        setState(() => _state = _VoiceState.idle);
+        _toast('DUNYA n’a pas pu traiter cette demande. Réessayez.');
+      }
       return;
     }
-    setState(() => _state = _VoiceState.thinking);
-    final reply = await _brain.respond(clean, _replyLanguage);
     if (!mounted) return;
-    setState(() {
-      _exchanges.add(_Exchange(heard: clean, reply: reply, heardLanguage: reply.language));
-      if (_exchanges.length > 20) _exchanges.removeAt(0);
-    });
-    _scrollToEnd();
-    await _store.appendMessage(DunyaMessage(role: 'user', content: clean));
-    await _store.appendMessage(DunyaMessage(role: 'assistant', content: reply.display, sources: reply.sources));
-    await _store.audit('dunya_voice_turn', {
-      'input': spoken ? 'voice' : 'tap',
-      'language': reply.language,
-      'intent': reply.intent?.name,
-      'reply_language': _replyLanguage.storageKey,
-      'sources': reply.sources.length,
-    });
+    if (clean.isNotEmpty) {
+      setState(() {
+        _exchanges.add(_Exchange(heard: clean, reply: reply, heardLanguage: reply.language));
+        if (_exchanges.length > 20) _exchanges.removeAt(0);
+      });
+      _scrollToEnd();
+      await _quietly(() async {
+        await _store.appendMessage(DunyaMessage(role: 'user', content: clean));
+        await _store.appendMessage(DunyaMessage(role: 'assistant', content: reply.display, sources: reply.sources));
+      });
+      await _store.audit('dunya_voice_turn', {
+        'input': spoken ? 'voice' : 'tap',
+        'language': reply.language,
+        'intent': reply.intent?.name,
+        'reply_language': _replyLanguage.storageKey,
+        'sources': reply.sources.length,
+      });
+    }
     await _speak(reply.speech);
   }
 
   Future<void> _confirm(bool yes) async {
     await _interruptSpeech();
     setState(() => _state = _VoiceState.thinking);
-    final reply = await _brain.confirm(yes, _replyLanguage);
+    DunyaVoiceReply reply;
+    try {
+      reply = await _brain.confirm(yes, _replyLanguage);
+    } catch (error) {
+      await _store.audit('dunya_voice_error', {'stage': 'confirm', 'error': error.toString()}, severity: 'error');
+      if (mounted) {
+        setState(() => _state = _VoiceState.idle);
+        _toast('L’action n’a pas pu être réalisée.');
+      }
+      return;
+    }
     if (!mounted) return;
     setState(() {
       _exchanges.add(_Exchange(heard: yes ? 'Oui' : 'Non', reply: reply, heardLanguage: 'fr'));
     });
     _scrollToEnd();
-    await _store.appendMessage(DunyaMessage(role: 'assistant', content: reply.display));
+    await _quietly(() => _store.appendMessage(DunyaMessage(role: 'assistant', content: reply.display)));
     await _speak(reply.speech);
+  }
+
+  /// History is useful but never worth breaking a spoken answer for.
+  Future<void> _quietly(Future<void> Function() job) async {
+    try {
+      await job();
+    } catch (error) {
+      await _store.audit('dunya_voice_store_error', {'error': error.toString()}, severity: 'warning');
+    }
   }
 
   // --- Speaking ------------------------------------------------------------------------
@@ -291,7 +319,12 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> {
     final picked = await FilePicker.platform.pickFiles(type: FileType.any);
     final path = picked?.files.single.path;
     if (path == null) return;
-    await _runInstall(() => _packs.installFromFile(path, onProgress: _onInstallProgress));
+    // The picker hands us a private copy in the app cache: remove it after use.
+    final cache = await getTemporaryDirectory();
+    final isCacheCopy = path.startsWith(cache.path) || path.contains('/cache/');
+    await _runInstall(
+      () => _packs.installFromFile(path, onProgress: _onInstallProgress, deleteSource: isCacheCopy),
+    );
   }
 
   Future<void> _download(DunyaPackSource source) async {
@@ -317,9 +350,10 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> {
       setState(() => _state = _VoiceState.idle);
       _toast('Pack « ${manifest['title']} » installé et vérifié.');
     } catch (error) {
+      await _store.audit('dunya_pack_error', {'error': error.toString()}, severity: 'error');
       if (!mounted) return;
       setState(() => _installProgress = null);
-      _toast(error.toString());
+      _toast(error is DunyaPackException ? error.message : 'Installation interrompue. Réessayez, de préférence en Wi-Fi.');
     }
   }
 

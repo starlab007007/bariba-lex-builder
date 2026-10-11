@@ -14,6 +14,41 @@ class DunyaLocalStore {
   static const _conversationId = 'local-main';
   Database? _db;
 
+  /// Full-text engine available on this phone: fts5, fts4 or none.
+  /// Many Android builds of SQLite ship FTS3/4 but not FTS5.
+  String _ftsEngine = 'none';
+
+  String get ftsEngine => _ftsEngine;
+
+  static Future<void> _createFtsTable(DatabaseExecutor db) async {
+    const attempts = [
+      "CREATE VIRTUAL TABLE IF NOT EXISTS dunya_chunks_fts USING fts5(chunk_id UNINDEXED, content, tokenize='unicode61')",
+      'CREATE VIRTUAL TABLE IF NOT EXISTS dunya_chunks_fts USING fts4(chunk_id, content, notindexed=chunk_id, tokenize=unicode61)',
+      'CREATE VIRTUAL TABLE IF NOT EXISTS dunya_chunks_fts USING fts4(chunk_id, content, tokenize=unicode61)',
+      'CREATE VIRTUAL TABLE IF NOT EXISTS dunya_chunks_fts USING fts4(chunk_id, content)',
+    ];
+    for (final sql in attempts) {
+      try {
+        await db.execute(sql);
+        return;
+      } catch (_) {
+        // Module or option unsupported by this SQLite build: try the next one.
+      }
+    }
+  }
+
+  static Future<String> _detectFtsEngine(DatabaseExecutor db) async {
+    try {
+      final rows = await db.rawQuery(
+        "SELECT sql FROM sqlite_master WHERE name = 'dunya_chunks_fts'",
+      );
+      final sql = rows.isEmpty ? '' : (rows.first['sql']?.toString() ?? '').toLowerCase();
+      if (sql.contains('fts5')) return 'fts5';
+      if (sql.contains('fts4')) return 'fts4';
+    } catch (_) {}
+    return 'none';
+  }
+
   Future<Database> get database async {
     if (_db != null) return _db!;
     final root = await getDatabasesPath();
@@ -22,9 +57,17 @@ class DunyaLocalStore {
       path,
       version: 1,
       onConfigure: (db) async => db.execute('PRAGMA foreign_keys = ON'),
+      onOpen: (db) async {
+        _ftsEngine = await _detectFtsEngine(db);
+        if (_ftsEngine == 'none') {
+          // Database created before the FTS fallback, or a device without FTS: retry once.
+          await _createFtsTable(db);
+          _ftsEngine = await _detectFtsEngine(db);
+        }
+      },
       onCreate: (db, version) async {
         await db.execute('''
-          CREATE TABLE dunya_profiles (
+          CREATE TABLE IF NOT EXISTS dunya_profiles (
             id TEXT PRIMARY KEY,
             remote_user_id TEXT,
             display_name TEXT,
@@ -36,7 +79,7 @@ class DunyaLocalStore {
         ''');
 
         await db.execute('''
-          CREATE TABLE dunya_conversations (
+          CREATE TABLE IF NOT EXISTS dunya_conversations (
             id TEXT PRIMARY KEY,
             profile_id TEXT NOT NULL REFERENCES dunya_profiles(id),
             title TEXT,
@@ -49,7 +92,7 @@ class DunyaLocalStore {
         ''');
 
         await db.execute('''
-          CREATE TABLE dunya_messages (
+          CREATE TABLE IF NOT EXISTS dunya_messages (
             id TEXT PRIMARY KEY,
             conversation_id TEXT NOT NULL REFERENCES dunya_conversations(id) ON DELETE CASCADE,
             role TEXT NOT NULL CHECK (role IN ('system','user','assistant','tool')),
@@ -62,10 +105,10 @@ class DunyaLocalStore {
             deleted_at TEXT
           )
         ''');
-        await db.execute('CREATE INDEX idx_dunya_messages_conversation ON dunya_messages(conversation_id,created_at)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_dunya_messages_conversation ON dunya_messages(conversation_id,created_at)');
 
         await db.execute('''
-          CREATE TABLE dunya_attachments (
+          CREATE TABLE IF NOT EXISTS dunya_attachments (
             id TEXT PRIMARY KEY,
             message_id TEXT REFERENCES dunya_messages(id) ON DELETE CASCADE,
             kind TEXT NOT NULL,
@@ -79,7 +122,7 @@ class DunyaLocalStore {
         ''');
 
         await db.execute('''
-          CREATE TABLE dunya_memories (
+          CREATE TABLE IF NOT EXISTS dunya_memories (
             id TEXT PRIMARY KEY,
             profile_id TEXT NOT NULL REFERENCES dunya_profiles(id),
             memory_type TEXT NOT NULL,
@@ -95,7 +138,7 @@ class DunyaLocalStore {
         ''');
 
         await db.execute('''
-          CREATE TABLE dunya_knowledge_packs (
+          CREATE TABLE IF NOT EXISTS dunya_knowledge_packs (
             id TEXT PRIMARY KEY,
             code TEXT NOT NULL,
             version TEXT NOT NULL,
@@ -111,7 +154,7 @@ class DunyaLocalStore {
         ''');
 
         await db.execute('''
-          CREATE TABLE dunya_knowledge_items (
+          CREATE TABLE IF NOT EXISTS dunya_knowledge_items (
             id TEXT PRIMARY KEY,
             pack_id TEXT NOT NULL REFERENCES dunya_knowledge_packs(id),
             title TEXT NOT NULL,
@@ -126,7 +169,7 @@ class DunyaLocalStore {
         ''');
 
         await db.execute('''
-          CREATE TABLE dunya_knowledge_chunks (
+          CREATE TABLE IF NOT EXISTS dunya_knowledge_chunks (
             id TEXT PRIMARY KEY,
             item_id TEXT NOT NULL REFERENCES dunya_knowledge_items(id) ON DELETE CASCADE,
             ordinal INTEGER NOT NULL,
@@ -138,16 +181,10 @@ class DunyaLocalStore {
           )
         ''');
 
-        await db.execute('''
-          CREATE VIRTUAL TABLE dunya_chunks_fts USING fts5(
-            chunk_id UNINDEXED,
-            content,
-            tokenize='unicode61'
-          )
-        ''');
+        await _createFtsTable(db);
 
         await db.execute('''
-          CREATE TABLE dunya_embeddings (
+          CREATE TABLE IF NOT EXISTS dunya_embeddings (
             chunk_id TEXT NOT NULL REFERENCES dunya_knowledge_chunks(id) ON DELETE CASCADE,
             embedding_model_id TEXT NOT NULL,
             dimension INTEGER NOT NULL,
@@ -158,7 +195,7 @@ class DunyaLocalStore {
         ''');
 
         await db.execute('''
-          CREATE TABLE dunya_message_sources (
+          CREATE TABLE IF NOT EXISTS dunya_message_sources (
             message_id TEXT NOT NULL REFERENCES dunya_messages(id) ON DELETE CASCADE,
             chunk_id TEXT NOT NULL REFERENCES dunya_knowledge_chunks(id),
             relevance_score REAL,
@@ -167,7 +204,7 @@ class DunyaLocalStore {
         ''');
 
         await db.execute('''
-          CREATE TABLE dunya_ai_models (
+          CREATE TABLE IF NOT EXISTS dunya_ai_models (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             version TEXT NOT NULL,
@@ -181,7 +218,7 @@ class DunyaLocalStore {
         ''');
 
         await db.execute('''
-          CREATE TABLE dunya_model_installations (
+          CREATE TABLE IF NOT EXISTS dunya_model_installations (
             id TEXT PRIMARY KEY,
             model_id TEXT NOT NULL REFERENCES dunya_ai_models(id),
             local_uri TEXT NOT NULL,
@@ -192,7 +229,7 @@ class DunyaLocalStore {
         ''');
 
         await db.execute('''
-          CREATE TABLE dunya_action_permissions (
+          CREATE TABLE IF NOT EXISTS dunya_action_permissions (
             profile_id TEXT NOT NULL REFERENCES dunya_profiles(id),
             tool_name TEXT NOT NULL,
             grant_status TEXT NOT NULL DEFAULT 'denied',
@@ -202,7 +239,7 @@ class DunyaLocalStore {
         ''');
 
         await db.execute('''
-          CREATE TABLE dunya_action_runs (
+          CREATE TABLE IF NOT EXISTS dunya_action_runs (
             id TEXT PRIMARY KEY,
             profile_id TEXT NOT NULL REFERENCES dunya_profiles(id),
             conversation_id TEXT REFERENCES dunya_conversations(id),
@@ -216,7 +253,7 @@ class DunyaLocalStore {
         ''');
 
         await db.execute('''
-          CREATE TABLE dunya_sync_outbox (
+          CREATE TABLE IF NOT EXISTS dunya_sync_outbox (
             id TEXT PRIMARY KEY,
             profile_id TEXT NOT NULL REFERENCES dunya_profiles(id),
             entity_type TEXT NOT NULL,
@@ -230,10 +267,10 @@ class DunyaLocalStore {
             created_at TEXT NOT NULL
           )
         ''');
-        await db.execute('CREATE INDEX idx_dunya_outbox_state ON dunya_sync_outbox(state,next_attempt_at)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_dunya_outbox_state ON dunya_sync_outbox(state,next_attempt_at)');
 
         await db.execute('''
-          CREATE TABLE dunya_sync_state (
+          CREATE TABLE IF NOT EXISTS dunya_sync_state (
             profile_id TEXT NOT NULL REFERENCES dunya_profiles(id),
             collection_name TEXT NOT NULL,
             cursor_value TEXT,
@@ -243,7 +280,7 @@ class DunyaLocalStore {
         ''');
 
         await db.execute('''
-          CREATE TABLE dunya_audit_events (
+          CREATE TABLE IF NOT EXISTS dunya_audit_events (
             id TEXT PRIMARY KEY,
             profile_id TEXT,
             event_type TEXT NOT NULL,
@@ -261,7 +298,7 @@ class DunyaLocalStore {
           'privacy_mode': 'local',
           'created_at': now,
           'updated_at': now,
-        });
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
         await db.insert('dunya_conversations', {
           'id': _conversationId,
           'profile_id': _profileId,
@@ -270,7 +307,7 @@ class DunyaLocalStore {
           'language': 'fr',
           'created_at': now,
           'updated_at': now,
-        });
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
         await db.insert('dunya_knowledge_packs', {
           'id': 'fitila-core',
           'code': 'fitila-core',
@@ -282,7 +319,7 @@ class DunyaLocalStore {
           'signature_status': 'embedded',
           'install_status': 'installed',
           'installed_at': now,
-        });
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
         await db.insert('dunya_ai_models', {
           'id': 'dunya-fallback',
           'name': 'DUNYA Fallback',
@@ -295,7 +332,7 @@ class DunyaLocalStore {
             'network_required': false,
             'description': 'Recherche locale FITILA sans LLM',
           }),
-        });
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
         await db.insert('dunya_model_installations', {
           'id': 'dunya-fallback-local',
           'model_id': 'dunya-fallback',
@@ -303,7 +340,7 @@ class DunyaLocalStore {
           'status': 'ready',
           'installed_at': now,
           'last_verified_at': now,
-        });
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
       },
     );
     return _db!;
@@ -331,7 +368,7 @@ class DunyaLocalStore {
   Future<void> appendMessage(DunyaMessage message) async {
     final db = await database;
     final now = DateTime.now().toUtc();
-    final id = 'msg-${now.microsecondsSinceEpoch}';
+    final id = 'msg-${now.microsecondsSinceEpoch}-${_nextSeq()}';
     await db.insert('dunya_messages', {
       'id': id,
       'conversation_id': _conversationId,
@@ -383,7 +420,7 @@ class DunyaLocalStore {
     if (existing.isNotEmpty) return;
     final now = DateTime.now().toUtc();
     await db.insert('dunya_memories', {
-      'id': 'mem-${now.microsecondsSinceEpoch}',
+      'id': 'mem-${now.microsecondsSinceEpoch}-${_nextSeq()}',
       'profile_id': _profileId,
       'memory_type': 'semantic',
       'content': content,
@@ -439,8 +476,10 @@ class DunyaLocalStore {
         ['fitila-core'],
       );
       final oldIds = oldChunks.map((row) => row['id']?.toString()).whereType<String>().toList();
-      for (final chunkId in oldIds) {
-        await txn.delete('dunya_chunks_fts', where: 'chunk_id = ?', whereArgs: [chunkId]);
+      if (_ftsEngine != 'none') {
+        for (final chunkId in oldIds) {
+          await txn.delete('dunya_chunks_fts', where: 'chunk_id = ?', whereArgs: [chunkId]);
+        }
       }
       await txn.delete('dunya_knowledge_items', where: 'pack_id = ?', whereArgs: ['fitila-core']);
 
@@ -472,10 +511,12 @@ class DunyaLocalStore {
           'end_offset': source.text.length,
           'token_count': source.text.split(RegExp(r'\s+')).where((x) => x.isNotEmpty).length,
         });
-        batch.insert('dunya_chunks_fts', {
-          'chunk_id': chunkId,
-          'content': source.text,
-        });
+        if (_ftsEngine != 'none') {
+          batch.insert('dunya_chunks_fts', {
+            'chunk_id': chunkId,
+            'content': source.text,
+          });
+        }
       }
       await batch.commit(noResult: true);
     });
@@ -483,7 +524,7 @@ class DunyaLocalStore {
     await audit('dunya_knowledge_indexed', {
       'pack_id': 'fitila-core',
       'chunks': sources.length,
-      'engine': 'sqlite-fts5',
+      'engine': 'sqlite-$_ftsEngine',
     });
   }
 
@@ -503,10 +544,12 @@ class DunyaLocalStore {
     final match = terms.map((term) => '"${term.replaceAll('"', '""')}"').join(' OR ');
     final db = await database;
     try {
+      if (_ftsEngine == 'none') return const [];
+      final rank = _ftsEngine == 'fts5' ? 'bm25(dunya_chunks_fts)' : 'length(c.content)';
       final rows = await db.rawQuery(
         '''
         SELECT i.title, i.source_ref, i.kind, c.content,
-               bm25(dunya_chunks_fts) AS rank
+               $rank AS rank
         FROM dunya_chunks_fts
         JOIN dunya_knowledge_chunks c ON c.id = dunya_chunks_fts.chunk_id
         JOIN dunya_knowledge_items i ON i.id = c.item_id
@@ -562,7 +605,7 @@ class DunyaLocalStore {
   }) async {
     final db = await database;
     final now = DateTime.now().toUtc();
-    final id = runId ?? 'act-${now.microsecondsSinceEpoch}';
+    final id = runId ?? 'act-${now.microsecondsSinceEpoch}-${_nextSeq()}';
     await db.insert(
       'dunya_action_runs',
       {
@@ -586,17 +629,25 @@ class DunyaLocalStore {
     Map<String, dynamic> detail, {
     String severity = 'info',
   }) async {
-    final db = await database;
-    final now = DateTime.now().toUtc();
-    await db.insert('dunya_audit_events', {
-      'id': 'audit-${now.microsecondsSinceEpoch}',
-      'profile_id': _profileId,
-      'event_type': eventType,
-      'severity': severity,
-      'details_json': jsonEncode(detail),
-      'created_at': now.toIso8601String(),
-    });
+    // The audit trail must never break the feature it observes.
+    try {
+      final db = await database;
+      final now = DateTime.now().toUtc();
+      await db.insert('dunya_audit_events', {
+        'id': 'audit-${now.microsecondsSinceEpoch}-${_nextSeq()}',
+        'profile_id': _profileId,
+        'event_type': eventType,
+        'severity': severity,
+        'details_json': jsonEncode(detail),
+        'created_at': now.toIso8601String(),
+      });
+    } catch (_) {}
   }
+
+  static int _seq = 0;
+
+  /// Disambiguates ids created within the same microsecond.
+  static int _nextSeq() => _seq = (_seq + 1) % 100000;
 
   List<DunyaSource> _decodeMetadataSources(String? raw) {
     if (raw == null || raw.isEmpty) return const [];
