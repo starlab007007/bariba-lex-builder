@@ -33,6 +33,15 @@ jobs:
       - name: Checkout Build24
         uses: actions/checkout@v4
 
+      - name: Free runner disk space
+        working-directory: .
+        run: |
+          df -h / | tail -1
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost \
+            /usr/share/swift /opt/hostedtoolcache/CodeQL /usr/local/lib/node_modules || true
+          sudo docker image prune -af >/dev/null 2>&1 || true
+          df -h / | tail -1
+
       - name: Setup Java 21
         uses: actions/setup-java@v5
         with:
@@ -167,6 +176,9 @@ jobs:
             --split-debug-info=build/symbols
           mkdir -p build/universal
           cp build/app/outputs/flutter-apk/app-release.apk build/universal/
+          # Keep disk headroom for the second (split) build.
+          rm -rf build/app/intermediates/merged_native_libs build/app/intermediates/stripped_native_libs
+          df -h / | tail -1
           flutter build apk --release --split-per-abi \
             --target-platform android-arm,android-arm64 \
             --dart-define-from-file=.ci-dart-defines.json \
