@@ -3,12 +3,7 @@
 name: Publish DUNYA packs on fitila.bj
 
 on:
-  push:
-    branches:
-      - fix/dunya-packs-hosting
-      - main
-    paths:
-      - '.github/workflows/publish-dunya-packs.yml'
+  # Run manually (Actions > Publish DUNYA packs) after publishing a new pack release.
   workflow_dispatch:
     inputs:
       release_tag:
