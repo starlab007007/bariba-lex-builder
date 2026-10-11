@@ -6,6 +6,7 @@ services:
     volumes:
       - ./dist:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./dunya-packs:/usr/share/nginx/dunya-packs:ro
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.react-app-bariba.rule=Host(`fitila.bj`)"

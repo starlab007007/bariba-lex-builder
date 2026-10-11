@@ -1,0 +1,96 @@
+# Publish DUNYA offline packs on fitila.bj (the repository is private, so
+# GitHub release assets are not downloadable by phones).
+name: Publish DUNYA packs on fitila.bj
+
+on:
+  # Run manually (Actions > Publish DUNYA packs) after publishing a new pack release.
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release holding the packs'
+        default: 'dunya-voice-pack-v1'
+
+concurrency:
+  group: dunya-packs-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_TAG: ${{ inputs.release_tag || 'dunya-voice-pack-v1' }}
+  PACK_VERSION: v1
+  REMOTE_ROOT: /home/debian/bariba-lex-builder/dunya-packs
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Download packs from the private release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p packs
+          gh release download "$RELEASE_TAG" -R "${{ github.repository }}" -D packs \
+            -p 'dunya-voice-core-v1.zip' -p 'dunya-voice-core-v1.manifest.json' \
+            -p 'dunya-voice-fr-v1.zip' -p 'dunya-voice-fr-v1.manifest.json'
+          cd packs
+          for z in *.zip; do unzip -tq "$z"; done
+          sha256sum *.zip *.json > SHA256SUMS
+          cat SHA256SUMS
+          ls -lh
+
+      - name: Prepare remote folder
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            mkdir -p ${{ env.REMOTE_ROOT }}
+            rm -rf ${{ env.REMOTE_ROOT }}/${{ env.PACK_VERSION }}.incoming
+            mkdir -p ${{ env.REMOTE_ROOT }}/${{ env.PACK_VERSION }}.incoming
+            df -h ${{ env.REMOTE_ROOT }} | tail -1
+
+      - name: Copy packs to fitila.bj
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "packs/*"
+          target: "${{ env.REMOTE_ROOT }}/${{ env.PACK_VERSION }}.incoming"
+          strip_components: 1
+          timeout: 30m
+          command_timeout: 30m
+
+      - name: Verify and activate on fitila.bj
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 10m
+          script: |
+            set -e
+            cd ${{ env.REMOTE_ROOT }}/${{ env.PACK_VERSION }}.incoming
+            sha256sum -c SHA256SUMS
+            chmod 755 . && chmod 644 *
+            cd ${{ env.REMOTE_ROOT }}
+            rm -rf ${{ env.PACK_VERSION }}.old
+            if [ -d ${{ env.PACK_VERSION }} ]; then mv ${{ env.PACK_VERSION }} ${{ env.PACK_VERSION }}.old; fi
+            mv ${{ env.PACK_VERSION }}.incoming ${{ env.PACK_VERSION }}
+            rm -rf ${{ env.PACK_VERSION }}.old
+            chmod 755 ${{ env.REMOTE_ROOT }}
+            ls -lh ${{ env.PACK_VERSION }}
+            url=http://127.0.0.1:8085/dunya-packs/${{ env.PACK_VERSION }}/dunya-voice-core-v1.manifest.json
+            if curl -fsS --max-time 10 "$url" >/dev/null; then
+              echo "✅ Packs servis par fitila.bj"
+              curl -fsS --max-time 10 -r 0-1023 -o /dev/null -w "range %{http_code}\n" \
+                http://127.0.0.1:8085/dunya-packs/${{ env.PACK_VERSION }}/dunya-voice-core-v1.zip
+            else
+              echo "ℹ️ Fichiers en place ; ils seront servis après le prochain déploiement web (volume nginx)."
+            fi
