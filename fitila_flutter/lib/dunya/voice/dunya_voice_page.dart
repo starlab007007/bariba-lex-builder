@@ -32,7 +32,7 @@ import 'dunya_voice_phrases.dart';
 enum _Phase { preparing, idle, listening, thinking, speaking }
 
 class _Turn {
-  _Turn({required this.role, required this.text, this.sources = const [], this.subtitle});
+  _Turn({required this.role, required this.text, this.sources = const []});
 
   final String role;
   String text;
