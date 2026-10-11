@@ -6,7 +6,6 @@
 /// integrity checks are 100 % offline.
 library;
 
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';

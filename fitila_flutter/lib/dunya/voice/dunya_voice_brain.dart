@@ -392,7 +392,7 @@ List<DunyaTranslation> translateFrenchToBariba(String term, List<Map<String, Str
   final q = _normFr(term);
   if (q.isEmpty) return const [];
   final ranked = <DunyaTranslation>[];
-  final wordRe = RegExp('(^|[^\\p{L}])${RegExp.escape(q)}(\$|[^\\p{L}])', unicode: true);
+  final wordRe = RegExp('(^|[^a-zà-ÿœæɔɛ])${RegExp.escape(q)}(\$|[^a-zà-ÿœæɔɛ])');
   for (final e in entries) {
     final word = cleanHeadword(e['word'] ?? '');
     final def = (e['definition'] ?? '').trim();
@@ -413,7 +413,8 @@ List<DunyaTranslation> translateFrenchToBariba(String term, List<Map<String, Str
     } else {
       continue;
     }
-    score -= (d.length ~/ 12).clamp(0, 30);
+    final penalty = d.length ~/ 12;
+    score -= penalty > 30 ? 30 : penalty;
     ranked.add(DunyaTranslation(word, def, score));
   }
   ranked.sort((a, b) => b.score.compareTo(a.score));

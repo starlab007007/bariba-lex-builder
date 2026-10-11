@@ -91,10 +91,12 @@ jobs:
         run: flutter pub get
 
       - name: Static analysis
-        run: flutter analyze
+        run: |
+          mkdir -p build/ci-report
+          flutter analyze 2>&1 | tee build/ci-report/analyze.txt
 
       - name: Full Flutter tests
-        run: flutter test --dart-define-from-file=.ci-dart-defines.json --reporter compact
+        run: flutter test --dart-define-from-file=.ci-dart-defines.json --reporter expanded 2>&1 | tee build/ci-report/test.txt
 
       - name: Prepare Android release signing
         env:
@@ -198,6 +200,23 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
+
+      - name: Publish CI report (branch ci-reports/build24)
+        if: always()
+        working-directory: .
+        run: |
+          set +e
+          mkdir -p /tmp/report
+          cp -R fitila_flutter/build/ci-report/. /tmp/report/ 2>/dev/null
+          cp fitila_flutter/build/final-apk/SIZES.txt fitila_flutter/build/final-apk/SHA256SUMS.txt /tmp/report/ 2>/dev/null
+          echo "${{ github.sha }} ${{ job.status }}" > /tmp/report/STATUS.txt
+          header="$(git config --get http.https://github.com/.extraheader)"
+          cd /tmp/report
+          git init -q
+          git checkout -q -b ci-reports/build24
+          git -c user.name=fitila-ci -c user.email=ci@fitila.bj add -A
+          git -c user.name=fitila-ci -c user.email=ci@fitila.bj commit -qm "CI report ${{ github.sha }}"
+          git -c http.extraheader="$header" push -qf "https://github.com/${{ github.repository }}" ci-reports/build24
 
       - name: Publish prerelease fitila-v1.8.13-build24
         env:
