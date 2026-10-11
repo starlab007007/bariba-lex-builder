@@ -1,0 +1,106 @@
+# DUNYA offline voice pack: Omnilingual ASR (FR + Baatɔnum) + MMS voices
+name: DUNYA Voice Pack
+
+on:
+  push:
+    branches:
+      - feat/build24-dunya-voice-offline
+    paths:
+      - 'scripts/dunya_voice/**'
+      - '.github/workflows/dunya-voice-pack.yml'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publier la release dunya-voice-pack-v1'
+        type: boolean
+        default: true
+
+concurrency:
+  group: dunya-voice-pack-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  voice-pack:
+    name: Build and verify DUNYA voice packs
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install export toolchain
+        run: |
+          python -m pip install --upgrade pip
+          pip install --index-url https://download.pytorch.org/whl/cpu torch==2.4.1
+          pip install "transformers==4.46.3" "onnx==1.17.0" onnxruntime "numpy<2.1" sherpa-onnx
+
+      - name: Download Omnilingual ASR 300M int8 (sherpa-onnx)
+        run: |
+          set -euo pipefail
+          mkdir -p work && cd work
+          base=https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models
+          for name in \
+            sherpa-onnx-omnilingual-asr-1600-languages-300M-ctc-v2-int8-2026-02-05 \
+            sherpa-onnx-omnilingual-asr-1600-languages-300M-ctc-int8-2025-11-12; do
+            if curl -fSL -o asr.tar.bz2 "$base/$name.tar.bz2"; then
+              tar xjf asr.tar.bz2 && rm asr.tar.bz2
+              mv "$name" asr
+              echo "ASR_MODEL=$name" >> "$GITHUB_ENV"
+              break
+            fi
+          done
+          test -s asr/model.int8.onnx
+          test -s asr/tokens.txt
+          ls -lh asr
+
+      - name: Export Baatɔnum voice (facebook/mms-tts-bba)
+        run: python scripts/dunya_voice/export_mms_vits.py --model facebook/mms-tts-bba --lang bba --language-name Baatonum --out work/tts-bba
+
+      - name: Export French fallback voice (facebook/mms-tts-fra)
+        run: python scripts/dunya_voice/export_mms_vits.py --model facebook/mms-tts-fra --lang fra --language-name French --out work/tts-fra
+
+      - name: Verify on sherpa-onnx (TTS -> ASR round trip) and build packs
+        run: python scripts/dunya_voice/verify_and_pack.py --root work --dist dist
+
+      - name: Summary
+        run: |
+          {
+            echo "## DUNYA voice packs"
+            echo "ASR: $ASR_MODEL"
+            echo '```json'
+            cat dist/VOICE_PACK_REPORT.json
+            echo '```'
+            ls -lh dist
+          } >> "$GITHUB_STEP_SUMMARY"
+          cp work/tts-bba/export_info.json dist/tts-bba-export-info.json
+          cp work/tts-fra/export_info.json dist/tts-fra-export-info.json
+
+      - name: Upload verification samples
+        uses: actions/upload-artifact@v4
+        with:
+          name: dunya-voice-pack-report
+          path: |
+            dist/*.json
+            dist/*.wav
+          retention-days: 30
+
+      - name: Publish release dunya-voice-pack-v1
+        if: github.event_name == 'push' || inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=dunya-voice-pack-v1
+          notes="Packs vocaux hors ligne DUNYA (Build24). ASR: $ASR_MODEL (Apache-2.0). Voix MMS-TTS bba/fra: CC-BY-NC-4.0, prototype non commercial. Installer depuis l'app (Wi-Fi) ou copier le .zip sur le téléphone (carte SD, partage)."
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/*.zip dist/*manifest.json dist/VOICE_PACK_REPORT.json --clobber
+          else
+            gh release create "$tag" dist/*.zip dist/*manifest.json dist/VOICE_PACK_REPORT.json \
+              --title "DUNYA Voice Pack v1" --notes "$notes" --target "$GITHUB_SHA" --prerelease
+          fi
