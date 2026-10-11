@@ -1,0 +1,47 @@
+# Mirror the DUNYA brain (Gemma 4 E2B, LiteRT-LM, Apache-2.0) on fitila.bj so
+# phones have a fallback when the Hugging Face CDN is unreachable.
+name: Mirror DUNYA brain on fitila.bj
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/mirror-dunya-brain.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: dunya-brain-mirror
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Download on the VPS and verify
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 110m
+          script: |
+            set -e
+            dir=/home/debian/bariba-lex-builder/dunya-packs/brain
+            file=gemma-4-E2B-it.litertlm
+            sha=181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c
+            mkdir -p "$dir" && cd "$dir"
+            df -h . | tail -1
+            if [ -f "$file" ] && echo "$sha  $file" | sha256sum -c --status; then
+              echo "✅ déjà présent et vérifié"; exit 0
+            fi
+            curl -fL --retry 5 --retry-delay 10 -C - -o "$file.part" \
+              "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/$file"
+            echo "$sha  $file.part" | sha256sum -c
+            mv "$file.part" "$file"
+            chmod 644 "$file"; chmod 755 "$dir"
+            ls -lh "$file"
+            curl -fsS -r 0-1023 -o /dev/null -w "servi par nginx : %{http_code}\n" \
+              "http://127.0.0.1:8085/dunya-packs/brain/$file"
