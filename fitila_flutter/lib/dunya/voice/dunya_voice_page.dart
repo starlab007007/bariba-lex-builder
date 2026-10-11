@@ -1394,7 +1394,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 iconColor: _brainInstalled ? const Color(0xFF4F8A68) : const Color(0xFF9C6B1D),
                 title: _brainInstalled ? 'Cerveau installé' : 'Cerveau DUNYA (2,6 Go)',
                 subtitle: !canRun
-                    ? ((device?.supportedProcessor ?? true)
+                    ? (device.supportedProcessor
                         ? 'Ce téléphone ($ram Mo de RAM) est trop juste : le mode Essentiel est conseillé.'
                         : 'Le processeur de ce téléphone (32 bits) ne peut pas faire tourner le cerveau : mode Essentiel.')
                     : _brainLabel ?? (_brainInstalled ? 'Fonctionne sans Internet.' : 'À télécharger une fois, en Wi-Fi de préférence.'),
