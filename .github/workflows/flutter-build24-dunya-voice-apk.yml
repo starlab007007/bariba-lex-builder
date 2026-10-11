@@ -92,11 +92,14 @@ jobs:
 
       - name: Static analysis
         run: |
+          set -o pipefail
           mkdir -p build/ci-report
           flutter analyze 2>&1 | tee build/ci-report/analyze.txt
 
       - name: Full Flutter tests
-        run: flutter test --dart-define-from-file=.ci-dart-defines.json --reporter expanded 2>&1 | tee build/ci-report/test.txt
+        run: |
+          set -o pipefail
+          flutter test --dart-define-from-file=.ci-dart-defines.json --reporter expanded 2>&1 | tee build/ci-report/test.txt
 
       - name: Prepare Android release signing
         env:
@@ -156,6 +159,8 @@ jobs:
 
       - name: Build release APKs (universal + per processor)
         run: |
+          set -o pipefail
+          exec > >(tee build/ci-report/build.txt) 2>&1
           flutter build apk --release \
             --dart-define-from-file=.ci-dart-defines.json \
             --obfuscate \

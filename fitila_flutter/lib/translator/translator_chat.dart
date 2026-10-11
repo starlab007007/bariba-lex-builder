@@ -536,10 +536,11 @@ class _TranslatorChatState extends State<TranslatorChat> {
   Widget _composer({required bool keyboardOpen}) {
     const modes = [('Voix', Icons.mic_rounded), ('Texte', Icons.keyboard_alt_rounded), ('Photo', Icons.photo_camera_rounded), ('Coller', Icons.content_paste_rounded), ('Doc', Icons.description_rounded)];
     return Container(
-      padding: EdgeInsets.fromLTRB(4, keyboardOpen ? 4 : 6, 4, keyboardOpen ? 2 : 6),
-      decoration: const BoxDecoration(
+      padding: EdgeInsets.fromLTRB(6, keyboardOpen ? 3 : 5, 6, keyboardOpen ? 2 : 5),
+      decoration: BoxDecoration(
         color: SignatureTheme.appBackground,
-        border: Border(top: BorderSide(color: SignatureTheme.hairline)),
+        border: const Border(top: BorderSide(color: SignatureTheme.hairline)),
+        boxShadow: [BoxShadow(color: SignatureTheme.ink.withValues(alpha: .04), blurRadius: 16, offset: const Offset(0, -6))],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

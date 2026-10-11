@@ -190,14 +190,6 @@ String _stripTranslationRequest(String raw) {
   return _cleanTerm(s);
 }
 
-String _cleanTerm(String raw) {
-  var s = raw.trim();
-  s = s.replaceFirst(RegExp(r"^(?:le mot |l'expression |la phrase )"), '');
-  s = s.replaceFirst(RegExp(r"^(?:le |la |les |l'|un |une |des |du |de la |de l'|d')"), '');
-  s = s.replaceAll(RegExp(r'^["«\s]+|["»\s?]+$'), '');
-  return s.trim();
-}
-
 String _reminderLabel(String t) {
   final trigger = RegExp(r"(?:rappelle-moi|rappelle moi|préviens-moi|alerte-moi|réveille-moi|pense à me rappeler)\s*").firstMatch(t);
   if (trigger == null) return 'Rappel DUNYA';
