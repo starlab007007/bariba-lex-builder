@@ -18,8 +18,9 @@ import 'package:path_provider/path_provider.dart';
 const dunyaVoiceCorePackId = 'dunya-voice-core';
 const dunyaVoiceFrPackId = 'dunya-voice-fr';
 
-const _releaseBase =
-    'https://github.com/starlab007007/bariba-lex-builder/releases/download/dunya-voice-pack-v1';
+/// Public mirror on fitila.bj (the GitHub repository is private, so its
+/// release assets are not downloadable by phones).
+const _releaseBase = 'https://fitila.bj/dunya-packs/v1';
 
 class DunyaPackSource {
   const DunyaPackSource({required this.id, required this.title, required this.zipUrl, required this.manifestUrl});
@@ -168,8 +169,17 @@ class DunyaVoicePackManager {
     final client = http.Client();
     try {
       final response = await client.send(http.Request('GET', Uri.parse(source.zipUrl)));
+      if (response.statusCode == 404) {
+        throw DunyaPackException(
+          'Ce pack n’est pas encore disponible sur fitila.bj. Réessayez plus tard ou installez-le depuis un fichier.',
+        );
+      }
       if (response.statusCode != 200) {
         throw DunyaPackException('Téléchargement impossible (code ${response.statusCode}).');
+      }
+      final type = response.headers['content-type'] ?? '';
+      if (type.contains('text/html')) {
+        throw DunyaPackException('Le serveur a renvoyé une page au lieu du pack. Réessayez plus tard.');
       }
       final total = response.contentLength;
       final sink = target.openWrite();
@@ -186,6 +196,9 @@ class DunyaVoicePackManager {
         }
       } finally {
         await sink.close();
+      }
+      if (total != null && total > 0 && received != total) {
+        throw DunyaPackException('Téléchargement incomplet (${_mb(received)} sur ${_mb(total)}). Réessayez en Wi-Fi.');
       }
       return await installFromFile(target.path, onProgress: onProgress, deleteSource: true);
     } on DunyaPackException {
