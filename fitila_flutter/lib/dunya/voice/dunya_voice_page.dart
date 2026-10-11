@@ -22,6 +22,7 @@ import '../dunya_local_store.dart';
 import '../dunya_models.dart';
 import 'dunya_assistant.dart';
 import 'dunya_brain.dart';
+import 'dunya_byt5.dart';
 import 'dunya_mic_capture.dart';
 import 'dunya_settings.dart';
 import 'dunya_speech_engine.dart';
@@ -159,6 +160,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     _engine?.dispose();
     _engine = null;
     _paths = await _packs.resolvePaths();
+    await DunyaByt5.instance.activateIfInstalled();
     if (!_paths.canListen && !_paths.canSpeakBariba && !_paths.canSpeakFrenchOffline) return;
     try {
       final temp = await getTemporaryDirectory();
@@ -1392,11 +1394,13 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 iconColor: _brainInstalled ? const Color(0xFF4F8A68) : const Color(0xFF9C6B1D),
                 title: _brainInstalled ? 'Cerveau installé' : 'Cerveau DUNYA (2,6 Go)',
                 subtitle: !canRun
-                    ? 'Ce téléphone ($ram Mo de RAM) est trop juste : le mode Essentiel est conseillé.'
+                    ? ((device?.supportedProcessor ?? true)
+                        ? 'Ce téléphone ($ram Mo de RAM) est trop juste : le mode Essentiel est conseillé.'
+                        : 'Le processeur de ce téléphone (32 bits) ne peut pas faire tourner le cerveau : mode Essentiel.')
                     : _brainLabel ?? (_brainInstalled ? 'Fonctionne sans Internet.' : 'À télécharger une fois, en Wi-Fi de préférence.'),
                 trailing: _brainInstalled
                     ? TextButton(onPressed: _removeBrain, child: const Text('Supprimer'))
-                    : _downloading
+                    : _downloading || !canRun
                         ? null
                         : TextButton(onPressed: _downloadBrain, child: const Text('Télécharger')),
                 progress: _downloading ? (_brainProgress ?? -1) : null,

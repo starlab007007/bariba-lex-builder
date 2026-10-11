@@ -1,0 +1,83 @@
+# DUNYA offline translation pack (FITILA ByT5 French <-> Baatonum).
+# Needs read access to the private model: repository secret HF_TOKEN.
+name: DUNYA ByT5 Pack
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: 'Modèle Hugging Face ByT5 FITILA'
+        default: 'zimesongbian/modele_byt5_bariba_expert_api_v03_improve'
+      prefix_fr_ba:
+        description: 'Préfixe français -> baatɔnum attendu par le modèle'
+        default: ''
+      prefix_ba_fr:
+        description: 'Préfixe baatɔnum -> français attendu par le modèle'
+        default: ''
+      variant:
+        description: 'int8 (léger) ou fp32 (exact)'
+        default: 'int8'
+
+permissions:
+  contents: write
+
+jobs:
+  byt5:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install toolchain
+        run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu torch==2.4.1
+          pip install "transformers==4.46.3" "onnx==1.17.0" onnxruntime "numpy<2.1" sentencepiece
+      - name: Export and verify
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python scripts/dunya_byt5/export_byt5_onnx.py --model "${{ inputs.model }}" --out work \
+            --token "${HF_TOKEN:-}" \
+            --sample "${{ inputs.prefix_fr_ba }}Bonjour, comment allez-vous ?" \
+            --sample "${{ inputs.prefix_ba_fr }}A kua"
+      - name: Build pack
+        run: |
+          set -euo pipefail
+          mkdir -p pack/byt5 dist
+          suffix=$([ "${{ inputs.variant }}" = "fp32" ] && echo "" || echo ".int8")
+          cp "work/encoder${suffix}.onnx" pack/byt5/encoder.onnx
+          cp "work/decoder${suffix}.onnx" pack/byt5/decoder.onnx
+          python - <<'PY'
+          import hashlib, json, zipfile, pathlib, datetime
+          root = pathlib.Path('pack')
+          cfg = {"prefix_fr_ba": "${{ inputs.prefix_fr_ba }}", "prefix_ba_fr": "${{ inputs.prefix_ba_fr }}",
+                 "model": "${{ inputs.model }}", "variant": "${{ inputs.variant }}"}
+          (root / 'byt5' / 'config.json').write_text(json.dumps(cfg, ensure_ascii=False), encoding='utf-8')
+          files = []
+          for p in sorted(root.rglob('*')):
+              if p.is_file():
+                  files.append({"path": p.relative_to(root).as_posix(), "size": p.stat().st_size,
+                                "sha256": hashlib.sha256(p.read_bytes()).hexdigest()})
+          manifest = {"format": "dunya-pack/1", "id": "dunya-translate-byt5", "title": "Traduction baatɔnum hors ligne (ByT5 FITILA)",
+                      "version": 1, "created_at": datetime.datetime.utcnow().isoformat(timespec='seconds') + 'Z',
+                      "components": ["byt5"], "files": files, "total_bytes": sum(f["size"] for f in files)}
+          with zipfile.ZipFile('dist/dunya-translate-byt5-v1.zip', 'w', compression=zipfile.ZIP_STORED, allowZip64=True) as z:
+              z.writestr('manifest.json', json.dumps(manifest, ensure_ascii=False, indent=1))
+              for f in files:
+                  z.write(root / f["path"], f["path"])
+          pathlib.Path('dist/dunya-translate-byt5-v1.manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=1), encoding='utf-8')
+          print(json.dumps(manifest, indent=1))
+          PY
+          cp work/byt5_report.json dist/
+      - name: Publish release dunya-byt5-pack-v1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=dunya-byt5-pack-v1
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/* --clobber
+          else
+            gh release create "$tag" dist/* --title "DUNYA ByT5 Pack v1" --notes "Traduction FR <-> baatɔnum hors ligne (ByT5 FITILA)." --prerelease
+          fi

@@ -52,14 +52,25 @@ const dunyaBrainE2B = DunyaBrainModel(
 );
 
 class DunyaDeviceInfo {
-  const DunyaDeviceInfo({required this.totalRamMb, required this.availRamMb, required this.lowRam, required this.cores});
+  const DunyaDeviceInfo({
+    required this.totalRamMb,
+    required this.availRamMb,
+    required this.lowRam,
+    required this.cores,
+    this.abi = '',
+  });
 
   final int totalRamMb;
   final int availRamMb;
   final bool lowRam;
   final int cores;
 
-  bool canRun(DunyaBrainModel model) => !lowRam && totalRamMb >= model.minRamMb;
+  /// Primary processor ABI. The LiteRT-LM engine ships for arm64 only.
+  final String abi;
+
+  bool get supportedProcessor => abi.isEmpty || abi.contains('arm64') || abi.contains('x86_64');
+
+  bool canRun(DunyaBrainModel model) => supportedProcessor && !lowRam && totalRamMb >= model.minRamMb;
 }
 
 class DunyaBrainException implements Exception {
@@ -114,6 +125,7 @@ class DunyaBrain {
         availRamMb: (m['availRamMb'] as int?) ?? 0,
         lowRam: (m['lowRam'] as bool?) ?? false,
         cores: (m['cores'] as int?) ?? Platform.numberOfProcessors,
+        abi: m['abi']?.toString() ?? '',
       );
     } on MissingPluginException {
       return DunyaDeviceInfo(totalRamMb: 0, availRamMb: 0, lowRam: true, cores: Platform.numberOfProcessors);
