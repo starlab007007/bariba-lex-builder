@@ -198,7 +198,8 @@ jobs:
             "$APKSIGNER" verify "$src"
             cp "$src" "build/final-apk/FITILA-Android-v1.8.15-build26-dunya-voice-$kind.apk"
           done
-          "$APKSIGNER" verify --print-certs build/final-apk/*-arm64.apk | grep -E "Signer #1 certificate (DN|SHA-256)" | tee build/final-apk/SIGNER.txt
+          "$APKSIGNER" verify --print-certs build/final-apk/*-arm64.apk > build/final-apk/SIGNER.txt
+          grep -iE "certificate (DN|SHA-256)" build/final-apk/SIGNER.txt || cat build/final-apk/SIGNER.txt
           cp build/SIGNING_MODE.txt build/final-apk/
           cd build/final-apk
           sha256sum *.apk | tee SHA256SUMS.txt
