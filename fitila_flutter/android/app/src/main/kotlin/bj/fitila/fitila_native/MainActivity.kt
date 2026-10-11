@@ -8,5 +8,6 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         KeyboardChannel(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         DunyaActionChannel(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
+        DunyaLlmChannel(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
     }
 }

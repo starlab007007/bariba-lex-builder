@@ -16,6 +16,9 @@
         android:label="FITILA"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- DUNYA cerveau : accélération GPU optionnelle de LiteRT-LM. -->
+        <uses-native-library android:name="libOpenCL.so" android:required="false" />
+        <uses-native-library android:name="libvndksupport.so" android:required="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

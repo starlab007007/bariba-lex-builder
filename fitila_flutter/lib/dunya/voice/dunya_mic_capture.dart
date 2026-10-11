@@ -14,7 +14,13 @@ class DunyaUtteranceDetector {
     this.silenceToStop = const Duration(milliseconds: 1300),
     this.maxDuration = const Duration(seconds: 20),
     this.noSpeechTimeout = const Duration(seconds: 7),
+    this.minThreshold = 0.012,
+    this.minSpeech = const Duration(milliseconds: 180),
   });
+
+  /// Raised during DUNYA's own speech so its voice does not trigger a turn.
+  final double minThreshold;
+  final Duration minSpeech;
 
   final int sampleRate;
   final Duration silenceToStop;
@@ -40,11 +46,11 @@ class DunyaUtteranceDetector {
       _samples.add(s);
     }
     final rms = math.sqrt(sum / chunk.length);
-    final threshold = math.max(0.012, _noiseFloor * 3.2);
+    final threshold = math.max(minThreshold, _noiseFloor * 3.2);
     if (rms > threshold) {
       _speechSamples += chunk.length;
       _silentSamples = 0;
-      if (_speechSamples > sampleRate * 0.18) _heardSpeech = true;
+      if (_speechSamples > sampleRate * minSpeech.inMilliseconds / 1000) _heardSpeech = true;
     } else {
       _silentSamples += chunk.length;
       // Track background noise only while nobody speaks.
@@ -94,15 +100,27 @@ class DunyaMicCapture {
 
   Future<bool> hasPermission() => _recorder.hasPermission();
 
-  /// Records one utterance. [onLevel] receives 0..1 levels for the UI.
+  /// Records one utterance. [onLevel] receives 0..1 levels for the UI and
+  /// [onSpeechStart] fires once, as soon as real speech is detected.
   /// Returns null when nothing was said.
-  Future<Float32List?> listen({void Function(double level)? onLevel}) async {
+  Future<Float32List?> listen({
+    void Function(double level)? onLevel,
+    void Function()? onSpeechStart,
+    double minThreshold = 0.012,
+    Duration minSpeech = const Duration(milliseconds: 180),
+    Duration noSpeechTimeout = const Duration(seconds: 7),
+  }) async {
     await cancel();
-    final detector = DunyaUtteranceDetector();
+    final detector = DunyaUtteranceDetector(
+      minThreshold: minThreshold,
+      minSpeech: minSpeech,
+      noSpeechTimeout: noSpeechTimeout,
+    );
     final decoder = DunyaPcm16Decoder();
     final done = Completer<Float32List?>();
     _detector = detector;
     _done = done;
+    var started = false;
     final stream = await _recorder.startStream(
       const RecordConfig(
         encoder: AudioEncoder.pcm16bits,
@@ -110,12 +128,17 @@ class DunyaMicCapture {
         numChannels: 1,
         autoGain: true,
         noiseSuppress: true,
+        echoCancel: true,
       ),
     );
     _sub = stream.listen(
       (bytes) {
         final level = detector.add(decoder.decode(bytes));
         onLevel?.call(math.min(1, level * 9));
+        if (!started && detector.heardSpeech) {
+          started = true;
+          onSpeechStart?.call();
+        }
         if (detector.shouldStop) unawaited(stop());
       },
       onError: (Object error) {
@@ -124,6 +147,8 @@ class DunyaMicCapture {
     );
     return done.future;
   }
+
+  bool get isListening => _done != null;
 
   /// Ends the current utterance and returns what was heard.
   Future<void> stop() async {

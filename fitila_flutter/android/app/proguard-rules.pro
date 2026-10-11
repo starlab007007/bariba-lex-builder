@@ -16,3 +16,8 @@
 -dontwarn com.google.android.play.core.tasks.OnFailureListener
 -dontwarn com.google.android.play.core.tasks.OnSuccessListener
 -dontwarn com.google.android.play.core.tasks.Task
+
+# DUNYA: LiteRT-LM is called through JNI (classes looked up by name).
+-keep class com.google.ai.edge.litertlm.** { *; }
+-keepclassmembers class com.google.ai.edge.litertlm.** { *; }
+-dontwarn com.google.ai.edge.litertlm.**

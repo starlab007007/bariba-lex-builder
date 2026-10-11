@@ -346,15 +346,34 @@ class DunyaLocalStore {
     return _db!;
   }
 
-  Future<List<DunyaMessage>> loadMessages() async {
+  /// Creates a conversation row (one per language mode) when missing.
+  Future<void> ensureConversation(String conversationId, {String language = 'fr'}) async {
     final db = await database;
-    final rows = await db.query(
+    final now = DateTime.now().toUtc().toIso8601String();
+    await db.insert(
+      'dunya_conversations',
+      {
+        'id': conversationId,
+        'profile_id': _profileId,
+        'title': 'DUNYA $language',
+        'status': 'active',
+        'language': language,
+        'created_at': now,
+        'updated_at': now,
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+  }
+
+  Future<List<DunyaMessage>> loadMessages({String? conversationId, int limit = 300}) async {
+    final db = await database;
+    final rows = (await db.query(
       'dunya_messages',
       where: 'conversation_id = ? AND deleted_at IS NULL',
-      whereArgs: [_conversationId],
-      orderBy: 'created_at ASC',
-      limit: 300,
-    );
+      whereArgs: [conversationId ?? _conversationId],
+      orderBy: 'created_at DESC',
+      limit: limit,
+    )).reversed.toList();
     return [
       for (final row in rows)
         DunyaMessage(
@@ -365,13 +384,15 @@ class DunyaLocalStore {
     ];
   }
 
-  Future<void> appendMessage(DunyaMessage message) async {
+  Future<void> appendMessage(DunyaMessage message, {String? conversationId}) async {
     final db = await database;
+    final convo = conversationId ?? _conversationId;
+    if (conversationId != null) await ensureConversation(conversationId);
     final now = DateTime.now().toUtc();
     final id = 'msg-${now.microsecondsSinceEpoch}-${_nextSeq()}';
     await db.insert('dunya_messages', {
       'id': id,
-      'conversation_id': _conversationId,
+      'conversation_id': convo,
       'role': message.role,
       'content': message.content,
       'content_type': 'text',
@@ -393,7 +414,18 @@ class DunyaLocalStore {
       'dunya_conversations',
       {'updated_at': now.toIso8601String()},
       where: 'id = ?',
-      whereArgs: [_conversationId],
+      whereArgs: [convo],
+    );
+  }
+
+  /// Soft-deletes the history of one conversation (new chat).
+  Future<void> clearMessages(String conversationId) async {
+    final db = await database;
+    await db.update(
+      'dunya_messages',
+      {'deleted_at': DateTime.now().toUtc().toIso8601String()},
+      where: 'conversation_id = ? AND deleted_at IS NULL',
+      whereArgs: [conversationId],
     );
   }
 

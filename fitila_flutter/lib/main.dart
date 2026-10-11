@@ -50,6 +50,7 @@ import 'classe/classe_widgets.dart' show ClasseStoragePlayer;
 import 'espace/espace_home.dart';
 import 'keyboard/bariba_input.dart';
 import 'dictionary/dictionary_experience.dart';
+import 'dunya/voice/dunya_translator.dart';
 import 'dunya/dunya_home.dart';
 import 'translator/translator_chat.dart';
 import 'ui/offline_banner.dart';
@@ -95,6 +96,18 @@ void _wireBaribaKeyboard() {
       accessToken: token,
       dictionaryLoader: () async => const <DictionaryEntry>[],
     );
+  };
+  // DUNYA mode baatɔnum : chaîne de traduction FITILA en ligne (ByT5, ai-translate).
+  DunyaTranslator.online = (text, toBariba) async {
+    final token = FitilaBackend.client.auth.currentSession?.accessToken;
+    if (token == null || token.isEmpty || !FitilaOffline.online.value) return null;
+    final out = await FitilaServices.translate(
+      text,
+      toBariba ? TranslationDirection.frenchToBariba : TranslationDirection.baribaToFrench,
+      accessToken: token,
+      dictionaryLoader: () async => const <DictionaryEntry>[],
+    );
+    return out.trim().isEmpty ? null : out;
   };
 }
 
