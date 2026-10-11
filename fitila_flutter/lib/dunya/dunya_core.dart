@@ -46,6 +46,9 @@ class DunyaAssetKnowledgeRepository implements DunyaKnowledgeRepository {
   @override
   int get dictionaryCount => _dictionary.length;
 
+  /// Bariba headword -> French definition rows of the embedded dictionary.
+  List<Map<String, String>> get dictionaryEntries => _dictionary;
+
   @override
   Future<void> initialize() async {
     if (_ready) return;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dunya_core.dart';
 import 'dunya_local_store.dart';
 import 'dunya_models.dart';
+import 'voice/dunya_voice_page.dart';
 
 class DunyaOfflinePage extends StatefulWidget {
   const DunyaOfflinePage({super.key});
@@ -24,6 +25,7 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
   List<String> _memories = [];
   bool _loading = true;
   bool _generating = false;
+  bool _voiceMode = true;
 
   @override
   void initState() {
@@ -197,6 +199,17 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
     );
   }
 
+  Future<void> _openChat() async {
+    final messages = await _store.loadMessages();
+    final memories = await _store.loadMemories();
+    if (!mounted) return;
+    setState(() {
+      _messages = messages;
+      _memories = memories;
+      _voiceMode = false;
+    });
+  }
+
   Future<void> _saveMemory(String value) async {
     if (_memories.contains(value)) return;
     setState(() => _memories = [value, ..._memories].take(100).toList());
@@ -213,6 +226,10 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
     const goldDeep = Color(0xFF9C6B1D);
     const sage = Color(0xFF3F6E52);
     const line = Color(0xFFE4DFCC);
+
+    if (_voiceMode) {
+      return DunyaVoicePage(knowledge: _knowledge, onOpenChat: _openChat);
+    }
 
     return ColoredBox(
       color: bg,
@@ -251,6 +268,11 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
                       ],
                     ),
                   ),
+                  IconButton(
+                    tooltip: 'Parler à DUNYA',
+                    onPressed: () => setState(() => _voiceMode = true),
+                    icon: const Icon(Icons.mic_rounded, color: goldDeep),
+                  ),
                 ],
               ),
             ),
@@ -280,7 +302,7 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
                                     childAspectRatio: 1.7,
                                     children: [
                                       _capability(Icons.chat_bubble_outline_rounded, 'Discuter', 'Actif', goldDeep),
-                                      _capability(Icons.mic_none_rounded, 'Parler', 'À installer', goldDeep),
+                                      _capability(Icons.mic_none_rounded, 'Parler', 'Français · Baatɔnum', goldDeep),
                                       _capability(Icons.storage_rounded, 'Mes savoirs', '${_memories.length} mémoire(s)', goldDeep),
                                       _capability(Icons.camera_alt_outlined, 'Comprendre', 'À installer', goldDeep),
                                     ],

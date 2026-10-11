@@ -7,5 +7,6 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         KeyboardChannel(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
+        DunyaActionChannel(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
     }
 }

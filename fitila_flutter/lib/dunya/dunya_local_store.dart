@@ -551,6 +551,36 @@ class DunyaLocalStore {
     };
   }
 
+  /// Journal of DUNYA "Agir" actions (proposed, confirmed, executed, refused).
+  Future<String> recordActionRun({
+    required String toolName,
+    required Map<String, dynamic> arguments,
+    required String status,
+    Map<String, dynamic>? result,
+    bool requiresConfirmation = true,
+    String? runId,
+  }) async {
+    final db = await database;
+    final now = DateTime.now().toUtc();
+    final id = runId ?? 'act-${now.microsecondsSinceEpoch}';
+    await db.insert(
+      'dunya_action_runs',
+      {
+        'id': id,
+        'profile_id': _profileId,
+        'conversation_id': _conversationId,
+        'tool_name': toolName,
+        'arguments_json': jsonEncode(arguments),
+        'status': status,
+        'result_json': result == null ? null : jsonEncode(result),
+        'requires_confirmation': requiresConfirmation ? 1 : 0,
+        'created_at': now.toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    return id;
+  }
+
   Future<void> audit(
     String eventType,
     Map<String, dynamic> detail, {

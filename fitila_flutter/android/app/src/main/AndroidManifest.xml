@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- DUNYA Agir : rappels et minuteurs posés dans l'horloge du téléphone, hors ligne. -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <application
         android:label="FITILA"
         android:name="${applicationName}"
@@ -60,6 +62,12 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <intent>
+            <action android:name="android.intent.action.SET_ALARM"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SET_TIMER"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE"/>
         </intent>
