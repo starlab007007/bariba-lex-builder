@@ -764,6 +764,13 @@ serve(async (req: Request) => {
       );
     }
 
+    // The voice Space is private: browsers cannot fetch its files directly, so the
+    // audio is served through the tts-audio function (which adds the HF token).
+    const supabaseBase = Deno.env.get("SUPABASE_URL") || "";
+    if (supabaseBase && /\.hf\.space\//.test(tts.audio_url)) {
+      tts.audio_url = `${supabaseBase}/functions/v1/tts-audio?u=${encodeURIComponent(tts.audio_url)}`;
+    }
+
     const duration = Date.now() - startedAt;
     await logTtsRequestSafe({
       original_text: rawText,

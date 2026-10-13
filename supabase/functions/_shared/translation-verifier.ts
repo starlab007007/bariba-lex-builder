@@ -156,6 +156,14 @@ function editDistance(a: string, b: string): number {
   return prev[n];
 }
 
+/** Split a text into sentences, keeping their final punctuation. */
+export function splitSentences(text: string): string[] {
+  return (text || "")
+    .split(/(?<=[.!?…])\s+/u)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export function similarity(a: string, b: string): number {
   const x = a.normalize("NFC").toLowerCase();
   const y = b.normalize("NFC").toLowerCase();
@@ -192,7 +200,10 @@ export function estimateConfidence(
 ): { confidence: number; kind: string } {
   const coverage = lexicalCoverage(translation, targetLang);
   const looping = /(\b\S+(?:\s+\S+){0,2})(?:\s+\1){2,}/u.test(translation);
-  const base = targetLang === "ba" ? 35 + 55 * coverage : 50 + 35 * coverage;
-  const value = Math.round(Math.max(5, Math.min(targetLang === "ba" ? 80 : 85, base - (looping ? 40 : 0) + (refined ? 2 : 0))));
-  return { confidence: value, kind: "lexical-coverage" };
+  const base = targetLang === "ba" ? 20 + 45 * coverage : 30 + 40 * coverage;
+  // Measured in production (13/10/2026): on sentences outside the corpus, ByT5 v03 keeps
+  // a high lexical coverage while often changing the meaning (chrF++ ~20). Known words do
+  // not prove a correct sentence, so a model output is capped well below attested ones.
+  const value = Math.round(Math.max(5, Math.min(targetLang === "ba" ? 60 : 65, base - (looping ? 40 : 0) + (refined ? 2 : 0))));
+  return { confidence: value, kind: "model-unverified" };
 }

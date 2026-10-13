@@ -120,3 +120,6 @@ verify_jwt = false
 
 [functions.recognize-handwriting]
 verify_jwt = true
+
+[functions.tts-audio]
+verify_jwt = false
