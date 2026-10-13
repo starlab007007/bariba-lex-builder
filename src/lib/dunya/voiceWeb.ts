@@ -93,7 +93,11 @@ export async function translate(text: string, from: 'fr' | 'bba', to: 'fr' | 'bb
   const attested = await memoryTranslate(text, direction);
   if (attested) return attested.translation;
   // 2. Offline: word-by-word from the lexicon, only when most words are known.
-  if (isOffline()) return (await memoryTranslate(text, direction, { allowWordByWord: true }))?.translation ?? null;
+  if (isOffline()) {
+    // A word-by-word glossary is not a trustworthy sentence translator.
+    // Do not voice a grammatical sentence assembled from isolated words.
+    return null;
+  }
   try {
     const data = await invoke<{ translation?: string }>('byt5-bariba-translate', {
       text,
@@ -105,7 +109,8 @@ export async function translate(text: string, from: 'fr' | 'bba', to: 'fr' | 'bb
   } catch {
     // network or server failure: fall through to the offline lexicon
   }
-  return (await memoryTranslate(text, direction, { allowWordByWord: true }))?.translation ?? null;
+  // Cloud failures must not silently turn a glossary into a sentence translation.
+  return null;
 }
 
 const VOICE_SYSTEM_PROMPT = [
