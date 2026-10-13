@@ -78,7 +78,7 @@ void main() {
 
   test('uses the existing authenticated API contract', () async {
     final client = MockClient((request) async {
-      expect(request.url.path, '/functions/v1/ai-translate');
+      expect(request.url.path, '/functions/v1/byt5-bariba-translate');
       expect(request.headers['Authorization'], 'Bearer test-token');
       expect(jsonDecode(request.body), {
         'text': 'bonjour',
@@ -100,14 +100,14 @@ void main() {
     client.close();
   });
 
-  test('falls back to FITILA ByT5 when ai-translate is unavailable', () async {
+  test('falls back to ai-translate when the FITILA ByT5 engine is unavailable', () async {
     final calls = <String>[];
     final client = MockClient((request) async {
       calls.add(request.url.path);
-      if (request.url.path == '/functions/v1/ai-translate') {
+      if (request.url.path == '/functions/v1/byt5-bariba-translate') {
         return http.Response('primary unavailable', 503);
       }
-      expect(request.url.path, '/functions/v1/byt5-bariba-translate');
+      expect(request.url.path, '/functions/v1/ai-translate');
       return http.Response(
         jsonEncode({'translation': 'barka test'}),
         200,
@@ -125,8 +125,8 @@ void main() {
       'barka test',
     );
     expect(calls, [
-      '/functions/v1/ai-translate',
       '/functions/v1/byt5-bariba-translate',
+      '/functions/v1/ai-translate',
     ]);
     client.close();
   });

@@ -640,8 +640,9 @@ class FitilaServices {
     }
 
     // Authenticated remote chain:
-    // 1. ai-translate (Lovable/Gemini when configured)
-    // 2. byt5-bariba-translate (FITILA Bariba model)
+    // 1. byt5-bariba-translate (modèle FITILA : mémoire des phrases attestées + ByT5).
+    //    Il passe avant Gemini, qui ne maîtrise pas le baatɔnum et invente des mots.
+    // 2. ai-translate / ai-translate-lovable (secours généraliste, dernier recours)
     // 3. embedded dictionary exact match below.
     if (accessToken != null &&
         accessToken.isNotEmpty &&
@@ -664,8 +665,8 @@ class FitilaServices {
       };
       try {
         for (final endpoint in const [
-          'ai-translate',
           'byt5-bariba-translate',
+          'ai-translate',
           'ai-translate-lovable',
         ]) {
           try {
