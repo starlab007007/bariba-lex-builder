@@ -7,6 +7,10 @@ on:
         description: "Mesurer le vrai modèle ByT5 (Space HF public) sur le jeu de test"
         type: boolean
         default: true
+      autocorrect:
+        description: "Space : garder sa post-correction automatique (false = mesurer le modèle brut)"
+        type: boolean
+        default: true
       limit:
         description: "Nombre de phrases du jeu de test à évaluer (0 = toutes, ~2 000 appels)"
         default: "120"
@@ -82,7 +86,7 @@ jobs:
       - name: Evaluate the deployed ByT5 Space
         working-directory: scripts/dunya_translate
         run: |
-          python eval_translation.py --backend space --limit "${{ inputs.limit }}" --out /tmp/eval_space.json | tee /tmp/eval_space_summary.json
+          python eval_translation.py --backend space --limit "${{ inputs.limit }}" ${{ inputs.autocorrect && ' ' || '--no-autocorrect' }} --out /tmp/eval_space.json | tee /tmp/eval_space_summary.json
           python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json
           r = json.load(open('/tmp/eval_space.json', encoding='utf-8'))['report']
@@ -98,7 +102,7 @@ jobs:
       - name: Publish report (branch ci-reports/translation)
         if: always()
         run: |
-          mkdir /tmp/rep && cp /tmp/eval_space.json /tmp/rep/ 2>/dev/null || true
+          mkdir /tmp/rep && cp /tmp/eval_space.json "/tmp/rep/eval_space_autocorrect_${{ inputs.autocorrect }}.json" 2>/dev/null || true
           cd /tmp/rep
           git init -q && git checkout -q -b ci-reports/translation
           git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"

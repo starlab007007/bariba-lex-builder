@@ -45,17 +45,17 @@ class MemoryBackend:
 
 
 class SpaceBackend:
-    name = "space-byt5-v03"
-
-    def __init__(self, url: str, mode: str) -> None:
+    def __init__(self, url: str, mode: str, autocorrect: bool = True) -> None:
         from gradio_client import Client
         self.client = Client(url)
         self.mode = mode
+        self.autocorrect = autocorrect
+        self.name = "space-byt5-v03" + ("" if autocorrect else "-no-autocorrect")
 
     def __call__(self, direction: str, text: str) -> str:
         for attempt in range(4):
             try:
-                out = self.client.predict(text, direction, self.mode, True, True, api_name="/translate_pipeline")
+                out = self.client.predict(text, direction, self.mode, True, self.autocorrect, api_name="/translate_pipeline")
                 return (out[0] if isinstance(out, (list, tuple)) else out) or ""
             except Exception as exc:  # cold start / queue timeouts
                 time.sleep(3 * (attempt + 1))
@@ -105,6 +105,7 @@ def main() -> None:
     ap.add_argument("--backend", choices=["memory", "space", "hf", "jsonl"], default="memory")
     ap.add_argument("--space-url", default="https://zimesongbian-modele-byt5-bariba-expert-api-v03-improve.hf.space")
     ap.add_argument("--space-mode", default="Qualite maximale")
+    ap.add_argument("--no-autocorrect", action="store_true", help="Space: disable its rule-based post-correction")
     ap.add_argument("--model", default=None)
     ap.add_argument("--rag", action="store_true")
     ap.add_argument("--beams", type=int, default=4)
@@ -126,7 +127,7 @@ def main() -> None:
     if args.backend == "memory":
         backend = MemoryBackend(memory)
     elif args.backend == "space":
-        backend = SpaceBackend(args.space_url, args.space_mode)
+        backend = SpaceBackend(args.space_url, args.space_mode, not args.no_autocorrect)
     elif args.backend == "hf":
         backend = HfBackend(args.model, memory, args.rag, args.beams)
     else:
