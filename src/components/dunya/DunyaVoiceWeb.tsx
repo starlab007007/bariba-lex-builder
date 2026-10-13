@@ -174,8 +174,14 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           }
         }
       } catch (error) {
-        answerText = 'Je n’ai pas pu répondre. Vérifiez la connexion et réessayez.';
-        setNotice(error instanceof Error ? error.message : null);
+        // Cloud outage must not discard useful, already installed FITILA knowledge.
+        // Offline fallback is a sourced extract, not a generated answer.
+        const local = offlineAnswer?.(clean)?.trim();
+        answerText = local || 'Je n’ai pas trouvé de réponse fiable dans les ressources disponibles.';
+        answerSub = undefined;
+        setNotice(local
+          ? 'Service distant indisponible : extrait des ressources locales FITILA (non génératif).'
+          : error instanceof Error ? error.message : 'Service momentanément indisponible.');
       } finally {
         setStatus(null);
       }
