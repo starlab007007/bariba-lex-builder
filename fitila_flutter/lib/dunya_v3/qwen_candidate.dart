@@ -13,7 +13,8 @@ class DunyaQwenCandidate {
 
   /// This must be verified against the downloaded, pinned artifact before
   /// enabling it as an installable model.
-  static const String? verifiedSha256 = null;
+  static const String? verifiedSha256 = '2eeffef7b51bc3e1225ea69fe7aa5f417397934b56a5b6c20cc068d6fd2c918b';
+  static const sizeBytes = 977184032;
 
   static bool get safeToInstall =>
       verifiedSha256 != null && RegExp(r'^[a-f0-9]{64}$').hasMatch(verifiedSha256!);
