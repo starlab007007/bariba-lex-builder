@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { isOffline, memoryTranslate } from '@/lib/translation/translationMemory';
 
 interface TranslationResult {
   translation: string;
@@ -9,8 +10,11 @@ interface TranslationResult {
 }
 
 /**
- * Hook de traduction simplifié utilisant uniquement ByT5 (byt5-bariba-translate).
- * Aucun fallback — si ByT5 échoue, une erreur est retournée.
+ * Hook de traduction FITILA, en ligne ET hors ligne :
+ *  1. phrase attestée (dictionnaire, Apprendre, scènes) : exacte, instantanée, sans réseau ;
+ *  2. en ligne : ByT5 (byt5-bariba-translate, qui consulte aussi la mémoire) ;
+ *  3. hors ligne ou serveur indisponible : mot à mot depuis le lexique si la plupart des mots sont connus.
+ * Sinon une erreur claire est retournée, jamais une traduction inventée.
  */
 export function useSimpleTranslation() {
   const [isTranslating, setIsTranslating] = useState(false);
@@ -29,6 +33,14 @@ export function useSimpleTranslation() {
     const targetLang = direction === 'fr-ba' ? 'bariba' : 'french';
 
     try {
+      const attested = await memoryTranslate(text, direction);
+      if (attested) {
+        return { ...attested, duration: Math.round(performance.now() - startTime) };
+      }
+
+      let onlineFailure: Error | null = null;
+      if (!isOffline()) {
+      try {
       const { data, error: byT5Error } = await supabase.functions.invoke('byt5-bariba-translate', {
         body: { text, sourceLang, targetLang }
       });
@@ -44,6 +56,16 @@ export function useSimpleTranslation() {
         method: data.method || 'byt5-expert',
         duration
       };
+      } catch (networkErr: any) {
+        onlineFailure = networkErr instanceof Error ? networkErr : new Error(String(networkErr));
+      }
+      }
+
+      const offline = await memoryTranslate(text, direction, { allowWordByWord: true });
+      if (offline) {
+        return { ...offline, duration: Math.round(performance.now() - startTime) };
+      }
+      throw onlineFailure ?? new Error('Hors connexion : cette phrase n’est pas dans la mémoire FITILA. Reconnectez-vous pour la traduire.');
     } catch (err: any) {
       console.error('Translation error:', err);
       setError(err.message);

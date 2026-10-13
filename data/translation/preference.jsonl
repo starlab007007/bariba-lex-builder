@@ -1,0 +1,1440 @@
+{"prompt": "fr-ba: Bonne arrivée!", "chosen": "Aagu wune ka weru.", "rejected": "Yeegu?", "source": "exercise"}
+{"prompt": "fr-ba: Bonne arrivée!", "chosen": "Aagu wune ka weru.", "rejected": "A kɔ ka sɔmburu.", "source": "exercise"}
+{"prompt": "fr-ba: Bonne arrivée!", "chosen": "Aagu wune ka weru.", "rejected": "Yam wɔ̃kura?", "source": "exercise"}
+{"prompt": "ba-fr: Aagu wune ka weru.", "chosen": "Bonne arrivée!", "rejected": "Comment vas-tu?", "source": "exercise"}
+{"prompt": "ba-fr: Aagu wune ka weru.", "chosen": "Bonne arrivée!", "rejected": "Bon courage", "source": "exercise"}
+{"prompt": "ba-fr: Aagu wune ka weru.", "chosen": "Bonne arrivée!", "rejected": "Bonne nuit", "source": "exercise"}
+{"prompt": "fr-ba: Salut (à un plus jeune)", "chosen": "Aagu.", "rejected": "Yeegu?", "source": "exercise"}
+{"prompt": "fr-ba: Salut (à un plus jeune)", "chosen": "Aagu.", "rejected": "Aagu wune ka weru.", "source": "exercise"}
+{"prompt": "fr-ba: Salut (à un plus jeune)", "chosen": "Aagu.", "rejected": "Na kãi nin tɛria.", "source": "exercise"}
+{"prompt": "ba-fr: Aagu.", "chosen": "Salut (à un plus jeune)", "rejected": "Au revoir", "source": "exercise"}
+{"prompt": "ba-fr: Aagu.", "chosen": "Salut (à un plus jeune)", "rejected": "Merci", "source": "exercise"}
+{"prompt": "ba-fr: Aagu.", "chosen": "Salut (à un plus jeune)", "rejected": "Bonjour", "source": "exercise"}
+{"prompt": "fr-ba: Comment vas-tu?", "chosen": "Yeegu?", "rejected": "Aagu.", "source": "exercise"}
+{"prompt": "fr-ba: Comment vas-tu?", "chosen": "Yeegu?", "rejected": "A kpuna n dɔɔ?", "source": "exercise"}
+{"prompt": "fr-ba: Comment vas-tu?", "chosen": "Yeegu?", "rejected": "Yam wɔ̃kura?", "source": "exercise"}
+{"prompt": "ba-fr: Yeegu?", "chosen": "Comment vas-tu?", "rejected": "Bonne arrivée!", "source": "exercise"}
+{"prompt": "ba-fr: Yeegu?", "chosen": "Comment vas-tu?", "rejected": "As-tu bien dormi?", "source": "exercise"}
+{"prompt": "ba-fr: Yeegu?", "chosen": "Comment vas-tu?", "rejected": "Bonne nuit", "source": "exercise"}
+{"prompt": "fr-ba: Bon courage", "chosen": "A kɔ ka sɔmburu.", "rejected": "Yeegu?", "source": "exercise"}
+{"prompt": "fr-ba: Bon courage", "chosen": "A kɔ ka sɔmburu.", "rejected": "Aagu.", "source": "exercise"}
+{"prompt": "fr-ba: Bon courage", "chosen": "A kɔ ka sɔmburu.", "rejected": "Na kãi nin tɛria.", "source": "exercise"}
+{"prompt": "ba-fr: A kɔ ka sɔmburu.", "chosen": "Bon courage", "rejected": "Comment vas-tu?", "source": "exercise"}
+{"prompt": "ba-fr: A kɔ ka sɔmburu.", "chosen": "Bon courage", "rejected": "Bonne nuit", "source": "exercise"}
+{"prompt": "ba-fr: A kɔ ka sɔmburu.", "chosen": "Bon courage", "rejected": "Merci beaucoup", "source": "exercise"}
+{"prompt": "fr-ba: As-tu bien dormi?", "chosen": "A kpuna n dɔɔ?", "rejected": "Yeegu?", "source": "exercise"}
+{"prompt": "fr-ba: As-tu bien dormi?", "chosen": "A kpuna n dɔɔ?", "rejected": "Yam wɔ̃kura?", "source": "exercise"}
+{"prompt": "fr-ba: As-tu bien dormi?", "chosen": "A kpuna n dɔɔ?", "rejected": "Aagu.", "source": "exercise"}
+{"prompt": "ba-fr: A kpuna n dɔɔ?", "chosen": "As-tu bien dormi?", "rejected": "Comment vas-tu?", "source": "exercise"}
+{"prompt": "ba-fr: A kpuna n dɔɔ?", "chosen": "As-tu bien dormi?", "rejected": "Bonne nuit", "source": "exercise"}
+{"prompt": "ba-fr: A kpuna n dɔɔ?", "chosen": "As-tu bien dormi?", "rejected": "La maison va bien?", "source": "exercise"}
+{"prompt": "fr-ba: La maison s'est-elle bien réveillée?", "chosen": "Yɛnu ɡa yari ka alaafia?", "rejected": "A kpuna n dɔɔ?", "source": "exercise"}
+{"prompt": "fr-ba: La maison s'est-elle bien réveillée?", "chosen": "Yɛnu ɡa yari ka alaafia?", "rejected": "Yeegu?", "source": "exercise"}
+{"prompt": "fr-ba: La maison s'est-elle bien réveillée?", "chosen": "Yɛnu ɡa yari ka alaafia?", "rejected": "Yam wɔ̃kura?", "source": "exercise"}
+{"prompt": "ba-fr: Yɛnu ɡa yari ka alaafia?", "chosen": "La maison s'est-elle bien réveillée?", "rejected": "As-tu bien dormi?", "source": "exercise"}
+{"prompt": "ba-fr: Yɛnu ɡa yari ka alaafia?", "chosen": "La maison s'est-elle bien réveillée?", "rejected": "Bonne soirée", "source": "exercise"}
+{"prompt": "ba-fr: Yɛnu ɡa yari ka alaafia?", "chosen": "La maison s'est-elle bien réveillée?", "rejected": "Comment vas-tu?", "source": "exercise"}
+{"prompt": "fr-ba: Comment est la soirée?", "chosen": "Yam wɔ̃kura?", "rejected": "A kpuna n dɔɔ?", "source": "exercise"}
+{"prompt": "fr-ba: Comment est la soirée?", "chosen": "Yam wɔ̃kura?", "rejected": "Yeegu?", "source": "exercise"}
+{"prompt": "fr-ba: Comment est la soirée?", "chosen": "Yam wɔ̃kura?", "rejected": "Aagu.", "source": "exercise"}
+{"prompt": "ba-fr: Yam wɔ̃kura?", "chosen": "Comment est la soirée?", "rejected": "Bonjour", "source": "exercise"}
+{"prompt": "ba-fr: Yam wɔ̃kura?", "chosen": "Comment est la soirée?", "rejected": "Bonne nuit", "source": "exercise"}
+{"prompt": "ba-fr: Yam wɔ̃kura?", "chosen": "Comment est la soirée?", "rejected": "À demain", "source": "exercise"}
+{"prompt": "fr-ba: Bonne nuit", "chosen": "A kpuna ka alaafia.", "rejected": "Yam wɔ̃kura?", "source": "exercise"}
+{"prompt": "fr-ba: Bonne nuit", "chosen": "A kpuna ka alaafia.", "rejected": "Yamɔ wara.", "source": "exercise"}
+{"prompt": "fr-ba: Bonne nuit", "chosen": "A kpuna ka alaafia.", "rejected": "Aagu.", "source": "exercise"}
+{"prompt": "ba-fr: A kpuna ka alaafia.", "chosen": "Bonne nuit", "rejected": "À demain", "source": "exercise"}
+{"prompt": "ba-fr: A kpuna ka alaafia.", "chosen": "Bonne nuit", "rejected": "Bonne soirée", "source": "exercise"}
+{"prompt": "ba-fr: A kpuna ka alaafia.", "chosen": "Bonne nuit", "rejected": "Bonjour", "source": "exercise"}
+{"prompt": "fr-ba: À demain", "chosen": "Yamɔ wara.", "rejected": "A kpuna ka alaafia.", "source": "exercise"}
+{"prompt": "fr-ba: À demain", "chosen": "Yamɔ wara.", "rejected": "Yeegu?", "source": "exercise"}
+{"prompt": "fr-ba: À demain", "chosen": "Yamɔ wara.", "rejected": "I turi baani.", "source": "exercise"}
+{"prompt": "ba-fr: Yamɔ wara.", "chosen": "À demain", "rejected": "Bonne nuit", "source": "exercise"}
+{"prompt": "ba-fr: Yamɔ wara.", "chosen": "À demain", "rejected": "Bon voyage", "source": "exercise"}
+{"prompt": "ba-fr: Yamɔ wara.", "chosen": "À demain", "rejected": "Merci", "source": "exercise"}
+{"prompt": "fr-ba: Merci beaucoup", "chosen": "Na kãi nin tɛria.", "rejected": "Kasɔru kun mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Merci beaucoup", "chosen": "Na kãi nin tɛria.", "rejected": "A kɔ ka sɔmburu.", "source": "exercise"}
+{"prompt": "fr-ba: Merci beaucoup", "chosen": "Na kãi nin tɛria.", "rejected": "Yeegu?", "source": "exercise"}
+{"prompt": "ba-fr: Na kãi nin tɛria.", "chosen": "Merci beaucoup", "rejected": "De rien", "source": "exercise"}
+{"prompt": "ba-fr: Na kãi nin tɛria.", "chosen": "Merci beaucoup", "rejected": "Bon courage", "source": "exercise"}
+{"prompt": "ba-fr: Na kãi nin tɛria.", "chosen": "Merci beaucoup", "rejected": "Pardon", "source": "exercise"}
+{"prompt": "fr-ba: De rien (Pas de faute)", "chosen": "Kasɔru kun mɔ.", "rejected": "Na kãi nin tɛria.", "source": "exercise"}
+{"prompt": "fr-ba: De rien (Pas de faute)", "chosen": "Kasɔru kun mɔ.", "rejected": "Aagu.", "source": "exercise"}
+{"prompt": "fr-ba: De rien (Pas de faute)", "chosen": "Kasɔru kun mɔ.", "rejected": "Yeegu?", "source": "exercise"}
+{"prompt": "ba-fr: Kasɔru kun mɔ.", "chosen": "De rien (Pas de faute)", "rejected": "Merci beaucoup", "source": "exercise"}
+{"prompt": "ba-fr: Kasɔru kun mɔ.", "chosen": "De rien (Pas de faute)", "rejected": "Pardon", "source": "exercise"}
+{"prompt": "ba-fr: Kasɔru kun mɔ.", "chosen": "De rien (Pas de faute)", "rejected": "Bonjour", "source": "exercise"}
+{"prompt": "fr-ba: Pardon (Excuse-moi)", "chosen": "Na nɛn wɔra wãi.", "rejected": "Kasɔru kun mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Pardon (Excuse-moi)", "chosen": "Na nɛn wɔra wãi.", "rejected": "Na kãi nin tɛria.", "source": "exercise"}
+{"prompt": "fr-ba: Pardon (Excuse-moi)", "chosen": "Na nɛn wɔra wãi.", "rejected": "Aagu.", "source": "exercise"}
+{"prompt": "ba-fr: Na nɛn wɔra wãi.", "chosen": "Pardon (Excuse-moi)", "rejected": "Merci", "source": "exercise"}
+{"prompt": "ba-fr: Na nɛn wɔra wãi.", "chosen": "Pardon (Excuse-moi)", "rejected": "De rien", "source": "exercise"}
+{"prompt": "ba-fr: Na nɛn wɔra wãi.", "chosen": "Pardon (Excuse-moi)", "rejected": "Bonjour", "source": "exercise"}
+{"prompt": "fr-ba: Bon voyage", "chosen": "I turi baani.", "rejected": "Yamɔ wara.", "source": "exercise"}
+{"prompt": "fr-ba: Bon voyage", "chosen": "I turi baani.", "rejected": "A kpuna ka alaafia.", "source": "exercise"}
+{"prompt": "fr-ba: Bon voyage", "chosen": "I turi baani.", "rejected": "Yeegu?", "source": "exercise"}
+{"prompt": "ba-fr: I turi baani.", "chosen": "Bon voyage", "rejected": "À demain", "source": "exercise"}
+{"prompt": "ba-fr: I turi baani.", "chosen": "Bon voyage", "rejected": "Bonne nuit", "source": "exercise"}
+{"prompt": "ba-fr: I turi baani.", "chosen": "Bon voyage", "rejected": "Merci", "source": "exercise"}
+{"prompt": "fr-ba: Hé Chef! (Respect)", "chosen": "Ãa Sunɔ!", "rejected": "Aagu.", "source": "exercise"}
+{"prompt": "fr-ba: Hé Chef! (Respect)", "chosen": "Ãa Sunɔ!", "rejected": "Yeegu?", "source": "exercise"}
+{"prompt": "fr-ba: Hé Chef! (Respect)", "chosen": "Ãa Sunɔ!", "rejected": "A kɔ ka sɔmburu.", "source": "exercise"}
+{"prompt": "ba-fr: Ãa Sunɔ!", "chosen": "Hé Chef! (Respect)", "rejected": "Salut", "source": "exercise"}
+{"prompt": "ba-fr: Ãa Sunɔ!", "chosen": "Hé Chef! (Respect)", "rejected": "Bonjour", "source": "exercise"}
+{"prompt": "ba-fr: Ãa Sunɔ!", "chosen": "Hé Chef! (Respect)", "rejected": "Merci", "source": "exercise"}
+{"prompt": "fr-ba: Tu es déjà venu!", "chosen": "Aa, ana kɔ.", "rejected": "Aagu.", "source": "exercise"}
+{"prompt": "fr-ba: Tu es déjà venu!", "chosen": "Aa, ana kɔ.", "rejected": "Yeegu?", "source": "exercise"}
+{"prompt": "fr-ba: Tu es déjà venu!", "chosen": "Aa, ana kɔ.", "rejected": "Aagu wune ka weru.", "source": "exercise"}
+{"prompt": "ba-fr: Aa, ana kɔ.", "chosen": "Tu es déjà venu!", "rejected": "Bonjour", "source": "exercise"}
+{"prompt": "ba-fr: Aa, ana kɔ.", "chosen": "Tu es déjà venu!", "rejected": "Au revoir", "source": "exercise"}
+{"prompt": "ba-fr: Aa, ana kɔ.", "chosen": "Tu es déjà venu!", "rejected": "Merci", "source": "exercise"}
+{"prompt": "fr-ba: Chef, excuse-moi", "chosen": "Sunɔ, a man ìsa kuo.", "rejected": "Na nɛn wɔra wãi.", "source": "exercise"}
+{"prompt": "fr-ba: Chef, excuse-moi", "chosen": "Sunɔ, a man ìsa kuo.", "rejected": "Aagu.", "source": "exercise"}
+{"prompt": "fr-ba: Chef, excuse-moi", "chosen": "Sunɔ, a man ìsa kuo.", "rejected": "A kɔ ka sɔmburu.", "source": "exercise"}
+{"prompt": "ba-fr: Sunɔ, a man ìsa kuo.", "chosen": "Chef, excuse-moi", "rejected": "Pardon", "source": "exercise"}
+{"prompt": "ba-fr: Sunɔ, a man ìsa kuo.", "chosen": "Chef, excuse-moi", "rejected": "Bonjour chef", "source": "exercise"}
+{"prompt": "ba-fr: Sunɔ, a man ìsa kuo.", "chosen": "Chef, excuse-moi", "rejected": "Merci chef", "source": "exercise"}
+{"prompt": "fr-ba: Merci pour la conversation", "chosen": "Bɛsɛ ka faagi.", "rejected": "Bɛsɛ ka sãkubu.", "source": "exercise"}
+{"prompt": "fr-ba: Merci pour la conversation", "chosen": "Bɛsɛ ka faagi.", "rejected": "Na kãi nin tɛria.", "source": "exercise"}
+{"prompt": "fr-ba: Merci pour la conversation", "chosen": "Bɛsɛ ka faagi.", "rejected": "Aagu.", "source": "exercise"}
+{"prompt": "ba-fr: Bɛsɛ ka faagi.", "chosen": "Merci pour la conversation", "rejected": "Merci pour la compagnie", "source": "exercise"}
+{"prompt": "ba-fr: Bɛsɛ ka faagi.", "chosen": "Merci pour la conversation", "rejected": "Merci beaucoup", "source": "exercise"}
+{"prompt": "ba-fr: Bɛsɛ ka faagi.", "chosen": "Merci pour la conversation", "rejected": "Au revoir", "source": "exercise"}
+{"prompt": "fr-ba: Merci pour la compagnie", "chosen": "Bɛsɛ ka sãkubu.", "rejected": "Bɛsɛ ka faagi.", "source": "exercise"}
+{"prompt": "fr-ba: Merci pour la compagnie", "chosen": "Bɛsɛ ka sãkubu.", "rejected": "A kɔ ka sɔmburu.", "source": "exercise"}
+{"prompt": "fr-ba: Merci pour la compagnie", "chosen": "Bɛsɛ ka sãkubu.", "rejected": "Kasɔru kun mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Bɛsɛ ka sãkubu.", "chosen": "Merci pour la compagnie", "rejected": "Merci pour la conversation", "source": "exercise"}
+{"prompt": "ba-fr: Bɛsɛ ka sãkubu.", "chosen": "Merci pour la compagnie", "rejected": "Bon courage", "source": "exercise"}
+{"prompt": "ba-fr: Bɛsɛ ka sãkubu.", "chosen": "Merci pour la compagnie", "rejected": "De rien", "source": "exercise"}
+{"prompt": "fr-ba: Il m'a dit bonjour avant de sortir", "chosen": "U man bɔɔsia u sere yara.", "rejected": "Aagu wune ka weru.", "source": "exercise"}
+{"prompt": "fr-ba: Il m'a dit bonjour avant de sortir", "chosen": "U man bɔɔsia u sere yara.", "rejected": "Yamɔ wara.", "source": "exercise"}
+{"prompt": "fr-ba: Il m'a dit bonjour avant de sortir", "chosen": "U man bɔɔsia u sere yara.", "rejected": "I turi baani.", "source": "exercise"}
+{"prompt": "ba-fr: U man bɔɔsia u sere yara.", "chosen": "Il m'a dit bonjour avant de sortir", "rejected": "Il est arrivé", "source": "exercise"}
+{"prompt": "ba-fr: U man bɔɔsia u sere yara.", "chosen": "Il m'a dit bonjour avant de sortir", "rejected": "Il est parti sans rien dire", "source": "exercise"}
+{"prompt": "ba-fr: U man bɔɔsia u sere yara.", "chosen": "Il m'a dit bonjour avant de sortir", "rejected": "Il m'a remercié", "source": "exercise"}
+{"prompt": "fr-ba: Salut pour la veillée", "chosen": "Bɛɛ ka sãkiru.", "rejected": "Bɛsɛ ka faagi.", "source": "exercise"}
+{"prompt": "fr-ba: Salut pour la veillée", "chosen": "Bɛɛ ka sãkiru.", "rejected": "Yam wɔ̃kura?", "source": "exercise"}
+{"prompt": "fr-ba: Salut pour la veillée", "chosen": "Bɛɛ ka sãkiru.", "rejected": "A kpuna ka alaafia.", "source": "exercise"}
+{"prompt": "ba-fr: Bɛɛ ka sãkiru.", "chosen": "Salut pour la veillée", "rejected": "Bonne soirée", "source": "exercise"}
+{"prompt": "ba-fr: Bɛɛ ka sãkiru.", "chosen": "Salut pour la veillée", "rejected": "Bonne nuit", "source": "exercise"}
+{"prompt": "ba-fr: Bɛɛ ka sãkiru.", "chosen": "Salut pour la veillée", "rejected": "Bonne conversation", "source": "exercise"}
+{"prompt": "fr-ba: Merci pour ton cadeau", "chosen": "Na wunɛn kɛ̃ɛte siara.", "rejected": "Na kãi nin tɛria.", "source": "exercise"}
+{"prompt": "fr-ba: Merci pour ton cadeau", "chosen": "Na wunɛn kɛ̃ɛte siara.", "rejected": "Kasɔru kun mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Merci pour ton cadeau", "chosen": "Na wunɛn kɛ̃ɛte siara.", "rejected": "A kɔ ka sɔmburu.", "source": "exercise"}
+{"prompt": "ba-fr: Na wunɛn kɛ̃ɛte siara.", "chosen": "Merci pour ton cadeau", "rejected": "Merci beaucoup", "source": "exercise"}
+{"prompt": "ba-fr: Na wunɛn kɛ̃ɛte siara.", "chosen": "Merci pour ton cadeau", "rejected": "De rien", "source": "exercise"}
+{"prompt": "ba-fr: Na wunɛn kɛ̃ɛte siara.", "chosen": "Merci pour ton cadeau", "rejected": "Bon courage", "source": "exercise"}
+{"prompt": "fr-ba: Il est venu te demander pardon", "chosen": "U na ù nun suuru kana.", "rejected": "Na nɛn wɔra wãi.", "source": "exercise"}
+{"prompt": "fr-ba: Il est venu te demander pardon", "chosen": "U na ù nun suuru kana.", "rejected": "Sunɔ, a man ìsa kuo.", "source": "exercise"}
+{"prompt": "fr-ba: Il est venu te demander pardon", "chosen": "U na ù nun suuru kana.", "rejected": "Aagu.", "source": "exercise"}
+{"prompt": "ba-fr: U na ù nun suuru kana.", "chosen": "Il est venu te demander pardon", "rejected": "Il a demandé la permission", "source": "exercise"}
+{"prompt": "ba-fr: U na ù nun suuru kana.", "chosen": "Il est venu te demander pardon", "rejected": "Il est venu saluer", "source": "exercise"}
+{"prompt": "ba-fr: U na ù nun suuru kana.", "chosen": "Il est venu te demander pardon", "rejected": "Il a dit merci", "source": "exercise"}
+{"prompt": "fr-ba: Dans le monde, il faut faire preuve de patience", "chosen": "Yandunia sere suuru.", "rejected": "Fiiko fiiko.", "source": "exercise"}
+{"prompt": "fr-ba: Dans le monde, il faut faire preuve de patience", "chosen": "Yandunia sere suuru.", "rejected": "Tɔ̃ya mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Dans le monde, il faut faire preuve de patience", "chosen": "Yandunia sere suuru.", "rejected": "Yen sɔ̃.", "source": "exercise"}
+{"prompt": "ba-fr: Yandunia sere suuru.", "chosen": "Dans le monde, il faut faire preuve de patience", "rejected": "Tout arrive à point", "source": "exercise"}
+{"prompt": "ba-fr: Yandunia sere suuru.", "chosen": "Dans le monde, il faut faire preuve de patience", "rejected": "La vie est belle", "source": "exercise"}
+{"prompt": "ba-fr: Yandunia sere suuru.", "chosen": "Dans le monde, il faut faire preuve de patience", "rejected": "C'est la vérité", "source": "exercise"}
+{"prompt": "fr-ba: Non", "chosen": "Aawo.", "rejected": "Aa, ana kɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Non", "chosen": "Aawo.", "rejected": "Aagu.", "source": "exercise"}
+{"prompt": "fr-ba: Non", "chosen": "Aawo.", "rejected": "Yeegu?", "source": "exercise"}
+{"prompt": "ba-fr: Aawo.", "chosen": "Non", "rejected": "Oui", "source": "exercise"}
+{"prompt": "ba-fr: Aawo.", "chosen": "Non", "rejected": "Peut-être", "source": "exercise"}
+{"prompt": "ba-fr: Aawo.", "chosen": "Non", "rejected": "Salut", "source": "exercise"}
+{"prompt": "fr-ba: Bienvenue (salut du retour)", "chosen": "Bɛɛ ka weru.", "rejected": "Aagu wune ka weru.", "source": "exercise"}
+{"prompt": "fr-ba: Bienvenue (salut du retour)", "chosen": "Bɛɛ ka weru.", "rejected": "I turi baani.", "source": "exercise"}
+{"prompt": "fr-ba: Bienvenue (salut du retour)", "chosen": "Bɛɛ ka weru.", "rejected": "Yamɔ wara.", "source": "exercise"}
+{"prompt": "ba-fr: Bɛɛ ka weru.", "chosen": "Bienvenue (salut du retour)", "rejected": "Bonne arrivée", "source": "exercise"}
+{"prompt": "ba-fr: Bɛɛ ka weru.", "chosen": "Bienvenue (salut du retour)", "rejected": "Bon voyage", "source": "exercise"}
+{"prompt": "ba-fr: Bɛɛ ka weru.", "chosen": "Bienvenue (salut du retour)", "rejected": "À demain", "source": "exercise"}
+{"prompt": "fr-ba: Père", "chosen": "Baa", "rejected": "Yaa", "source": "exercise"}
+{"prompt": "fr-ba: Père", "chosen": "Baa", "rejected": "Bii", "source": "exercise"}
+{"prompt": "fr-ba: Père", "chosen": "Baa", "rejected": "Suuru", "source": "exercise"}
+{"prompt": "ba-fr: Baa", "chosen": "Père", "rejected": "Mère", "source": "exercise"}
+{"prompt": "ba-fr: Baa", "chosen": "Père", "rejected": "Enfant", "source": "exercise"}
+{"prompt": "ba-fr: Baa", "chosen": "Père", "rejected": "Frère", "source": "exercise"}
+{"prompt": "fr-ba: Mère", "chosen": "Yaa", "rejected": "Baa", "source": "exercise"}
+{"prompt": "fr-ba: Mère", "chosen": "Yaa", "rejected": "Bii", "source": "exercise"}
+{"prompt": "fr-ba: Mère", "chosen": "Yaa", "rejected": "Yɛɛru", "source": "exercise"}
+{"prompt": "ba-fr: Yaa", "chosen": "Mère", "rejected": "Père", "source": "exercise"}
+{"prompt": "ba-fr: Yaa", "chosen": "Mère", "rejected": "Enfant", "source": "exercise"}
+{"prompt": "ba-fr: Yaa", "chosen": "Mère", "rejected": "Sœur", "source": "exercise"}
+{"prompt": "fr-ba: Enfant", "chosen": "Bii", "rejected": "Baa", "source": "exercise"}
+{"prompt": "fr-ba: Enfant", "chosen": "Bii", "rejected": "Yaa", "source": "exercise"}
+{"prompt": "fr-ba: Enfant", "chosen": "Bii", "rejected": "Suuru", "source": "exercise"}
+{"prompt": "ba-fr: Bii", "chosen": "Enfant", "rejected": "Père", "source": "exercise"}
+{"prompt": "ba-fr: Bii", "chosen": "Enfant", "rejected": "Mère", "source": "exercise"}
+{"prompt": "ba-fr: Bii", "chosen": "Enfant", "rejected": "Frère", "source": "exercise"}
+{"prompt": "fr-ba: Frère", "chosen": "Suuru", "rejected": "Yɛɛru", "source": "exercise"}
+{"prompt": "fr-ba: Frère", "chosen": "Suuru", "rejected": "Bii", "source": "exercise"}
+{"prompt": "fr-ba: Frère", "chosen": "Suuru", "rejected": "Baa", "source": "exercise"}
+{"prompt": "ba-fr: Suuru", "chosen": "Frère", "rejected": "Sœur", "source": "exercise"}
+{"prompt": "ba-fr: Suuru", "chosen": "Frère", "rejected": "Enfant", "source": "exercise"}
+{"prompt": "ba-fr: Suuru", "chosen": "Frère", "rejected": "Père", "source": "exercise"}
+{"prompt": "fr-ba: Oncle paternel", "chosen": "Baa kpe.", "rejected": "Mɛrɔ kpe.", "source": "exercise"}
+{"prompt": "fr-ba: Oncle paternel", "chosen": "Baa kpe.", "rejected": "Nɛn wɔ̃ɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Oncle paternel", "chosen": "Baa kpe.", "rejected": "Nɛn kurɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Baa kpe.", "chosen": "Oncle paternel", "rejected": "Tante maternelle", "source": "exercise"}
+{"prompt": "ba-fr: Baa kpe.", "chosen": "Oncle paternel", "rejected": "Mon mari", "source": "exercise"}
+{"prompt": "ba-fr: Baa kpe.", "chosen": "Oncle paternel", "rejected": "Ma femme", "source": "exercise"}
+{"prompt": "fr-ba: Tante maternelle", "chosen": "Mɛrɔ kpe.", "rejected": "Baa kpe.", "source": "exercise"}
+{"prompt": "fr-ba: Tante maternelle", "chosen": "Mɛrɔ kpe.", "rejected": "Nɛn wɔ̃ɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Tante maternelle", "chosen": "Mɛrɔ kpe.", "rejected": "Nɛn kurɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Mɛrɔ kpe.", "chosen": "Tante maternelle", "rejected": "Oncle paternel", "source": "exercise"}
+{"prompt": "ba-fr: Mɛrɔ kpe.", "chosen": "Tante maternelle", "rejected": "Mon mari", "source": "exercise"}
+{"prompt": "ba-fr: Mɛrɔ kpe.", "chosen": "Tante maternelle", "rejected": "Ma femme", "source": "exercise"}
+{"prompt": "fr-ba: Mon mari", "chosen": "Nɛn wɔ̃ɔ.", "rejected": "Nɛn kurɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Mon mari", "chosen": "Nɛn wɔ̃ɔ.", "rejected": "Baa kpe.", "source": "exercise"}
+{"prompt": "fr-ba: Mon mari", "chosen": "Nɛn wɔ̃ɔ.", "rejected": "Mɛrɔ kpe.", "source": "exercise"}
+{"prompt": "ba-fr: Nɛn wɔ̃ɔ.", "chosen": "Mon mari", "rejected": "Ma femme", "source": "exercise"}
+{"prompt": "ba-fr: Nɛn wɔ̃ɔ.", "chosen": "Mon mari", "rejected": "Oncle paternel", "source": "exercise"}
+{"prompt": "ba-fr: Nɛn wɔ̃ɔ.", "chosen": "Mon mari", "rejected": "Tante maternelle", "source": "exercise"}
+{"prompt": "fr-ba: Ma femme", "chosen": "Nɛn kurɔ.", "rejected": "Nɛn wɔ̃ɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Ma femme", "chosen": "Nɛn kurɔ.", "rejected": "Baa kpe.", "source": "exercise"}
+{"prompt": "fr-ba: Ma femme", "chosen": "Nɛn kurɔ.", "rejected": "Mɛrɔ kpe.", "source": "exercise"}
+{"prompt": "ba-fr: Nɛn kurɔ.", "chosen": "Ma femme", "rejected": "Mon mari", "source": "exercise"}
+{"prompt": "ba-fr: Nɛn kurɔ.", "chosen": "Ma femme", "rejected": "Oncle paternel", "source": "exercise"}
+{"prompt": "ba-fr: Nɛn kurɔ.", "chosen": "Ma femme", "rejected": "Tante maternelle", "source": "exercise"}
+{"prompt": "fr-ba: Bonjour papa", "chosen": "Kpuna n do baa.", "rejected": "Kpuna n do yaa.", "source": "exercise"}
+{"prompt": "fr-ba: Bonjour papa", "chosen": "Kpuna n do baa.", "rejected": "Aagu baa.", "source": "exercise"}
+{"prompt": "fr-ba: Bonjour papa", "chosen": "Kpuna n do baa.", "rejected": "Yeegu baa?", "source": "exercise"}
+{"prompt": "ba-fr: Kpuna n do baa.", "chosen": "Bonjour papa", "rejected": "Bonjour maman", "source": "exercise"}
+{"prompt": "ba-fr: Kpuna n do baa.", "chosen": "Bonjour papa", "rejected": "Salut papa", "source": "exercise"}
+{"prompt": "ba-fr: Kpuna n do baa.", "chosen": "Bonjour papa", "rejected": "Comment vas-tu papa?", "source": "exercise"}
+{"prompt": "fr-ba: Grand frère", "chosen": "Mɔɔ", "rejected": "Suuru", "source": "exercise"}
+{"prompt": "fr-ba: Grand frère", "chosen": "Mɔɔ", "rejected": "Bii", "source": "exercise"}
+{"prompt": "fr-ba: Grand frère", "chosen": "Mɔɔ", "rejected": "Baa", "source": "exercise"}
+{"prompt": "ba-fr: Mɔɔ", "chosen": "Grand frère", "rejected": "Petit frère", "source": "exercise"}
+{"prompt": "ba-fr: Mɔɔ", "chosen": "Grand frère", "rejected": "Enfant", "source": "exercise"}
+{"prompt": "ba-fr: Mɔɔ", "chosen": "Grand frère", "rejected": "Père", "source": "exercise"}
+{"prompt": "fr-ba: C'est le papa de Boni qui a envoyé un enfant", "chosen": "Bɔnin baawa u bii gɔrima.", "rejected": "Biin baa u na.", "source": "exercise"}
+{"prompt": "fr-ba: C'est le papa de Boni qui a envoyé un enfant", "chosen": "Bɔnin baawa u bii gɔrima.", "rejected": "Yaa u bii gɔrima.", "source": "exercise"}
+{"prompt": "fr-ba: C'est le papa de Boni qui a envoyé un enfant", "chosen": "Bɔnin baawa u bii gɔrima.", "rejected": "Suuru u na.", "source": "exercise"}
+{"prompt": "ba-fr: Bɔnin baawa u bii gɔrima.", "chosen": "C'est le papa de Boni qui a envoyé un enfant", "rejected": "C'est la mère qui a envoyé l'enfant", "source": "exercise"}
+{"prompt": "ba-fr: Bɔnin baawa u bii gɔrima.", "chosen": "C'est le papa de Boni qui a envoyé un enfant", "rejected": "L'enfant est parti seul", "source": "exercise"}
+{"prompt": "ba-fr: Bɔnin baawa u bii gɔrima.", "chosen": "C'est le papa de Boni qui a envoyé un enfant", "rejected": "Le frère est arrivé", "source": "exercise"}
+{"prompt": "fr-ba: La dame a fait des jumeaux", "chosen": "Sika kurɔ wi u mara.", "rejected": "Kurɔ wi u bii mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: La dame a fait des jumeaux", "chosen": "Sika kurɔ wi u mara.", "rejected": "Yaa u bii sua.", "source": "exercise"}
+{"prompt": "fr-ba: La dame a fait des jumeaux", "chosen": "Sika kurɔ wi u mara.", "rejected": "Bii wi u na.", "source": "exercise"}
+{"prompt": "ba-fr: Sika kurɔ wi u mara.", "chosen": "La dame a fait des jumeaux", "rejected": "La dame a un enfant", "source": "exercise"}
+{"prompt": "ba-fr: Sika kurɔ wi u mara.", "chosen": "La dame a fait des jumeaux", "rejected": "La mère est partie", "source": "exercise"}
+{"prompt": "ba-fr: Sika kurɔ wi u mara.", "chosen": "La dame a fait des jumeaux", "rejected": "L'enfant est né", "source": "exercise"}
+{"prompt": "fr-ba: Cet enfant nous respecte", "chosen": "Bii wi, u sun bɛ̀ɛrɛ doke.", "rejected": "Bii wi u sɔmburu de.", "source": "exercise"}
+{"prompt": "fr-ba: Cet enfant nous respecte", "chosen": "Bii wi, u sun bɛ̀ɛrɛ doke.", "rejected": "U sun siara.", "source": "exercise"}
+{"prompt": "fr-ba: Cet enfant nous respecte", "chosen": "Bii wi, u sun bɛ̀ɛrɛ doke.", "rejected": "Bii wi u doona.", "source": "exercise"}
+{"prompt": "ba-fr: Bii wi, u sun bɛ̀ɛrɛ doke.", "chosen": "Cet enfant nous respecte", "rejected": "Cet enfant travaille bien", "source": "exercise"}
+{"prompt": "ba-fr: Bii wi, u sun bɛ̀ɛrɛ doke.", "chosen": "Cet enfant nous respecte", "rejected": "Il nous remercie", "source": "exercise"}
+{"prompt": "ba-fr: Bii wi, u sun bɛ̀ɛrɛ doke.", "chosen": "Cet enfant nous respecte", "rejected": "Cet enfant est parti", "source": "exercise"}
+{"prompt": "fr-ba: Il y a du monde dans la maison de Bio", "chosen": "Biɔn yɛnuɔ tɔmbu ba yibaawa.", "rejected": "Biɔn yɛnu ya kpã.", "source": "exercise"}
+{"prompt": "fr-ba: Il y a du monde dans la maison de Bio", "chosen": "Biɔn yɛnuɔ tɔmbu ba yibaawa.", "rejected": "Biɔ u doona.", "source": "exercise"}
+{"prompt": "fr-ba: Il y a du monde dans la maison de Bio", "chosen": "Biɔn yɛnuɔ tɔmbu ba yibaawa.", "rejected": "Yɛnu ya dɔ̃ɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Biɔn yɛnuɔ tɔmbu ba yibaawa.", "chosen": "Il y a du monde dans la maison de Bio", "rejected": "La maison de Bio est vide", "source": "exercise"}
+{"prompt": "ba-fr: Biɔn yɛnuɔ tɔmbu ba yibaawa.", "chosen": "Il y a du monde dans la maison de Bio", "rejected": "Bio est parti", "source": "exercise"}
+{"prompt": "ba-fr: Biɔn yɛnuɔ tɔmbu ba yibaawa.", "chosen": "Il y a du monde dans la maison de Bio", "rejected": "La maison brûle", "source": "exercise"}
+{"prompt": "fr-ba: J'ai de la sympathie pour mes enfants", "chosen": "Na nɛn bibun ayo mö.", "rejected": "Na bii mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai de la sympathie pour mes enfants", "chosen": "Na nɛn bibun ayo mö.", "rejected": "Nɛn bibu ba doona.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai de la sympathie pour mes enfants", "chosen": "Na nɛn bibun ayo mö.", "rejected": "Na nɛn kurɔ kã.", "source": "exercise"}
+{"prompt": "ba-fr: Na nɛn bibun ayo mö.", "chosen": "J'ai de la sympathie pour mes enfants", "rejected": "J'ai des enfants", "source": "exercise"}
+{"prompt": "ba-fr: Na nɛn bibun ayo mö.", "chosen": "J'ai de la sympathie pour mes enfants", "rejected": "Mes enfants sont partis", "source": "exercise"}
+{"prompt": "ba-fr: Na nɛn bibun ayo mö.", "chosen": "J'ai de la sympathie pour mes enfants", "rejected": "J'aime ma femme", "source": "exercise"}
+{"prompt": "fr-ba: Les femmes portent des perles aux hanches", "chosen": "Tɔn kurɔbu ba rà bɛ̃ɛ dewa.", "rejected": "Kurɔbu ba sɔmburu de.", "source": "exercise"}
+{"prompt": "fr-ba: Les femmes portent des perles aux hanches", "chosen": "Tɔn kurɔbu ba rà bɛ̃ɛ dewa.", "rejected": "Tɔmbu ba na.", "source": "exercise"}
+{"prompt": "fr-ba: Les femmes portent des perles aux hanches", "chosen": "Tɔn kurɔbu ba rà bɛ̃ɛ dewa.", "rejected": "Bibu ba yaamɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Tɔn kurɔbu ba rà bɛ̃ɛ dewa.", "chosen": "Les femmes portent des perles aux hanches", "rejected": "Les femmes travaillent", "source": "exercise"}
+{"prompt": "ba-fr: Tɔn kurɔbu ba rà bɛ̃ɛ dewa.", "chosen": "Les femmes portent des perles aux hanches", "rejected": "Les gens arrivent", "source": "exercise"}
+{"prompt": "ba-fr: Tɔn kurɔbu ba rà bɛ̃ɛ dewa.", "chosen": "Les femmes portent des perles aux hanches", "rejected": "Les enfants jouent", "source": "exercise"}
+{"prompt": "fr-ba: Maison, foyer", "chosen": "Yɛnu", "rejected": "Diru", "source": "exercise"}
+{"prompt": "fr-ba: Maison, foyer", "chosen": "Yɛnu", "rejected": "Gberu", "source": "exercise"}
+{"prompt": "fr-ba: Maison, foyer", "chosen": "Yɛnu", "rejected": "Wuu", "source": "exercise"}
+{"prompt": "ba-fr: Yɛnu", "chosen": "Maison, foyer", "rejected": "Case", "source": "exercise"}
+{"prompt": "ba-fr: Yɛnu", "chosen": "Maison, foyer", "rejected": "Champ", "source": "exercise"}
+{"prompt": "ba-fr: Yɛnu", "chosen": "Maison, foyer", "rejected": "Village", "source": "exercise"}
+{"prompt": "fr-ba: Village", "chosen": "Wuu", "rejected": "Yɛnu", "source": "exercise"}
+{"prompt": "fr-ba: Village", "chosen": "Wuu", "rejected": "Diru", "source": "exercise"}
+{"prompt": "fr-ba: Village", "chosen": "Wuu", "rejected": "Gberu", "source": "exercise"}
+{"prompt": "ba-fr: Wuu", "chosen": "Village", "rejected": "Maison", "source": "exercise"}
+{"prompt": "ba-fr: Wuu", "chosen": "Village", "rejected": "Case", "source": "exercise"}
+{"prompt": "ba-fr: Wuu", "chosen": "Village", "rejected": "Champ", "source": "exercise"}
+{"prompt": "fr-ba: La mère allaite son enfant", "chosen": "Bii mɛro u win bii bɔm kɛ̃mɔ.", "rejected": "Yaa u bii wa.", "source": "exercise"}
+{"prompt": "fr-ba: La mère allaite son enfant", "chosen": "Bii mɛro u win bii bɔm kɛ̃mɔ.", "rejected": "Kurɔ u dĩa kua.", "source": "exercise"}
+{"prompt": "fr-ba: La mère allaite son enfant", "chosen": "Bii mɛro u win bii bɔm kɛ̃mɔ.", "rejected": "Bii u dɔɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Bii mɛro u win bii bɔm kɛ̃mɔ.", "chosen": "La mère allaite son enfant", "rejected": "La mère regarde l'enfant", "source": "exercise"}
+{"prompt": "ba-fr: Bii mɛro u win bii bɔm kɛ̃mɔ.", "chosen": "La mère allaite son enfant", "rejected": "La femme cuisine", "source": "exercise"}
+{"prompt": "ba-fr: Bii mɛro u win bii bɔm kɛ̃mɔ.", "chosen": "La mère allaite son enfant", "rejected": "L'enfant dort", "source": "exercise"}
+{"prompt": "fr-ba: L'enfant survivant (après décès)", "chosen": "Abiiku", "rejected": "Bii", "source": "exercise"}
+{"prompt": "fr-ba: L'enfant survivant (après décès)", "chosen": "Abiiku", "rejected": "Suuru", "source": "exercise"}
+{"prompt": "fr-ba: L'enfant survivant (après décès)", "chosen": "Abiiku", "rejected": "Mɔɔ", "source": "exercise"}
+{"prompt": "ba-fr: Abiiku", "chosen": "L'enfant survivant (après décès)", "rejected": "Enfant", "source": "exercise"}
+{"prompt": "ba-fr: Abiiku", "chosen": "L'enfant survivant (après décès)", "rejected": "Frère", "source": "exercise"}
+{"prompt": "ba-fr: Abiiku", "chosen": "L'enfant survivant (après décès)", "rejected": "Grand frère", "source": "exercise"}
+{"prompt": "fr-ba: Bouillie de céréales", "chosen": "Koko", "rejected": "Wusu", "source": "exercise"}
+{"prompt": "fr-ba: Bouillie de céréales", "chosen": "Koko", "rejected": "Nim", "source": "exercise"}
+{"prompt": "fr-ba: Bouillie de céréales", "chosen": "Koko", "rejected": "Monri", "source": "exercise"}
+{"prompt": "ba-fr: Koko", "chosen": "Bouillie de céréales", "rejected": "Igname", "source": "exercise"}
+{"prompt": "ba-fr: Koko", "chosen": "Bouillie de céréales", "rejected": "Eau", "source": "exercise"}
+{"prompt": "ba-fr: Koko", "chosen": "Bouillie de céréales", "rejected": "Riz", "source": "exercise"}
+{"prompt": "fr-ba: Riz", "chosen": "Monri", "rejected": "Koko", "source": "exercise"}
+{"prompt": "fr-ba: Riz", "chosen": "Monri", "rejected": "Nim", "source": "exercise"}
+{"prompt": "fr-ba: Riz", "chosen": "Monri", "rejected": "Nɔni", "source": "exercise"}
+{"prompt": "ba-fr: Monri", "chosen": "Riz", "rejected": "Bouillie", "source": "exercise"}
+{"prompt": "ba-fr: Monri", "chosen": "Riz", "rejected": "Eau", "source": "exercise"}
+{"prompt": "ba-fr: Monri", "chosen": "Riz", "rejected": "Viande", "source": "exercise"}
+{"prompt": "fr-ba: Igname", "chosen": "Wusu", "rejected": "Koko", "source": "exercise"}
+{"prompt": "fr-ba: Igname", "chosen": "Wusu", "rejected": "Nim", "source": "exercise"}
+{"prompt": "fr-ba: Igname", "chosen": "Wusu", "rejected": "Wisu", "source": "exercise"}
+{"prompt": "ba-fr: Wusu", "chosen": "Igname", "rejected": "Riz", "source": "exercise"}
+{"prompt": "ba-fr: Wusu", "chosen": "Igname", "rejected": "Eau", "source": "exercise"}
+{"prompt": "ba-fr: Wusu", "chosen": "Igname", "rejected": "Poisson", "source": "exercise"}
+{"prompt": "fr-ba: Eau", "chosen": "Nim", "rejected": "Koko", "source": "exercise"}
+{"prompt": "fr-ba: Eau", "chosen": "Nim", "rejected": "Wusu", "source": "exercise"}
+{"prompt": "fr-ba: Eau", "chosen": "Nim", "rejected": "Nɔni", "source": "exercise"}
+{"prompt": "ba-fr: Nim", "chosen": "Eau", "rejected": "Riz", "source": "exercise"}
+{"prompt": "ba-fr: Nim", "chosen": "Eau", "rejected": "Igname", "source": "exercise"}
+{"prompt": "ba-fr: Nim", "chosen": "Eau", "rejected": "Viande", "source": "exercise"}
+{"prompt": "fr-ba: Viande", "chosen": "Nɔni", "rejected": "Wisu", "source": "exercise"}
+{"prompt": "fr-ba: Viande", "chosen": "Nɔni", "rejected": "Koko", "source": "exercise"}
+{"prompt": "fr-ba: Viande", "chosen": "Nɔni", "rejected": "Nim", "source": "exercise"}
+{"prompt": "ba-fr: Nɔni", "chosen": "Viande", "rejected": "Poisson", "source": "exercise"}
+{"prompt": "ba-fr: Nɔni", "chosen": "Viande", "rejected": "Riz", "source": "exercise"}
+{"prompt": "ba-fr: Nɔni", "chosen": "Viande", "rejected": "Eau", "source": "exercise"}
+{"prompt": "fr-ba: Poisson", "chosen": "Wisu", "rejected": "Nɔni", "source": "exercise"}
+{"prompt": "fr-ba: Poisson", "chosen": "Wisu", "rejected": "Koko", "source": "exercise"}
+{"prompt": "fr-ba: Poisson", "chosen": "Wisu", "rejected": "Wusu", "source": "exercise"}
+{"prompt": "ba-fr: Wisu", "chosen": "Poisson", "rejected": "Viande", "source": "exercise"}
+{"prompt": "ba-fr: Wisu", "chosen": "Poisson", "rejected": "Riz", "source": "exercise"}
+{"prompt": "ba-fr: Wisu", "chosen": "Poisson", "rejected": "Igname", "source": "exercise"}
+{"prompt": "fr-ba: Beurre de karité", "chosen": "Yɔwaru", "rejected": "Bɔm", "source": "exercise"}
+{"prompt": "fr-ba: Beurre de karité", "chosen": "Yɔwaru", "rejected": "Nim", "source": "exercise"}
+{"prompt": "fr-ba: Beurre de karité", "chosen": "Yɔwaru", "rejected": "Koko", "source": "exercise"}
+{"prompt": "ba-fr: Yɔwaru", "chosen": "Beurre de karité", "rejected": "Lait", "source": "exercise"}
+{"prompt": "ba-fr: Yɔwaru", "chosen": "Beurre de karité", "rejected": "Eau", "source": "exercise"}
+{"prompt": "ba-fr: Yɔwaru", "chosen": "Beurre de karité", "rejected": "Riz", "source": "exercise"}
+{"prompt": "fr-ba: Gombo", "chosen": "Abo", "rejected": "Wusu", "source": "exercise"}
+{"prompt": "fr-ba: Gombo", "chosen": "Abo", "rejected": "Koko", "source": "exercise"}
+{"prompt": "fr-ba: Gombo", "chosen": "Abo", "rejected": "Nɔni", "source": "exercise"}
+{"prompt": "ba-fr: Abo", "chosen": "Gombo", "rejected": "Igname", "source": "exercise"}
+{"prompt": "ba-fr: Abo", "chosen": "Gombo", "rejected": "Riz", "source": "exercise"}
+{"prompt": "ba-fr: Abo", "chosen": "Gombo", "rejected": "Viande", "source": "exercise"}
+{"prompt": "fr-ba: Le gombo est bon avec l'igname pilée", "chosen": "Abonu ka sɔkura nu rà n do.", "rejected": "Na koko di.", "source": "exercise"}
+{"prompt": "fr-ba: Le gombo est bon avec l'igname pilée", "chosen": "Abonu ka sɔkura nu rà n do.", "rejected": "Nim mu do.", "source": "exercise"}
+{"prompt": "fr-ba: Le gombo est bon avec l'igname pilée", "chosen": "Abonu ka sɔkura nu rà n do.", "rejected": "Nɔni ya do.", "source": "exercise"}
+{"prompt": "ba-fr: Abonu ka sɔkura nu rà n do.", "chosen": "Le gombo est bon avec l'igname pilée", "rejected": "Le riz est bon", "source": "exercise"}
+{"prompt": "ba-fr: Abonu ka sɔkura nu rà n do.", "chosen": "Le gombo est bon avec l'igname pilée", "rejected": "L'eau est fraîche", "source": "exercise"}
+{"prompt": "ba-fr: Abonu ka sɔkura nu rà n do.", "chosen": "Le gombo est bon avec l'igname pilée", "rejected": "La viande est bonne", "source": "exercise"}
+{"prompt": "fr-ba: Lait", "chosen": "Bɔm", "rejected": "Nim", "source": "exercise"}
+{"prompt": "fr-ba: Lait", "chosen": "Bɔm", "rejected": "Koko", "source": "exercise"}
+{"prompt": "fr-ba: Lait", "chosen": "Bɔm", "rejected": "Nɔni", "source": "exercise"}
+{"prompt": "ba-fr: Bɔm", "chosen": "Lait", "rejected": "Eau", "source": "exercise"}
+{"prompt": "ba-fr: Bɔm", "chosen": "Lait", "rejected": "Riz", "source": "exercise"}
+{"prompt": "ba-fr: Bɔm", "chosen": "Lait", "rejected": "Viande", "source": "exercise"}
+{"prompt": "fr-ba: S'il y a du lait, je vais boire la bouillie", "chosen": "Bom mùn wãa, kon soru nɔ.", "rejected": "Na nim nɔ.", "source": "exercise"}
+{"prompt": "fr-ba: S'il y a du lait, je vais boire la bouillie", "chosen": "Bom mùn wãa, kon soru nɔ.", "rejected": "Na koko di.", "source": "exercise"}
+{"prompt": "fr-ba: S'il y a du lait, je vais boire la bouillie", "chosen": "Bom mùn wãa, kon soru nɔ.", "rejected": "Na nɔni di.", "source": "exercise"}
+{"prompt": "ba-fr: Bom mùn wãa, kon soru nɔ.", "chosen": "S'il y a du lait, je vais boire la bouillie", "rejected": "Je bois de l'eau", "source": "exercise"}
+{"prompt": "ba-fr: Bom mùn wãa, kon soru nɔ.", "chosen": "S'il y a du lait, je vais boire la bouillie", "rejected": "Je mange du riz", "source": "exercise"}
+{"prompt": "ba-fr: Bom mùn wãa, kon soru nɔ.", "chosen": "S'il y a du lait, je vais boire la bouillie", "rejected": "Je mange de la viande", "source": "exercise"}
+{"prompt": "fr-ba: Le vin de palme est agréable à boire", "chosen": "Bam ya nɔrubu do.", "rejected": "Nim mu do.", "source": "exercise"}
+{"prompt": "fr-ba: Le vin de palme est agréable à boire", "chosen": "Bam ya nɔrubu do.", "rejected": "Bom mu do.", "source": "exercise"}
+{"prompt": "fr-ba: Le vin de palme est agréable à boire", "chosen": "Bam ya nɔrubu do.", "rejected": "Soru ya do.", "source": "exercise"}
+{"prompt": "ba-fr: Bam ya nɔrubu do.", "chosen": "Le vin de palme est agréable à boire", "rejected": "L'eau est bonne", "source": "exercise"}
+{"prompt": "ba-fr: Bam ya nɔrubu do.", "chosen": "Le vin de palme est agréable à boire", "rejected": "Le lait est bon", "source": "exercise"}
+{"prompt": "ba-fr: Bam ya nɔrubu do.", "chosen": "Le vin de palme est agréable à boire", "rejected": "La bouillie est bonne", "source": "exercise"}
+{"prompt": "fr-ba: Banane", "chosen": "Agɛdɛ", "rejected": "Abo", "source": "exercise"}
+{"prompt": "fr-ba: Banane", "chosen": "Agɛdɛ", "rejected": "Koko", "source": "exercise"}
+{"prompt": "fr-ba: Banane", "chosen": "Agɛdɛ", "rejected": "Wusu", "source": "exercise"}
+{"prompt": "ba-fr: Agɛdɛ", "chosen": "Banane", "rejected": "Gombo", "source": "exercise"}
+{"prompt": "ba-fr: Agɛdɛ", "chosen": "Banane", "rejected": "Riz", "source": "exercise"}
+{"prompt": "ba-fr: Agɛdɛ", "chosen": "Banane", "rejected": "Igname", "source": "exercise"}
+{"prompt": "fr-ba: Cette banane est bonne", "chosen": "Agɛdɛ ye ya do.", "rejected": "Koko ye ya do.", "source": "exercise"}
+{"prompt": "fr-ba: Cette banane est bonne", "chosen": "Agɛdɛ ye ya do.", "rejected": "Nim mu do.", "source": "exercise"}
+{"prompt": "fr-ba: Cette banane est bonne", "chosen": "Agɛdɛ ye ya do.", "rejected": "Abo ye ya do.", "source": "exercise"}
+{"prompt": "ba-fr: Agɛdɛ ye ya do.", "chosen": "Cette banane est bonne", "rejected": "Ce riz est bon", "source": "exercise"}
+{"prompt": "ba-fr: Agɛdɛ ye ya do.", "chosen": "Cette banane est bonne", "rejected": "Cette eau est bonne", "source": "exercise"}
+{"prompt": "ba-fr: Agɛdɛ ye ya do.", "chosen": "Cette banane est bonne", "rejected": "Ce gombo est bon", "source": "exercise"}
+{"prompt": "fr-ba: Ouvre ta bouche", "chosen": "A nɔɔ baayo.", "rejected": "A nim nɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Ouvre ta bouche", "chosen": "A nɔɔ baayo.", "rejected": "A dĩa di.", "source": "exercise"}
+{"prompt": "fr-ba: Ouvre ta bouche", "chosen": "A nɔɔ baayo.", "rejected": "A seewo.", "source": "exercise"}
+{"prompt": "ba-fr: A nɔɔ baayo.", "chosen": "Ouvre ta bouche", "rejected": "Bois de l'eau", "source": "exercise"}
+{"prompt": "ba-fr: A nɔɔ baayo.", "chosen": "Ouvre ta bouche", "rejected": "Mange", "source": "exercise"}
+{"prompt": "ba-fr: A nɔɔ baayo.", "chosen": "Ouvre ta bouche", "rejected": "Lève-toi", "source": "exercise"}
+{"prompt": "fr-ba: J'ai mangé de la chair", "chosen": "Na yaa baasi tema.", "rejected": "Na koko di.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai mangé de la chair", "chosen": "Na yaa baasi tema.", "rejected": "Na nim nɔ.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai mangé de la chair", "chosen": "Na yaa baasi tema.", "rejected": "Na wusu di.", "source": "exercise"}
+{"prompt": "ba-fr: Na yaa baasi tema.", "chosen": "J'ai mangé de la chair", "rejected": "J'ai mangé du riz", "source": "exercise"}
+{"prompt": "ba-fr: Na yaa baasi tema.", "chosen": "J'ai mangé de la chair", "rejected": "J'ai bu de l'eau", "source": "exercise"}
+{"prompt": "ba-fr: Na yaa baasi tema.", "chosen": "J'ai mangé de la chair", "rejected": "J'ai mangé de l'igname", "source": "exercise"}
+{"prompt": "fr-ba: Fris le gari avec l'huile de palme", "chosen": "A gaari sɔnwɔ ka bãa gum.", "rejected": "A koko kua.", "source": "exercise"}
+{"prompt": "fr-ba: Fris le gari avec l'huile de palme", "chosen": "A gaari sɔnwɔ ka bãa gum.", "rejected": "A nim gãki.", "source": "exercise"}
+{"prompt": "fr-ba: Fris le gari avec l'huile de palme", "chosen": "A gaari sɔnwɔ ka bãa gum.", "rejected": "A nɔni sawa.", "source": "exercise"}
+{"prompt": "ba-fr: A gaari sɔnwɔ ka bãa gum.", "chosen": "Fris le gari avec l'huile de palme", "rejected": "Prépare le riz", "source": "exercise"}
+{"prompt": "ba-fr: A gaari sɔnwɔ ka bãa gum.", "chosen": "Fris le gari avec l'huile de palme", "rejected": "Recueille de l'eau", "source": "exercise"}
+{"prompt": "ba-fr: A gaari sɔnwɔ ka bãa gum.", "chosen": "Fris le gari avec l'huile de palme", "rejected": "Cuisine la viande", "source": "exercise"}
+{"prompt": "fr-ba: Marché", "chosen": "Aburu", "rejected": "Yɛnu", "source": "exercise"}
+{"prompt": "fr-ba: Marché", "chosen": "Aburu", "rejected": "Wuu", "source": "exercise"}
+{"prompt": "fr-ba: Marché", "chosen": "Aburu", "rejected": "Gberu", "source": "exercise"}
+{"prompt": "ba-fr: Aburu", "chosen": "Marché", "rejected": "Maison", "source": "exercise"}
+{"prompt": "ba-fr: Aburu", "chosen": "Marché", "rejected": "Village", "source": "exercise"}
+{"prompt": "ba-fr: Aburu", "chosen": "Marché", "rejected": "Champ", "source": "exercise"}
+{"prompt": "fr-ba: On vend des gombos au marché", "chosen": "Ba abonu dɔramɔ aburɔ.", "rejected": "Ba koko dɔramɔ.", "source": "exercise"}
+{"prompt": "fr-ba: On vend des gombos au marché", "chosen": "Ba abonu dɔramɔ aburɔ.", "rejected": "Ba nɔni dɔramɔ.", "source": "exercise"}
+{"prompt": "fr-ba: On vend des gombos au marché", "chosen": "Ba abonu dɔramɔ aburɔ.", "rejected": "Ba nim dɔramɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Ba abonu dɔramɔ aburɔ.", "chosen": "On vend des gombos au marché", "rejected": "On vend du riz", "source": "exercise"}
+{"prompt": "ba-fr: Ba abonu dɔramɔ aburɔ.", "chosen": "On vend des gombos au marché", "rejected": "On vend de la viande", "source": "exercise"}
+{"prompt": "ba-fr: Ba abonu dɔramɔ aburɔ.", "chosen": "On vend des gombos au marché", "rejected": "On vend de l'eau", "source": "exercise"}
+{"prompt": "fr-ba: La nourrice a préparé de la bouillie", "chosen": "Bii mɛro u soru bɛre.", "rejected": "Yaa u dĩa kua.", "source": "exercise"}
+{"prompt": "fr-ba: La nourrice a préparé de la bouillie", "chosen": "Bii mɛro u soru bɛre.", "rejected": "Kurɔ u nim wa.", "source": "exercise"}
+{"prompt": "fr-ba: La nourrice a préparé de la bouillie", "chosen": "Bii mɛro u soru bɛre.", "rejected": "Baa u koko di.", "source": "exercise"}
+{"prompt": "ba-fr: Bii mɛro u soru bɛre.", "chosen": "La nourrice a préparé de la bouillie", "rejected": "La mère a cuisiné", "source": "exercise"}
+{"prompt": "ba-fr: Bii mɛro u soru bɛre.", "chosen": "La nourrice a préparé de la bouillie", "rejected": "La femme a puisé de l'eau", "source": "exercise"}
+{"prompt": "ba-fr: Bii mɛro u soru bɛre.", "chosen": "La nourrice a préparé de la bouillie", "rejected": "Le père a mangé du riz", "source": "exercise"}
+{"prompt": "fr-ba: Nourriture, repas", "chosen": "Dĩa", "rejected": "Nim", "source": "exercise"}
+{"prompt": "fr-ba: Nourriture, repas", "chosen": "Dĩa", "rejected": "Koko", "source": "exercise"}
+{"prompt": "fr-ba: Nourriture, repas", "chosen": "Dĩa", "rejected": "Nɔni", "source": "exercise"}
+{"prompt": "ba-fr: Dĩa", "chosen": "Nourriture, repas", "rejected": "Eau", "source": "exercise"}
+{"prompt": "ba-fr: Dĩa", "chosen": "Nourriture, repas", "rejected": "Riz", "source": "exercise"}
+{"prompt": "ba-fr: Dĩa", "chosen": "Nourriture, repas", "rejected": "Viande", "source": "exercise"}
+{"prompt": "fr-ba: Tête", "chosen": "Wiir", "rejected": "Wiisubu", "source": "exercise"}
+{"prompt": "fr-ba: Tête", "chosen": "Wiir", "rejected": "Nũu", "source": "exercise"}
+{"prompt": "fr-ba: Tête", "chosen": "Wiir", "rejected": "Siiru", "source": "exercise"}
+{"prompt": "ba-fr: Wiir", "chosen": "Tête", "rejected": "Yeux", "source": "exercise"}
+{"prompt": "ba-fr: Wiir", "chosen": "Tête", "rejected": "Main", "source": "exercise"}
+{"prompt": "ba-fr: Wiir", "chosen": "Tête", "rejected": "Pied", "source": "exercise"}
+{"prompt": "fr-ba: Yeux", "chosen": "Wiisubu", "rejected": "Wiir", "source": "exercise"}
+{"prompt": "fr-ba: Yeux", "chosen": "Wiisubu", "rejected": "Nɔɔ", "source": "exercise"}
+{"prompt": "fr-ba: Yeux", "chosen": "Wiisubu", "rejected": "Nũu", "source": "exercise"}
+{"prompt": "ba-fr: Wiisubu", "chosen": "Yeux", "rejected": "Tête", "source": "exercise"}
+{"prompt": "ba-fr: Wiisubu", "chosen": "Yeux", "rejected": "Bouche", "source": "exercise"}
+{"prompt": "ba-fr: Wiisubu", "chosen": "Yeux", "rejected": "Main", "source": "exercise"}
+{"prompt": "fr-ba: Main", "chosen": "Nũu", "rejected": "Siiru", "source": "exercise"}
+{"prompt": "fr-ba: Main", "chosen": "Nũu", "rejected": "Wiir", "source": "exercise"}
+{"prompt": "fr-ba: Main", "chosen": "Nũu", "rejected": "Nɔɔ", "source": "exercise"}
+{"prompt": "ba-fr: Nũu", "chosen": "Main", "rejected": "Pied", "source": "exercise"}
+{"prompt": "ba-fr: Nũu", "chosen": "Main", "rejected": "Tête", "source": "exercise"}
+{"prompt": "ba-fr: Nũu", "chosen": "Main", "rejected": "Bouche", "source": "exercise"}
+{"prompt": "fr-ba: Pied", "chosen": "Siiru", "rejected": "Nũu", "source": "exercise"}
+{"prompt": "fr-ba: Pied", "chosen": "Siiru", "rejected": "Wiir", "source": "exercise"}
+{"prompt": "fr-ba: Pied", "chosen": "Siiru", "rejected": "Wiisubu", "source": "exercise"}
+{"prompt": "ba-fr: Siiru", "chosen": "Pied", "rejected": "Main", "source": "exercise"}
+{"prompt": "ba-fr: Siiru", "chosen": "Pied", "rejected": "Tête", "source": "exercise"}
+{"prompt": "ba-fr: Siiru", "chosen": "Pied", "rejected": "Yeux", "source": "exercise"}
+{"prompt": "fr-ba: Bouche", "chosen": "Nɔɔ", "rejected": "Wiir", "source": "exercise"}
+{"prompt": "fr-ba: Bouche", "chosen": "Nɔɔ", "rejected": "Wiisubu", "source": "exercise"}
+{"prompt": "fr-ba: Bouche", "chosen": "Nɔɔ", "rejected": "Nũu", "source": "exercise"}
+{"prompt": "ba-fr: Nɔɔ", "chosen": "Bouche", "rejected": "Tête", "source": "exercise"}
+{"prompt": "ba-fr: Nɔɔ", "chosen": "Bouche", "rejected": "Yeux", "source": "exercise"}
+{"prompt": "ba-fr: Nɔɔ", "chosen": "Bouche", "rejected": "Main", "source": "exercise"}
+{"prompt": "fr-ba: Aisselle", "chosen": "Búu bɔkuɔ", "rejected": "Nũu", "source": "exercise"}
+{"prompt": "fr-ba: Aisselle", "chosen": "Búu bɔkuɔ", "rejected": "Siiru", "source": "exercise"}
+{"prompt": "fr-ba: Aisselle", "chosen": "Búu bɔkuɔ", "rejected": "Wiir", "source": "exercise"}
+{"prompt": "ba-fr: Búu bɔkuɔ", "chosen": "Aisselle", "rejected": "Main", "source": "exercise"}
+{"prompt": "ba-fr: Búu bɔkuɔ", "chosen": "Aisselle", "rejected": "Pied", "source": "exercise"}
+{"prompt": "ba-fr: Búu bɔkuɔ", "chosen": "Aisselle", "rejected": "Tête", "source": "exercise"}
+{"prompt": "fr-ba: Cache-le sous ton aisselle", "chosen": "A yè bɛrio wunɛn búu bɔkuɔ.", "rejected": "A yè doke nũu sɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Cache-le sous ton aisselle", "chosen": "A yè bɛrio wunɛn búu bɔkuɔ.", "rejected": "A wiir suura.", "source": "exercise"}
+{"prompt": "fr-ba: Cache-le sous ton aisselle", "chosen": "A yè bɛrio wunɛn búu bɔkuɔ.", "rejected": "A siiru doke.", "source": "exercise"}
+{"prompt": "ba-fr: A yè bɛrio wunɛn búu bɔkuɔ.", "chosen": "Cache-le sous ton aisselle", "rejected": "Mets-le dans ta main", "source": "exercise"}
+{"prompt": "ba-fr: A yè bɛrio wunɛn búu bɔkuɔ.", "chosen": "Cache-le sous ton aisselle", "rejected": "Baisse la tête", "source": "exercise"}
+{"prompt": "ba-fr: A yè bɛrio wunɛn búu bɔkuɔ.", "chosen": "Cache-le sous ton aisselle", "rejected": "Mets tes chaussures", "source": "exercise"}
+{"prompt": "fr-ba: Chanceux (Bonne tête)", "chosen": "Wiir wɛ̃ra.", "rejected": "Wiir kpi.", "source": "exercise"}
+{"prompt": "fr-ba: Chanceux (Bonne tête)", "chosen": "Wiir wɛ̃ra.", "rejected": "Nɔɔ dɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Chanceux (Bonne tête)", "chosen": "Wiir wɛ̃ra.", "rejected": "Gɔ̃ru pii.", "source": "exercise"}
+{"prompt": "ba-fr: Wiir wɛ̃ra.", "chosen": "Chanceux (Bonne tête)", "rejected": "Têtu", "source": "exercise"}
+{"prompt": "ba-fr: Wiir wɛ̃ra.", "chosen": "Chanceux (Bonne tête)", "rejected": "Éloquent", "source": "exercise"}
+{"prompt": "ba-fr: Wiir wɛ̃ra.", "chosen": "Chanceux (Bonne tête)", "rejected": "Gentil", "source": "exercise"}
+{"prompt": "fr-ba: Têtu (Tête dure)", "chosen": "Wiir kpi.", "rejected": "Wiir wɛ̃ra.", "source": "exercise"}
+{"prompt": "fr-ba: Têtu (Tête dure)", "chosen": "Wiir kpi.", "rejected": "Nɔɔ dɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Têtu (Tête dure)", "chosen": "Wiir kpi.", "rejected": "Gɔ̃ru sɔ̃.", "source": "exercise"}
+{"prompt": "ba-fr: Wiir kpi.", "chosen": "Têtu (Tête dure)", "rejected": "Chanceux", "source": "exercise"}
+{"prompt": "ba-fr: Wiir kpi.", "chosen": "Têtu (Tête dure)", "rejected": "Éloquent", "source": "exercise"}
+{"prompt": "ba-fr: Wiir kpi.", "chosen": "Têtu (Tête dure)", "rejected": "Méchant", "source": "exercise"}
+{"prompt": "fr-ba: Bouche sucrée (Éloquent)", "chosen": "Nɔɔ dɔɔ.", "rejected": "Wiir kpi.", "source": "exercise"}
+{"prompt": "fr-ba: Bouche sucrée (Éloquent)", "chosen": "Nɔɔ dɔɔ.", "rejected": "Wiir wɛ̃ra.", "source": "exercise"}
+{"prompt": "fr-ba: Bouche sucrée (Éloquent)", "chosen": "Nɔɔ dɔɔ.", "rejected": "Gɔ̃ru pii.", "source": "exercise"}
+{"prompt": "ba-fr: Nɔɔ dɔɔ.", "chosen": "Bouche sucrée (Éloquent)", "rejected": "Têtu", "source": "exercise"}
+{"prompt": "ba-fr: Nɔɔ dɔɔ.", "chosen": "Bouche sucrée (Éloquent)", "rejected": "Chanceux", "source": "exercise"}
+{"prompt": "ba-fr: Nɔɔ dɔɔ.", "chosen": "Bouche sucrée (Éloquent)", "rejected": "Gentil", "source": "exercise"}
+{"prompt": "fr-ba: Je suis malade", "chosen": "Na gum mɔ.", "rejected": "U gum mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Je suis malade", "chosen": "Na gum mɔ.", "rejected": "Dɔ̃ɔ nɛn mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Je suis malade", "chosen": "Na gum mɔ.", "rejected": "Nim nɔru ɡa nɛn mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Na gum mɔ.", "chosen": "Je suis malade", "rejected": "Il est malade", "source": "exercise"}
+{"prompt": "ba-fr: Na gum mɔ.", "chosen": "Je suis malade", "rejected": "J'ai sommeil", "source": "exercise"}
+{"prompt": "ba-fr: Na gum mɔ.", "chosen": "Je suis malade", "rejected": "J'ai soif", "source": "exercise"}
+{"prompt": "fr-ba: Il est malade", "chosen": "U gum mɔ.", "rejected": "Na gum mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Il est malade", "chosen": "U gum mɔ.", "rejected": "Dɔ̃ɔ nɛn mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Il est malade", "chosen": "U gum mɔ.", "rejected": "Yam baa u.", "source": "exercise"}
+{"prompt": "ba-fr: U gum mɔ.", "chosen": "Il est malade", "rejected": "Je suis malade", "source": "exercise"}
+{"prompt": "ba-fr: U gum mɔ.", "chosen": "Il est malade", "rejected": "J'ai sommeil", "source": "exercise"}
+{"prompt": "ba-fr: U gum mɔ.", "chosen": "Il est malade", "rejected": "Il a faim", "source": "exercise"}
+{"prompt": "fr-ba: Cet enfant souffre des oreillons", "chosen": "Agirigirina bii wi u barɔ.", "rejected": "Bii wi u gum mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Cet enfant souffre des oreillons", "chosen": "Agirigirina bii wi u barɔ.", "rejected": "Bii wi u dɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Cet enfant souffre des oreillons", "chosen": "Agirigirina bii wi u barɔ.", "rejected": "Bii wi u wasira.", "source": "exercise"}
+{"prompt": "ba-fr: Agirigirina bii wi u barɔ.", "chosen": "Cet enfant souffre des oreillons", "rejected": "Cet enfant est malade", "source": "exercise"}
+{"prompt": "ba-fr: Agirigirina bii wi u barɔ.", "chosen": "Cet enfant souffre des oreillons", "rejected": "Cet enfant dort", "source": "exercise"}
+{"prompt": "ba-fr: Agirigirina bii wi u barɔ.", "chosen": "Cet enfant souffre des oreillons", "rejected": "Cet enfant est fatigué", "source": "exercise"}
+{"prompt": "fr-ba: Boni souffre de la dysenterie", "chosen": "Bɔni u bandu bandu barɔ.", "rejected": "Bɔni u gum mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Boni souffre de la dysenterie", "chosen": "Bɔni u bandu bandu barɔ.", "rejected": "Bɔni u wasira.", "source": "exercise"}
+{"prompt": "fr-ba: Boni souffre de la dysenterie", "chosen": "Bɔni u bandu bandu barɔ.", "rejected": "Bɔni u dɔɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Bɔni u bandu bandu barɔ.", "chosen": "Boni souffre de la dysenterie", "rejected": "Boni est malade", "source": "exercise"}
+{"prompt": "ba-fr: Bɔni u bandu bandu barɔ.", "chosen": "Boni souffre de la dysenterie", "rejected": "Boni est fatigué", "source": "exercise"}
+{"prompt": "ba-fr: Bɔni u bandu bandu barɔ.", "chosen": "Boni souffre de la dysenterie", "rejected": "Boni dort", "source": "exercise"}
+{"prompt": "fr-ba: Tu t'es blessé?", "chosen": "A tii mɛɛra kua?", "rejected": "A gum mɔ?", "source": "exercise"}
+{"prompt": "fr-ba: Tu t'es blessé?", "chosen": "A tii mɛɛra kua?", "rejected": "A wasira?", "source": "exercise"}
+{"prompt": "fr-ba: Tu t'es blessé?", "chosen": "A tii mɛɛra kua?", "rejected": "A dɔɔ?", "source": "exercise"}
+{"prompt": "ba-fr: A tii mɛɛra kua?", "chosen": "Tu t'es blessé?", "rejected": "Tu es malade?", "source": "exercise"}
+{"prompt": "ba-fr: A tii mɛɛra kua?", "chosen": "Tu t'es blessé?", "rejected": "Tu es fatigué?", "source": "exercise"}
+{"prompt": "ba-fr: A tii mɛɛra kua?", "chosen": "Tu t'es blessé?", "rejected": "Tu dors?", "source": "exercise"}
+{"prompt": "fr-ba: Santé, bien-être", "chosen": "Alaafia", "rejected": "Gum", "source": "exercise"}
+{"prompt": "fr-ba: Santé, bien-être", "chosen": "Alaafia", "rejected": "Wasiru", "source": "exercise"}
+{"prompt": "fr-ba: Santé, bien-être", "chosen": "Alaafia", "rejected": "Dɔ̃ɔ", "source": "exercise"}
+{"prompt": "ba-fr: Alaafia", "chosen": "Santé, bien-être", "rejected": "Maladie", "source": "exercise"}
+{"prompt": "ba-fr: Alaafia", "chosen": "Santé, bien-être", "rejected": "Fatigue", "source": "exercise"}
+{"prompt": "ba-fr: Alaafia", "chosen": "Santé, bien-être", "rejected": "Sommeil", "source": "exercise"}
+{"prompt": "fr-ba: Il est allé voir leur état de santé", "chosen": "U ben alaafia mɛɛribu da.", "rejected": "U doona.", "source": "exercise"}
+{"prompt": "fr-ba: Il est allé voir leur état de santé", "chosen": "U ben alaafia mɛɛribu da.", "rejected": "U na.", "source": "exercise"}
+{"prompt": "fr-ba: Il est allé voir leur état de santé", "chosen": "U ben alaafia mɛɛribu da.", "rejected": "U dɔɔ.", "source": "exercise"}
+{"prompt": "ba-fr: U ben alaafia mɛɛribu da.", "chosen": "Il est allé voir leur état de santé", "rejected": "Il est parti", "source": "exercise"}
+{"prompt": "ba-fr: U ben alaafia mɛɛribu da.", "chosen": "Il est allé voir leur état de santé", "rejected": "Il est arrivé", "source": "exercise"}
+{"prompt": "ba-fr: U ben alaafia mɛɛribu da.", "chosen": "Il est allé voir leur état de santé", "rejected": "Il a dormi", "source": "exercise"}
+{"prompt": "fr-ba: Voilà, je comprends maintenant", "chosen": "Aba, na tuba tɛ̃.", "rejected": "Tɔ̃ya mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Voilà, je comprends maintenant", "chosen": "Aba, na tuba tɛ̃.", "rejected": "Ya kpa.", "source": "exercise"}
+{"prompt": "fr-ba: Voilà, je comprends maintenant", "chosen": "Aba, na tuba tɛ̃.", "rejected": "Yen sɔ̃.", "source": "exercise"}
+{"prompt": "ba-fr: Aba, na tuba tɛ̃.", "chosen": "Voilà, je comprends maintenant", "rejected": "C'est la vérité", "source": "exercise"}
+{"prompt": "ba-fr: Aba, na tuba tɛ̃.", "chosen": "Voilà, je comprends maintenant", "rejected": "C'est fini", "source": "exercise"}
+{"prompt": "ba-fr: Aba, na tuba tɛ̃.", "chosen": "Voilà, je comprends maintenant", "rejected": "C'est pourquoi", "source": "exercise"}
+{"prompt": "fr-ba: Épaule", "chosen": "Bwãaru", "rejected": "Nũu", "source": "exercise"}
+{"prompt": "fr-ba: Épaule", "chosen": "Bwãaru", "rejected": "Wiir", "source": "exercise"}
+{"prompt": "fr-ba: Épaule", "chosen": "Bwãaru", "rejected": "Siiru", "source": "exercise"}
+{"prompt": "ba-fr: Bwãaru", "chosen": "Épaule", "rejected": "Main", "source": "exercise"}
+{"prompt": "ba-fr: Bwãaru", "chosen": "Épaule", "rejected": "Tête", "source": "exercise"}
+{"prompt": "ba-fr: Bwãaru", "chosen": "Épaule", "rejected": "Pied", "source": "exercise"}
+{"prompt": "fr-ba: Si tu es fatigué, tu dois te coucher", "chosen": "À n sɔmburu kua à n wasira, sere a kpuna.", "rejected": "A seewo.", "source": "exercise"}
+{"prompt": "fr-ba: Si tu es fatigué, tu dois te coucher", "chosen": "À n sɔmburu kua à n wasira, sere a kpuna.", "rejected": "A dĩa di.", "source": "exercise"}
+{"prompt": "fr-ba: Si tu es fatigué, tu dois te coucher", "chosen": "À n sɔmburu kua à n wasira, sere a kpuna.", "rejected": "A nim nɔ.", "source": "exercise"}
+{"prompt": "ba-fr: À n sɔmburu kua à n wasira, sere a kpuna.", "chosen": "Si tu es fatigué, tu dois te coucher", "rejected": "Lève-toi", "source": "exercise"}
+{"prompt": "ba-fr: À n sɔmburu kua à n wasira, sere a kpuna.", "chosen": "Si tu es fatigué, tu dois te coucher", "rejected": "Mange", "source": "exercise"}
+{"prompt": "ba-fr: À n sɔmburu kua à n wasira, sere a kpuna.", "chosen": "Si tu es fatigué, tu dois te coucher", "rejected": "Bois de l'eau", "source": "exercise"}
+{"prompt": "fr-ba: Argent", "chosen": "Gobi", "rejected": "Kia", "source": "exercise"}
+{"prompt": "fr-ba: Argent", "chosen": "Gobi", "rejected": "Aburu", "source": "exercise"}
+{"prompt": "fr-ba: Argent", "chosen": "Gobi", "rejected": "Yɔwaru", "source": "exercise"}
+{"prompt": "ba-fr: Gobi", "chosen": "Argent", "rejected": "Marchandise", "source": "exercise"}
+{"prompt": "ba-fr: Gobi", "chosen": "Argent", "rejected": "Marché", "source": "exercise"}
+{"prompt": "ba-fr: Gobi", "chosen": "Argent", "rejected": "Karité", "source": "exercise"}
+{"prompt": "fr-ba: Marchandise", "chosen": "Kia", "rejected": "Gobi", "source": "exercise"}
+{"prompt": "fr-ba: Marchandise", "chosen": "Kia", "rejected": "Aburu", "source": "exercise"}
+{"prompt": "fr-ba: Marchandise", "chosen": "Kia", "rejected": "Dĩa", "source": "exercise"}
+{"prompt": "ba-fr: Kia", "chosen": "Marchandise", "rejected": "Argent", "source": "exercise"}
+{"prompt": "ba-fr: Kia", "chosen": "Marchandise", "rejected": "Marché", "source": "exercise"}
+{"prompt": "ba-fr: Kia", "chosen": "Marchandise", "rejected": "Nourriture", "source": "exercise"}
+{"prompt": "fr-ba: Marché", "chosen": "Aburu", "rejected": "Yɛnu", "source": "exercise"}
+{"prompt": "fr-ba: Marché", "chosen": "Aburu", "rejected": "Wuu", "source": "exercise"}
+{"prompt": "fr-ba: Marché", "chosen": "Aburu", "rejected": "Gberu", "source": "exercise"}
+{"prompt": "ba-fr: Aburu", "chosen": "Marché", "rejected": "Maison", "source": "exercise"}
+{"prompt": "ba-fr: Aburu", "chosen": "Marché", "rejected": "Village", "source": "exercise"}
+{"prompt": "ba-fr: Aburu", "chosen": "Marché", "rejected": "Champ", "source": "exercise"}
+{"prompt": "fr-ba: C'est aujourd'hui le marché de notre village", "chosen": "Gisɔra bɛsɛn wuun aburu.", "rejected": "Yam gberɔ dɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: C'est aujourd'hui le marché de notre village", "chosen": "Gisɔra bɛsɛn wuun aburu.", "rejected": "Wuu ge ga kpã.", "source": "exercise"}
+{"prompt": "fr-ba: C'est aujourd'hui le marché de notre village", "chosen": "Gisɔra bɛsɛn wuun aburu.", "rejected": "Sa doona.", "source": "exercise"}
+{"prompt": "ba-fr: Gisɔra bɛsɛn wuun aburu.", "chosen": "C'est aujourd'hui le marché de notre village", "rejected": "Aujourd'hui on va au champ", "source": "exercise"}
+{"prompt": "ba-fr: Gisɔra bɛsɛn wuun aburu.", "chosen": "C'est aujourd'hui le marché de notre village", "rejected": "Le village est grand", "source": "exercise"}
+{"prompt": "ba-fr: Gisɔra bɛsɛn wuun aburu.", "chosen": "C'est aujourd'hui le marché de notre village", "rejected": "Nous partons", "source": "exercise"}
+{"prompt": "fr-ba: Je vais au marché acheter des oignons", "chosen": "Na yaburu dɔɔ n arumasanu dwe.", "rejected": "Na gberu dɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Je vais au marché acheter des oignons", "chosen": "Na yaburu dɔɔ n arumasanu dwe.", "rejected": "Na yɛnu dɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Je vais au marché acheter des oignons", "chosen": "Na yaburu dɔɔ n arumasanu dwe.", "rejected": "Na wuu dɔɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Na yaburu dɔɔ n arumasanu dwe.", "chosen": "Je vais au marché acheter des oignons", "rejected": "Je vais au champ", "source": "exercise"}
+{"prompt": "ba-fr: Na yaburu dɔɔ n arumasanu dwe.", "chosen": "Je vais au marché acheter des oignons", "rejected": "Je rentre à la maison", "source": "exercise"}
+{"prompt": "ba-fr: Na yaburu dɔɔ n arumasanu dwe.", "chosen": "Je vais au marché acheter des oignons", "rejected": "Je vais au village", "source": "exercise"}
+{"prompt": "fr-ba: L'argent volé n'est pas béni", "chosen": "Gbɛnan gobi kùn arubaruka mɔ.", "rejected": "Gobi ya do.", "source": "exercise"}
+{"prompt": "fr-ba: L'argent volé n'est pas béni", "chosen": "Gbɛnan gobi kùn arubaruka mɔ.", "rejected": "Gobi ya yiba.", "source": "exercise"}
+{"prompt": "fr-ba: L'argent volé n'est pas béni", "chosen": "Gbɛnan gobi kùn arubaruka mɔ.", "rejected": "Na gobi mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Gbɛnan gobi kùn arubaruka mɔ.", "chosen": "L'argent volé n'est pas béni", "rejected": "L'argent est bon", "source": "exercise"}
+{"prompt": "ba-fr: Gbɛnan gobi kùn arubaruka mɔ.", "chosen": "L'argent volé n'est pas béni", "rejected": "Il y a beaucoup d'argent", "source": "exercise"}
+{"prompt": "ba-fr: Gbɛnan gobi kùn arubaruka mɔ.", "chosen": "L'argent volé n'est pas béni", "rejected": "J'ai de l'argent", "source": "exercise"}
+{"prompt": "fr-ba: Ils ont frauduleusement ouvert mon porte-monnaie", "chosen": "Ba nɛn gobi bɔɔru man nɔɔbaayari.", "rejected": "Ba gobi wa.", "source": "exercise"}
+{"prompt": "fr-ba: Ils ont frauduleusement ouvert mon porte-monnaie", "chosen": "Ba nɛn gobi bɔɔru man nɔɔbaayari.", "rejected": "Ba man gobi kã.", "source": "exercise"}
+{"prompt": "fr-ba: Ils ont frauduleusement ouvert mon porte-monnaie", "chosen": "Ba nɛn gobi bɔɔru man nɔɔbaayari.", "rejected": "Na gobi mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Ba nɛn gobi bɔɔru man nɔɔbaayari.", "chosen": "Ils ont frauduleusement ouvert mon porte-monnaie", "rejected": "Ils ont trouvé de l'argent", "source": "exercise"}
+{"prompt": "ba-fr: Ba nɛn gobi bɔɔru man nɔɔbaayari.", "chosen": "Ils ont frauduleusement ouvert mon porte-monnaie", "rejected": "On m'a donné de l'argent", "source": "exercise"}
+{"prompt": "ba-fr: Ba nɛn gobi bɔɔru man nɔɔbaayari.", "chosen": "Ils ont frauduleusement ouvert mon porte-monnaie", "rejected": "J'ai de l'argent", "source": "exercise"}
+{"prompt": "fr-ba: Sa marchandise est sans valeur", "chosen": "Win kia te ta ǹ gobi mɔ, ta babara.", "rejected": "Win kia ya do.", "source": "exercise"}
+{"prompt": "fr-ba: Sa marchandise est sans valeur", "chosen": "Win kia te ta ǹ gobi mɔ, ta babara.", "rejected": "Win kia ya yiba.", "source": "exercise"}
+{"prompt": "fr-ba: Sa marchandise est sans valeur", "chosen": "Win kia te ta ǹ gobi mɔ, ta babara.", "rejected": "U kia dɔramɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Win kia te ta ǹ gobi mɔ, ta babara.", "chosen": "Sa marchandise est sans valeur", "rejected": "Sa marchandise est bonne", "source": "exercise"}
+{"prompt": "ba-fr: Win kia te ta ǹ gobi mɔ, ta babara.", "chosen": "Sa marchandise est sans valeur", "rejected": "Il a beaucoup de marchandise", "source": "exercise"}
+{"prompt": "ba-fr: Win kia te ta ǹ gobi mɔ, ta babara.", "chosen": "Sa marchandise est sans valeur", "rejected": "Il vend sa marchandise", "source": "exercise"}
+{"prompt": "fr-ba: Il a pris un taxi pour aller au marché", "chosen": "U kɛkɛ tenku dua uka yaburu da.", "rejected": "U gberu da.", "source": "exercise"}
+{"prompt": "fr-ba: Il a pris un taxi pour aller au marché", "chosen": "U kɛkɛ tenku dua uka yaburu da.", "rejected": "U yɛnu da.", "source": "exercise"}
+{"prompt": "fr-ba: Il a pris un taxi pour aller au marché", "chosen": "U kɛkɛ tenku dua uka yaburu da.", "rejected": "U wuu da.", "source": "exercise"}
+{"prompt": "ba-fr: U kɛkɛ tenku dua uka yaburu da.", "chosen": "Il a pris un taxi pour aller au marché", "rejected": "Il est allé au champ", "source": "exercise"}
+{"prompt": "ba-fr: U kɛkɛ tenku dua uka yaburu da.", "chosen": "Il a pris un taxi pour aller au marché", "rejected": "Il est rentré chez lui", "source": "exercise"}
+{"prompt": "ba-fr: U kɛkɛ tenku dua uka yaburu da.", "chosen": "Il a pris un taxi pour aller au marché", "rejected": "Il est allé au village", "source": "exercise"}
+{"prompt": "fr-ba: Régler un problème", "chosen": "Gari ɡbi.", "rejected": "Wɔbu sua.", "source": "exercise"}
+{"prompt": "fr-ba: Régler un problème", "chosen": "Gari ɡbi.", "rejected": "Man wɔbu nan.", "source": "exercise"}
+{"prompt": "fr-ba: Régler un problème", "chosen": "Gari ɡbi.", "rejected": "Wɔba wɔri.", "source": "exercise"}
+{"prompt": "ba-fr: Gari ɡbi.", "chosen": "Régler un problème", "rejected": "Partir", "source": "exercise"}
+{"prompt": "ba-fr: Gari ɡbi.", "chosen": "Régler un problème", "rejected": "Laisse-moi partir", "source": "exercise"}
+{"prompt": "ba-fr: Gari ɡbi.", "chosen": "Régler un problème", "rejected": "Se disculper", "source": "exercise"}
+{"prompt": "fr-ba: Se disculper (Laver les mains)", "chosen": "Wɔba wɔri.", "rejected": "Gari ɡbi.", "source": "exercise"}
+{"prompt": "fr-ba: Se disculper (Laver les mains)", "chosen": "Wɔba wɔri.", "rejected": "Wɔbu sua.", "source": "exercise"}
+{"prompt": "fr-ba: Se disculper (Laver les mains)", "chosen": "Wɔba wɔri.", "rejected": "Wãaru di.", "source": "exercise"}
+{"prompt": "ba-fr: Wɔba wɔri.", "chosen": "Se disculper (Laver les mains)", "rejected": "Régler un problème", "source": "exercise"}
+{"prompt": "ba-fr: Wɔba wɔri.", "chosen": "Se disculper (Laver les mains)", "rejected": "Partir", "source": "exercise"}
+{"prompt": "ba-fr: Wɔba wɔri.", "chosen": "Se disculper (Laver les mains)", "rejected": "Jouir de la vie", "source": "exercise"}
+{"prompt": "fr-ba: Tout le monde", "chosen": "Baawure.", "rejected": "Fiiko fiiko.", "source": "exercise"}
+{"prompt": "fr-ba: Tout le monde", "chosen": "Baawure.", "rejected": "Tɔ̃ya mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Tout le monde", "chosen": "Baawure.", "rejected": "Yen sɔ̃.", "source": "exercise"}
+{"prompt": "ba-fr: Baawure.", "chosen": "Tout le monde", "rejected": "Doucement", "source": "exercise"}
+{"prompt": "ba-fr: Baawure.", "chosen": "Tout le monde", "rejected": "C'est la vérité", "source": "exercise"}
+{"prompt": "ba-fr: Baawure.", "chosen": "Tout le monde", "rejected": "C'est pourquoi", "source": "exercise"}
+{"prompt": "fr-ba: C'est la vérité", "chosen": "Tɔ̃ya mɔ.", "rejected": "Baawure.", "source": "exercise"}
+{"prompt": "fr-ba: C'est la vérité", "chosen": "Tɔ̃ya mɔ.", "rejected": "Yen sɔ̃.", "source": "exercise"}
+{"prompt": "fr-ba: C'est la vérité", "chosen": "Tɔ̃ya mɔ.", "rejected": "Ya kpa.", "source": "exercise"}
+{"prompt": "ba-fr: Tɔ̃ya mɔ.", "chosen": "C'est la vérité", "rejected": "Tout le monde", "source": "exercise"}
+{"prompt": "ba-fr: Tɔ̃ya mɔ.", "chosen": "C'est la vérité", "rejected": "C'est pourquoi", "source": "exercise"}
+{"prompt": "ba-fr: Tɔ̃ya mɔ.", "chosen": "C'est la vérité", "rejected": "C'est fini", "source": "exercise"}
+{"prompt": "fr-ba: C'est pourquoi", "chosen": "Yen sɔ̃.", "rejected": "Tɔ̃ya mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: C'est pourquoi", "chosen": "Yen sɔ̃.", "rejected": "Baawure.", "source": "exercise"}
+{"prompt": "fr-ba: C'est pourquoi", "chosen": "Yen sɔ̃.", "rejected": "Tɛ̃.", "source": "exercise"}
+{"prompt": "ba-fr: Yen sɔ̃.", "chosen": "C'est pourquoi", "rejected": "C'est la vérité", "source": "exercise"}
+{"prompt": "ba-fr: Yen sɔ̃.", "chosen": "C'est pourquoi", "rejected": "Tout le monde", "source": "exercise"}
+{"prompt": "ba-fr: Yen sɔ̃.", "chosen": "C'est pourquoi", "rejected": "Maintenant", "source": "exercise"}
+{"prompt": "fr-ba: C'est fini", "chosen": "Ya kpa.", "rejected": "Tɛ̃.", "source": "exercise"}
+{"prompt": "fr-ba: C'est fini", "chosen": "Ya kpa.", "rejected": "Yen sɔ̃.", "source": "exercise"}
+{"prompt": "fr-ba: C'est fini", "chosen": "Ya kpa.", "rejected": "Tɔ̃ya mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Ya kpa.", "chosen": "C'est fini", "rejected": "Maintenant", "source": "exercise"}
+{"prompt": "ba-fr: Ya kpa.", "chosen": "C'est fini", "rejected": "C'est pourquoi", "source": "exercise"}
+{"prompt": "ba-fr: Ya kpa.", "chosen": "C'est fini", "rejected": "C'est la vérité", "source": "exercise"}
+{"prompt": "fr-ba: Route, chemin", "chosen": "Swaa", "rejected": "Wuu", "source": "exercise"}
+{"prompt": "fr-ba: Route, chemin", "chosen": "Swaa", "rejected": "Gberu", "source": "exercise"}
+{"prompt": "fr-ba: Route, chemin", "chosen": "Swaa", "rejected": "Yɛnu", "source": "exercise"}
+{"prompt": "ba-fr: Swaa", "chosen": "Route, chemin", "rejected": "Village", "source": "exercise"}
+{"prompt": "ba-fr: Swaa", "chosen": "Route, chemin", "rejected": "Champ", "source": "exercise"}
+{"prompt": "ba-fr: Swaa", "chosen": "Route, chemin", "rejected": "Maison", "source": "exercise"}
+{"prompt": "fr-ba: Voiture, camion", "chosen": "Kɛkɛ", "rejected": "Sii", "source": "exercise"}
+{"prompt": "fr-ba: Voiture, camion", "chosen": "Kɛkɛ", "rejected": "Duma", "source": "exercise"}
+{"prompt": "fr-ba: Voiture, camion", "chosen": "Kɛkɛ", "rejected": "Swaa", "source": "exercise"}
+{"prompt": "ba-fr: Kɛkɛ", "chosen": "Voiture, camion", "rejected": "Vélo", "source": "exercise"}
+{"prompt": "ba-fr: Kɛkɛ", "chosen": "Voiture, camion", "rejected": "Cheval", "source": "exercise"}
+{"prompt": "ba-fr: Kɛkɛ", "chosen": "Voiture, camion", "rejected": "Route", "source": "exercise"}
+{"prompt": "fr-ba: Vélo", "chosen": "Sii", "rejected": "Kɛkɛ", "source": "exercise"}
+{"prompt": "fr-ba: Vélo", "chosen": "Sii", "rejected": "Duma", "source": "exercise"}
+{"prompt": "fr-ba: Vélo", "chosen": "Sii", "rejected": "Swaa", "source": "exercise"}
+{"prompt": "ba-fr: Sii", "chosen": "Vélo", "rejected": "Voiture", "source": "exercise"}
+{"prompt": "ba-fr: Sii", "chosen": "Vélo", "rejected": "Cheval", "source": "exercise"}
+{"prompt": "ba-fr: Sii", "chosen": "Vélo", "rejected": "Route", "source": "exercise"}
+{"prompt": "fr-ba: Cheval", "chosen": "Duma", "rejected": "Sii", "source": "exercise"}
+{"prompt": "fr-ba: Cheval", "chosen": "Duma", "rejected": "Kɛkɛ", "source": "exercise"}
+{"prompt": "fr-ba: Cheval", "chosen": "Duma", "rejected": "Yãanu", "source": "exercise"}
+{"prompt": "ba-fr: Duma", "chosen": "Cheval", "rejected": "Vélo", "source": "exercise"}
+{"prompt": "ba-fr: Duma", "chosen": "Cheval", "rejected": "Voiture", "source": "exercise"}
+{"prompt": "ba-fr: Duma", "chosen": "Cheval", "rejected": "Mouton", "source": "exercise"}
+{"prompt": "fr-ba: La voiture est partie, dommage", "chosen": "Kɛkɛ ye ya doona, gaasa.", "rejected": "Kɛkɛ ye ya na.", "source": "exercise"}
+{"prompt": "fr-ba: La voiture est partie, dommage", "chosen": "Kɛkɛ ye ya doona, gaasa.", "rejected": "Sii ye ya doona.", "source": "exercise"}
+{"prompt": "fr-ba: La voiture est partie, dommage", "chosen": "Kɛkɛ ye ya doona, gaasa.", "rejected": "Duma u na.", "source": "exercise"}
+{"prompt": "ba-fr: Kɛkɛ ye ya doona, gaasa.", "chosen": "La voiture est partie, dommage", "rejected": "La voiture est arrivée", "source": "exercise"}
+{"prompt": "ba-fr: Kɛkɛ ye ya doona, gaasa.", "chosen": "La voiture est partie, dommage", "rejected": "Le vélo est parti", "source": "exercise"}
+{"prompt": "ba-fr: Kɛkɛ ye ya doona, gaasa.", "chosen": "La voiture est partie, dommage", "rejected": "Le cheval arrive", "source": "exercise"}
+{"prompt": "fr-ba: Son vélo neuf est brillant", "chosen": "Win sii dum kpaa ye ya ballimɔ.", "rejected": "Win kɛkɛ ya do.", "source": "exercise"}
+{"prompt": "fr-ba: Son vélo neuf est brillant", "chosen": "Win sii dum kpaa ye ya ballimɔ.", "rejected": "Win duma u kpã.", "source": "exercise"}
+{"prompt": "fr-ba: Son vélo neuf est brillant", "chosen": "Win sii dum kpaa ye ya ballimɔ.", "rejected": "Swaa ya do.", "source": "exercise"}
+{"prompt": "ba-fr: Win sii dum kpaa ye ya ballimɔ.", "chosen": "Son vélo neuf est brillant", "rejected": "Sa voiture est belle", "source": "exercise"}
+{"prompt": "ba-fr: Win sii dum kpaa ye ya ballimɔ.", "chosen": "Son vélo neuf est brillant", "rejected": "Son cheval est grand", "source": "exercise"}
+{"prompt": "ba-fr: Win sii dum kpaa ye ya ballimɔ.", "chosen": "Son vélo neuf est brillant", "rejected": "La route est belle", "source": "exercise"}
+{"prompt": "fr-ba: Bio, lève-toi pour aller au champ", "chosen": "Ãa Biɔ, a seewo a gbee te da.", "rejected": "Biɔ, a na.", "source": "exercise"}
+{"prompt": "fr-ba: Bio, lève-toi pour aller au champ", "chosen": "Ãa Biɔ, a seewo a gbee te da.", "rejected": "Biɔ, a dĩa di.", "source": "exercise"}
+{"prompt": "fr-ba: Bio, lève-toi pour aller au champ", "chosen": "Ãa Biɔ, a seewo a gbee te da.", "rejected": "Biɔ, a dɔɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Ãa Biɔ, a seewo a gbee te da.", "chosen": "Bio, lève-toi pour aller au champ", "rejected": "Bio, viens", "source": "exercise"}
+{"prompt": "ba-fr: Ãa Biɔ, a seewo a gbee te da.", "chosen": "Bio, lève-toi pour aller au champ", "rejected": "Bio, mange", "source": "exercise"}
+{"prompt": "ba-fr: Ãa Biɔ, a seewo a gbee te da.", "chosen": "Bio, lève-toi pour aller au champ", "rejected": "Bio, dors", "source": "exercise"}
+{"prompt": "fr-ba: Champ", "chosen": "Gberu", "rejected": "Yɛnu", "source": "exercise"}
+{"prompt": "fr-ba: Champ", "chosen": "Gberu", "rejected": "Wuu", "source": "exercise"}
+{"prompt": "fr-ba: Champ", "chosen": "Gberu", "rejected": "Aburu", "source": "exercise"}
+{"prompt": "ba-fr: Gberu", "chosen": "Champ", "rejected": "Maison", "source": "exercise"}
+{"prompt": "ba-fr: Gberu", "chosen": "Champ", "rejected": "Village", "source": "exercise"}
+{"prompt": "ba-fr: Gberu", "chosen": "Champ", "rejected": "Marché", "source": "exercise"}
+{"prompt": "fr-ba: Un grand camion", "chosen": "Kɛkɛ baka", "rejected": "Kɛkɛ swia", "source": "exercise"}
+{"prompt": "fr-ba: Un grand camion", "chosen": "Kɛkɛ baka", "rejected": "Sii baka", "source": "exercise"}
+{"prompt": "fr-ba: Un grand camion", "chosen": "Kɛkɛ baka", "rejected": "Duma baka", "source": "exercise"}
+{"prompt": "ba-fr: Kɛkɛ baka", "chosen": "Un grand camion", "rejected": "Un petit camion", "source": "exercise"}
+{"prompt": "ba-fr: Kɛkɛ baka", "chosen": "Un grand camion", "rejected": "Un grand vélo", "source": "exercise"}
+{"prompt": "ba-fr: Kɛkɛ baka", "chosen": "Un grand camion", "rejected": "Un grand cheval", "source": "exercise"}
+{"prompt": "fr-ba: Forêt", "chosen": "Kpaaru", "rejected": "Gberu", "source": "exercise"}
+{"prompt": "fr-ba: Forêt", "chosen": "Kpaaru", "rejected": "Wuu", "source": "exercise"}
+{"prompt": "fr-ba: Forêt", "chosen": "Kpaaru", "rejected": "Daa", "source": "exercise"}
+{"prompt": "ba-fr: Kpaaru", "chosen": "Forêt", "rejected": "Champ", "source": "exercise"}
+{"prompt": "ba-fr: Kpaaru", "chosen": "Forêt", "rejected": "Village", "source": "exercise"}
+{"prompt": "ba-fr: Kpaaru", "chosen": "Forêt", "rejected": "Marigot", "source": "exercise"}
+{"prompt": "fr-ba: Marigot", "chosen": "Daa", "rejected": "Nim", "source": "exercise"}
+{"prompt": "fr-ba: Marigot", "chosen": "Daa", "rejected": "Kpaaru", "source": "exercise"}
+{"prompt": "fr-ba: Marigot", "chosen": "Daa", "rejected": "Gberu", "source": "exercise"}
+{"prompt": "ba-fr: Daa", "chosen": "Marigot", "rejected": "Eau", "source": "exercise"}
+{"prompt": "ba-fr: Daa", "chosen": "Marigot", "rejected": "Forêt", "source": "exercise"}
+{"prompt": "ba-fr: Daa", "chosen": "Marigot", "rejected": "Champ", "source": "exercise"}
+{"prompt": "fr-ba: Le caméléon sait marcher comme un roi", "chosen": "Agama ga sina sanum yɛ̃.", "rejected": "Wɔmu u sĩimɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Le caméléon sait marcher comme un roi", "chosen": "Agama ga sina sanum yɛ̃.", "rejected": "Duma u taamɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Le caméléon sait marcher comme un roi", "chosen": "Agama ga sina sanum yɛ̃.", "rejected": "Kɛkɛ ya dɔɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Agama ga sina sanum yɛ̃.", "chosen": "Le caméléon sait marcher comme un roi", "rejected": "Le singe marche", "source": "exercise"}
+{"prompt": "ba-fr: Agama ga sina sanum yɛ̃.", "chosen": "Le caméléon sait marcher comme un roi", "rejected": "Le cheval court", "source": "exercise"}
+{"prompt": "ba-fr: Agama ga sina sanum yɛ̃.", "chosen": "Le caméléon sait marcher comme un roi", "rejected": "La voiture roule", "source": "exercise"}
+{"prompt": "fr-ba: Le soulard titube sur la route", "chosen": "Tam nɔro u ra bãari swaa sɔɔ.", "rejected": "U sĩimɔ swaa sɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Le soulard titube sur la route", "chosen": "Tam nɔro u ra bãari swaa sɔɔ.", "rejected": "U dɔɔ swaa sɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Le soulard titube sur la route", "chosen": "Tam nɔro u ra bãari swaa sɔɔ.", "rejected": "U yaamɔ swaa sɔɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Tam nɔro u ra bãari swaa sɔɔ.", "chosen": "Le soulard titube sur la route", "rejected": "Il marche sur la route", "source": "exercise"}
+{"prompt": "ba-fr: Tam nɔro u ra bãari swaa sɔɔ.", "chosen": "Le soulard titube sur la route", "rejected": "Il dort sur la route", "source": "exercise"}
+{"prompt": "ba-fr: Tam nɔro u ra bãari swaa sɔɔ.", "chosen": "Le soulard titube sur la route", "rejected": "Il danse sur la route", "source": "exercise"}
+{"prompt": "fr-ba: Partout où il passe, on le connaît", "chosen": "Baama kpuro mì u da, ba ra n wii yɛ̃ wa.", "rejected": "U doona.", "source": "exercise"}
+{"prompt": "fr-ba: Partout où il passe, on le connaît", "chosen": "Baama kpuro mì u da, ba ra n wii yɛ̃ wa.", "rejected": "U na.", "source": "exercise"}
+{"prompt": "fr-ba: Partout où il passe, on le connaît", "chosen": "Baama kpuro mì u da, ba ra n wii yɛ̃ wa.", "rejected": "U dɔɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Baama kpuro mì u da, ba ra n wii yɛ̃ wa.", "chosen": "Partout où il passe, on le connaît", "rejected": "Il est parti", "source": "exercise"}
+{"prompt": "ba-fr: Baama kpuro mì u da, ba ra n wii yɛ̃ wa.", "chosen": "Partout où il passe, on le connaît", "rejected": "Il est arrivé", "source": "exercise"}
+{"prompt": "ba-fr: Baama kpuro mì u da, ba ra n wii yɛ̃ wa.", "chosen": "Partout où il passe, on le connaît", "rejected": "Il dort", "source": "exercise"}
+{"prompt": "fr-ba: Carrefour", "chosen": "Swaa kɛɛnanɔ", "rejected": "Swaa", "source": "exercise"}
+{"prompt": "fr-ba: Carrefour", "chosen": "Swaa kɛɛnanɔ", "rejected": "Gberu", "source": "exercise"}
+{"prompt": "fr-ba: Carrefour", "chosen": "Swaa kɛɛnanɔ", "rejected": "Wuu", "source": "exercise"}
+{"prompt": "ba-fr: Swaa kɛɛnanɔ", "chosen": "Carrefour", "rejected": "Route", "source": "exercise"}
+{"prompt": "ba-fr: Swaa kɛɛnanɔ", "chosen": "Carrefour", "rejected": "Champ", "source": "exercise"}
+{"prompt": "ba-fr: Swaa kɛɛnanɔ", "chosen": "Carrefour", "rejected": "Village", "source": "exercise"}
+{"prompt": "fr-ba: Travail", "chosen": "Sɔmburu", "rejected": "Gberu", "source": "exercise"}
+{"prompt": "fr-ba: Travail", "chosen": "Sɔmburu", "rejected": "Yɛnu", "source": "exercise"}
+{"prompt": "fr-ba: Travail", "chosen": "Sɔmburu", "rejected": "Diru", "source": "exercise"}
+{"prompt": "ba-fr: Sɔmburu", "chosen": "Travail", "rejected": "Champ", "source": "exercise"}
+{"prompt": "ba-fr: Sɔmburu", "chosen": "Travail", "rejected": "Maison", "source": "exercise"}
+{"prompt": "ba-fr: Sɔmburu", "chosen": "Travail", "rejected": "Case", "source": "exercise"}
+{"prompt": "fr-ba: Le menuisier va réparer notre table", "chosen": "Agbegi u koo bɛsɛn taabulu sɔmɛ.", "rejected": "Arari u koo sɔmɛ.", "source": "exercise"}
+{"prompt": "fr-ba: Le menuisier va réparer notre table", "chosen": "Agbegi u koo bɛsɛn taabulu sɔmɛ.", "rejected": "Dokotoro u koo sɔmɛ.", "source": "exercise"}
+{"prompt": "fr-ba: Le menuisier va réparer notre table", "chosen": "Agbegi u koo bɛsɛn taabulu sɔmɛ.", "rejected": "Sunɔ u koo sɔmɛ.", "source": "exercise"}
+{"prompt": "ba-fr: Agbegi u koo bɛsɛn taabulu sɔmɛ.", "chosen": "Le menuisier va réparer notre table", "rejected": "Le boucher va réparer", "source": "exercise"}
+{"prompt": "ba-fr: Agbegi u koo bɛsɛn taabulu sɔmɛ.", "chosen": "Le menuisier va réparer notre table", "rejected": "Le médecin va réparer", "source": "exercise"}
+{"prompt": "ba-fr: Agbegi u koo bɛsɛn taabulu sɔmɛ.", "chosen": "Le menuisier va réparer notre table", "rejected": "Le chef va réparer", "source": "exercise"}
+{"prompt": "fr-ba: Le boucher a abattu trois bœufs aujourd'hui", "chosen": "Arari u nɛɛ ita go gisɔ.", "rejected": "Agbegi u sɔmburu kua.", "source": "exercise"}
+{"prompt": "fr-ba: Le boucher a abattu trois bœufs aujourd'hui", "chosen": "Arari u nɛɛ ita go gisɔ.", "rejected": "Sunɔ u na.", "source": "exercise"}
+{"prompt": "fr-ba: Le boucher a abattu trois bœufs aujourd'hui", "chosen": "Arari u nɛɛ ita go gisɔ.", "rejected": "Dokotoro u tɔmbu wa.", "source": "exercise"}
+{"prompt": "ba-fr: Arari u nɛɛ ita go gisɔ.", "chosen": "Le boucher a abattu trois bœufs aujourd'hui", "rejected": "Le menuisier a travaillé", "source": "exercise"}
+{"prompt": "ba-fr: Arari u nɛɛ ita go gisɔ.", "chosen": "Le boucher a abattu trois bœufs aujourd'hui", "rejected": "Le chef est venu", "source": "exercise"}
+{"prompt": "ba-fr: Arari u nɛɛ ita go gisɔ.", "chosen": "Le boucher a abattu trois bœufs aujourd'hui", "rejected": "Le médecin a vu les gens", "source": "exercise"}
+{"prompt": "fr-ba: Quel avantage auras-tu dans ce travail", "chosen": "Are yira kaa wa sɔmbu te sɔɔ.", "rejected": "A sɔmburu de.", "source": "exercise"}
+{"prompt": "fr-ba: Quel avantage auras-tu dans ce travail", "chosen": "Are yira kaa wa sɔmbu te sɔɔ.", "rejected": "Sɔmburu ya kpã.", "source": "exercise"}
+{"prompt": "fr-ba: Quel avantage auras-tu dans ce travail", "chosen": "Are yira kaa wa sɔmbu te sɔɔ.", "rejected": "A wasira.", "source": "exercise"}
+{"prompt": "ba-fr: Are yira kaa wa sɔmbu te sɔɔ.", "chosen": "Quel avantage auras-tu dans ce travail", "rejected": "Tu travailles", "source": "exercise"}
+{"prompt": "ba-fr: Are yira kaa wa sɔmbu te sɔɔ.", "chosen": "Quel avantage auras-tu dans ce travail", "rejected": "Le travail est grand", "source": "exercise"}
+{"prompt": "ba-fr: Are yira kaa wa sɔmbu te sɔɔ.", "chosen": "Quel avantage auras-tu dans ce travail", "rejected": "Tu es fatigué", "source": "exercise"}
+{"prompt": "fr-ba: Nous avons beaucoup travaillé", "chosen": "Sa wasira.", "rejected": "Sa dɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Nous avons beaucoup travaillé", "chosen": "Sa wasira.", "rejected": "Sa dĩa di.", "source": "exercise"}
+{"prompt": "fr-ba: Nous avons beaucoup travaillé", "chosen": "Sa wasira.", "rejected": "Sa doona.", "source": "exercise"}
+{"prompt": "ba-fr: Sa wasira.", "chosen": "Nous avons beaucoup travaillé", "rejected": "Nous avons dormi", "source": "exercise"}
+{"prompt": "ba-fr: Sa wasira.", "chosen": "Nous avons beaucoup travaillé", "rejected": "Nous avons mangé", "source": "exercise"}
+{"prompt": "ba-fr: Sa wasira.", "chosen": "Nous avons beaucoup travaillé", "rejected": "Nous sommes partis", "source": "exercise"}
+{"prompt": "fr-ba: Chasseur", "chosen": "Taaso", "rejected": "Arari", "source": "exercise"}
+{"prompt": "fr-ba: Chasseur", "chosen": "Taaso", "rejected": "Agbegi", "source": "exercise"}
+{"prompt": "fr-ba: Chasseur", "chosen": "Taaso", "rejected": "Dokotoro", "source": "exercise"}
+{"prompt": "ba-fr: Taaso", "chosen": "Chasseur", "rejected": "Boucher", "source": "exercise"}
+{"prompt": "ba-fr: Taaso", "chosen": "Chasseur", "rejected": "Menuisier", "source": "exercise"}
+{"prompt": "ba-fr: Taaso", "chosen": "Chasseur", "rejected": "Médecin", "source": "exercise"}
+{"prompt": "fr-ba: Chef", "chosen": "Sunɔ", "rejected": "Taaso", "source": "exercise"}
+{"prompt": "fr-ba: Chef", "chosen": "Sunɔ", "rejected": "Arari", "source": "exercise"}
+{"prompt": "fr-ba: Chef", "chosen": "Sunɔ", "rejected": "Agbegi", "source": "exercise"}
+{"prompt": "ba-fr: Sunɔ", "chosen": "Chef", "rejected": "Chasseur", "source": "exercise"}
+{"prompt": "ba-fr: Sunɔ", "chosen": "Chef", "rejected": "Boucher", "source": "exercise"}
+{"prompt": "ba-fr: Sunɔ", "chosen": "Chef", "rejected": "Menuisier", "source": "exercise"}
+{"prompt": "fr-ba: Pêcheur", "chosen": "Susure kowo", "rejected": "Taaso", "source": "exercise"}
+{"prompt": "fr-ba: Pêcheur", "chosen": "Susure kowo", "rejected": "Arari", "source": "exercise"}
+{"prompt": "fr-ba: Pêcheur", "chosen": "Susure kowo", "rejected": "Sunɔ", "source": "exercise"}
+{"prompt": "ba-fr: Susure kowo", "chosen": "Pêcheur", "rejected": "Chasseur", "source": "exercise"}
+{"prompt": "ba-fr: Susure kowo", "chosen": "Pêcheur", "rejected": "Boucher", "source": "exercise"}
+{"prompt": "ba-fr: Susure kowo", "chosen": "Pêcheur", "rejected": "Chef", "source": "exercise"}
+{"prompt": "fr-ba: Ceux-là font la pêche", "chosen": "Beɔnɔ susurewa ba ra ko.", "rejected": "Ba taasoru de.", "source": "exercise"}
+{"prompt": "fr-ba: Ceux-là font la pêche", "chosen": "Beɔnɔ susurewa ba ra ko.", "rejected": "Ba sɔmburu de.", "source": "exercise"}
+{"prompt": "fr-ba: Ceux-là font la pêche", "chosen": "Beɔnɔ susurewa ba ra ko.", "rejected": "Ba gberu da.", "source": "exercise"}
+{"prompt": "ba-fr: Beɔnɔ susurewa ba ra ko.", "chosen": "Ceux-là font la pêche", "rejected": "Ils font la chasse", "source": "exercise"}
+{"prompt": "ba-fr: Beɔnɔ susurewa ba ra ko.", "chosen": "Ceux-là font la pêche", "rejected": "Ils travaillent", "source": "exercise"}
+{"prompt": "ba-fr: Beɔnɔ susurewa ba ra ko.", "chosen": "Ceux-là font la pêche", "rejected": "Ils vont au champ", "source": "exercise"}
+{"prompt": "fr-ba: J'ai commencé à construire ma case", "chosen": "Na nɛn diru banima.", "rejected": "Na sɔmburu de.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai commencé à construire ma case", "chosen": "Na nɛn diru banima.", "rejected": "Na gberu da.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai commencé à construire ma case", "chosen": "Na nɛn diru banima.", "rejected": "Na dĩa kua.", "source": "exercise"}
+{"prompt": "ba-fr: Na nɛn diru banima.", "chosen": "J'ai commencé à construire ma case", "rejected": "J'ai travaillé", "source": "exercise"}
+{"prompt": "ba-fr: Na nɛn diru banima.", "chosen": "J'ai commencé à construire ma case", "rejected": "Je suis allé au champ", "source": "exercise"}
+{"prompt": "ba-fr: Na nɛn diru banima.", "chosen": "J'ai commencé à construire ma case", "rejected": "J'ai cuisiné", "source": "exercise"}
+{"prompt": "fr-ba: Champ de culture", "chosen": "Gberu", "rejected": "Yɛnu", "source": "exercise"}
+{"prompt": "fr-ba: Champ de culture", "chosen": "Gberu", "rejected": "Wuu", "source": "exercise"}
+{"prompt": "fr-ba: Champ de culture", "chosen": "Gberu", "rejected": "Aburu", "source": "exercise"}
+{"prompt": "ba-fr: Gberu", "chosen": "Champ de culture", "rejected": "Maison", "source": "exercise"}
+{"prompt": "ba-fr: Gberu", "chosen": "Champ de culture", "rejected": "Village", "source": "exercise"}
+{"prompt": "ba-fr: Gberu", "chosen": "Champ de culture", "rejected": "Marché", "source": "exercise"}
+{"prompt": "fr-ba: Je suis au champ tous les jours", "chosen": "Baadomma na rà n wãawa gberɔ.", "rejected": "Na yɛnu dɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Je suis au champ tous les jours", "chosen": "Baadomma na rà n wãawa gberɔ.", "rejected": "Na aburu dɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Je suis au champ tous les jours", "chosen": "Baadomma na rà n wãawa gberɔ.", "rejected": "Na wuu dɔɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Baadomma na rà n wãawa gberɔ.", "chosen": "Je suis au champ tous les jours", "rejected": "Je vais à la maison", "source": "exercise"}
+{"prompt": "ba-fr: Baadomma na rà n wãawa gberɔ.", "chosen": "Je suis au champ tous les jours", "rejected": "Je vais au marché", "source": "exercise"}
+{"prompt": "ba-fr: Baadomma na rà n wãawa gberɔ.", "chosen": "Je suis au champ tous les jours", "rejected": "Je vais au village", "source": "exercise"}
+{"prompt": "fr-ba: S'il pleut, nous sèmerons demain", "chosen": "Gura yàn na, sa ko sia gberenu duure.", "rejected": "Sa doona.", "source": "exercise"}
+{"prompt": "fr-ba: S'il pleut, nous sèmerons demain", "chosen": "Gura yàn na, sa ko sia gberenu duure.", "rejected": "Sa dĩa di.", "source": "exercise"}
+{"prompt": "fr-ba: S'il pleut, nous sèmerons demain", "chosen": "Gura yàn na, sa ko sia gberenu duure.", "rejected": "Sa dɔɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Gura yàn na, sa ko sia gberenu duure.", "chosen": "S'il pleut, nous sèmerons demain", "rejected": "Nous partons", "source": "exercise"}
+{"prompt": "ba-fr: Gura yàn na, sa ko sia gberenu duure.", "chosen": "S'il pleut, nous sèmerons demain", "rejected": "Nous mangeons", "source": "exercise"}
+{"prompt": "ba-fr: Gura yàn na, sa ko sia gberenu duure.", "chosen": "S'il pleut, nous sèmerons demain", "rejected": "Nous dormons", "source": "exercise"}
+{"prompt": "fr-ba: Tenir la houe est une question d'habitude", "chosen": "Naa tebon nɛnubu bu sãawa.", "rejected": "Sɔmburu ya sɛ̃.", "source": "exercise"}
+{"prompt": "fr-ba: Tenir la houe est une question d'habitude", "chosen": "Naa tebon nɛnubu bu sãawa.", "rejected": "Gberu ya kpã.", "source": "exercise"}
+{"prompt": "fr-ba: Tenir la houe est une question d'habitude", "chosen": "Naa tebon nɛnubu bu sãawa.", "rejected": "Tebo ya do.", "source": "exercise"}
+{"prompt": "ba-fr: Naa tebon nɛnubu bu sãawa.", "chosen": "Tenir la houe est une question d'habitude", "rejected": "Le travail est dur", "source": "exercise"}
+{"prompt": "ba-fr: Naa tebon nɛnubu bu sãawa.", "chosen": "Tenir la houe est une question d'habitude", "rejected": "Le champ est grand", "source": "exercise"}
+{"prompt": "ba-fr: Naa tebon nɛnubu bu sãawa.", "chosen": "Tenir la houe est une question d'habitude", "rejected": "La houe est bonne", "source": "exercise"}
+{"prompt": "fr-ba: Les soldats font une marche militaire", "chosen": "Soogeba ba gasiisiru yaamɔ.", "rejected": "Ba sɔmburu de.", "source": "exercise"}
+{"prompt": "fr-ba: Les soldats font une marche militaire", "chosen": "Soogeba ba gasiisiru yaamɔ.", "rejected": "Ba doona.", "source": "exercise"}
+{"prompt": "fr-ba: Les soldats font une marche militaire", "chosen": "Soogeba ba gasiisiru yaamɔ.", "rejected": "Ba dɔɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Soogeba ba gasiisiru yaamɔ.", "chosen": "Les soldats font une marche militaire", "rejected": "Ils travaillent", "source": "exercise"}
+{"prompt": "ba-fr: Soogeba ba gasiisiru yaamɔ.", "chosen": "Les soldats font une marche militaire", "rejected": "Ils partent", "source": "exercise"}
+{"prompt": "ba-fr: Soogeba ba gasiisiru yaamɔ.", "chosen": "Les soldats font une marche militaire", "rejected": "Ils dorment", "source": "exercise"}
+{"prompt": "fr-ba: Être calme (Cœur apaisé)", "chosen": "Nimu kpɛm.", "rejected": "Nimu tɛra.", "source": "exercise"}
+{"prompt": "fr-ba: Être calme (Cœur apaisé)", "chosen": "Nimu kpɛm.", "rejected": "Gɔ̃ru sɔ̃.", "source": "exercise"}
+{"prompt": "fr-ba: Être calme (Cœur apaisé)", "chosen": "Nimu kpɛm.", "rejected": "Gɔ̃ru pii.", "source": "exercise"}
+{"prompt": "ba-fr: Nimu kpɛm.", "chosen": "Être calme (Cœur apaisé)", "rejected": "Être en colère", "source": "exercise"}
+{"prompt": "ba-fr: Nimu kpɛm.", "chosen": "Être calme (Cœur apaisé)", "rejected": "Être méchant", "source": "exercise"}
+{"prompt": "ba-fr: Nimu kpɛm.", "chosen": "Être calme (Cœur apaisé)", "rejected": "Être gentil", "source": "exercise"}
+{"prompt": "fr-ba: Être en colère (Cœur chaud)", "chosen": "Nimu tɛra.", "rejected": "Nimu kpɛm.", "source": "exercise"}
+{"prompt": "fr-ba: Être en colère (Cœur chaud)", "chosen": "Nimu tɛra.", "rejected": "Gɔ̃ru sɔ̃.", "source": "exercise"}
+{"prompt": "fr-ba: Être en colère (Cœur chaud)", "chosen": "Nimu tɛra.", "rejected": "Nimu mɔ ka yɛru.", "source": "exercise"}
+{"prompt": "ba-fr: Nimu tɛra.", "chosen": "Être en colère (Cœur chaud)", "rejected": "Être calme", "source": "exercise"}
+{"prompt": "ba-fr: Nimu tɛra.", "chosen": "Être en colère (Cœur chaud)", "rejected": "Être méchant", "source": "exercise"}
+{"prompt": "ba-fr: Nimu tɛra.", "chosen": "Être en colère (Cœur chaud)", "rejected": "Être joyeux", "source": "exercise"}
+{"prompt": "fr-ba: Ne sois pas en colère (Refroidis ton cœur)", "chosen": "A sɔ̃ɔwa nimu.", "rejected": "Nimu tɛra.", "source": "exercise"}
+{"prompt": "fr-ba: Ne sois pas en colère (Refroidis ton cœur)", "chosen": "A sɔ̃ɔwa nimu.", "rejected": "Nimu kpɛm.", "source": "exercise"}
+{"prompt": "fr-ba: Ne sois pas en colère (Refroidis ton cœur)", "chosen": "A sɔ̃ɔwa nimu.", "rejected": "Gɔ̃ru pii.", "source": "exercise"}
+{"prompt": "ba-fr: A sɔ̃ɔwa nimu.", "chosen": "Ne sois pas en colère (Refroidis ton cœur)", "rejected": "Être en colère", "source": "exercise"}
+{"prompt": "ba-fr: A sɔ̃ɔwa nimu.", "chosen": "Ne sois pas en colère (Refroidis ton cœur)", "rejected": "Être calme", "source": "exercise"}
+{"prompt": "ba-fr: A sɔ̃ɔwa nimu.", "chosen": "Ne sois pas en colère (Refroidis ton cœur)", "rejected": "Être gentil", "source": "exercise"}
+{"prompt": "fr-ba: Mon cœur est en joie", "chosen": "Nimu mɔ ka yɛru.", "rejected": "Nimu kpɛm.", "source": "exercise"}
+{"prompt": "fr-ba: Mon cœur est en joie", "chosen": "Nimu mɔ ka yɛru.", "rejected": "Nimu tɛra.", "source": "exercise"}
+{"prompt": "fr-ba: Mon cœur est en joie", "chosen": "Nimu mɔ ka yɛru.", "rejected": "Gɔ̃ru sɔ̃.", "source": "exercise"}
+{"prompt": "ba-fr: Nimu mɔ ka yɛru.", "chosen": "Mon cœur est en joie", "rejected": "Être calme", "source": "exercise"}
+{"prompt": "ba-fr: Nimu mɔ ka yɛru.", "chosen": "Mon cœur est en joie", "rejected": "Être en colère", "source": "exercise"}
+{"prompt": "ba-fr: Nimu mɔ ka yɛru.", "chosen": "Mon cœur est en joie", "rejected": "Être méchant", "source": "exercise"}
+{"prompt": "fr-ba: Être méchant (Cœur noir)", "chosen": "Gɔ̃ru sɔ̃.", "rejected": "Gɔ̃ru pii.", "source": "exercise"}
+{"prompt": "fr-ba: Être méchant (Cœur noir)", "chosen": "Gɔ̃ru sɔ̃.", "rejected": "Nimu tɛra.", "source": "exercise"}
+{"prompt": "fr-ba: Être méchant (Cœur noir)", "chosen": "Gɔ̃ru sɔ̃.", "rejected": "Nimu kpɛm.", "source": "exercise"}
+{"prompt": "ba-fr: Gɔ̃ru sɔ̃.", "chosen": "Être méchant (Cœur noir)", "rejected": "Être gentil", "source": "exercise"}
+{"prompt": "ba-fr: Gɔ̃ru sɔ̃.", "chosen": "Être méchant (Cœur noir)", "rejected": "Être en colère", "source": "exercise"}
+{"prompt": "ba-fr: Gɔ̃ru sɔ̃.", "chosen": "Être méchant (Cœur noir)", "rejected": "Être calme", "source": "exercise"}
+{"prompt": "fr-ba: Être gentil (Cœur blanc)", "chosen": "Gɔ̃ru pii.", "rejected": "Gɔ̃ru sɔ̃.", "source": "exercise"}
+{"prompt": "fr-ba: Être gentil (Cœur blanc)", "chosen": "Gɔ̃ru pii.", "rejected": "Nimu tɛra.", "source": "exercise"}
+{"prompt": "fr-ba: Être gentil (Cœur blanc)", "chosen": "Gɔ̃ru pii.", "rejected": "Wiir wɛ̃ra.", "source": "exercise"}
+{"prompt": "ba-fr: Gɔ̃ru pii.", "chosen": "Être gentil (Cœur blanc)", "rejected": "Être méchant", "source": "exercise"}
+{"prompt": "ba-fr: Gɔ̃ru pii.", "chosen": "Être gentil (Cœur blanc)", "rejected": "Être en colère", "source": "exercise"}
+{"prompt": "ba-fr: Gɔ̃ru pii.", "chosen": "Être gentil (Cœur blanc)", "rejected": "Chanceux", "source": "exercise"}
+{"prompt": "fr-ba: J'ai peur (La peur me tient)", "chosen": "Wãa nan baa.", "rejected": "Na wãa yara.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai peur (La peur me tient)", "chosen": "Wãa nan baa.", "rejected": "Nimu tɛra.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai peur (La peur me tient)", "chosen": "Wãa nan baa.", "rejected": "Gɔ̃ru sɔ̃.", "source": "exercise"}
+{"prompt": "ba-fr: Wãa nan baa.", "chosen": "J'ai peur (La peur me tient)", "rejected": "J'ai honte", "source": "exercise"}
+{"prompt": "ba-fr: Wãa nan baa.", "chosen": "J'ai peur (La peur me tient)", "rejected": "Je suis en colère", "source": "exercise"}
+{"prompt": "ba-fr: Wãa nan baa.", "chosen": "J'ai peur (La peur me tient)", "rejected": "Je suis méchant", "source": "exercise"}
+{"prompt": "fr-ba: J'ai honte", "chosen": "Na wãa yara.", "rejected": "Wãa nan baa.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai honte", "chosen": "Na wãa yara.", "rejected": "Nimu kpɛm.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai honte", "chosen": "Na wãa yara.", "rejected": "Nimu tɛra.", "source": "exercise"}
+{"prompt": "ba-fr: Na wãa yara.", "chosen": "J'ai honte", "rejected": "J'ai peur", "source": "exercise"}
+{"prompt": "ba-fr: Na wãa yara.", "chosen": "J'ai honte", "rejected": "Je suis calme", "source": "exercise"}
+{"prompt": "ba-fr: Na wãa yara.", "chosen": "J'ai honte", "rejected": "Je suis en colère", "source": "exercise"}
+{"prompt": "fr-ba: Son impolitesse a dépassé les bornes", "chosen": "Win sankiraru ta banna.", "rejected": "U gɔbu.", "source": "exercise"}
+{"prompt": "fr-ba: Son impolitesse a dépassé les bornes", "chosen": "Win sankiraru ta banna.", "rejected": "U nimu tɛra.", "source": "exercise"}
+{"prompt": "fr-ba: Son impolitesse a dépassé les bornes", "chosen": "Win sankiraru ta banna.", "rejected": "U wãa yara.", "source": "exercise"}
+{"prompt": "ba-fr: Win sankiraru ta banna.", "chosen": "Son impolitesse a dépassé les bornes", "rejected": "Il est méchant", "source": "exercise"}
+{"prompt": "ba-fr: Win sankiraru ta banna.", "chosen": "Son impolitesse a dépassé les bornes", "rejected": "Il est en colère", "source": "exercise"}
+{"prompt": "ba-fr: Win sankiraru ta banna.", "chosen": "Son impolitesse a dépassé les bornes", "rejected": "Il a honte", "source": "exercise"}
+{"prompt": "fr-ba: Je suis content de ton cadeau", "chosen": "Na wunɛn kɛ̃ɛte siara.", "rejected": "Nimu mɔ ka yɛru.", "source": "exercise"}
+{"prompt": "fr-ba: Je suis content de ton cadeau", "chosen": "Na wunɛn kɛ̃ɛte siara.", "rejected": "Nimu kpɛm.", "source": "exercise"}
+{"prompt": "fr-ba: Je suis content de ton cadeau", "chosen": "Na wunɛn kɛ̃ɛte siara.", "rejected": "Gɔ̃ru pii.", "source": "exercise"}
+{"prompt": "ba-fr: Na wunɛn kɛ̃ɛte siara.", "chosen": "Je suis content de ton cadeau", "rejected": "Mon cœur est en joie", "source": "exercise"}
+{"prompt": "ba-fr: Na wunɛn kɛ̃ɛte siara.", "chosen": "Je suis content de ton cadeau", "rejected": "Je suis calme", "source": "exercise"}
+{"prompt": "ba-fr: Na wunɛn kɛ̃ɛte siara.", "chosen": "Je suis content de ton cadeau", "rejected": "Je suis gentil", "source": "exercise"}
+{"prompt": "fr-ba: Le menteur n'a pas de valeur", "chosen": "Wee kowo u ku ra ǹ bɛɛrɛ mɔ.", "rejected": "Tɔ̃ya mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Le menteur n'a pas de valeur", "chosen": "Wee kowo u ku ra ǹ bɛɛrɛ mɔ.", "rejected": "Gɔ̃ru pii.", "source": "exercise"}
+{"prompt": "fr-ba: Le menteur n'a pas de valeur", "chosen": "Wee kowo u ku ra ǹ bɛɛrɛ mɔ.", "rejected": "Gɔ̃ru sɔ̃.", "source": "exercise"}
+{"prompt": "ba-fr: Wee kowo u ku ra ǹ bɛɛrɛ mɔ.", "chosen": "Le menteur n'a pas de valeur", "rejected": "C'est la vérité", "source": "exercise"}
+{"prompt": "ba-fr: Wee kowo u ku ra ǹ bɛɛrɛ mɔ.", "chosen": "Le menteur n'a pas de valeur", "rejected": "Il est gentil", "source": "exercise"}
+{"prompt": "ba-fr: Wee kowo u ku ra ǹ bɛɛrɛ mɔ.", "chosen": "Le menteur n'a pas de valeur", "rejected": "Il est méchant", "source": "exercise"}
+{"prompt": "fr-ba: Le problème que tu poses est difficile", "chosen": "Wunɛn gari yì a ka na mi, yu sɛ̃.", "rejected": "Gari ya do.", "source": "exercise"}
+{"prompt": "fr-ba: Le problème que tu poses est difficile", "chosen": "Wunɛn gari yì a ka na mi, yu sɛ̃.", "rejected": "Gari ya kpã.", "source": "exercise"}
+{"prompt": "fr-ba: Le problème que tu poses est difficile", "chosen": "Wunɛn gari yì a ka na mi, yu sɛ̃.", "rejected": "Gari ya kpa.", "source": "exercise"}
+{"prompt": "ba-fr: Wunɛn gari yì a ka na mi, yu sɛ̃.", "chosen": "Le problème que tu poses est difficile", "rejected": "Le problème est bon", "source": "exercise"}
+{"prompt": "ba-fr: Wunɛn gari yì a ka na mi, yu sɛ̃.", "chosen": "Le problème que tu poses est difficile", "rejected": "Le problème est grand", "source": "exercise"}
+{"prompt": "ba-fr: Wunɛn gari yì a ka na mi, yu sɛ̃.", "chosen": "Le problème que tu poses est difficile", "rejected": "Le problème est fini", "source": "exercise"}
+{"prompt": "fr-ba: L'enfant a raison", "chosen": "Bii wi u gem mɔ.", "rejected": "Bii wi u gum mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: L'enfant a raison", "chosen": "Bii wi u gem mɔ.", "rejected": "Bii wi u doona.", "source": "exercise"}
+{"prompt": "fr-ba: L'enfant a raison", "chosen": "Bii wi u gem mɔ.", "rejected": "Bii wi u dɔɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Bii wi u gem mɔ.", "chosen": "L'enfant a raison", "rejected": "L'enfant est malade", "source": "exercise"}
+{"prompt": "ba-fr: Bii wi u gem mɔ.", "chosen": "L'enfant a raison", "rejected": "L'enfant est parti", "source": "exercise"}
+{"prompt": "ba-fr: Bii wi u gem mɔ.", "chosen": "L'enfant a raison", "rejected": "L'enfant dort", "source": "exercise"}
+{"prompt": "fr-ba: Les cris du chevreau font pitié", "chosen": "Boo buu gen wuri yu wɔnwɔndu kua.", "rejected": "Boo ya dɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Les cris du chevreau font pitié", "chosen": "Boo buu gen wuri yu wɔnwɔndu kua.", "rejected": "Boo ya di.", "source": "exercise"}
+{"prompt": "fr-ba: Les cris du chevreau font pitié", "chosen": "Boo buu gen wuri yu wɔnwɔndu kua.", "rejected": "Boo ya doona.", "source": "exercise"}
+{"prompt": "ba-fr: Boo buu gen wuri yu wɔnwɔndu kua.", "chosen": "Les cris du chevreau font pitié", "rejected": "Le chevreau dort", "source": "exercise"}
+{"prompt": "ba-fr: Boo buu gen wuri yu wɔnwɔndu kua.", "chosen": "Les cris du chevreau font pitié", "rejected": "Le chevreau mange", "source": "exercise"}
+{"prompt": "ba-fr: Boo buu gen wuri yu wɔnwɔndu kua.", "chosen": "Les cris du chevreau font pitié", "rejected": "Le chevreau est parti", "source": "exercise"}
+{"prompt": "fr-ba: Toi-même tu exagères", "chosen": "Wunɛn tii a banda.", "rejected": "A gɔbu.", "source": "exercise"}
+{"prompt": "fr-ba: Toi-même tu exagères", "chosen": "Wunɛn tii a banda.", "rejected": "A wasira.", "source": "exercise"}
+{"prompt": "fr-ba: Toi-même tu exagères", "chosen": "Wunɛn tii a banda.", "rejected": "A dɔɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Wunɛn tii a banda.", "chosen": "Toi-même tu exagères", "rejected": "Tu es méchant", "source": "exercise"}
+{"prompt": "ba-fr: Wunɛn tii a banda.", "chosen": "Toi-même tu exagères", "rejected": "Tu es fatigué", "source": "exercise"}
+{"prompt": "ba-fr: Wunɛn tii a banda.", "chosen": "Toi-même tu exagères", "rejected": "Tu dors", "source": "exercise"}
+{"prompt": "fr-ba: J'ai faim (La faim me fait)", "chosen": "Yam baa man.", "rejected": "Yam baa nun.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai faim (La faim me fait)", "chosen": "Yam baa man.", "rejected": "Yam baa u.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai faim (La faim me fait)", "chosen": "Yam baa man.", "rejected": "Nim nɔru ɡa nɛn mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Yam baa man.", "chosen": "J'ai faim (La faim me fait)", "rejected": "Tu as faim", "source": "exercise"}
+{"prompt": "ba-fr: Yam baa man.", "chosen": "J'ai faim (La faim me fait)", "rejected": "Il a faim", "source": "exercise"}
+{"prompt": "ba-fr: Yam baa man.", "chosen": "J'ai faim (La faim me fait)", "rejected": "J'ai soif", "source": "exercise"}
+{"prompt": "fr-ba: Tu as faim", "chosen": "Yam baa nun.", "rejected": "Yam baa man.", "source": "exercise"}
+{"prompt": "fr-ba: Tu as faim", "chosen": "Yam baa nun.", "rejected": "Yam baa u.", "source": "exercise"}
+{"prompt": "fr-ba: Tu as faim", "chosen": "Yam baa nun.", "rejected": "Dɔ̃ɔ wunɛn mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Yam baa nun.", "chosen": "Tu as faim", "rejected": "J'ai faim", "source": "exercise"}
+{"prompt": "ba-fr: Yam baa nun.", "chosen": "Tu as faim", "rejected": "Il a faim", "source": "exercise"}
+{"prompt": "ba-fr: Yam baa nun.", "chosen": "Tu as faim", "rejected": "Tu as sommeil", "source": "exercise"}
+{"prompt": "fr-ba: Il a faim", "chosen": "Yam baa u.", "rejected": "Yam baa man.", "source": "exercise"}
+{"prompt": "fr-ba: Il a faim", "chosen": "Yam baa u.", "rejected": "Yam baa nun.", "source": "exercise"}
+{"prompt": "fr-ba: Il a faim", "chosen": "Yam baa u.", "rejected": "U gum mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Yam baa u.", "chosen": "Il a faim", "rejected": "J'ai faim", "source": "exercise"}
+{"prompt": "ba-fr: Yam baa u.", "chosen": "Il a faim", "rejected": "Tu as faim", "source": "exercise"}
+{"prompt": "ba-fr: Yam baa u.", "chosen": "Il a faim", "rejected": "Il est malade", "source": "exercise"}
+{"prompt": "fr-ba: J'ai soif (Soif d'eau me possède)", "chosen": "Nim nɔru ɡa nɛn mɔ.", "rejected": "Nim nɔru ɡa wunɛn mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai soif (Soif d'eau me possède)", "chosen": "Nim nɔru ɡa nɛn mɔ.", "rejected": "Yam baa man.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai soif (Soif d'eau me possède)", "chosen": "Nim nɔru ɡa nɛn mɔ.", "rejected": "Dɔ̃ɔ nɛn mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Nim nɔru ɡa nɛn mɔ.", "chosen": "J'ai soif (Soif d'eau me possède)", "rejected": "Tu as soif", "source": "exercise"}
+{"prompt": "ba-fr: Nim nɔru ɡa nɛn mɔ.", "chosen": "J'ai soif (Soif d'eau me possède)", "rejected": "J'ai faim", "source": "exercise"}
+{"prompt": "ba-fr: Nim nɔru ɡa nɛn mɔ.", "chosen": "J'ai soif (Soif d'eau me possède)", "rejected": "J'ai sommeil", "source": "exercise"}
+{"prompt": "fr-ba: Tu as soif", "chosen": "Nim nɔru ɡa wunɛn mɔ.", "rejected": "Nim nɔru ɡa nɛn mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Tu as soif", "chosen": "Nim nɔru ɡa wunɛn mɔ.", "rejected": "Yam baa nun.", "source": "exercise"}
+{"prompt": "fr-ba: Tu as soif", "chosen": "Nim nɔru ɡa wunɛn mɔ.", "rejected": "Dɔ̃ɔ wunɛn mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Nim nɔru ɡa wunɛn mɔ.", "chosen": "Tu as soif", "rejected": "J'ai soif", "source": "exercise"}
+{"prompt": "ba-fr: Nim nɔru ɡa wunɛn mɔ.", "chosen": "Tu as soif", "rejected": "Tu as faim", "source": "exercise"}
+{"prompt": "ba-fr: Nim nɔru ɡa wunɛn mɔ.", "chosen": "Tu as soif", "rejected": "Tu as sommeil", "source": "exercise"}
+{"prompt": "fr-ba: J'ai sommeil", "chosen": "Dɔ̃ɔ nɛn mɔ.", "rejected": "Dɔ̃ɔ wunɛn mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai sommeil", "chosen": "Dɔ̃ɔ nɛn mɔ.", "rejected": "Nim nɔru ɡa nɛn mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai sommeil", "chosen": "Dɔ̃ɔ nɛn mɔ.", "rejected": "Na gum mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Dɔ̃ɔ nɛn mɔ.", "chosen": "J'ai sommeil", "rejected": "Tu as sommeil", "source": "exercise"}
+{"prompt": "ba-fr: Dɔ̃ɔ nɛn mɔ.", "chosen": "J'ai sommeil", "rejected": "J'ai soif", "source": "exercise"}
+{"prompt": "ba-fr: Dɔ̃ɔ nɛn mɔ.", "chosen": "J'ai sommeil", "rejected": "Je suis malade", "source": "exercise"}
+{"prompt": "fr-ba: Tu as sommeil", "chosen": "Dɔ̃ɔ wunɛn mɔ.", "rejected": "Dɔ̃ɔ nɛn mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Tu as sommeil", "chosen": "Dɔ̃ɔ wunɛn mɔ.", "rejected": "Nim nɔru ɡa wunɛn mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Tu as sommeil", "chosen": "Dɔ̃ɔ wunɛn mɔ.", "rejected": "Yam baa nun.", "source": "exercise"}
+{"prompt": "ba-fr: Dɔ̃ɔ wunɛn mɔ.", "chosen": "Tu as sommeil", "rejected": "J'ai sommeil", "source": "exercise"}
+{"prompt": "ba-fr: Dɔ̃ɔ wunɛn mɔ.", "chosen": "Tu as sommeil", "rejected": "Tu as soif", "source": "exercise"}
+{"prompt": "ba-fr: Dɔ̃ɔ wunɛn mɔ.", "chosen": "Tu as sommeil", "rejected": "Tu as faim", "source": "exercise"}
+{"prompt": "fr-ba: J'ai peur (La peur me tient)", "chosen": "Wãa nan baa.", "rejected": "Na wãa yara.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai peur (La peur me tient)", "chosen": "Wãa nan baa.", "rejected": "Nimu tɛra.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai peur (La peur me tient)", "chosen": "Wãa nan baa.", "rejected": "Na gum mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Wãa nan baa.", "chosen": "J'ai peur (La peur me tient)", "rejected": "J'ai honte", "source": "exercise"}
+{"prompt": "ba-fr: Wãa nan baa.", "chosen": "J'ai peur (La peur me tient)", "rejected": "Je suis en colère", "source": "exercise"}
+{"prompt": "ba-fr: Wãa nan baa.", "chosen": "J'ai peur (La peur me tient)", "rejected": "Je suis malade", "source": "exercise"}
+{"prompt": "fr-ba: J'ai honte", "chosen": "Na wãa yara.", "rejected": "Wãa nan baa.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai honte", "chosen": "Na wãa yara.", "rejected": "Nimu kpɛm.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai honte", "chosen": "Na wãa yara.", "rejected": "Na gum mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Na wãa yara.", "chosen": "J'ai honte", "rejected": "J'ai peur", "source": "exercise"}
+{"prompt": "ba-fr: Na wãa yara.", "chosen": "J'ai honte", "rejected": "Je suis calme", "source": "exercise"}
+{"prompt": "ba-fr: Na wãa yara.", "chosen": "J'ai honte", "rejected": "Je suis malade", "source": "exercise"}
+{"prompt": "fr-ba: Je suis malade", "chosen": "Na gum mɔ.", "rejected": "U gum mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Je suis malade", "chosen": "Na gum mɔ.", "rejected": "Dɔ̃ɔ nɛn mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Je suis malade", "chosen": "Na gum mɔ.", "rejected": "Yam baa man.", "source": "exercise"}
+{"prompt": "ba-fr: Na gum mɔ.", "chosen": "Je suis malade", "rejected": "Il est malade", "source": "exercise"}
+{"prompt": "ba-fr: Na gum mɔ.", "chosen": "Je suis malade", "rejected": "J'ai sommeil", "source": "exercise"}
+{"prompt": "ba-fr: Na gum mɔ.", "chosen": "Je suis malade", "rejected": "J'ai faim", "source": "exercise"}
+{"prompt": "fr-ba: Il est malade", "chosen": "U gum mɔ.", "rejected": "Na gum mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Il est malade", "chosen": "U gum mɔ.", "rejected": "Yam baa u.", "source": "exercise"}
+{"prompt": "fr-ba: Il est malade", "chosen": "U gum mɔ.", "rejected": "Dɔ̃ɔ nɛn mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: U gum mɔ.", "chosen": "Il est malade", "rejected": "Je suis malade", "source": "exercise"}
+{"prompt": "ba-fr: U gum mɔ.", "chosen": "Il est malade", "rejected": "Il a faim", "source": "exercise"}
+{"prompt": "ba-fr: U gum mɔ.", "chosen": "Il est malade", "rejected": "J'ai sommeil", "source": "exercise"}
+{"prompt": "fr-ba: J'ai soif (au ramadan)", "chosen": "Nim nɔru ga man mö.", "rejected": "Yam baa man.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai soif (au ramadan)", "chosen": "Nim nɔru ga man mö.", "rejected": "Dɔ̃ɔ nɛn mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: J'ai soif (au ramadan)", "chosen": "Nim nɔru ga man mö.", "rejected": "Na gum mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Nim nɔru ga man mö.", "chosen": "J'ai soif (au ramadan)", "rejected": "J'ai faim", "source": "exercise"}
+{"prompt": "ba-fr: Nim nɔru ga man mö.", "chosen": "J'ai soif (au ramadan)", "rejected": "J'ai sommeil", "source": "exercise"}
+{"prompt": "ba-fr: Nim nɔru ga man mö.", "chosen": "J'ai soif (au ramadan)", "rejected": "Je suis malade", "source": "exercise"}
+{"prompt": "fr-ba: Il ne reste plus rien", "chosen": "Goo kun maa tie.", "rejected": "Ya kpã.", "source": "exercise"}
+{"prompt": "fr-ba: Il ne reste plus rien", "chosen": "Goo kun maa tie.", "rejected": "Ya do.", "source": "exercise"}
+{"prompt": "fr-ba: Il ne reste plus rien", "chosen": "Goo kun maa tie.", "rejected": "Ya yiba.", "source": "exercise"}
+{"prompt": "ba-fr: Goo kun maa tie.", "chosen": "Il ne reste plus rien", "rejected": "C'est beaucoup", "source": "exercise"}
+{"prompt": "ba-fr: Goo kun maa tie.", "chosen": "Il ne reste plus rien", "rejected": "C'est bon", "source": "exercise"}
+{"prompt": "ba-fr: Goo kun maa tie.", "chosen": "Il ne reste plus rien", "rejected": "Il y en a beaucoup", "source": "exercise"}
+{"prompt": "fr-ba: Ils ont souffert dans ce pays", "chosen": "Ba asaara wa tem mi.", "rejected": "Ba doona.", "source": "exercise"}
+{"prompt": "fr-ba: Ils ont souffert dans ce pays", "chosen": "Ba asaara wa tem mi.", "rejected": "Ba dɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Ils ont souffert dans ce pays", "chosen": "Ba asaara wa tem mi.", "rejected": "Ba di.", "source": "exercise"}
+{"prompt": "ba-fr: Ba asaara wa tem mi.", "chosen": "Ils ont souffert dans ce pays", "rejected": "Ils sont partis", "source": "exercise"}
+{"prompt": "ba-fr: Ba asaara wa tem mi.", "chosen": "Ils ont souffert dans ce pays", "rejected": "Ils dorment", "source": "exercise"}
+{"prompt": "ba-fr: Ba asaara wa tem mi.", "chosen": "Ils ont souffert dans ce pays", "rejected": "Ils mangent", "source": "exercise"}
+{"prompt": "fr-ba: Notre rencontre sera difficile", "chosen": "Bɛsɛn yinnɔ ga koo sɛ̃ sia.", "rejected": "Sa ko yinna.", "source": "exercise"}
+{"prompt": "fr-ba: Notre rencontre sera difficile", "chosen": "Bɛsɛn yinnɔ ga koo sɛ̃ sia.", "rejected": "Sa doona.", "source": "exercise"}
+{"prompt": "fr-ba: Notre rencontre sera difficile", "chosen": "Bɛsɛn yinnɔ ga koo sɛ̃ sia.", "rejected": "Sa dɔɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Bɛsɛn yinnɔ ga koo sɛ̃ sia.", "chosen": "Notre rencontre sera difficile", "rejected": "Nous allons nous voir", "source": "exercise"}
+{"prompt": "ba-fr: Bɛsɛn yinnɔ ga koo sɛ̃ sia.", "chosen": "Notre rencontre sera difficile", "rejected": "Nous partons", "source": "exercise"}
+{"prompt": "ba-fr: Bɛsɛn yinnɔ ga koo sɛ̃ sia.", "chosen": "Notre rencontre sera difficile", "rejected": "Nous dormons", "source": "exercise"}
+{"prompt": "fr-ba: Laisse-moi partir (Donne-moi la route)", "chosen": "Man wɔbu nan.", "rejected": "Wɔbu sua.", "source": "exercise"}
+{"prompt": "fr-ba: Laisse-moi partir (Donne-moi la route)", "chosen": "Man wɔbu nan.", "rejected": "A do!", "source": "exercise"}
+{"prompt": "fr-ba: Laisse-moi partir (Donne-moi la route)", "chosen": "Man wɔbu nan.", "rejected": "A na!", "source": "exercise"}
+{"prompt": "ba-fr: Man wɔbu nan.", "chosen": "Laisse-moi partir (Donne-moi la route)", "rejected": "Partir", "source": "exercise"}
+{"prompt": "ba-fr: Man wɔbu nan.", "chosen": "Laisse-moi partir (Donne-moi la route)", "rejected": "Va!", "source": "exercise"}
+{"prompt": "ba-fr: Man wɔbu nan.", "chosen": "Laisse-moi partir (Donne-moi la route)", "rejected": "Viens!", "source": "exercise"}
+{"prompt": "fr-ba: Partir (Prendre la route)", "chosen": "Wɔbu sua.", "rejected": "Man wɔbu nan.", "source": "exercise"}
+{"prompt": "fr-ba: Partir (Prendre la route)", "chosen": "Wɔbu sua.", "rejected": "A do!", "source": "exercise"}
+{"prompt": "fr-ba: Partir (Prendre la route)", "chosen": "Wɔbu sua.", "rejected": "A seewo!", "source": "exercise"}
+{"prompt": "ba-fr: Wɔbu sua.", "chosen": "Partir (Prendre la route)", "rejected": "Laisse-moi partir", "source": "exercise"}
+{"prompt": "ba-fr: Wɔbu sua.", "chosen": "Partir (Prendre la route)", "rejected": "Va!", "source": "exercise"}
+{"prompt": "ba-fr: Wɔbu sua.", "chosen": "Partir (Prendre la route)", "rejected": "Lève-toi!", "source": "exercise"}
+{"prompt": "fr-ba: Jouir de la vie (Manger la vie)", "chosen": "Wãaru di.", "rejected": "Gari ɡbi.", "source": "exercise"}
+{"prompt": "fr-ba: Jouir de la vie (Manger la vie)", "chosen": "Wãaru di.", "rejected": "Wɔbu sua.", "source": "exercise"}
+{"prompt": "fr-ba: Jouir de la vie (Manger la vie)", "chosen": "Wãaru di.", "rejected": "Wɔba wɔri.", "source": "exercise"}
+{"prompt": "ba-fr: Wãaru di.", "chosen": "Jouir de la vie (Manger la vie)", "rejected": "Régler un problème", "source": "exercise"}
+{"prompt": "ba-fr: Wãaru di.", "chosen": "Jouir de la vie (Manger la vie)", "rejected": "Partir", "source": "exercise"}
+{"prompt": "ba-fr: Wãaru di.", "chosen": "Jouir de la vie (Manger la vie)", "rejected": "Se disculper", "source": "exercise"}
+{"prompt": "fr-ba: Faire le beurre de karité", "chosen": "Yɔwaru mö.", "rejected": "Wãaru di.", "source": "exercise"}
+{"prompt": "fr-ba: Faire le beurre de karité", "chosen": "Yɔwaru mö.", "rejected": "Gari ɡbi.", "source": "exercise"}
+{"prompt": "fr-ba: Faire le beurre de karité", "chosen": "Yɔwaru mö.", "rejected": "Wɔbu sua.", "source": "exercise"}
+{"prompt": "ba-fr: Yɔwaru mö.", "chosen": "Faire le beurre de karité", "rejected": "Jouir de la vie", "source": "exercise"}
+{"prompt": "ba-fr: Yɔwaru mö.", "chosen": "Faire le beurre de karité", "rejected": "Régler un problème", "source": "exercise"}
+{"prompt": "ba-fr: Yɔwaru mö.", "chosen": "Faire le beurre de karité", "rejected": "Partir", "source": "exercise"}
+{"prompt": "fr-ba: Repositionner le bébé au dos", "chosen": "Yɔwe.", "rejected": "Yɔwaru mö.", "source": "exercise"}
+{"prompt": "fr-ba: Repositionner le bébé au dos", "chosen": "Yɔwe.", "rejected": "A na!", "source": "exercise"}
+{"prompt": "fr-ba: Repositionner le bébé au dos", "chosen": "Yɔwe.", "rejected": "A seewo!", "source": "exercise"}
+{"prompt": "ba-fr: Yɔwe.", "chosen": "Repositionner le bébé au dos", "rejected": "Faire le karité", "source": "exercise"}
+{"prompt": "ba-fr: Yɔwe.", "chosen": "Repositionner le bébé au dos", "rejected": "Viens!", "source": "exercise"}
+{"prompt": "ba-fr: Yɔwe.", "chosen": "Repositionner le bébé au dos", "rejected": "Lève-toi!", "source": "exercise"}
+{"prompt": "fr-ba: Va!", "chosen": "A do!", "rejected": "A na!", "source": "exercise"}
+{"prompt": "fr-ba: Va!", "chosen": "A do!", "rejected": "A seewo!", "source": "exercise"}
+{"prompt": "fr-ba: Va!", "chosen": "A do!", "rejected": "Wɔbu sua.", "source": "exercise"}
+{"prompt": "ba-fr: A do!", "chosen": "Va!", "rejected": "Viens!", "source": "exercise"}
+{"prompt": "ba-fr: A do!", "chosen": "Va!", "rejected": "Lève-toi!", "source": "exercise"}
+{"prompt": "ba-fr: A do!", "chosen": "Va!", "rejected": "Pars!", "source": "exercise"}
+{"prompt": "fr-ba: Viens!", "chosen": "A na!", "rejected": "A do!", "source": "exercise"}
+{"prompt": "fr-ba: Viens!", "chosen": "A na!", "rejected": "A seewo!", "source": "exercise"}
+{"prompt": "fr-ba: Viens!", "chosen": "A na!", "rejected": "Man wɔbu nan.", "source": "exercise"}
+{"prompt": "ba-fr: A na!", "chosen": "Viens!", "rejected": "Va!", "source": "exercise"}
+{"prompt": "ba-fr: A na!", "chosen": "Viens!", "rejected": "Lève-toi!", "source": "exercise"}
+{"prompt": "ba-fr: A na!", "chosen": "Viens!", "rejected": "Laisse-moi partir", "source": "exercise"}
+{"prompt": "fr-ba: Lève-toi!", "chosen": "A seewo!", "rejected": "A do!", "source": "exercise"}
+{"prompt": "fr-ba: Lève-toi!", "chosen": "A seewo!", "rejected": "A na!", "source": "exercise"}
+{"prompt": "fr-ba: Lève-toi!", "chosen": "A seewo!", "rejected": "Wɔbu sua.", "source": "exercise"}
+{"prompt": "ba-fr: A seewo!", "chosen": "Lève-toi!", "rejected": "Va!", "source": "exercise"}
+{"prompt": "ba-fr: A seewo!", "chosen": "Lève-toi!", "rejected": "Viens!", "source": "exercise"}
+{"prompt": "ba-fr: A seewo!", "chosen": "Lève-toi!", "rejected": "Pars!", "source": "exercise"}
+{"prompt": "fr-ba: Mange!", "chosen": "A dio.", "rejected": "A do!", "source": "exercise"}
+{"prompt": "fr-ba: Mange!", "chosen": "A dio.", "rejected": "A na!", "source": "exercise"}
+{"prompt": "fr-ba: Mange!", "chosen": "A dio.", "rejected": "A seewo!", "source": "exercise"}
+{"prompt": "ba-fr: A dio.", "chosen": "Mange!", "rejected": "Va!", "source": "exercise"}
+{"prompt": "ba-fr: A dio.", "chosen": "Mange!", "rejected": "Viens!", "source": "exercise"}
+{"prompt": "ba-fr: A dio.", "chosen": "Mange!", "rejected": "Lève-toi!", "source": "exercise"}
+{"prompt": "fr-ba: Donne-moi de l'eau", "chosen": "A nim tama.", "rejected": "A dĩa tama.", "source": "exercise"}
+{"prompt": "fr-ba: Donne-moi de l'eau", "chosen": "A nim tama.", "rejected": "A gobi tama.", "source": "exercise"}
+{"prompt": "fr-ba: Donne-moi de l'eau", "chosen": "A nim tama.", "rejected": "A koko tama.", "source": "exercise"}
+{"prompt": "ba-fr: A nim tama.", "chosen": "Donne-moi de l'eau", "rejected": "Donne-moi à manger", "source": "exercise"}
+{"prompt": "ba-fr: A nim tama.", "chosen": "Donne-moi de l'eau", "rejected": "Donne-moi de l'argent", "source": "exercise"}
+{"prompt": "ba-fr: A nim tama.", "chosen": "Donne-moi de l'eau", "rejected": "Donne-moi du riz", "source": "exercise"}
+{"prompt": "fr-ba: Ne blesse pas mon enfant", "chosen": "A ku nɛn bii gubu.", "rejected": "A bii suura.", "source": "exercise"}
+{"prompt": "fr-ba: Ne blesse pas mon enfant", "chosen": "A ku nɛn bii gubu.", "rejected": "A bii wa.", "source": "exercise"}
+{"prompt": "fr-ba: Ne blesse pas mon enfant", "chosen": "A ku nɛn bii gubu.", "rejected": "A bii so.", "source": "exercise"}
+{"prompt": "ba-fr: A ku nɛn bii gubu.", "chosen": "Ne blesse pas mon enfant", "rejected": "Regarde l'enfant", "source": "exercise"}
+{"prompt": "ba-fr: A ku nɛn bii gubu.", "chosen": "Ne blesse pas mon enfant", "rejected": "Cherche l'enfant", "source": "exercise"}
+{"prompt": "ba-fr: A ku nɛn bii gubu.", "chosen": "Ne blesse pas mon enfant", "rejected": "Frappe l'enfant", "source": "exercise"}
+{"prompt": "fr-ba: Ne permets pas que le torrent emporte l'enfant", "chosen": "A ku de nim toraa yù ka bii doona.", "rejected": "A bii wa.", "source": "exercise"}
+{"prompt": "fr-ba: Ne permets pas que le torrent emporte l'enfant", "chosen": "A ku de nim toraa yù ka bii doona.", "rejected": "Bii u doona.", "source": "exercise"}
+{"prompt": "fr-ba: Ne permets pas que le torrent emporte l'enfant", "chosen": "A ku de nim toraa yù ka bii doona.", "rejected": "A bii suura.", "source": "exercise"}
+{"prompt": "ba-fr: A ku de nim toraa yù ka bii doona.", "chosen": "Ne permets pas que le torrent emporte l'enfant", "rejected": "Regarde l'enfant", "source": "exercise"}
+{"prompt": "ba-fr: A ku de nim toraa yù ka bii doona.", "chosen": "Ne permets pas que le torrent emporte l'enfant", "rejected": "L'enfant est parti", "source": "exercise"}
+{"prompt": "ba-fr: A ku de nim toraa yù ka bii doona.", "chosen": "Ne permets pas que le torrent emporte l'enfant", "rejected": "Protège l'enfant", "source": "exercise"}
+{"prompt": "fr-ba: C'est Dieu qui nous a créés", "chosen": "Gusunɔwa u sun taka kua.", "rejected": "Gusunɔ baka.", "source": "exercise"}
+{"prompt": "fr-ba: C'est Dieu qui nous a créés", "chosen": "Gusunɔwa u sun taka kua.", "rejected": "Gusunɔn durom.", "source": "exercise"}
+{"prompt": "fr-ba: C'est Dieu qui nous a créés", "chosen": "Gusunɔwa u sun taka kua.", "rejected": "Gusunɔ u n wure.", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔwa u sun taka kua.", "chosen": "C'est Dieu qui nous a créés", "rejected": "Dieu est grand", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔwa u sun taka kua.", "chosen": "C'est Dieu qui nous a créés", "rejected": "Grâce à Dieu", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔwa u sun taka kua.", "chosen": "C'est Dieu qui nous a créés", "rejected": "Si Dieu le veut", "source": "exercise"}
+{"prompt": "fr-ba: Suppliez-le même s'il refuse", "chosen": "I n kanasimɔ, baa ù n yinamɔ.", "rejected": "A suuru kana.", "source": "exercise"}
+{"prompt": "fr-ba: Suppliez-le même s'il refuse", "chosen": "I n kanasimɔ, baa ù n yinamɔ.", "rejected": "A do.", "source": "exercise"}
+{"prompt": "fr-ba: Suppliez-le même s'il refuse", "chosen": "I n kanasimɔ, baa ù n yinamɔ.", "rejected": "A na.", "source": "exercise"}
+{"prompt": "ba-fr: I n kanasimɔ, baa ù n yinamɔ.", "chosen": "Suppliez-le même s'il refuse", "rejected": "Demande pardon", "source": "exercise"}
+{"prompt": "ba-fr: I n kanasimɔ, baa ù n yinamɔ.", "chosen": "Suppliez-le même s'il refuse", "rejected": "Va", "source": "exercise"}
+{"prompt": "ba-fr: I n kanasimɔ, baa ù n yinamɔ.", "chosen": "Suppliez-le même s'il refuse", "rejected": "Viens", "source": "exercise"}
+{"prompt": "fr-ba: Pince-le avec tes doigts et apporte-le", "chosen": "A yè nikisu baarima a ka na.", "rejected": "A yè wa.", "source": "exercise"}
+{"prompt": "fr-ba: Pince-le avec tes doigts et apporte-le", "chosen": "A yè nikisu baarima a ka na.", "rejected": "A yè doke.", "source": "exercise"}
+{"prompt": "fr-ba: Pince-le avec tes doigts et apporte-le", "chosen": "A yè nikisu baarima a ka na.", "rejected": "A yè suura.", "source": "exercise"}
+{"prompt": "ba-fr: A yè nikisu baarima a ka na.", "chosen": "Pince-le avec tes doigts et apporte-le", "rejected": "Regarde-le", "source": "exercise"}
+{"prompt": "ba-fr: A yè nikisu baarima a ka na.", "chosen": "Pince-le avec tes doigts et apporte-le", "rejected": "Pose-le", "source": "exercise"}
+{"prompt": "ba-fr: A yè nikisu baarima a ka na.", "chosen": "Pince-le avec tes doigts et apporte-le", "rejected": "Cherche-le", "source": "exercise"}
+{"prompt": "fr-ba: Arbre", "chosen": "Dãru", "rejected": "Gberu", "source": "exercise"}
+{"prompt": "fr-ba: Arbre", "chosen": "Dãru", "rejected": "Wuu", "source": "exercise"}
+{"prompt": "fr-ba: Arbre", "chosen": "Dãru", "rejected": "Nim", "source": "exercise"}
+{"prompt": "ba-fr: Dãru", "chosen": "Arbre", "rejected": "Champ", "source": "exercise"}
+{"prompt": "ba-fr: Dãru", "chosen": "Arbre", "rejected": "Village", "source": "exercise"}
+{"prompt": "ba-fr: Dãru", "chosen": "Arbre", "rejected": "Eau", "source": "exercise"}
+{"prompt": "fr-ba: Pluie", "chosen": "Gura", "rejected": "Sɔ̃ɔ", "source": "exercise"}
+{"prompt": "fr-ba: Pluie", "chosen": "Gura", "rejected": "Nim", "source": "exercise"}
+{"prompt": "fr-ba: Pluie", "chosen": "Gura", "rejected": "Wɔllu", "source": "exercise"}
+{"prompt": "ba-fr: Gura", "chosen": "Pluie", "rejected": "Soleil", "source": "exercise"}
+{"prompt": "ba-fr: Gura", "chosen": "Pluie", "rejected": "Eau", "source": "exercise"}
+{"prompt": "ba-fr: Gura", "chosen": "Pluie", "rejected": "Ciel", "source": "exercise"}
+{"prompt": "fr-ba: Soleil", "chosen": "Sɔ̃ɔ", "rejected": "Gura", "source": "exercise"}
+{"prompt": "fr-ba: Soleil", "chosen": "Sɔ̃ɔ", "rejected": "Wɔllu", "source": "exercise"}
+{"prompt": "fr-ba: Soleil", "chosen": "Sɔ̃ɔ", "rejected": "Nim", "source": "exercise"}
+{"prompt": "ba-fr: Sɔ̃ɔ", "chosen": "Soleil", "rejected": "Pluie", "source": "exercise"}
+{"prompt": "ba-fr: Sɔ̃ɔ", "chosen": "Soleil", "rejected": "Ciel", "source": "exercise"}
+{"prompt": "ba-fr: Sɔ̃ɔ", "chosen": "Soleil", "rejected": "Eau", "source": "exercise"}
+{"prompt": "fr-ba: Le soleil brille", "chosen": "Sɔ̃ɔ u ballimɔ.", "rejected": "Gura ya na.", "source": "exercise"}
+{"prompt": "fr-ba: Le soleil brille", "chosen": "Sɔ̃ɔ u ballimɔ.", "rejected": "Nim mu wɔruma.", "source": "exercise"}
+{"prompt": "fr-ba: Le soleil brille", "chosen": "Sɔ̃ɔ u ballimɔ.", "rejected": "Wɔllu ta do.", "source": "exercise"}
+{"prompt": "ba-fr: Sɔ̃ɔ u ballimɔ.", "chosen": "Le soleil brille", "rejected": "Il pleut", "source": "exercise"}
+{"prompt": "ba-fr: Sɔ̃ɔ u ballimɔ.", "chosen": "Le soleil brille", "rejected": "L'eau coule", "source": "exercise"}
+{"prompt": "ba-fr: Sɔ̃ɔ u ballimɔ.", "chosen": "Le soleil brille", "rejected": "Le ciel est beau", "source": "exercise"}
+{"prompt": "fr-ba: S'il pleut, nous irons au champ", "chosen": "Gura yàn na, sa ko gberu da.", "rejected": "Sa doona.", "source": "exercise"}
+{"prompt": "fr-ba: S'il pleut, nous irons au champ", "chosen": "Gura yàn na, sa ko gberu da.", "rejected": "Sa dɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: S'il pleut, nous irons au champ", "chosen": "Gura yàn na, sa ko gberu da.", "rejected": "Sa dĩa di.", "source": "exercise"}
+{"prompt": "ba-fr: Gura yàn na, sa ko gberu da.", "chosen": "S'il pleut, nous irons au champ", "rejected": "Nous partons", "source": "exercise"}
+{"prompt": "ba-fr: Gura yàn na, sa ko gberu da.", "chosen": "S'il pleut, nous irons au champ", "rejected": "Nous dormons", "source": "exercise"}
+{"prompt": "ba-fr: Gura yàn na, sa ko gberu da.", "chosen": "S'il pleut, nous irons au champ", "rejected": "Nous mangeons", "source": "exercise"}
+{"prompt": "fr-ba: Ciel", "chosen": "Wɔllu", "rejected": "Sɔ̃ɔ", "source": "exercise"}
+{"prompt": "fr-ba: Ciel", "chosen": "Wɔllu", "rejected": "Gura", "source": "exercise"}
+{"prompt": "fr-ba: Ciel", "chosen": "Wɔllu", "rejected": "Tem", "source": "exercise"}
+{"prompt": "ba-fr: Wɔllu", "chosen": "Ciel", "rejected": "Soleil", "source": "exercise"}
+{"prompt": "ba-fr: Wɔllu", "chosen": "Ciel", "rejected": "Pluie", "source": "exercise"}
+{"prompt": "ba-fr: Wɔllu", "chosen": "Ciel", "rejected": "Terre", "source": "exercise"}
+{"prompt": "fr-ba: Terre, pays", "chosen": "Tem", "rejected": "Wɔllu", "source": "exercise"}
+{"prompt": "fr-ba: Terre, pays", "chosen": "Tem", "rejected": "Nim", "source": "exercise"}
+{"prompt": "fr-ba: Terre, pays", "chosen": "Tem", "rejected": "Gberu", "source": "exercise"}
+{"prompt": "ba-fr: Tem", "chosen": "Terre, pays", "rejected": "Ciel", "source": "exercise"}
+{"prompt": "ba-fr: Tem", "chosen": "Terre, pays", "rejected": "Eau", "source": "exercise"}
+{"prompt": "ba-fr: Tem", "chosen": "Terre, pays", "rejected": "Champ", "source": "exercise"}
+{"prompt": "fr-ba: Mouton", "chosen": "Yãanu", "rejected": "Boo", "source": "exercise"}
+{"prompt": "fr-ba: Mouton", "chosen": "Yãanu", "rejected": "Naa", "source": "exercise"}
+{"prompt": "fr-ba: Mouton", "chosen": "Yãanu", "rejected": "Kɛtɛ", "source": "exercise"}
+{"prompt": "ba-fr: Yãanu", "chosen": "Mouton", "rejected": "Chèvre", "source": "exercise"}
+{"prompt": "ba-fr: Yãanu", "chosen": "Mouton", "rejected": "Vache", "source": "exercise"}
+{"prompt": "ba-fr: Yãanu", "chosen": "Mouton", "rejected": "Bœuf", "source": "exercise"}
+{"prompt": "fr-ba: Chèvre, chevreau", "chosen": "Boo", "rejected": "Yãanu", "source": "exercise"}
+{"prompt": "fr-ba: Chèvre, chevreau", "chosen": "Boo", "rejected": "Naa", "source": "exercise"}
+{"prompt": "fr-ba: Chèvre, chevreau", "chosen": "Boo", "rejected": "Bɔ̃ɔ", "source": "exercise"}
+{"prompt": "ba-fr: Boo", "chosen": "Chèvre, chevreau", "rejected": "Mouton", "source": "exercise"}
+{"prompt": "ba-fr: Boo", "chosen": "Chèvre, chevreau", "rejected": "Vache", "source": "exercise"}
+{"prompt": "ba-fr: Boo", "chosen": "Chèvre, chevreau", "rejected": "Chien", "source": "exercise"}
+{"prompt": "fr-ba: Chien", "chosen": "Bɔ̃ɔ", "rejected": "Boo", "source": "exercise"}
+{"prompt": "fr-ba: Chien", "chosen": "Bɔ̃ɔ", "rejected": "Yãanu", "source": "exercise"}
+{"prompt": "fr-ba: Chien", "chosen": "Bɔ̃ɔ", "rejected": "Naa", "source": "exercise"}
+{"prompt": "ba-fr: Bɔ̃ɔ", "chosen": "Chien", "rejected": "Chèvre", "source": "exercise"}
+{"prompt": "ba-fr: Bɔ̃ɔ", "chosen": "Chien", "rejected": "Mouton", "source": "exercise"}
+{"prompt": "ba-fr: Bɔ̃ɔ", "chosen": "Chien", "rejected": "Vache", "source": "exercise"}
+{"prompt": "fr-ba: Un chien vagabond a tué nos poulets", "chosen": "Bɔ̃ɔ yiira ga na ga bɛsɛn gue go.", "rejected": "Boo ya na.", "source": "exercise"}
+{"prompt": "fr-ba: Un chien vagabond a tué nos poulets", "chosen": "Bɔ̃ɔ yiira ga na ga bɛsɛn gue go.", "rejected": "Yãanu ya doona.", "source": "exercise"}
+{"prompt": "fr-ba: Un chien vagabond a tué nos poulets", "chosen": "Bɔ̃ɔ yiira ga na ga bɛsɛn gue go.", "rejected": "Naa ya di.", "source": "exercise"}
+{"prompt": "ba-fr: Bɔ̃ɔ yiira ga na ga bɛsɛn gue go.", "chosen": "Un chien vagabond a tué nos poulets", "rejected": "La chèvre est arrivée", "source": "exercise"}
+{"prompt": "ba-fr: Bɔ̃ɔ yiira ga na ga bɛsɛn gue go.", "chosen": "Un chien vagabond a tué nos poulets", "rejected": "Le mouton est parti", "source": "exercise"}
+{"prompt": "ba-fr: Bɔ̃ɔ yiira ga na ga bɛsɛn gue go.", "chosen": "Un chien vagabond a tué nos poulets", "rejected": "La vache a mangé", "source": "exercise"}
+{"prompt": "fr-ba: Poulet", "chosen": "Gue", "rejected": "Bɔ̃ɔ", "source": "exercise"}
+{"prompt": "fr-ba: Poulet", "chosen": "Gue", "rejected": "Boo", "source": "exercise"}
+{"prompt": "fr-ba: Poulet", "chosen": "Gue", "rejected": "Wisu", "source": "exercise"}
+{"prompt": "ba-fr: Gue", "chosen": "Poulet", "rejected": "Chien", "source": "exercise"}
+{"prompt": "ba-fr: Gue", "chosen": "Poulet", "rejected": "Chèvre", "source": "exercise"}
+{"prompt": "ba-fr: Gue", "chosen": "Poulet", "rejected": "Poisson", "source": "exercise"}
+{"prompt": "fr-ba: Singe", "chosen": "Wɔmu", "rejected": "Bɔ̃ɔ", "source": "exercise"}
+{"prompt": "fr-ba: Singe", "chosen": "Wɔmu", "rejected": "Boo", "source": "exercise"}
+{"prompt": "fr-ba: Singe", "chosen": "Wɔmu", "rejected": "Gue", "source": "exercise"}
+{"prompt": "ba-fr: Wɔmu", "chosen": "Singe", "rejected": "Chien", "source": "exercise"}
+{"prompt": "ba-fr: Wɔmu", "chosen": "Singe", "rejected": "Chèvre", "source": "exercise"}
+{"prompt": "ba-fr: Wɔmu", "chosen": "Singe", "rejected": "Poulet", "source": "exercise"}
+{"prompt": "fr-ba: Vautour, charognard", "chosen": "Abereku", "rejected": "Gue", "source": "exercise"}
+{"prompt": "fr-ba: Vautour, charognard", "chosen": "Abereku", "rejected": "Wɔmu", "source": "exercise"}
+{"prompt": "fr-ba: Vautour, charognard", "chosen": "Abereku", "rejected": "Bɔ̃ɔ", "source": "exercise"}
+{"prompt": "ba-fr: Abereku", "chosen": "Vautour, charognard", "rejected": "Poulet", "source": "exercise"}
+{"prompt": "ba-fr: Abereku", "chosen": "Vautour, charognard", "rejected": "Singe", "source": "exercise"}
+{"prompt": "ba-fr: Abereku", "chosen": "Vautour, charognard", "rejected": "Chien", "source": "exercise"}
+{"prompt": "fr-ba: La saison sèche est arrivée", "chosen": "Sɔ̃ɔ u sãra.", "rejected": "Gura ya na.", "source": "exercise"}
+{"prompt": "fr-ba: La saison sèche est arrivée", "chosen": "Sɔ̃ɔ u sãra.", "rejected": "Nim mu wɔruma.", "source": "exercise"}
+{"prompt": "fr-ba: La saison sèche est arrivée", "chosen": "Sɔ̃ɔ u sãra.", "rejected": "Sɔ̃ɔ u ballimɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Sɔ̃ɔ u sãra.", "chosen": "La saison sèche est arrivée", "rejected": "Il pleut", "source": "exercise"}
+{"prompt": "ba-fr: Sɔ̃ɔ u sãra.", "chosen": "La saison sèche est arrivée", "rejected": "L'eau coule", "source": "exercise"}
+{"prompt": "ba-fr: Sɔ̃ɔ u sãra.", "chosen": "La saison sèche est arrivée", "rejected": "Le soleil brille", "source": "exercise"}
+{"prompt": "fr-ba: Maintenant", "chosen": "Tɛ̃.", "rejected": "Yam.", "source": "exercise"}
+{"prompt": "fr-ba: Maintenant", "chosen": "Tɛ̃.", "rejected": "Daka.", "source": "exercise"}
+{"prompt": "fr-ba: Maintenant", "chosen": "Tɛ̃.", "rejected": "Yamɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Tɛ̃.", "chosen": "Maintenant", "rejected": "Aujourd'hui", "source": "exercise"}
+{"prompt": "ba-fr: Tɛ̃.", "chosen": "Maintenant", "rejected": "Hier", "source": "exercise"}
+{"prompt": "ba-fr: Tɛ̃.", "chosen": "Maintenant", "rejected": "Demain", "source": "exercise"}
+{"prompt": "fr-ba: Aujourd'hui", "chosen": "Yam.", "rejected": "Tɛ̃.", "source": "exercise"}
+{"prompt": "fr-ba: Aujourd'hui", "chosen": "Yam.", "rejected": "Daka.", "source": "exercise"}
+{"prompt": "fr-ba: Aujourd'hui", "chosen": "Yam.", "rejected": "Yamɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Yam.", "chosen": "Aujourd'hui", "rejected": "Maintenant", "source": "exercise"}
+{"prompt": "ba-fr: Yam.", "chosen": "Aujourd'hui", "rejected": "Hier", "source": "exercise"}
+{"prompt": "ba-fr: Yam.", "chosen": "Aujourd'hui", "rejected": "Demain", "source": "exercise"}
+{"prompt": "fr-ba: Hier", "chosen": "Daka.", "rejected": "Yam.", "source": "exercise"}
+{"prompt": "fr-ba: Hier", "chosen": "Daka.", "rejected": "Tɛ̃.", "source": "exercise"}
+{"prompt": "fr-ba: Hier", "chosen": "Daka.", "rejected": "Yamɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Daka.", "chosen": "Hier", "rejected": "Aujourd'hui", "source": "exercise"}
+{"prompt": "ba-fr: Daka.", "chosen": "Hier", "rejected": "Maintenant", "source": "exercise"}
+{"prompt": "ba-fr: Daka.", "chosen": "Hier", "rejected": "Demain", "source": "exercise"}
+{"prompt": "fr-ba: Demain", "chosen": "Yamɔ.", "rejected": "Daka.", "source": "exercise"}
+{"prompt": "fr-ba: Demain", "chosen": "Yamɔ.", "rejected": "Yam.", "source": "exercise"}
+{"prompt": "fr-ba: Demain", "chosen": "Yamɔ.", "rejected": "Tɛ̃.", "source": "exercise"}
+{"prompt": "ba-fr: Yamɔ.", "chosen": "Demain", "rejected": "Hier", "source": "exercise"}
+{"prompt": "ba-fr: Yamɔ.", "chosen": "Demain", "rejected": "Aujourd'hui", "source": "exercise"}
+{"prompt": "ba-fr: Yamɔ.", "chosen": "Demain", "rejected": "Maintenant", "source": "exercise"}
+{"prompt": "fr-ba: Doucement, petit à petit", "chosen": "Fiiko fiiko.", "rejected": "Tɛ̃.", "source": "exercise"}
+{"prompt": "fr-ba: Doucement, petit à petit", "chosen": "Fiiko fiiko.", "rejected": "Baawure.", "source": "exercise"}
+{"prompt": "fr-ba: Doucement, petit à petit", "chosen": "Fiiko fiiko.", "rejected": "Yen sɔ̃.", "source": "exercise"}
+{"prompt": "ba-fr: Fiiko fiiko.", "chosen": "Doucement, petit à petit", "rejected": "Maintenant", "source": "exercise"}
+{"prompt": "ba-fr: Fiiko fiiko.", "chosen": "Doucement, petit à petit", "rejected": "Tout le monde", "source": "exercise"}
+{"prompt": "ba-fr: Fiiko fiiko.", "chosen": "Doucement, petit à petit", "rejected": "C'est pourquoi", "source": "exercise"}
+{"prompt": "fr-ba: Jour (soleil)", "chosen": "Sɔ̃ɔ", "rejected": "Yam", "source": "exercise"}
+{"prompt": "fr-ba: Jour (soleil)", "chosen": "Sɔ̃ɔ", "rejected": "Daka", "source": "exercise"}
+{"prompt": "fr-ba: Jour (soleil)", "chosen": "Sɔ̃ɔ", "rejected": "Yamɔ", "source": "exercise"}
+{"prompt": "ba-fr: Sɔ̃ɔ", "chosen": "Jour (soleil)", "rejected": "Aujourd'hui", "source": "exercise"}
+{"prompt": "ba-fr: Sɔ̃ɔ", "chosen": "Jour (soleil)", "rejected": "Hier", "source": "exercise"}
+{"prompt": "ba-fr: Sɔ̃ɔ", "chosen": "Jour (soleil)", "rejected": "Demain", "source": "exercise"}
+{"prompt": "fr-ba: Il a passé deux jours dans cette localité", "chosen": "Sɔ̃ɔ yiruwa u kua wuu mi.", "rejected": "U doona.", "source": "exercise"}
+{"prompt": "fr-ba: Il a passé deux jours dans cette localité", "chosen": "Sɔ̃ɔ yiruwa u kua wuu mi.", "rejected": "U na.", "source": "exercise"}
+{"prompt": "fr-ba: Il a passé deux jours dans cette localité", "chosen": "Sɔ̃ɔ yiruwa u kua wuu mi.", "rejected": "U dɔɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Sɔ̃ɔ yiruwa u kua wuu mi.", "chosen": "Il a passé deux jours dans cette localité", "rejected": "Il est parti", "source": "exercise"}
+{"prompt": "ba-fr: Sɔ̃ɔ yiruwa u kua wuu mi.", "chosen": "Il a passé deux jours dans cette localité", "rejected": "Il est arrivé", "source": "exercise"}
+{"prompt": "ba-fr: Sɔ̃ɔ yiruwa u kua wuu mi.", "chosen": "Il a passé deux jours dans cette localité", "rejected": "Il a dormi", "source": "exercise"}
+{"prompt": "fr-ba: Matin (début du jour)", "chosen": "Bururu", "rejected": "Yoka", "source": "exercise"}
+{"prompt": "fr-ba: Matin (début du jour)", "chosen": "Bururu", "rejected": "Sɔ̃ɔ", "source": "exercise"}
+{"prompt": "fr-ba: Matin (début du jour)", "chosen": "Bururu", "rejected": "Gisɔ", "source": "exercise"}
+{"prompt": "ba-fr: Bururu", "chosen": "Matin (début du jour)", "rejected": "Soir", "source": "exercise"}
+{"prompt": "ba-fr: Bururu", "chosen": "Matin (début du jour)", "rejected": "Jour", "source": "exercise"}
+{"prompt": "ba-fr: Bururu", "chosen": "Matin (début du jour)", "rejected": "Cette année", "source": "exercise"}
+{"prompt": "fr-ba: Soir", "chosen": "Yoka", "rejected": "Bururu", "source": "exercise"}
+{"prompt": "fr-ba: Soir", "chosen": "Yoka", "rejected": "Sɔ̃ɔ", "source": "exercise"}
+{"prompt": "fr-ba: Soir", "chosen": "Yoka", "rejected": "Yam", "source": "exercise"}
+{"prompt": "ba-fr: Yoka", "chosen": "Soir", "rejected": "Matin", "source": "exercise"}
+{"prompt": "ba-fr: Yoka", "chosen": "Soir", "rejected": "Jour", "source": "exercise"}
+{"prompt": "ba-fr: Yoka", "chosen": "Soir", "rejected": "Aujourd'hui", "source": "exercise"}
+{"prompt": "fr-ba: Il va rentrer le mercredi", "chosen": "Adaaruba sɔ̃ nu u koo wuma.", "rejected": "U doona yam.", "source": "exercise"}
+{"prompt": "fr-ba: Il va rentrer le mercredi", "chosen": "Adaaruba sɔ̃ nu u koo wuma.", "rejected": "U na daka.", "source": "exercise"}
+{"prompt": "fr-ba: Il va rentrer le mercredi", "chosen": "Adaaruba sɔ̃ nu u koo wuma.", "rejected": "U koo da yamɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Adaaruba sɔ̃ nu u koo wuma.", "chosen": "Il va rentrer le mercredi", "rejected": "Il est parti aujourd'hui", "source": "exercise"}
+{"prompt": "ba-fr: Adaaruba sɔ̃ nu u koo wuma.", "chosen": "Il va rentrer le mercredi", "rejected": "Il est arrivé hier", "source": "exercise"}
+{"prompt": "ba-fr: Adaaruba sɔ̃ nu u koo wuma.", "chosen": "Il va rentrer le mercredi", "rejected": "Il ira demain", "source": "exercise"}
+{"prompt": "fr-ba: Le samedi soir, nous ne travaillons pas", "chosen": "Asibiti yoka sa ku ra sɔmburu ko.", "rejected": "Sa sɔmburu de yam.", "source": "exercise"}
+{"prompt": "fr-ba: Le samedi soir, nous ne travaillons pas", "chosen": "Asibiti yoka sa ku ra sɔmburu ko.", "rejected": "Sa doona.", "source": "exercise"}
+{"prompt": "fr-ba: Le samedi soir, nous ne travaillons pas", "chosen": "Asibiti yoka sa ku ra sɔmburu ko.", "rejected": "Sa dɔɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Asibiti yoka sa ku ra sɔmburu ko.", "chosen": "Le samedi soir, nous ne travaillons pas", "rejected": "Nous travaillons aujourd'hui", "source": "exercise"}
+{"prompt": "ba-fr: Asibiti yoka sa ku ra sɔmburu ko.", "chosen": "Le samedi soir, nous ne travaillons pas", "rejected": "Nous partons", "source": "exercise"}
+{"prompt": "ba-fr: Asibiti yoka sa ku ra sɔmburu ko.", "chosen": "Le samedi soir, nous ne travaillons pas", "rejected": "Nous dormons", "source": "exercise"}
+{"prompt": "fr-ba: Au commencement", "chosen": "Sanam mɛ...", "rejected": "Tɛ̃.", "source": "exercise"}
+{"prompt": "fr-ba: Au commencement", "chosen": "Sanam mɛ...", "rejected": "Daka.", "source": "exercise"}
+{"prompt": "fr-ba: Au commencement", "chosen": "Sanam mɛ...", "rejected": "Yamɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Sanam mɛ...", "chosen": "Au commencement", "rejected": "Maintenant", "source": "exercise"}
+{"prompt": "ba-fr: Sanam mɛ...", "chosen": "Au commencement", "rejected": "Hier", "source": "exercise"}
+{"prompt": "ba-fr: Sanam mɛ...", "chosen": "Au commencement", "rejected": "Demain", "source": "exercise"}
+{"prompt": "fr-ba: Depuis que", "chosen": "Yè uka gu", "rejected": "Yen sɔ̃.", "source": "exercise"}
+{"prompt": "fr-ba: Depuis que", "chosen": "Yè uka gu", "rejected": "Tɛ̃.", "source": "exercise"}
+{"prompt": "fr-ba: Depuis que", "chosen": "Yè uka gu", "rejected": "Yam.", "source": "exercise"}
+{"prompt": "ba-fr: Yè uka gu", "chosen": "Depuis que", "rejected": "C'est pourquoi", "source": "exercise"}
+{"prompt": "ba-fr: Yè uka gu", "chosen": "Depuis que", "rejected": "Maintenant", "source": "exercise"}
+{"prompt": "ba-fr: Yè uka gu", "chosen": "Depuis que", "rejected": "Aujourd'hui", "source": "exercise"}
+{"prompt": "fr-ba: Hier à la même heure, notre étranger était arrivé", "chosen": "Gĩa amadiire, bɛsɛn sɔɔ u turuma.", "rejected": "Yam sɔɔ u na.", "source": "exercise"}
+{"prompt": "fr-ba: Hier à la même heure, notre étranger était arrivé", "chosen": "Gĩa amadiire, bɛsɛn sɔɔ u turuma.", "rejected": "Yamɔ u koo na.", "source": "exercise"}
+{"prompt": "fr-ba: Hier à la même heure, notre étranger était arrivé", "chosen": "Gĩa amadiire, bɛsɛn sɔɔ u turuma.", "rejected": "Tɛ̃ u na.", "source": "exercise"}
+{"prompt": "ba-fr: Gĩa amadiire, bɛsɛn sɔɔ u turuma.", "chosen": "Hier à la même heure, notre étranger était arrivé", "rejected": "Aujourd'hui il est arrivé", "source": "exercise"}
+{"prompt": "ba-fr: Gĩa amadiire, bɛsɛn sɔɔ u turuma.", "chosen": "Hier à la même heure, notre étranger était arrivé", "rejected": "Demain il viendra", "source": "exercise"}
+{"prompt": "ba-fr: Gĩa amadiire, bɛsɛn sɔɔ u turuma.", "chosen": "Hier à la même heure, notre étranger était arrivé", "rejected": "Maintenant il arrive", "source": "exercise"}
+{"prompt": "fr-ba: Avant-hier", "chosen": "Gin teeru", "rejected": "Daka", "source": "exercise"}
+{"prompt": "fr-ba: Avant-hier", "chosen": "Gin teeru", "rejected": "Yam", "source": "exercise"}
+{"prompt": "fr-ba: Avant-hier", "chosen": "Gin teeru", "rejected": "Yamɔ", "source": "exercise"}
+{"prompt": "ba-fr: Gin teeru", "chosen": "Avant-hier", "rejected": "Hier", "source": "exercise"}
+{"prompt": "ba-fr: Gin teeru", "chosen": "Avant-hier", "rejected": "Aujourd'hui", "source": "exercise"}
+{"prompt": "ba-fr: Gin teeru", "chosen": "Avant-hier", "rejected": "Demain", "source": "exercise"}
+{"prompt": "fr-ba: Dieu te bénisse", "chosen": "Gusunɔ u nun yɛri.", "rejected": "Gusunɔ u n wure.", "source": "exercise"}
+{"prompt": "fr-ba: Dieu te bénisse", "chosen": "Gusunɔ u nun yɛri.", "rejected": "Gusunɔn durom.", "source": "exercise"}
+{"prompt": "fr-ba: Dieu te bénisse", "chosen": "Gusunɔ u nun yɛri.", "rejected": "Gusunɔ baka.", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔ u nun yɛri.", "chosen": "Dieu te bénisse", "rejected": "Si Dieu le veut", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔ u nun yɛri.", "chosen": "Dieu te bénisse", "rejected": "Grâce à Dieu", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔ u nun yɛri.", "chosen": "Dieu te bénisse", "rejected": "Dieu est grand", "source": "exercise"}
+{"prompt": "fr-ba: Si Dieu le veut (Inchallah)", "chosen": "Gusunɔ u n wure.", "rejected": "Gusunɔ u nun yɛri.", "source": "exercise"}
+{"prompt": "fr-ba: Si Dieu le veut (Inchallah)", "chosen": "Gusunɔ u n wure.", "rejected": "Gusunɔn durom.", "source": "exercise"}
+{"prompt": "fr-ba: Si Dieu le veut (Inchallah)", "chosen": "Gusunɔ u n wure.", "rejected": "Gusunɔ baka.", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔ u n wure.", "chosen": "Si Dieu le veut (Inchallah)", "rejected": "Dieu te bénisse", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔ u n wure.", "chosen": "Si Dieu le veut (Inchallah)", "rejected": "Grâce à Dieu", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔ u n wure.", "chosen": "Si Dieu le veut (Inchallah)", "rejected": "Dieu est grand", "source": "exercise"}
+{"prompt": "fr-ba: Grâce à Dieu", "chosen": "Gusunɔn durom.", "rejected": "Gusunɔ u nun yɛri.", "source": "exercise"}
+{"prompt": "fr-ba: Grâce à Dieu", "chosen": "Gusunɔn durom.", "rejected": "Gusunɔ u n wure.", "source": "exercise"}
+{"prompt": "fr-ba: Grâce à Dieu", "chosen": "Gusunɔn durom.", "rejected": "Gusunɔ baka.", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔn durom.", "chosen": "Grâce à Dieu", "rejected": "Dieu te bénisse", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔn durom.", "chosen": "Grâce à Dieu", "rejected": "Si Dieu le veut", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔn durom.", "chosen": "Grâce à Dieu", "rejected": "Dieu est grand", "source": "exercise"}
+{"prompt": "fr-ba: Dieu est grand", "chosen": "Gusunɔ baka.", "rejected": "Gusunɔn durom.", "source": "exercise"}
+{"prompt": "fr-ba: Dieu est grand", "chosen": "Gusunɔ baka.", "rejected": "Gusunɔ u n wure.", "source": "exercise"}
+{"prompt": "fr-ba: Dieu est grand", "chosen": "Gusunɔ baka.", "rejected": "Gusunɔ u nun yɛri.", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔ baka.", "chosen": "Dieu est grand", "rejected": "Grâce à Dieu", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔ baka.", "chosen": "Dieu est grand", "rejected": "Si Dieu le veut", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔ baka.", "chosen": "Dieu est grand", "rejected": "Dieu te bénisse", "source": "exercise"}
+{"prompt": "fr-ba: Esprit Saint", "chosen": "Hunde Dɛɛro.", "rejected": "Nim wãaruɡim.", "source": "exercise"}
+{"prompt": "fr-ba: Esprit Saint", "chosen": "Hunde Dɛɛro.", "rejected": "Gusunɔ baka.", "source": "exercise"}
+{"prompt": "fr-ba: Esprit Saint", "chosen": "Hunde Dɛɛro.", "rejected": "Sanam mɛ...", "source": "exercise"}
+{"prompt": "ba-fr: Hunde Dɛɛro.", "chosen": "Esprit Saint", "rejected": "Eau de la vie", "source": "exercise"}
+{"prompt": "ba-fr: Hunde Dɛɛro.", "chosen": "Esprit Saint", "rejected": "Dieu est grand", "source": "exercise"}
+{"prompt": "ba-fr: Hunde Dɛɛro.", "chosen": "Esprit Saint", "rejected": "Au commencement", "source": "exercise"}
+{"prompt": "fr-ba: Eau de la vie", "chosen": "Nim wãaruɡim.", "rejected": "Hunde Dɛɛro.", "source": "exercise"}
+{"prompt": "fr-ba: Eau de la vie", "chosen": "Nim wãaruɡim.", "rejected": "Gusunɔ baka.", "source": "exercise"}
+{"prompt": "fr-ba: Eau de la vie", "chosen": "Nim wãaruɡim.", "rejected": "Sanam mɛ...", "source": "exercise"}
+{"prompt": "ba-fr: Nim wãaruɡim.", "chosen": "Eau de la vie", "rejected": "Esprit Saint", "source": "exercise"}
+{"prompt": "ba-fr: Nim wãaruɡim.", "chosen": "Eau de la vie", "rejected": "Dieu est grand", "source": "exercise"}
+{"prompt": "ba-fr: Nim wãaruɡim.", "chosen": "Eau de la vie", "rejected": "Au commencement", "source": "exercise"}
+{"prompt": "fr-ba: Dieu pardonne le pécheur", "chosen": "Gusunɔ ura toro suuru kue.", "rejected": "Gusunɔ baka.", "source": "exercise"}
+{"prompt": "fr-ba: Dieu pardonne le pécheur", "chosen": "Gusunɔ ura toro suuru kue.", "rejected": "Gusunɔn durom.", "source": "exercise"}
+{"prompt": "fr-ba: Dieu pardonne le pécheur", "chosen": "Gusunɔ ura toro suuru kue.", "rejected": "Gusunɔ u n wure.", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔ ura toro suuru kue.", "chosen": "Dieu pardonne le pécheur", "rejected": "Dieu est grand", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔ ura toro suuru kue.", "chosen": "Dieu pardonne le pécheur", "rejected": "Grâce à Dieu", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔ ura toro suuru kue.", "chosen": "Dieu pardonne le pécheur", "rejected": "Si Dieu le veut", "source": "exercise"}
+{"prompt": "fr-ba: Dieu, pardonne-nous nos péchés", "chosen": "Kpeebeeri a sun bɛsɛn gɔba suuru kuo.", "rejected": "Gusunɔ u nun yɛri.", "source": "exercise"}
+{"prompt": "fr-ba: Dieu, pardonne-nous nos péchés", "chosen": "Kpeebeeri a sun bɛsɛn gɔba suuru kuo.", "rejected": "Gusunɔn durom.", "source": "exercise"}
+{"prompt": "fr-ba: Dieu, pardonne-nous nos péchés", "chosen": "Kpeebeeri a sun bɛsɛn gɔba suuru kuo.", "rejected": "Gusunɔ baka.", "source": "exercise"}
+{"prompt": "ba-fr: Kpeebeeri a sun bɛsɛn gɔba suuru kuo.", "chosen": "Dieu, pardonne-nous nos péchés", "rejected": "Dieu te bénisse", "source": "exercise"}
+{"prompt": "ba-fr: Kpeebeeri a sun bɛsɛn gɔba suuru kuo.", "chosen": "Dieu, pardonne-nous nos péchés", "rejected": "Grâce à Dieu", "source": "exercise"}
+{"prompt": "ba-fr: Kpeebeeri a sun bɛsɛn gɔba suuru kuo.", "chosen": "Dieu, pardonne-nous nos péchés", "rejected": "Dieu est grand", "source": "exercise"}
+{"prompt": "fr-ba: Sache rendre grâce pour ta vie", "chosen": "A n da ka wunɛn wãaru saabu ko.", "rejected": "A do.", "source": "exercise"}
+{"prompt": "fr-ba: Sache rendre grâce pour ta vie", "chosen": "A n da ka wunɛn wãaru saabu ko.", "rejected": "A na.", "source": "exercise"}
+{"prompt": "fr-ba: Sache rendre grâce pour ta vie", "chosen": "A n da ka wunɛn wãaru saabu ko.", "rejected": "A dĩa di.", "source": "exercise"}
+{"prompt": "ba-fr: A n da ka wunɛn wãaru saabu ko.", "chosen": "Sache rendre grâce pour ta vie", "rejected": "Va", "source": "exercise"}
+{"prompt": "ba-fr: A n da ka wunɛn wãaru saabu ko.", "chosen": "Sache rendre grâce pour ta vie", "rejected": "Viens", "source": "exercise"}
+{"prompt": "ba-fr: A n da ka wunɛn wãaru saabu ko.", "chosen": "Sache rendre grâce pour ta vie", "rejected": "Mange", "source": "exercise"}
+{"prompt": "fr-ba: Merci de nous guider sur le chemin de Dieu", "chosen": "Bɛɛ ka kparabu.", "rejected": "Bɛsɛ ka faagi.", "source": "exercise"}
+{"prompt": "fr-ba: Merci de nous guider sur le chemin de Dieu", "chosen": "Bɛɛ ka kparabu.", "rejected": "Na kãi nin tɛria.", "source": "exercise"}
+{"prompt": "fr-ba: Merci de nous guider sur le chemin de Dieu", "chosen": "Bɛɛ ka kparabu.", "rejected": "Aagu.", "source": "exercise"}
+{"prompt": "ba-fr: Bɛɛ ka kparabu.", "chosen": "Merci de nous guider sur le chemin de Dieu", "rejected": "Merci pour la conversation", "source": "exercise"}
+{"prompt": "ba-fr: Bɛɛ ka kparabu.", "chosen": "Merci de nous guider sur le chemin de Dieu", "rejected": "Merci beaucoup", "source": "exercise"}
+{"prompt": "ba-fr: Bɛɛ ka kparabu.", "chosen": "Merci de nous guider sur le chemin de Dieu", "rejected": "Salut", "source": "exercise"}
+{"prompt": "fr-ba: Ailleurs, les gens pratiquent bien la religion", "chosen": "Gam tɔmba arufaaru nɛni.", "rejected": "Tɔmbu ba sɔmburu de.", "source": "exercise"}
+{"prompt": "fr-ba: Ailleurs, les gens pratiquent bien la religion", "chosen": "Gam tɔmba arufaaru nɛni.", "rejected": "Ba doona.", "source": "exercise"}
+{"prompt": "fr-ba: Ailleurs, les gens pratiquent bien la religion", "chosen": "Gam tɔmba arufaaru nɛni.", "rejected": "Ba dĩa di.", "source": "exercise"}
+{"prompt": "ba-fr: Gam tɔmba arufaaru nɛni.", "chosen": "Ailleurs, les gens pratiquent bien la religion", "rejected": "Les gens travaillent", "source": "exercise"}
+{"prompt": "ba-fr: Gam tɔmba arufaaru nɛni.", "chosen": "Ailleurs, les gens pratiquent bien la religion", "rejected": "Ils sont partis", "source": "exercise"}
+{"prompt": "ba-fr: Gam tɔmba arufaaru nɛni.", "chosen": "Ailleurs, les gens pratiquent bien la religion", "rejected": "Ils mangent", "source": "exercise"}
+{"prompt": "fr-ba: C'est le ciel qui brille", "chosen": "Gusunɔ wɔllu ta ballimɔ.", "rejected": "Sɔ̃ɔ u ballimɔ.", "source": "exercise"}
+{"prompt": "fr-ba: C'est le ciel qui brille", "chosen": "Gusunɔ wɔllu ta ballimɔ.", "rejected": "Gura ya na.", "source": "exercise"}
+{"prompt": "fr-ba: C'est le ciel qui brille", "chosen": "Gusunɔ wɔllu ta ballimɔ.", "rejected": "Nim mu wɔruma.", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔ wɔllu ta ballimɔ.", "chosen": "C'est le ciel qui brille", "rejected": "Le soleil brille", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔ wɔllu ta ballimɔ.", "chosen": "C'est le ciel qui brille", "rejected": "Il pleut", "source": "exercise"}
+{"prompt": "ba-fr: Gusunɔ wɔllu ta ballimɔ.", "chosen": "C'est le ciel qui brille", "rejected": "L'eau coule", "source": "exercise"}
+{"prompt": "fr-ba: Père, fais-nous savoir que tu es Dieu", "chosen": "Baaba, ade sa n yɛ̃ mɛ̀ wunaa Gusunɔ.", "rejected": "Gusunɔ baka.", "source": "exercise"}
+{"prompt": "fr-ba: Père, fais-nous savoir que tu es Dieu", "chosen": "Baaba, ade sa n yɛ̃ mɛ̀ wunaa Gusunɔ.", "rejected": "Gusunɔn durom.", "source": "exercise"}
+{"prompt": "fr-ba: Père, fais-nous savoir que tu es Dieu", "chosen": "Baaba, ade sa n yɛ̃ mɛ̀ wunaa Gusunɔ.", "rejected": "Gusunɔ u n wure.", "source": "exercise"}
+{"prompt": "ba-fr: Baaba, ade sa n yɛ̃ mɛ̀ wunaa Gusunɔ.", "chosen": "Père, fais-nous savoir que tu es Dieu", "rejected": "Dieu est grand", "source": "exercise"}
+{"prompt": "ba-fr: Baaba, ade sa n yɛ̃ mɛ̀ wunaa Gusunɔ.", "chosen": "Père, fais-nous savoir que tu es Dieu", "rejected": "Grâce à Dieu", "source": "exercise"}
+{"prompt": "ba-fr: Baaba, ade sa n yɛ̃ mɛ̀ wunaa Gusunɔ.", "chosen": "Père, fais-nous savoir que tu es Dieu", "rejected": "Si Dieu le veut", "source": "exercise"}
+{"prompt": "fr-ba: Le coupable n'a pas raison", "chosen": "Bikio kùn toro.", "rejected": "U gem mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Le coupable n'a pas raison", "chosen": "Bikio kùn toro.", "rejected": "Tɔ̃ya mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Le coupable n'a pas raison", "chosen": "Bikio kùn toro.", "rejected": "Gɔ̃ru pii.", "source": "exercise"}
+{"prompt": "ba-fr: Bikio kùn toro.", "chosen": "Le coupable n'a pas raison", "rejected": "Il a raison", "source": "exercise"}
+{"prompt": "ba-fr: Bikio kùn toro.", "chosen": "Le coupable n'a pas raison", "rejected": "C'est la vérité", "source": "exercise"}
+{"prompt": "ba-fr: Bikio kùn toro.", "chosen": "Le coupable n'a pas raison", "rejected": "Il est gentil", "source": "exercise"}
+{"prompt": "fr-ba: Le vendredi prochain nous irons", "chosen": "Sa ko yam mi da arusuma baka yè ya we.", "rejected": "Sa doona yam.", "source": "exercise"}
+{"prompt": "fr-ba: Le vendredi prochain nous irons", "chosen": "Sa ko yam mi da arusuma baka yè ya we.", "rejected": "Sa na daka.", "source": "exercise"}
+{"prompt": "fr-ba: Le vendredi prochain nous irons", "chosen": "Sa ko yam mi da arusuma baka yè ya we.", "rejected": "Sa dɔɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Sa ko yam mi da arusuma baka yè ya we.", "chosen": "Le vendredi prochain nous irons", "rejected": "Nous partons aujourd'hui", "source": "exercise"}
+{"prompt": "ba-fr: Sa ko yam mi da arusuma baka yè ya we.", "chosen": "Le vendredi prochain nous irons", "rejected": "Nous arrivons hier", "source": "exercise"}
+{"prompt": "ba-fr: Sa ko yam mi da arusuma baka yè ya we.", "chosen": "Le vendredi prochain nous irons", "rejected": "Nous dormons", "source": "exercise"}
+{"prompt": "fr-ba: L'union fait la force (Une seule bouche)", "chosen": "Nɔɔ tia.", "rejected": "Wɔmun sira tura, bu ka ge bɔke.", "source": "exercise"}
+{"prompt": "fr-ba: L'union fait la force (Une seule bouche)", "chosen": "Nɔɔ tia.", "rejected": "Wi u... kĩ, u mɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: L'union fait la force (Une seule bouche)", "chosen": "Nɔɔ tia.", "rejected": "Tɔ̃ya mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Nɔɔ tia.", "chosen": "L'union fait la force (Une seule bouche)", "rejected": "L'autonomie suffit", "source": "exercise"}
+{"prompt": "ba-fr: Nɔɔ tia.", "chosen": "L'union fait la force (Une seule bouche)", "rejected": "Qui veut prenne", "source": "exercise"}
+{"prompt": "ba-fr: Nɔɔ tia.", "chosen": "L'union fait la force (Une seule bouche)", "rejected": "C'est la vérité", "source": "exercise"}
+{"prompt": "fr-ba: La queue du singe suffit pour l'attacher", "chosen": "Wɔmun sira tura, bu ka ge bɔke.", "rejected": "Nɔɔ tia.", "source": "exercise"}
+{"prompt": "fr-ba: La queue du singe suffit pour l'attacher", "chosen": "Wɔmun sira tura, bu ka ge bɔke.", "rejected": "Wi u... kĩ, u mɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: La queue du singe suffit pour l'attacher", "chosen": "Wɔmun sira tura, bu ka ge bɔke.", "rejected": "Gusunɔ baka.", "source": "exercise"}
+{"prompt": "ba-fr: Wɔmun sira tura, bu ka ge bɔke.", "chosen": "La queue du singe suffit pour l'attacher", "rejected": "L'union fait la force", "source": "exercise"}
+{"prompt": "ba-fr: Wɔmun sira tura, bu ka ge bɔke.", "chosen": "La queue du singe suffit pour l'attacher", "rejected": "Qui veut prenne", "source": "exercise"}
+{"prompt": "ba-fr: Wɔmun sira tura, bu ka ge bɔke.", "chosen": "La queue du singe suffit pour l'attacher", "rejected": "Dieu est grand", "source": "exercise"}
+{"prompt": "fr-ba: Celui qui veut, qu'il prenne", "chosen": "Wi u... kĩ, u mɔɔ.", "rejected": "Nɔɔ tia.", "source": "exercise"}
+{"prompt": "fr-ba: Celui qui veut, qu'il prenne", "chosen": "Wi u... kĩ, u mɔɔ.", "rejected": "Wɔmun sira tura, bu ka ge bɔke.", "source": "exercise"}
+{"prompt": "fr-ba: Celui qui veut, qu'il prenne", "chosen": "Wi u... kĩ, u mɔɔ.", "rejected": "Gusunɔ u n wure.", "source": "exercise"}
+{"prompt": "ba-fr: Wi u... kĩ, u mɔɔ.", "chosen": "Celui qui veut, qu'il prenne", "rejected": "L'union fait la force", "source": "exercise"}
+{"prompt": "ba-fr: Wi u... kĩ, u mɔɔ.", "chosen": "Celui qui veut, qu'il prenne", "rejected": "L'autonomie suffit", "source": "exercise"}
+{"prompt": "ba-fr: Wi u... kĩ, u mɔɔ.", "chosen": "Celui qui veut, qu'il prenne", "rejected": "Si Dieu le veut", "source": "exercise"}
+{"prompt": "fr-ba: Si nous nous entendons, nous pourrons porter un éléphant", "chosen": "Nɔɔ gàn nɛra, sa ko suunu sɔbe.", "rejected": "Nɔɔ tia.", "source": "exercise"}
+{"prompt": "fr-ba: Si nous nous entendons, nous pourrons porter un éléphant", "chosen": "Nɔɔ gàn nɛra, sa ko suunu sɔbe.", "rejected": "Baawure.", "source": "exercise"}
+{"prompt": "fr-ba: Si nous nous entendons, nous pourrons porter un éléphant", "chosen": "Nɔɔ gàn nɛra, sa ko suunu sɔbe.", "rejected": "Tɔ̃ya mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Nɔɔ gàn nɛra, sa ko suunu sɔbe.", "chosen": "Si nous nous entendons, nous pourrons porter un éléphant", "rejected": "L'union fait la force", "source": "exercise"}
+{"prompt": "ba-fr: Nɔɔ gàn nɛra, sa ko suunu sɔbe.", "chosen": "Si nous nous entendons, nous pourrons porter un éléphant", "rejected": "Tout le monde", "source": "exercise"}
+{"prompt": "ba-fr: Nɔɔ gàn nɛra, sa ko suunu sɔbe.", "chosen": "Si nous nous entendons, nous pourrons porter un éléphant", "rejected": "C'est la vérité", "source": "exercise"}
+{"prompt": "fr-ba: Le panier a beau être joli, il ne peut contenir de l'eau", "chosen": "Baa bireru tàn buram nɛ, ta ǹ kpɛ̃ tu nim nɛnɛ.", "rejected": "Nim mu do.", "source": "exercise"}
+{"prompt": "fr-ba: Le panier a beau être joli, il ne peut contenir de l'eau", "chosen": "Baa bireru tàn buram nɛ, ta ǹ kpɛ̃ tu nim nɛnɛ.", "rejected": "Gari ya sɛ̃.", "source": "exercise"}
+{"prompt": "fr-ba: Le panier a beau être joli, il ne peut contenir de l'eau", "chosen": "Baa bireru tàn buram nɛ, ta ǹ kpɛ̃ tu nim nɛnɛ.", "rejected": "Tɔ̃ya mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Baa bireru tàn buram nɛ, ta ǹ kpɛ̃ tu nim nɛnɛ.", "chosen": "Le panier a beau être joli, il ne peut contenir de l'eau", "rejected": "L'eau est bonne", "source": "exercise"}
+{"prompt": "ba-fr: Baa bireru tàn buram nɛ, ta ǹ kpɛ̃ tu nim nɛnɛ.", "chosen": "Le panier a beau être joli, il ne peut contenir de l'eau", "rejected": "C'est difficile", "source": "exercise"}
+{"prompt": "ba-fr: Baa bireru tàn buram nɛ, ta ǹ kpɛ̃ tu nim nɛnɛ.", "chosen": "Le panier a beau être joli, il ne peut contenir de l'eau", "rejected": "C'est la vérité", "source": "exercise"}
+{"prompt": "fr-ba: On n'apprend pas au bord de la route", "chosen": "Ba ku ra baaru yɛ̃ɛsu sɔ̃.", "rejected": "Swaa ya do.", "source": "exercise"}
+{"prompt": "fr-ba: On n'apprend pas au bord de la route", "chosen": "Ba ku ra baaru yɛ̃ɛsu sɔ̃.", "rejected": "Gberu ya kpã.", "source": "exercise"}
+{"prompt": "fr-ba: On n'apprend pas au bord de la route", "chosen": "Ba ku ra baaru yɛ̃ɛsu sɔ̃.", "rejected": "Yɛnu ya do.", "source": "exercise"}
+{"prompt": "ba-fr: Ba ku ra baaru yɛ̃ɛsu sɔ̃.", "chosen": "On n'apprend pas au bord de la route", "rejected": "La route est bonne", "source": "exercise"}
+{"prompt": "ba-fr: Ba ku ra baaru yɛ̃ɛsu sɔ̃.", "chosen": "On n'apprend pas au bord de la route", "rejected": "Le champ est grand", "source": "exercise"}
+{"prompt": "ba-fr: Ba ku ra baaru yɛ̃ɛsu sɔ̃.", "chosen": "On n'apprend pas au bord de la route", "rejected": "La maison est belle", "source": "exercise"}
+{"prompt": "fr-ba: L'imbécile ne sait pas qu'il peut revenir bredouille de la chasse", "chosen": "Asiro u kù ra n yĩiyɔ dama yerɔ u koo sɔnda.", "rejected": "Taaso u na.", "source": "exercise"}
+{"prompt": "fr-ba: L'imbécile ne sait pas qu'il peut revenir bredouille de la chasse", "chosen": "Asiro u kù ra n yĩiyɔ dama yerɔ u koo sɔnda.", "rejected": "U sɔmburu de.", "source": "exercise"}
+{"prompt": "fr-ba: L'imbécile ne sait pas qu'il peut revenir bredouille de la chasse", "chosen": "Asiro u kù ra n yĩiyɔ dama yerɔ u koo sɔnda.", "rejected": "U doona.", "source": "exercise"}
+{"prompt": "ba-fr: Asiro u kù ra n yĩiyɔ dama yerɔ u koo sɔnda.", "chosen": "L'imbécile ne sait pas qu'il peut revenir bredouille de la chasse", "rejected": "Le chasseur est arrivé", "source": "exercise"}
+{"prompt": "ba-fr: Asiro u kù ra n yĩiyɔ dama yerɔ u koo sɔnda.", "chosen": "L'imbécile ne sait pas qu'il peut revenir bredouille de la chasse", "rejected": "Il travaille", "source": "exercise"}
+{"prompt": "ba-fr: Asiro u kù ra n yĩiyɔ dama yerɔ u koo sɔnda.", "chosen": "L'imbécile ne sait pas qu'il peut revenir bredouille de la chasse", "rejected": "Il est parti", "source": "exercise"}
+{"prompt": "fr-ba: Débiter des cynismes dévalorise l'homme", "chosen": "Baa goru ta rà tɔnu biru wesiewa.", "rejected": "Nɔɔ dɔɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Débiter des cynismes dévalorise l'homme", "chosen": "Baa goru ta rà tɔnu biru wesiewa.", "rejected": "Gɔ̃ru pii.", "source": "exercise"}
+{"prompt": "fr-ba: Débiter des cynismes dévalorise l'homme", "chosen": "Baa goru ta rà tɔnu biru wesiewa.", "rejected": "Tɔ̃ya mɔ.", "source": "exercise"}
+{"prompt": "ba-fr: Baa goru ta rà tɔnu biru wesiewa.", "chosen": "Débiter des cynismes dévalorise l'homme", "rejected": "Bouche sucrée", "source": "exercise"}
+{"prompt": "ba-fr: Baa goru ta rà tɔnu biru wesiewa.", "chosen": "Débiter des cynismes dévalorise l'homme", "rejected": "Cœur blanc", "source": "exercise"}
+{"prompt": "ba-fr: Baa goru ta rà tɔnu biru wesiewa.", "chosen": "Débiter des cynismes dévalorise l'homme", "rejected": "C'est la vérité", "source": "exercise"}
+{"prompt": "fr-ba: Tel est le moineau aujourd'hui, ainsi qu'il était quand le charognard naissait", "chosen": "Mɛ̀ bii swia ya nɛ, mɛna ya nɛ ba ka yabereku marà.", "rejected": "Gue ya do.", "source": "exercise"}
+{"prompt": "fr-ba: Tel est le moineau aujourd'hui, ainsi qu'il était quand le charognard naissait", "chosen": "Mɛ̀ bii swia ya nɛ, mɛna ya nɛ ba ka yabereku marà.", "rejected": "Abereku u na.", "source": "exercise"}
+{"prompt": "fr-ba: Tel est le moineau aujourd'hui, ainsi qu'il était quand le charognard naissait", "chosen": "Mɛ̀ bii swia ya nɛ, mɛna ya nɛ ba ka yabereku marà.", "rejected": "Bii u mara.", "source": "exercise"}
+{"prompt": "ba-fr: Mɛ̀ bii swia ya nɛ, mɛna ya nɛ ba ka yabereku marà.", "chosen": "Tel est le moineau aujourd'hui, ainsi qu'il était quand le charognard naissait", "rejected": "Le poulet est bon", "source": "exercise"}
+{"prompt": "ba-fr: Mɛ̀ bii swia ya nɛ, mɛna ya nɛ ba ka yabereku marà.", "chosen": "Tel est le moineau aujourd'hui, ainsi qu'il était quand le charognard naissait", "rejected": "Le vautour est arrivé", "source": "exercise"}
+{"prompt": "ba-fr: Mɛ̀ bii swia ya nɛ, mɛna ya nɛ ba ka yabereku marà.", "chosen": "Tel est le moineau aujourd'hui, ainsi qu'il était quand le charognard naissait", "rejected": "L'enfant est né", "source": "exercise"}
+{"prompt": "fr-ba: A chacun la part qui lui revient", "chosen": "Baabakan baa, baawere ka win baa.", "rejected": "Baawure.", "source": "exercise"}
+{"prompt": "fr-ba: A chacun la part qui lui revient", "chosen": "Baabakan baa, baawere ka win baa.", "rejected": "Tɔ̃ya mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: A chacun la part qui lui revient", "chosen": "Baabakan baa, baawere ka win baa.", "rejected": "Yen sɔ̃.", "source": "exercise"}
+{"prompt": "ba-fr: Baabakan baa, baawere ka win baa.", "chosen": "A chacun la part qui lui revient", "rejected": "Tout le monde", "source": "exercise"}
+{"prompt": "ba-fr: Baabakan baa, baawere ka win baa.", "chosen": "A chacun la part qui lui revient", "rejected": "C'est la vérité", "source": "exercise"}
+{"prompt": "ba-fr: Baabakan baa, baawere ka win baa.", "chosen": "A chacun la part qui lui revient", "rejected": "C'est pourquoi", "source": "exercise"}
+{"prompt": "fr-ba: Le don pour lequel on ne remercie pas n'a pas de valeur", "chosen": "Kɛ̃ɛ tè ta ǹ takaru mɔ, warara.", "rejected": "Na kãi nin tɛria.", "source": "exercise"}
+{"prompt": "fr-ba: Le don pour lequel on ne remercie pas n'a pas de valeur", "chosen": "Kɛ̃ɛ tè ta ǹ takaru mɔ, warara.", "rejected": "Kasɔru kun mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Le don pour lequel on ne remercie pas n'a pas de valeur", "chosen": "Kɛ̃ɛ tè ta ǹ takaru mɔ, warara.", "rejected": "Siara.", "source": "exercise"}
+{"prompt": "ba-fr: Kɛ̃ɛ tè ta ǹ takaru mɔ, warara.", "chosen": "Le don pour lequel on ne remercie pas n'a pas de valeur", "rejected": "Merci beaucoup", "source": "exercise"}
+{"prompt": "ba-fr: Kɛ̃ɛ tè ta ǹ takaru mɔ, warara.", "chosen": "Le don pour lequel on ne remercie pas n'a pas de valeur", "rejected": "De rien", "source": "exercise"}
+{"prompt": "ba-fr: Kɛ̃ɛ tè ta ǹ takaru mɔ, warara.", "chosen": "Le don pour lequel on ne remercie pas n'a pas de valeur", "rejected": "Content", "source": "exercise"}
+{"prompt": "fr-ba: Que chaque singe mange le fruit de son arbre", "chosen": "Wɔmu baagere gu gen sɔ̃ɔn beeru di.", "rejected": "Wɔmu u dĩa di.", "source": "exercise"}
+{"prompt": "fr-ba: Que chaque singe mange le fruit de son arbre", "chosen": "Wɔmu baagere gu gen sɔ̃ɔn beeru di.", "rejected": "Dãru ya kpã.", "source": "exercise"}
+{"prompt": "fr-ba: Que chaque singe mange le fruit de son arbre", "chosen": "Wɔmu baagere gu gen sɔ̃ɔn beeru di.", "rejected": "Bii u dĩa di.", "source": "exercise"}
+{"prompt": "ba-fr: Wɔmu baagere gu gen sɔ̃ɔn beeru di.", "chosen": "Que chaque singe mange le fruit de son arbre", "rejected": "Le singe mange", "source": "exercise"}
+{"prompt": "ba-fr: Wɔmu baagere gu gen sɔ̃ɔn beeru di.", "chosen": "Que chaque singe mange le fruit de son arbre", "rejected": "L'arbre est grand", "source": "exercise"}
+{"prompt": "ba-fr: Wɔmu baagere gu gen sɔ̃ɔn beeru di.", "chosen": "Que chaque singe mange le fruit de son arbre", "rejected": "L'enfant mange", "source": "exercise"}
+{"prompt": "fr-ba: Celui qui fait les partages ne se prive pas", "chosen": "Bɔnu kowo u ku ra win baa bie.", "rejected": "U gobi mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: Celui qui fait les partages ne se prive pas", "chosen": "Bɔnu kowo u ku ra win baa bie.", "rejected": "U sɔmburu de.", "source": "exercise"}
+{"prompt": "fr-ba: Celui qui fait les partages ne se prive pas", "chosen": "Bɔnu kowo u ku ra win baa bie.", "rejected": "U dĩa di.", "source": "exercise"}
+{"prompt": "ba-fr: Bɔnu kowo u ku ra win baa bie.", "chosen": "Celui qui fait les partages ne se prive pas", "rejected": "Il a de l'argent", "source": "exercise"}
+{"prompt": "ba-fr: Bɔnu kowo u ku ra win baa bie.", "chosen": "Celui qui fait les partages ne se prive pas", "rejected": "Il travaille", "source": "exercise"}
+{"prompt": "ba-fr: Bɔnu kowo u ku ra win baa bie.", "chosen": "Celui qui fait les partages ne se prive pas", "rejected": "Il mange", "source": "exercise"}
+{"prompt": "fr-ba: Ce qui ne fait pas de fissure ne se casse pas", "chosen": "Yè ya ku ra beu ko, ya ku ra kɔre.", "rejected": "Ya kpã.", "source": "exercise"}
+{"prompt": "fr-ba: Ce qui ne fait pas de fissure ne se casse pas", "chosen": "Yè ya ku ra beu ko, ya ku ra kɔre.", "rejected": "Ya do.", "source": "exercise"}
+{"prompt": "fr-ba: Ce qui ne fait pas de fissure ne se casse pas", "chosen": "Yè ya ku ra beu ko, ya ku ra kɔre.", "rejected": "Ya sɛ̃.", "source": "exercise"}
+{"prompt": "ba-fr: Yè ya ku ra beu ko, ya ku ra kɔre.", "chosen": "Ce qui ne fait pas de fissure ne se casse pas", "rejected": "C'est grand", "source": "exercise"}
+{"prompt": "ba-fr: Yè ya ku ra beu ko, ya ku ra kɔre.", "chosen": "Ce qui ne fait pas de fissure ne se casse pas", "rejected": "C'est bon", "source": "exercise"}
+{"prompt": "ba-fr: Yè ya ku ra beu ko, ya ku ra kɔre.", "chosen": "Ce qui ne fait pas de fissure ne se casse pas", "rejected": "C'est difficile", "source": "exercise"}
+{"prompt": "fr-ba: L'aveugle attentif sait tâtonner", "chosen": "Wɔ̃ ko daakarigii u babibu yɛ̃.", "rejected": "U gum mɔ.", "source": "exercise"}
+{"prompt": "fr-ba: L'aveugle attentif sait tâtonner", "chosen": "Wɔ̃ ko daakarigii u babibu yɛ̃.", "rejected": "U sɔmburu de.", "source": "exercise"}
+{"prompt": "fr-ba: L'aveugle attentif sait tâtonner", "chosen": "Wɔ̃ ko daakarigii u babibu yɛ̃.", "rejected": "U swaa yɛ̃.", "source": "exercise"}
+{"prompt": "ba-fr: Wɔ̃ ko daakarigii u babibu yɛ̃.", "chosen": "L'aveugle attentif sait tâtonner", "rejected": "Il est malade", "source": "exercise"}
+{"prompt": "ba-fr: Wɔ̃ ko daakarigii u babibu yɛ̃.", "chosen": "L'aveugle attentif sait tâtonner", "rejected": "Il travaille", "source": "exercise"}
+{"prompt": "ba-fr: Wɔ̃ ko daakarigii u babibu yɛ̃.", "chosen": "L'aveugle attentif sait tâtonner", "rejected": "Il connaît le chemin", "source": "exercise"}
+{"prompt": "« notre » se dit…", "chosen": "bɛsɛn", "rejected": "sun", "source": "quiz"}
+{"prompt": "« notre » se dit…", "chosen": "bɛsɛn", "rejected": "sa", "source": "quiz"}
+{"prompt": "« notre » se dit…", "chosen": "bɛsɛn", "rejected": "ben", "source": "quiz"}
+{"prompt": "« Je » se dit…", "chosen": "na", "rejected": "a", "source": "quiz"}
+{"prompt": "« Je » se dit…", "chosen": "na", "rejected": "u", "source": "quiz"}
+{"prompt": "« Je » se dit…", "chosen": "na", "rejected": "man", "source": "quiz"}
+{"prompt": "« wunɛn » veut dire…", "chosen": "ton, ta, tes", "rejected": "votre", "source": "quiz"}
+{"prompt": "« wunɛn » veut dire…", "chosen": "ton, ta, tes", "rejected": "son, sa, ses", "source": "quiz"}
+{"prompt": "« wunɛn » veut dire…", "chosen": "ton, ta, tes", "rejected": "mon, ma, mes", "source": "quiz"}
+{"prompt": "« faire traire » se dit…", "chosen": "gamasia", "rejected": "gamari", "source": "quiz"}
+{"prompt": "« faire traire » se dit…", "chosen": "gamasia", "rejected": "gamama", "source": "quiz"}
+{"prompt": "« faire traire » se dit…", "chosen": "gamasia", "rejected": "gamara", "source": "quiz"}
+{"prompt": "« pourquoi ? » se dit…", "chosen": "amɔna", "rejected": "domma", "source": "quiz"}
+{"prompt": "« pourquoi ? » se dit…", "chosen": "amɔna", "rejected": "mana", "source": "quiz"}
+{"prompt": "« pourquoi ? » se dit…", "chosen": "amɔna", "rejected": "wara", "source": "quiz"}
+{"prompt": "« mais » se dit…", "chosen": "adama", "rejected": "ka", "source": "quiz"}
+{"prompt": "« mais » se dit…", "chosen": "adama", "rejected": "ma", "source": "quiz"}
+{"prompt": "« mais » se dit…", "chosen": "adama", "rejected": "yèn sɔ̃", "source": "quiz"}
+{"prompt": "« troisième » se dit…", "chosen": "itase", "rejected": "itaba", "source": "quiz"}
+{"prompt": "« troisième » se dit…", "chosen": "itase", "rejected": "itama", "source": "quiz"}
+{"prompt": "« troisième » se dit…", "chosen": "itase", "rejected": "itasia", "source": "quiz"}
+{"prompt": "« sii duma » veut dire…", "chosen": "bicyclette", "rejected": "cheval de course", "source": "quiz"}
+{"prompt": "« sii duma » veut dire…", "chosen": "bicyclette", "rejected": "forgeron", "source": "quiz"}
+{"prompt": "« sii duma » veut dire…", "chosen": "bicyclette", "rejected": "fer à repasser", "source": "quiz"}

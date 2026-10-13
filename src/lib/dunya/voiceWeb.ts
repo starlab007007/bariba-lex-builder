@@ -7,6 +7,7 @@
  * - Les deux  : both recognisers in parallel, the clearer one wins.
  */
 import { supabase } from '@/integrations/supabase/client';
+import { isOffline, memoryTranslate } from '@/lib/translation/translationMemory';
 
 export type DunyaWebMode = 'fr' | 'bba' | 'both';
 
@@ -87,6 +88,12 @@ export async function transcribeBariba(audio: Blob): Promise<string> {
 
 export async function translate(text: string, from: 'fr' | 'bba', to: 'fr' | 'bba'): Promise<string | null> {
   if (!text.trim() || from === to) return text;
+  const direction = from === 'fr' ? 'fr-ba' : 'ba-fr';
+  // 1. Attested sentence: exact, instant, no network.
+  const attested = await memoryTranslate(text, direction);
+  if (attested) return attested.translation;
+  // 2. Offline: word-by-word from the lexicon, only when most words are known.
+  if (isOffline()) return (await memoryTranslate(text, direction, { allowWordByWord: true }))?.translation ?? null;
   try {
     const data = await invoke<{ translation?: string }>('byt5-bariba-translate', {
       text,
@@ -94,10 +101,11 @@ export async function translate(text: string, from: 'fr' | 'bba', to: 'fr' | 'bb
       targetLang: to === 'fr' ? 'french' : 'bariba',
     });
     const out = data.translation?.trim();
-    return out ? out : null;
+    if (out) return out;
   } catch {
-    return null;
+    // network or server failure: fall through to the offline lexicon
   }
+  return (await memoryTranslate(text, direction, { allowWordByWord: true }))?.translation ?? null;
 }
 
 const VOICE_SYSTEM_PROMPT = [

@@ -5,6 +5,7 @@
  * (method « fitila-corpus:* », fallback: true) au lieu d'une erreur.
  */
 
+import { isOffline, memoryTranslate } from '@/lib/translation/translationMemory';
 import { supabase } from "@/integrations/supabase/client";
 
 export interface ByT5TranslationResult {
@@ -56,6 +57,38 @@ class ByT5TranslationService {
       typeof t === 'string' &&
       t.trim().length > 0 &&
       !invalidPatterns.some((p) => t.toLowerCase().includes(p.toLowerCase()));
+
+    const direction = sourceLang === 'french' ? 'fr-ba' : 'ba-fr';
+    // Attested sentences never need the network (works offline and online).
+    const attested = await memoryTranslate(text, direction);
+    if (attested) {
+      return {
+        translation: attested.translation,
+        confidence: attested.confidence,
+        duration: Date.now() - startTime,
+        method: attested.method,
+        fallback: false,
+      };
+    }
+    // Offline: word-by-word from the lexicon when most words are known.
+    const offlineResult = async (): Promise<ByT5TranslationResult | null> => {
+      const local = await memoryTranslate(text, direction, { allowWordByWord: true });
+      return local
+        ? {
+            translation: local.translation,
+            confidence: local.confidence,
+            duration: Date.now() - startTime,
+            method: local.method,
+            fallback: true,
+            notice: 'Hors connexion : traduction mot à mot depuis le lexique FITILA (approximative).',
+          }
+        : null;
+    };
+    if (isOffline()) {
+      const local = await offlineResult();
+      if (local) return local;
+      throw new Error('Hors connexion : cette phrase n’est pas dans la mémoire FITILA. Reconnectez-vous pour la traduire.');
+    }
 
     try {
       console.log(`🤖 ByT5TranslationService: Calling Edge Function...`);
@@ -114,6 +147,8 @@ class ByT5TranslationService {
       this.lastHealthCheck = Date.now();
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error(`❌ ByT5TranslationService error: ${errorMessage}`);
+      const local = await offlineResult();
+      if (local) return local;
       throw error;
     }
   }

@@ -64,7 +64,7 @@ RÈGLES GRAMMATICALES BARIBA (BAATONUM) :
 7. ADJECTIFS APRÈS le nom : "Kɛkɛ baka" = camion grand
 8. ÊTRE = wãa (être quelque part), wã (être bon) | AVOIR = mɔ
 9. TONS : 3 niveaux (Haut ´, Moyen ∅, Bas \`)
-10. CONNECTEURS : Yen biru(puis), yèn sɔ̃(parce que), Ama(mais), Kɑ(et), yɛ/yè(si/quand), Goo(un certain...)
+10. CONNECTEURS : Yen biru(puis), yèn sɔ̃(parce que), Ama(mais), Ka(et), yɛ/yè(si/quand), Goo(un certain...)
 11. QUESTIONS : anna(comment), mba(quoi), domma(quand), amɔna(pourquoi)
 12. VERBES CLÉS : wa = voir/trouver/obtenir ; mɛɛri = regarder/étudier/apprendre
 `.trim(),
@@ -98,7 +98,7 @@ IDIOMES / FORMULES VALIDÉES (priorité haute) :
   referencePairs: `
 PAIRES DE TRADUCTION DE RÉFÉRENCE :
 "Je mange du riz" ↔ "Na koko di" | "Il a tué une biche" ↔ "Taaso u nɛmu go"
-"Je cherche du travail" ↔ "Na sɔmburu kasuu" | "Où es-tu?" ↔ "Mɑnɑ ɑ wɑ̃ɑ?"
+"Je cherche du travail" ↔ "Na sɔmburu kasuu" | "Où es-tu?" ↔ "Mana a wãa?"
 "Quand es-tu venu?" ↔ "Domma a na?" | "As-tu vu ces gens?" ↔ "A tɔn be wa?"
 "Je n'ai pas le courage" ↔ "Na ǹ kãkɔ" | "J'ai besoin d'argent" ↔ "Na gobin bukaata mɔ"
 "Il travaille bien" ↔ "U sɔmburu mɔ sãa sãa" | "Il y a du monde" ↔ "Tɔmbu ba dabi"
@@ -543,7 +543,7 @@ Retourne UNIQUEMENT la traduction, sans explication ni commentaire.`;
     taskBlock = `TÂCHE — RAFFINAGE DE TRANSCRIPTION BARIBA :
 Tu reçois une transcription brute d'un modèle ASR. Améliore-la :
 1. Corrige la segmentation des mots
-2. Normalise les diacritiques (ɔ, ɛ, ɑ, ã, ɛ̃, ĩ, ɔ̃, ũ)
+2. Normalise les diacritiques (ɔ, ɛ, ã, ɛ̃, ĩ, ɔ̃, ũ ; jamais ɑ : on écrit toujours a)
 3. Corrige les mots mal reconnus avec le vocabulaire de référence
 4. Préserve les expressions idiomatiques validées`;
 

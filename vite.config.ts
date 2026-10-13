@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: 'autoUpdate',
       devOptions: { enabled: false },
-      includeAssets: ['fitila-icon.png', 'fitila-icon-192.png', 'fitila-icon-512.png'],
+      includeAssets: ['fitila-icon.png', 'fitila-icon-192.png', 'fitila-icon-512.png', 'data/translation-memory.json'],
       workbox: {
         cleanupOutdatedCaches: true,
         clientsClaim: true,
