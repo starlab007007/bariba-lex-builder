@@ -1,0 +1,39 @@
+name: DUNYA HF access check
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Dépôt Hugging Face du modèle ByT5"
+        default: "zimesongbian/modele_byt5_bariba_expert_api_v03_improve"
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe the model repository
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          mkdir -p /tmp/rep && cd /tmp/rep
+          auth=(); [ -n "${HF_TOKEN:-}" ] && auth=(-H "Authorization: Bearer $HF_TOKEN")
+          code=$(curl -s -o api.json -w "%{http_code}" "${auth[@]}" "https://huggingface.co/api/models/${{ inputs.model }}")
+          anon=$(curl -s -o /dev/null -w "%{http_code}" "https://huggingface.co/api/models/${{ inputs.model }}")
+          echo "with-token=$code anonymous=$anon token-present=$([ -n "${HF_TOKEN:-}" ] && echo yes || echo no)" | tee summary.txt
+          if [ "$anon" = "200" ] || [ "$code" = "200" ]; then
+            python3 - <<'PY' | tee -a summary.txt
+          import json
+          d = json.load(open('api.json'))
+          print('private:', d.get('private'), '| gated:', d.get('gated'), '| files:', [s['rfilename'] for s in d.get('siblings', [])][:20])
+          print('library:', d.get('library_name'), '| pipeline:', d.get('pipeline_tag'), '| downloads:', d.get('downloads'))
+          PY
+            curl -s "${auth[@]}" -L "https://huggingface.co/${{ inputs.model }}/resolve/main/config.json" -o config.json || true
+            head -c 800 config.json | tee -a summary.txt
+          fi
+          git init -q && git checkout -q -b ci-reports/hf-access
+          git config user.name github-actions && git config user.email actions@users.noreply.github.com
+          git add summary.txt config.json 2>/dev/null; git commit -q -m "HF access ${{ github.sha }}" || true
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-reports/hf-access
