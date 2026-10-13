@@ -21,6 +21,8 @@ export interface MemoryResult {
   translation: string;
   confidence: number;
   method: 'translation-memory' | 'dictionary-offline';
+  /** Provenance category: does not mean measured translation accuracy. */
+  qualityStatus?: 'attested' | 'partial-lexical';
   /** Share of source words found (word-by-word only). */
   coverage?: number;
 }
@@ -75,7 +77,7 @@ export class TranslationMemory {
   exact(text: string, direction: Direction): MemoryResult | null {
     const hit = direction === 'fr-ba' ? this.frToBa.get(foldFr(text)) : this.baToFr.get(foldBa(text));
     if (!hit) return null;
-    return { translation: hit[0], confidence: hit[1] === 'A' ? 100 : 95, method: 'translation-memory' };
+    return { translation: hit[0], confidence: 0, method: 'translation-memory', qualityStatus: 'attested' };
   }
 
   /**
@@ -108,10 +110,13 @@ export class TranslationMemory {
       }
     }
     const coverage = known / words.length;
-    if (coverage < 0.6) return null;
+    // Never present a partially translated sentence as reliable. Unknown words
+    // are not copied into the output as though translated.
+    if (coverage < 1) return null;
     return {
       translation: out.join(' '),
-      confidence: Math.round(20 + 30 * coverage),
+      confidence: 0,
+      qualityStatus: 'partial-lexical',
       method: 'dictionary-offline',
       coverage,
     };
