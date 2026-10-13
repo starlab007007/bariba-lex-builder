@@ -536,18 +536,20 @@ class _TranslatorChatState extends State<TranslatorChat> {
   Widget _composer({required bool keyboardOpen}) {
     const modes = [('Voix', Icons.mic_rounded), ('Texte', Icons.keyboard_alt_rounded), ('Photo', Icons.photo_camera_rounded), ('Coller', Icons.content_paste_rounded), ('Doc', Icons.description_rounded)];
     return Container(
-      padding: EdgeInsets.fromLTRB(4, keyboardOpen ? 4 : 6, 4, keyboardOpen ? 2 : 6),
+      padding: EdgeInsets.fromLTRB(6, keyboardOpen ? 3 : 5, 6, keyboardOpen ? 2 : 5),
       decoration: const BoxDecoration(
         color: SignatureTheme.appBackground,
         border: Border(top: BorderSide(color: SignatureTheme.hairline)),
+        boxShadow: [BoxShadow(color: SignatureTheme.ink.withValues(alpha: .04), blurRadius: 16, offset: Offset(0, -6))],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Les modes restent compacts au-dessus ; le champ d'écriture est toujours
           // l'élément le plus proche du clavier et ne peut plus être poussé hors écran.
-          SizedBox(
-            height: keyboardOpen ? 38 : 44,
+          if (!keyboardOpen)
+            SizedBox(
+            height: 40,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
@@ -556,7 +558,7 @@ class _TranslatorChatState extends State<TranslatorChat> {
                 children: [
                   for (var i = 0; i < modes.length; i++) ...[
                     SizedBox(
-                      width: keyboardOpen ? 58 : 66,
+                      width: 62,
                       child: _modeChip(modes[i].$1, modes[i].$2, compact: true),
                     ),
                     if (i != modes.length - 1) const SizedBox(width: 5),
@@ -565,7 +567,7 @@ class _TranslatorChatState extends State<TranslatorChat> {
               ),
             ),
           ),
-          SizedBox(height: keyboardOpen ? 4 : 6),
+          SizedBox(height: keyboardOpen ? 0 : 6),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 160),
             child: _mode == 'Voix'
@@ -614,14 +616,14 @@ class _TranslatorChatState extends State<TranslatorChat> {
         Expanded(
           child: BaribaTextField(
             controller: _input,
-            minLines: compact ? 1 : 2,
+            minLines: 1,
             maxLines: compact ? 3 : 4,
             onSubmitted: (_) => _send(),
             decoration: InputDecoration(
               hintText: _toBariba ? 'Écrivez en français…' : 'Écrivez en Bàátɔ̀nú…',
               filled: true,
               fillColor: SignatureTheme.surface,
-              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: compact ? 10 : 13),
+              contentPadding: EdgeInsets.symmetric(horizontal: 15, vertical: compact ? 10 : 11),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: const BorderSide(color: SignatureTheme.gold, width: 1.6)),
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: const BorderSide(color: SignatureTheme.gold, width: 1.6)),
               focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: const BorderSide(color: SignatureTheme.goldDeep, width: 2)),
