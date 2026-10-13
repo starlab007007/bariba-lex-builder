@@ -42,7 +42,8 @@ jobs:
       - name: Unit tests
         working-directory: scripts/dunya_translate
         run: python -m unittest -v test_pipeline
-      - name: Generated files are up to date
+      - name: Generated files are up to date (needs the Flutter data folder)
+        if: hashFiles('fitila_flutter/assets/data/apprendre_v2.json') != ''
         working-directory: scripts/dunya_translate
         run: |
           python build_corpus.py > /dev/null
