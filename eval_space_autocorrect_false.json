@@ -1,0 +1,4158 @@
+{
+ "report": {
+  "backend": "space-byt5-v03-no-autocorrect",
+  "overall": {
+   "n": 240,
+   "chrf": 0.2485,
+   "exact": 0.0,
+   "lex": 0.9487,
+   "fmt": 0.9948,
+   "reward": 0.5536,
+   "loop": 0.0
+  },
+  "by_direction": {
+   "fr-ba": {
+    "n": 120,
+    "chrf": 0.2502,
+    "exact": 0.0,
+    "lex": 0.9234,
+    "fmt": 0.9896,
+    "reward": 0.5487,
+    "loop": 0.0,
+    "sacrebleu_chrf++": 26.64
+   },
+   "ba-fr": {
+    "n": 120,
+    "chrf": 0.2469,
+    "exact": 0.0,
+    "lex": 0.974,
+    "fmt": 1.0,
+    "reward": 0.5585,
+    "loop": 0.0,
+    "sacrebleu_chrf++": 26.88
+   }
+  },
+  "by_tag": {
+   "dictionnaire": {
+    "n": 214,
+    "chrf": 0.2549,
+    "exact": 0.0,
+    "lex": 0.9501,
+    "fmt": 0.9953,
+    "reward": 0.5576,
+    "loop": 0.0
+   },
+   "long": {
+    "n": 76,
+    "chrf": 0.2288,
+    "exact": 0.0,
+    "lex": 0.9576,
+    "fmt": 0.9934,
+    "reward": 0.5439,
+    "loop": 0.0
+   },
+   "apprendre": {
+    "n": 56,
+    "chrf": 0.2199,
+    "exact": 0.0,
+    "lex": 0.9545,
+    "fmt": 0.9866,
+    "reward": 0.5373,
+    "loop": 0.0
+   },
+   "negation": {
+    "n": 34,
+    "chrf": 0.2254,
+    "exact": 0.0,
+    "lex": 0.9892,
+    "fmt": 0.9926,
+    "reward": 0.5485,
+    "loop": 0.0
+   }
+  }
+ },
+ "rows": [
+  {
+   "id": "706d9ee5ef",
+   "direction": "fr-ba",
+   "src": "Le peu que nous avons obtenu, partageons-le.",
+   "ref": "Piiko yè sa wa, su yè bɔnu ko.",
+   "hyp": "Wa, mère bii mɛro, su bɛsɛn sɔmburu ko.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.1713918000676625,
+   "exact": 0,
+   "lex": 0.875,
+   "fmt": 1.0,
+   "reward": 0.49396367372338357,
+   "loop": 0
+  },
+  {
+   "id": "706d9ee5ef",
+   "direction": "ba-fr",
+   "src": "Piiko yè sa wa, su yè bɔnu ko.",
+   "ref": "Le peu que nous avons obtenu, partageons-le.",
+   "hyp": "Le piiko que nous avons vu, on l'a donné.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.3718717760092113,
+   "exact": 0,
+   "lex": 0.8888888888888888,
+   "fmt": 1.0,
+   "reward": 0.6129550048240463,
+   "loop": 0
+  },
+  {
+   "id": "90d544f5af",
+   "direction": "fr-ba",
+   "src": "Bio tire son arc.: gawa.",
+   "ref": "Biɔ u win tɛndu gawamɔ.",
+   "hyp": "Biɔ u win taa gawa.",
+   "tags": [
+    "Verbes essentiels",
+    "apprendre"
+   ],
+   "chrf": 0.47520104952770903,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6961690286739368,
+   "loop": 0
+  },
+  {
+   "id": "90d544f5af",
+   "direction": "ba-fr",
+   "src": "Biɔ u win tɛndu gawamɔ.",
+   "ref": "Bio tire son arc.: gawa.",
+   "hyp": "Bio regarde son viande.",
+   "tags": [
+    "Verbes essentiels",
+    "apprendre"
+   ],
+   "chrf": 0.22070835698275548,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5488311540426478,
+   "loop": 0
+  },
+  {
+   "id": "f3af2ce546",
+   "direction": "fr-ba",
+   "src": "C'est du village qu'on apporte des ignames.",
+   "ref": "Baru kpaarun diya ba ra ka tasu nɛ.",
+   "hyp": "Wuu miya ba ra tasu na.",
+   "tags": [
+    "Famille & société",
+    "apprendre",
+    "dictionnaire"
+   ],
+   "chrf": 0.3316554823344961,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6130637002989188,
+   "loop": 0
+  },
+  {
+   "id": "f3af2ce546",
+   "direction": "ba-fr",
+   "src": "Baru kpaarun diya ba ra ka tasu nɛ.",
+   "ref": "C'est du village qu'on apporte des ignames.",
+   "hyp": "C'est dans le marigot qu'on apporte des ignames.",
+   "tags": [
+    "Famille & société",
+    "apprendre",
+    "dictionnaire"
+   ],
+   "chrf": 0.6714380754557461,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.8097799384217477,
+   "loop": 0
+  },
+  {
+   "id": "cea6105b52",
+   "direction": "fr-ba",
+   "src": "Les enfants ont cassé une bouteille dans la case.",
+   "ref": "Bibu ba kparuba kɔra dirɔ.",
+   "hyp": "Bibu ba kɔ̃ ɔ bɔɔri dirɔ.",
+   "tags": [
+    "Verbes essentiels",
+    "apprendre",
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.41760139383729683,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6628218595900139,
+   "loop": 0
+  },
+  {
+   "id": "cea6105b52",
+   "direction": "ba-fr",
+   "src": "Bibu ba kparuba kɔra dirɔ.",
+   "ref": "Les enfants ont cassé une bouteille dans la case.",
+   "hyp": "Les enfants sont couchés dans la chambre.",
+   "tags": [
+    "Verbes essentiels",
+    "apprendre",
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.41336291202452763,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6603680016984108,
+   "loop": 0
+  },
+  {
+   "id": "ce2ccc5d29",
+   "direction": "fr-ba",
+   "src": "Un mendiant chante.",
+   "ref": "Bara kowo u womu mö.",
+   "hyp": "Bii mɛro u womu kua.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.31342407592407595,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6025086755349913,
+   "loop": 0
+  },
+  {
+   "id": "ce2ccc5d29",
+   "direction": "ba-fr",
+   "src": "Bara kowo u womu mö.",
+   "ref": "Un mendiant chante.",
+   "hyp": "Le malade a changé un cantique.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.16546650259974835,
+   "exact": 0,
+   "lex": 0.8333333333333334,
+   "fmt": 1.0,
+   "reward": 0.4817613085226613,
+   "loop": 0
+  },
+  {
+   "id": "df3961af3c",
+   "direction": "fr-ba",
+   "src": "J'ai étendu mes jambes.",
+   "ref": "Na tɛ̃ɛra.",
+   "hyp": "wa, na nɛn bii mɛro.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.08542005971769814,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.47050635036287786,
+   "loop": 0
+  },
+  {
+   "id": "df3961af3c",
+   "direction": "ba-fr",
+   "src": "Na tɛ̃ɛra.",
+   "ref": "J'ai étendu mes jambes.",
+   "hyp": "J'ai regardé maintenant.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.17298085312579084,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5211994412833526,
+   "loop": 0
+  },
+  {
+   "id": "3b286aca59",
+   "direction": "fr-ba",
+   "src": "L'enfant a pété.",
+   "ref": "Bii wi u yɛma.",
+   "hyp": "Bii wi u do.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.49367579319766347,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.7068649329039105,
+   "loop": 0
+  },
+  {
+   "id": "3b286aca59",
+   "direction": "ba-fr",
+   "src": "Bii wi u yɛma.",
+   "ref": "L'enfant a pété.",
+   "hyp": "Cet enfant s'est regardé.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.2480841250640814,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5646802829318366,
+   "loop": 0
+  },
+  {
+   "id": "88a1ca9a9d",
+   "direction": "fr-ba",
+   "src": "Une arrête de poisson s'est coincée dans ma trachée artère.",
+   "ref": "Swãa sãka ya nɛn dɔkɔra nɛnua.",
+   "hyp": "Sɔ̃ ɔ ga man nɛn bii mɛro sɔɔ.",
+   "tags": [
+    "Corps & santé",
+    "apprendre",
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.10736115127124071,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.4832090875780867,
+   "loop": 0
+  },
+  {
+   "id": "88a1ca9a9d",
+   "direction": "ba-fr",
+   "src": "Swãa sãka ya nɛn dɔkɔra nɛnua.",
+   "ref": "Une arrête de poisson s'est coincée dans ma trachée artère.",
+   "hyp": "Le soufflet a coupé mon viande.",
+   "tags": [
+    "Corps & santé",
+    "apprendre",
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.07516926196161962,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.46457167797777976,
+   "loop": 0
+  },
+  {
+   "id": "06d5d3ca61",
+   "direction": "fr-ba",
+   "src": "Le travail du boucher est le travail de son grand père.",
+   "ref": "Siin debun sɔmbura yarariru.",
+   "hyp": "Nɔɔ mɛron sɔmburu ta win baa bɔrɔ.",
+   "tags": [
+    "Corps & santé",
+    "Maison & objets",
+    "apprendre",
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.20176448299182695,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5378636480478998,
+   "loop": 0
+  },
+  {
+   "id": "06d5d3ca61",
+   "direction": "ba-fr",
+   "src": "Siin debun sɔmbura yarariru.",
+   "ref": "Le travail du boucher est le travail de son grand père.",
+   "hyp": "C'est le travail de son grand-père.",
+   "tags": [
+    "Corps & santé",
+    "Maison & objets",
+    "apprendre",
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.5077950489853181,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.7150392388862368,
+   "loop": 0
+  },
+  {
+   "id": "5781255ea3",
+   "direction": "fr-ba",
+   "src": "Mon akassa est plus intéressant que le vôtre.",
+   "ref": "Nɛn mɔɔbu bu bɛɛgibu buram kere.",
+   "hyp": "Nɛn akasa ya bɛɛ kere.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.18830810771151588,
+   "exact": 0,
+   "lex": 0.8,
+   "fmt": 1.0,
+   "reward": 0.48796785183298286,
+   "loop": 0
+  },
+  {
+   "id": "5781255ea3",
+   "direction": "ba-fr",
+   "src": "Nɛn mɔɔbu bu bɛɛgibu buram kere.",
+   "ref": "Mon akassa est plus intéressant que le vôtre.",
+   "hyp": "Mon frère est plus grand que les voyages.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.29635235601955645,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5926250482218485,
+   "loop": 0
+  },
+  {
+   "id": "a2caccb520",
+   "direction": "fr-ba",
+   "src": "C'est le roi de notre village qui adresse des prières au fétiche de notre village.",
+   "ref": "Bɛsɛn wuun sunɔwa u ra búu ge domaru ko.",
+   "hyp": "Bɛsɛn wuun sunɔwa u ra ka bii mɛro sɔ̃.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.5590880365291369,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.7447351790431844,
+   "loop": 0
+  },
+  {
+   "id": "a2caccb520",
+   "direction": "ba-fr",
+   "src": "Bɛsɛn wuun sunɔwa u ra búu ge domaru ko.",
+   "ref": "C'est le roi de notre village qui adresse des prières au fétiche de notre village.",
+   "hyp": "C'est le chef de notre village qu'il bénit.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.3337118989354861,
+   "exact": 0,
+   "lex": 0.875,
+   "fmt": 1.0,
+   "reward": 0.5879384678047551,
+   "loop": 0
+  },
+  {
+   "id": "dabe3059bd",
+   "direction": "fr-ba",
+   "src": "Permets que cette affaire se clarifie. Permettez que votre travail s'améliore",
+   "ref": "A de gari yi yù nɔni ko. I de bɛɛn sɔmbu te tu nɔni ko",
+   "hyp": "A gari yi wa. I de bɛɛn sɔmbu te ta koora.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.4867792651527628,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.7028722061410732,
+   "loop": 0
+  },
+  {
+   "id": "dabe3059bd",
+   "direction": "ba-fr",
+   "src": "A de gari yi yù nɔni ko. I de bɛɛn sɔmbu te tu nɔni ko",
+   "ref": "Permets que cette affaire se clarifie. Permettez que votre travail s'améliore",
+   "hyp": "Regardez cette affaire. Faites votre travail se prosterner.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.3592759813898779,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6290545155415083,
+   "loop": 0
+  },
+  {
+   "id": "06a6554b26",
+   "direction": "fr-ba",
+   "src": "L'avion plane.",
+   "ref": "Goo gunɔ ga bɛɛrimɔ.",
+   "hyp": "Goo ga yɔ̃ ra.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.18866292083321384,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.530278533113966,
+   "loop": 0
+  },
+  {
+   "id": "06a6554b26",
+   "direction": "ba-fr",
+   "src": "Goo gunɔ ga bɛɛrimɔ.",
+   "ref": "L'avion plane.",
+   "hyp": "Un oiseau regarde la viande.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.13573797894015407,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.49963777728114184,
+   "loop": 0
+  },
+  {
+   "id": "77f657e21e",
+   "direction": "fr-ba",
+   "src": "Si la malle est remplie d'habits, elle se ferme difficilement.",
+   "ref": "Kpakoro te... ta bɛribu sñ.",
+   "hyp": "Kɔ̃ ɔ ga nùn yaberu sɛ̃.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.06809888689299591,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.46047830293805025,
+   "loop": 0
+  },
+  {
+   "id": "77f657e21e",
+   "direction": "ba-fr",
+   "src": "Kpakoro te... ta bɛribu sñ.",
+   "ref": "Si la malle est remplie d'habits, elle se ferme difficilement.",
+   "hyp": "Cette arche est tombée dans la viande.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.11183519603347564,
+   "exact": 0,
+   "lex": 0.8571428571428571,
+   "fmt": 1.0,
+   "reward": 0.45572413604945583,
+   "loop": 0
+  },
+  {
+   "id": "8f196b26a9",
+   "direction": "fr-ba",
+   "src": "Ma moto est percée",
+   "ref": "Nɛn kpookpoo te ta yabura",
+   "hyp": "Nɛn kpoo te ta kɔsia.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.4675973883317837,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6917669090341907,
+   "loop": 0
+  },
+  {
+   "id": "8f196b26a9",
+   "direction": "ba-fr",
+   "src": "Nɛn kpookpoo te ta yabura",
+   "ref": "Ma moto est percée",
+   "hyp": "Mon viande a été mangée.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.07083376569471828,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.4620616538232579,
+   "loop": 0
+  },
+  {
+   "id": "11be3ea7ff",
+   "direction": "fr-ba",
+   "src": "L'enfant tient son poignet",
+   "ref": "Bii u win nɔm wĩinu nɛnɛ",
+   "hyp": "Bii u win wɛ̃ ɛ nɔɔmɔ.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.377745077763718,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6397471502842578,
+   "loop": 0
+  },
+  {
+   "id": "11be3ea7ff",
+   "direction": "ba-fr",
+   "src": "Bii u win nɔm wĩinu nɛnɛ",
+   "ref": "L'enfant tient son poignet",
+   "hyp": "L’enfant a regardé ses mains.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.1587742443644041,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5129745625267602,
+   "loop": 0
+  },
+  {
+   "id": "6a5381dcbc",
+   "direction": "fr-ba",
+   "src": "Cherche une corde pour attacher les ignames.",
+   "ref": "A wɛ̃a kasuma su ka taa si bɔke.",
+   "hyp": "A wɛ̃ ɛ kasuo ù taasobu sɔndi.",
+   "tags": [
+    "Maison & objets",
+    "apprendre",
+    "dictionnaire"
+   ],
+   "chrf": 0.20413607224645325,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5392366734058414,
+   "loop": 0
+  },
+  {
+   "id": "6a5381dcbc",
+   "direction": "ba-fr",
+   "src": "A wɛ̃a kasuma su ka taa si bɔke.",
+   "ref": "Cherche une corde pour attacher les ignames.",
+   "hyp": "Cherche une bouillie pour regarder les ignames.",
+   "tags": [
+    "Maison & objets",
+    "apprendre",
+    "dictionnaire"
+   ],
+   "chrf": 0.5758813242277967,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.7544576087634614,
+   "loop": 0
+  },
+  {
+   "id": "01be972d66",
+   "direction": "fr-ba",
+   "src": "Le rayonnement du soleil est très intense aujourd'hui.",
+   "ref": "Sɔ̃ɔ win ballibu bu banda gisɔ.",
+   "hyp": "Sɔ̃ ɔ wa gisɔ.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.23356018725383557,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5562716873574838,
+   "loop": 0
+  },
+  {
+   "id": "01be972d66",
+   "direction": "ba-fr",
+   "src": "Sɔ̃ɔ win ballibu bu banda gisɔ.",
+   "ref": "Le rayonnement du soleil est très intense aujourd'hui.",
+   "hyp": "Les balliers de cet homme sont grands aujourd'hui.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.2648481233225617,
+   "exact": 0,
+   "lex": 0.875,
+   "fmt": 1.0,
+   "reward": 0.5480699661341146,
+   "loop": 0
+  },
+  {
+   "id": "c5af9a34e1",
+   "direction": "fr-ba",
+   "src": "As-tu fait laver ton enfant par son frère?",
+   "ref": "A wunɛn sesu wunɛn bii wi woburusia?",
+   "hyp": "A wunɛn bii woburasia?",
+   "tags": [
+    "dictionnaire",
+    "question"
+   ],
+   "chrf": 0.45887122773423283,
+   "exact": 0,
+   "lex": 0.75,
+   "fmt": 1.0,
+   "reward": 0.6340833423724506,
+   "loop": 0
+  },
+  {
+   "id": "c5af9a34e1",
+   "direction": "ba-fr",
+   "src": "A wunɛn sesu wunɛn bii wi woburusia?",
+   "ref": "As-tu fait laver ton enfant par son frère?",
+   "hyp": "Tu as fait regarder ta sœur et ton enfant?",
+   "tags": [
+    "dictionnaire",
+    "question"
+   ],
+   "chrf": 0.2821430846664722,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5843986279647997,
+   "loop": 0
+  },
+  {
+   "id": "2170419539",
+   "direction": "fr-ba",
+   "src": "Alors un jour, il parti pour la chasse.",
+   "ref": "Yera sɔ̃ɔ teeru u seewa u taasoru da.",
+   "hyp": "Sɔ̃ɔ teeru u doona.",
+   "tags": [
+    "Temps & jours",
+    "apprendre"
+   ],
+   "chrf": 0.27764066840714574,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5817919659199265,
+   "loop": 0
+  },
+  {
+   "id": "2170419539",
+   "direction": "ba-fr",
+   "src": "Yera sɔ̃ɔ teeru u seewa u taasoru da.",
+   "ref": "Alors un jour, il parti pour la chasse.",
+   "hyp": "Alors il s'est levé au chasseur.",
+   "tags": [
+    "Temps & jours",
+    "apprendre"
+   ],
+   "chrf": 0.23061407061760184,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5545660408838747,
+   "loop": 0
+  },
+  {
+   "id": "4a4eef52fd",
+   "direction": "fr-ba",
+   "src": "Ne me chatouille pas.",
+   "ref": "A ku man nukiri.",
+   "hyp": "A ku man yɛ̃ ro.",
+   "tags": [
+    "dictionnaire",
+    "negation"
+   ],
+   "chrf": 0.4295680382776617,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6697499168975937,
+   "loop": 0
+  },
+  {
+   "id": "4a4eef52fd",
+   "direction": "ba-fr",
+   "src": "A ku man nukiri.",
+   "ref": "Ne me chatouille pas.",
+   "hyp": "N’entends pas mon cœur.",
+   "tags": [
+    "dictionnaire",
+    "negation"
+   ],
+   "chrf": 0.1035117382334876,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.4809804800299139,
+   "loop": 0
+  },
+  {
+   "id": "6773ef79da",
+   "direction": "fr-ba",
+   "src": "La taille de cet homme est vraiment grande.",
+   "ref": "Durɔ win gunum mu banda.",
+   "hyp": "Durɔ win bekuru ta kpã.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.30243247617393626,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5961451177849104,
+   "loop": 0
+  },
+  {
+   "id": "6773ef79da",
+   "direction": "ba-fr",
+   "src": "Durɔ win gunum mu banda.",
+   "ref": "La taille de cet homme est vraiment grande.",
+   "hyp": "Cet homme est grand.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.32874835604116526,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6113806271817273,
+   "loop": 0
+  },
+  {
+   "id": "0302b7c4b1",
+   "direction": "fr-ba",
+   "src": "C'est tout de suite qu'on a mangé, tu as faim?",
+   "ref": "Gɔ̃ɔra nun mö yande? N ǹ tɛ̃ gèra sa di?",
+   "hyp": "Yè ba di, a gɔ̃ ru?",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "question"
+   ],
+   "chrf": 0.06880359680351181,
+   "exact": 0,
+   "lex": 0.6666666666666666,
+   "fmt": 1.0,
+   "reward": 0.39071085428975244,
+   "loop": 0
+  },
+  {
+   "id": "0302b7c4b1",
+   "direction": "ba-fr",
+   "src": "Gɔ̃ɔra nun mö yande? N ǹ tɛ̃ gèra sa di?",
+   "ref": "C'est tout de suite qu'on a mangé, tu as faim?",
+   "hyp": "La viande t'a-t-elle faite ? N'est-ce pas maintenant que nous sommes allés ?",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "question"
+   ],
+   "chrf": 0.15518078293518517,
+   "exact": 0,
+   "lex": 0.9090909090909091,
+   "fmt": 1.0,
+   "reward": 0.49175538150793013,
+   "loop": 0
+  },
+  {
+   "id": "7c0b7d6229",
+   "direction": "fr-ba",
+   "src": "Ne t'occupe pas de cet enfant, il ne respecte personne.",
+   "ref": "Bii wi, a win gari de, u tɔn bio sãawa.",
+   "hyp": "A ku bii wi nɑɑnɛ doke, u ǹ tɔnu yɛ̃.",
+   "tags": [
+    "Culture & tradition",
+    "apprendre",
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.14253335802592362,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 0.75,
+   "reward": 0.4772561546465874,
+   "loop": 0
+  },
+  {
+   "id": "7c0b7d6229",
+   "direction": "ba-fr",
+   "src": "Bii wi, a win gari de, u tɔn bio sãawa.",
+   "ref": "Ne t'occupe pas de cet enfant, il ne respecte personne.",
+   "hyp": "Cet enfant, apprends sa parole, il est un fils.",
+   "tags": [
+    "Culture & tradition",
+    "apprendre",
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.21640025673664526,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5463369907422683,
+   "loop": 0
+  },
+  {
+   "id": "7c45e85e51",
+   "direction": "fr-ba",
+   "src": "Devançons et allons au village.",
+   "ref": "Su gbi su da wuuwɔ.",
+   "hyp": "Su wuu da.",
+   "tags": [
+    "Verbes essentiels",
+    "apprendre",
+    "dictionnaire"
+   ],
+   "chrf": 0.18188085455034608,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5263520736870425,
+   "loop": 0
+  },
+  {
+   "id": "7c45e85e51",
+   "direction": "ba-fr",
+   "src": "Su gbi su da wuuwɔ.",
+   "ref": "Devançons et allons au village.",
+   "hyp": "Allons aller au village.",
+   "tags": [
+    "Verbes essentiels",
+    "apprendre",
+    "dictionnaire"
+   ],
+   "chrf": 0.4480198103744018,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6804325217957063,
+   "loop": 0
+  },
+  {
+   "id": "a668b0ef6a",
+   "direction": "fr-ba",
+   "src": "Il a surpris un lièvre.",
+   "ref": "U wùku samba kua.",
+   "hyp": "U nɔɔ mwɛɛru wa.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.09538184064016039,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.4762736972127244,
+   "loop": 0
+  },
+  {
+   "id": "a668b0ef6a",
+   "direction": "ba-fr",
+   "src": "U wùku samba kua.",
+   "ref": "Il a surpris un lièvre.",
+   "hyp": "Il a fait une bouillie de viande.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.18614776533094035,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.528822390454755,
+   "loop": 0
+  },
+  {
+   "id": "5870e3c57b",
+   "direction": "fr-ba",
+   "src": "Quel chemin? Ne t'amuse pas à aller par là.",
+   "ref": "swaa yere? A ku ka dwee.",
+   "hyp": "Swaawɔ? A ku nun yɛ̃ ro da.",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "negation",
+    "question"
+   ],
+   "chrf": 0.21129615656774095,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5433819853813238,
+   "loop": 0
+  },
+  {
+   "id": "5870e3c57b",
+   "direction": "ba-fr",
+   "src": "swaa yere? A ku ka dwee.",
+   "ref": "Quel chemin? Ne t'amuse pas à aller par là.",
+   "hyp": "N’as-tu pas regardé cette route ?",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "negation",
+    "question"
+   ],
+   "chrf": 0.10502944977894614,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.48185915513517935,
+   "loop": 0
+  },
+  {
+   "id": "9e68642cd0",
+   "direction": "fr-ba",
+   "src": "Nous avons jeté des cailloux dans cet endroit.",
+   "ref": "Sa yam mi kpènu kpɛ̃ɛki.",
+   "hyp": "Sa wa yɛnuɔ.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.1048728813559322,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.48176851025869755,
+   "loop": 0
+  },
+  {
+   "id": "9e68642cd0",
+   "direction": "ba-fr",
+   "src": "Sa yam mi kpènu kpɛ̃ɛki.",
+   "ref": "Nous avons jeté des cailloux dans cet endroit.",
+   "hyp": "Nous avons vu cet endroit où il y a des pierres.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.41116985116667887,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6590983348859719,
+   "loop": 0
+  },
+  {
+   "id": "474370df4c",
+   "direction": "fr-ba",
+   "src": "J'ai fait fondre la graisse.",
+   "ref": "Na gum mɛ yandasio.",
+   "hyp": "wa, mère bii mɛro, na yɛ̃ kusia.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.10498532788976779,
+   "exact": 0,
+   "lex": 0.8571428571428571,
+   "fmt": 1.0,
+   "reward": 0.45175842291362495,
+   "loop": 0
+  },
+  {
+   "id": "474370df4c",
+   "direction": "ba-fr",
+   "src": "Na gum mɛ yandasio.",
+   "ref": "J'ai fait fondre la graisse.",
+   "hyp": "J'ai fait regarder le beurre.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.32511965164272383,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6092797983194717,
+   "loop": 0
+  },
+  {
+   "id": "416944f67c",
+   "direction": "fr-ba",
+   "src": "De belles ignames.",
+   "ref": "tan burasu.",
+   "hyp": "wa, mère bii mɛro, yɛ̃ ro.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.04098360655737705,
+   "exact": 0,
+   "lex": 0.8333333333333334,
+   "fmt": 1.0,
+   "reward": 0.40969226344549897,
+   "loop": 0
+  },
+  {
+   "id": "416944f67c",
+   "direction": "ba-fr",
+   "src": "tan burasu.",
+   "ref": "De belles ignames.",
+   "hyp": "Voir, mettre en pratique la viande.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.08053667516284338,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.4676791277258567,
+   "loop": 0
+  },
+  {
+   "id": "19f2eedc37",
+   "direction": "fr-ba",
+   "src": "Cet arbre a bourgeonné.",
+   "ref": "Dãa te ta kpara.",
+   "hyp": "Dãa te ta sɔkura.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.5506132735882747,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.7398287373405801,
+   "loop": 0
+  },
+  {
+   "id": "19f2eedc37",
+   "direction": "ba-fr",
+   "src": "Dãa te ta kpara.",
+   "ref": "Cet arbre a bourgeonné.",
+   "hyp": "Cet arbre est tombé.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.3823885605090643,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6424354823999846,
+   "loop": 0
+  },
+  {
+   "id": "2a194c11f9",
+   "direction": "fr-ba",
+   "src": "Le scorpion a piqué un enfant à son insu.",
+   "ref": "Nia ya man bii toori.",
+   "hyp": "Kɔ̃ ɔ ga bii wi bɔkura.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.10588178487100607,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.4823526122937403,
+   "loop": 0
+  },
+  {
+   "id": "2a194c11f9",
+   "direction": "ba-fr",
+   "src": "Nia ya man bii toori.",
+   "ref": "Le scorpion a piqué un enfant à son insu.",
+   "hyp": "La viande m'a regardé un enfant.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.20685899840332703,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5408131043387682,
+   "loop": 0
+  },
+  {
+   "id": "5558e136b4",
+   "direction": "fr-ba",
+   "src": "Transvaser cette eau dans la jarre",
+   "ref": "A de a nim mɛ wie boo sɔɔ",
+   "hyp": "A de a nim mɛ yɛ̃ ro sɔɔ.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.5324639310852546,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.7293212232598842,
+   "loop": 0
+  },
+  {
+   "id": "5558e136b4",
+   "direction": "ba-fr",
+   "src": "A de a nim mɛ wie boo sɔɔ",
+   "ref": "Transvaser cette eau dans la jarre",
+   "hyp": "Regarde cette eau dans la calebasse.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.5245359269725077,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.7247313261419781,
+   "loop": 0
+  },
+  {
+   "id": "548c8971ff",
+   "direction": "fr-ba",
+   "src": "C'est à l'aide d'une ventouse que le coiffeur bariba aspire le sang.",
+   "ref": "Ka kafo, baatɔn kɔnɔ u ra yɛm gawe.",
+   "hyp": "wa, mɛrowa u yɛm sɔ̃ɔwa.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.11508803993763693,
+   "exact": 0,
+   "lex": 0.8,
+   "fmt": 1.0,
+   "reward": 0.4455772862796845,
+   "loop": 0
+  },
+  {
+   "id": "548c8971ff",
+   "direction": "ba-fr",
+   "src": "Ka kafo, baatɔn kɔnɔ u ra yɛm gawe.",
+   "ref": "C'est à l'aide d'une ventouse que le coiffeur bariba aspire le sang.",
+   "hyp": "Le cavalier du baatɔmbu regarde le sang.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.1867219162295136,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5291547936065605,
+   "loop": 0
+  },
+  {
+   "id": "c536a703dd",
+   "direction": "fr-ba",
+   "src": "Va saluer cet homme et tu seras bien vu.",
+   "ref": "A doo a durɔ wi tɔbiri kpa a wa a bɛɛrɛ ko.",
+   "hyp": "A do a durɔ wi tɔbirima.",
+   "tags": [
+    "Village & vie sociale",
+    "Voyage & chemins",
+    "dialogue",
+    "long"
+   ],
+   "chrf": 0.421303482471426,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6649651740624045,
+   "loop": 0
+  },
+  {
+   "id": "c536a703dd",
+   "direction": "ba-fr",
+   "src": "A doo a durɔ wi tɔbiri kpa a wa a bɛɛrɛ ko.",
+   "ref": "Va saluer cet homme et tu seras bien vu.",
+   "hyp": "Va connaître cet homme, afin que tu as glorifié.",
+   "tags": [
+    "Village & vie sociale",
+    "Voyage & chemins",
+    "dialogue",
+    "long"
+   ],
+   "chrf": 0.2551896330001055,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5687939980526927,
+   "loop": 0
+  },
+  {
+   "id": "a1e435ee8f",
+   "direction": "fr-ba",
+   "src": "Ils ont un fusil, on l'a fabriqué pour tuer des hommes.",
+   "ref": "Ba ben dɔ̃ɔ bɔra gaa mɔ mi, tɔn goberun sɔ̃na ba yè kua.",
+   "hyp": "Ba dɔ̃ ɔ wa, ba ka tɔmbu go.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.12057017265649998,
+   "exact": 0,
+   "lex": 0.875,
+   "fmt": 1.0,
+   "reward": 0.4645406262748158,
+   "loop": 0
+  },
+  {
+   "id": "a1e435ee8f",
+   "direction": "ba-fr",
+   "src": "Ba ben dɔ̃ɔ bɔra gaa mɔ mi, tɔn goberun sɔ̃na ba yè kua.",
+   "ref": "Ils ont un fusil, on l'a fabriqué pour tuer des hommes.",
+   "hyp": "Ils ont regardé leur feu dans la viande, parce qu'on l'a fait.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.2515465528364221,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5666848463789812,
+   "loop": 0
+  },
+  {
+   "id": "7d402e5a0b",
+   "direction": "fr-ba",
+   "src": "S'il n'est pas rapide au sarclage, saute ses lignes et tu reviens.",
+   "ref": "Ma u ǹ wukubu sãu, a win kpĩi burema a wuma.",
+   "hyp": "U ku ra sarclage wa, a win bii mɛro yɛ̃ɛma.",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.16763559056096813,
+   "exact": 0,
+   "lex": 0.9,
+   "fmt": 1.0,
+   "reward": 0.4970521840089815,
+   "loop": 0
+  },
+  {
+   "id": "7d402e5a0b",
+   "direction": "ba-fr",
+   "src": "Ma u ǹ wukubu sãu, a win kpĩi burema a wuma.",
+   "ref": "S'il n'est pas rapide au sarclage, saute ses lignes et tu reviens.",
+   "hyp": "Si il n'y a pas de la viande, reviens.",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.1890967498553201,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.530529697284659,
+   "loop": 0
+  },
+  {
+   "id": "1c48d1a6a1",
+   "direction": "fr-ba",
+   "src": "Il m'a fait enlever leur chose.",
+   "ref": "U man ben yabu ye wĩasia.",
+   "hyp": "U man ben gari kuasia.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.4245014742949561,
+   "exact": 0,
+   "lex": 0.8,
+   "fmt": 1.0,
+   "reward": 0.6247113798549746,
+   "loop": 0
+  },
+  {
+   "id": "1c48d1a6a1",
+   "direction": "ba-fr",
+   "src": "U man ben yabu ye wĩasia.",
+   "ref": "Il m'a fait enlever leur chose.",
+   "hyp": "Il m'a fait regarder leur marché.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.47503806006348426,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6960746663525436,
+   "loop": 0
+  },
+  {
+   "id": "33fe1888c1",
+   "direction": "fr-ba",
+   "src": "On m'a fait partager le travail",
+   "ref": "Ba man sɔmbu te yabusia",
+   "hyp": "Ba man sɔmbu te bɛnisia.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.6640772860775386,
+   "exact": 0,
+   "lex": 0.8,
+   "fmt": 1.0,
+   "reward": 0.7634131656238381,
+   "loop": 0
+  },
+  {
+   "id": "33fe1888c1",
+   "direction": "ba-fr",
+   "src": "Ba man sɔmbu te yabusia",
+   "ref": "On m'a fait partager le travail",
+   "hyp": "Ils ont fait manger ce travail.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.29705529072376896,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5930320104190242,
+   "loop": 0
+  },
+  {
+   "id": "d78c7b4956",
+   "direction": "fr-ba",
+   "src": "Ne mange pas avec gourmandise.",
+   "ref": "A ku kɛke a ka di.",
+   "hyp": "A ku di ka bii mɛro.",
+   "tags": [
+    "dictionnaire",
+    "negation"
+   ],
+   "chrf": 0.22294116708329914,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5501238335745416,
+   "loop": 0
+  },
+  {
+   "id": "d78c7b4956",
+   "direction": "ba-fr",
+   "src": "A ku kɛke a ka di.",
+   "ref": "Ne mange pas avec gourmandise.",
+   "hyp": "N’entends pas la voiture.",
+   "tags": [
+    "dictionnaire",
+    "negation"
+   ],
+   "chrf": 0.15171623106918444,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5088883443032121,
+   "loop": 0
+  },
+  {
+   "id": "53f2851a04",
+   "direction": "fr-ba",
+   "src": "Ils nous ont laissé le problème",
+   "ref": "Ba sun gari pite",
+   "hyp": "Ba sun gari deri.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.6439751244148599,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.7938803351875504,
+   "loop": 0
+  },
+  {
+   "id": "53f2851a04",
+   "direction": "ba-fr",
+   "src": "Ba sun gari pite",
+   "ref": "Ils nous ont laissé le problème",
+   "hyp": "Ils nous ont regardé la parole.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.4124091126265039,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6598158020469232,
+   "loop": 0
+  },
+  {
+   "id": "dfde30ba67",
+   "direction": "fr-ba",
+   "src": "Chaque matin je me lave les membres supérieurs et inférieurs.",
+   "ref": "bururu baatere na rà tii bure.",
+   "hyp": "Buru baatere na man dobi wobure.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.4633752698927002,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6893225246747212,
+   "loop": 0
+  },
+  {
+   "id": "dfde30ba67",
+   "direction": "ba-fr",
+   "src": "bururu baatere na rà tii bure.",
+   "ref": "Chaque matin je me lave les membres supérieurs et inférieurs.",
+   "hyp": "C'est le matin que je vois la viande.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.16032727907914837,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.513873687887928,
+   "loop": 0
+  },
+  {
+   "id": "b3e6dd0638",
+   "direction": "fr-ba",
+   "src": "On ne détrône pas une personne vivante dans notre tradition.",
+   "ref": "Ba ku ra waso bandu yare bɛsɛn deema sɔɔ.",
+   "hyp": "Ba ku ra tɔnu wɛ̃ɛmɔ bɛsɛn tem sɔɔ.",
+   "tags": [
+    "Famille & société",
+    "apprendre",
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.31503059446121695,
+   "exact": 0,
+   "lex": 0.875,
+   "fmt": 1.0,
+   "reward": 0.5771229757407046,
+   "loop": 0
+  },
+  {
+   "id": "b3e6dd0638",
+   "direction": "ba-fr",
+   "src": "Ba ku ra waso bandu yare bɛsɛn deema sɔɔ.",
+   "ref": "On ne détrône pas une personne vivante dans notre tradition.",
+   "hyp": "On n’a pas regardé la viande dans notre jour.",
+   "tags": [
+    "Famille & société",
+    "apprendre",
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.26618053808052977,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5751571536255699,
+   "loop": 0
+  },
+  {
+   "id": "5586a19cb4",
+   "direction": "fr-ba",
+   "src": "Je suis rentré malade de là-bas.",
+   "ref": "Na barama mi gian di na ka wuma.",
+   "hyp": "Na barɔ mi gia.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.22491888249757785,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.551268826709124,
+   "loop": 0
+  },
+  {
+   "id": "5586a19cb4",
+   "direction": "ba-fr",
+   "src": "Na barama mi gian di na ka wuma.",
+   "ref": "Je suis rentré malade de là-bas.",
+   "hyp": "J'ai vu là où je suis revenu aujourd'hui.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.20027655757019006,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5370022175406364,
+   "loop": 0
+  },
+  {
+   "id": "34d25d9eec",
+   "direction": "fr-ba",
+   "src": "Prends la main de l'enfant et amène-le moi",
+   "ref": "A bii wi nɛnuma a ka na mini",
+   "hyp": "A bii win nɔma suo kpa a na.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.327405523612954,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6106031978811839,
+   "loop": 0
+  },
+  {
+   "id": "34d25d9eec",
+   "direction": "ba-fr",
+   "src": "A bii wi nɛnuma a ka na mini",
+   "ref": "Prends la main de l'enfant et amène-le moi",
+   "hyp": "Regarde l'enfant et viens ici.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.31800699661548143,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.605161945408963,
+   "loop": 0
+  },
+  {
+   "id": "82e6e332d5",
+   "direction": "fr-ba",
+   "src": "Il y a ici le crâne d'une bête.",
+   "ref": "Gãanun wii koko ga wãa mi.",
+   "hyp": "Yaa ye ya wãa mini.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.1993775973083178,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5364817668627102,
+   "loop": 0
+  },
+  {
+   "id": "82e6e332d5",
+   "direction": "ba-fr",
+   "src": "Gãanun wii koko ga wãa mi.",
+   "ref": "Il y a ici le crâne d'une bête.",
+   "hyp": "La calebasse des gâteaux est là.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.09232471705854695,
+   "exact": 0,
+   "lex": 0.8333333333333334,
+   "fmt": 1.0,
+   "reward": 0.4394160642619658,
+   "loop": 0
+  },
+  {
+   "id": "f8c1eb8601",
+   "direction": "fr-ba",
+   "src": "Leurs effets ont pu être fouillés.",
+   "ref": "Ben yãa ni nu búurire.",
+   "hyp": "Ben yaa si su dɔ̃ ɔra.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.13401470526500942,
+   "exact": 0,
+   "lex": 0.6666666666666666,
+   "fmt": 1.0,
+   "reward": 0.4284646539253563,
+   "loop": 0
+  },
+  {
+   "id": "f8c1eb8601",
+   "direction": "ba-fr",
+   "src": "Ben yãa ni nu búurire.",
+   "ref": "Leurs effets ont pu être fouillés.",
+   "hyp": "Leurs habits ont été regardés.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.23120963443163645,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5549108409867368,
+   "loop": 0
+  },
+  {
+   "id": "b5beb808d7",
+   "direction": "fr-ba",
+   "src": "Nous avons vite pris de la nourriture.",
+   "ref": "Sa dĩanu so sa sua.",
+   "hyp": "Sa dĩanu sua.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.5471788256074408,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.7378403727200973,
+   "loop": 0
+  },
+  {
+   "id": "b5beb808d7",
+   "direction": "ba-fr",
+   "src": "Sa dĩanu so sa sua.",
+   "ref": "Nous avons vite pris de la nourriture.",
+   "hyp": "Nous avons frappé de la nourriture et ils ont pris une viande.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.577101558145933,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.7551640599792244,
+   "loop": 0
+  },
+  {
+   "id": "0d3dd69701",
+   "direction": "fr-ba",
+   "src": "Rabats la porte, il fait froid.",
+   "ref": "A kɛnutiru gandio, wooru ta mɔ.",
+   "hyp": "A kɔnnɔ wa, mɛro u sɔ̃ ɔsi.",
+   "tags": [
+    "Maison & objets",
+    "apprendre"
+   ],
+   "chrf": 0.10069156178394714,
+   "exact": 0,
+   "lex": 0.8571428571428571,
+   "fmt": 1.0,
+   "reward": 0.44927255832604457,
+   "loop": 0
+  },
+  {
+   "id": "0d3dd69701",
+   "direction": "ba-fr",
+   "src": "A kɛnutiru gandio, wooru ta mɔ.",
+   "ref": "Rabats la porte, il fait froid.",
+   "hyp": "Regarde la fenêtre, c'est une viande.",
+   "tags": [
+    "Maison & objets",
+    "apprendre"
+   ],
+   "chrf": 0.10403242599379961,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.48128193083851556,
+   "loop": 0
+  },
+  {
+   "id": "8b5f037bfa",
+   "direction": "fr-ba",
+   "src": "Quand la voiture venait, je l'ai fait reculer.",
+   "ref": "Yè kɛkɛ ya we, yera na nùn gɛsirasia.",
+   "hyp": "Yè Kɛkɛ ya na, mɛro u yɛ̃ rasia.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.2481508502343124,
+   "exact": 0,
+   "lex": 0.875,
+   "fmt": 1.0,
+   "reward": 0.538403123819865,
+   "loop": 0
+  },
+  {
+   "id": "8b5f037bfa",
+   "direction": "ba-fr",
+   "src": "Yè kɛkɛ ya we, yera na nùn gɛsirasia.",
+   "ref": "Quand la voiture venait, je l'ai fait reculer.",
+   "hyp": "Quand la voiture est venue, je l'ai fait regarder.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.6514650832644769,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.7982166271531183,
+   "loop": 0
+  },
+  {
+   "id": "ff2461de00",
+   "direction": "fr-ba",
+   "src": "Faites dévaler la pierre de la montagne.",
+   "ref": "I kpee te bimiama i ka sarama.",
+   "hyp": "I kpee te sɛ̃ɛsio.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.2888683880362134,
+   "exact": 0,
+   "lex": 0.75,
+   "fmt": 1.0,
+   "reward": 0.5356606457051761,
+   "loop": 0
+  },
+  {
+   "id": "ff2461de00",
+   "direction": "ba-fr",
+   "src": "I kpee te bimiama i ka sarama.",
+   "ref": "Faites dévaler la pierre de la montagne.",
+   "hyp": "Regardez la sauce et reviens.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.11260650732862702,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.486245872663942,
+   "loop": 0
+  },
+  {
+   "id": "b67c657cda",
+   "direction": "fr-ba",
+   "src": "Ils ont divorcé depuis l'an dernier.",
+   "ref": "Tɔn be ba dèka buena ginakun di.",
+   "hyp": "Ba mɛro kua gisɔkun di.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.18561583688671363,
+   "exact": 0,
+   "lex": 0.8,
+   "fmt": 1.0,
+   "reward": 0.4864091687238868,
+   "loop": 0
+  },
+  {
+   "id": "b67c657cda",
+   "direction": "ba-fr",
+   "src": "Tɔn be ba dèka buena ginakun di.",
+   "ref": "Ils ont divorcé depuis l'an dernier.",
+   "hyp": "Ces gens se sont regardés depuis le marigot.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.2177780743321421,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5471346746133454,
+   "loop": 0
+  },
+  {
+   "id": "00da6ea592",
+   "direction": "fr-ba",
+   "src": "J'apprends à parler le baatɔnum.",
+   "ref": "Na baatɔnum mɛɛrimɔ.",
+   "hyp": "wa, na gari yi sɔ̃ɔwa.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.06985294117647059,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.4614938080495356,
+   "loop": 0
+  },
+  {
+   "id": "00da6ea592",
+   "direction": "ba-fr",
+   "src": "Na baatɔnum mɛɛrimɔ.",
+   "ref": "J'apprends à parler le baatɔnum.",
+   "hyp": "Je regarde la viande.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.08250077842971267,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.46881624014351786,
+   "loop": 0
+  },
+  {
+   "id": "bdc0bdc696",
+   "direction": "fr-ba",
+   "src": "Ferme à moitié la porte",
+   "ref": "A bàra te gandio",
+   "hyp": "A de a kɔnnɔ bɛrio.",
+   "tags": [
+    "Maison & objets",
+    "apprendre",
+    "dictionnaire"
+   ],
+   "chrf": 0.12382266969795389,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.49273944035144696,
+   "loop": 0
+  },
+  {
+   "id": "bdc0bdc696",
+   "direction": "ba-fr",
+   "src": "A bàra te gandio",
+   "ref": "Ferme à moitié la porte",
+   "hyp": "Regarde la maladie.",
+   "tags": [
+    "Maison & objets",
+    "apprendre",
+    "dictionnaire"
+   ],
+   "chrf": 0.08845157138625798,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.4722614360657283,
+   "loop": 0
+  },
+  {
+   "id": "8763d488f4",
+   "direction": "fr-ba",
+   "src": "Quand il est allé saluer son oncle, on l'a laissé là-bas contre son gré.",
+   "ref": "Yè u win dwaani tɔbiribu da, miya ba man sii bureri ni.",
+   "hyp": "Yè u win durɔ tɔbiri, yera ba nùn yɛ̃ ro deri.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.28211652589976427,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5843832518367056,
+   "loop": 0
+  },
+  {
+   "id": "8763d488f4",
+   "direction": "ba-fr",
+   "src": "Yè u win dwaani tɔbiribu da, miya ba man sii bureri ni.",
+   "ref": "Quand il est allé saluer son oncle, on l'a laissé là-bas contre son gré.",
+   "hyp": "Lorsqu'il est allé à son père, ils m'ont fait bouillir les ignames.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.22311966120627247,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5502271722773157,
+   "loop": 0
+  },
+  {
+   "id": "860cbb6d5c",
+   "direction": "fr-ba",
+   "src": "Les musulmans se tournent vers l'est quand ils font leur prière.",
+   "ref": "Sɔ̃ɔ yari yeru gia yarufa ba rà mɛɛri bà n gura tɔbirimɔ.",
+   "hyp": "Tɔn kurɔbu ba wɔruma yè bù ben sɔmburu ko.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.08877741881671655,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.47245008457809906,
+   "loop": 0
+  },
+  {
+   "id": "860cbb6d5c",
+   "direction": "ba-fr",
+   "src": "Sɔ̃ɔ yari yeru gia yarufa ba rà mɛɛri bà n gura tɔbirimɔ.",
+   "ref": "Les musulmans se tournent vers l'est quand ils font leur prière.",
+   "hyp": "C'est dans le soleil qu'on regarde la viande.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.1267916689113858,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.49445833463290756,
+   "loop": 0
+  },
+  {
+   "id": "197df08f06",
+   "direction": "fr-ba",
+   "src": "Le liquide a bouilli contre mon gré.",
+   "ref": "Sere mù kukuri.",
+   "hyp": "Sofu ga man nɛn bii mɛro.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.052083333333333336,
+   "exact": 0,
+   "lex": 0.8333333333333334,
+   "fmt": 1.0,
+   "reward": 0.4161184210526316,
+   "loop": 0
+  },
+  {
+   "id": "197df08f06",
+   "direction": "ba-fr",
+   "src": "Sere mù kukuri.",
+   "ref": "Le liquide a bouilli contre mon gré.",
+   "hyp": "Jusqu'à ce que je suis tombé.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.07425321232989972,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.46404133345415244,
+   "loop": 0
+  },
+  {
+   "id": "bba7e05301",
+   "direction": "fr-ba",
+   "src": "Ils ont crépi ma case avec la peinture bleue contre mon gré.",
+   "ref": "Ba man nɛn diru tãwari ka nim boogu.",
+   "hyp": "Ba man nɛn diru bɛria ka wɛ̃ɛ.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.457601344301141,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.685979725648029,
+   "loop": 0
+  },
+  {
+   "id": "bba7e05301",
+   "direction": "ba-fr",
+   "src": "Ba man nɛn diru tãwari ka nim boogu.",
+   "ref": "Ils ont crépi ma case avec la peinture bleue contre mon gré.",
+   "hyp": "Ils ont coupé ma case avec l'eau.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.3491747020594218,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6232064064554548,
+   "loop": 0
+  },
+  {
+   "id": "3f5cd889de",
+   "direction": "fr-ba",
+   "src": "Ils sont quatre-vingt-dix habitants dans ce village.",
+   "ref": "Tɔmbu wɛnɛ ka wɔkuru, bera ba wãa ben wuu mi.",
+   "hyp": "Tɔn be ba wɑ̃ɑ wuu mi.",
+   "tags": [
+    "Marché & nombres",
+    "apprendre",
+    "dictionnaire"
+   ],
+   "chrf": 0.19372030181290323,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 0.75,
+   "reward": 0.5068907010495755,
+   "loop": 0
+  },
+  {
+   "id": "3f5cd889de",
+   "direction": "ba-fr",
+   "src": "Tɔmbu wɛnɛ ka wɔkuru, bera ba wãa ben wuu mi.",
+   "ref": "Ils sont quatre-vingt-dix habitants dans ce village.",
+   "hyp": "Quatre-vingt-dix hommes sont dans leur village.",
+   "tags": [
+    "Marché & nombres",
+    "apprendre",
+    "dictionnaire"
+   ],
+   "chrf": 0.4636303843632012,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6894702225260638,
+   "loop": 0
+  },
+  {
+   "id": "92c615c20f",
+   "direction": "fr-ba",
+   "src": "Quand Chabi a sarclé son champ, il a eu mal aux articulations.",
+   "ref": "Yè Sabi u gberu wuka, yera win gbingbinka ya nùn wiririmɔ.",
+   "hyp": "Yè Sabi u win gberɔ, yerau kɔ̃ ɔra.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.2865366912212675,
+   "exact": 0,
+   "lex": 0.875,
+   "fmt": 1.0,
+   "reward": 0.5606265054438917,
+   "loop": 0
+  },
+  {
+   "id": "92c615c20f",
+   "direction": "ba-fr",
+   "src": "Yè Sabi u gberu wuka, yera win gbingbinka ya nùn wiririmɔ.",
+   "ref": "Quand Chabi a sarclé son champ, il a eu mal aux articulations.",
+   "hyp": "Lorsque Sabi est allé au champ, sa viande l'a regardée.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.16591763381818114,
+   "exact": 0,
+   "lex": 0.9,
+   "fmt": 1.0,
+   "reward": 0.4960575774736838,
+   "loop": 0
+  },
+  {
+   "id": "db9d3a46b0",
+   "direction": "fr-ba",
+   "src": "Le chat a des griffes.",
+   "ref": "Musuku ga kuntaru.",
+   "hyp": "Wa, mɛro ga yɛ̃ kuru wa.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.12027212357441894,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.49068386101676886,
+   "loop": 0
+  },
+  {
+   "id": "db9d3a46b0",
+   "direction": "ba-fr",
+   "src": "Musuku ga kuntaru.",
+   "ref": "Le chat a des griffes.",
+   "hyp": "La viande a été regardée.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.11282759079419981,
+   "exact": 0,
+   "lex": 0.8,
+   "fmt": 1.0,
+   "reward": 0.44426860519664196,
+   "loop": 0
+  },
+  {
+   "id": "9bf98d1fd6",
+   "direction": "fr-ba",
+   "src": "Ils ont piqué ces bœufs malgré nous.",
+   "ref": "Ba sun nɛɛ yi sɔkuri.",
+   "hyp": "Ba sun kɛtɛ ye kpɛ̃ɛri.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.28010681744257526,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5832197364141225,
+   "loop": 0
+  },
+  {
+   "id": "9bf98d1fd6",
+   "direction": "ba-fr",
+   "src": "Ba sun nɛɛ yi sɔkuri.",
+   "ref": "Ils ont piqué ces bœufs malgré nous.",
+   "hyp": "Ils nous ont dit cette viande.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.17436776598371959,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5220023908326797,
+   "loop": 0
+  },
+  {
+   "id": "a79d76ad2f",
+   "direction": "fr-ba",
+   "src": "Nous buvons la bouillie avec lacueillère de calebasse.",
+   "ref": "Sa soru nɔrumɔ ka gɔmbɔ.",
+   "hyp": "Sa kalebase nim nɔrumɔ.",
+   "tags": [
+    "Maison & objets",
+    "apprendre"
+   ],
+   "chrf": 0.24673051140041788,
+   "exact": 0,
+   "lex": 0.75,
+   "fmt": 1.0,
+   "reward": 0.5112650329160313,
+   "loop": 0
+  },
+  {
+   "id": "a79d76ad2f",
+   "direction": "ba-fr",
+   "src": "Sa soru nɔrumɔ ka gɔmbɔ.",
+   "ref": "Nous buvons la bouillie avec lacueillère de calebasse.",
+   "hyp": "Nous boivons avec une viande pour regarder.",
+   "tags": [
+    "Maison & objets",
+    "apprendre"
+   ],
+   "chrf": 0.18501340695747634,
+   "exact": 0,
+   "lex": 0.8571428571428571,
+   "fmt": 1.0,
+   "reward": 0.4980904686896667,
+   "loop": 0
+  },
+  {
+   "id": "326629b0d8",
+   "direction": "fr-ba",
+   "src": "J'ai bu complètement tout le médicament sans en donner à Worou. Je n'irai plus jamais là-bas.",
+   "ref": "Na tìm mɛ nɔra kpuro pai, na Woru bira. Na ǹ maa dɔɔ mi pai",
+   "hyp": "Na tɔmbu kpuro ye doke, na ku ra Woru wɛ̃. N n mɛɛrimɔ mini.",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.21913099938994465,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5479179470152311,
+   "loop": 0
+  },
+  {
+   "id": "326629b0d8",
+   "direction": "ba-fr",
+   "src": "Na tìm mɛ nɔra kpuro pai, na Woru bira. Na ǹ maa dɔɔ mi pai",
+   "ref": "J'ai bu complètement tout le médicament sans en donner à Worou. Je n'irai plus jamais là-bas.",
+   "hyp": "J'ai regardé tout ce médicament, Worou est devenu malade.",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.20795960269069322,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5414502962946119,
+   "loop": 0
+  },
+  {
+   "id": "d052ab809c",
+   "direction": "fr-ba",
+   "src": "Ne t'en fais pas pour ce problème.",
+   "ref": "A ku de gari yi yù nun taarɛ ko.",
+   "hyp": "A ku nun gari yi ko.",
+   "tags": [
+    "dictionnaire",
+    "negation"
+   ],
+   "chrf": 0.35636955917895113,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6273718500509716,
+   "loop": 0
+  },
+  {
+   "id": "d052ab809c",
+   "direction": "ba-fr",
+   "src": "A ku de gari yi yù nun taarɛ ko.",
+   "ref": "Ne t'en fais pas pour ce problème.",
+   "hyp": "N’entends pas cette affaire.",
+   "tags": [
+    "dictionnaire",
+    "negation"
+   ],
+   "chrf": 0.16007519641950768,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5137277452955045,
+   "loop": 0
+  },
+  {
+   "id": "a0b9561bcd",
+   "direction": "fr-ba",
+   "src": "Ali prépare sa tisane avec du quinquélibat",
+   "ref": "Ali u ra win tisu swɛ̃ɛwa ka yãayinɔ",
+   "hyp": "Ali u win tisanu doke ka yɛ̃ ro.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.2842964975390731,
+   "exact": 0,
+   "lex": 0.875,
+   "fmt": 1.0,
+   "reward": 0.5593295512068318,
+   "loop": 0
+  },
+  {
+   "id": "a0b9561bcd",
+   "direction": "ba-fr",
+   "src": "Ali u ra win tisu swɛ̃ɛwa ka yãayinɔ",
+   "ref": "Ali prépare sa tisane avec du quinquélibat",
+   "hyp": "Ali apporte sa bouillie avec la viande.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.21580892037683186,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5459946381129026,
+   "loop": 0
+  },
+  {
+   "id": "532f9d0ab6",
+   "direction": "fr-ba",
+   "src": "Le fait qu'on ait frappé cet enfant dans cette histoire n'est pas normal.",
+   "ref": "Bii win soberru gari yi sɔɔ ta ǹ de.",
+   "hyp": "Ba bii wi soomɔ gari yin sɔ̃.",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.24202059269247153,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5611698168219571,
+   "loop": 0
+  },
+  {
+   "id": "532f9d0ab6",
+   "direction": "ba-fr",
+   "src": "Bii win soberru gari yi sɔɔ ta ǹ de.",
+   "ref": "Le fait qu'on ait frappé cet enfant dans cette histoire n'est pas normal.",
+   "hyp": "La parole de cet enfant n'est :.",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.20331107263598502,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5387590420524124,
+   "loop": 0
+  },
+  {
+   "id": "82704bfe7e",
+   "direction": "fr-ba",
+   "src": "Ils ont attrapé des tourterelles avec un piège.",
+   "ref": "Ba kparuko mwa wokoro sɔɔ.",
+   "hyp": "Ba tourterelles bariba ka yɛ̃ɛ.",
+   "tags": [
+    "Nature & animaux",
+    "apprendre",
+    "dictionnaire"
+   ],
+   "chrf": 0.10196945337620578,
+   "exact": 0,
+   "lex": 0.6,
+   "fmt": 1.0,
+   "reward": 0.39587705195464545,
+   "loop": 0
+  },
+  {
+   "id": "82704bfe7e",
+   "direction": "ba-fr",
+   "src": "Ba kparuko mwa wokoro sɔɔ.",
+   "ref": "Ils ont attrapé des tourterelles avec un piège.",
+   "hyp": "Ils sont allés acheter une viande dans le champ.",
+   "tags": [
+    "Nature & animaux",
+    "apprendre",
+    "dictionnaire"
+   ],
+   "chrf": 0.1774481863319722,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5237857920869313,
+   "loop": 0
+  },
+  {
+   "id": "91bcfaf8b2",
+   "direction": "fr-ba",
+   "src": "A l'approche de l'heure de rentrer, le Peul a commencé à rassembler ses boeufs.",
+   "ref": "Yè weru ta tura, yera Mare u win nɛɛ kparisinama.",
+   "hyp": "Yè sɔ̃ ɔ suru tura, yerau win naasu mɛnna.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.2799089500022173,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5831051815802311,
+   "loop": 0
+  },
+  {
+   "id": "91bcfaf8b2",
+   "direction": "ba-fr",
+   "src": "Yè weru ta tura, yera Mare u win nɛɛ kparisinama.",
+   "ref": "A l'approche de l'heure de rentrer, le Peul a commencé à rassembler ses boeufs.",
+   "hyp": "Lorsque le cheval est arrivé, Maré a fait regarder son maître.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.12016719121503182,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.49062311070343945,
+   "loop": 0
+  },
+  {
+   "id": "9d3f557d46",
+   "direction": "fr-ba",
+   "src": "Si tu ne sais pas nager, ne provoque pas le passeur.",
+   "ref": "À kùn kɛ̃ɛri yɛ̃, a ku ka tɔbio sanna.",
+   "hyp": "À kùn mɛro yɛ̃, a ku tɔbiri so.",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.37001854413151164,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6352738939708751,
+   "loop": 0
+  },
+  {
+   "id": "9d3f557d46",
+   "direction": "ba-fr",
+   "src": "À kùn kɛ̃ɛri yɛ̃, a ku ka tɔbio sanna.",
+   "ref": "Si tu ne sais pas nager, ne provoque pas le passeur.",
+   "hyp": "Si tu n'as :.",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.10989184436677506,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.48467422568602764,
+   "loop": 0
+  },
+  {
+   "id": "7c07dfd2a9",
+   "direction": "fr-ba",
+   "src": "Le chien a mordu un enfant par surprise.",
+   "ref": "Bɔ̃ɔ ga man bii dɔndi.",
+   "hyp": "Bɔ̃ ɔ ga bii mɛro dweeya.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.27586507569812,
+   "exact": 0,
+   "lex": 0.8333333333333334,
+   "fmt": 1.0,
+   "reward": 0.5456762718954028,
+   "loop": 0
+  },
+  {
+   "id": "7c07dfd2a9",
+   "direction": "ba-fr",
+   "src": "Bɔ̃ɔ ga man bii dɔndi.",
+   "ref": "Le chien a mordu un enfant par surprise.",
+   "hyp": "Le chien m'a regardé un enfant.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.36155503985679227,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.630373970443406,
+   "loop": 0
+  },
+  {
+   "id": "62eaee742b",
+   "direction": "fr-ba",
+   "src": "Enlève l'écorce de cet arbre et apporte-moi.",
+   "ref": "A dãa ten konnu korama.",
+   "hyp": "A dãa ten kɛ̃ɛ ye suo a man na.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.4372764570647864,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6742126856690869,
+   "loop": 0
+  },
+  {
+   "id": "62eaee742b",
+   "direction": "ba-fr",
+   "src": "A dãa ten konnu korama.",
+   "ref": "Enlève l'écorce de cet arbre et apporte-moi.",
+   "hyp": "Regarde l'arbre du bois.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.11501503246090403,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.4876402819510497,
+   "loop": 0
+  },
+  {
+   "id": "133bf7bf28",
+   "direction": "fr-ba",
+   "src": "J'apprends à parler le baatonum.",
+   "ref": "Na baatɔnum mɛɛrimɔ.",
+   "hyp": "wa, na gari yi sɔ̃ɔwa.",
+   "tags": [
+    "Famille & société",
+    "Parole & communication",
+    "apprendre"
+   ],
+   "chrf": 0.06985294117647059,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.4614938080495356,
+   "loop": 0
+  },
+  {
+   "id": "133bf7bf28",
+   "direction": "ba-fr",
+   "src": "Na baatɔnum mɛɛrimɔ.",
+   "ref": "J'apprends à parler le baatonum.",
+   "hyp": "Je regarde la viande.",
+   "tags": [
+    "Famille & société",
+    "Parole & communication",
+    "apprendre"
+   ],
+   "chrf": 0.08250077842971267,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.46881624014351786,
+   "loop": 0
+  },
+  {
+   "id": "182ffd4f01",
+   "direction": "fr-ba",
+   "src": "Ne le roule pas par terre.",
+   "ref": "A ku ka wii tem bĩbiri.",
+   "hyp": "A ku nùn temɔ.",
+   "tags": [
+    "dictionnaire",
+    "negation"
+   ],
+   "chrf": 0.17376080687083442,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5216509934515358,
+   "loop": 0
+  },
+  {
+   "id": "182ffd4f01",
+   "direction": "ba-fr",
+   "src": "A ku ka wii tem bĩbiri.",
+   "ref": "Ne le roule pas par terre.",
+   "hyp": "N’as-tu pas regardé la terre.",
+   "tags": [
+    "dictionnaire",
+    "negation"
+   ],
+   "chrf": 0.25676386352077896,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5697053946699246,
+   "loop": 0
+  },
+  {
+   "id": "2fb48fd26f",
+   "direction": "fr-ba",
+   "src": "Il lançait des cris d'appel.",
+   "ref": "U kuuru mö u sisi.",
+   "hyp": "Mɛro u sokumɔ.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.12163591566610663,
+   "exact": 0,
+   "lex": 0.6666666666666666,
+   "fmt": 1.0,
+   "reward": 0.42129798626283366,
+   "loop": 0
+  },
+  {
+   "id": "2fb48fd26f",
+   "direction": "ba-fr",
+   "src": "U kuuru mö u sisi.",
+   "ref": "Il lançait des cris d'appel.",
+   "hyp": "Il est allé voir qu'il vient.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.11857208793687733,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.48969962985819215,
+   "loop": 0
+  },
+  {
+   "id": "5346f5e50b",
+   "direction": "fr-ba",
+   "src": "On m'a fait garder un cheval.",
+   "ref": "Ba man duma kɔ̃susia.",
+   "hyp": "Ba man duma kɛ̃ɛsia.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.621652039298036,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.7809564438041262,
+   "loop": 0
+  },
+  {
+   "id": "5346f5e50b",
+   "direction": "ba-fr",
+   "src": "Ba man duma kɔ̃susia.",
+   "ref": "On m'a fait garder un cheval.",
+   "hyp": "Ils ont fait maudir le cheval.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.28362543780486826,
+   "exact": 0,
+   "lex": 0.8333333333333334,
+   "fmt": 1.0,
+   "reward": 0.5501691131150991,
+   "loop": 0
+  },
+  {
+   "id": "3874af5b1c",
+   "direction": "fr-ba",
+   "src": "Qu'en est-il de notre contrat?",
+   "ref": "Amɔna bɛsɛn Yarukawari ye?",
+   "hyp": "Mba bɛsɛn sɔmburu ta wãa?",
+   "tags": [
+    "dictionnaire",
+    "question"
+   ],
+   "chrf": 0.21206273210438342,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5438257922709588,
+   "loop": 0
+  },
+  {
+   "id": "3874af5b1c",
+   "direction": "ba-fr",
+   "src": "Amɔna bɛsɛn Yarukawari ye?",
+   "ref": "Qu'en est-il de notre contrat?",
+   "hyp": "Comment est-ce notre Jarukawari ?",
+   "tags": [
+    "dictionnaire",
+    "question"
+   ],
+   "chrf": 0.23638746099422497,
+   "exact": 0,
+   "lex": 0.75,
+   "fmt": 1.0,
+   "reward": 0.5052769511019196,
+   "loop": 0
+  },
+  {
+   "id": "1ca67f87be",
+   "direction": "fr-ba",
+   "src": "Elle est la fille d'honneur de Dangniré.",
+   "ref": "U sãawa Dãayiren kurɔ kpaa sãako.",
+   "hyp": "Wiya u sɑ̃ɑwɑ Dɑniren bii.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.08117473447226985,
+   "exact": 0,
+   "lex": 0.8,
+   "fmt": 0.75,
+   "reward": 0.39962747785236685,
+   "loop": 0
+  },
+  {
+   "id": "1ca67f87be",
+   "direction": "ba-fr",
+   "src": "U sãawa Dãayiren kurɔ kpaa sãako.",
+   "ref": "Elle est la fille d'honneur de Dangniré.",
+   "hyp": "Il est la femme de Daayiré.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.2670620714914918,
+   "exact": 0,
+   "lex": 0.8333333333333334,
+   "fmt": 1.0,
+   "reward": 0.540579795775776,
+   "loop": 0
+  },
+  {
+   "id": "f25d58e78b",
+   "direction": "fr-ba",
+   "src": "Une graine de haricot a poussé derrière la case.",
+   "ref": "Swia ya kpia dii gãarɔ.",
+   "hyp": "Bom mɛro ga diru wɔllɔ.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.08081785345717234,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.46784191515941553,
+   "loop": 0
+  },
+  {
+   "id": "f25d58e78b",
+   "direction": "ba-fr",
+   "src": "Swia ya kpia dii gãarɔ.",
+   "ref": "Une graine de haricot a poussé derrière la case.",
+   "hyp": "La source a pu être regardée dans la case.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.24623694231638435,
+   "exact": 0,
+   "lex": 0.8888888888888888,
+   "fmt": 1.0,
+   "reward": 0.5402190484755676,
+   "loop": 0
+  },
+  {
+   "id": "4832772903",
+   "direction": "fr-ba",
+   "src": "chant du coq",
+   "ref": "Goo swĩi.",
+   "hyp": "wa, mɛro u yɛ̃ ro.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.05434782608695651,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.4525171624713959,
+   "loop": 0
+  },
+  {
+   "id": "4832772903",
+   "direction": "ba-fr",
+   "src": "Goo swĩi.",
+   "ref": "chant du coq",
+   "hyp": "Un homme est sorti de la viande.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.06707317073170731,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.45988446726572524,
+   "loop": 0
+  },
+  {
+   "id": "df119327fd",
+   "direction": "fr-ba",
+   "src": "Ta gourde sera-t'elle remplie?",
+   "ref": "Wunɛn bwãa te ta koo yibiara?",
+   "hyp": "Wunɛn bwãaru ta koo yɛ̃?",
+   "tags": [
+    "dictionnaire",
+    "question"
+   ],
+   "chrf": 0.4616062332753815,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.688298345580484,
+   "loop": 0
+  },
+  {
+   "id": "df119327fd",
+   "direction": "ba-fr",
+   "src": "Wunɛn bwãa te ta koo yibiara?",
+   "ref": "Ta gourde sera-t'elle remplie?",
+   "hyp": "Ta viande pourra-t-elle être regardée ?",
+   "tags": [
+    "dictionnaire",
+    "question"
+   ],
+   "chrf": 0.23189523064591575,
+   "exact": 0,
+   "lex": 0.8,
+   "fmt": 1.0,
+   "reward": 0.5132025019528985,
+   "loop": 0
+  },
+  {
+   "id": "2d121a1b45",
+   "direction": "fr-ba",
+   "src": "Les moucherons fourmillent autour de l'enfant.",
+   "ref": "Bwãabwãabunu nu bii wi kuni.",
+   "hyp": "Bii mɛro ba ra biin sɔmburu ko.",
+   "tags": [
+    "Nature & animaux",
+    "apprendre"
+   ],
+   "chrf": 0.10466171119642606,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.4816462538505624,
+   "loop": 0
+  },
+  {
+   "id": "2d121a1b45",
+   "direction": "ba-fr",
+   "src": "Bwãabwãabunu nu bii wi kuni.",
+   "ref": "Les moucherons fourmillent autour de l'enfant.",
+   "hyp": "Les chevaux ont regardé l'enfant.",
+   "tags": [
+    "Nature & animaux",
+    "apprendre"
+   ],
+   "chrf": 0.2589255206115967,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5709568803540823,
+   "loop": 0
+  },
+  {
+   "id": "af62295fd9",
+   "direction": "fr-ba",
+   "src": "C'est la quiétude que je recherche.",
+   "ref": "Bwɛ̃ri yɛmba na ra n kĩ.",
+   "hyp": "wa, mɛrowa na kasu.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.11237834719327161,
+   "exact": 0,
+   "lex": 0.75,
+   "fmt": 1.0,
+   "reward": 0.43348220100663093,
+   "loop": 0
+  },
+  {
+   "id": "af62295fd9",
+   "direction": "ba-fr",
+   "src": "Bwɛ̃ri yɛmba na ra n kĩ.",
+   "ref": "C'est la quiétude que je recherche.",
+   "hyp": "C'est le sang que je voudrais.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.28671809689735156,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5870473192563613,
+   "loop": 0
+  },
+  {
+   "id": "7c3518dbbd",
+   "direction": "fr-ba",
+   "src": "Sabi a secoué la gourde. Si tu entres dans la poche de l'enfant, alors il te secoue.",
+   "ref": "Sabi u bwãaru yɔwa. À n biin bɔɔru dua, sere ù nun yɔwa.",
+   "hyp": "Sabi u bɔ̃ ɔ wa. À n duma biin kpaaru sɔɔ, a nun secoue.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.3149572210120095,
+   "exact": 0,
+   "lex": 0.8571428571428571,
+   "fmt": 1.0,
+   "reward": 0.5733210978791332,
+   "loop": 0
+  },
+  {
+   "id": "7c3518dbbd",
+   "direction": "ba-fr",
+   "src": "Sabi u bwãaru yɔwa. À n biin bɔɔru dua, sere ù nun yɔwa.",
+   "ref": "Sabi a secoué la gourde. Si tu entres dans la poche de l'enfant, alors il te secoue.",
+   "hyp": "Sabi est monté sur une viande. Si tu entres dans l'enfant, il t'a regardé.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.40238935435219975,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6540148893617997,
+   "loop": 0
+  },
+  {
+   "id": "38978840ed",
+   "direction": "fr-ba",
+   "src": "Un crapaud a sauté et est tombé dans la sauce.",
+   "ref": "Sureru ta yɔ̃ɔwa ta kpee wekeru wɔri.",
+   "hyp": "Sofu ga yɔ̃ rama u wɔri kpee sɔɔ.",
+   "tags": [
+    "Nature & animaux",
+    "apprendre",
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.19860704353280711,
+   "exact": 0,
+   "lex": 0.75,
+   "fmt": 1.0,
+   "reward": 0.483404077834783,
+   "loop": 0
+  },
+  {
+   "id": "38978840ed",
+   "direction": "ba-fr",
+   "src": "Sureru ta yɔ̃ɔwa ta kpee wekeru wɔri.",
+   "ref": "Un crapaud a sauté et est tombé dans la sauce.",
+   "hyp": "La sauce est sortie de la marmite.",
+   "tags": [
+    "Nature & animaux",
+    "apprendre",
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.18035986697406947,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.525471501932356,
+   "loop": 0
+  },
+  {
+   "id": "cf26a54be6",
+   "direction": "fr-ba",
+   "src": "Ils lui ont fait retourner le livre.",
+   "ref": "Ba nùn tire te wesiasia.",
+   "hyp": "Ba nùn tire te wurasia.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.7043458665609273,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.8288318174826421,
+   "loop": 0
+  },
+  {
+   "id": "cf26a54be6",
+   "direction": "ba-fr",
+   "src": "Ba nùn tire te wesiasia.",
+   "ref": "Ils lui ont fait retourner le livre.",
+   "hyp": "Ils lui ont fait regarder le livre.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.7404068258914872,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.8497092149898083,
+   "loop": 0
+  },
+  {
+   "id": "90e913f601",
+   "direction": "fr-ba",
+   "src": "Chef, excuse-moi.",
+   "ref": "Sunɔ, a man ìsa kuo.",
+   "hyp": "Sunɔ, a man sɔ̃ɔsio.",
+   "tags": [
+    "dictionnaire",
+    "exercice",
+    "salutations"
+   ],
+   "chrf": 0.5265871113136346,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.72591885391842,
+   "loop": 0
+  },
+  {
+   "id": "90e913f601",
+   "direction": "ba-fr",
+   "src": "Sunɔ, a man ìsa kuo.",
+   "ref": "Chef, excuse-moi.",
+   "hyp": "Chef, regarde-moi de la viande.",
+   "tags": [
+    "dictionnaire",
+    "exercice",
+    "salutations"
+   ],
+   "chrf": 0.2866006410931845,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5869793185276331,
+   "loop": 0
+  },
+  {
+   "id": "9ba5cdbb97",
+   "direction": "fr-ba",
+   "src": "Ce livre a pu être lu.",
+   "ref": "Tire te ta garira.",
+   "hyp": "Tireru ta yɛ̃ rara.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.22200655867175315,
+   "exact": 0,
+   "lex": 0.75,
+   "fmt": 1.0,
+   "reward": 0.4969511655468044,
+   "loop": 0
+  },
+  {
+   "id": "9ba5cdbb97",
+   "direction": "ba-fr",
+   "src": "Tire te ta garira.",
+   "ref": "Ce livre a pu être lu.",
+   "hyp": "Ce livre a été parlé.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.4319064823606724,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6711037529456525,
+   "loop": 0
+  },
+  {
+   "id": "e1ddb3ba40",
+   "direction": "fr-ba",
+   "src": "Continue d'y entasser.",
+   "ref": "A n ka kpɛ̃ɛsimɔ mi.",
+   "hyp": "A de a yè wa.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.051239669421487596,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.4507177033492823,
+   "loop": 0
+  },
+  {
+   "id": "e1ddb3ba40",
+   "direction": "ba-fr",
+   "src": "A n ka kpɛ̃ɛsimɔ mi.",
+   "ref": "Continue d'y entasser.",
+   "hyp": "Si tu regardes de la viande.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.07281553398058252,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.46320899335717935,
+   "loop": 0
+  },
+  {
+   "id": "defd53e75d",
+   "direction": "fr-ba",
+   "src": "Quant à moi, j'ai pris ma part",
+   "ref": "Na nɛn yabèru mwa nɛ",
+   "hyp": "Na nɛn mɛro sua.",
+   "tags": [
+    "Marché & nombres",
+    "apprendre",
+    "dictionnaire"
+   ],
+   "chrf": 0.2600094484794119,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5715844175407121,
+   "loop": 0
+  },
+  {
+   "id": "defd53e75d",
+   "direction": "ba-fr",
+   "src": "Na nɛn yabèru mwa nɛ",
+   "ref": "Quant à moi, j'ai pris ma part",
+   "hyp": "J'ai acheté ma viande avec moi.",
+   "tags": [
+    "Marché & nombres",
+    "apprendre",
+    "dictionnaire"
+   ],
+   "chrf": 0.12833733646621037,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.4953531947962271,
+   "loop": 0
+  },
+  {
+   "id": "e7c2f0a7e0",
+   "direction": "fr-ba",
+   "src": "Le blanc est venu nous exploiter.",
+   "ref": "Tɔn kpiko u sun taki dibu na.",
+   "hyp": "Bɛsɛn mɛro u sun tɔbirima.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.22983321397715478,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5541139659867738,
+   "loop": 0
+  },
+  {
+   "id": "e7c2f0a7e0",
+   "direction": "ba-fr",
+   "src": "Tɔn kpiko u sun taki dibu na.",
+   "ref": "Le blanc est venu nous exploiter.",
+   "hyp": "Le grand-père nous a appris quelqu'un.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.16472019184721107,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5164169531747012,
+   "loop": 0
+  },
+  {
+   "id": "f1cbb24872",
+   "direction": "fr-ba",
+   "src": "On a répondu déjà à cette parole",
+   "ref": "Gari yi yu wisira kö",
+   "hyp": "Ba gari yi wisa.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.2196306310501719,
+   "exact": 0,
+   "lex": 0.75,
+   "fmt": 1.0,
+   "reward": 0.495575628502731,
+   "loop": 0
+  },
+  {
+   "id": "f1cbb24872",
+   "direction": "ba-fr",
+   "src": "Gari yi yu wisira kö",
+   "ref": "On a répondu déjà à cette parole",
+   "hyp": "Cette parole a été répondue.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.43145056020742956,
+   "exact": 0,
+   "lex": 0.8,
+   "fmt": 1.0,
+   "reward": 0.6287345348569329,
+   "loop": 0
+  },
+  {
+   "id": "d94fc9d173",
+   "direction": "fr-ba",
+   "src": "La jeune qui passe est la fille d'honneur de Dangniré.",
+   "ref": "Bii wɔndia wì u sarɔ mi, u sãawa Dãayiren kurɔ kpaa sãako.",
+   "hyp": "Bii mɛro u sɑ̃ɑwɑ Dɑnɡiren bii.",
+   "tags": [
+    "Culture & tradition",
+    "Famille & société",
+    "apprendre",
+    "long"
+   ],
+   "chrf": 0.10601040693498746,
+   "exact": 0,
+   "lex": 0.8333333333333334,
+   "fmt": 0.75,
+   "reward": 0.4210235689272734,
+   "loop": 0
+  },
+  {
+   "id": "d94fc9d173",
+   "direction": "ba-fr",
+   "src": "Bii wɔndia wì u sarɔ mi, u sãawa Dãayiren kurɔ kpaa sãako.",
+   "ref": "La jeune qui passe est la fille d'honneur de Dangniré.",
+   "hyp": "Cette jeune fille est la femme de Daayiré.",
+   "tags": [
+    "Culture & tradition",
+    "Famille & société",
+    "apprendre",
+    "long"
+   ],
+   "chrf": 0.3173198713277469,
+   "exact": 0,
+   "lex": 0.875,
+   "fmt": 1.0,
+   "reward": 0.5784483465581692,
+   "loop": 0
+  },
+  {
+   "id": "dc15e7b9a0",
+   "direction": "fr-ba",
+   "src": "Le salaire de ce travail est insuffisant.",
+   "ref": "Sɔmbu ten kɔsiaru ta ǹ kpã.",
+   "hyp": "Sɔmbu ten gobi yu yɛ̃.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.30296663225641557,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5964543660431879,
+   "loop": 0
+  },
+  {
+   "id": "dc15e7b9a0",
+   "direction": "ba-fr",
+   "src": "Sɔmbu ten kɔsiaru ta ǹ kpã.",
+   "ref": "Le salaire de ce travail est insuffisant.",
+   "hyp": "Ce travail n'est pas bon.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.19911729642967882,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5363310663540245,
+   "loop": 0
+  },
+  {
+   "id": "69e23de59e",
+   "direction": "fr-ba",
+   "src": "Ils ont secoué mon manguier.",
+   "ref": "Ba man nɛn mango dãaru yĩirìri",
+   "hyp": "Ba nɛn mango yɛ̃ɛri.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.3312959662168431,
+   "exact": 0,
+   "lex": 0.75,
+   "fmt": 1.0,
+   "reward": 0.5602239804413301,
+   "loop": 0
+  },
+  {
+   "id": "69e23de59e",
+   "direction": "ba-fr",
+   "src": "Ba man nɛn mango dãaru yĩirìri",
+   "ref": "Ils ont secoué mon manguier.",
+   "hyp": "Ils ont regardé mon arbre de mangue.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.36045396289472353,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6297365048337873,
+   "loop": 0
+  },
+  {
+   "id": "a832b9cc8a",
+   "direction": "fr-ba",
+   "src": "Ils sont allés défricher un champ.",
+   "ref": "Ba sòo kasiribu da.",
+   "hyp": "Ba gberu da.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.19999906964337322,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5368415666356372,
+   "loop": 0
+  },
+  {
+   "id": "a832b9cc8a",
+   "direction": "ba-fr",
+   "src": "Ba sòo kasiribu da.",
+   "ref": "Ils sont allés défricher un champ.",
+   "hyp": "Ils sont allés auprès de la viande.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.41904352663222216,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6636567785765497,
+   "loop": 0
+  },
+  {
+   "id": "0e03270109",
+   "direction": "fr-ba",
+   "src": "Nous nous sommes éloignés de la boucherie à cause des mouches.",
+   "ref": "Sa dɛsira yaa gbabun di, sɔnsun sɔ̃.",
+   "hyp": "Bɛsɛn mɛro sa yɛ̃ kuru doke.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.06150563937854796,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.456661159640212,
+   "loop": 0
+  },
+  {
+   "id": "0e03270109",
+   "direction": "ba-fr",
+   "src": "Sa dɛsira yaa gbabun di, sɔnsun sɔ̃.",
+   "ref": "Nous nous sommes éloignés de la boucherie à cause des mouches.",
+   "hyp": "Nous sommes regardés du champ de la viande.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.2593899619707178,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5712257674567314,
+   "loop": 0
+  },
+  {
+   "id": "0eb3034b3c",
+   "direction": "fr-ba",
+   "src": "Cet homme n'a pas de chance, jusqu'à maintenant il n'a pas de femme",
+   "ref": "Durɔ wi u wiru tau, sere tɛ̃ u ǹ kurɔ mɔ",
+   "hyp": "Durɔ wi u ǹ wa, sere tɛ̃.",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.41117348927228237,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6591004411576371,
+   "loop": 0
+  },
+  {
+   "id": "0eb3034b3c",
+   "direction": "ba-fr",
+   "src": "Durɔ wi u wiru tau, sere tɛ̃ u ǹ kurɔ mɔ",
+   "ref": "Cet homme n'a pas de chance, jusqu'à maintenant il n'a pas de femme",
+   "hyp": "Cet homme a beaucoup de tête, maintenant il n'y a.",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.361036482251829,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6300737528826378,
+   "loop": 0
+  },
+  {
+   "id": "ce09af5bde",
+   "direction": "fr-ba",
+   "src": "L'igname a pu être plantée.",
+   "ref": "Taa si su duurura.",
+   "hyp": "Taa ye ya dɔ̃ ɔra.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.14497606859000434,
+   "exact": 0,
+   "lex": 0.6,
+   "fmt": 1.0,
+   "reward": 0.42077561865737095,
+   "loop": 0
+  },
+  {
+   "id": "ce09af5bde",
+   "direction": "ba-fr",
+   "src": "Taa si su duurura.",
+   "ref": "L'igname a pu être plantée.",
+   "hyp": "Les ignorants ont été regardés.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.1236265342485974,
+   "exact": 0,
+   "lex": 0.8,
+   "fmt": 1.0,
+   "reward": 0.4505206250912932,
+   "loop": 0
+  },
+  {
+   "id": "b5ca16f86c",
+   "direction": "fr-ba",
+   "src": "Je suis allerdu gbĩasur la rive.",
+   "ref": "Na gbĩa bura daa bɔ̃ɔ wɔllɔ.",
+   "hyp": "Na wa gbĩasuru da.",
+   "tags": [
+    "Maison & objets",
+    "Nature & animaux",
+    "apprendre"
+   ],
+   "chrf": 0.18127456056756094,
+   "exact": 0,
+   "lex": 0.75,
+   "fmt": 1.0,
+   "reward": 0.4733694824338511,
+   "loop": 0
+  },
+  {
+   "id": "b5ca16f86c",
+   "direction": "ba-fr",
+   "src": "Na gbĩa bura daa bɔ̃ɔ wɔllɔ.",
+   "ref": "Je suis allerdu gbĩasur la rive.",
+   "hyp": "Je suis allé dans le chien.",
+   "tags": [
+    "Maison & objets",
+    "Nature & animaux",
+    "apprendre"
+   ],
+   "chrf": 0.31506778625207077,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6034602973038306,
+   "loop": 0
+  },
+  {
+   "id": "5234373380",
+   "direction": "fr-ba",
+   "src": "J'ai craché la salive sur un tesson de calebasse.",
+   "ref": "Na yãatam pure siri kɛ̃ka sɔɔ",
+   "hyp": "Na wa na kalebasi bɔɔri.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.1253788795744868,
+   "exact": 0,
+   "lex": 0.8,
+   "fmt": 1.0,
+   "reward": 0.45153514080628177,
+   "loop": 0
+  },
+  {
+   "id": "5234373380",
+   "direction": "ba-fr",
+   "src": "Na yãatam pure siri kɛ̃ka sɔɔ",
+   "ref": "J'ai craché la salive sur un tesson de calebasse.",
+   "hyp": "J'ai regardé la viande dans le jugement.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.16016827606494705,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5137816335112851,
+   "loop": 0
+  },
+  {
+   "id": "bfe6109693",
+   "direction": "fr-ba",
+   "src": "Voyez sa tête, on dirait un morceau de vieille pirogue. (injure).",
+   "ref": "A win wiru wa nde goo bɛ̃sa.",
+   "hyp": "Wooda Sofu, i wa, mɛro ba koo tɔkɔru sɔ̃ɔwa.",
+   "tags": [
+    "Famille & société",
+    "apprendre",
+    "long"
+   ],
+   "chrf": 0.10186669767290053,
+   "exact": 0,
+   "lex": 0.8888888888888888,
+   "fmt": 1.0,
+   "reward": 0.456636275260919,
+   "loop": 0
+  },
+  {
+   "id": "bfe6109693",
+   "direction": "ba-fr",
+   "src": "A win wiru wa nde goo bɛ̃sa.",
+   "ref": "Voyez sa tête, on dirait un morceau de vieille pirogue. (injure).",
+   "hyp": "Tu as vu sa tête comme un autre.",
+   "tags": [
+    "Famille & société",
+    "apprendre",
+    "long"
+   ],
+   "chrf": 0.13126173217962545,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.49704626599873053,
+   "loop": 0
+  },
+  {
+   "id": "dab4b27dd2",
+   "direction": "fr-ba",
+   "src": "J'ai touché à peine.",
+   "ref": "Na deka.",
+   "hyp": "wa, mɛro na barɔ.",
+   "tags": [
+    "Verbes essentiels",
+    "apprendre",
+    "dictionnaire"
+   ],
+   "chrf": 0.044642857142857144,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.4468984962406015,
+   "loop": 0
+  },
+  {
+   "id": "dab4b27dd2",
+   "direction": "ba-fr",
+   "src": "Na deka.",
+   "ref": "J'ai touché à peine.",
+   "hyp": "J'ai coupé la viande.",
+   "tags": [
+    "Verbes essentiels",
+    "apprendre",
+    "dictionnaire"
+   ],
+   "chrf": 0.18957265814517776,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5308052231366819,
+   "loop": 0
+  },
+  {
+   "id": "ae27d6ab93",
+   "direction": "fr-ba",
+   "src": "Ils l'ont arrêté et lui ont mis des menottes.",
+   "ref": "Ba wii mwa ba kpɛnkpɛ doke.",
+   "hyp": "Ba wii yɔ̃ rama.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.19654173677941517,
+   "exact": 0,
+   "lex": 0.75,
+   "fmt": 1.0,
+   "reward": 0.48220837392492455,
+   "loop": 0
+  },
+  {
+   "id": "ae27d6ab93",
+   "direction": "ba-fr",
+   "src": "Ba wii mwa ba kpɛnkpɛ doke.",
+   "ref": "Ils l'ont arrêté et lui ont mis des menottes.",
+   "hyp": "Ils l'ont acheté de la viande.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.24413117241372853,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5623917313974217,
+   "loop": 0
+  },
+  {
+   "id": "33b9206bf3",
+   "direction": "fr-ba",
+   "src": "Sur sa tête la tresse n'est pas du tout belle.",
+   "ref": "win wirɔ tari bɔra kùn bɛɛrɛ mɔ.",
+   "hyp": "Win wiru sɔɔra bii mɛro kùn yɛ̃.",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.19679634676917282,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5349873586558369,
+   "loop": 0
+  },
+  {
+   "id": "33b9206bf3",
+   "direction": "ba-fr",
+   "src": "win wirɔ tari bɔra kùn bɛɛrɛ mɔ.",
+   "ref": "Sur sa tête la tresse n'est pas du tout belle.",
+   "hyp": "Sa tête n'est pas grande.",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.29152577778074784,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5898307134520119,
+   "loop": 0
+  },
+  {
+   "id": "28833b43b2",
+   "direction": "fr-ba",
+   "src": "Tamise la farine dans ma calebasse.",
+   "ref": "A som mɛ sarasio nɛn gbaka sɔɔ.",
+   "hyp": "A bom mɛ tamisio nɛn calebasse.",
+   "tags": [
+    "Cuisine & repas",
+    "dialogue",
+    "dictionnaire"
+   ],
+   "chrf": 0.26918509228942705,
+   "exact": 0,
+   "lex": 0.6666666666666666,
+   "fmt": 1.0,
+   "reward": 0.5067211937815982,
+   "loop": 0
+  },
+  {
+   "id": "28833b43b2",
+   "direction": "ba-fr",
+   "src": "A som mɛ sarasio nɛn gbaka sɔɔ.",
+   "ref": "Tamise la farine dans ma calebasse.",
+   "hyp": "Regarde la marmite dans mon champ.",
+   "tags": [
+    "Cuisine & repas",
+    "dialogue",
+    "dictionnaire"
+   ],
+   "chrf": 0.22031922128672796,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5486058649554741,
+   "loop": 0
+  },
+  {
+   "id": "2fe8dd86b2",
+   "direction": "fr-ba",
+   "src": "On fait une tombe allongéeau wasangari.",
+   "ref": "Siku gɔrɔrɔru, tera ba ra wasangari bii kue.",
+   "hyp": "Ba wasangari kua.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.23036540947450249,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5544220791694487,
+   "loop": 0
+  },
+  {
+   "id": "2fe8dd86b2",
+   "direction": "ba-fr",
+   "src": "Siku gɔrɔrɔru, tera ba ra wasangari bii kue.",
+   "ref": "On fait une tombe allongéeau wasangari.",
+   "hyp": "C'est ainsi qu'on fabrique l'enfant de wasangari.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.26849461580223155,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5764968828328709,
+   "loop": 0
+  },
+  {
+   "id": "bc1ff72ee8",
+   "direction": "fr-ba",
+   "src": "Je veux acheter un boeuf, je n'ai pas pu en raison du prix élevé.",
+   "ref": "Na kĩ n naa dwe, na gobi kpana.",
+   "hyp": "Na nɛɛ dwe, na ǹ gobi yɛ̃.",
+   "tags": [
+    "Champ & élevage",
+    "apprendre",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.294275844247147,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5914228571957166,
+   "loop": 0
+  },
+  {
+   "id": "bc1ff72ee8",
+   "direction": "ba-fr",
+   "src": "Na kĩ n naa dwe, na gobi kpana.",
+   "ref": "Je veux acheter un boeuf, je n'ai pas pu en raison du prix élevé.",
+   "hyp": "Je veux que j'ai acheté un argent.",
+   "tags": [
+    "Champ & élevage",
+    "apprendre",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.1925636353067967,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5325368414934086,
+   "loop": 0
+  },
+  {
+   "id": "77d2902595",
+   "direction": "fr-ba",
+   "src": "Le quartier Zongo ne manque pas d'étrangers.",
+   "ref": "Songo gia sɔbu ba ku ra biare.",
+   "hyp": "Songon wɔwa u ku ra sɔbu bie.",
+   "tags": [
+    "Famille & société",
+    "apprendre",
+    "dictionnaire",
+    "negation"
+   ],
+   "chrf": 0.35896793256826154,
+   "exact": 0,
+   "lex": 0.8571428571428571,
+   "fmt": 1.0,
+   "reward": 0.5988009835169634,
+   "loop": 0
+  },
+  {
+   "id": "77d2902595",
+   "direction": "ba-fr",
+   "src": "Songo gia sɔbu ba ku ra biare.",
+   "ref": "Le quartier Zongo ne manque pas d'étrangers.",
+   "hyp": "C'est là qu'ils n'ont pas regardé la viande.",
+   "tags": [
+    "Famille & société",
+    "apprendre",
+    "dictionnaire",
+    "negation"
+   ],
+   "chrf": 0.1272735917952349,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.4947373426182939,
+   "loop": 0
+  },
+  {
+   "id": "bb9e08af22",
+   "direction": "fr-ba",
+   "src": "Ne mange pas avec négligence.",
+   "ref": "Aku dĩa niyosiri.",
+   "hyp": "A ku di ka bwisiku.",
+   "tags": [
+    "dictionnaire",
+    "negation"
+   ],
+   "chrf": 0.14869505494505494,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5071392423366108,
+   "loop": 0
+  },
+  {
+   "id": "bb9e08af22",
+   "direction": "ba-fr",
+   "src": "Aku dĩa niyosiri.",
+   "ref": "Ne mange pas avec négligence.",
+   "hyp": "N’entends pas la viande.",
+   "tags": [
+    "dictionnaire",
+    "negation"
+   ],
+   "chrf": 0.14665130007060517,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5059560158303503,
+   "loop": 0
+  },
+  {
+   "id": "50703a091d",
+   "direction": "fr-ba",
+   "src": "Ue graine de haricot a poussé derrière la case.",
+   "ref": "Swia ya kpia dii gãarɔ.",
+   "hyp": "Wa, mère bii mɛro, yɛ̃ ro.",
+   "tags": [
+    "Champ & élevage",
+    "Corps & santé",
+    "Nourriture & boissons",
+    "apprendre",
+    "long"
+   ],
+   "chrf": 0.04545329938106145,
+   "exact": 0,
+   "lex": 0.8333333333333334,
+   "fmt": 1.0,
+   "reward": 0.41227998034342156,
+   "loop": 0
+  },
+  {
+   "id": "50703a091d",
+   "direction": "ba-fr",
+   "src": "Swia ya kpia dii gãarɔ.",
+   "ref": "Ue graine de haricot a poussé derrière la case.",
+   "hyp": "La source a pu être regardée dans la case.",
+   "tags": [
+    "Champ & élevage",
+    "Corps & santé",
+    "Nourriture & boissons",
+    "apprendre",
+    "long"
+   ],
+   "chrf": 0.2502802810701691,
+   "exact": 0,
+   "lex": 0.8888888888888888,
+   "fmt": 1.0,
+   "reward": 0.542559928806706,
+   "loop": 0
+  },
+  {
+   "id": "562ff265a9",
+   "direction": "fr-ba",
+   "src": "Celui qui trouve ne sait pas que celui qui est nécessiteux est aussi malin.",
+   "ref": "Wao kùn yɛ̃ bio u bwisi mɔ.",
+   "hyp": "Wi u wa ku ra yɛ̃ mɛro bii wɔndia.",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.15448842041742167,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5104932960311389,
+   "loop": 0
+  },
+  {
+   "id": "562ff265a9",
+   "direction": "ba-fr",
+   "src": "Wao kùn yɛ̃ bio u bwisi mɔ.",
+   "ref": "Celui qui trouve ne sait pas que celui qui est nécessiteux est aussi malin.",
+   "hyp": "Le vieillard n'est pas intelligent que le frère sait.",
+   "tags": [
+    "dictionnaire",
+    "long",
+    "negation"
+   ],
+   "chrf": 0.1596457467095585,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5134791165160602,
+   "loop": 0
+  },
+  {
+   "id": "f620e66ae5",
+   "direction": "fr-ba",
+   "src": "Il a privé mon étranger d'ignames.",
+   "ref": "U man nɛn sɔɔ tasu birari.",
+   "hyp": "U man nɛn sɔbu tasu doke.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.47081297131802735,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6936285623420159,
+   "loop": 0
+  },
+  {
+   "id": "f620e66ae5",
+   "direction": "ba-fr",
+   "src": "U man nɛn sɔɔ tasu birari.",
+   "ref": "Il a privé mon étranger d'ignames.",
+   "hyp": "Il a coupé mon igname dans ma viande.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.2917361833950816,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5899525272287315,
+   "loop": 0
+  },
+  {
+   "id": "a300e5b071",
+   "direction": "fr-ba",
+   "src": "Chant du coq: swĩiya.",
+   "ref": "Goo swĩi.",
+   "hyp": "wa, mère bii mɛro, yɛ̃ ro.",
+   "tags": [
+    "Corps & santé",
+    "Culture & tradition",
+    "Famille & société",
+    "Nature & animaux",
+    "apprendre"
+   ],
+   "chrf": 0.0589622641509434,
+   "exact": 0,
+   "lex": 0.8333333333333334,
+   "fmt": 1.0,
+   "reward": 0.42010095994703744,
+   "loop": 0
+  },
+  {
+   "id": "a300e5b071",
+   "direction": "ba-fr",
+   "src": "Goo swĩi.",
+   "ref": "Chant du coq: swĩiya.",
+   "hyp": "Un homme est sorti de la viande.",
+   "tags": [
+    "Corps & santé",
+    "Culture & tradition",
+    "Famille & société",
+    "Nature & animaux",
+    "apprendre"
+   ],
+   "chrf": 0.07049632193102968,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.46186629164428034,
+   "loop": 0
+  },
+  {
+   "id": "99cd67bdb8",
+   "direction": "fr-ba",
+   "src": "La langue dit ce que le coeur veut. Il a soufflé sur le feu et la flamme est apparue.",
+   "ref": "Yè wunɛn nukuru ta kĩ, yera yara ya rà gere. U dɔ̃ɔ wure ma dɔ̃ɔ yara ya seewa.",
+   "hyp": "Langue ga sɔ̃ɔwa ye nɔni kĩ. Mɛro u yɛ̃ kuru wɔllɔ ma dãa te ta wukiri.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.14895303610321026,
+   "exact": 0,
+   "lex": 0.9375,
+   "fmt": 1.0,
+   "reward": 0.4941307051123848,
+   "loop": 0
+  },
+  {
+   "id": "99cd67bdb8",
+   "direction": "ba-fr",
+   "src": "Yè wunɛn nukuru ta kĩ, yera yara ya rà gere. U dɔ̃ɔ wure ma dɔ̃ɔ yara ya seewa.",
+   "ref": "La langue dit ce que le coeur veut. Il a soufflé sur le feu et la flamme est apparue.",
+   "hyp": "Lorsque ta joie veut voir, la viande est difficile. Il a regardé le feu et il se prosterne.",
+   "tags": [
+    "dictionnaire",
+    "long"
+   ],
+   "chrf": 0.25676787117603606,
+   "exact": 0,
+   "lex": 0.9444444444444444,
+   "fmt": 1.0,
+   "reward": 0.5580118084586407,
+   "loop": 0
+  },
+  {
+   "id": "bdfcbfaffc",
+   "direction": "fr-ba",
+   "src": "Ils ont découvert la piste des adversaires.",
+   "ref": "Ba wɛrɔ ben yìra kamɛ.",
+   "hyp": "Ba yibɛrɛban bɔkuɔ.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.12696304190776067,
+   "exact": 0,
+   "lex": 0.6666666666666666,
+   "fmt": 1.0,
+   "reward": 0.424382111981686,
+   "loop": 0
+  },
+  {
+   "id": "bdfcbfaffc",
+   "direction": "ba-fr",
+   "src": "Ba wɛrɔ ben yìra kamɛ.",
+   "ref": "Ils ont découvert la piste des adversaires.",
+   "hyp": "Ils ont commencé à regarder les ennemis.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.21884663259939455,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.5477533136101758,
+   "loop": 0
+  },
+  {
+   "id": "1a2d013754",
+   "direction": "fr-ba",
+   "src": "Il m'a fait marcher sur le mur.",
+   "ref": "U man wusu gasirisia.",
+   "hyp": "U man gberu sĩiyasia.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.3159415849673203,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6039661807705539,
+   "loop": 0
+  },
+  {
+   "id": "1a2d013754",
+   "direction": "ba-fr",
+   "src": "U man wusu gasirisia.",
+   "ref": "Il m'a fait marcher sur le mur.",
+   "hyp": "Il m'a fait regarder des villes.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.36850558684444606,
+   "exact": 0,
+   "lex": 0.8333333333333334,
+   "fmt": 1.0,
+   "reward": 0.5993102520327496,
+   "loop": 0
+  },
+  {
+   "id": "33dfdd4aa4",
+   "direction": "fr-ba",
+   "src": "Le nuage s'est dispersé",
+   "ref": "Guru wii te ta yarina",
+   "hyp": "Gura ya dɔɔ.",
+   "tags": [
+    "Nature & animaux",
+    "Nature & saisons",
+    "apprendre",
+    "dialogue",
+    "dictionnaire"
+   ],
+   "chrf": 0.10072053839494577,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.47936452222865283,
+   "loop": 0
+  },
+  {
+   "id": "33dfdd4aa4",
+   "direction": "ba-fr",
+   "src": "Guru wii te ta yarina",
+   "ref": "Le nuage s'est dispersé",
+   "hyp": "La nuée a été sortie.",
+   "tags": [
+    "Nature & animaux",
+    "Nature & saisons",
+    "apprendre",
+    "dialogue",
+    "dictionnaire"
+   ],
+   "chrf": 0.07766984490282526,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.46601938389110936,
+   "loop": 0
+  },
+  {
+   "id": "5de8318227",
+   "direction": "fr-ba",
+   "src": "Notre patron arrive, baissons la tête",
+   "ref": "Bɛsɛn yiini u we, su wiru kpĩ",
+   "hyp": "Bɛsɛn durɔ u turuma, su wiru kɔsio.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.3722201815293206,
+   "exact": 0,
+   "lex": 0.8571428571428571,
+   "fmt": 1.0,
+   "reward": 0.6064733381786293,
+   "loop": 0
+  },
+  {
+   "id": "5de8318227",
+   "direction": "ba-fr",
+   "src": "Bɛsɛn yiini u we, su wiru kpĩ",
+   "ref": "Notre patron arrive, baissons la tête",
+   "hyp": "Notre serviteur est venu, regardons la tête.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.3091622858546771,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.6000413233895499,
+   "loop": 0
+  },
+  {
+   "id": "a873e13caf",
+   "direction": "fr-ba",
+   "src": "Tu as refusé de répondre à mes préoccupations.",
+   "ref": "Ayina a man gari yi wurari.",
+   "hyp": "Yinni Gusunɔ u woodɑ wɛ̃. A yina n nɛn ɡɑri wisi.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.1380064817780981,
+   "exact": 0,
+   "lex": 0.9090909090909091,
+   "fmt": 0.75,
+   "reward": 0.45549657557487977,
+   "loop": 0
+  },
+  {
+   "id": "a873e13caf",
+   "direction": "ba-fr",
+   "src": "Ayina a man gari yi wurari.",
+   "ref": "Tu as refusé de répondre à mes préoccupations.",
+   "hyp": "Tu m'as regardé cette affaire.",
+   "tags": [
+    "dictionnaire"
+   ],
+   "chrf": 0.11424591568289459,
+   "exact": 0,
+   "lex": 1.0,
+   "fmt": 1.0,
+   "reward": 0.4871950038164127,
+   "loop": 0
+  }
+ ]
+}
