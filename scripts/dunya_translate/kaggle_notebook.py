@@ -5,13 +5,20 @@ cells = [
  ("markdown", "# FITILA — entraînement du traducteur FR ↔ Baatɔnum (ByT5)\n"
   "Kaggle : *Accelerator* = GPU T4 x2 ou P100, *Internet* = On. Ajoutez le dataset `dunya-translate-kit` (le zip fourni).\n"
   "Optionnel : secret Kaggle `HF_TOKEN` pour repartir des poids v03 (sinon `google/byt5-small`)."),
- ("code", "import os, glob, subprocess, sys\n"
-  "kit = glob.glob('/kaggle/input/*/dunya-translate-kit*')[:1] or glob.glob('/kaggle/input/*')[:1]\n"
-  "print(kit)\n"
+ ("code", "# 1) Trouver le kit, où que Kaggle l'ait monté (/kaggle/input/<slug>/ ou /kaggle/input/datasets/<user>/<slug>/...)\n"
+  "import os, glob, shutil\n"
+  "hits = glob.glob('/kaggle/input/**/scripts/dunya_translate/train_byt5.py', recursive=True)\n"
+  "assert hits, 'Kit introuvable : ajoutez le dataset dunya-translate-kit (panneau Input > Add Input).'\n"
+  "src = hits[0].rsplit('/scripts/', 1)[0]\n"
+  "ROOT = '/kaggle/working/kit'\n"
+  "shutil.rmtree(ROOT, ignore_errors=True)\n"
+  "shutil.copytree(src, ROOT)  # /kaggle/input est en lecture seule : on travaille sur une copie\n"
+  "print('kit :', src, '->', ROOT)\n"
+  "print(sorted(os.listdir(ROOT)))"),
+ ("code", "# 2) Dépendances, GPU, modèle de départ\n"
   "!pip -q install transformers sentencepiece accelerate sacrebleu\n"
-  "!mkdir -p /kaggle/working/kit && cp -r /kaggle/input/*/* /kaggle/working/kit/ 2>/dev/null; ls /kaggle/working/kit"),
- ("code", "import os\n"
-  "ROOT = next(p for p in ['/kaggle/working/kit', '/kaggle/working/kit/dunya-translate-kit'] if os.path.exists(p + '/scripts'))\n"
+  "import torch\n"
+  "print('GPU :', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'AUCUN (activez Accelerator = GPU T4 x2)')\n"
   "os.chdir(ROOT + '/scripts/dunya_translate')\n"
   "try:\n"
   "    from kaggle_secrets import UserSecretsClient\n"
@@ -20,7 +27,7 @@ cells = [
   "    pass\n"
   "MODEL = 'zimesongbian/modele_byt5_bariba_expert_api_v03_improve' if os.environ.get('HF_TOKEN') else 'google/byt5-small'\n"
   "LR = '1e-4' if os.environ.get('HF_TOKEN') else '3e-4'\n"
-  "print('base model:', MODEL)"),
+  "print('modèle de départ :', MODEL)"),
  ("code", "!python -m unittest test_pipeline 2>&1 | tail -3\n!python make_training_data.py"),
  ("markdown", "## 1. Fine-tuning supervisé (indices mémoire + glossaire, Apprendre multitâche)"),
  ("code", "!python train_byt5.py --model $MODEL --out /kaggle/working/v04 --epochs 6 --lr $LR --batch 8 --accum 4"),
