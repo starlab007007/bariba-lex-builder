@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# DUNYA translation pipeline: regenerated, large
+data/translation/training/
+data/translation/eval_*.json
+scripts/dunya_translate/__pycache__/

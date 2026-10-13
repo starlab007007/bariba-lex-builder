@@ -1,0 +1,115 @@
+name: DUNYA translation pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      eval_space:
+        description: "Mesurer le vrai modèle ByT5 (Space HF public) sur le jeu de test"
+        type: boolean
+        default: true
+      autocorrect:
+        description: "Space : garder sa post-correction automatique (false = mesurer le modèle brut)"
+        type: boolean
+        default: true
+      limit:
+        description: "Nombre de phrases du jeu de test à évaluer (0 = toutes, ~2 000 appels)"
+        default: "120"
+  push:
+    paths:
+      - "scripts/dunya_translate/**"
+      - "supabase/functions/_shared/translation-*.ts"
+      - "src/lib/translation/**"
+      - "tests/translation/**"
+      - "public/data/translation-memory.json"
+      - ".github/workflows/dunya-translate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install transformers sentencepiece accelerate sacrebleu gradio_client
+      - name: Unit tests
+        working-directory: scripts/dunya_translate
+        run: python -m unittest -v test_pipeline
+      - name: Generated files are up to date
+        working-directory: scripts/dunya_translate
+        run: |
+          python build_corpus.py > /dev/null
+          python export_memory.py
+          git diff --stat -- ../../data/translation ../../public/data/translation-memory.json ../../supabase/functions/_shared/translation-memory.ts
+          git diff --quiet -- ../../data/translation ../../public/data/translation-memory.json ../../supabase/functions/_shared/translation-memory.ts \
+            || { echo "::error::Corpus/memory outputs are stale: run build_corpus.py and export_memory.py and commit"; exit 1; }
+      - name: End-to-end smoke test (tiny random ByT5)
+        working-directory: scripts/dunya_translate
+        run: ./smoke_test.sh
+      - name: Floor baseline (memory only)
+        working-directory: scripts/dunya_translate
+        run: python eval_translation.py --backend memory --out /tmp/eval_memory.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: translation-corpus-report
+          path: |
+            data/translation/report.json
+            data/translation/gold_review.csv
+            data/translation/to_validate.jsonl
+            /tmp/eval_memory.json
+
+  edge-function:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno test --no-check supabase/functions/_shared/translation-verifier_test.ts
+      - name: Web memory (offline + online paths)
+        run: deno test --no-check --allow-read tests/translation/translationMemory.test.ts
+
+  measure-model:
+    if: github.event_name == 'workflow_dispatch' && inputs.eval_space
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install sacrebleu gradio_client
+      - name: Evaluate the deployed ByT5 Space
+        working-directory: scripts/dunya_translate
+        run: |
+          python eval_translation.py --backend space --limit "${{ inputs.limit }}" ${{ inputs.autocorrect && ' ' || '--no-autocorrect' }} --out /tmp/eval_space.json | tee /tmp/eval_space_summary.json
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          r = json.load(open('/tmp/eval_space.json', encoding='utf-8'))['report']
+          print('## ByT5 v03 (Space public) — jeu de test FITILA\n')
+          print('| Direction | n | chrF++ | exact | mots connus | boucles |\n|---|---|---|---|---|---|')
+          for d, v in r['by_direction'].items():
+              print(f"| {d} | {v['n']} | {v.get('sacrebleu_chrf++', round(v['chrf']*100,1))} | {v['exact']:.1%} | {v['lex']:.1%} | {v['loop']:.1%} |")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eval-space-byt5-v03
+          path: /tmp/eval_space.json
+      - name: Publish report (branch ci-reports/translation)
+        if: always()
+        run: |
+          mkdir /tmp/rep && cp /tmp/eval_space.json "/tmp/rep/eval_space_autocorrect_${{ inputs.autocorrect }}.json" 2>/dev/null || true
+          cd /tmp/rep
+          git init -q && git checkout -q -b ci-reports/translation
+          git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"
+          git add -A && git commit -q -m "ByT5 Space evaluation ${{ github.sha }}" || exit 0
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-reports/translation
