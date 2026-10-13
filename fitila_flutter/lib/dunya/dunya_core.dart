@@ -95,8 +95,8 @@ class DunyaAssetKnowledgeRepository implements DunyaKnowledgeRepository {
     } catch (_) {
       fts = const [];
     }
-    if (fts.isNotEmpty) return fts;
-
+    // Hybrid retrieval: lexical FTS and Unicode-aware exact/subword matching
+    // run together. FTS alone misses inflected words and text with Bariba tones.
     final clean = _norm(query);
     final terms = clean.split(' ').where((e) => e.length > 2).toList();
     final ranked = <({int score, DunyaSource source})>[];
@@ -135,7 +135,22 @@ class DunyaAssetKnowledgeRepository implements DunyaKnowledgeRepository {
     }
 
     ranked.sort((a, b) => b.score.compareTo(a.score));
-    return ranked.take(limit).map((e) => e.source).toList(growable: false);
+    // Reciprocal-rank fusion without an embedding model or a network request.
+    // Match by stable content identity so repeated sources are not returned twice.
+    final fused = <String, ({DunyaSource source, double score})>{};
+    void add(DunyaSource source, double bonus) {
+      final key = '${source.title}\\u0000${source.text}';
+      final previous = fused[key];
+      fused[key] = (source: source, score: (previous?.score ?? 0) + bonus);
+    }
+    for (var i = 0; i < fts.length; i++) {
+      add(fts[i], 1.0 / (60 + i + 1));
+    }
+    for (var i = 0; i < ranked.length; i++) {
+      add(ranked[i].source, 1.0 / (60 + i + 1));
+    }
+    final ordered = fused.values.toList()..sort((a, b) => b.score.compareTo(a.score));
+    return ordered.take(limit).map((item) => item.source).toList(growable: false);
   }
 
   Future<List<Map<String, String>>> _loadDictionary() async {
