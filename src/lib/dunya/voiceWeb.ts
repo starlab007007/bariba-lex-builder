@@ -92,8 +92,8 @@ export async function translate(text: string, from: 'fr' | 'bba', to: 'fr' | 'bb
   // 1. Attested sentence: exact, instant, no network.
   const attested = await memoryTranslate(text, direction);
   if (attested) return attested.translation;
-  // 2. Offline: word-by-word from the lexicon, only when most words are known.
-  if (isOffline()) return (await memoryTranslate(text, direction, { allowWordByWord: true }))?.translation ?? null;
+  // Never convert a lexical word list into a spoken sentence.
+  if (isOffline()) return null;
   try {
     const data = await invoke<{ translation?: string }>('byt5-bariba-translate', {
       text,
@@ -103,9 +103,9 @@ export async function translate(text: string, from: 'fr' | 'bba', to: 'fr' | 'bb
     const out = data.translation?.trim();
     if (out) return out;
   } catch {
-    // network or server failure: fall through to the offline lexicon
+    // network or server failure: fail transparently
   }
-  return (await memoryTranslate(text, direction, { allowWordByWord: true }))?.translation ?? null;
+  return null;
 }
 
 const VOICE_SYSTEM_PROMPT = [
