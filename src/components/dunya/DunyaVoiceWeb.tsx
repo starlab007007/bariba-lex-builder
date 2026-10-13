@@ -147,7 +147,12 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
       let answerSub: string | undefined;
       try {
         const direct = replyLang === 'fr' ? frenchGreetingAnswer(routed) : null;
-        if (direct) {
+        if (routed.requiresConfirmation) {
+          // The current Web chat has no approved action executor. Never imply that
+          // a destructive or external operation has been performed.
+          answerText = 'Je peux vous aider à préparer cette action, mais je ne l’ai pas exécutée. Confirmez précisément ce que vous souhaitez faire.';
+          setNotice('Aucune action externe ou modification de données n’a été effectuée.');
+        } else if (direct) {
           answerText = direct;
         } else if (!navigator.onLine) {
           answerText = offlineAnswer?.(clean) ?? 'Pas de connexion. Réessayez quand le réseau revient.';

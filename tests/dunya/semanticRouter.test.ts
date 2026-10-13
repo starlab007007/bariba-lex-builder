@@ -22,3 +22,15 @@ Deno.test('Sensitive actions require confirmation', () => {
 Deno.test('Normalization keeps contrastive Baatonum tones', () => {
  assert(normalizeLookup('sɔ̃ɔ') !== normalizeLookup('sɔɔ'), 'nasality preserved');
 });
+
+Deno.test('Bariba messages never receive an invented French direct answer', () => {
+ const r = routeDunyaInput('A kua', 'bba', 'voice');
+ assert(r.language === 'bba' && r.route === 'reasoning', 'Bariba remains an independent language input');
+ assert(frenchGreetingAnswer(r) === null, 'no French fallback greeting');
+});
+Deno.test('French external and destructive commands require explicit confirmation', () => {
+ for (const command of ['Envoie le message', 'Supprime mes notes', 'Publie ma photo']) {
+  const r = routeDunyaInput(command, 'fr', 'text');
+  assert(r.route === 'action' && r.requiresConfirmation, command);
+ }
+});
