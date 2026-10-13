@@ -7,7 +7,16 @@
 //
 // Mirrors scripts/dunya_translate/dunya_text.py (fold_ba / fold_fr).
 
-import { LEXICON_BA, LEXICON_FR, TM_PAIRS } from "./translation-memory.ts";
+// The memory is loaded lazily by ensureMemory(): from ./translation-memory.ts when that
+// generated file is bundled with the function, otherwise from the public site
+// (MEMORY_URL, default https://fitila.bj/data/translation-memory.json) with a
+// timeout. If neither works the helpers degrade gracefully (no memory hit,
+// coverage 0) instead of breaking the translation.
+type MemoryShape = { pairs: Array<[string, string, string]>; lexBa: string; lexFr: string };
+let loaded: MemoryShape | null = null;
+let loadingPromise: Promise<void> | null = null;
+let lastAttempt = 0;
+let indexed = false;
 
 const TONE_MARKS = /[̀́̂̄̌]/g; // the nasal tilde U+0303 is kept
 const EDGE = /^[\s.,;:!?()\[\]«»"“”‘’'…\-–—_/\\*]+|[\s.,;:!?()\[\]«»"“”‘’'…\-–—_/\\*]+$/g;
@@ -46,18 +55,72 @@ let baToFr: Map<string, [string, string]> | null = null;
 let lexBa: Set<string> | null = null;
 let lexFr: Set<string> | null = null;
 
+async function fromBundle(): Promise<MemoryShape | null> {
+  try {
+    const modulePath = "./translation-memory.ts";
+    const m = await import(modulePath);
+    return { pairs: m.TM_PAIRS, lexBa: m.LEXICON_BA, lexFr: m.LEXICON_FR };
+  } catch {
+    return null;
+  }
+}
+
+async function fromSite(): Promise<MemoryShape | null> {
+  const url = Deno.env.get("TRANSLATION_MEMORY_URL") || "https://fitila.bj/data/translation-memory.json";
+  try {
+    const resp = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (!Array.isArray(data?.pairs)) return null;
+    const ba = new Set<string>();
+    const fr = new Set<string>();
+    for (const [f, b] of data.pairs as Array<[string, string]>) {
+      for (const w of foldFr(f).split(" ")) if (w) fr.add(w);
+      for (const w of foldBa(b).split(" ")) if (w) ba.add(w);
+    }
+    for (const k of Object.keys(data.fr2ba ?? {})) for (const w of foldFr(k).split(" ")) if (w) fr.add(w);
+    for (const v of Object.values(data.fr2ba ?? {})) for (const w of foldBa(String(v)).split(" ")) if (w) ba.add(w);
+    for (const k of Object.keys(data.ba2fr ?? {})) for (const w of foldBa(k).split(" ")) if (w) ba.add(w);
+    for (const v of Object.values(data.ba2fr ?? {})) for (const w of foldFr(String(v)).split(" ")) if (w) fr.add(w);
+    return { pairs: data.pairs, lexBa: [...ba].join(" "), lexFr: [...fr].join(" ") };
+  } catch {
+    return null;
+  }
+}
+
+/** Call once per request before using the helpers. Never throws. */
+export function ensureMemory(): Promise<void> {
+  if (loaded) return Promise.resolve();
+  if (!loadingPromise) {
+    // after a failed attempt, retry at most once a minute
+    if (Date.now() - lastAttempt < 60_000 && lastAttempt) return Promise.resolve();
+    lastAttempt = Date.now();
+    loadingPromise = (async () => {
+      loaded = (await fromBundle()) ?? (await fromSite());
+    })().finally(() => {
+      loadingPromise = null;
+    });
+  }
+  return loadingPromise;
+}
+
 function ensureIndexes(): void {
-  if (frToBa) return;
+  if (indexed) return;
+  const mem = loaded;
   frToBa = new Map();
   baToFr = new Map();
-  for (const [fr, ba, grade] of TM_PAIRS) {
+  lexBa = new Set();
+  lexFr = new Set();
+  if (!mem) return; // empty indexes; rebuilt once the memory has loaded
+  indexed = true;
+  for (const [fr, ba, grade] of mem.pairs) {
     const kf = foldFr(fr);
     const kb = foldBa(ba);
     if (!frToBa.has(kf)) frToBa.set(kf, [ba, grade]);
     if (!baToFr.has(kb)) baToFr.set(kb, [fr, grade]);
   }
-  lexBa = new Set(LEXICON_BA.split(" "));
-  lexFr = new Set(LEXICON_FR.split(" "));
+  lexBa = new Set(mem.lexBa.split(" "));
+  lexFr = new Set(mem.lexFr.split(" "));
 }
 
 export function memoryLookup(
@@ -130,6 +193,6 @@ export function estimateConfidence(
   const coverage = lexicalCoverage(translation, targetLang);
   const looping = /(\b\S+(?:\s+\S+){0,2})(?:\s+\1){2,}/u.test(translation);
   const base = targetLang === "ba" ? 35 + 55 * coverage : 50 + 35 * coverage;
-  const value = Math.round(Math.max(5, Math.min(targetLang === "ba" ? 90 : 88, base - (looping ? 40 : 0) + (refined ? 2 : 0))));
+  const value = Math.round(Math.max(5, Math.min(targetLang === "ba" ? 80 : 85, base - (looping ? 40 : 0) + (refined ? 2 : 0))));
   return { confidence: value, kind: "lexical-coverage" };
 }
