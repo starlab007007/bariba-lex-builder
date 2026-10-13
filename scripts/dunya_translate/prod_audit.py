@@ -104,7 +104,8 @@ def main() -> None:
             st, r = translate(src, d)
             hyp = r.get("translation", "")
             report["B"].append({"dir": d, "src": src, "ref": ref, "hyp": hyp, "status": st, "method": r.get("method"),
-                                "confidence": r.get("confidence"), "chrf": round(chrf(hyp, ref), 3), "ms": r["_ms"]})
+                                "confidence": r.get("confidence"), "chrf": round(chrf(hyp, ref), 3), "ms": r["_ms"],
+                                "attested_segments": r.get("attestedSegments")})
 
     for fr in NOVEL_FR:
         st, r = translate(fr, "fr-ba")
@@ -158,7 +159,10 @@ def main() -> None:
         "B_methods": sorted({str(r["method"]) for r in report["B"]}),
         "C_roundtrip_chrf": mean([r["roundtrip_chrf"] for r in report["C"]]),
         "D_chat_ok": sum(1 for r in report["D"] if r["fr"]),
+        "B_attested_segments": sum(r.get("attested_segments") or 0 for r in report["B"]),
+        "C_confidence_max": max([r["confidence"] or 0 for r in report["C"]] or [0]),
         "voice_tts_status": voice.get("tts_status"),
+        "voice_audio_downloaded": bool(audio_b64),
         "voice_stt_chrf": voice.get("stt_chrf"),
     }
     report["summary"] = summary
