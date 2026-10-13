@@ -1,0 +1,90 @@
+name: FITILA independent production deployment
+on:
+  workflow_dispatch:
+    inputs:
+      publish_only:
+        description: 'Build and publish immutable image only (no VPS rollout)'
+        type: boolean
+        required: true
+        default: true
+permissions:
+  contents: read
+  packages: write
+concurrency:
+  group: fitila-independent-prod
+  cancel-in-progress: false
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image reference
+        id: meta
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}:fitila-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+      - name: Build and publish SHA-pinned frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.image }}
+          build-args: |
+            VITE_BUILD_SHA=${{ github.sha }}
+            VITE_SUPABASE_URL=https://dvswhjawiooprghzeyol.supabase.co
+            VITE_SUPABASE_PUBLISHABLE_KEY=${{ vars.FITILA_SUPABASE_PUBLISHABLE_KEY }}
+  deploy-on-own-vps:
+    needs: build-and-publish
+    if: ${{ !inputs.publish_only }}
+    runs-on: ubuntu-latest
+    environment: fitila-production
+    steps:
+      - name: Check required private deployment secrets
+        env:
+          HOST: ${{ secrets.FITILA_VPS_HOST }}
+          USERNAME: ${{ secrets.FITILA_VPS_USER }}
+          KEY: ${{ secrets.FITILA_VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.FITILA_VPS_KNOWN_HOSTS }}
+        run: |
+          for value in "$HOST" "$USERNAME" "$KEY" "$KNOWN_HOSTS"; do
+            test -n "$value" || { echo "Missing VPS deployment secret"; exit 1; }
+          done
+      - name: Install pinned SSH trust
+        env:
+          SSH_KEY: ${{ secrets.FITILA_VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.FITILA_VPS_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Deploy and smoke-check with automatic container rollback
+        env:
+          HOST: ${{ secrets.FITILA_VPS_HOST }}
+          USERNAME: ${{ secrets.FITILA_VPS_USER }}
+          IMAGE: ${{ needs.build-and-publish.outputs.image }}
+        run: |
+          ssh -o StrictHostKeyChecking=yes "$USERNAME@$HOST" "IMAGE='$IMAGE' bash -s" <<'REMOTE'
+          set -euo pipefail
+          : "${IMAGE:?}"
+          docker pull "$IMAGE"
+          previous="$(docker inspect fitila-web --format '{{.Config.Image}}' 2>/dev/null || true)"
+          if docker container inspect fitila-web >/dev/null 2>&1; then
+            docker stop fitila-web && docker rm fitila-web
+          fi
+          docker run -d --name fitila-web --restart unless-stopped -p 127.0.0.1:8088:80 "$IMAGE"
+          if ! curl --fail --silent --show-error --retry 12 --retry-delay 2 http://127.0.0.1:8088/ >/dev/null; then
+            docker rm -f fitila-web
+            if [ -n "$previous" ]; then
+              docker run -d --name fitila-web --restart unless-stopped -p 127.0.0.1:8088:80 "$previous"
+            fi
+            exit 1
+          fi
+          REMOTE

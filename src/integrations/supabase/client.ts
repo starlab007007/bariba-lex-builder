@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
-import { brokeredPreviewStorage } from './previewAuthStorage';
 
 const FITILA_SUPABASE_URL = 'https://dvswhjawiooprghzeyol.supabase.co';
 const FITILA_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Rs6ysvbwQ0oGpHuYulZ5Hw_loUqyGKw';
@@ -18,7 +17,7 @@ const SUPABASE_PUBLISHABLE_KEY = SUPABASE_URL === configuredUrl
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: brokeredPreviewStorage(),
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
     persistSession: true,
     autoRefreshToken: true,
   },
