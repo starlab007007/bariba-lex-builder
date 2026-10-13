@@ -1,0 +1,48 @@
+name: DUNYA Android isolated APK
+on:
+  push:
+    branches:
+      - build/dunya-v3-android-test-20261013
+    paths:
+      - 'fitila_flutter/**'
+      - '.github/workflows/dunya-v3-android-apk-test.yml'
+permissions:
+  contents: read
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Flutter info
+        run: flutter --version
+      - name: Dependencies
+        working-directory: fitila_flutter
+        run: flutter pub get
+      - name: Analyze
+        working-directory: fitila_flutter
+        run: flutter analyze --no-fatal-infos
+      - name: Unit tests
+        working-directory: fitila_flutter
+        run: flutter test
+      - name: Build Android debug test APK
+        working-directory: fitila_flutter
+        run: flutter build apk --debug --target-platform android-arm64
+      - name: SHA256 APK
+        run: sha256sum fitila_flutter/build/app/outputs/flutter-apk/app-debug.apk > DUNYA-APK-SHA256.txt
+      - name: Publish isolated Android test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DUNYA-Android-Build24-Base-Test-20261013
+          path: |
+            fitila_flutter/build/app/outputs/flutter-apk/app-debug.apk
+            DUNYA-APK-SHA256.txt
+          retention-days: 14
