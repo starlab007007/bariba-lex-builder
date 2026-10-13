@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dunya_core.dart';
+import '../dunya_v3/semantic_router.dart';
 import 'dunya_local_store.dart';
 import 'dunya_models.dart';
 import 'voice/dunya_voice_page.dart';
@@ -72,6 +73,26 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
 
     final clean = _input.text.trim();
     if (clean.isEmpty) return;
+
+    // V3 semantic routing is shared between typed and transcribed inputs.
+    // The current chat cannot execute privileged external operations.
+    final detectedLang = RegExp(r'[ɔɛŋƆƐŊ]').hasMatch(clean)
+        ? DunyaLanguage.baatonum : DunyaLanguage.french;
+    final semantic = routeDunyaInput(clean, detectedLang, DunyaInputMode.text);
+    if (semantic.requiresConfirmation) {
+      final request = DunyaMessage(role: 'user', content: clean);
+      const response = DunyaMessage(
+        role: 'assistant',
+        content: 'Je peux vous aider à préparer cette action, mais aucune action n’a été exécutée. Confirmez précisément votre demande.',
+      );
+      setState(() {
+        _messages = [..._messages, request, response];
+        _input.clear();
+      });
+      await _store.appendMessage(request);
+      await _store.appendMessage(response);
+      return;
+    }
 
     final user = DunyaMessage(role: 'user', content: clean);
     setState(() {
