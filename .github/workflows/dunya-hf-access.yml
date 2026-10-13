@@ -1,6 +1,9 @@
 name: DUNYA HF access check
 
 on:
+  push:
+    paths:
+      - .github/workflows/dunya-hf-access.yml
   workflow_dispatch:
     inputs:
       model:
@@ -20,8 +23,8 @@ jobs:
         run: |
           mkdir -p /tmp/rep && cd /tmp/rep
           auth=(); [ -n "${HF_TOKEN:-}" ] && auth=(-H "Authorization: Bearer $HF_TOKEN")
-          code=$(curl -s -o api.json -w "%{http_code}" "${auth[@]}" "https://huggingface.co/api/models/${{ inputs.model }}")
-          anon=$(curl -s -o /dev/null -w "%{http_code}" "https://huggingface.co/api/models/${{ inputs.model }}")
+          code=$(curl -s -o api.json -w "%{http_code}" "${auth[@]}" "https://huggingface.co/api/models/${{ inputs.model || 'zimesongbian/modele_byt5_bariba_expert_api_v03_improve' }}")
+          anon=$(curl -s -o /dev/null -w "%{http_code}" "https://huggingface.co/api/models/${{ inputs.model || 'zimesongbian/modele_byt5_bariba_expert_api_v03_improve' }}")
           echo "with-token=$code anonymous=$anon token-present=$([ -n "${HF_TOKEN:-}" ] && echo yes || echo no)" | tee summary.txt
           if [ "$anon" = "200" ] || [ "$code" = "200" ]; then
             python3 - <<'PY' | tee -a summary.txt
@@ -30,7 +33,7 @@ jobs:
           print('private:', d.get('private'), '| gated:', d.get('gated'), '| files:', [s['rfilename'] for s in d.get('siblings', [])][:20])
           print('library:', d.get('library_name'), '| pipeline:', d.get('pipeline_tag'), '| downloads:', d.get('downloads'))
           PY
-            curl -s "${auth[@]}" -L "https://huggingface.co/${{ inputs.model }}/resolve/main/config.json" -o config.json || true
+            curl -s "${auth[@]}" -L "https://huggingface.co/${{ inputs.model || 'zimesongbian/modele_byt5_bariba_expert_api_v03_improve' }}/resolve/main/config.json" -o config.json || true
             head -c 800 config.json | tee -a summary.txt
           fi
           git init -q && git checkout -q -b ci-reports/hf-access
