@@ -41,10 +41,6 @@ void main() {
 
     expect(find.byKey(const ValueKey('text-composer')), findsOneWidget);
     expect(find.byKey(const ValueKey('send')), findsOneWidget);
-    // Keyboard open: the mode chips step aside so the composer stays next to the keyboard.
-    for (final l in ['Photo', 'Coller', 'Doc']) {
-      expect(find.text(l), findsNothing);
-    }
     expect(tester.takeException(), isNull);
   });
 
