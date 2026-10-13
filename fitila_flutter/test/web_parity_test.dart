@@ -45,8 +45,7 @@ void main() {
     );
 
     expect(find.text('Dictionnaire'), findsOneWidget);
-    expect(find.text('Clavier'), findsOneWidget);
-    expect(find.text('Vocal'), findsOneWidget);
+    expect(find.byTooltip('Recherche vocale'), findsOneWidget);
     expect(find.text('Proposer un mot'), findsOneWidget);
 
     final field = find.byType(TextField).first;
@@ -71,7 +70,7 @@ void main() {
       TranslatorScreen(accessToken: '', ports: TranslatorPorts(translate: (t, b) async => t)),
     );
 
-    expect(find.text('Traducteur IA'), findsOneWidget);
+    expect(find.text('Traducteur'), findsOneWidget);
     expect(find.text('Voix'), findsOneWidget);
     expect(find.text('Texte'), findsOneWidget);
     expect(find.text('Photo'), findsOneWidget);

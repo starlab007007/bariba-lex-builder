@@ -597,11 +597,11 @@ class _TranslatorChatState extends State<TranslatorChat> {
             border: Border.all(color: selected ? SignatureTheme.gold : SignatureTheme.hairline),
             boxShadow: selected ? [BoxShadow(color: SignatureTheme.gold.withValues(alpha: .3), blurRadius: 10, offset: const Offset(0, 4))] : null,
           ),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
+          child: FittedBox(fit: BoxFit.scaleDown, child: Column(mainAxisSize: MainAxisSize.min, children: [
             Icon(icon, size: compact ? 17 : 19, color: fg),
             SizedBox(height: compact ? 0 : 2),
             Text(label, maxLines: 1, style: TextStyle(fontSize: compact ? 9.5 : 10.5, fontWeight: FontWeight.w800, color: fg)),
-          ]),
+          ])),
         ),
       ),
     );

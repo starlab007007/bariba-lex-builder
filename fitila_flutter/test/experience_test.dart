@@ -39,8 +39,7 @@ void main() {
   testWidgets('dictionary: word of the day, search, detail, favorite and recents persist', (tester) async {
     await pump(tester, DictionaryExperience(entries: _entries, now: DateTime(2026, 1, 1), speak: (t, b) async {}, onPropose: () {}));
     expect(find.text('MOT DU JOUR'), findsOneWidget);
-    expect(find.text('Clavier'), findsOneWidget);
-    expect(find.text('Vocal'), findsOneWidget);
+    expect(find.byTooltip('Recherche vocale'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, 'demi');
     await tester.pump(const Duration(milliseconds: 400));

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -206,6 +207,8 @@ void main() {
     });
 
     testWidgets('BaribaTextField docks the virtual keyboard when no system IME', (tester) async {
+      // Android relies on the native IME; the embedded keyboard is the fallback elsewhere.
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       final c = TextEditingController();
       addTearDown(c.dispose);
       await tester.pumpWidget(
@@ -220,6 +223,7 @@ void main() {
       expect(find.byType(BaribaVirtualKeyboard), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('key-ŋ')));
       expect(c.text, 'ŋ');
+      debugDefaultTargetPlatformOverride = null;
     });
   });
 }
