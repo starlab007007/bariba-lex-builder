@@ -3,8 +3,9 @@ import 'package:fitila_native/dunya_v3/qwen_candidate.dart';
 import 'package:fitila_native/dunya_v3/semantic_router.dart';
 
 void main() {
-  test('Qwen weights cannot be installed before checksum verification', () {
-    expect(DunyaQwenCandidate.safeToInstall, false);
+  test('Qwen model has pinned published checksum and size', () {
+    expect(DunyaQwenCandidate.safeToInstall, true);
+    expect(DunyaQwenCandidate.sizeBytes, 977184032);
     expect(DunyaQwenCandidate.contextTokens, 4096);
   });
   test('Bariba orthography and nasalisation remain untouched', () {
