@@ -47,6 +47,41 @@ function sanitizeHistory(input: unknown): ChatMessage[] {
     .filter((m) => m.content.length > 0);
 }
 
+const HF_ROUTER_MODELS = ["Qwen/Qwen2.5-7B-Instruct", "meta-llama/Llama-3.1-8B-Instruct"];
+
+async function callHuggingFaceRouter(args: {
+  token: string;
+  messages: ChatMessage[];
+  temperature: number;
+  maxTokens: number;
+}): Promise<{ text: string; model: string; error?: string }> {
+  for (const model of HF_ROUTER_MODELS) {
+    try {
+      const resp = await fetch("https://router.huggingface.co/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${args.token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model, messages: args.messages, temperature: args.temperature, max_tokens: args.maxTokens }),
+        signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+      });
+      if (resp.status === 401 || resp.status === 403) {
+        await resp.body?.cancel();
+        return { text: "", model, error: "llm_forbidden" };
+      }
+      if (!resp.ok) {
+        console.warn(`[fitila] HF router ${model} HTTP ${resp.status}`);
+        await resp.body?.cancel();
+        continue;
+      }
+      const data = await resp.json();
+      const text = normalizeText(String(data?.choices?.[0]?.message?.content ?? ""));
+      if (text) return { text, model: `hf:${model}` };
+    } catch (e) {
+      console.warn(`[fitila] HF router ${model} error: ${e instanceof Error ? e.message : e}`);
+    }
+  }
+  return { text: "", model: "", error: "HF router failed" };
+}
+
 async function callLLMWithFallback(args: {
   apiKey: string;
   messages: ChatMessage[];
@@ -170,8 +205,8 @@ serve(async (req: Request) => {
       );
     }
 
-    const MISTRAL_API_KEY = Deno.env.get("MISTRAL_API_KEY");
-    if (!MISTRAL_API_KEY) throw new Error("MISTRAL_API_KEY missing");
+    const MISTRAL_API_KEY = Deno.env.get("MISTRAL_API_KEY") || "";
+    const HF_LLM_TOKEN = Deno.env.get("HF_INFERENCE_TOKEN") || Deno.env.get("HUGGING_FACE_API_TOKEN") || "";
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY");
@@ -190,12 +225,28 @@ serve(async (req: Request) => {
     console.log(`[fitila] Incoming: "${message.substring(0, 120)}"`);
 
     // Step 1: LLM generates French response
-    const llmResult = await callLLMWithFallback({
-      apiKey: MISTRAL_API_KEY,
-      messages: chatMessages,
-      temperature,
-      maxTokens,
-    });
+    // Providers, in order: Mistral (MISTRAL_API_KEY), then the Hugging Face router
+    // (HF_INFERENCE_TOKEN, a token allowed to call Inference Providers).
+    let llmResult: { text: string; model: string; error?: string } = { text: "", model: "", error: "llm_not_configured" };
+    if (MISTRAL_API_KEY) {
+      llmResult = await callLLMWithFallback({ apiKey: MISTRAL_API_KEY, messages: chatMessages, temperature, maxTokens });
+    }
+    if ((llmResult.error || !llmResult.text) && HF_LLM_TOKEN) {
+      const hf = await callHuggingFaceRouter({ token: HF_LLM_TOKEN, messages: chatMessages, temperature, maxTokens });
+      if (hf.text) llmResult = hf;
+      else if (llmResult.error === "llm_not_configured") llmResult = hf;
+    }
+    if (!llmResult.text && (llmResult.error === "llm_not_configured" || llmResult.error === "llm_forbidden")) {
+      clearTimeout(globalTimer);
+      return new Response(
+        JSON.stringify({
+          error: "llm_not_configured",
+          message: "Le cerveau en ligne de FITILA n'est pas configuré (clé du modèle de langage absente ou sans droit).",
+          duration: Date.now() - startedAt,
+        }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     if (llmResult.error === "credits_exhausted") {
       clearTimeout(globalTimer);

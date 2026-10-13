@@ -4,6 +4,7 @@ import {
   ensureMemory,
   estimateConfidence,
   memoryLookup,
+  splitSentences,
 } from "../_shared/translation-verifier.ts";
 
 const corsHeaders = {
@@ -538,6 +539,66 @@ serve(async (req) => {
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    // 2) Several sentences: attested ones come from the memory, the others are
+    //    translated one by one (ByT5 is far more reliable on short sentences).
+    const segDirection = buildDirection(sourceLang, targetLang);
+    const segments = splitSentences(normalizedInput);
+    if (segments.length > 1) {
+      const hits = segments.map((seg) => memoryLookup(seg, segDirection));
+      const out: string[] = [];
+      const confidences: number[] = [];
+      let modelUsed = false;
+      let failed = false;
+      for (let i = 0; i < segments.length; i++) {
+        const hit = hits[i];
+        if (hit) {
+          out.push(hit.translation);
+          confidences.push(hit.grade === "A" ? 100 : 95);
+          continue;
+        }
+        if (!HF_TOKEN || abortController.signal.aborted) {
+          failed = true;
+          break;
+        }
+        const r = await callGradioTranslate(
+          SPACE_URL, "/gradio_api", segments[i], segDirection, buildGradioMode(mode), advanced, HF_TOKEN,
+          abortController.signal, true,
+        );
+        const t = r.success ? (Array.isArray(r.data?.data) ? r.data.data[0] : Array.isArray(r.data) ? r.data[0] : null) : null;
+        if (!isValidTranslation(t)) {
+          failed = true;
+          break;
+        }
+        modelUsed = true;
+        const clean = normalizeText(t);
+        out.push(clean);
+        confidences.push(estimateConfidence(clean, segDirection === "fr-ba" ? "ba" : "fr", false).confidence);
+      }
+      if (!failed) {
+        clearTimeout(timeoutId);
+        const attestedCount = hits.filter(Boolean).length;
+        return new Response(
+          JSON.stringify({
+            translation: out.join(" "),
+            suggestions: null,
+            confidence: Math.min(...confidences),
+            confidenceKind: modelUsed ? "per-sentence" : "attested-memory",
+            duration: Date.now() - startTime,
+            method: modelUsed ? (attestedCount ? "translation-memory+byt5" : "byt5-per-sentence") : "translation-memory",
+            segments: segments.length,
+            attestedSegments: attestedCount,
+            refinement: { applied: false },
+            modelInfo: {
+              name: modelUsed ? "ByT5 Expert (Improved)" : "FITILA translation memory",
+              version: modelUsed ? "zimesongbian/modele_byt5_bariba_expert_api_v03_improve" : "memory-v1",
+            },
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      // otherwise fall through to the whole-text path below
     }
 
     if (!HF_TOKEN) {

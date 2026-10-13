@@ -33,3 +33,10 @@ Deno.test("confidence is derived from the lexicon, not fixed", () => {
   assert(lexicalCoverage("xqzv plorg", "ba") === 0, "coverage zero");
   assert(estimateConfidence("a ka a ka a ka a ka", "ba", false).confidence < good, "loop penalty");
 });
+
+Deno.test("sentences are split on final punctuation", async () => {
+  const { splitSentences } = await import("./translation-verifier.ts");
+  const parts = splitSentences("Va me fermer ma porte. L'allergie va disparaître ! Où ? Ici");
+  assert(parts.length === 4, `got ${parts.length}`);
+  assert(parts[0] === "Va me fermer ma porte.", parts[0]);
+});

@@ -1,0 +1,50 @@
+name: Deploy FITILA voice & translation functions
+
+# Manual: needs a valid SUPABASE_ACCESS_TOKEN secret (the current one returns 401).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: dvswhjawiooprghzeyol
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check and test before deploying
+        run: |
+          for f in byt5-bariba-translate bariba-tts tts-audio fitila-ia-chat; do
+            deno check supabase/functions/$f/index.ts
+          done
+          deno test --no-check --allow-read --allow-env --allow-net supabase/functions/_shared/translation-verifier_test.ts
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy
+        run: |
+          set -o pipefail
+          mkdir -p /tmp/rep
+          { test -n "$SUPABASE_ACCESS_TOKEN" && echo "token: present" || echo "token: MISSING"; } | tee /tmp/rep/deploy.txt
+          supabase --version | tee -a /tmp/rep/deploy.txt
+          rc=0
+          for f in tts-audio bariba-tts byt5-bariba-translate fitila-ia-chat; do
+            echo "== $f" | tee -a /tmp/rep/deploy.txt
+            supabase functions deploy "$f" --project-ref "$SUPABASE_PROJECT_ID" --use-api 2>&1 | tee -a /tmp/rep/deploy.txt || rc=1
+          done
+          exit $rc
+      - name: Publish deploy log
+        if: always()
+        run: |
+          cd /tmp/rep 2>/dev/null || exit 0
+          git init -q && git checkout -q -b ci-reports/deploy
+          git config user.name github-actions && git config user.email actions@users.noreply.github.com
+          git add -A && git commit -q -m "deploy ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-reports/deploy
