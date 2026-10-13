@@ -176,7 +176,7 @@ export function speakFrench(text: string, rate = 1): Promise<void> {
 
 export async function speakBariba(text: string): Promise<boolean> {
   if (!text.trim()) return false;
-  const data = await invoke<{ success?: boolean; audio_url?: string }>('bariba-tts', { text });
+  const data = await invoke<{ success?: boolean; audio_url?: string }>('bariba-tts', { text, skipRefine: true });
   if (!data.audio_url) return false;
   await playUrl(data.audio_url);
   return true;

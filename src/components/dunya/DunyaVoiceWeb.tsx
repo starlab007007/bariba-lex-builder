@@ -156,8 +156,14 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           setStatus('Je réfléchis…');
           const answer = await askDunya(question, turnsRef.current, replyLang === 'bba');
           if (replyLang === 'bba') {
-            if (answer.ba) {
-              answerText = answer.ba;
+            // Sentence by sentence: ByT5 is most reliable on short sentences, and
+            // attested sentences come straight from the translation memory.
+            const parts = splitSentences(answer.fr);
+            const translated = await Promise.all(parts.map((p) => translate(p, 'fr', 'bba')));
+            const perSentence = translated.every((t) => t && t.trim()) ? translated.join(' ') : null;
+            const ba = perSentence ?? answer.ba;
+            if (ba) {
+              answerText = ba;
               answerSub = answer.fr;
             } else {
               answerText = answer.fr;
