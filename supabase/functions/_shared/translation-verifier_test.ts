@@ -1,4 +1,6 @@
-import { acceptRefinement, estimateConfidence, foldBa, foldFr, lexicalCoverage, memoryLookup, similarity } from "./translation-verifier.ts";
+import { acceptRefinement, estimateConfidence, foldBa, foldFr, ensureMemory, lexicalCoverage, memoryLookup, similarity } from "./translation-verifier.ts";
+
+await ensureMemory();
 
 function assert(cond: boolean, msg: string) { if (!cond) throw new Error(msg); }
 

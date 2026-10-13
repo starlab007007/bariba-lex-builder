@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import {
   acceptRefinement,
+  ensureMemory,
   estimateConfidence,
   memoryLookup,
 } from "../_shared/translation-verifier.ts";
@@ -391,6 +392,7 @@ serve(async (req) => {
       skipRefine = false,
     }: TranslationRequest = await req.json();
 
+    await ensureMemory();
     const HF_TOKEN = Deno.env.get("HUGGING_FACE_API_TOKEN");
 
     // API exploration mode
@@ -519,25 +521,8 @@ serve(async (req) => {
 
     const normalizedInput = normalizeText(text);
 
-    if (!HF_TOKEN) {
-      clearTimeout(timeoutId);
-      console.warn("HUGGING_FACE_API_TOKEN absent : repli corpus FITILA");
-      const fb = await corpusFallback(normalizedInput, sourceLang, targetLang);
-      const reason = "HuggingFace token not configured";
-      return fb
-        ? fallbackResponse(fb, reason, Date.now() - startTime)
-        : unavailableResponse(reason, Date.now() - startTime);
-    }
-
-    const direction = buildDirection(sourceLang, targetLang);
-    const gradioMode = buildGradioMode(mode);
-
-    console.log(`🤖 ByT5 Expert: ${direction} - "${normalizedInput.substring(0, 100)}..."`);
-    console.log(`📍 Space URL: ${SPACE_URL}`);
-    console.log(`   Mode: ${gradioMode}, Advanced: ${advanced}, skipRefine: ${skipRefine}`);
-
     // 1) Attested sentences (dictionary, Apprendre, scenes) never need the model.
-    const attested = memoryLookup(normalizedInput, direction);
+    const attested = memoryLookup(normalizedInput, buildDirection(sourceLang, targetLang));
     if (attested) {
       clearTimeout(timeoutId);
       return new Response(
@@ -554,6 +539,23 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
+    if (!HF_TOKEN) {
+      clearTimeout(timeoutId);
+      console.warn("HUGGING_FACE_API_TOKEN absent : repli corpus FITILA");
+      const fb = await corpusFallback(normalizedInput, sourceLang, targetLang);
+      const reason = "HuggingFace token not configured";
+      return fb
+        ? fallbackResponse(fb, reason, Date.now() - startTime)
+        : unavailableResponse(reason, Date.now() - startTime);
+    }
+
+    const direction = buildDirection(sourceLang, targetLang);
+    const gradioMode = buildGradioMode(mode);
+
+    console.log(`🤖 ByT5 Expert: ${direction} - "${normalizedInput.substring(0, 100)}..."`);
+    console.log(`📍 Space URL: ${SPACE_URL}`);
+    console.log(`   Mode: ${gradioMode}, Advanced: ${advanced}, skipRefine: ${skipRefine}`);
 
     const apiPrefix = "/gradio_api";
 
