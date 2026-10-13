@@ -189,7 +189,7 @@ class DunyaAssistant {
       }
       if (answer != null && answer.trim().isNotEmpty && !_cancelled) {
         final splitter = DunyaSentenceSplitter();
-        final sentences = [...splitter.add(answer), if (splitter.flush() case final rest?) rest];
+        final sentences = [...splitter.add(answer), ?splitter.flush()];
         final display = StringBuffer();
         for (final sentence in sentences) {
           if (_cancelled) break;
