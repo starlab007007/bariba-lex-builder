@@ -1,4 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import {
+  acceptRefinement,
+  estimateConfidence,
+  memoryLookup,
+} from "../_shared/translation-verifier.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -434,6 +439,25 @@ serve(async (req) => {
     console.log(`📍 Space URL: ${SPACE_URL}`);
     console.log(`   Mode: ${gradioMode}, Advanced: ${advanced}, skipRefine: ${skipRefine}`);
 
+    // 1) Attested sentences (dictionary, Apprendre, scenes) never need the model.
+    const attested = memoryLookup(normalizedInput, direction);
+    if (attested) {
+      clearTimeout(timeoutId);
+      return new Response(
+        JSON.stringify({
+          translation: attested.translation,
+          suggestions: null,
+          confidence: attested.grade === "A" ? 100 : 95,
+          confidenceKind: "attested-memory",
+          duration: Date.now() - startTime,
+          method: "translation-memory",
+          refinement: { applied: false },
+          modelInfo: { name: "FITILA translation memory", version: "memory-v1", grade: attested.grade },
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const apiPrefix = "/gradio_api";
 
     // Retry exponentiel : 3 tentatives avec délai 3s/8s/15s
@@ -523,31 +547,31 @@ serve(async (req) => {
       });
 
       if (refine.refined && refine.refined.length > 0) {
-        if (refine.refined !== finalTranslation) {
-          console.log(`✨ refine-bariba adjusted output`);
+        const verdict = acceptRefinement(finalTranslation, refine.refined, direction === "fr-ba" ? "ba" : "fr");
+        if (verdict.accepted) {
+          if (refine.refined !== finalTranslation) {
+            console.log(`✨ refine-bariba adjusted output`);
+          }
+          finalTranslation = refine.refined;
+          refineMeta = {
+            applied: true,
+            confidence: refine.confidence,
+            changes: refine.changes || [],
+          };
+        } else {
+          console.log(`🛡️ refinement rejected: ${verdict.reason}`);
+          refineMeta = { applied: false, error: `rejected: ${verdict.reason}` };
         }
-        finalTranslation = refine.refined;
-        refineMeta = {
-          applied: true,
-          confidence: refine.confidence,
-          changes: refine.changes || [],
-        };
       } else if (refine.error) {
         refineMeta = { applied: false, error: refine.error };
       }
     }
 
-    const hasSpecialChars = /[ɔɛɑɡãẽĩõũàèìòùâêîôûäëïöü]/u.test(finalTranslation);
-    const hasValidLength = finalTranslation.length >= normalizedInput.length * 0.3;
-
-    // Base confidence ByT5 + bonus diacritiques + bonus longueur + bonus refine
-    const baseConfidence = 85;
-    const confidence = Math.min(
-      97,
-      baseConfidence +
-        (hasSpecialChars ? 4 : 0) +
-        (hasValidLength ? 4 : 0) +
-        (refineMeta.applied ? 3 : 0),
+    // Reference-free estimate: share of output words known to the FITILA lexicon.
+    const { confidence, kind: confidenceKind } = estimateConfidence(
+      finalTranslation,
+      direction === "fr-ba" ? "ba" : "fr",
+      refineMeta.applied,
     );
 
     console.log(`✅ ByT5 Success in ${duration}ms: "${finalTranslation.substring(0, 150)}"`);
@@ -558,6 +582,7 @@ serve(async (req) => {
         translation: finalTranslation,
         suggestions,
         confidence,
+        confidenceKind,
         duration,
         method: "byt5-expert",
         refinement: refineMeta,

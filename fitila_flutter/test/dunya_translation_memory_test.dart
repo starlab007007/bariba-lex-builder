@@ -1,0 +1,63 @@
+import 'package:fitila_native/dunya/voice/dunya_translation_memory.dart';
+import 'package:fitila_native/dunya/voice/dunya_translator.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  final memory = DunyaTranslationMemory([
+    ['Salut ! Bonne arrivée !', 'Aagu wunɛ ka weru.', 'A'],
+    ['Quand es-tu venu ?', 'Domma a na?', 'A'],
+    ['Si tu salues le forgeron, salue aussi celui qui active les soufflets.', 'À n seko tɔbura, a maa wãa wuro tɔbiri.', 'A'],
+  ]);
+
+  group('translation memory', () {
+    test('French lookup ignores case, accents and spacing before punctuation', () {
+      expect(memory.lookup('salut! bonne arrivee', toBariba: true)?.text, 'Aagu wunɛ ka weru.');
+      expect(memory.lookup('Quand es-tu venu?', toBariba: true)?.exact, isTrue);
+    });
+
+    test('Baatɔnum lookup ignores tones and recogniser spellings', () {
+      expect(memory.lookup('domma a na', toBariba: false)?.text, 'Quand es-tu venu ?');
+      expect(memory.lookup('Dòmma a nà', toBariba: false)?.text, 'Quand es-tu venu ?');
+    });
+
+    test('one-letter recogniser error on a long sentence is a near hit, never exact', () {
+      final hit = memory.lookup('a n seko tɔbura a maa wãa wuro tɔbirj', toBariba: false);
+      expect(hit, isNotNull);
+      expect(hit!.exact, isFalse);
+      expect(hit.text, startsWith('Si tu salues le forgeron'));
+    });
+
+    test('short or unknown sentences do not match approximately', () {
+      expect(memory.lookup('domma a nu', toBariba: false), isNull);
+      expect(memory.lookup('une phrase inconnue du corpus', toBariba: true), isNull);
+    });
+
+    test('edit distance helper stops early', () {
+      expect(boundedEditDistance('abc', 'abd', 1), 1);
+      expect(boundedEditDistance('abc', 'xyz', 1), greaterThan(1));
+    });
+  });
+
+  group('translator engine order', () {
+    tearDown(() {
+      DunyaTranslator.memory = null;
+      DunyaTranslator.offline = null;
+      DunyaTranslator.online = null;
+    });
+
+    test('memory answers first and the network is never used for known sentences', () async {
+      var onlineCalls = 0;
+      DunyaTranslator.memory = (t, toBariba) async => memory.translate(t, toBariba);
+      DunyaTranslator.online = (t, toBariba) async {
+        onlineCalls++;
+        return 'réponse réseau';
+      };
+      final known = await DunyaTranslator.translate('Quand es-tu venu ?', toBariba: true);
+      expect(known?.engine, 'memory');
+      expect(known?.text, 'Domma a na?');
+      final unknown = await DunyaTranslator.translate('Une autre phrase', toBariba: true);
+      expect(unknown?.engine, 'online');
+      expect(onlineCalls, 1);
+    });
+  });
+}

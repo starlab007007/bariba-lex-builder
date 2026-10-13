@@ -1,0 +1,69 @@
+{
+ "pairs": 18487,
+ "by_split": {
+  "dev": 403,
+  "test": 545,
+  "train": 17539
+ },
+ "by_grade": {
+  "A": 18304,
+  "B": 183
+ },
+ "by_kind": {
+  "sentence": 7312,
+  "phrase": 450,
+  "word": 10725
+ },
+ "by_source": {
+  "dict_example": 7125,
+  "apprendre_card": 3866,
+  "scene": 375,
+  "exercise": 217,
+  "classe_n2_gestion": 5,
+  "apprendre_foundation": 70,
+  "apprendre_scene": 10,
+  "classe_n2_textprod": 20,
+  "scene_vocab": 197,
+  "dict_gloss": 9961,
+  "classe_n2_grammar": 5,
+  "apprendre_proverb": 2
+ },
+ "sentence_pairs_train": 6830,
+ "glossary_headwords": 8140,
+ "glossary_with_plural": 918,
+ "glossary_with_focus": 1442,
+ "multitask": {
+  "fill": 939,
+  "plural": 953,
+  "focus": 1504,
+  "quiz": 8
+ },
+ "preference_pairs": 1440,
+ "mono_ba_lines": 2086,
+ "to_validate": 371,
+ "gold_candidates": 500,
+ "source_lexical_reliability": {
+  "dict_gloss": 1.0,
+  "dict_example": 1.0,
+  "apprendre_card": 0.997,
+  "apprendre_scene": 1.0,
+  "apprendre_proverb": 1.0,
+  "apprendre_foundation": 1.0,
+  "scene": 0.997,
+  "scene_vocab": 1.0,
+  "exercise": 0.96,
+  "classe_n2_grammar": 0.667,
+  "classe_n2_textprod": 0.875,
+  "classe_n2_gestion": 0.696
+ },
+ "cleaning": {
+  "ocr_fixed": 19,
+  "downgraded_ocr": 6,
+  "rejected_length-ratio": 122,
+  "merged_duplicates": 4018,
+  "rejected_placeholder": 185,
+  "rejected_french-in-bariba": 6,
+  "rejected_token-ratio": 2,
+  "dropped_leaking_train": 22
+ }
+}

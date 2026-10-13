@@ -39,3 +39,8 @@ android/.kotlin/
 *.pem
 fitila_flutter/.ci-dart-defines.json
 fitila_flutter/.dart-defines.generated.json
+
+# DUNYA translation pipeline: regenerated, large
+data/translation/training/
+data/translation/eval_*.json
+scripts/dunya_translate/__pycache__/
