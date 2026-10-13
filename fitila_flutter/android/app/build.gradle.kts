@@ -87,7 +87,7 @@ flutter {
 }
 
 dependencies {
-    // DUNYA cerveau hors ligne : Gemma via LiteRT-LM (Google AI Edge).
-    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+    // DUNYA cerveau local Qwen3 INT4 : version LiteRT-LM vérifiée, pas de latest.release.
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.18.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 }
