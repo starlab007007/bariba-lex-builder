@@ -1,3 +1,4 @@
+import { frenchGreetingAnswer, routeDunyaInput } from '@/lib/dunya/semanticRouter';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Captions, CaptionsOff, Check, ChevronDown, Copy, Languages, Menu, MessageSquare, Mic, MicOff, Send, Settings2, Square, Volume2, X } from 'lucide-react';
 import {
@@ -141,19 +142,27 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
       setCaption('');
       setNotice(null);
 
+      const routed = routeDunyaInput(clean, heardLang, spoken ? 'voice' : 'text');
       let answerText = '';
       let answerSub: string | undefined;
       try {
-        if (!navigator.onLine) {
+        const direct = replyLang === 'fr' ? frenchGreetingAnswer(routed) : null;
+        if (direct) {
+          answerText = direct;
+        } else if (!navigator.onLine) {
           answerText = offlineAnswer?.(clean) ?? 'Pas de connexion. Réessayez quand le réseau revient.';
           setNotice('Hors ligne : réponse tirée des ressources FITILA de ce navigateur.');
         } else {
           let question = clean;
           if (heardLang === 'bba') {
             setStatus('Je traduis…');
-            question = (await translate(clean, 'bba', 'fr')) ?? clean;
+            const translatedQuestion = await translate(clean, 'bba', 'fr');
+            if (!translatedQuestion) {
+              throw new Error('La demande baatɔnum ne peut pas être traduite avec fiabilité. Reformulez-la ou essayez en français.');
+            }
+            question = translatedQuestion;
           }
-          setStatus('Je réfléchis…');
+          setStatus(routed.route === 'knowledge' ? 'Je consulte les connaissances…' : 'Je réfléchis…');
           const answer = await askDunya(question, turnsRef.current, replyLang === 'bba');
           if (replyLang === 'bba') {
             // Sentence by sentence: ByT5 is most reliable on short sentences, and
