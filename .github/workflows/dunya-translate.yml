@@ -71,6 +71,8 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.eval_space
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -93,3 +95,12 @@ jobs:
         with:
           name: eval-space-byt5-v03
           path: /tmp/eval_space.json
+      - name: Publish report (branch ci-reports/translation)
+        if: always()
+        run: |
+          mkdir /tmp/rep && cp /tmp/eval_space.json /tmp/rep/ 2>/dev/null || true
+          cd /tmp/rep
+          git init -q && git checkout -q -b ci-reports/translation
+          git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"
+          git add -A && git commit -q -m "ByT5 Space evaluation ${{ github.sha }}" || exit 0
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-reports/translation
