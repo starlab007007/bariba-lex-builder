@@ -225,16 +225,18 @@ export async function espaceStats() {
   return { docs: docs.count ?? 0, archived: archived.count ?? 0, folders: folders.count ?? 0, scans: jobs.count ?? 0 };
 }
 
-/** Traduction en ligne (moteur `ai-translate`) ; renvoie null si indisponible (hors ligne, non connecté). */
+/** Traduction en ligne : modèle FITILA `byt5-bariba-translate` d'abord (mémoire des phrases attestées + ByT5), puis `ai-translate` en secours. Renvoie null si indisponible (hors ligne, non connecté). */
 export async function translateRemote(text: string, direction: 'ba-fr' | 'fr-ba'): Promise<string | null> {
-  try {
-    const { data, error } = await supabase.functions.invoke('ai-translate', {
-      body: { text, sourceLang: direction === 'ba-fr' ? 'bariba' : 'french', targetLang: direction === 'ba-fr' ? 'french' : 'bariba' },
-    });
-    if (error) return null;
-    const t = typeof data?.translation === 'string' ? data.translation.trim() : '';
-    return t || null;
-  } catch {
-    return null;
+  const body = { text, sourceLang: direction === 'ba-fr' ? 'bariba' : 'french', targetLang: direction === 'ba-fr' ? 'french' : 'bariba' };
+  for (const fn of ['byt5-bariba-translate', 'ai-translate']) {
+    try {
+      const { data, error } = await supabase.functions.invoke(fn, { body });
+      if (error) continue;
+      const t = typeof data?.translation === 'string' ? data.translation.trim() : '';
+      if (t) return t;
+    } catch {
+      /* moteur suivant */
+    }
   }
+  return null;
 }
