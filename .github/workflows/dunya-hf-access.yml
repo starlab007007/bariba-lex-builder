@@ -38,5 +38,5 @@ jobs:
           fi
           git init -q && git checkout -q -b ci-reports/hf-access
           git config user.name github-actions && git config user.email actions@users.noreply.github.com
-          git add summary.txt config.json 2>/dev/null; git commit -q -m "HF access ${{ github.sha }}" || true
+          git add -A; git commit -q -m "HF access ${{ github.sha }}" || true
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-reports/hf-access

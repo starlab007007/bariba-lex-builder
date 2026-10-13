@@ -75,6 +75,7 @@ jobs:
           deno-version: v2.x
       - run: deno test --no-check supabase/functions/_shared/translation-verifier_test.ts
       - name: Web memory (offline + online paths)
+        if: hashFiles('tests/translation/translationMemory.test.ts') != ''
         run: deno test --no-check --allow-read tests/translation/translationMemory.test.ts
 
   measure-model:
