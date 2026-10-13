@@ -170,6 +170,16 @@ jobs:
           print('SIGNING_MODE='+mode)
           PY
 
+      - name: Add swap (the build was SIGTERM-killed, exit 143, under memory pressure)
+        working-directory: .
+        run: |
+          sudo swapoff -a || true
+          sudo fallocate -l 12G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile >/dev/null
+          sudo swapon /swapfile
+          free -h
+
       - name: Build release APKs (per processor)
         run: |
           set -o pipefail
