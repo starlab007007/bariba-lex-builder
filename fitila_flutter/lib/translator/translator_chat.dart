@@ -537,10 +537,10 @@ class _TranslatorChatState extends State<TranslatorChat> {
     const modes = [('Voix', Icons.mic_rounded), ('Texte', Icons.keyboard_alt_rounded), ('Photo', Icons.photo_camera_rounded), ('Coller', Icons.content_paste_rounded), ('Doc', Icons.description_rounded)];
     return Container(
       padding: EdgeInsets.fromLTRB(6, keyboardOpen ? 3 : 5, 6, keyboardOpen ? 2 : 5),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: SignatureTheme.appBackground,
-        border: Border(top: BorderSide(color: SignatureTheme.hairline)),
-        boxShadow: [BoxShadow(color: SignatureTheme.ink.withValues(alpha: .04), blurRadius: 16, offset: Offset(0, -6))],
+        border: const Border(top: BorderSide(color: SignatureTheme.hairline)),
+        boxShadow: [BoxShadow(color: SignatureTheme.ink.withValues(alpha: .04), blurRadius: 16, offset: const Offset(0, -6))],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
