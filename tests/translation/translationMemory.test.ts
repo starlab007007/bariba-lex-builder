@@ -15,7 +15,7 @@ Deno.test('ships a large memory', () => {
 Deno.test('attested sentences are exact in both directions, whatever the spacing, accents and tones', () => {
   const fr = memory.exact('salut! bonne arrivee', 'fr-ba');
   assert(fr !== null && foldBa(fr.translation).includes('aagu'), 'fr-ba');
-  assert(fr!.confidence >= 95 && fr!.method === 'translation-memory', 'confidence/method');
+  assert(fr!.confidence === 0 && fr!.qualityStatus === 'attested' && fr!.method === 'translation-memory', 'provenance without fabricated accuracy');
   const ba = memory.exact('Aagu wunɛ ka weru', 'ba-fr');
   assert(ba !== null && foldFr(ba.translation).includes('bonne arrivee'), 'ba-fr');
   const toned = memory.exact('Dòmma a nà ?', 'ba-fr');
@@ -27,13 +27,17 @@ Deno.test('unknown sentence is not invented', () => {
   assert(memory.wordByWord('xqzv plorg wuvt', 'fr-ba') === null, 'refuses mostly unknown text');
 });
 
-Deno.test('word-by-word works offline when most words are known', () => {
+Deno.test('word-by-word only works offline when all words are known', () => {
   const r = memory.wordByWord('eau maison', 'fr-ba');
-  assert(r !== null && r.method === 'dictionary-offline' && (r.coverage ?? 0) >= 0.6, 'word-by-word');
-  assert(r!.confidence < 60, 'low confidence is shown honestly');
+  assert(r !== null && r.method === 'dictionary-offline' && (r.coverage ?? 0) === 1, 'word-by-word');
+  assert(r!.confidence === 0, 'no statistical accuracy without evaluation');
   assert(foldBa(r!.translation).includes('nim'), 'eau -> nim');
 });
 
 Deno.test('nasal tilde is never folded away', () => {
   assert(foldBa('sɔ̃ɔ') !== foldBa('sɔɔ'), 'tilde');
+});
+
+Deno.test('partially known phrases must not be presented as full translations', () => {
+  assert(memory.wordByWord('eau xqzv maison', 'fr-ba') === null, 'unknown word blocks incomplete translation');
 });
