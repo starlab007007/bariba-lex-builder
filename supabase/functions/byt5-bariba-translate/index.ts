@@ -58,6 +58,72 @@ function isValidTranslation(result: unknown): result is string {
   );
 }
 
+// Repli FITILA : quand le moteur ByT5 (Space Hugging Face) est indisponible,
+// on traduit à partir du corpus validé en base (expressions, mémoire de
+// traduction, phrases d'entraînement, dictionnaire) via la RPC
+// public.fitila_corpus_translate. Renvoie null si rien de fiable n'est trouvé.
+async function corpusFallback(
+  text: string,
+  sourceLang: string,
+  targetLang: string,
+): Promise<{ translation: string; method: string; confidence: number; [k: string]: unknown } | null> {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY");
+  if (!url || !key) return null;
+  try {
+    const resp = await fetch(`${url}/rest/v1/rpc/fitila_corpus_translate`, {
+      method: "POST",
+      headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_text: text, p_source: sourceLang, p_target: targetLang }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!resp.ok) {
+      console.warn(`corpus fallback HTTP ${resp.status}: ${(await resp.text()).slice(0, 200)}`);
+      return null;
+    }
+    const data = await resp.json();
+    if (data && typeof data.translation === "string" && data.translation.trim()) return data;
+    return null;
+  } catch (e) {
+    console.warn(`corpus fallback error: ${e instanceof Error ? e.message : e}`);
+    return null;
+  }
+}
+
+function fallbackResponse(
+  fb: NonNullable<Awaited<ReturnType<typeof corpusFallback>>>,
+  reason: string,
+  duration: number,
+): Response {
+  return new Response(
+    JSON.stringify({
+      ...fb,
+      translation: fb.translation,
+      confidence: fb.confidence,
+      method: `fitila-corpus:${fb.method}`,
+      fallback: true,
+      engineError: reason,
+      notice: "Moteur IA indisponible : traduction issue du corpus et du dictionnaire FITILA.",
+      duration,
+      modelInfo: { name: "FITILA Corpus", version: "fitila_corpus_translate", mode: "fallback" },
+    }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
+}
+
+function unavailableResponse(reason: string, duration: number): Response {
+  return new Response(
+    JSON.stringify({
+      error: "Traduction indisponible",
+      details:
+        "Le moteur de traduction IA est momentanément indisponible et aucune correspondance fiable n'a été trouvée dans le corpus FITILA.",
+      engineError: reason,
+      duration,
+    }),
+    { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
+}
+
 function safeJsonParse<T = unknown>(value: string): T | null {
   try {
     return JSON.parse(value) as T;
@@ -100,7 +166,7 @@ async function pollGradioQueue(
     try {
       const pollResponse = await fetch(pollUrl, {
         headers: {
-          ...(hfToken ? { Authorization: `Bearer ${hfToken}` } : {}),
+          Authorization: `Bearer ${hfToken}`,
           Accept: "text/event-stream",
         },
         signal: abortSignal,
@@ -178,7 +244,7 @@ async function callGradioTranslate(
   hfToken: string,
   abortSignal?: AbortSignal,
   autocorrect: boolean = true,
-): Promise<{ success: boolean; data?: any; error?: string }> {
+): Promise<{ success: boolean; data?: any; error?: string; fatal?: boolean }> {
   const normalizedText = normalizeText(text);
 
   const data = [normalizedText, direction, mode, advanced, autocorrect];
@@ -190,7 +256,7 @@ async function callGradioTranslate(
     const joinResponse = await fetch(`${spaceUrl}${apiPrefix}/queue/join`, {
       method: "POST",
       headers: {
-        ...(hfToken ? { Authorization: `Bearer ${hfToken}` } : {}),
+        Authorization: `Bearer ${hfToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -207,7 +273,9 @@ async function callGradioTranslate(
     if (!joinResponse.ok) {
       const errorText = await joinResponse.text().catch(() => "");
       console.log(`   Join error: ${errorText.substring(0, 300)}`);
-      return { success: false, error: "Queue join failed" };
+      // 401/403/404 : le Space n'existe plus ou est privé — inutile de réessayer.
+      const fatal = [401, 403, 404].includes(joinResponse.status);
+      return { success: false, error: `Queue join failed (HTTP ${joinResponse.status})`, fatal };
     }
 
     const joinText = await joinResponse.text().catch(() => "");
@@ -323,11 +391,18 @@ serve(async (req) => {
       skipRefine = false,
     }: TranslationRequest = await req.json();
 
-    const HF_TOKEN = Deno.env.get("HUGGING_FACE_API_TOKEN") ?? "";
+    const HF_TOKEN = Deno.env.get("HUGGING_FACE_API_TOKEN");
 
     // API exploration mode
     if (exploreApi) {
       clearTimeout(timeoutId);
+
+      if (!HF_TOKEN) {
+        return new Response(
+          JSON.stringify({ error: "HuggingFace token not configured" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
 
       const exploration: any = { spaceUrl: SPACE_URL, endpoints: [] };
 
@@ -341,7 +416,7 @@ serve(async (req) => {
       for (const url of configUrls) {
         try {
           const resp = await fetch(url, {
-            headers: HF_TOKEN ? { Authorization: `Bearer ${HF_TOKEN}` } : {},
+            headers: { Authorization: `Bearer ${HF_TOKEN}` },
           });
 
           if (!resp.ok) continue;
@@ -371,6 +446,15 @@ serve(async (req) => {
     if (healthCheck) {
       clearTimeout(timeoutId);
 
+      // Le service reste disponible grâce au repli corpus FITILA même si le
+      // moteur ByT5 est hors ligne : healthy = « le service peut répondre ».
+      if (!HF_TOKEN) {
+        return new Response(
+          JSON.stringify({ healthy: true, byt5: false, fallback: "fitila-corpus", spaceUrl: SPACE_URL }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
       const hcStart = Date.now();
       const hcController = new AbortController();
       const hcTimeoutId = setTimeout(() => hcController.abort(), 4000);
@@ -381,7 +465,7 @@ serve(async (req) => {
         for (const configPath of ["/gradio_api/config", "/config"]) {
           try {
             const configResponse = await fetch(`${SPACE_URL}${configPath}`, {
-              headers: HF_TOKEN ? { Authorization: `Bearer ${HF_TOKEN}` } : {},
+              headers: { Authorization: `Bearer ${HF_TOKEN}` },
               signal: hcController.signal,
             });
             if (configResponse.ok) {
@@ -395,12 +479,14 @@ serve(async (req) => {
 
         return new Response(
           JSON.stringify({
-            healthy,
+            healthy: true,
+            byt5: healthy,
+            fallback: healthy ? undefined : "fitila-corpus",
             duration: Date.now() - hcStart,
             spaceUrl: SPACE_URL,
           }),
           {
-            status: healthy ? 200 : 503,
+            status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           },
         );
@@ -432,6 +518,17 @@ serve(async (req) => {
     }
 
     const normalizedInput = normalizeText(text);
+
+    if (!HF_TOKEN) {
+      clearTimeout(timeoutId);
+      console.warn("HUGGING_FACE_API_TOKEN absent : repli corpus FITILA");
+      const fb = await corpusFallback(normalizedInput, sourceLang, targetLang);
+      const reason = "HuggingFace token not configured";
+      return fb
+        ? fallbackResponse(fb, reason, Date.now() - startTime)
+        : unavailableResponse(reason, Date.now() - startTime);
+    }
+
     const direction = buildDirection(sourceLang, targetLang);
     const gradioMode = buildGradioMode(mode);
 
@@ -462,7 +559,7 @@ serve(async (req) => {
 
     // Retry exponentiel : 3 tentatives avec délai 3s/8s/15s
     const RETRY_DELAYS = [0, 3000, 8000];
-    let result: { success: boolean; data?: any; error?: string } = { success: false, error: "No attempt made" };
+    let result: { success: boolean; data?: any; error?: string; fatal?: boolean } = { success: false, error: "No attempt made" };
 
     for (let attempt = 0; attempt < RETRY_DELAYS.length; attempt++) {
       if (attempt > 0) {
@@ -484,23 +581,19 @@ serve(async (req) => {
 
       if (result.success) break;
       console.warn(`⚠️ ByT5 attempt ${attempt + 1} failed: ${result.error}`);
+      if (result.fatal || abortController.signal.aborted) break;
     }
 
     clearTimeout(timeoutId);
     const duration = Date.now() - startTime;
 
     if (!result.success) {
-      console.error(`❌ ByT5 failed after ${RETRY_DELAYS.length} attempts (${duration}ms): ${result.error}`);
-      return new Response(
-        JSON.stringify({
-          error: "ByT5 translation service unavailable",
-          details: result.error || "HuggingFace Space API not responding after multiple retries",
-          duration,
-          retries: RETRY_DELAYS.length,
-          spaceUrl: SPACE_URL,
-        }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      console.error(`❌ ByT5 failed (${duration}ms): ${result.error} — repli corpus FITILA`);
+      const reason = result.error || "HuggingFace Space API not responding";
+      const fb = await corpusFallback(normalizedInput, sourceLang, targetLang);
+      return fb
+        ? fallbackResponse(fb, reason, Date.now() - startTime)
+        : unavailableResponse(reason, Date.now() - startTime);
     }
 
     // Extract translation from Gradio result
@@ -517,15 +610,11 @@ serve(async (req) => {
 
     if (!isValidTranslation(translation)) {
       console.error(`❌ ByT5 invalid response after ${duration}ms: "${String(translation)}"`);
-      return new Response(
-        JSON.stringify({
-          error: "ByT5 returned invalid response",
-          details: `Received: "${String(translation || "").substring(0, 80)}"`,
-          duration,
-          spaceUrl: SPACE_URL,
-        }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      const reason = "ByT5 returned invalid response";
+      const fb = await corpusFallback(normalizedInput, sourceLang, targetLang);
+      return fb
+        ? fallbackResponse(fb, reason, Date.now() - startTime)
+        : unavailableResponse(reason, Date.now() - startTime);
     }
 
     let finalTranslation = normalizeText(translation);

@@ -108,6 +108,17 @@ class DunyaTranslationMemory {
     return null;
   }
 
+  /// Exact attested translation, or null. Never throws (asset missing, tests, first start):
+  /// callers simply continue with the online chain or the offline dictionary.
+  static Future<String?> tryExact(String text, {required bool toBariba}) async {
+    try {
+      final hit = (await shared()).lookup(text, toBariba: toBariba);
+      return hit != null && hit.exact ? hit.text : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Hook for DunyaTranslator.memory.
   Future<String?> translate(String text, bool toBariba) async => lookup(text, toBariba: toBariba)?.text;
 }

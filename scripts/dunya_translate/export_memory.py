@@ -3,6 +3,7 @@
 
   fitila_flutter/assets/data/dunya_memory.json        [fr, ba, grade] rows (Dart)
   supabase/functions/_shared/translation-memory.ts    pairs + lexicons (Deno)
+  public/data/translation-memory.json                 pairs + word maps (web, cached by the PWA)
 
 ALL splits are exported (the deployed memory should know every attested
 sentence); evaluation uses the train-only memory instead (see eval_translation).
@@ -14,6 +15,7 @@ import json
 from pathlib import Path
 
 from dunya_text import fold_ba, fold_fr, tokens
+from retrieval import Memory
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -27,7 +29,18 @@ def main() -> None:
     rows = [[r["fr"], r["ba"], r["grade"]] for r in pairs]
 
     out_app = ROOT / "fitila_flutter/assets/data/dunya_memory.json"
-    out_app.write_text(json.dumps({"v": 1, "pairs": rows}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    if out_app.parent.exists():  # the Flutter app lives on the app branches only
+        out_app.write_text(json.dumps({"v": 1, "pairs": rows}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+
+    # Web (public/data): exact pairs + one-sense word maps so the browser can still
+    # translate offline, word by word, when no attested sentence matches.
+    lookup = Memory(records, glossary)
+    fr2ba = {k: v[0] for k, v in sorted(lookup.fr_to_ba.items()) if k and v}
+    ba2fr = {k: v for k, v in sorted(lookup.ba_gloss.items()) if k}
+    out_web = ROOT / "public/data/translation-memory.json"
+    out_web.parent.mkdir(parents=True, exist_ok=True)
+    out_web.write_text(json.dumps({"v": 1, "pairs": rows, "fr2ba": fr2ba, "ba2fr": ba2fr}, ensure_ascii=False,
+                                  separators=(",", ":")), encoding="utf-8")
 
     lex_ba, lex_fr = set(), set()
     for r in records:
@@ -49,7 +62,7 @@ def main() -> None:
     out_ts = ROOT / "supabase/functions/_shared/translation-memory.ts"
     out_ts.write_text(ts, encoding="utf-8")
     print(json.dumps({"pairs": len(rows), "lexicon_ba": len(lex_ba), "lexicon_fr": len(lex_fr),
-                      "app_kb": out_app.stat().st_size // 1024, "ts_kb": out_ts.stat().st_size // 1024}))
+                      "app_kb": out_app.stat().st_size // 1024 if out_app.exists() else 0, "web_kb": out_web.stat().st_size // 1024, "ts_kb": out_ts.stat().st_size // 1024}))
 
 
 if __name__ == "__main__":

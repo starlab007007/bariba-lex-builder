@@ -629,6 +629,16 @@ class FitilaServices {
       return '';
     }
 
+    // 0. Phrase attestée (dictionnaire, Apprendre, scènes) : exacte, instantanée,
+    //    identique en ligne et hors ligne, sans appeler le réseau.
+    final attested = await DunyaTranslationMemory.tryExact(
+      trimmed,
+      toBariba: direction == TranslationDirection.frenchToBariba,
+    );
+    if (attested != null) {
+      return attested;
+    }
+
     // Authenticated remote chain:
     // 1. ai-translate (Lovable/Gemini when configured)
     // 2. byt5-bariba-translate (FITILA Bariba model)
