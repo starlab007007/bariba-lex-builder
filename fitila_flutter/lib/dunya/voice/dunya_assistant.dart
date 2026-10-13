@@ -13,6 +13,7 @@
 library;
 
 import 'dart:async';
+import '../../dunya_v3/semantic_router.dart';
 
 import '../dunya_core.dart';
 import '../dunya_local_store.dart';
@@ -147,6 +148,19 @@ class DunyaAssistant {
       DunyaLanguageMode.bilingual => detected,
     };
     final replyLang = inputLang;
+    // The voice pipeline shares the same semantic routing policy as typed chat.
+    // No French lexical heuristics are applied to Baatɔnum speech.
+    final semantic = routeDunyaInput(
+      text,
+      inputLang == 'bba' ? DunyaLanguage.baatonum : DunyaLanguage.french,
+      DunyaInputMode.voice,
+    );
+    if (semantic.requiresConfirmation && skills.pending == null) {
+      const message = 'Cette action nécessite une confirmation explicite. Aucune opération n’a été effectuée.';
+      yield const DunyaSentenceEvent(DunyaUtterance(message, 'fr'));
+      yield const DunyaDoneEvent(display: message, inputLanguage: 'fr', engine: 'essential');
+      return;
+    }
 
     // --- Understand: bring Baatɔnum input to French for reasoning -----------------
     var french = text;
