@@ -1,6 +1,6 @@
-/// DUNYA "cerveau": Gemma 4 E2B running on the phone through LiteRT-LM.
+/// DUNYA native compact brain: Qwen3-1.7B INT4 through LiteRT-LM.
 ///
-/// The model (2.6 GB) is downloaded once, directly as a file (no archive, so
+/// The model (~977 MB) is downloaded once, directly as a file (no archive, so
 /// no double storage), with resume and SHA-256 verification — or copied from
 /// another phone / SD card. Nothing is sent to any server during use.
 library;
@@ -13,6 +13,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import '../../dunya_v3/qwen_candidate.dart';
 
 
 class DunyaBrainModel {
@@ -49,6 +50,17 @@ const dunyaBrainE2B = DunyaBrainModel(
     'https://fitila.bj/dunya-packs/brain/gemma-4-E2B-it.litertlm',
   ],
   minRamMb: 3500,
+);
+
+/// Version-pinned lightweight language model. Keep Gemma catalogued for rollback.
+const dunyaBrainQwen3 = DunyaBrainModel(
+  id: DunyaQwenCandidate.id,
+  title: 'Cerveau DUNYA (Qwen3-1.7B INT4)',
+  fileName: DunyaQwenCandidate.fileName,
+  sizeBytes: DunyaQwenCandidate.sizeBytes,
+  sha256: '2eeffef7b51bc3e1225ea69fe7aa5f417397934b56a5b6c20cc068d6fd2c918b',
+  urls: [DunyaQwenCandidate.downloadUrl],
+  minRamMb: 4096,
 );
 
 class DunyaDeviceInfo {
@@ -94,7 +106,7 @@ class DunyaBrain {
   static const _channel = MethodChannel('fitila/dunya_llm');
   static const _events = EventChannel('fitila/dunya_llm/stream');
 
-  final model = dunyaBrainE2B;
+  final model = dunyaBrainQwen3;
   DunyaBrainState state = DunyaBrainState.absent;
   String backend = '';
   String? lastError;
@@ -196,7 +208,7 @@ class DunyaBrain {
         rethrow;
       } on FileSystemException catch (error) {
         throw DunyaBrainException(
-          'Espace insuffisant sur le téléphone (il faut environ 2,7 Go libres). ${error.osError?.message ?? ''}',
+          'Espace insuffisant sur le téléphone (il faut au moins 1,1 Go libres). ${error.osError?.message ?? ''}',
         );
       } catch (error) {
         lastFailure = error;
