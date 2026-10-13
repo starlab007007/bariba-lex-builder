@@ -13,7 +13,7 @@ interface TranslationResult {
  * Hook de traduction FITILA, en ligne ET hors ligne :
  *  1. phrase attestée (dictionnaire, Apprendre, scènes) : exacte, instantanée, sans réseau ;
  *  2. en ligne : ByT5 (byt5-bariba-translate, qui consulte aussi la mémoire) ;
- *  3. hors ligne ou serveur indisponible : mot à mot depuis le lexique si la plupart des mots sont connus.
+ *  3. hors ligne ou serveur indisponible : seules les phrases attestées sont garanties ; aucune phrase reconstruite mot à mot.
  * Sinon une erreur claire est retournée, jamais une traduction inventée.
  */
 export function useSimpleTranslation() {
@@ -52,7 +52,7 @@ export function useSimpleTranslation() {
       const duration = Math.round(performance.now() - startTime);
       return {
         translation: data.translation,
-        confidence: data.confidence || 85,
+        confidence: typeof data.confidence === 'number' ? data.confidence : 0,
         method: data.method || 'byt5-expert',
         duration
       };
@@ -61,10 +61,6 @@ export function useSimpleTranslation() {
       }
       }
 
-      const offline = await memoryTranslate(text, direction, { allowWordByWord: true });
-      if (offline) {
-        return { ...offline, duration: Math.round(performance.now() - startTime) };
-      }
       throw onlineFailure ?? new Error('Hors connexion : cette phrase n’est pas dans la mémoire FITILA. Reconnectez-vous pour la traduire.');
     } catch (err: any) {
       console.error('Translation error:', err);
