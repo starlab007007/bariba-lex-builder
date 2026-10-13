@@ -1,0 +1,4 @@
+V2 Signer: certificate DN: CN=FITILA CI Release, O=FITILA, C=BJ
+V2 Signer: certificate SHA-256 digest: 36802c7cfdb5c94459beea9b2111553eba0338a5db89247d2fcbc64cd176cb56
+V2 Signer: certificate SHA-1 digest: af1611327b8d72e6b7bee636bc8c9d0586e2e5f3
+V2 Signer: certificate MD5 digest: fbd9e90c5f2a3979d14cd90c4e580274

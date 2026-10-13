@@ -1,0 +1,246 @@
+00:00 +0: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/offline_test.dart
+00:00 +0: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/offline_test.dart: isNetworkError recognises connectivity failures only
+00:00 +1: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/offline_test.dart: cache JSON round-trips and offlineFirst falls back to it
+00:00 +2: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/offline_test.dart: outbox merges, replays in order, stops on network failure and keeps the rest
+00:00 +3: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/offline_test.dart: a server refusal is retried a few times then dropped
+00:00 +4: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/offline_test.dart: Classe store: answers written offline are kept, shown, then synced
+00:00 +5: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/offline_test.dart: Classe answer keys are served from cache when the network drops
+00:00 +6: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/offline_test.dart: translation works offline from the embedded dictionary without touching the network
+00:00 +7: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/offline_test.dart: offline banner shows only when offline or pending
+00:01 +8: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart
+00:02 +8: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: (setUpAll)
+00:02 +8: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: Premium clair login renders on phone
+00:03 +9: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: Premium clair feed renders on phone
+00:03 +10: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: Premium clair creator renders on phone
+00:03 +11: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: Premium clair templates renders on phone
+00:04 +12: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: Premium clair dictionary renders on phone
+00:04 +13: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: Premium clair translator renders on phone
+00:05 +14: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: Premium clair ai renders on phone
+00:05 +15: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: Premium clair tem_ai renders on phone
+00:05 +16: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: Premium clair learn renders on phone
+00:05 +17: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: Premium clair classe renders on phone
+00:05 +18: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: Premium clair keyboard renders on phone
+00:05 +19: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: Premium clair teacher renders on phone
+00:05 +20: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: Premium clair profile renders on phone
+00:05 +21: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: Premium clair settings renders on phone
+00:05 +22: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: premium shell uses mockup bottom navigation
+00:06 +23: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: translator state survives premium shell navigation
+00:06 +24: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/signature_ui_test.dart: (tearDownAll)
+00:06 +24: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/widget_test.dart
+00:07 +24: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/widget_test.dart: Fitila login smoke test
+00:08 +25: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/widget_test.dart: drawer lists exactly the web sidebar modules, in order
+00:08 +26: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_core_test.dart
+00:09 +26: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_core_test.dart: DUNYA routes a grounded answer entirely through local adapters
+00:09 +27: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_core_test.dart: DUNYA refuses to invent a source when local knowledge is empty
+00:09 +28: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_core_test.dart: DUNYA detects Bàátɔ̀nú text locally
+00:09 +29: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/experience_test.dart
+00:10 +29: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/experience_test.dart: foldDict ignores tones and case but keeps open vowels distinct
+00:10 +30: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/experience_test.dart: searchDict ranks exact, prefix, contains and supports both directions
+00:10 +31: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/experience_test.dart: dictionary: word of the day, search, detail, favorite and recents persist
+00:12 +32: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/experience_test.dart: dictionary: empty result offers to propose a word, 320dp has no overflow
+00:12 +33: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/experience_test.dart: auth: two slides, validation, sign-in and sign-up flows
+00:12 +34: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/experience_test.dart: auth fits 320dp without overflow
+00:13 +35: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/experience_test.dart: auth fits 900dp without overflow
+00:13 +36: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_lot3_ai_guide_test.dart
+00:13 +36: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_lot3_ai_guide_test.dart: Lot 3 exposes grounded multimodal heritage travel contracts
+00:13 +37: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_lot3_ai_guide_test.dart: unified map accepts a replayable heritage route
+00:14 +38: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart
+00:15 +38: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: French spoken numbers words become digits
+00:15 +39: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: French spoken numbers articles stay words
+00:15 +40: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: French spoken numbers formatting for speech
+00:15 +41: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: Intents translation to Baatɔnum
+00:15 +42: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: Intents meaning of a Baatɔnum word
+00:15 +43: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: Intents remember
+00:15 +44: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: Intents alarm with label
+00:15 +45: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: Intents alarm spoken in words
+00:15 +46: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: Intents timer
+00:15 +47: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: Intents calculations
+00:15 +48: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: Intents confirmation only when an action waits
+00:15 +49: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: Intents small talk and search
+00:15 +50: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: Dictionary French -> Baatɔnum ranks the plain entry first
+00:15 +51: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: Dictionary Baatɔnum lookup tolerates tones and recogniser spellings
+00:15 +52: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: Dictionary headwords and folding
+00:15 +53: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: Voice text preparation maps characters to the voice alphabet
+00:15 +54: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: Microphone PCM16 decoding carries odd bytes
+00:15 +55: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: Microphone detector stops after speech then silence
+00:15 +56: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_voice_test.dart: Packs installs a verified pack and rejects a tampered one
+00:15 +57: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_lot2_unified_map_test.dart
+00:16 +57: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_lot2_unified_map_test.dart: Handunia Lot 2 builds a normalized territorial breadcrumb
+00:16 +58: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_lot2_unified_map_test.dart: Handunia Lot 2 keeps Benin as the root without invented levels
+00:16 +59: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_lot2_unified_map_test.dart: territorial breadcrumb exposes real hierarchy labels
+00:16 +60: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_lot2_unified_map_test.dart: Handunia Lot 2 ships the validated national hierarchy offline
+00:16 +61: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_lot2_unified_map_test.dart: territory selection creates a precise geographic search path
+00:16 +62: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/web_parity_test.dart
+00:17 +62: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/web_parity_test.dart: dictionary reproduces web search and detailed card
+00:18 +63: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/web_parity_test.dart: translator exposes all web multimodal modes on phone
+00:18 +64: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/web_parity_test.dart: Fitila IA reproduces Bariba chat landing
+00:19 +65: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/web_parity_test.dart: Tem IA reproduces local land-code assistant landing
+00:19 +66: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/web_parity_test.dart: Classe opens real web lesson Tii dobonu and its tabs
+00:19 +67: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/web_parity_test.dart: web parity domain hubs render on phone without overflow
+00:20 +68: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/web_parity_test.dart: utility web routes render on phone without overflow
+00:21 +69: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart
+00:21 +69: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Contenu Apprendre charge fondations, thèmes, mots et scènes
+00:22 +70: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Contenu Apprendre chaque question de fondation contient sa bonne réponse
+00:22 +71: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Contenu Apprendre les exemples des fondations citent leur source
+00:22 +72: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Contenu Apprendre aucune forme bariba n’utilise l’alpha latin ɑ
+00:22 +73: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Révision espacée une bonne réponse fait monter la boîte et repousse la révision
+00:22 +74: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Révision espacée une erreur remet le mot en boîte 1
+00:22 +75: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Révision espacée la progression se sérialise sans perte
+00:22 +76: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Exercices la comparaison ignore les tons mais garde ɔ et ɛ
+00:22 +77: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Exercices une séance de thème mélange nouveaux mots et réponses valides
+00:22 +78: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Séance du jour contient les sept types d’exercices pour un profil lecteur
+00:22 +79: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Séance du jour le profil oral reste sans lecture de phrase
+00:22 +80: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Séance du jour chaque exercice construit est corrigeable
+00:22 +81: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Séance du jour révision, entraînement libre et reprise des erreurs
+00:22 +82: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: l’accueil Apprendre affiche le parcours
+00:23 +83: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: l’accueil propose la séance du jour et la révision
+00:23 +84: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: le module Révision s’affiche pour un nouvel apprenant
+00:23 +85: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Scènes de vie module complet : thématiques, scènes, répliques sourcées
+00:23 +86: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Scènes de vie chaque scène produit un test de compréhension corrigeable
+00:23 +87: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Scènes de vie la progression des scènes est conservée
+00:23 +88: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Scènes de vie la recommandation consolide une scène faible avant une nouvelle
+00:23 +89: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: le module Scènes affiche les thématiques
+00:23 +90: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: une scène se joue de la présentation au dialogue
+00:24 +91: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Voix de référence la clé audio est l’empreinte FNV-1a du texte, comme dans le catalogue
+00:24 +92: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Voix de référence le catalogue couvre les mots, exemples et répliques affichés
+00:24 +93: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Voix de référence la mélodie identique est reconnue, la mélodie inversée non
+00:24 +94: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Voix de référence les paramètres de comparaison gardent le statut de calibrage
+00:24 +95: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/apprendre_module_test.dart: Voix de référence le contrôle qualité refuse une prise silencieuse
+00:24 +96: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/mobile_widget_test.dart
+00:25 +96: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/mobile_widget_test.dart: native login and feed fit a phone viewport
+00:26 +97: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_final_qa_test.dart
+00:27 +97: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_final_qa_test.dart: Handunia final QA keeps living-map labels readable
+00:28 +98: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_final_qa_test.dart: Handunia final QA trace auto-validates and returns
+00:28 +99: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/classe_hub_test.dart
+00:29 +99: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/classe_hub_test.dart: every Classe section opens without errors at 320dp
+00:31 +100: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/classe_hub_test.dart: every Classe section opens without errors at 390dp
+00:32 +101: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/classe_hub_test.dart: every Classe section opens without errors at 900dp
+00:33 +102: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/translator_chat_test.dart
+00:34 +102: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/translator_chat_test.dart: detectChatLanguage recognises French and Bariba
+00:34 +103: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/translator_chat_test.dart: chat shows welcome, modes and toggles without overflow at 320dp
+00:35 +104: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/translator_chat_test.dart: keyboard keeps text composer visible and hides non-essential welcome content
+00:36 +105: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/translator_chat_test.dart: sending text produces a source bubble, typing dots then the translation, and saves history
+00:36 +106: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/translator_chat_test.dart: auto-detect routes Bariba input to French
+00:36 +107: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/translator_chat_test.dart: failure shows a readable error and Retry succeeds
+00:36 +108: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/translator_chat_test.dart: voice flow records, transcribes and translates
+00:37 +109: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/translator_chat_test.dart: swap changes direction and OCR adds a bubble
+00:37 +110: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_geo_trace_test.dart
+00:37 +110: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_geo_trace_test.dart: Handunia real-map trace exposes road and historical modes
+00:38 +111: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_geo_trace_test.dart: Handunia real-map trace historical mode stays clear
+00:38 +112: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_publication_feed_smoke_test.dart
+00:39 +112: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_publication_feed_smoke_test.dart: Handunia component CTA remains available when explicitly injected
+00:40 +113: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/translation_memory_services_test.dart
+00:41 +113: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/translation_memory_services_test.dart: the shipped memory loads from the asset bundle
+00:41 +114: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/translation_memory_services_test.dart: general translator answers an attested sentence offline, without any network
+00:41 +115: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/translation_memory_services_test.dart: online: an attested sentence never calls the cloud chain
+00:41 +116: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/classe_web_parity_test.dart
+00:42 +116: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/classe_web_parity_test.dart: Classe web parity preserves all page 64 pedagogical figures
+00:42 +117: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/classe_web_parity_test.dart: legacy single-image lessons keep a one-item image list
+00:42 +118: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_assistant_test.dart
+00:42 +118: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_assistant_test.dart: Sentence splitter (speak while the brain thinks) emits complete sentences as tokens arrive
+00:42 +119: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_assistant_test.dart: Sentence splitter (speak while the brain thinks) does not cut decimals or short abbreviations
+00:42 +120: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_assistant_test.dart: Sentence splitter (speak while the brain thinks) cuts very long sentences at a comma
+00:42 +121: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_assistant_test.dart: Speech cleaning removes markdown, bullets, links and emojis
+00:42 +122: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_assistant_test.dart: Language modes each mode has its own conversation
+00:42 +123: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_assistant_test.dart: Translator chain prefers the on-device engine, then online
+00:42 +124: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_assistant_test.dart: Translator chain rejects echoes and failures
+00:42 +125: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/espace_test.dart
+00:43 +125: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/espace_test.dart: engine additions grammar-only glosses are not translations
+00:43 +126: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/espace_test.dart: engine additions lookup, lookupFrench and direction detection
+00:43 +127: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/espace_test.dart: engine additions OCR correction restores special letters and tolerates missing tones
+00:43 +128: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/espace_test.dart: html <-> plain paragraphs and entities round trip
+00:43 +129: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/espace_test.dart: smart editor typing shows word gloss and predictions, tapping completes
+00:44 +130: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/espace_test.dart: smart editor live translation of the paragraph (FR -> BA auto)
+00:44 +131: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/espace_test.dart: smart editor selecting a word opens the card and replaces it with an equivalent
+00:45 +132: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/espace_test.dart: smart editor online translation upgrades the offline answer
+00:45 +133: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/espace_test.dart: smart editor fits a 320dp phone without overflow with card + strip
+00:45 +134: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/bariba_keyboard_test.dart
+00:45 +134: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/bariba_keyboard_test.dart: engine folds tones, nasals and Bariba letters
+00:45 +135: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/bariba_keyboard_test.dart: engine predicts by prefix ranked by frequency, plain keys match accents
+00:45 +136: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/bariba_keyboard_test.dart: engine empty prefix uses bigrams of the previous word
+00:45 +137: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/bariba_keyboard_test.dart: engine current/previous word and suggestion application
+00:45 +138: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/bariba_keyboard_test.dart: engine combining tone marks are appended after the cursor letter
+00:46 +139: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/bariba_keyboard_test.dart: engine offline translation both ways, phrase and word
+00:46 +140: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/bariba_keyboard_test.dart: engine bundled dictionary loads and predicts
+00:46 +141: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/bariba_keyboard_test.dart: virtual keyboard types letters, nasals and tones into the controller
+00:47 +142: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/bariba_keyboard_test.dart: virtual keyboard fits a 320dp phone in translate mode without overflow
+00:47 +143: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/bariba_keyboard_test.dart: virtual keyboard suggestion bar completes the current word
+00:47 +144: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/bariba_keyboard_test.dart: virtual keyboard Saisir et Traduire shows offline then online translation
+00:48 +145: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/bariba_keyboard_test.dart: onboarding + bridge android steps reflect native status
+00:48 +146: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/bariba_keyboard_test.dart: onboarding + bridge unsupported platform falls back to in-app keyboard message
+00:48 +147: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/bariba_keyboard_test.dart: onboarding + bridge BaribaTextField docks the virtual keyboard when no system IME
+00:48 +148: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/classe_test.dart
+00:49 +148: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/classe_test.dart: normalizeAnswer/matchAnswer ignore case, tones and punctuation but keep ɛ ɔ ŋ
+00:49 +149: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/classe_test.dart: CalculExercise checks numeric answers with comma or dot and count labels
+00:49 +150: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/classe_test.dart: ClasseProgress computes stars like the web (max 5)
+00:49 +151: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/classe_test.dart: session persists progress with a debounce and survives save errors
+00:49 +152: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/classe_test.dart: answer card: type, submit, persist, edit, voice upload
+00:50 +153: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/classe_test.dart: answer card shows a helpful message when offline save fails
+00:50 +154: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/classe_test.dart: answer card fits a 320dp phone and shows the teacher grade
+00:50 +155: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/services_test.dart
+00:51 +155: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/services_test.dart: loads a usable embedded dictionary
+00:51 +156: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/services_test.dart: normalizes Benin phone numbers like the React phone flow
+00:51 +157: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/services_test.dart: answers an explicit land-code article from the embedded corpus
+00:51 +158: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/services_test.dart: translates a known dictionary entry in both directions
+00:52 +159: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/services_test.dart: never presents untranslated source text as a translation
+00:52 +160: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/services_test.dart: uses the existing authenticated API contract
+00:52 +161: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/services_test.dart: falls back to ai-translate when the FITILA ByT5 engine is unavailable
+00:52 +162: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/services_test.dart: uses a dictionary match when the API is unavailable
+00:52 +163: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_ai_creation_smoke_test.dart
+00:52 +163: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_ai_creation_smoke_test.dart: Lumiere IA creation keeps human voice as source
+00:53 +164: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_ai_creation_smoke_test.dart: Lumiere IA remains readable with larger text
+00:53 +165: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart
+00:54 +165: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia feed orders proximity before corroboration
+00:54 +166: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia feed then orders fresh corroboration
+00:54 +167: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia feed then prioritizes a filled gap
+00:54 +168: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia counts distinct voices only once
+00:54 +169: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia immersive feed loops with compact heritage actions
+00:55 +170: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia divergence stays readable with animations disabled
+00:55 +171: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia access denied is not rendered as a lacuna
+00:55 +172: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia memory answer exposes keyboard and voice entry
+00:55 +173: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia source pills stay attached to cited claims
+00:55 +174: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia waveform remains readable without animation
+00:55 +175: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia Lumiere IA starts from a human-memory threshold
+00:55 +176: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia living map keeps place names visible
+00:55 +177: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia living map remains readable at 125 percent text size
+00:55 +178: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia trace validates and continues automatically
+00:56 +179: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia feed exposes a clear publish action
+00:56 +180: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia memory question offers quick prompts and retry UX
+00:56 +181: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia timeline periods are directly selectable
+00:56 +182: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia heritage ranking never uses likes as historical value
+00:56 +183: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia explains heritage selection without popularity signals
+00:56 +184: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia journey favors cultural continuity without author repetition
+00:56 +185: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia feed renders memory gaps as calls for human voices
+00:56 +186: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_consultation_test.dart: Handunia architecture is visible as three connected layers
+00:56 +187: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart
+00:57 +187: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: Echo Sɔ̃ɔ renders on a phone without crashing
+00:58 +188: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: Live Griot IA renders on a phone without crashing
+00:58 +189: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: Sagesse Battle renders on a phone without crashing
+00:58 +190: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: Aburu Fim IA renders on a phone without crashing
+00:59 +191: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: Sasara IA renders on a phone without crashing
+00:59 +192: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: Handunia Wasa renders on a phone without crashing
+00:59 +193: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: creator hub exposes only Handunia Wasa and Sagesse Battle
+00:59 +194: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: Echo remains scrollable on a short Android viewport
+00:59 +195: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: Live Griot premium studio is stable on a short phone
+00:59 +196: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: Live Griot draft title updates the premium launch stage
+00:59 +197: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: Sagesse Battle reference shell remains stable while data loads
+00:59 +198: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: Sagesse user challenge creator exposes publish flow
+00:59 +199: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: Aburu Fim follows the reference template gallery on phone
+01:00 +200: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: Sasara matches the bilingual consent reference screen
+01:00 +201: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: Handunia consultation feed is stable on entry
+01:00 +202: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: Handunia consultation route owns Material interactions
+01:00 +203: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: Handunia opens from the creation hub into publish flow
+01:00 +204: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/content_creation_modules_test.dart: Handunia Wasa exposes consultation without social counters
+01:00 +205: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_lot1_final2_test.dart
+01:01 +205: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_lot1_final2_test.dart: Handunia Lot 1 final2 memory prompts are visible
+01:01 +206: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_lot1_final2_test.dart: Handunia Lot 1 final2 timeline selection works
+01:02 +207: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_real_benin_map_final_test.dart
+01:02 +207: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/handunia_real_benin_map_final_test.dart: Handunia real Benin map flow is present and readable
+01:03 +208: loading /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_translation_memory_test.dart
+01:04 +208: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_translation_memory_test.dart: translation memory French lookup ignores case, accents and spacing before punctuation
+01:04 +209: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_translation_memory_test.dart: translation memory Baatɔnum lookup ignores tones and recogniser spellings
+01:04 +210: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_translation_memory_test.dart: translation memory one-letter recogniser error on a long sentence is a near hit, never exact
+01:04 +211: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_translation_memory_test.dart: translation memory short or unknown sentences do not match approximately
+01:04 +212: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_translation_memory_test.dart: translation memory edit distance helper stops early
+01:04 +213: /home/runner/work/bariba-lex-builder/bariba-lex-builder/fitila_flutter/test/dunya_translation_memory_test.dart: translator engine order memory answers first and the network is never used for known sentences
+01:04 +214: All tests passed!

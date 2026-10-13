@@ -1,0 +1,2 @@
+96M	FITILA-Android-v1.8.17-build28-dunya-voice-arm64.apk
+56M	FITILA-Android-v1.8.17-build28-dunya-voice-armv7.apk

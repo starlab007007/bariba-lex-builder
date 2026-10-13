@@ -1,0 +1,2 @@
+3443fe82f0085e6c323463da013d8a1bc1ff7a5ff78af11e032ae5ea282f7b85  FITILA-Android-v1.8.17-build28-dunya-voice-arm64.apk
+52b62af89e530238892e5c88377d93faac6bb3bb35ae8659289dc4e864ede48b  FITILA-Android-v1.8.17-build28-dunya-voice-armv7.apk
