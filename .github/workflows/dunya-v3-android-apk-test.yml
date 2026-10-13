@@ -1,5 +1,12 @@
 name: DUNYA Android isolated APK
 on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - feat/build24-dunya-voice-offline
+    paths:
+      - 'fitila_flutter/**'
+      - '.github/workflows/dunya-v3-android-apk-test.yml'
   push:
     branches:
       - build/dunya-v3-android-test-20261013
