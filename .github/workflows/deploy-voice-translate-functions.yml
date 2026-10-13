@@ -1,15 +1,7 @@
 name: Deploy FITILA voice & translation functions
 
+# Manual: needs a valid SUPABASE_ACCESS_TOKEN secret (the current one returns 401).
 on:
-  push:
-    branches: [main, fix/prod-quality]
-    paths:
-      - .github/workflows/deploy-voice-translate-functions.yml
-      - supabase/functions/byt5-bariba-translate/**
-      - supabase/functions/bariba-tts/**
-      - supabase/functions/tts-audio/**
-      - supabase/functions/fitila-ia-chat/**
-      - supabase/functions/_shared/translation-verifier.ts
   workflow_dispatch:
 
 permissions:
