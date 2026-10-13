@@ -7,6 +7,9 @@
 ///    FITILA knowledge, streamed sentence by sentence so DUNYA starts speaking
 ///    while it thinks.
 /// 3. Baatɔnum mode: Baatɔnum -> French -> brain -> French -> Baatɔnum.
+/// 4. No on-device brain (small phones) but a network: the FITILA cloud brain
+///    ([DunyaAssistant.cloudBrain]) answers in French, then the same Baatɔnum
+///    bridge (translation memory, then ByT5) is applied sentence by sentence.
 library;
 
 import 'dart:async';
@@ -63,7 +66,17 @@ class DunyaDoneEvent extends DunyaAssistantEvent {
   final String? notice;
 }
 
+/// Online brain: returns a short French answer, or null when unavailable.
+typedef DunyaCloudBrainFn = Future<String?> Function({
+  required String system,
+  required List<({String role, String text})> history,
+  required String message,
+});
+
 class DunyaAssistant {
+  /// Set by the app (fitila-ia-chat). Used only when the on-device brain is absent.
+  static DunyaCloudBrainFn? cloudBrain;
+
   DunyaAssistant({
     required this.knowledge,
     required this.skills,
@@ -159,7 +172,53 @@ class DunyaAssistant {
 
     // --- Reliable skills -------------------------------------------------------------
     final intent = parseDunyaIntent(french, awaitingConfirmation: skills.pending != null);
-    final useBrain = !_skillIntents.contains(intent.kind) && await brainAvailable();
+    final wantsBrain = !_skillIntents.contains(intent.kind);
+    final useBrain = wantsBrain && await brainAvailable();
+    if (wantsBrain && !useBrain && cloudBrain != null) {
+      yield const DunyaStatusEvent('Je réfléchis…');
+      final sources = await _groundingSources(french);
+      String? answer;
+      try {
+        answer = await cloudBrain!(
+          system: _systemPrompt(mode, replyLang, online: true),
+          history: await _history(mode),
+          message: _composePrompt(french, sources),
+        );
+      } catch (_) {
+        answer = null;
+      }
+      if (answer != null && answer.trim().isNotEmpty && !_cancelled) {
+        final splitter = DunyaSentenceSplitter();
+        final sentences = [...splitter.add(answer), if (splitter.flush() case final rest?) rest];
+        final display = StringBuffer();
+        for (final sentence in sentences) {
+          if (_cancelled) break;
+          final clean = cleanForSpeech(sentence);
+          if (clean.isEmpty) continue;
+          if (replyLang == 'bba') {
+            final t = await DunyaTranslator.translate(clean, toBariba: true);
+            if (t != null) {
+              display.write('${t.text} ');
+              yield DunyaSentenceEvent(DunyaUtterance(t.text, 'bba'), subtitle: clean);
+              continue;
+            }
+            notice ??= 'Traduction vers le baatɔnum indisponible : réponse en français.';
+          }
+          display.write('$clean ');
+          yield DunyaSentenceEvent(DunyaUtterance(clean, 'fr'));
+        }
+        if (display.isNotEmpty) {
+          yield DunyaDoneEvent(
+            display: display.toString().trim(),
+            inputLanguage: inputLang,
+            sources: sources,
+            engine: 'cloud',
+            notice: notice,
+          );
+          return;
+        }
+      }
+    }
     if (!useBrain) {
       final lang = replyLang == 'bba' ? DunyaReplyLanguage.bariba : DunyaReplyLanguage.french;
       final reply = await skills.respond(french, lang);
@@ -301,10 +360,12 @@ class DunyaAssistant {
     }
   }
 
-  String _systemPrompt(DunyaLanguageMode mode, String replyLang) {
+  String _systemPrompt(DunyaLanguageMode mode, String replyLang, {bool online = false}) {
     final now = _clock();
     final base = StringBuffer()
-      ..writeln('Tu es DUNYA, l’assistant vocal personnel de FITILA. Tu fonctionnes entièrement sur le téléphone, sans Internet.')
+      ..writeln(online
+          ? 'Tu es DUNYA, l’assistant vocal personnel de FITILA.'
+          : 'Tu es DUNYA, l’assistant vocal personnel de FITILA. Tu fonctionnes entièrement sur le téléphone, sans Internet.')
       ..writeln('Tu parles avec des personnes du Nord-Bénin, souvent en milieu rural ; certaines ne savent pas lire.')
       ..writeln('Réponds en français simple et naturel, comme à l’oral : une à quatre phrases courtes.')
       ..writeln('Pas de liste, pas de titre, pas de markdown, pas de symboles, pas d’émojis.')

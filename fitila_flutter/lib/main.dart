@@ -52,6 +52,7 @@ import 'keyboard/bariba_input.dart';
 import 'dictionary/dictionary_experience.dart';
 import 'dunya/voice/dunya_translation_memory.dart';
 import 'dunya/voice/dunya_translator.dart';
+import 'dunya/voice/dunya_assistant.dart';
 import 'dunya/dunya_home.dart';
 import 'translator/translator_chat.dart';
 import 'ui/offline_banner.dart';
@@ -112,6 +113,41 @@ void _wireBaribaKeyboard() {
       dictionaryLoader: () async => const <DictionaryEntry>[],
     );
     return out.trim().isEmpty ? null : out;
+  };
+  // Cerveau en ligne de DUNYA (téléphones sans le modèle Gemma) : fitila-ia-chat répond
+  // en français ; DUNYA traduit lui-même chaque phrase (mémoire attestée puis ByT5).
+  DunyaAssistant.cloudBrain = ({required system, required history, required message}) async {
+    final token = FitilaBackend.client.auth.currentSession?.accessToken;
+    if (token == null || token.isEmpty || !FitilaOffline.online.value) return null;
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${FitilaBackend.supabaseUrl}/functions/v1/fitila-ia-chat'),
+            headers: {
+              'content-type': 'application/json',
+              'Authorization': 'Bearer $token',
+              if (FitilaBackend.supabaseAnonKey.isNotEmpty) 'apikey': FitilaBackend.supabaseAnonKey,
+            },
+            body: jsonEncode({
+              'message': message,
+              'history': [
+                for (final h in history.length > 8 ? history.sublist(history.length - 8) : history)
+                  {'role': h.role == 'user' ? 'user' : 'assistant', 'content': h.text},
+              ],
+              'systemPrompt': system,
+              'temperature': 0.4,
+              'max_tokens': 200,
+            }),
+          )
+          .timeout(const Duration(seconds: 25));
+      if (response.statusCode < 200 || response.statusCode >= 300) return null;
+      final decoded = jsonDecode(response.body);
+      final fr = decoded is Map ? decoded['response_fr'] : null;
+      return fr is String && fr.trim().isNotEmpty ? fr.trim() : null;
+    } catch (e) {
+      if (FitilaOffline.isNetworkError(e)) FitilaOffline.reportFailure(e);
+      return null;
+    }
   };
 }
 
