@@ -33,14 +33,16 @@ cells = [
  ("code", "!python train_byt5.py --model $MODEL --out /kaggle/working/v04 --epochs 6 --lr $LR --batch 8 --accum 4"),
  ("markdown", "## 2. Renforcement : exemples difficiles puis préférences (DPO)"),
  ("code", "!python mine_hard_examples.py --model /kaggle/working/v04 --samples 6 --limit 4000\n"
-  "!python dpo.py --model /kaggle/working/v04 --out /kaggle/working/v04-dpo --epochs 1 --batch 8"),
+  "!PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python dpo.py --model /kaggle/working/v04 --out /kaggle/working/v04-dpo --epochs 1 --batch 2 --accum 4\n"
+  "BEST = '/kaggle/working/v04-dpo' if os.path.exists('/kaggle/working/v04-dpo/config.json') else '/kaggle/working/v04'\n"
+  "print('modèle retenu :', BEST)"),
  ("markdown", "## 3. Mesure sur le jeu de test (mémoire = train seulement)"),
  ("code", "!python eval_translation.py --backend hf --model /kaggle/working/v04 --rag --out /kaggle/working/eval_v04_rag.json | head -40\n"
-  "!python eval_translation.py --backend hf --model /kaggle/working/v04-dpo --rag --out /kaggle/working/eval_v04_dpo_rag.json | head -40"),
+  "!python eval_translation.py --backend hf --model $BEST --rag --out /kaggle/working/eval_best_rag.json | head -40"),
  ("markdown", "## 4. Export ONNX hors ligne + archive à télécharger\nComparer chrF++ avec la ligne de base v03 (26,0 FR→BA / 23,6 BA→FR avec autocorrection ; 26,6 / 26,9 brut)."),
  ("code", "!pip -q install onnx onnxruntime\n"
-  "!python ../dunya_byt5/export_byt5_onnx.py --model /kaggle/working/v04-dpo --out /kaggle/working/onnx --sample 'fr-ba: Bonjour' --sample 'ba-fr: A kua'\n"
-  "!cd /kaggle/working && zip -qr dunya-translate-result.zip v04-dpo onnx eval_*.json && ls -la dunya-translate-result.zip"),
+  "!python ../dunya_byt5/export_byt5_onnx.py --model $BEST --out /kaggle/working/onnx --sample 'fr-ba: Bonjour' --sample 'ba-fr: A kua'\n"
+  "!cd /kaggle/working && zip -qr dunya-translate-result.zip $(basename $BEST) onnx eval_*.json && ls -la dunya-translate-result.zip"),
 ]
 nb = {"cells": [{"cell_type": t, "metadata": {}, "source": s.splitlines(True), **({"outputs": [], "execution_count": None} if t == "code" else {})} for t, s in cells],
       "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"}}, "nbformat": 4, "nbformat_minor": 5}
