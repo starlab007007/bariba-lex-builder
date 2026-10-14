@@ -94,6 +94,10 @@ serve(async (req) => {
     const apiAction = command || body.action;
     
     const FITILA_IMAGE_API_KEY = Deno.env.get('FITILA_IMAGE_API_KEY');
+    if ((apiAction === 'generate_batch' || apiAction === 'generate_full_library') &&
+        (!FITILA_IMAGE_API_KEY || !Deno.env.get("FITILA_IMAGE_API_URL")?.startsWith("https://"))) {
+      return new Response(JSON.stringify({ error: "Moteur image FITILA non configuré" }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
@@ -238,14 +242,14 @@ Create a single, complete illustration capturing this scene.`;
   const description_fr = `${character_type === 'child_boy' ? 'Jeune garçon' : character_type === 'child_girl' ? 'Jeune fille' : character_type} dans une scène de ${scene_type}, ambiance ${emotion}`;
 
   // Generate image
-  const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
+  const response = await fetch(`${Deno.env.get("FITILA_IMAGE_API_URL")}`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-3-pro-image-preview',
+      model: Deno.env.get("FITILA_IMAGE_MODEL") || "fitila-image",
       messages: [{ role: 'user', content: prompt }],
       modalities: ['image', 'text']
     })
