@@ -125,7 +125,7 @@ def evaluate(args):
                 try:
                     result=supabase_function(TTS,{"text":case["text"],"skipRefine":True},
                         args.supabase_url,args.supabase_key,args.supabase_token)
-                    item["baseline_tts"]={"ok":bool(result.get("audioUrl") or result.get("audio_url") or result.get("audio") or result.get("success")),
+                    item["baseline_tts"]={"ok":bool(result.get("success") and result.get("audio_url")),\n                                           "audio_url":result.get("audio_url"),
                                            "seconds":round(time.perf_counter()-start,3),
                                            "response_keys":list(result.keys())}
                 except Exception as e:item["baseline_tts"]={"ok":False,"error":str(e)[:350]}
