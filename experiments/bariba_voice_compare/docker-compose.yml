@@ -1,0 +1,13 @@
+services:
+  bariba-models:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8090:8090"
+    environment:
+      FITILA_MODEL_API_TOKEN: ${FITILA_MODEL_API_TOKEN:?}
+      FITILA_SUPABASE_URL: ${FITILA_SUPABASE_URL:-https://dvswhjawiooprghzeyol.supabase.co}
+      FITILA_SUPABASE_PUBLISHABLE_KEY: ${FITILA_SUPABASE_PUBLISHABLE_KEY:?}
+      FITILA_USER_ACCESS_TOKEN: ${FITILA_USER_ACCESS_TOKEN:-}
+      HF_HOME: /tmp/fitila-models
+    mem_limit: 12g
