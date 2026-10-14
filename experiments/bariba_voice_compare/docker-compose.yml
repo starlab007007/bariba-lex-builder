@@ -9,9 +9,5 @@ services:
       FITILA_SUPABASE_URL: ${FITILA_SUPABASE_URL:-https://dvswhjawiooprghzeyol.supabase.co}
       FITILA_SUPABASE_PUBLISHABLE_KEY: ${FITILA_SUPABASE_PUBLISHABLE_KEY:?}
       FITILA_USER_ACCESS_TOKEN: ${FITILA_USER_ACCESS_TOKEN:-}
-      HF_HOME: /models
-    volumes:
-      - fitila_research_models:/models
+      HF_HOME: /tmp/fitila-models
     mem_limit: 12g
-volumes:
-  fitila_research_models:
