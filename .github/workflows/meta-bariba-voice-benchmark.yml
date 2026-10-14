@@ -1,0 +1,24 @@
+name: FITILA Meta Bariba voice benchmark checks
+on:
+  push:
+    branches: [feat/benchmark-meta-bariba-voice-20261014]
+    paths: ['experiments/bariba_voice_compare/**', '.github/workflows/meta-bariba-voice-benchmark.yml']
+  pull_request:
+    paths: ['experiments/bariba_voice_compare/**', '.github/workflows/meta-bariba-voice-benchmark.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  static-and-metric-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile benchmark scripts
+        run: python -m compileall -q experiments/bariba_voice_compare
+      - name: Exercise WER CER calculation
+        run: python -m unittest discover -s experiments/bariba_voice_compare -p 'test_*.py' -v
+      - name: Verify help works without loading weights
+        run: python experiments/bariba_voice_compare/compare.py --help
