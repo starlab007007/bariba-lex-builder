@@ -59,7 +59,7 @@ def meta_asr(audio,lang):
     # Official fairseq2 integration: run with real model card, never simulate inference.
     global _PIPE
     if _PIPE is None:_PIPE=ASRInferencePipeline(model_card="omniASR_CTC_300M")
-    results=_PIPE.transcribe([audio],lang=[lang],batch_size=1)
+    results=_PIPE.transcribe([audio],batch_size=1)  # CTC: language conditioning unsupported
     if not results:raise RuntimeError("No ASR result")
     result=results[0]
     return str(getattr(result,"text",result)).strip()
@@ -91,7 +91,8 @@ _TTS=None
 def evaluate(args):
     root=Path(args.dataset).resolve().parent
     output=Path(args.output).resolve();output.mkdir(parents=True,exist_ok=True)
-    cases=[json.loads(line) for line in Path(args.dataset).read_text().splitlines() if line.strip()]
+    cases=[json.loads(line) for line in Path(args.dataset).read_text().splitlines() if line.strip()] 
+    if not cases:raise RuntimeError("Empty dataset; refusing fake zero metrics")
     rows=[]
     for i,case in enumerate(cases):
         item={"id":case["id"],"reference":case.get("reference",""),"comparison_type":"paired",
@@ -144,13 +145,16 @@ def evaluate(args):
                                  "attempted":sum(engine+"_tts" in x for x in rows)}
     (output/"summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2))
     print(json.dumps(summary,ensure_ascii=False,indent=2))
+    if args.strict and (not summary["asr"].get("meta") or not summary["asr"].get("baseline") or any(summary["tts"][e]["generated"] < summary["tts"][e]["attempted"] for e in ("meta","baseline"))):
+        raise SystemExit("Benchmark incomplete: at least one mandatory model inference failed")
 
 if __name__=="__main__":
     ap=argparse.ArgumentParser()
     ap.add_argument("--dataset",required=True,help="consented JSONL manifest")
     ap.add_argument("--output",default="benchmark-results")
     ap.add_argument("--engine",choices=["meta","baseline","all"],default="all")
-    ap.add_argument("--lang",default="bba_Latn",help="Verify supported language identifier with installed omnilingual-asr before use")
+    ap.add_argument("--lang",default="bba_Latn",help="Reserved for language-conditioned future LLM models; CTC ignores this")
+    ap.add_argument("--strict",action="store_true",help="Fail CI when paired inferences have not succeeded")
     ap.add_argument("--supabase-url",default=os.getenv("FITILA_SUPABASE_URL","https://dvswhjawiooprghzeyol.supabase.co"))
     ap.add_argument("--supabase-key",default=os.getenv("FITILA_SUPABASE_PUBLISHABLE_KEY",""))
     ap.add_argument("--supabase-token",default=os.getenv("FITILA_USER_ACCESS_TOKEN",""))

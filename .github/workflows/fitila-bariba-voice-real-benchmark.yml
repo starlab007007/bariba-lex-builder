@@ -1,0 +1,63 @@
+name: FITILA Bariba voice research A-B inference
+on:
+  workflow_dispatch:
+    inputs:
+      corpus_limit:
+        description: Maximum approved recordings (currently up to 13)
+        required: false
+        default: '13'
+permissions:
+  contents: read
+concurrency:
+  group: fitila-bariba-benchmark
+  cancel-in-progress: false
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: fitila-research
+    env:
+      FITILA_SUPABASE_URL: https://dvswhjawiooprghzeyol.supabase.co
+      FITILA_BENCHMARK_SERVICE_KEY: ${{ secrets.FITILA_BENCHMARK_SERVICE_KEY }}
+      HF_HOME: ${{ runner.temp }}/hf-research-models
+      TOKENIZERS_PARALLELISM: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate research authorization and environment configuration
+        run: |
+          test -n "$FITILA_BENCHMARK_SERVICE_KEY" || { echo "Research environment secret missing"; exit 1; }
+          python -m compileall -q experiments/bariba_voice_compare
+          python -m unittest discover -s experiments/bariba_voice_compare -p 'test_*.py'
+      - name: Download research dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg libsndfile1
+          python -m pip install --upgrade pip
+          python -m pip install -r experiments/bariba_voice_compare/requirements.txt
+      - name: Retrieve private consented audio references
+        run: |
+          umask 077
+          python experiments/bariba_voice_compare/fetch_fitila_corpus.py "${RUNNER_TEMP}/fitila-private-corpus"
+      - name: Execute both model families and baselines
+        run: |
+          umask 077
+          python experiments/bariba_voice_compare/compare.py \
+            --dataset "${RUNNER_TEMP}/fitila-private-corpus/manifest.jsonl" \
+            --output "${RUNNER_TEMP}/fitila-private-results" \
+            --engine all --strict
+      - name: Display summary metrics only
+        if: success()
+        run: |
+          python - <<'PY'
+          import json,os
+          p=os.path.join(os.environ["RUNNER_TEMP"],"fitila-private-results","summary.json")
+          d=json.load(open(p))
+          print(json.dumps({"samples":d["samples"],"asr":d["asr"],"tts":d["tts"]},indent=2))
+          PY
+      - name: Erase private samples and generated audio
+        if: always()
+        run: |
+          rm -rf "${RUNNER_TEMP}/fitila-private-corpus" "${RUNNER_TEMP}/fitila-private-results" "${HF_HOME}"
