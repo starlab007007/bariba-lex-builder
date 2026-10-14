@@ -88,7 +88,10 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const imageApiKey = Deno.env.get('FITILA_IMAGE_API_KEY')!;
+    const fitilaImageApiKey = Deno.env.get('FITILA_IMAGE_API_KEY');
+    if (!fitilaImageApiKey || !Deno.env.get("FITILA_IMAGE_API_URL")?.startsWith("https://")) {
+      return new Response(JSON.stringify({ error: "Moteur image FITILA non configuré" }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { duration = 15, villageName = 'Village Africain' }: MiniDocRequest = await req.json();
@@ -130,14 +133,14 @@ serve(async (req) => {
       const customizedPrompt = scene.prompt.replace(/village/gi, villageName);
 
       try {
-        const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
+        const response = await fetch(`${Deno.env.get("FITILA_IMAGE_API_URL")}`, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${imageApiKey}`,
+            Authorization: `Bearer ${fitilaImageApiKey}`,
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: "google/gemini-3-pro-image-preview",
+            model: Deno.env.get("FITILA_IMAGE_MODEL") || "fitila-image",
             messages: [{ role: "user", content: customizedPrompt }],
             modalities: ["image", "text"]
           })
