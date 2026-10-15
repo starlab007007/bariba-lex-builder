@@ -17,6 +17,14 @@ export const MAX_VOICE_BYTES = 8_000_000;
 export const MAX_VOICE_SECONDS = 120;
 export const MAX_VOICE_TEXT = 1600;
 
+export function frenchGreeting(text: string): string | null {
+  const value = text.toLocaleLowerCase().trim();
+  if (!/^(bonjour|bonsoir|salut|coucou|merci|au revoir)[\s.!?]*$/u.test(value)) return null;
+  if (value.startsWith('merci')) return 'Je vous en prie.';
+  if (value.startsWith('au revoir')) return 'Au revoir !';
+  return 'Bonjour ! Comment puis-je vous aider ?';
+}
+
 export function speechChunks(value: string, limit = 380): string[] {
   if (limit < 2) throw new Error('Invalid speech limit');
   const text = value.normalize('NFC').replace(/\s+/g, ' ').trim();

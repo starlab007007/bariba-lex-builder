@@ -91,6 +91,11 @@ Deno.test('guest replay synthesizes only, without another model answer or transl
   assert(r.events.filter(e => e.type === 'audio').length > 1);
   assert(!r.calls.some(x => /fitila-ia-chat|byt5-bariba/.test(x)));
 });
+Deno.test('French greetings preserve the existing local fast path without a model key', async () => {
+  const r = await scenario({ text: 'Bonjour !', lang: 'fr' });
+  assert(r.events.some(e => e.type === 'answer' && e.model === 'fitila-attested-greeting'));
+  assert(!r.calls.some(x => x.includes('fitila-ia-chat')));
+});
 Deno.test('transcription review stops before reasoning and synthesis', async () => {
   const r = await scenario({ audio_base64: bytesToBase64(wav()), lang: 'bba', transcribe_only: true });
   assert(r.events.some(e => e.type === 'transcript')); assert(!r.calls.some(x => x.includes('fitila-ia-chat')));

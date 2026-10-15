@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.81.1';
-import { bytesToBase64, MAX_VOICE_TEXT, needsClarification, segmentVoiceWav, speechChunks, type VoiceEvent } from '../_shared/dunya-voice-core.ts';
+import { bytesToBase64, frenchGreeting, MAX_VOICE_TEXT, needsClarification, segmentVoiceWav, speechChunks, type VoiceEvent } from '../_shared/dunya-voice-core.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -74,6 +74,7 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
   const timer = setTimeout(() => abort.abort(), 135_000);
   const cancel = () => abort.abort();
   req.signal.addEventListener('abort', cancel, { once: true });
+  if (req.signal.aborted) abort.abort();
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -149,7 +150,9 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
         if (body.transcribe_only === true) { send({ type: 'done' }); return; }
         send({ type: 'stage', stage: 'thinking' });
         const question = body.speech_only === true ? '' : lang === 'bba' ? await translate(transcript, 'bba', 'fr') : transcript;
+        const greeting = lang === 'fr' ? frenchGreeting(transcript) : null;
         const answer = body.speech_only === true ? { response_fr: transcript, model: '' }
+          : greeting ? { response_fr: greeting, model: 'fitila-attested-greeting' }
           : await fn('fitila-ia-chat', { message: question, history, systemPrompt, max_tokens: 160, temperature: 0.3, skip_translation: true });
         const french = clean(answer.response_fr);
         if (!french) throw new Error('answer_unavailable');
