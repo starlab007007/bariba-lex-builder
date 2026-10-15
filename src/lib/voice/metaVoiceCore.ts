@@ -40,3 +40,15 @@ export function readableVoiceError(status: number | null, code?: string): string
   if (status === 400) return 'Demande invalide.';
   return 'Service vocal momentanément indisponible.';
 }
+
+/** DUNYA pilot: Meta voices (MMS-TTS is CC BY-NC) are offered only to signed-in pilot accounts (admin/moderator),
+ *  ON by default for them, and each user can switch them off. Everyone else keeps the FITILA voices. */
+export type DunyaVoiceChoice = 'meta' | 'fitila';
+export function dunyaPilotEligible(signedIn: boolean, roles: string[]): boolean {
+  return signedIn && roles.some((r) => r === 'admin' || r === 'moderator');
+}
+export function resolveDunyaVoice(eligible: boolean, choice: DunyaVoiceChoice | null, flags: MetaVoiceFlags): MetaVoiceFlags {
+  if (!eligible) return flags; // dormant flags still work for local tests
+  if (choice === 'fitila') return { tts: false, asr: false };
+  return { tts: true, asr: true };
+}

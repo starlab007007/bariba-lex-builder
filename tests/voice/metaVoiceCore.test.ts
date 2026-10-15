@@ -22,3 +22,19 @@ Deno.test('errors are readable', () => {
   assert(readableVoiceError(503, 'not_configured') === 'Voix Meta non activée sur le serveur.', 'nc');
   assert(readableVoiceError(null).includes('internet'), 'net');
 });
+
+import { dunyaPilotEligible, resolveDunyaVoice } from '../../src/lib/voice/metaVoiceCore.ts';
+Deno.test('pilot: only signed-in admin/moderator', () => {
+  if (dunyaPilotEligible(false, ['admin'])) throw new Error('signed out must not be eligible');
+  if (dunyaPilotEligible(true, ['user'])) throw new Error('plain user must not be eligible');
+  if (!dunyaPilotEligible(true, ['moderator'])) throw new Error('moderator eligible');
+});
+Deno.test('pilot: meta on by default, user can choose fitila', () => {
+  const off = { tts: false, asr: false };
+  const d = resolveDunyaVoice(true, null, off);
+  if (!d.tts || !d.asr) throw new Error('default on for pilot');
+  const f = resolveDunyaVoice(true, 'fitila', { tts: true, asr: true });
+  if (f.tts || f.asr) throw new Error('fitila choice disables meta');
+  const n = resolveDunyaVoice(false, null, off);
+  if (n.tts || n.asr) throw new Error('non pilot stays off');
+});

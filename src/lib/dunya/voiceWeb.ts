@@ -10,6 +10,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { isOffline, memoryTranslate } from '@/lib/translation/translationMemory';
 import { getMetaVoiceFlags, metaAsr, metaTts } from '@/lib/voice/metaVoice';
 
+// DUNYA pilot override (set by the screen from the signed-in user's role + choice).
+let dunyaVoiceOverride: { tts: boolean; asr: boolean } | null = null;
+export let lastVoiceEngine: { asr?: 'meta' | 'fitila'; tts?: 'meta' | 'fitila' } = {};
+export function setDunyaMetaVoice(v: { tts: boolean; asr: boolean } | null) { dunyaVoiceOverride = v; }
+const metaFlags = () => dunyaVoiceOverride ?? getMetaVoiceFlags();
+
 export type DunyaWebMode = 'fr' | 'bba' | 'both';
 
 export type DunyaWebTurn = {
@@ -80,10 +86,10 @@ async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<T> 
 
 export async function transcribeBariba(audio: Blob): Promise<string> {
   // Optional Meta Omnilingual ASR (flag); falls back to the existing bariba-stt.
-  if (getMetaVoiceFlags().asr) {
+  if (metaFlags().asr) {
     try {
       const t = await metaAsr(audio);
-      if (t) return t;
+      if (t) { lastVoiceEngine = { ...lastVoiceEngine, asr: 'meta' }; return t; }
     } catch (e) {
       console.warn('[dunya] Meta ASR indisponible, repli bariba-stt:', e instanceof Error ? e.message : e);
     }
@@ -93,6 +99,7 @@ export async function transcribeBariba(audio: Blob): Promise<string> {
     audio: dataUrl,
     robustMode: true,
   });
+  lastVoiceEngine = { ...lastVoiceEngine, asr: 'fitila' };
   return (data.transcription ?? data.text ?? '').trim();
 }
 
@@ -187,9 +194,11 @@ export function speakFrench(text: string, rate = 1): Promise<void> {
 export async function speakBariba(text: string): Promise<boolean> {
   if (!text.trim()) return false;
   // Optional Meta MMS-TTS (flag); falls back to the existing bariba-tts.
-  if (getMetaVoiceFlags().tts) {
+  if (metaFlags().tts) {
     try {
-      await playUrl(await metaTts(text));
+      const url = await metaTts(text);
+      lastVoiceEngine = { ...lastVoiceEngine, tts: 'meta' };
+      await playUrl(url);
       return true;
     } catch (e) {
       console.warn('[dunya] Meta TTS indisponible, repli bariba-tts:', e instanceof Error ? e.message : e);
@@ -197,6 +206,7 @@ export async function speakBariba(text: string): Promise<boolean> {
   }
   const data = await invoke<{ success?: boolean; audio_url?: string }>('bariba-tts', { text, skipRefine: true });
   if (!data.audio_url) return false;
+  lastVoiceEngine = { ...lastVoiceEngine, tts: 'fitila' };
   await playUrl(data.audio_url);
   return true;
 }
