@@ -156,16 +156,17 @@ Deno.test('transcription reconstruction uses references without calling either L
     assert(requests === 3);
   });
 });
-Deno.test('typed translation reference review bypasses AI and rejects a target without its source', async () => {
+Deno.test('retired typed and target reference review cannot search, rewrite or call an AI provider', async () => {
   let calls = 0;
-  await mocked(async (url) => {
-    calls++; if (String(url).includes('consume_dunya_voice_quota')) return json(true);
-    if (String(url).includes('fitila_asr_reference_candidates')) return json([{ query_index: 0, text: 'Je vais prier Dieu', source: 'apprendre', source_id: 'lesson', validation: 'catalogue', kind: 'phrase' }]);
-    throw new Error('Reference review must not use an LLM');
+  await mocked(async () => {
+    calls++; throw new Error('Retired reference review must not use the network');
   }, async () => {
-    const invalid = await handleRefine(req({ text: 'Agede ye ya do', type: 'reference-review', scope: 'translation', language: 'bba' })); assert(invalid.status === 400 && calls === 0);
-    const result = await (await handleRefine(req({ text: 'Je va prier Dieu', type: 'reference-review', scope: 'source', language: 'fr' }))).json();
-    assert(result.review.raw === 'Je va prier Dieu' && result.review.proposals[0]?.text === 'Je vais prier Dieu' && result.meta.aiUsed === false && Number(calls) === 3);
+    for (const scope of ['source', 'translation']) {
+      const response = await handleRefine(req({ text: 'Je ne donne pas 1200 à Ali', type: 'reference-review', scope, language: 'fr', originalInput: 'Agede ye ya do' }));
+      const result = await response.json();
+      assert(response.status === 410 && result.code === 'voice_transcription_only');
+      assert(result.refined === undefined && result.review === undefined && calls === 0);
+    }
   });
 });
 Deno.test('French post-editing preserves its direction and reports an unverified heuristic', async () => {
