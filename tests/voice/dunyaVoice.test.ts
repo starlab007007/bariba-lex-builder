@@ -47,7 +47,7 @@ Deno.env.set('FITILA_VOICE_SERVICE_URL', 'https://voice.test');
 Deno.env.set('FITILA_MODEL_API_TOKEN', 'test-private-token');
 const { handleVoiceTurn } = await import('../../supabase/functions/dunya-voice-turn/index.ts');
 const realFetch = globalThis.fetch;
-type Scenario = { quota?: boolean; quotaError?: boolean; asrEmpty?: boolean; asrFails?: boolean; ttsFails?: boolean; leaseError?: boolean; brainLimited?: boolean };
+type Scenario = { quota?: boolean; quotaError?: boolean; asrEmpty?: boolean; asrFails?: boolean; ttsFails?: boolean; leaseError?: boolean; brainLimited?: boolean; asrText?: string; repairReference?: string };
 async function scenario(body: Record<string, unknown>, config: Scenario = {}, token?: string) {
   const calls: string[] = [];
   const quotas: { p_key: string; p_limit: number; p_window: number }[] = [];
@@ -57,11 +57,12 @@ async function scenario(body: Record<string, unknown>, config: Scenario = {}, to
     const response = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
     if (url.includes('/auth/v1/user')) return response({ message: 'Invalid JWT' }, 401);
     if (url.includes('consume_dunya_voice_quota')) { quotas.push(payload); return config.quotaError ? response({ message: 'quota unavailable' }, 500) : response(config.quota !== false); }
+    if (url.includes('fitila_asr_reference_candidates')) return response(config.repairReference ? [{ query_index: 0, text: config.repairReference, source: 'apprendre', source_id: 'lesson', validation: 'catalogue', kind: 'lecon' }] : []);
     if (url.includes('lease_dunya_voice_cpu')) return config.leaseError ? response({ message: 'lease unavailable' }, 500) : response(true);
     if (url.includes('release_dunya_voice_cpu')) return response(null);
     if (url.endsWith('/infer')) {
       assert(new Headers(init?.headers).get('Authorization') === 'Bearer test-private-token', 'private token only goes upstream');
-      if (payload.engine === 'meta-asr-300m') return config.asrFails ? response({}, 503) : response({ transcript: config.asrEmpty ? '' : 'A kua' });
+      if (payload.engine === 'meta-asr-300m') return config.asrFails ? response({}, 503) : response({ transcript: config.asrEmpty ? '' : config.asrText ?? 'A kua' });
       if (config.ttsFails) return response({}, 503);
       assert(payload.text.length <= 380, 'bounded TTS');
       return response({ audio_base64: bytesToBase64(wav()) });
@@ -100,6 +101,14 @@ Deno.test('French greetings preserve the existing local fast path without a mode
 Deno.test('transcription review stops before reasoning and synthesis', async () => {
   const r = await scenario({ audio_base64: bytesToBase64(wav()), lang: 'bba', transcribe_only: true });
   assert(r.events.some(e => e.type === 'transcript')); assert(!r.calls.some(x => x.includes('fitila-ia-chat')));
+});
+Deno.test('the public ASR stream delivers a sourced reconstruction while preserving recognized words', async () => {
+  const r = await scenario({ audio_base64: bytesToBase64(wav()), lang: 'bba', transcribe_only: true }, { asrText: 'Agede ye ya do', repairReference: 'Agɛdɛ ye ya do.' });
+  const transcript = r.events.find(e => e.type === 'transcript');
+  assert(transcript.text === 'Agede ye ya do' && transcript.raw_text === 'Agede ye ya do');
+  assert(transcript.repair.proposals[0].text === 'Agɛdɛ ye ya do.');
+  assert(transcript.repair.requires_confirmation && !transcript.repair.score_is_probability);
+  assert(!r.calls.some(x => /fitila-ia-chat|byt5-bariba/.test(x)));
 });
 Deno.test('translator French recording uses Omnilingual and never a Bariba-only fallback', async () => {
   const request = { audio_base64: bytesToBase64(wav()), lang: 'fr', transcribe_only: true };

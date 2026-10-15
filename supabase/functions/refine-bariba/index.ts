@@ -1,4 +1,5 @@
 import { aiFetch, AI_CHAT_URL, getActiveAIKey } from "../_shared/ai-provider.ts";
+import { repairRecognizedTranscript } from '../_shared/transcription-resources.ts';
 import { normalizeBaribaText, isInvalidUiLikeText, applyHardCorrections, detectRefinementChanges, buildRefineSystemPrompt } from '../_shared/bariba-linguistic-rules.ts';
 import { acceptRefinement, ensureMemory, estimateConfidence, foldBa, lexicalCoverage, memoryLookup } from '../_shared/translation-verifier.ts';
 
@@ -32,10 +33,16 @@ export async function handleRefine(req: Request): Promise<Response> {
   const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   try {
     const body = await req.json().catch(() => ({}));
+    if (typeof body.text === 'string' && body.text.length > 5000) return reply({ error: 'Text too long' }, 413);
     const text = normalizeBaribaText(typeof body.text === 'string' ? body.text : '');
     if (text.length > 4000) return reply({ error: 'Text too long' }, 413);
     const direction: Direction = body.direction === 'ba-fr' ? 'ba-fr' : 'fr-ba';
     const transcription = body.type === 'transcription';
+    if (transcription) {
+      const raw = typeof body.text === 'string' ? body.text : '';
+      const repair = await repairRecognizedTranscript(raw, ['fr','french'].includes(body.language) ? 'fr' : 'bba', req.signal);
+      return reply({ refined: repair.text, raw_transcription: repair.raw, repair, changes: [], confidence: 0, confidenceKind: 'not-measured', confidenceIsProbability: false, linguisticQualityCertified: false, meta: { type: 'transcription', aiUsed: false, requiresHumanValidation: true, duration: Date.now() - started, fallback: repair.status === 'unavailable' } });
+    }
     const target = direction === 'ba-fr' && !transcription ? 'fr' : 'ba';
     const originalInput = normalizeBaribaText(typeof body.originalInput === 'string' ? body.originalInput : '').slice(0, 4000);
     const normalizeTarget = (value: string) => target === 'fr' ? normalizeBaribaText(value) : applyHardCorrections(value);

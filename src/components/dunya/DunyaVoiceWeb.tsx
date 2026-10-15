@@ -2,6 +2,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Captions, CaptionsOff, Check, ChevronDown, Copy, Languages, Menu, MessageSquare, Mic, MicOff, Send, Settings2, Square, Volume2, X, Paperclip, Pause, Play } from 'lucide-react';
 import { runServerVoice, voiceMessage, type VoiceEvent } from '@/lib/dunya/serverVoice';
+import TranscriptionReview from '@/components/voice/TranscriptionReview';
+import { replaceTranscriptDraft, type TranscriptRepair } from '@/lib/voice/transcriptionReview';
 import { hasFrenchRecognition, loadHistory, loadPreference, looksFrench, MODE_LABEL, recognizeFrench,
   recordUtterance, saveHistory, savePreference, speakFrench, stopSpeaking, playUrl, pauseSpeaking, resumeSpeaking,
   type DunyaWebMode, type DunyaWebTurn } from '@/lib/dunya/voiceWeb';
@@ -24,6 +26,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
   const [subCaption, setSubCaption] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null), [notice, setNotice] = useState<string | null>(null);
   const [textView, setTextView] = useState(false), [draft, setDraft] = useState('');
+  const [transcriptionReview, setTranscriptionReview] = useState<TranscriptRepair | null>(null), [selectedTranscript, setSelectedTranscript] = useState('');
   const [modePicker, setModePicker] = useState(false), [settingsOpen, setSettingsOpen] = useState(false);
   const [onboarded, setOnboarded] = useState(() => loadPreference('onboarded', false));
   const [handsFree, setHandsFree] = useState(() => loadPreference('handsFree', true));
@@ -98,7 +101,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           if (!active()) return;
           setDiagnostic(d => ({ ...d, request: event.request_id, elapsed: event.elapsed_ms }));
           if (event.type === 'stage' && !audioReceived) {
-            const labels: Record<string, string> = { waiting: 'Un instant, je prépare la voix…', transcribing: 'Je vous comprends…', thinking: 'Je prépare votre réponse…', synthesizing: 'Je prépare la voix…' };
+            const labels: Record<string, string> = { waiting: 'Un instant, je prépare la voix…', transcribing: 'Je vous comprends…', analyzing_transcript: 'Je compare les formulations FITILA…', thinking: 'Je prépare votre réponse…', synthesizing: 'Je prépare la voix…' };
             setStatus(labels[event.stage ?? ''] ?? null);
           }
           if (event.type === 'notice') setNotice(voiceMessage(event.code));
@@ -107,6 +110,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
             if (input.replayId) return;
             if (input.audio && reviewStt) {
               session.current = false; setDraft(event.text ?? ''); setTextView(true); setNotice('Vérifiez la transcription puis envoyez.');
+              setSelectedTranscript(event.text ?? ''); setTranscriptionReview(event.repair ?? null);
             } else setTurns(t => [...t, { id: uid(), role: 'user', text: event.text ?? '', lang: event.lang ?? input.lang, createdAt: Date.now() }]);
           }
           if (event.type === 'answer') {
@@ -202,7 +206,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
   };
   const sendText = async () => {
     const text = draft.trim(); if (!text) return;
-    setDraft(''); session.current = false;
+    setDraft(''); setTranscriptionReview(null); session.current = false;
     await runTurn(text, mode === 'both' ? looksFrench(text, 0.9) ? 'fr' : 'bba' : mode, false);
   };
   const changeMode = (next: DunyaWebMode) => { endSession(); setMode(next); savePreference('mode', next); setTurns(loadHistory(next)); setModePicker(false); };
@@ -270,6 +274,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
               )}
             </article>
           ))}
+          {transcriptionReview && <TranscriptionReview report={transcriptionReview} selected={selectedTranscript} onChoose={text => { const result = replaceTranscriptDraft(draft, selectedTranscript, text); if (result.replaced) { setDraft(result.text); setSelectedTranscript(text); } return result.replaced; }} />}
         </div>
       ) : (
         <div className="flex flex-1 flex-col items-center px-4">

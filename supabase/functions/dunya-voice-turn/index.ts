@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.81.1';
+import { repairRecognizedTranscript } from '../_shared/transcription-resources.ts';
 import { bytesToBase64, frenchGreeting, MAX_VOICE_TEXT, needsClarification, segmentVoiceWav, speechChunks, type VoiceEvent } from '../_shared/dunya-voice-core.ts';
 
 const cors = {
@@ -151,14 +152,17 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
               if (lang === 'fr') throw new Error('transcription_unavailable');
               engine = 'bariba-stt';
               send({ type: 'notice', code: 'asr_fallback', engine });
-              const fallback = await fn('bariba-stt', { audio: `data:audio/wav;base64,${encoded}`, robustMode: true });
-              part = clean(fallback.transcription ?? fallback.text);
+              const fallback = await fn('bariba-stt', { audio: `data:audio/wav;base64,${encoded}`, robustMode: true, skipRepair: true });
+              part = clean(fallback.raw_transcription ?? fallback.transcription ?? fallback.text);
             }
             if (!part || needsClarification(part)) throw new Error('clarification_required');
             parts.push(part);
           }
           transcript = parts.join(' ');
-          send({ type: 'transcript', text: transcript, lang, engine, model: engine === 'meta-asr-300m' ? 'omniASR_CTC_300M' : 'bariba-stt' });
+          send({ type: 'stage', stage: 'analyzing_transcript' });
+          const repair = await repairRecognizedTranscript(transcript, lang, abort.signal);
+          transcript = repair.text;
+          send({ type: 'transcript', text: transcript, raw_text: repair.raw, repair, lang, engine, model: engine === 'meta-asr-300m' ? 'omniASR_CTC_300M' : 'bariba-stt' });
         } else send({ type: 'transcript', text: transcript, lang, engine: 'text' });
         if (body.transcribe_only === true) { send({ type: 'done' }); return; }
         send({ type: 'stage', stage: 'thinking' });

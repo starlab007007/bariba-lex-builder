@@ -1,9 +1,10 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import {
   normalizeBaribaText,
   isInvalidUiLikeText,
-  applyLocalBaribaCorrections,
 } from "../_shared/bariba-linguistic-rules.ts";
+
+import { repairRecognizedTranscript } from '../_shared/transcription-resources.ts';
+import { reconstructTranscript } from '../_shared/transcription-repair.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,11 +18,11 @@ const MAX_AUDIO_BASE64_LEN = 500_000;
 const HF_UPLOAD_TIMEOUT_MS = 30_000;
 const HF_CALL_TIMEOUT_MS = 30_000;
 const HF_SSE_TIMEOUT_MS = 60_000;
-const REFINE_TIMEOUT_MS = 5_000;
 
 interface STTRequest {
   audio: string;
   robustMode?: boolean;
+  skipRepair?: boolean;
   speakerType?: "Auto" | "Enfant" | "Femme" | "Homme" | "PersonneAgee";
 }
 
@@ -360,59 +361,7 @@ async function transcribeBariba(
   return transcription;
 }
 
-async function refineWithSupabase(params: {
-  req: Request;
-  transcription: string;
-}): Promise<{ refined?: string; changes?: string[]; confidence?: number; error?: string }> {
-  const { req, transcription } = params;
-
-  const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || req.headers.get("x-supabase-url") || "";
-  const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || req.headers.get("apikey") || "";
-
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    return { error: "Refine unavailable (missing Supabase URL/key)" };
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REFINE_TIMEOUT_MS);
-
-  try {
-    const resp = await fetch(`${SUPABASE_URL}/functions/v1/refine-bariba`, {
-      method: "POST",
-      headers: {
-        Authorization: req.headers.get("Authorization") || `Bearer ${SUPABASE_ANON_KEY}`,
-        apikey: req.headers.get("apikey") || SUPABASE_ANON_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        text: transcription,
-        type: "transcription",
-      }),
-      signal: controller.signal,
-    });
-
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => "");
-      return { error: `Refine HTTP ${resp.status}: ${body.substring(0, 120)}` };
-    }
-
-    const data = await resp.json();
-    const refined = typeof data?.refined === "string" ? normalizeBaribaText(data.refined) : "";
-    if (!refined) return { error: "Refine returned empty text" };
-
-    return {
-      refined,
-      changes: Array.isArray(data?.changes) ? data.changes.map(String) : [],
-      confidence: typeof data?.confidence === "number" ? data.confidence : undefined,
-    };
-  } catch (e: unknown) {
-    return { error: e instanceof Error ? e.message : "Refine request failed" };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -497,47 +446,26 @@ serve(async (req: Request) => {
         );
       }
 
-      let finalTranscription = applyLocalBaribaCorrections(rawTranscription);
-      let refined = false;
-      let refineMeta: { confidence?: number; changes?: string[]; error?: string } = {};
-
-      // ─── RAFFINAGE via refine-bariba (non-bloquant) ───
-      const refineResult = await refineWithSupabase({
-        req,
-        transcription: finalTranscription,
-      });
-
-      if (refineResult.refined && isValidTranscription(refineResult.refined)) {
-        finalTranscription = applyLocalBaribaCorrections(refineResult.refined);
-        refined = true;
-        refineMeta = {
-          confidence: refineResult.confidence,
-          changes: refineResult.changes || [],
-        };
-        console.log(
-          `🔧 STT Refined: "${finalTranscription.substring(0, 80)}" (${refineResult.changes?.length || 0} changes)`,
-        );
-      } else if (refineResult.error) {
-        refineMeta = { error: refineResult.error };
-        console.warn(`⚠️ STT Refine skipped: ${refineResult.error}`);
-      }
-
-      const hasBaribaChars = /[ɔɛɑãɛ̃ĩɔ̃ũ̀́]/u.test(finalTranscription);
-      const confidence = Math.min(
-        97,
-        84 + (hasBaribaChars ? 4 : 0) + (refined ? 4 : 0),
-      );
-
-      console.log(`✅ STT Success in ${Date.now() - startTime}ms: "${finalTranscription.substring(0, 80)}"`);
+      const repair = body.skipRepair === true
+        ? reconstructTranscript(rawTranscription, 'bba')
+        : await repairRecognizedTranscript(rawTranscription, 'bba', req.signal);
+      const finalTranscription = repair.text;
+      const refined = finalTranscription !== rawTranscription;
+      console.log(JSON.stringify({ event: 'bariba_stt_completed', duration: Date.now() - startTime, repair_status: repair.status, proposals: repair.proposals.length }));
 
       return new Response(
         JSON.stringify({
           transcription: finalTranscription,
-          confidence,
+          confidence: 0,
+          confidenceKind: 'not-measured',
+          confidenceIsProbability: false,
+          linguisticQualityCertified: false,
+          raw_transcription: rawTranscription,
+          repair,
           duration: Date.now() - startTime,
           language: "bariba",
           refined,
-          refinement: refineMeta,
+          refinement: { method: 'reference-v1', requiresHumanValidation: true },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
@@ -582,3 +510,4 @@ serve(async (req: Request) => {
     );
   }
 });
+
