@@ -31,3 +31,14 @@
 ## Désactivation de Lovable
 
 Seulement après validation fonctionnelle du domaine autonome : retirer tout paramétrage de déploiement Lovable, dissocier l'intégration GitHub de Lovable, supprimer les redirections OAuth Lovable et arrêter les publications Lovable. **Ne supprimer aucun projet ni aucune donnée depuis Lovable tant que la sauvegarde et le test de restauration ne sont pas effectués.**
+
+## Dépendances runtime restantes vers l'ancien backend Lovable Cloud (audit 15/10/2026)
+
+Projet canonique : `dvswhjawiooprghzeyol`. Seule référence restante à l'ancien ref `pmrhezgnyffiskbaiudb` dans le dépôt : `.env` (`VITE_SUPABASE_PROJECT_ID`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`).
+
+- `.env` est **régénéré automatiquement par Lovable** : une modification ne serait pas durable. Laissé tel quel. Sans effet runtime : `src/integrations/supabase/client.ts` force l'URL et la clé publishable canoniques ; les workflows GitHub injectent leurs propres `VITE_SUPABASE_*` canoniques.
+- `supabase/config.toml` : déjà `project_id = "dvswhjawiooprghzeyol"`. Aucun changement.
+- Edge Functions appelées par le frontend mais **absentes** du projet canonique (HTTP 404) : `clone-voice`, `enhance-training-data`, `generate-3d-avatar`, `generate-anime-story`, `generate-beat`, `generate-character-asset`, `generate-image-animation`, `generate-template-assets`, `health-check`, `process-template`, `retrain-model`, `synthesize-speech`. À déployer sur le projet canonique (hors périmètre exclu : vidéos, TamTam, animations, Envato, audios Classe — à arbitrer par fonction).
+- Tâche planifiée `hf-keep-alive` : s'exécute encore sur Lovable Cloud (pg_cron). À recréer sur le projet canonique.
+- Fonctions d'outillage de migration (`storage-migrate-to-external`, `classe-audio-sync`) : hébergées volontairement sur Lovable Cloud ; non utilisées par l'application.
+- Enregistrements vocaux divergents `04ae5500-d8c0-434d-840b-449766cc9dbd` et `3502a86d-b69f-4453-8123-58cc7bf973c9` : arbitrage humain requis, aucune approbation automatique.
