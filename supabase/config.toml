@@ -150,3 +150,7 @@ verify_jwt = true
 
 [functions.super-ia-create]
 verify_jwt = true
+
+# Validates the JWT with Auth and checks the administrator role in user_roles.
+[functions.ai-provider-settings]
+verify_jwt = false

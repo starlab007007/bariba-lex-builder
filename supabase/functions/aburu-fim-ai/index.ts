@@ -1,4 +1,4 @@
-import { mistralFetch } from "../_shared/mistral.ts";
+import { aiFetch, AI_CHAT_URL, getActiveAIKey } from "../_shared/ai-provider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,8 +62,8 @@ Deno.serve(async (req: Request) => {
       ? null
       : Number(product.price);
 
-    const MISTRAL_API_KEY = Deno.env.get("MISTRAL_API_KEY");
-    if (!MISTRAL_API_KEY) return json({ error: "Service IA non configuré" }, 503);
+    const ACTIVE_AI_KEY = await getActiveAIKey();
+    if (!ACTIVE_AI_KEY) return json({ error: "Service IA non configuré" }, 503);
 
     const factualBlock = [
       `Titre: ${title}`,
@@ -95,10 +95,10 @@ script: maximum 55 mots, naturel à dire à voix haute.`;
       ? `PRODUIT:\n${factualBlock}\n\nTEXTE À AMÉLIORER:\n${currentText || description || title}\n\nTon demandé: ${tone}. Langue de sortie principale: ${language}. Réécris sans modifier les faits.`
       : `PRODUIT:\n${factualBlock}\n\nCrée une publication Aburu Fim au ton "${tone}". Langue de sortie principale: ${language}.`;
 
-    const response = await mistralFetch("https://api.mistral.ai/v1/chat/completions", {
+    const response = await aiFetch(AI_CHAT_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${MISTRAL_API_KEY}`,
+        Authorization: `Bearer ${ACTIVE_AI_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

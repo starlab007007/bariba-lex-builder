@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Download, Activity, ShieldCheck, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import AIProviderSettings from './AIProviderSettings';
 
 export default function AdminSettings() {
   return (
@@ -12,6 +13,8 @@ export default function AdminSettings() {
           Accès aux opérations de maintenance réellement disponibles dans FITILA.
         </p>
       </div>
+
+      <AIProviderSettings />
 
       <Card>
         <CardHeader>
@@ -70,3 +73,4 @@ export default function AdminSettings() {
     </div>
   );
 }
+

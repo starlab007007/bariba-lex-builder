@@ -1,4 +1,4 @@
-import { mistralFetch } from "../_shared/mistral.ts";
+import { aiFetch, AI_CHAT_URL, getActiveAIKey } from "../_shared/ai-provider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,9 +15,9 @@ Deno.serve(async (req) => {
     
     console.log('[agri-advisor] Received request:', { question, context, language });
 
-    const MISTRAL_API_KEY = Deno.env.get("MISTRAL_API_KEY");
-    if (!MISTRAL_API_KEY) {
-      throw new Error("MISTRAL_API_KEY is not configured");
+    const ACTIVE_AI_KEY = await getActiveAIKey();
+    if (!ACTIVE_AI_KEY) {
+      throw new Error("La clé du fournisseur IA actif est absente.");
     }
 
     const systemPrompt = `Tu es un conseiller agricole expert pour les agriculteurs du Bénin et d'Afrique de l'Ouest.
@@ -42,10 +42,10 @@ Pour les questions sur:
 
 Réponds en français de manière simple et claire.`;
 
-    const response = await mistralFetch("https://api.mistral.ai/v1/chat/completions", {
+    const response = await aiFetch(AI_CHAT_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${MISTRAL_API_KEY}`,
+        Authorization: `Bearer ${ACTIVE_AI_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

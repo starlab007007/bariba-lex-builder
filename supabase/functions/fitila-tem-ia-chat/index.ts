@@ -1,4 +1,4 @@
-import { mistralFetch } from "../_shared/mistral.ts";
+import { aiFetch, AI_CHAT_URL, getActiveAIKey } from "../_shared/ai-provider.ts";
 // ⚠️ DEPRECATED — Cette edge function n'est plus appelée par le client.
 // Fitila Tem IA fonctionne désormais 100% en local côté navigateur via :
 //   - src/lib/foncierRAG.ts (moteur BM25 + extraction de phrases)
@@ -102,11 +102,11 @@ function scoreArticles(query: string): { article: Article; score: number }[] {
   return scored.slice(0, TOP_K);
 }
 
-async function callLLM(messages: { role: string; content: string }[], model: string, apiKey: string): Promise<string> {
+async function callLLM(messages: { role: string; content: string }[], model: string, apiKey: string, record?: (model: string, provider: string) => void): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
   try {
-    const resp = await mistralFetch("https://api.mistral.ai/v1/chat/completions", {
+    const resp = await aiFetch(AI_CHAT_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -124,6 +124,7 @@ async function callLLM(messages: { role: string; content: string }[], model: str
       throw new Error(`LLM HTTP ${resp.status}`);
     }
     const data = await resp.json();
+    record?.(data.model || resp.headers.get('X-Fitila-AI-Model') || '', resp.headers.get('X-Fitila-AI-Provider') || '');
     return String(data?.choices?.[0]?.message?.content || "").trim();
   } finally {
     clearTimeout(timer);
@@ -169,8 +170,8 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const MISTRAL_API_KEY = Deno.env.get("MISTRAL_API_KEY");
-    if (!MISTRAL_API_KEY) throw new Error("MISTRAL_API_KEY missing");
+    const ACTIVE_AI_KEY = await getActiveAIKey();
+    if (!ACTIVE_AI_KEY) throw new Error("La clé du fournisseur IA actif est absente.");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY");
 
@@ -180,6 +181,8 @@ Deno.serve(async (req: Request) => {
     const ranked = scoreArticles(message);
     const relevant = ranked.filter((r) => r.score >= MIN_RELEVANCE_SCORE);
 
+    let usedModel = '', usedProvider = '';
+    const recordAI = (model: string, provider: string) => { usedModel = model; usedProvider = provider; };
     let responseFr: string;
     let sources: { id: number; number: string; page: number; content: string }[] = [];
 
@@ -210,7 +213,8 @@ Deno.serve(async (req: Request) => {
             { role: "user", content: userPrompt },
           ],
           PRIMARY_MODEL,
-          MISTRAL_API_KEY,
+          ACTIVE_AI_KEY,
+          recordAI,
         );
       } catch (e) {
         const msg = e instanceof Error ? e.message : "";
@@ -227,7 +231,8 @@ Deno.serve(async (req: Request) => {
             { role: "user", content: userPrompt },
           ],
           FALLBACK_MODEL,
-          MISTRAL_API_KEY,
+          ACTIVE_AI_KEY,
+          recordAI,
         );
       }
 
@@ -258,7 +263,8 @@ Deno.serve(async (req: Request) => {
         response_ba: responseBa,
         response_fr: responseFr,
         fallback: isFallback,
-        model: PRIMARY_MODEL,
+        model: usedModel,
+        provider: usedProvider,
         sources,
         duration: Date.now() - startedAt,
       }),

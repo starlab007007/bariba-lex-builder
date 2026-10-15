@@ -1,9 +1,9 @@
-import { mistralFetch } from "../_shared/mistral.ts";
+import { aiFetch, AI_AUDIO_URL, getActiveAIKey } from "../_shared/ai-provider.ts";
 /**
  * Transcribe Audio Edge Function
  * 
- * Receives an audio blob and transcribes it to text using Mistral Voxtral Mini (batch).
- * Falls back to client-side speech recognition if Mistral fails.
+ * Receives an audio blob and transcribes it to text using le fournisseur IA actif (Voxtral ou Gemini).
+ * Falls back to client-side speech recognition if Fournisseur IA actif fails.
  * 
  * Returns: { text, words[], language }
  */
@@ -33,28 +33,28 @@ Deno.serve(async (req) => {
 
     console.log(`[transcribe-audio] Received audio: ${audioFile.name}, size: ${audioFile.size}, type: ${audioFile.type}`);
 
-    const MISTRAL_API_KEY = Deno.env.get('MISTRAL_API_KEY');
+    const ACTIVE_AI_KEY = await getActiveAIKey();
 
-    // Try Mistral Voxtral Mini STT first
-    if (MISTRAL_API_KEY) {
+    // Try Fournisseur IA actif Voxtral Mini STT first
+    if (ACTIVE_AI_KEY) {
       try {
-        const result = await transcribeWithMistral(audioFile, MISTRAL_API_KEY);
+        const result = await transcribeWithActiveAI(audioFile, ACTIVE_AI_KEY);
         if (result && result.text && result.text.trim().length > 0) {
-          console.log(`[transcribe-audio] Mistral success: ${result.text.length} chars`);
+          console.log(`[transcribe-audio] Fournisseur IA actif success: ${result.text.length} chars`);
           return new Response(
-            JSON.stringify({ success: true, ...result, method: 'mistral' }),
+            JSON.stringify({ success: true, ...result, method: result.provider || 'mistral' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
-        console.warn('[transcribe-audio] Mistral returned empty text, falling back...');
-      } catch (mistralError) {
-        console.error('[transcribe-audio] Mistral error:', mistralError);
+        console.warn('[transcribe-audio] Fournisseur IA actif returned empty text, falling back...');
+      } catch (providerError) {
+        console.error('[transcribe-audio] Fournisseur IA actif error:', providerError);
       }
     } else {
-      console.log('[transcribe-audio] No MISTRAL_API_KEY, skipping Mistral');
+      console.log('[transcribe-audio] No ACTIVE_AI_KEY, skipping Fournisseur IA actif');
     }
 
-    // No external fallback provider: use client-side Web Speech when Mistral is unavailable.
+    // No external fallback provider: use client-side Web Speech when Fournisseur IA actif is unavailable.
     return new Response(
       JSON.stringify({
         success: false,
@@ -78,21 +78,21 @@ Deno.serve(async (req) => {
 });
 
 /**
- * Transcribe audio using Mistral Voxtral Mini Transcribe V2
+ * Transcribe audio using le fournisseur IA actif
  */
-async function transcribeWithMistral(
+async function transcribeWithActiveAI(
   audioFile: File,
   apiKey: string
-): Promise<{ text: string; words: Array<{ text: string; start: number; end: number }>; language: string }> {
+): Promise<{ text: string; words: Array<{ text: string; start: number; end: number }>; language: string; provider: string; model: string }> {
   const formData = new FormData();
   formData.append('file', audioFile);
   formData.append('model', 'voxtral-mini-latest');
   formData.append('language', 'fr');
   formData.append('timestamp_granularities', 'word');
 
-  console.log('[transcribe-audio] Calling Mistral Voxtral Mini STT...');
+  console.log('[transcribe-audio] Calling Fournisseur IA actif Voxtral Mini STT...');
 
-  const response = await mistralFetch('https://api.mistral.ai/v1/audio/transcriptions', {
+  const response = await aiFetch(AI_AUDIO_URL, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
@@ -102,8 +102,8 @@ async function transcribeWithMistral(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('[transcribe-audio] Mistral HTTP error:', response.status, errorText);
-    throw new Error(`Mistral STT error: ${response.status}`);
+    console.error('[transcribe-audio] Fournisseur IA actif HTTP error:', response.status, errorText);
+    throw new Error(`Fournisseur IA actif STT error: ${response.status}`);
   }
 
   const data = await response.json();
@@ -116,6 +116,8 @@ async function transcribeWithMistral(
       end: w.end,
     })),
     language: data.language || 'fr',
+    provider: response.headers.get('X-Fitila-AI-Provider') || '',
+    model: data.model || response.headers.get('X-Fitila-AI-Model') || '',
   };
 }
 

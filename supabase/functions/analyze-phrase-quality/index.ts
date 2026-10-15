@@ -1,4 +1,4 @@
-import { mistralFetch } from "../_shared/mistral.ts";
+import { aiFetch, AI_CHAT_URL, aiFailure, getActiveAIKey } from "../_shared/ai-provider.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.81.1";
 import {
   normalizeBaribaText,
@@ -42,7 +42,7 @@ async function fetchWithTimeout(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await mistralFetch(url, { ...init, signal: controller.signal });
+    return await aiFetch(AI_CHAT_URL, { ...init, signal: controller.signal });
   } finally {
     clearTimeout(timer);
   }
@@ -121,7 +121,7 @@ Deno.serve(async (req: Request) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const MISTRAL_API_KEY = Deno.env.get("MISTRAL_API_KEY") ?? "";
+    const ACTIVE_AI_KEY = await getActiveAIKey() ?? "";
 
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("Missing SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY");
@@ -232,16 +232,16 @@ Deno.serve(async (req: Request) => {
 
           let parsedAiAnalyses: AiAnalysis[] = [];
 
-          if (MISTRAL_API_KEY) {
+          if (ACTIVE_AI_KEY) {
             const prompt = buildAnalysisPrompt(batch);
 
             try {
               const response = await fetchWithTimeout(
-                "https://api.mistral.ai/v1/chat/completions",
+                AI_CHAT_URL,
                 {
                   method: "POST",
                   headers: {
-                    Authorization: `Bearer ${MISTRAL_API_KEY}`,
+                    Authorization: `Bearer ${ACTIVE_AI_KEY}`,
                     "Content-Type": "application/json",
                   },
                   body: JSON.stringify({

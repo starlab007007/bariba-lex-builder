@@ -1,4 +1,4 @@
-import { mistralFetch } from "../_shared/mistral.ts";
+import { aiFetch, AI_CHAT_URL, getActiveAIKey } from "../_shared/ai-provider.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.81.1";
 
 const corsHeaders = {
@@ -27,17 +27,17 @@ interface SuperIARequest {
 }
 
 /**
- * Génère du contenu via Mistral AI (Gemini)
+ * Génère du contenu via Active AI (Gemini)
  */
 async function generateContent(prompt: string): Promise<{ text_fr: string; title: string; error?: string }> {
-  const MISTRAL_API_KEY = Deno.env.get("MISTRAL_API_KEY");
-  if (!MISTRAL_API_KEY) return { text_fr: "", title: "", error: "MISTRAL_API_KEY manquant" };
+  const ACTIVE_AI_KEY = await getActiveAIKey();
+  if (!ACTIVE_AI_KEY) return { text_fr: "", title: "", error: "La clé du fournisseur IA actif est absente." };
 
   try {
-    const resp = await mistralFetch("https://api.mistral.ai/v1/chat/completions", {
+    const resp = await aiFetch(AI_CHAT_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${MISTRAL_API_KEY}`,
+        Authorization: `Bearer ${ACTIVE_AI_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

@@ -1,4 +1,4 @@
-import { mistralFetch } from "../_shared/mistral.ts";
+import { aiFetch, AI_CHAT_URL, getActiveAIKey } from "../_shared/ai-provider.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.81.1";
 
 const corsHeaders = {
@@ -57,7 +57,7 @@ Deno.serve(async (req: Request) => {
 
     const url = Deno.env.get("SUPABASE_URL") ?? "";
     const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-    const aiKey = Deno.env.get("MISTRAL_API_KEY") ?? "";
+    const aiKey = await getActiveAIKey() ?? "";
     if (!url || !anon) throw new Error("Configuration serveur absente");
 
     const client = createClient(url, anon, {
@@ -194,8 +194,8 @@ Deno.serve(async (req: Request) => {
       )
       .join("\n");
     if (!aiKey) return new Response(JSON.stringify({ state: "sourced", answer: sources.map((s: any) => `[${s.index}] ${s.text}`).join("\\n"), sources, method: "lexical-extract" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    const llm = await mistralFetch(
-      "https://api.mistral.ai/v1/chat/completions",
+    const llm = await aiFetch(
+      AI_CHAT_URL,
       {
         method: "POST",
         headers: {
