@@ -45,6 +45,8 @@ export function reconstructionGuard(raw: string, candidate: string, lang: Repair
   const originalWords = words(raw), proposed = new Set(words(candidate).map(token => token.toLowerCase()));
   const names = originalWords.filter((token, n) => n > 0 && /^\p{Lu}/u.test(token));
   if (names.some(name => !proposed.has(name.toLowerCase()))) return 'name_changed';
+  const originalLower = new Set(originalWords.map(word => word.toLowerCase()));
+  if (words(candidate).some((word, index) => index > 0 && /^\p{Lu}/u.test(word) && !originalLower.has(word.toLowerCase()))) return 'name_introduced';
   // A first capitalized token can also be a name. Only equivalent folded spelling is allowed.
   const firstWord = originalWords[0];
   if (firstWord && /^\p{Lu}/u.test(firstWord) && !proposed.has(firstWord.toLowerCase()) &&

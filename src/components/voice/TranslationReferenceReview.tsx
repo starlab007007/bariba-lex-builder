@@ -11,6 +11,7 @@ export default function TranslationReferenceReview({ text, language, scope, orig
   currentText.current = text;
   useEffect(() => { generation.current++; controller.current?.abort(); setReview(null); setNotice(''); setBusy(false); }, [language, scope, originalInput]);
   useEffect(() => () => { generation.current++; controller.current?.abort(); }, []);
+  useEffect(() => { if (!text.trim()) { generation.current++; controller.current?.abort(); setReview(null); setSelected(''); setNotice(''); setBusy(false); } }, [text]);
   const find = async () => {
     controller.current?.abort(); const abort = new AbortController(); controller.current = abort;
     const request = ++generation.current, input = text;

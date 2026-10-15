@@ -49,6 +49,6 @@ le choix de reformulation concerne la réponse visible de la session.
 
 Les tests synthétiques vérifient les protections, les mots incomplets,
 l’inversion adjacente, la provenance bilingue, l’annulation et les contrôles
-vocal/copie du résultat affiché. Le gain réel de naturalité et de fidélité
+vocaux du résultat affiché. Le gain réel de naturalité et de fidélité
 nécessite encore un jeu de références indépendant et une évaluation par des
 locuteurs Baatɔnum. Aucun score de similarité n’est affiché comme une probabilité.

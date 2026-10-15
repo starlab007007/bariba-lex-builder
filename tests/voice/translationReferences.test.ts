@@ -22,7 +22,7 @@ Deno.test('one adjacent word inversion requires an attested sentence and remains
   assert(result.proposals[0]?.text === 'je vais au marché.'); assert(result.text === 'vais je au marché');
 });
 Deno.test('negations, persons, numbers and names, including the first token, are protected', () => {
-  for (const [raw, candidate] of [['Ali va demain','Aline va demain'],['Je ne vends pas 12 parcelles','Je vends 12 parcelles'],['Tu viens avec Ali','Il vient avec Ali'],['Je paie 12 euros','Je paie 120 euros']]) {
+  for (const [raw, candidate] of [['Ali va demain','Aline va demain'],['Je ne vends pas 12 parcelles','Je vends 12 parcelles'],['Tu viens avec Ali','Il vient avec Ali'],['Je paie 12 euros','Je paie 120 euros'],['Je visite mon ami','Je visite mon Ali']]) {
     assert(reconstructionGuard(raw, candidate, 'fr') !== null);
     assert(!review(raw, [ref(candidate)], 'source', 'fr').proposals.length);
   }
@@ -35,15 +35,16 @@ Deno.test('proper names never receive isolated dictionary spelling suggestions',
 Deno.test('a target phrase with a different paired source is refused', () => {
   const result = review('Agede ye ya do', [ref('Agɛdɛ ye ya do.')], 'translation');
   assert(result.proposals.length === 1);
-  const rejected = constrainTranslationPairs(result, 'Je mange des ignames', 'fr', [{ text: 'Je vais prier Dieu', source: 'apprendre', source_id: 'lesson' }]);
+  const rejected = constrainTranslationPairs(result, 'Je mange des ignames', 'fr', [{ text: 'Cette banane est bonne', source: 'apprendre', source_id: 'lesson' }]);
   assert(!rejected.proposals.length && rejected.raw === result.raw);
 });
 Deno.test('a target phrase can be chosen when its bilingual source also matches the input', () => {
-  const result = constrainTranslationPairs(review('Agede ye ya do', [ref('Agɛdɛ ye ya do.')], 'translation'), 'Je va prier Dieu', 'fr', [{ text: 'Je vais prier Dieu', source: 'apprendre', source_id: 'lesson' }]);
+  const result = constrainTranslationPairs(review('Agede ye ya do', [ref('Agɛdɛ ye ya do.')], 'translation'), 'Cette banne est bonne', 'fr', [{ text: 'banane', source: 'apprendre', source_id: 'lesson' }, { text: 'Cette banane est bonne', source: 'apprendre', source_id: 'lesson' }]);
   assert(result.proposals[0]?.text === 'Agɛdɛ ye ya do.' && result.bilingual_check === 'checked');
+  assert(result.paired_references?.length === 1 && result.paired_references[0].text === 'Cette banane est bonne');
 });
 Deno.test('unavailable pairing never permits a plausible target rewrite', () => {
-  const result = constrainTranslationPairs(review('Agede ye ya do', [ref('Agɛdɛ ye ya do.')], 'translation'), 'Je vais prier Dieu', 'fr', null);
+  const result = constrainTranslationPairs(review('Agede ye ya do', [ref('Agɛdɛ ye ya do.')], 'translation'), 'Cette banane est bonne', 'fr', null);
   assert(!result.proposals.length && result.bilingual_check === 'unavailable');
 });
 Deno.test('queries are bounded and long unanalysed text is preserved', () => {
@@ -54,13 +55,13 @@ Deno.test('queries are bounded and long unanalysed text is preserved', () => {
 });
 Deno.test('the server uses independent quotas, paired references and never either LLM', async () => {
   const calls: string[] = [];
-  const result = await reviewTranslationReferences('Agede ye ya do', 'bba', 'translation', 'Je vais prier Dieu', undefined, {
+  const result = await reviewTranslationReferences('Agede ye ya do', 'bba', 'translation', 'Cette banane est bonne', undefined, {
     env: key => key === 'SUPABASE_URL' ? 'https://private.test' : 'server-key',
     fetch: async (input, init) => {
       const url = String(input); calls.push(url); assert(new Headers(init?.headers).get('Authorization') === 'Bearer server-key');
       if (url.includes('consume_')) { const body = JSON.parse(String(init?.body)); assert(body.p_key.startsWith('translation-review-')); return Response.json(true); }
       if (url.includes('reference_candidates')) return Response.json([{ query_index: 0, ...ref('Agɛdɛ ye ya do.') }]);
-      if (url.includes('/fitila_asr_references?')) return Response.json([{ text: 'Je vais prier Dieu', source: 'apprendre', source_id: 'lesson' }]);
+      if (url.includes('/fitila_asr_references?')) return Response.json([{ text: 'Cette banane est bonne', source: 'apprendre', source_id: 'lesson' }]);
       throw new Error('Unexpected destination');
     },
   });

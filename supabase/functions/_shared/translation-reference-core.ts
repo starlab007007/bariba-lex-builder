@@ -7,7 +7,7 @@ export function translationQueries(raw: string): ReferenceQuery[] {
   const phrases: ReferenceQuery[] = segments.slice(0, 12).map(segment => ({ ...segment, kind: 'phrase' }));
   const terms = [...text.matchAll(/[\p{L}\p{M}]+(?:['’][\p{L}\p{M}]+)*/gu)].map(match => ({ text: match[0], start: match.index!, end: match.index! + match[0].length, kind: 'term' as const }));
   const unique = new Map<string, ReferenceQuery>();
-  for (const term of terms) if (!unique.has(asrSearchKey(term.text))) unique.set(asrSearchKey(term.text), term);
+  for (const term of terms) if (term.text.length <= 220 && !unique.has(asrSearchKey(term.text))) unique.set(asrSearchKey(term.text), term);
   // Long texts retain coverage through sentence queries; terms are bounded separately.
   return [...phrases, ...[...unique.values()].slice(0, 24 - phrases.length)];
 }
@@ -39,17 +39,20 @@ export function buildTranslationReview(raw: string, lang: RepairLanguage, scope:
 export type PairedReference = Pick<TranscriptReference, 'text' | 'source' | 'source_id'>;
 /** A nearby target sentence is eligible only if its paired source also matches the input. */
 export function constrainTranslationPairs(report: TranslationReferenceReview, sourceText: string, sourceLang: RepairLanguage, pairs: PairedReference[] | null): TranslationReferenceReview {
-  const result = { ...report, bilingual_check: pairs ? 'checked' as const : 'unavailable' as const, paired_references: pairs ?? [] };
   const segments = transcriptSegments(normalizeTranscript(sourceText)).slice(0, 24);
+  const sentencePairs = (pairs ?? []).filter(pair => segments.some(segment => {
+    const check = reconstructTranscript(segment.text, sourceLang, [[{ ...pair, validation: 'catalogue', kind: 'phrase' }]], false, true);
+    return check.matched_segments > 0 || check.proposals.length > 0;
+  }));
+  const wordPairs = (pairs ?? []).filter(pair => asrSearchKey(sourceText).split(' ').includes(asrSearchKey(pair.text)));
+  const result = { ...report, bilingual_check: pairs ? 'checked' as const : 'unavailable' as const, paired_references: sentencePairs };
   result.proposals = report.proposals.filter(proposal => proposal.changes.every(change => proposal.sources.some(reference =>
-    normalizeTranscript(reference.text) === normalizeTranscript(change.to) && (pairs ?? []).some(pair => pair.source === reference.source && pair.source_id === reference.source_id && segments.some(segment => {
-      const check = reconstructTranscript(segment.text, sourceLang, [[{ ...pair, validation: 'catalogue', kind: 'phrase' }]], false, true);
-      return check.matched_segments > 0 || check.proposals.length > 0;
-    }))
+    normalizeTranscript(reference.text) === normalizeTranscript(change.to) && sentencePairs.some(pair => pair.source === reference.source && pair.source_id === reference.source_id)
   )));
   // Word-level alternatives also need a paired source; an isolated plausible word is insufficient.
-  result.lexical_proposals = report.lexical_proposals.filter(proposal => proposal.sources.some(reference => (pairs ?? []).some(pair => pair.source === reference.source && pair.source_id === reference.source_id &&
-    asrSearchKey(sourceText).split(' ').includes(asrSearchKey(pair.text)))));
+  result.lexical_proposals = report.lexical_proposals.filter(proposal => proposal.sources.some(reference => wordPairs.some(pair => pair.source === reference.source && pair.source_id === reference.source_id)));
+  const evidence = [...sentencePairs, ...wordPairs.filter(pair => result.lexical_proposals.some(proposal => proposal.sources.some(reference => reference.source === pair.source && reference.source_id === pair.source_id)))];
+  result.paired_references = [...new Map(evidence.map(pair => [`${pair.source}:${pair.source_id}:${pair.text}`, pair])).values()];
   if (!result.proposals.length && report.proposals.length) result.status = 'unchanged';
   return result;
 }

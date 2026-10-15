@@ -235,9 +235,9 @@ test('A stale reference response cannot replace a manually edited source', async
 });
 test('Choosing a target formulation updates its speech and can restore the initial translation', async ({ page }) => {
   const { requests, reviews } = await setup(page, { referenceTarget: true }); await page.goto('/e2e/fixtures/voice-modules.html?module=translator'); await page.getByRole('checkbox').first().uncheck();
-  await page.getByPlaceholder('Écrivez en français…').fill('Je va prier Dieu'); await page.getByRole('button', { name: 'Traduire le texte', exact: true }).click();
+  await page.getByPlaceholder('Écrivez en français…').fill('Cette banane est bonne'); await page.getByRole('button', { name: 'Traduire le texte', exact: true }).click();
   const review = page.getByRole('region', { name: 'Références de la traduction', exact: true }); await review.getByRole('button', { name: 'Comparer aux ressources', exact: true }).click();
-  await expect(review.getByText('Agɛdɛ ye ya do.', { exact: true })).toBeVisible(); expect(reviews[0].scope).toBe('translation'); expect(reviews[0].originalInput).toBe('Je va prier Dieu');
+  await expect(review.getByText('Agɛdɛ ye ya do.', { exact: true })).toBeVisible(); expect(reviews[0].scope).toBe('translation'); expect(reviews[0].originalInput).toBe('Cette banane est bonne');
   await review.getByRole('button', { name: 'Appliquer la proposition', exact: true }).click();
   await page.getByRole('button', { name: 'Écouter la traduction', exact: true }).click(); await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   expect(requests.at(-1).text).toBe('Agɛdɛ ye ya do.'); await page.getByRole('button', { name: 'Arrêter la lecture', exact: true }).click();
