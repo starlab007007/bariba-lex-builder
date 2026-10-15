@@ -1,5 +1,20 @@
 # Écoute de chaque contenu Baatɔnum dans Apprendre
 
+## Règle distincte du module Classe
+
+Classe utilise uniquement les enregistrements humains du circuit enseignant :
+brouillon, soumission, validation puis publication. Son lecteur ne dépend pas
+du lecteur synthétique d’Apprendre et ne possède aucun repli MMS ou Web Speech.
+Il exige un statut `approved`, une version `is_current` et un fichier
+`storage_available`, contrôlés dans la requête et dans la réponse. Sans voix
+validée ou lors d’un fichier absent, l’écoute est indisponible ; aucun audio
+n’est inventé. Les préécoutes privées du studio et de la validation restent
+accessibles aux personnes habilitées avant publication.
+
+Le contrôle du Supabase canonique le 15 octobre relève 766 prises approuvées,
+courantes et disponibles dans Classe. Les tests navigateur couvrent les
+statuts non publiables, l’écoute humaine et la panne sans repli synthétique.
+
 ## Diagnostic du 15 octobre 2026
 
 Le Supabase canonique contient 6 540 entrées du catalogue et zéro prise humaine

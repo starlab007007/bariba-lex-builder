@@ -301,8 +301,7 @@ const SCENE_TOPICS: { icon: IconComp; label: string }[] = [
 
 export function ApScenesEntryCard({ onOpen }: { onOpen?: () => void }) {
   return (
-    <button
-      onClick={onOpen}
+    <div
       className="block w-full rounded-[24px] p-4 text-left"
       style={{ background: `linear-gradient(135deg, ${AP_COLORS.clay}, ${AP_COLORS.goldDeep})` }}
     >
@@ -322,9 +321,9 @@ export function ApScenesEntryCard({ onOpen }: { onOpen?: () => void }) {
         ))}
       </div>
       <div className="mt-3.5">
-        <ApHubPrimaryButton label="Explorer les scènes" icon={ChevronRight} />
+        <ApHubPrimaryButton label="Explorer les scènes" icon={ChevronRight} onClick={onOpen} />
       </div>
-    </button>
+    </div>
   );
 }
 

@@ -19,6 +19,8 @@ interface ListenButtonProps {
  * 3) si le navigateur refuse le WAV, tente un décodage WebAudio.
  *
  * Ce composant est partagé par tous les modules Classe.
+ * Références pédagogiques : voix humaine approuvée uniquement.
+ * Une absence ou une panne de fichier ne déclenche jamais de synthèse.
  */
 export default function ListenButton({ contentKey, size = 'md', className, label }: ListenButtonProps) {
   const { data, isLoading } = useApprovedAudio(contentKey);
@@ -152,10 +154,11 @@ export default function ListenButton({ contentKey, size = 'md', className, label
   return (
     <button
       type="button"
+      data-voice-policy="human-reviewed-only"
       onClick={onClick}
       disabled={!available || busy}
-      title={playbackFailed ? 'Lecture impossible — réessayer après actualisation' : storageBroken ? 'Audio à restaurer' : available ? 'Écouter' : 'Audio bientôt disponible'}
-      aria-label={playing ? 'Arrêter la lecture' : playbackFailed ? 'Lecture audio impossible' : available ? 'Écouter ce contenu' : 'Audio non disponible'}
+      title={playbackFailed ? 'Voix humaine indisponible — réessayer après actualisation' : storageBroken ? 'Enregistrement humain à restaurer' : available ? 'Écouter la voix humaine validée' : 'Aucune voix humaine validée disponible'}
+      aria-label={playing ? 'Arrêter la lecture' : playbackFailed ? 'Lecture audio impossible' : available ? 'Écouter la voix humaine validée' : 'Aucune voix humaine validée disponible'}
       className={cn(
         'inline-flex items-center justify-center rounded-full transition-all shrink-0 touch-manipulation select-none shadow-sm active:scale-95',
         sz,

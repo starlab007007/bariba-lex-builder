@@ -12,6 +12,7 @@ import {type ApTask} from '@/lib/apprendre/tasks';
 import FitilaLearn from '@/pages/fitila/FitilaLearn';
 import FitilaLearnTheme from '@/pages/fitila/FitilaLearnTheme';
 import BaribaAudioText from '@/components/fitila/BaribaAudioText';
+import ClasseListenButton from '@/components/classe/ListenButton';
 import {ApPronunciationProvider} from '@/components/apprendre/ApLinguisticText';
 import ApFoundationScreen from '@/components/apprendre/ApFoundationScreen';
 import ApSceneDetailScreen from '@/components/apprendre/ApSceneDetailScreen';
@@ -27,6 +28,7 @@ const task=(partial:Partial<ApTask>):ApTask=>({kind:'choice',instruction:'Choisi
 const tasks=[task({}),task({kind:'order',prompt:'Remets les mots dans l’ordre',options:['ye','Agɛdɛ','do','ya'],answer:'Agɛdɛ ye ya do',orderAnswer:['Agɛdɛ','ye','ya','do'],skill:'order'})];
 function Fixture(){
  const [visible,setVisible]=useState(true);
+ if(view==='classe')return <div className="p-4"><p>Prononciation de référence Classe</p><ClasseListenButton contentKey="classe/N1/lang/1/text"/></div>;
  if(view==='hub')return <FitilaLearn/>;
  if(view==='theme')return <Routes><Route path="/learn/theme/:id" element={<FitilaLearnTheme/>}/></Routes>;
  if(view==='foundation')return <ApFoundationScreen unit={content.foundations.find(unit=>unit.id===query.get('id'))||content.foundations[0]} store={store} content={content} onBack={()=>{}}/>;

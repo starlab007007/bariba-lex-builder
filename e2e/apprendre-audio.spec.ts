@@ -6,14 +6,17 @@ const scenes=JSON.parse(readFileSync(new URL('../src/data/scenes_v2.json',import
 const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'*','Access-Control-Allow-Methods':'POST,GET,OPTIONS'};
 const first='Agɛdɛ ye ya do.',second='Nim mu boo yiba.';
 function wav(){const b=Buffer.alloc(6444);b.write('RIFF');b.writeUInt32LE(b.length-8,4);b.write('WAVEfmt ',8);b.writeUInt32LE(16,16);b.writeUInt16LE(1,20);b.writeUInt16LE(1,22);b.writeUInt32LE(16000,24);b.writeUInt32LE(32000,28);b.writeUInt16LE(2,32);b.writeUInt16LE(16,34);b.write('data',36);b.writeUInt32LE(b.length-44,40);return b;}
-async function setup(page:Page,opts:{human?:boolean;brokenHuman?:boolean;delayed?:boolean;quota?:boolean;manifestDelay?:boolean}={}){
- const requests:any[]=[];let quota=!!opts.quota;
+type ClasseState='missing'|'draft'|'submitted'|'rejected'|'unavailable'|'approved';
+async function setup(page:Page,opts:{human?:boolean;brokenHuman?:boolean;delayed?:boolean;quota?:boolean;manifestDelay?:boolean;classe?:ClasseState;brokenClasse?:boolean}={}){
+ const requests:any[]=[],classeQueries:string[]=[];let quota=!!opts.quota,classe:ClasseState=opts.classe??'missing';
  await page.addInitScript(()=>{
   localStorage.setItem('fitila_meta_tts','0');
   const state={media:[] as any[],finish(){const active=this.media.findLast((audio:any)=>!audio.stopped);if(active){active.stopped=true;active.onended?.();}}};(window as any).__apAudio=state;
   (window as any).Audio=class{src:string;stopped=false;onended:(()=>void)|null=null;onerror:(()=>void)|null=null;constructor(src:string){this.src=src;state.media.push(this);}play(){this.stopped=false;return Promise.resolve();}pause(){this.stopped=true;}removeAttribute(){}load(){}};
  });
  await page.route('**/rest/v1/**',route=>route.fulfill({headers:cors,json:[]}));
+ await page.route('**/rest/v1/classe_content_audios**',route=>{classeQueries.push(route.request().url());return route.fulfill({headers:cors,json:classe==='missing'?[]:[{id:'human-reference',storage_path:'teacher/reference.wav',file_name:'reference.wav',duration_seconds:2,content_text:first,status:classe==='unavailable'?'approved':classe,is_current:true,storage_available:classe!=='unavailable'}]});});
+ await page.route('**/storage/v1/object/**/classe-audio/**',route=>route.fulfill({headers:{...cors,'Content-Type':'audio/wav'},status:opts.brokenClasse?404:200,body:wav()}));
  await page.route('**/rest/v1/rpc/apprendre_audio_manifest**',async route=>{if(opts.manifestDelay)await new Promise(resolve=>setTimeout(resolve,650));return route.fulfill({headers:cors,json:opts.human?[{audio_key:apprendreAudioKey(first),voice:'femme',variant:'standard',storage_path:'reference.wav',duration_ms:2000,speaker_name:'Locutrice publiée'}]:[]});});
  await page.route('**/storage/v1/object/sign/**',route=>route.request().method()==='POST'?route.fulfill({headers:cors,json:{signedURL:'/object/sign/apprendre-audio/reference.wav?token=test'}}):route.fulfill({headers:{...cors,'Content-Type':'audio/wav'},status:opts.brokenHuman?404:200,body:wav()}));
  await page.route('**/functions/v1/dunya-voice-turn',async route=>{
@@ -23,7 +26,7 @@ async function setup(page:Page,opts:{human?:boolean;brokenHuman?:boolean;delayed
   if(quota)return route.fulfill({status:429,headers:cors,json:{code:'rate_limited'}});
   return route.fulfill({headers:{...cors,'Content-Type':'application/x-ndjson'},body:JSON.stringify({type:'audio',text:body.text,audio_base64:wav().toString('base64'),engine:'meta-mms-tts-bba'})+'\n'+JSON.stringify({type:'done'})+'\n'});
  });
- return{requests,allow:()=>{quota=false;}};
+ return{requests,classeQueries,setClasse:(value:ClasseState)=>{classe=value;},allow:()=>{quota=false;}};
 }
 const goto=(page:Page,view='audio',id='')=>page.goto('/e2e/fixtures/apprendre-audio.html?view='+view+(id?'&id='+encodeURIComponent(id):''));
 const texts=(page:Page)=>page.locator('[data-ap-audio-text]').evaluateAll(elements=>elements.map(element=>element.getAttribute('data-ap-audio-text')));
@@ -31,6 +34,18 @@ test('The actual learning home exposes greeting and proverb pronunciations to a 
  await page.setViewportSize({width:375,height:900});const {requests}=await setup(page);await goto(page,'hub');await expect(page.getByRole('heading',{name:'Apprendre',exact:true})).toBeVisible();
  await expect(page.getByText(/Appuyez sur le haut-parleur devant/)).toBeVisible();const audio=await texts(page);expect(audio.some(text=>text==='Mɛɛribu'||text==='A kpuna n do ?')).toBe(true);expect(core.proverbs.some((proverb:any)=>audio.includes(proverb.ba))).toBe(true);
  expect(requests).toHaveLength(0);expect(await page.locator('button button').count()).toBe(0);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+test('Classe never offers a missing, draft, submitted, rejected or unavailable reference and never synthesizes it',async({page})=>{
+ const state=await setup(page);
+ for(const status of ['missing','draft','submitted','rejected','unavailable'] as const){state.setClasse(status);await Promise.all([page.waitForResponse(response=>response.url().includes('/rest/v1/classe_content_audios')),goto(page,'classe')]);await expect(page.locator('[data-voice-policy] .animate-spin')).toHaveCount(0);await expect(page.getByRole('button',{name:'Aucune voix humaine validée disponible'})).toBeDisabled();expect(await page.evaluate(()=>(window as any).__apAudio.media.length)).toBe(0);}
+ for(const query of state.classeQueries){const params=new URL(query).searchParams;expect(params.get('status')).toBe('eq.approved');expect(params.get('is_current')).toBe('eq.true');expect(params.get('storage_available')).toBe('eq.true');}
+ expect(state.requests).toHaveLength(0);
+});
+test('Classe plays only its approved human recording',async({page})=>{
+ const state=await setup(page,{classe:'approved'});await goto(page,'classe');await page.getByRole('button',{name:'Écouter la voix humaine validée'}).click();await expect(page.getByRole('button',{name:'Arrêter la lecture'})).toBeVisible();expect(state.requests).toHaveLength(0);
+});
+test('A broken Classe human recording reports the failure without synthetic fallback',async({page})=>{
+ const state=await setup(page,{classe:'approved',brokenClasse:true});await goto(page,'classe');await page.getByRole('button',{name:'Écouter la voix humaine validée'}).click();await expect(page.getByRole('button',{name:'Lecture audio impossible'})).toBeVisible();expect(state.requests).toHaveLength(0);expect(await page.evaluate(()=>(window as any).__apAudio.media.length)).toBe(0);
 });
 for(const width of [375,768,1280])test(`A visitor can listen, stop and replay without a flag or human recording at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:900});const {requests}=await setup(page);await goto(page);
