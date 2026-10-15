@@ -1,5 +1,10 @@
 project_id = "dvswhjawiooprghzeyol"
 
+# Public voice capability: the function validates signed-in JWTs itself and applies
+# durable visitor/user quotas before inference. It grants no database access.
+[functions.dunya-voice-turn]
+verify_jwt = false
+
 [functions.smt-initialize]
 verify_jwt = false
 
@@ -123,3 +128,4 @@ verify_jwt = true
 
 [functions.tts-audio]
 verify_jwt = false
+

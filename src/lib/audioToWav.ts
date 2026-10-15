@@ -20,7 +20,7 @@ const TARGET_PEAK_DBFS = -3; // headroom for ASR
 const NOISE_GATE_DB = -50;
 const HIGHPASS_HZ = 80;
 
-export async function blobToWav16kMono(input: Blob): Promise<WavConversionResult> {
+export async function blobToWav16kMono(input: Blob, maxDurationSec?: number): Promise<WavConversionResult> {
   // 1. Decode using a temp AudioContext (the input may be at any rate)
   const arrayBuf = await input.arrayBuffer();
   const tmpCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -32,6 +32,9 @@ export async function blobToWav16kMono(input: Blob): Promise<WavConversionResult
   }
 
   // 2. Re-render through an OfflineAudioContext set to 16 kHz mono with DSP graph
+  if (!decoded.length || (maxDurationSec && decoded.duration > maxDurationSec)) {
+    throw new Error(`Vocal trop long (maximum ${maxDurationSec ?? 120} secondes).`);
+  }
   const length = Math.ceil(decoded.duration * TARGET_SR);
   const offline = new OfflineAudioContext(1, length, TARGET_SR);
 
@@ -139,3 +142,4 @@ function encodeWav(samples: Float32Array, sampleRate: number): ArrayBuffer {
 function writeString(view: DataView, offset: number, str: string) {
   for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
 }
+

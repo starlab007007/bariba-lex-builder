@@ -158,10 +158,14 @@ export async function askDunya(
 // ---------------------------------------------------------------------------
 
 let currentAudio: HTMLAudioElement | null = null;
+let finishCurrentSpeech: (() => void) | null = null;
 
 export function stopSpeaking() {
+  finishCurrentSpeech?.();
+  finishCurrentSpeech = null;
   try {
     window.speechSynthesis?.cancel();
+    window.speechSynthesis?.resume(); // reset a paused French queue before the next turn
   } catch {
     // ignore
   }
@@ -170,6 +174,9 @@ export function stopSpeaking() {
     currentAudio = null;
   }
 }
+
+export function pauseSpeaking() { currentAudio?.pause(); window.speechSynthesis?.pause(); }
+export function resumeSpeaking() { if (currentAudio) void currentAudio.play().catch(() => undefined); window.speechSynthesis?.resume(); }
 
 function pickFrenchVoice(): SpeechSynthesisVoice | undefined {
   const voices = window.speechSynthesis?.getVoices?.() ?? [];
@@ -185,8 +192,10 @@ export function speakFrench(text: string, rate = 1): Promise<void> {
     u.rate = rate;
     const voice = pickFrenchVoice();
     if (voice) u.voice = voice;
-    u.onend = () => resolve();
-    u.onerror = () => resolve();
+    const finish = () => { if (finishCurrentSpeech === finish) finishCurrentSpeech = null; resolve(); };
+    finishCurrentSpeech = finish;
+    u.onend = finish;
+    u.onerror = finish;
     window.speechSynthesis.speak(u);
   });
 }
@@ -211,14 +220,27 @@ export async function speakBariba(text: string): Promise<boolean> {
   return true;
 }
 
-function playUrl(url: string): Promise<void> {
-  return new Promise((resolve) => {
+export function playUrl(url: string, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
+  return new Promise((resolve, reject) => {
     stopSpeaking();
     const audio = new Audio(url);
     currentAudio = audio;
-    audio.onended = () => resolve();
-    audio.onerror = () => resolve();
-    audio.play().catch(() => resolve());
+    const finish = (error?: unknown) => {
+      signal?.removeEventListener('abort', onAbort);
+      audio.onended = null; audio.onerror = null;
+      if (currentAudio === audio) currentAudio = null;
+      if (finishCurrentSpeech === stop) finishCurrentSpeech = null;
+      audio.pause();
+      if (error) reject(error); else resolve();
+    };
+    const stop = () => finish();
+    const onAbort = () => finish(new DOMException('Lecture annulée', 'AbortError'));
+    finishCurrentSpeech = stop;
+    signal?.addEventListener('abort', onAbort, { once: true });
+    audio.onended = () => finish();
+    audio.onerror = () => finish(new Error('Lecture impossible. Touchez Réécouter.'));
+    audio.play().catch(() => finish(new Error('Touchez Réécouter pour lancer la lecture.')));
   });
 }
 
@@ -248,6 +270,7 @@ export function hasFrenchRecognition(): boolean {
 export function recognizeFrench(opts: {
   onInterim?: (text: string) => void;
   signal?: AbortSignal;
+  finishSignal?: AbortSignal;
 }): Promise<{ text: string; confidence: number }> {
   return new Promise((resolve, reject) => {
     const w = window as unknown as Record<string, new () => RecognitionLike>;
@@ -260,6 +283,9 @@ export function recognizeFrench(opts: {
     rec.maxAlternatives = 1;
     let finalText = '';
     let confidence = 0;
+    const cancel = () => rec.abort();
+    const stop = () => rec.stop();
+    const cleanup = () => { opts.signal?.removeEventListener('abort', cancel); opts.finishSignal?.removeEventListener('abort', stop); };
     rec.onresult = (e) => {
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -274,11 +300,14 @@ export function recognizeFrench(opts: {
       opts.onInterim?.((finalText + ' ' + interim).trim());
     };
     rec.onerror = (e) => {
+      cleanup();
       if (e.error === 'no-speech' || e.error === 'aborted') resolve({ text: '', confidence: 0 });
       else reject(new Error(e.error === 'not-allowed' ? 'Autorisez le micro pour parler à DUNYA.' : `Dictée : ${e.error}`));
     };
-    rec.onend = () => resolve({ text: finalText.trim(), confidence });
-    opts.signal?.addEventListener('abort', () => rec.abort());
+    rec.onend = () => { cleanup(); resolve({ text: finalText.trim(), confidence }); };
+    opts.signal?.addEventListener('abort', cancel, { once: true });
+    opts.finishSignal?.addEventListener('abort', stop, { once: true });
+    if (opts.signal?.aborted) return resolve({ text: '', confidence: 0 });
     rec.start();
   });
 }
@@ -292,10 +321,13 @@ export async function recordUtterance(opts: {
   maxMs?: number;
   noSpeechMs?: number;
   signal?: AbortSignal;
+  finishSignal?: AbortSignal;
 }): Promise<Blob | null> {
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') throw new Error('Ce navigateur ne permet pas l’enregistrement. Joignez un vocal ou écrivez.');
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
   });
+  if (opts.signal?.aborted || opts.finishSignal?.aborted) { stream.getTracks().forEach(t => t.stop()); return null; }
   const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   const ctx = new AudioCtx();
   const source = ctx.createMediaStreamSource(stream);
@@ -326,14 +358,18 @@ export async function recordUtterance(opts: {
       if (recorder.state !== 'inactive') recorder.stop();
     };
     recorder.onstop = () => {
+      opts.signal?.removeEventListener('abort', cancel);
+      opts.finishSignal?.removeEventListener('abort', finish);
       stream.getTracks().forEach((t) => t.stop());
-      void ctx.close();
+      void ctx.close().catch(() => undefined);
       resolve(heard && chunks.length ? new Blob(chunks, { type: recorder.mimeType || 'audio/webm' }) : null);
     };
-    opts.signal?.addEventListener('abort', () => {
+    const cancel = () => {
       heard = false;
       finish();
-    });
+    };
+    opts.signal?.addEventListener('abort', cancel, { once: true });
+    opts.finishSignal?.addEventListener('abort', finish, { once: true });
     recorder.start(250);
     const tick = () => {
       if (finished) return;
@@ -396,3 +432,4 @@ function blobToDataUrl(blob: Blob): Promise<string> {
     reader.readAsDataURL(blob);
   });
 }
+
