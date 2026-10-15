@@ -123,3 +123,28 @@ Deno.test('busy CPU is surfaced without unbounded parallel inference', async () 
   const r = await scenario({ audio_base64: bytesToBase64(wav()), lang: 'bba' }, { leaseError: true });
   assert(r.events.some(e => e.code === 'busy')); assert(!r.calls.some(x => x.includes('/infer')));
 });
+Deno.test('cancelling a visitor does not release a CPU lease before its inference finishes', async () => {
+  let resolveModel!: () => void, markStarted!: () => void;
+  const pendingModel = new Promise<void>(resolve => { resolveModel = resolve; });
+  const started = new Promise<void>(resolve => { markStarted = resolve; });
+  let released = false, modelSignal: AbortSignal | undefined;
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    const response = (value: unknown) => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } });
+    if (url.includes('consume_dunya_voice_quota') || url.includes('/rpc/lease_dunya_voice_cpu')) return response(true);
+    if (url.includes('release_dunya_voice_cpu')) { released = true; return response(null); }
+    if (url.endsWith('/infer')) {
+      modelSignal = init?.signal ?? undefined; markStarted(); await pendingModel;
+      return response({ audio_base64: bytesToBase64(wav()) });
+    }
+    throw new Error('Unexpected fetch');
+  };
+  try {
+    const abort = new AbortController();
+    const response = await handleVoiceTurn(new Request('https://edge.test', { method: 'POST', signal: abort.signal, body: JSON.stringify({ text: 'A kua', lang: 'bba', speech_only: true }) }));
+    await started; abort.abort();
+    assert(!released, 'lease still held by the running CPU inference');
+    assert(!modelSignal?.aborted, 'VPS fetch remains alive until completion');
+    resolveModel(); await response.text(); assert(released, 'lease released after the model finishes');
+  } finally { resolveModel(); globalThis.fetch = realFetch; }
+});
