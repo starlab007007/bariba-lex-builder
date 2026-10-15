@@ -41,11 +41,21 @@ export function readableVoiceError(status: number | null, code?: string): string
   return 'Service vocal momentanément indisponible.';
 }
 
-/** DUNYA pilot: Meta voices (MMS-TTS is CC BY-NC) are offered only to signed-in pilot accounts (admin/moderator),
- *  ON by default for them, and each user can switch them off. Everyone else keeps the FITILA voices. */
+/** DUNYA pilot: Meta voices (MMS-TTS is CC BY-NC) are offered only to signed-in pilot accounts (admin/editor —
+ *  the only privileged values of public.app_role), ON by default for them, and each user can switch them off. */
 export type DunyaVoiceChoice = 'meta' | 'fitila';
+export const DUNYA_PILOT_ROLES = ['admin', 'editor'] as const;
 export function dunyaPilotEligible(signedIn: boolean, roles: string[]): boolean {
-  return signedIn && roles.some((r) => r === 'admin' || r === 'moderator');
+  return signedIn && roles.some((r) => (DUNYA_PILOT_ROLES as readonly string[]).includes(r));
+}
+
+export type DunyaPilotStatus = 'checking' | 'signed_out' | 'eligible' | 'not_eligible' | 'check_failed';
+/** Role-check outcome. A failed check never downgrades an already-confirmed pilot account. */
+export function nextPilotStatus(prev: DunyaPilotStatus, signedIn: boolean, roles: string[], failed: boolean): DunyaPilotStatus {
+  if (!signedIn) return 'signed_out';
+  if (dunyaPilotEligible(true, roles)) return 'eligible';
+  if (failed) return prev === 'eligible' ? 'eligible' : 'check_failed';
+  return 'not_eligible';
 }
 export function resolveDunyaVoice(eligible: boolean, choice: DunyaVoiceChoice | null, flags: MetaVoiceFlags): MetaVoiceFlags {
   if (!eligible) return flags; // dormant flags still work for local tests
