@@ -21,7 +21,7 @@ jobs:
           deno-version: v2.x
       - name: Type-check and test before deploying
         run: |
-          for f in byt5-bariba-translate bariba-tts tts-audio fitila-ia-chat; do
+          for f in byt5-bariba-translate bariba-tts tts-audio fitila-ia-chat meta-voice-gateway; do
             deno check supabase/functions/$f/index.ts
           done
           deno test --no-check --allow-read --allow-env --allow-net supabase/functions/_shared/translation-verifier_test.ts
@@ -35,7 +35,7 @@ jobs:
           { test -n "$SUPABASE_ACCESS_TOKEN" && echo "token: present" || echo "token: MISSING"; } | tee /tmp/rep/deploy.txt
           supabase --version | tee -a /tmp/rep/deploy.txt
           rc=0
-          for f in tts-audio bariba-tts byt5-bariba-translate fitila-ia-chat; do
+          for f in tts-audio bariba-tts byt5-bariba-translate fitila-ia-chat meta-voice-gateway; do
             echo "== $f" | tee -a /tmp/rep/deploy.txt
             supabase functions deploy "$f" --project-ref "$SUPABASE_PROJECT_ID" --use-api 2>&1 | tee -a /tmp/rep/deploy.txt || rc=1
           done

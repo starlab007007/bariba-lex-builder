@@ -22,6 +22,7 @@ import {
   type ApVoiceComparison,
   type ApPcm,
 } from '@/lib/apprendre/voiceAnalysis';
+import { getMetaVoiceFlags, metaAsr } from '@/lib/voice/metaVoice';
 import { ApMicRecorder, decodeAudioBlobTo16kPcm, decodeArrayBufferTo16kPcm } from '@/lib/apprendre/micRecorder';
 import { AP_COLORS } from './apColors';
 import ApContourChart from './ApContourChart';
@@ -56,6 +57,10 @@ export default function ApCompareSheet({ text, fr, settings = DEFAULT_COMPARE_SE
   const [error, setError] = useState<string | null>(null);
   const [mineBlobUrl, setMineBlobUrl] = useState<string | null>(null);
   const [referencePlaying, setReferencePlaying] = useState(false);
+  const asrEnabled = getMetaVoiceFlags().asr;
+  const [transcript, setTranscript] = useState('');
+  const [asrState, setAsrState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
+  const [asrError, setAsrError] = useState<string | null>(null);
 
   const recorderRef = useRef<ApMicRecorder>(new ApMicRecorder());
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -176,6 +181,13 @@ export default function ApCompareSheet({ text, fr, settings = DEFAULT_COMPARE_SE
       mineBlobUrlRef.current = url;
       setMineBlobUrl(url);
       setStage('analyzing');
+      if (asrEnabled) {
+        setAsrState('busy');
+        setAsrError(null);
+        metaAsr(blob)
+          .then((t) => { if (isMountedRef.current) { setTranscript(t); setAsrState('done'); } })
+          .catch((e) => { if (isMountedRef.current) { setAsrState('error'); setAsrError(e instanceof Error ? e.message : 'Transcription indisponible.'); } });
+      }
       await analyze(blob);
       return;
     }
@@ -310,6 +322,31 @@ export default function ApCompareSheet({ text, fr, settings = DEFAULT_COMPARE_SE
             </button>
           </div>
           <p className="mt-3 text-center text-xs" style={{ color: AP_COLORS.inkSoft }}>{stageMessage}</p>
+
+          {asrEnabled && asrState !== 'idle' && (
+            <div className="mt-3 rounded-[16px] border p-3" style={{ borderColor: AP_COLORS.line, backgroundColor: AP_COLORS.surface }}>
+              <p className="text-[12px] font-bold" style={{ color: AP_COLORS.ink }}>Ce que la machine a entendu (modifiable)</p>
+              {asrState === 'busy' && <p className="mt-1 text-xs" style={{ color: AP_COLORS.muted }}>Transcription en cours…</p>}
+              {asrState === 'error' && <p className="mt-1 text-xs" style={{ color: AP_COLORS.clay }}>{asrError}</p>}
+              {asrState === 'done' && (
+                <>
+                  <textarea
+                    value={transcript}
+                    onChange={(e) => setTranscript(e.target.value)}
+                    rows={2}
+                    aria-label="Transcription modifiable"
+                    className="mt-1.5 w-full rounded-lg border p-2 text-sm"
+                    style={{ borderColor: AP_COLORS.lineStrong, color: AP_COLORS.ink, backgroundColor: AP_COLORS.surfaceAlt }}
+                  />
+                  <p className="mt-1 text-[11px]" style={{ color: AP_COLORS.muted }}>
+                    Attendu : <span style={{ color: AP_COLORS.ink }}>{text}</span>
+                    {' — '}
+                    {transcript.trim().toLowerCase() === text.trim().toLowerCase() ? 'identique' : 'à comparer avec la voix humaine'}
+                  </p>
+                </>
+              )}
+            </div>
+          )}
 
           {result && (
             <>
