@@ -24,10 +24,10 @@ Deno.test('errors are readable', () => {
 });
 
 import { dunyaPilotEligible, resolveDunyaVoice } from '../../src/lib/voice/metaVoiceCore.ts';
-Deno.test('pilot: only signed-in admin/moderator', () => {
+Deno.test('pilot: only signed-in admin/editor', () => {
   if (dunyaPilotEligible(false, ['admin'])) throw new Error('signed out must not be eligible');
   if (dunyaPilotEligible(true, ['user'])) throw new Error('plain user must not be eligible');
-  if (!dunyaPilotEligible(true, ['moderator'])) throw new Error('moderator eligible');
+  if (dunyaPilotEligible(true, ['moderator'])) throw new Error('moderator must not be eligible');
 });
 Deno.test('pilot: meta on by default, user can choose fitila', () => {
   const off = { tts: false, asr: false };
@@ -37,4 +37,19 @@ Deno.test('pilot: meta on by default, user can choose fitila', () => {
   if (f.tts || f.asr) throw new Error('fitila choice disables meta');
   const n = resolveDunyaVoice(false, null, off);
   if (n.tts || n.asr) throw new Error('non pilot stays off');
+});
+
+import { nextPilotStatus } from '../../src/lib/voice/metaVoiceCore.ts';
+Deno.test('pilot: admin and editor eligible', () => {
+  if (!dunyaPilotEligible(true, ['admin'])) throw new Error('admin');
+  if (!dunyaPilotEligible(true, ['editor'])) throw new Error('editor');
+});
+Deno.test('pilot: moderator, user, teacher not eligible', () => {
+  for (const r of ['moderator', 'user', 'teacher', 'voice_speaker']) if (dunyaPilotEligible(true, [r])) throw new Error(r);
+});
+Deno.test('pilot: failed role check keeps confirmed admin', () => {
+  if (nextPilotStatus('eligible', true, [], true) !== 'eligible') throw new Error('kept');
+  if (nextPilotStatus('checking', true, [], true) !== 'check_failed') throw new Error('failed');
+  if (nextPilotStatus('eligible', false, [], false) !== 'signed_out') throw new Error('signout');
+  if (nextPilotStatus('checking', true, ['user'], false) !== 'not_eligible') throw new Error('not');
 });

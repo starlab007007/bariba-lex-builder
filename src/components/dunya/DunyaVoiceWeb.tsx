@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { dunyaPilotEligible, getMetaVoiceFlags, resolveDunyaVoice, type DunyaVoiceChoice } from '@/lib/voice/metaVoice';
+import { DUNYA_PILOT_ROLES, getMetaVoiceFlags, nextPilotStatus, resolveDunyaVoice, type DunyaPilotStatus, type DunyaVoiceChoice } from '@/lib/voice/metaVoice';
 import { frenchGreetingAnswer, routeDunyaInput } from '@/lib/dunya/semanticRouter';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Captions, CaptionsOff, Check, ChevronDown, Copy, Languages, Menu, MessageSquare, Mic, MicOff, Send, Settings2, Square, Volume2, X } from 'lucide-react';
@@ -66,31 +66,48 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
   const [subtitles, setSubtitles] = useState(() => loadPreference('subtitles', true));
   const [frSubtitles, setFrSubtitles] = useState(() => loadPreference('frSubtitles', false));
   const [muted, setMuted] = useState(false);
-  const [pilot, setPilot] = useState(false);
+  const [pilotStatus, setPilotStatus] = useState<DunyaPilotStatus>('checking');
+  const pilot = pilotStatus === 'eligible';
   const [voiceChoice, setVoiceChoice] = useState<DunyaVoiceChoice | null>(() => loadPreference<DunyaVoiceChoice | null>('voiceChoice', null));
   const [reviewStt, setReviewStt] = useState(() => loadPreference('reviewStt', false));
 
-  // Pilot gating: Meta voices (MMS-TTS CC BY-NC) only for signed-in admin/moderator accounts.
+  // Pilot gating: Meta voices (MMS-TTS CC BY-NC) only for signed-in admin/editor accounts.
+  // An RPC failure never clears an already-confirmed pilot status.
   useEffect(() => {
     let alive = true;
-    void (async () => {
+    const check = async () => {
       const { data } = await supabase.auth.getSession();
       const uidv = data.session?.user?.id;
-      if (!uidv) return;
+      if (!uidv) { if (alive) setPilotStatus('signed_out'); return; }
       const roles: string[] = [];
-      for (const r of ['admin', 'moderator'] as const) {
-        const { data: ok } = await supabase.rpc('has_role', { _user_id: uidv, _role: r });
-        if (ok) roles.push(r);
+      let failed = false;
+      for (const r of DUNYA_PILOT_ROLES) {
+        try {
+          const { data: ok, error } = await supabase.rpc('has_role', { _user_id: uidv, _role: r });
+          if (error) failed = true; else if (ok) roles.push(r);
+        } catch { failed = true; }
       }
-      if (alive) setPilot(dunyaPilotEligible(true, roles));
-    })().catch(() => undefined);
-    return () => { alive = false; };
+      if (alive) setPilotStatus((prev) => nextPilotStatus(prev, true, roles, failed));
+    };
+    void check().catch(() => { if (alive) setPilotStatus((p) => (p === 'eligible' ? p : 'check_failed')); });
+    const { data: sub } = supabase.auth.onAuthStateChange((evt) => {
+      if (evt === 'SIGNED_IN' || evt === 'SIGNED_OUT') void check().catch(() => undefined);
+    });
+    return () => { alive = false; sub.subscription.unsubscribe(); };
   }, []);
   useEffect(() => {
     setDunyaMetaVoice(pilot ? resolveDunyaVoice(true, voiceChoice, getMetaVoiceFlags()) : null);
     return () => setDunyaMetaVoice(null);
   }, [pilot, voiceChoice]);
   const metaOn = pilot && voiceChoice !== 'fitila';
+  const effective = pilot ? resolveDunyaVoice(true, voiceChoice, getMetaVoiceFlags()) : getMetaVoiceFlags();
+  const pilotLabel: Record<DunyaPilotStatus, string> = {
+    checking: 'Vérification du compte…',
+    signed_out: 'Non connecté — voix FITILA utilisée.',
+    eligible: 'Compte pilote autorisé.',
+    not_eligible: 'Compte non pilote — voix FITILA utilisée.',
+    check_failed: 'Vérification du rôle impossible (réseau) — voix FITILA utilisée.',
+  };
 
   const session = useRef(false);
   const abort = useRef<AbortController | null>(null);
@@ -565,6 +582,12 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
             ) : (
               <p className="text-[12.5px] text-[#7D7566]">Voix FITILA. La voix Meta est en pilote, réservée aux comptes autorisés.</p>
             )}
+            <div className="mt-2 rounded-xl bg-[#F4EFE0] p-2 text-[12px] text-[#4A4356]" aria-label="Diagnostic voix">
+              <p><b>Statut :</b> {pilotLabel[pilotStatus]}</p>
+              <p><b>Reconnaissance (ASR) :</b> {effective.asr ? 'Meta Omnilingual' : 'FITILA (secours)'}</p>
+              <p><b>Synthèse (TTS) :</b> {effective.tts ? 'Meta MMS' : 'FITILA (secours)'}</p>
+              <p><b>Mode actuel :</b> {mode === 'fr' ? 'Français (voix Meta inactive en mode français)' : mode === 'bba' ? 'Baatɔnum' : 'Bilingue'}</p>
+            </div>
           </fieldset>
           <p className="mt-3 text-[12.5px] text-[#7D7566]">
             Sur le web, DUNYA utilise Internet : dictée du navigateur pour le français, modèles FITILA pour le baatɔnum. Dans l’application mobile, tout fonctionne sans Internet.
