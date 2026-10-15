@@ -1,3 +1,4 @@
+import { mistralFetch, mistralFailure } from "../_shared/mistral.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,7 +55,7 @@ async function callHuggingFaceRouter(args: {
   messages: ChatMessage[];
   temperature: number;
   maxTokens: number;
-}): Promise<{ text: string; model: string; error?: string }> {
+}): Promise<{ text: string; model: string; error?: string; retryAfter?: number }> {
   for (const model of HF_ROUTER_MODELS) {
     try {
       const resp = await fetch("https://router.huggingface.co/v1/chat/completions", {
@@ -87,13 +88,13 @@ async function callLLMWithFallback(args: {
   messages: ChatMessage[];
   temperature: number;
   maxTokens: number;
-}): Promise<{ text: string; model: string; error?: string }> {
+}): Promise<{ text: string; model: string; error?: string; retryAfter?: number }> {
   for (const model of MODELS_TO_TRY) {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
 
-      const resp = await fetch("https://api.mistral.ai/v1/chat/completions", {
+      const resp = await mistralFetch("https://api.mistral.ai/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${args.apiKey}`,
@@ -112,12 +113,9 @@ async function callLLMWithFallback(args: {
       clearTimeout(timer);
 
       if (!resp.ok) {
-        const body = await resp.text().catch(() => "");
-        console.warn(`[fitila] Model ${model} failed HTTP ${resp.status}: ${body.substring(0, 100)}`);
-        if (resp.status === 402) {
-          return { text: "", model, error: "credits_exhausted" };
-        }
-        continue;
+        const failure = await resp.json().catch(() => ({}));
+        console.warn(`[fitila] Mistral HTTP ${resp.status}`);
+        return { text: "", model, error: failure?.error?.code || "llm_unavailable", retryAfter: Number(failure.retry_after) || undefined };
       }
 
       const data = await resp.json();
@@ -128,7 +126,7 @@ async function callLLMWithFallback(args: {
       }
 
       console.log(`[fitila] LLM OK with ${model}`);
-      return { text, model };
+      return { text, model: data.model || model };
     } catch (e) {
       console.warn(`[fitila] Model ${model} error: ${e instanceof Error ? e.message : "unknown"}`);
       continue;
@@ -185,7 +183,7 @@ async function translateViaByT5(args: {
   }
 }
 
-Deno.serve(async (req: Request) => {
+export async function handleChat(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -227,7 +225,7 @@ Deno.serve(async (req: Request) => {
     // Step 1: LLM generates French response
     // Providers, in order: Mistral (MISTRAL_API_KEY), then the Hugging Face router
     // (HF_INFERENCE_TOKEN, a token allowed to call Inference Providers).
-    let llmResult: { text: string; model: string; error?: string } = { text: "", model: "", error: "llm_not_configured" };
+    let llmResult: { text: string; model: string; error?: string; retryAfter?: number } = { text: "", model: "", error: "llm_not_configured" };
     if (MISTRAL_API_KEY) {
       llmResult = await callLLMWithFallback({ apiKey: MISTRAL_API_KEY, messages: chatMessages, temperature, maxTokens });
     }
@@ -246,6 +244,15 @@ Deno.serve(async (req: Request) => {
         }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    if (llmResult.error === "llm_rate_limited") {
+      clearTimeout(globalTimer);
+      const retryAfter = llmResult.retryAfter || 30;
+      return new Response(JSON.stringify({
+        error: "llm_rate_limited", message: mistralFailure(429, retryAfter).message,
+        retry_after: retryAfter, duration: Date.now() - startedAt,
+      }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(retryAfter) } });
     }
 
     if (llmResult.error === "credits_exhausted") {
@@ -320,5 +327,6 @@ Deno.serve(async (req: Request) => {
       },
     );
   }
-});
+}
 
+if (Deno.env.get("FITILA_AI_TEST") !== "1") Deno.serve(handleChat);

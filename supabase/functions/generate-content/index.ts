@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { mistralFetch } from "../_shared/mistral.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -57,7 +57,7 @@ Suggère 3 idées de contenu liées à ce sujet:
 Pour chaque idée: titre + 1 phrase de description.`
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -93,7 +93,7 @@ serve(async (req) => {
     }
 
     // Call Mistral AI
-    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    const response = await mistralFetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${MISTRAL_API_KEY}`,
@@ -168,3 +168,4 @@ serve(async (req) => {
     );
   }
 });
+

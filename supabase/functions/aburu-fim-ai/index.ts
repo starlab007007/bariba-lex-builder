@@ -1,4 +1,4 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { mistralFetch } from "../_shared/mistral.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -95,7 +95,7 @@ script: maximum 55 mots, naturel à dire à voix haute.`;
       ? `PRODUIT:\n${factualBlock}\n\nTEXTE À AMÉLIORER:\n${currentText || description || title}\n\nTon demandé: ${tone}. Langue de sortie principale: ${language}. Réécris sans modifier les faits.`
       : `PRODUIT:\n${factualBlock}\n\nCrée une publication Aburu Fim au ton "${tone}". Langue de sortie principale: ${language}.`;
 
-    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+    const response = await mistralFetch("https://api.mistral.ai/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${MISTRAL_API_KEY}`,
@@ -144,3 +144,4 @@ script: maximum 55 mots, naturel à dire à voix haute.`;
     return json({ error: "Erreur interne Aburu IA", retryable: true }, 500);
   }
 });
+

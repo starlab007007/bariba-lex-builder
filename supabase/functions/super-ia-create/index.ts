@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { mistralFetch } from "../_shared/mistral.ts";
+import { createClient } from "npm:@supabase/supabase-js@2.81.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,7 +34,7 @@ async function generateContent(prompt: string): Promise<{ text_fr: string; title
   if (!MISTRAL_API_KEY) return { text_fr: "", title: "", error: "MISTRAL_API_KEY manquant" };
 
   try {
-    const resp = await fetch("https://api.mistral.ai/v1/chat/completions", {
+    const resp = await mistralFetch("https://api.mistral.ai/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${MISTRAL_API_KEY}`,
@@ -249,7 +249,7 @@ async function getOrCreateAIProfile(db: any): Promise<string | null> {
   return newUser.user.id;
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -395,3 +395,4 @@ serve(async (req: Request) => {
     );
   }
 });
+

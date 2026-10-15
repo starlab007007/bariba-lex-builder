@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { mistralFetch, MISTRAL_CHAT_URL } from "../_shared/mistral.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,7 +29,7 @@ interface TemplateAssetRequest {
   };
 }
 
-serve(async (req) => {
+export async function handleTemplateAssets(req: Request): Promise<Response> {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -37,9 +37,6 @@ serve(async (req) => {
 
   try {
     const FITILA_IMAGE_API_KEY = Deno.env.get('FITILA_IMAGE_API_KEY');
-    if (!FITILA_IMAGE_API_KEY) {
-      throw new Error('FITILA_IMAGE_API_KEY is not configured');
-    }
 
     const body: TemplateAssetRequest = await req.json();
     const { action, templateId, templateLabel, templateDescription, templateEmoji, templateColor, templates, userContext } = body;
@@ -51,6 +48,7 @@ serve(async (req) => {
       // 1. Generate Preview Image for Template (FITILA Image AI Image)
       // ============================================================
       case 'generate_preview_image': {
+        if (!FITILA_IMAGE_API_KEY || !Deno.env.get('FITILA_IMAGE_API_URL')) throw new Error('Le service de génération d’images n’est pas configuré.');
         if (!templateLabel || !templateDescription) {
           throw new Error('templateLabel and templateDescription are required');
         }
@@ -165,14 +163,13 @@ Règles:
 
 Important: Le texte sera lu à voix haute à des personnes qui ne savent pas lire. Sois naturel et direct.`;
 
-        const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
+        const response = await mistralFetch(MISTRAL_CHAT_URL, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${FITILA_IMAGE_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'mistral-small-latest',
             messages: [
               { 
                 role: 'system', 
@@ -279,14 +276,13 @@ Réponds UNIQUEMENT en JSON valide:
   "context_interpretation": "ce que j'ai compris de la demande"
 }`;
 
-        const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
+        const response = await mistralFetch(MISTRAL_CHAT_URL, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${FITILA_IMAGE_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'mistral-small-latest',
             messages: [
               { role: 'system', content: 'Tu es un assistant de recommandation intelligent. Réponds uniquement en JSON valide sans markdown.' },
               { role: 'user', content: contextPrompt }
@@ -369,14 +365,13 @@ Réponds en JSON:
   ]
 }`;
 
-        const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
+        const response = await mistralFetch(MISTRAL_CHAT_URL, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${FITILA_IMAGE_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'mistral-small-latest',
             messages: [
               { role: 'system', content: 'Tu es un directeur créatif spécialisé en contenu mobile court-format pour l\'Afrique de l\'Ouest. Tu crées des instructions VOCALES simples, chaleureuses et directes. Réponds en JSON valide.' },
               { role: 'user', content: storyboardPrompt }
@@ -439,14 +434,13 @@ Réponds en JSON:
   ]
 }`;
 
-        const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
+        const response = await mistralFetch(MISTRAL_CHAT_URL, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${FITILA_IMAGE_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'mistral-small-latest',
             messages: [
               { role: 'system', content: 'Tu génères des descriptions vocales courtes et chaleureuses. Réponds en JSON valide.' },
               { role: 'user', content: batchPrompt }
@@ -491,4 +485,6 @@ Réponds en JSON:
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}
+
+if (Deno.env.get("FITILA_AI_TEST") !== "1") Deno.serve(handleTemplateAssets);

@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { mistralFetch } from "../_shared/mistral.ts";
+import { createClient } from "npm:@supabase/supabase-js@2.81.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,7 +14,7 @@ function escapeLikePattern(input: string): string {
   return input.replace(/[%_\\]/g, '\\$&');
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -256,7 +256,7 @@ Translate the following text applying all linguistic rules above:`;
     // Call Mistral AI for translation
     let response: Response;
     try {
-      response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      response = await mistralFetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${MISTRAL_API_KEY}`,
@@ -352,3 +352,4 @@ Translate the following text applying all linguistic rules above:`;
     );
   }
 });
+

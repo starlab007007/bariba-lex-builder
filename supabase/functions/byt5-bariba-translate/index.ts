@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import {
   acceptRefinement,
   ensureMemory,
@@ -20,7 +19,7 @@ interface TranslationRequest {
   advanced?: boolean;
   healthCheck?: boolean;
   exploreApi?: boolean;
-  skipRefine?: boolean; // ✅ permet de désactiver le post-raffinage si besoin
+  skipRefine?: boolean;
 }
 
 const SPACE_URL = (
@@ -60,10 +59,6 @@ function isValidTranslation(result: unknown): result is string {
   );
 }
 
-// Repli FITILA : quand le moteur ByT5 (Space Hugging Face) est indisponible,
-// on traduit à partir du corpus validé en base (expressions, mémoire de
-// traduction, phrases d'entraînement, dictionnaire) via la RPC
-// public.fitila_corpus_translate. Renvoie null si rien de fiable n'est trouvé.
 async function corpusFallback(
   text: string,
   sourceLang: string,
@@ -140,8 +135,6 @@ function buildDirection(
 ): "fr-ba" | "ba-fr" {
   if (sourceLang === "french" && targetLang === "bariba") return "fr-ba";
   if (sourceLang === "bariba" && targetLang === "french") return "ba-fr";
-
-  // fallback si front envoie des combinaisons incohérentes
   return sourceLang === "french" ? "fr-ba" : "ba-fr";
 }
 
@@ -158,13 +151,10 @@ async function pollGradioQueue(
   hfToken: string,
   abortSignal?: AbortSignal,
 ): Promise<{ success: boolean; data?: any; error?: string }> {
-  console.log(`📡 Polling queue: ${pollUrl}`);
-
   for (let attempt = 0; attempt < 40; attempt++) {
     if (abortSignal?.aborted) {
       return { success: false, error: "Request timeout" };
     }
-
     try {
       const pollResponse = await fetch(pollUrl, {
         headers: {
@@ -173,63 +163,46 @@ async function pollGradioQueue(
         },
         signal: abortSignal,
       });
-
       if (!pollResponse.ok) {
         await sleep(500);
         continue;
       }
-
       const responseText = await pollResponse.text();
-      console.log(`   Poll ${attempt + 1}: ${responseText.substring(0, 400)}`);
-
-      // SSE format: lines "data: {...}"
       const lines = responseText.split("\n");
       for (const line of lines) {
         if (!line.startsWith("data: ")) continue;
-
         const payload = line.substring(6).trim();
         const parsed = safeJsonParse<any>(payload);
         if (!parsed) continue;
-
-        // Cas 1: process_completed
         if (parsed.msg === "process_completed") {
           if (parsed.success === false) {
-            console.log(`   Process failed: ${JSON.stringify(parsed.output)}`);
             return {
               success: false,
               error: parsed.output?.error || "Translation failed",
             };
           }
-
           const resultData = parsed.output?.data || parsed.data;
           if (Array.isArray(resultData)) {
             const translation = resultData[0];
             if (isValidTranslation(translation)) {
-              console.log(`✅ Valid translation (process_completed): "${translation}"`);
               return { success: true, data: { data: resultData } };
             }
           }
         }
-
-        // Cas 2: data directe
         if (Array.isArray(parsed.data)) {
           const translation = parsed.data[0];
           if (isValidTranslation(translation)) {
-            console.log(`✅ Valid translation (direct data): "${translation}"`);
             return { success: true, data: parsed };
           }
         }
       }
-
       await sleep(500);
     } catch (e) {
       if (abortSignal?.aborted) {
         return { success: false, error: "Request timeout" };
       }
-      // continue polling (transient network issue)
     }
   }
-
   return {
     success: false,
     error: "Translation failed - no valid response from HuggingFace Space",
@@ -248,12 +221,8 @@ async function callGradioTranslate(
   autocorrect: boolean = true,
 ): Promise<{ success: boolean; data?: any; error?: string; fatal?: boolean }> {
   const normalizedText = normalizeText(text);
-
   const data = [normalizedText, direction, mode, advanced, autocorrect];
-  console.log(`📤 Sending to Gradio fn_index=2: ${JSON.stringify(data)}`);
-
   const sessionHash = Math.random().toString(36).slice(2);
-
   try {
     const joinResponse = await fetch(`${spaceUrl}${apiPrefix}/queue/join`, {
       method: "POST",
@@ -269,20 +238,13 @@ async function callGradioTranslate(
       }),
       signal: abortSignal,
     });
-
-    console.log(`   Join status: ${joinResponse.status}`);
-
     if (!joinResponse.ok) {
       const errorText = await joinResponse.text().catch(() => "");
       console.log(`   Join error: ${errorText.substring(0, 300)}`);
-      // 401/403/404 : le Space n'existe plus ou est privé — inutile de réessayer.
       const fatal = [401, 403, 404].includes(joinResponse.status);
       return { success: false, error: `Queue join failed (HTTP ${joinResponse.status})`, fatal };
     }
-
-    const joinText = await joinResponse.text().catch(() => "");
-    console.log(`   Join response: ${joinText.substring(0, 300)}`);
-
+    await joinResponse.text().catch(() => "");
     const pollUrl = `${spaceUrl}${apiPrefix}/queue/data?session_hash=${sessionHash}`;
     return await pollGradioQueue(pollUrl, hfToken, abortSignal);
   } catch (e: unknown) {
@@ -300,37 +262,27 @@ async function tryRefineTranslation(params: {
   timeoutMs?: number;
 }): Promise<{ refined?: string; changes?: string[]; confidence?: number; error?: string }> {
   const { req, originalText, translation, direction, timeoutMs = 6000 } = params;
-
-  // On appelle la fonction locale Supabase "refine-bariba" si disponible (même projet)
-  // - fr-ba : type=translate (traduction Bariba)
-  // - ba-fr : type=translation (raffinage d’un texte de traduction vers FR naturel)
   const supabaseUrl =
     Deno.env.get("SUPABASE_URL") ||
     req.headers.get("x-supabase-url") ||
     "";
-
   const supabaseAnon =
     Deno.env.get("SUPABASE_ANON_KEY") ||
     req.headers.get("apikey") ||
     "";
-
   if (!supabaseUrl || !supabaseAnon) {
     return { error: "Refine unavailable (missing Supabase URL/key)" };
   }
-
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
-
   try {
     const refineUrl = `${supabaseUrl}/functions/v1/refine-bariba`;
-
     const payload = {
       text: translation,
       type: direction === "fr-ba" ? "translate" : "translation",
       direction,
       originalInput: originalText,
     };
-
     const resp = await fetch(refineUrl, {
       method: "POST",
       headers: {
@@ -341,19 +293,18 @@ async function tryRefineTranslation(params: {
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
-
     if (!resp.ok) {
       const body = await resp.text().catch(() => "");
       return { error: `Refine HTTP ${resp.status}: ${body.substring(0, 120)}` };
     }
-
     const data = await resp.json();
+    if (data.error || data.meta?.aiUsed === false || data.meta?.accepted === false) {
+      return { error: typeof data.error === "string" ? data.error : "refinement_not_applied" };
+    }
     const refined = typeof data?.refined === "string" ? normalizeText(data.refined) : "";
-
     if (!refined) {
       return { error: "Refine returned empty text" };
     }
-
     return {
       refined,
       changes: Array.isArray(data?.changes) ? data.changes.map(String) : [],
@@ -368,17 +319,18 @@ async function tryRefineTranslation(params: {
   }
 }
 
-serve(async (req) => {
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
+export async function handleByT5(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-
   const startTime = Date.now();
   const abortController = new AbortController();
-
   const timeoutId = setTimeout(() => {
     abortController.abort();
-    console.log(`⏰ Global timeout reached (${GLOBAL_TIMEOUT_MS}ms)`);
   }, GLOBAL_TIMEOUT_MS);
 
   try {
@@ -396,37 +348,16 @@ serve(async (req) => {
     await ensureMemory();
     const HF_TOKEN = Deno.env.get("HUGGING_FACE_API_TOKEN");
 
-    // API exploration mode
     if (exploreApi) {
       clearTimeout(timeoutId);
-
-      if (!HF_TOKEN) {
-        return new Response(
-          JSON.stringify({ error: "HuggingFace token not configured" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-
-      const exploration: any = { spaceUrl: SPACE_URL, endpoints: [] };
-
-      const configUrls = [
-        `${SPACE_URL}/gradio_api/config`,
-        `${SPACE_URL}/config`,
-        `${SPACE_URL}/gradio_api/info`,
-        `${SPACE_URL}/info`,
-      ];
-
-      for (const url of configUrls) {
+      if (!HF_TOKEN) return json({ error: "HuggingFace token not configured" }, 500);
+      const exploration: any = { spaceUrl: SPACE_URL, weightsRevision: null, weightsRevisionVerified: false, endpoints: [] };
+      for (const url of [`${SPACE_URL}/gradio_api/config`, `${SPACE_URL}/config`, `${SPACE_URL}/gradio_api/info`, `${SPACE_URL}/info`]) {
         try {
-          const resp = await fetch(url, {
-            headers: { Authorization: `Bearer ${HF_TOKEN}` },
-          });
-
+          const resp = await fetch(url, { headers: { Authorization: `Bearer ${HF_TOKEN}` } });
           if (!resp.ok) continue;
-
           const data = await resp.json();
           exploration[url.split("/").pop() || "config"] = data;
-
           if (Array.isArray(data.dependencies)) {
             exploration.endpoints = data.dependencies.map((d: any, i: number) => ({
               fn_index: i,
@@ -439,32 +370,17 @@ serve(async (req) => {
           // continue
         }
       }
-
-      return new Response(JSON.stringify(exploration), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json(exploration);
     }
 
-    // Health check
     if (healthCheck) {
       clearTimeout(timeoutId);
-
-      // Le service reste disponible grâce au repli corpus FITILA même si le
-      // moteur ByT5 est hors ligne : healthy = « le service peut répondre ».
-      if (!HF_TOKEN) {
-        return new Response(
-          JSON.stringify({ healthy: true, byt5: false, fallback: "fitila-corpus", spaceUrl: SPACE_URL }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-
+      if (!HF_TOKEN) return json({ healthy: true, byt5: false, fallback: "fitila-corpus", spaceUrl: SPACE_URL, weightsRevision: null, weightsRevisionVerified: false });
       const hcStart = Date.now();
       const hcController = new AbortController();
       const hcTimeoutId = setTimeout(() => hcController.abort(), 4000);
-
       try {
         let healthy = false;
-
         for (const configPath of ["/gradio_api/config", "/config"]) {
           try {
             const configResponse = await fetch(`${SPACE_URL}${configPath}`, {
@@ -479,34 +395,9 @@ serve(async (req) => {
             // continue
           }
         }
-
-        return new Response(
-          JSON.stringify({
-            healthy: true,
-            byt5: healthy,
-            fallback: healthy ? undefined : "fitila-corpus",
-            duration: Date.now() - hcStart,
-            spaceUrl: SPACE_URL,
-          }),
-          {
-            status: 200,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          },
-        );
+        return json({ healthy: true, byt5: healthy, fallback: healthy ? undefined : "fitila-corpus", duration: Date.now() - hcStart, spaceUrl: SPACE_URL, weightsRevision: null, weightsRevisionVerified: false });
       } catch (e: unknown) {
-        return new Response(
-          JSON.stringify({
-            healthy: false,
-            error: "ByT5 health check failed",
-            details: e instanceof Error ? e.message : "Unknown error",
-            duration: Date.now() - hcStart,
-            spaceUrl: SPACE_URL,
-          }),
-          {
-            status: 503,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          },
-        );
+        return json({ healthy: false, error: "ByT5 health check failed", details: e instanceof Error ? e.message : "Unknown error", duration: Date.now() - hcStart, spaceUrl: SPACE_URL, weightsRevision: null, weightsRevisionVerified: false }, 503);
       } finally {
         clearTimeout(hcTimeoutId);
       }
@@ -514,39 +405,35 @@ serve(async (req) => {
 
     if (!text || !sourceLang || !targetLang) {
       clearTimeout(timeoutId);
-      return new Response(
-        JSON.stringify({ error: "Missing required fields: text, sourceLang, targetLang" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return json({ error: "Missing required fields: text, sourceLang, targetLang" }, 400);
     }
 
     const normalizedInput = normalizeText(text);
+    const direction = buildDirection(sourceLang, targetLang);
+    const gradioMode = buildGradioMode(mode);
+    const apiPrefix = "/gradio_api";
 
     // 1) Attested sentences (dictionary, Apprendre, scenes) never need the model.
-    const attested = memoryLookup(normalizedInput, buildDirection(sourceLang, targetLang));
+    const attested = memoryLookup(normalizedInput, direction);
     if (attested) {
       clearTimeout(timeoutId);
-      return new Response(
-        JSON.stringify({
-          translation: attested.translation,
-          suggestions: null,
-          confidence: attested.grade === "A" ? 100 : 95,
-          confidenceKind: "attested-memory",
-          duration: Date.now() - startTime,
-          method: "translation-memory",
-          refinement: { applied: false },
-          modelInfo: { name: "FITILA translation memory", version: "memory-v1", grade: attested.grade },
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return json({
+        translation: attested.translation,
+        suggestions: null,
+        confidence: attested.grade === "A" ? 100 : 95,
+        confidenceKind: "attested-memory",
+        duration: Date.now() - startTime,
+        method: "translation-memory",
+        refinement: { applied: false },
+        modelInfo: { name: "FITILA translation memory", version: "memory-v1", grade: attested.grade },
+      });
     }
 
     // 2) Several sentences: attested ones come from the memory, the others are
     //    translated one by one (ByT5 is far more reliable on short sentences).
-    const segDirection = buildDirection(sourceLang, targetLang);
     const segments = splitSentences(normalizedInput);
     if (segments.length > 1) {
-      const hits = segments.map((seg) => memoryLookup(seg, segDirection));
+      const hits = segments.map((seg) => memoryLookup(seg, direction));
       const out: string[] = [];
       const confidences: number[] = [];
       let modelUsed = false;
@@ -562,10 +449,7 @@ serve(async (req) => {
           failed = true;
           break;
         }
-        const r = await callGradioTranslate(
-          SPACE_URL, "/gradio_api", segments[i], segDirection, buildGradioMode(mode), advanced, HF_TOKEN,
-          abortController.signal, true,
-        );
+        const r = await callGradioTranslate(SPACE_URL, apiPrefix, segments[i], direction, gradioMode, advanced, HF_TOKEN, abortController.signal, true);
         const t = r.success ? (Array.isArray(r.data?.data) ? r.data.data[0] : Array.isArray(r.data) ? r.data[0] : null) : null;
         if (!isValidTranslation(t)) {
           failed = true;
@@ -574,76 +458,43 @@ serve(async (req) => {
         modelUsed = true;
         const clean = normalizeText(t);
         out.push(clean);
-        confidences.push(estimateConfidence(clean, segDirection === "fr-ba" ? "ba" : "fr", false).confidence);
+        confidences.push(estimateConfidence(clean, direction === "fr-ba" ? "ba" : "fr", false).confidence);
       }
       if (!failed) {
         clearTimeout(timeoutId);
         const attestedCount = hits.filter(Boolean).length;
-        return new Response(
-          JSON.stringify({
-            translation: out.join(" "),
-            suggestions: null,
-            confidence: Math.min(...confidences),
-            confidenceKind: modelUsed ? "per-sentence" : "attested-memory",
-            duration: Date.now() - startTime,
-            method: modelUsed ? (attestedCount ? "translation-memory+byt5" : "byt5-per-sentence") : "translation-memory",
-            segments: segments.length,
-            attestedSegments: attestedCount,
-            refinement: { applied: false },
-            modelInfo: {
-              name: modelUsed ? "ByT5 Expert (Improved)" : "FITILA translation memory",
-              version: modelUsed ? "zimesongbian/modele_byt5_bariba_expert_api_v03_improve" : "memory-v1",
-            },
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        return json({
+          translation: out.join(" "),
+          suggestions: null,
+          confidence: Math.min(...confidences),
+          confidenceKind: modelUsed ? "per-sentence" : "attested-memory",
+          duration: Date.now() - startTime,
+          method: modelUsed ? (attestedCount ? "translation-memory+byt5" : "byt5-per-sentence") : "translation-memory",
+          segments: segments.length,
+          attestedSegments: attestedCount,
+          refinement: { applied: false },
+          modelInfo: {
+            name: modelUsed ? "ByT5 Expert (Improved)" : "FITILA translation memory",
+            version: modelUsed ? "zimesongbian/modele_byt5_bariba_expert_api_v03_improve" : "memory-v1",
+          },
+        });
       }
-      // otherwise fall through to the whole-text path below
     }
 
     if (!HF_TOKEN) {
       clearTimeout(timeoutId);
-      console.warn("HUGGING_FACE_API_TOKEN absent : repli corpus FITILA");
       const fb = await corpusFallback(normalizedInput, sourceLang, targetLang);
       const reason = "HuggingFace token not configured";
-      return fb
-        ? fallbackResponse(fb, reason, Date.now() - startTime)
-        : unavailableResponse(reason, Date.now() - startTime);
+      return fb ? fallbackResponse(fb, reason, Date.now() - startTime) : unavailableResponse(reason, Date.now() - startTime);
     }
 
-    const direction = buildDirection(sourceLang, targetLang);
-    const gradioMode = buildGradioMode(mode);
-
-    console.log(`🤖 ByT5 Expert: ${direction} - "${normalizedInput.substring(0, 100)}..."`);
-    console.log(`📍 Space URL: ${SPACE_URL}`);
-    console.log(`   Mode: ${gradioMode}, Advanced: ${advanced}, skipRefine: ${skipRefine}`);
-
-    const apiPrefix = "/gradio_api";
-
-    // Retry exponentiel : 3 tentatives avec délai 3s/8s/15s
     const RETRY_DELAYS = [0, 3000, 8000];
     let result: { success: boolean; data?: any; error?: string; fatal?: boolean } = { success: false, error: "No attempt made" };
-
     for (let attempt = 0; attempt < RETRY_DELAYS.length; attempt++) {
-      if (attempt > 0) {
-        console.log(`🔄 ByT5 retry ${attempt}/${RETRY_DELAYS.length - 1} after ${RETRY_DELAYS[attempt]}ms...`);
-        await sleep(RETRY_DELAYS[attempt]);
-      }
-
-      result = await callGradioTranslate(
-        SPACE_URL,
-        apiPrefix,
-        normalizedInput,
-        direction,
-        gradioMode,
-        advanced,
-        HF_TOKEN,
-        abortController.signal,
-        true,
-      );
-
+      if (attempt > 0) await sleep(RETRY_DELAYS[attempt]);
+      result = await callGradioTranslate(SPACE_URL, apiPrefix, normalizedInput, direction, gradioMode, advanced, HF_TOKEN, abortController.signal, true);
       if (result.success) break;
-      console.warn(`⚠️ ByT5 attempt ${attempt + 1} failed: ${result.error}`);
+      console.warn(`ByT5 attempt ${attempt + 1} failed: ${result.error}`);
       if (result.fatal || abortController.signal.aborted) break;
     }
 
@@ -651,18 +502,13 @@ serve(async (req) => {
     const duration = Date.now() - startTime;
 
     if (!result.success) {
-      console.error(`❌ ByT5 failed (${duration}ms): ${result.error} — repli corpus FITILA`);
       const reason = result.error || "HuggingFace Space API not responding";
       const fb = await corpusFallback(normalizedInput, sourceLang, targetLang);
-      return fb
-        ? fallbackResponse(fb, reason, Date.now() - startTime)
-        : unavailableResponse(reason, Date.now() - startTime);
+      return fb ? fallbackResponse(fb, reason, Date.now() - startTime) : unavailableResponse(reason, Date.now() - startTime);
     }
 
-    // Extract translation from Gradio result
     let translation: string | null = null;
     let suggestions: unknown = null;
-
     if (Array.isArray(result.data?.data)) {
       translation = result.data.data[0];
       suggestions = result.data.data[1] ?? null;
@@ -672,46 +518,22 @@ serve(async (req) => {
     }
 
     if (!isValidTranslation(translation)) {
-      console.error(`❌ ByT5 invalid response after ${duration}ms: "${String(translation)}"`);
       const reason = "ByT5 returned invalid response";
       const fb = await corpusFallback(normalizedInput, sourceLang, targetLang);
-      return fb
-        ? fallbackResponse(fb, reason, Date.now() - startTime)
-        : unavailableResponse(reason, Date.now() - startTime);
+      return fb ? fallbackResponse(fb, reason, Date.now() - startTime) : unavailableResponse(reason, Date.now() - startTime);
     }
 
     let finalTranslation = normalizeText(translation);
-    let refineMeta: {
-      applied: boolean;
-      confidence?: number;
-      changes?: string[];
-      error?: string;
-    } = { applied: false };
+    let refineMeta: { applied: boolean; confidence?: number; changes?: string[]; error?: string } = { applied: false };
 
-    // ✅ Post-raffinage (bénéficie des corrections linguistiques "wa/mɛɛri", salutations, etc.)
     if (!skipRefine) {
-      const refine = await tryRefineTranslation({
-        req,
-        originalText: normalizedInput,
-        translation: finalTranslation,
-        direction,
-        timeoutMs: 6000,
-      });
-
+      const refine = await tryRefineTranslation({ req, originalText: normalizedInput, translation: finalTranslation, direction, timeoutMs: 6000 });
       if (refine.refined && refine.refined.length > 0) {
         const verdict = acceptRefinement(finalTranslation, refine.refined, direction === "fr-ba" ? "ba" : "fr");
         if (verdict.accepted) {
-          if (refine.refined !== finalTranslation) {
-            console.log(`✨ refine-bariba adjusted output`);
-          }
           finalTranslation = refine.refined;
-          refineMeta = {
-            applied: true,
-            confidence: refine.confidence,
-            changes: refine.changes || [],
-          };
+          refineMeta = { applied: finalTranslation !== normalizeText(translation), confidence: refine.confidence, changes: refine.changes || [] };
         } else {
-          console.log(`🛡️ refinement rejected: ${verdict.reason}`);
           refineMeta = { applied: false, error: `rejected: ${verdict.reason}` };
         }
       } else if (refine.error) {
@@ -719,46 +541,33 @@ serve(async (req) => {
       }
     }
 
-    // Reference-free estimate: share of output words known to the FITILA lexicon.
-    const { confidence, kind: confidenceKind } = estimateConfidence(
-      finalTranslation,
-      direction === "fr-ba" ? "ba" : "fr",
-      refineMeta.applied,
-    );
+    const { confidence, kind: confidenceKind } = estimateConfidence(finalTranslation, direction === "fr-ba" ? "ba" : "fr", refineMeta.applied);
 
-    console.log(`✅ ByT5 Success in ${duration}ms: "${finalTranslation.substring(0, 150)}"`);
-    if (suggestions) console.log(`   Suggestions: "${String(suggestions).substring(0, 100)}"`);
-
-    return new Response(
-      JSON.stringify({
-        translation: finalTranslation,
-        suggestions,
-        confidence,
-        confidenceKind,
-        duration,
-        method: "byt5-expert",
-        refinement: refineMeta,
-        modelInfo: {
-          name: "ByT5 Expert (Improved)",
-          version: "zimesongbian/modele_byt5_bariba_expert_api_v03_improve",
-          mode: gradioMode,
-          advanced,
-          postRefine: !skipRefine,
-        },
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return json({
+      translation: finalTranslation,
+      suggestions,
+      confidence,
+      confidenceKind,
+      duration,
+      method: "byt5-expert",
+      refinement: refineMeta,
+      modelInfo: {
+        name: "ByT5 Expert (Improved)",
+        weightsRevision: null,
+        weightsRevisionVerified: false,
+        spaceUrl: SPACE_URL,
+        version: "zimesongbian/modele_byt5_bariba_expert_api_v03_improve",
+        mode: gradioMode,
+        advanced,
+        postRefine: !skipRefine,
+      },
+    });
   } catch (error: unknown) {
     clearTimeout(timeoutId);
     const duration = Date.now() - startTime;
     console.error(`Fatal error after ${duration}ms:`, error);
-
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Translation failed",
-        duration,
-      }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return json({ error: error instanceof Error ? error.message : "Translation failed", duration }, 500);
   }
-});
+}
+
+if (Deno.env.get("FITILA_AI_TEST") !== "1") Deno.serve(handleByT5);

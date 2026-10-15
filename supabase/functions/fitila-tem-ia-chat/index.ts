@@ -1,10 +1,10 @@
+import { mistralFetch } from "../_shared/mistral.ts";
 // ⚠️ DEPRECATED — Cette edge function n'est plus appelée par le client.
 // Fitila Tem IA fonctionne désormais 100% en local côté navigateur via :
 //   - src/lib/foncierRAG.ts (moteur BM25 + extraction de phrases)
 //   - src/data/foncierBaribaCorpus.ts (corpus 207 articles)
 // Conservée pour l'historique git et un éventuel rollback.
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import corpus from "../_shared/foncier_bariba_corpus.json" with { type: "json" };
 
 const corsHeaders = {
@@ -106,7 +106,7 @@ async function callLLM(messages: { role: string; content: string }[], model: str
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
   try {
-    const resp = await fetch("https://api.mistral.ai/v1/chat/completions", {
+    const resp = await mistralFetch("https://api.mistral.ai/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -153,7 +153,7 @@ async function translateFrToBa(text: string, supabaseUrl: string, serviceKey: st
   }
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const startedAt = Date.now();
@@ -273,3 +273,4 @@ serve(async (req: Request) => {
     );
   }
 });
+

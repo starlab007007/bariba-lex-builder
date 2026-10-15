@@ -1,3 +1,4 @@
+import { mistralFetch } from "../_shared/mistral.ts";
 // Espace — OCR Bàátɔ̀nú (étape « inférence IA » du pipeline).
 // Entrée : { pages: string[] (data URL déjà prétraitées côté client), fileName?, mode?: 'printed'|'handwritten' }
 // Sortie : { engine, text, confidence, pages: [{ page, text, confidence, notes[] }] }
@@ -46,7 +47,7 @@ function cleanup(text: string): string {
 }
 
 async function ocrPage(apiKey: string, dataUrl: string, page: number, mode: string) {
-  const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
+  const res = await mistralFetch("https://api.mistral.ai/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -126,3 +127,4 @@ Deno.serve(async (req) => {
     return json(500, { error: e instanceof Error ? e.message : "Erreur OCR" });
   }
 });
+

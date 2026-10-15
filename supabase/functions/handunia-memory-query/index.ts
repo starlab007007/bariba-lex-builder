@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
+import { mistralFetch } from "../_shared/mistral.ts";
+import { createClient } from "npm:@supabase/supabase-js@2.81.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,7 +34,7 @@ function lexicalScore(query: string, content: string): number {
   return hits / terms.length;
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -194,7 +194,7 @@ serve(async (req: Request) => {
       )
       .join("\n");
     if (!aiKey) return new Response(JSON.stringify({ state: "sourced", answer: sources.map((s: any) => `[${s.index}] ${s.text}`).join("\\n"), sources, method: "lexical-extract" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    const llm = await fetch(
+    const llm = await mistralFetch(
       "https://api.mistral.ai/v1/chat/completions",
       {
         method: "POST",
@@ -256,3 +256,4 @@ serve(async (req: Request) => {
     );
   }
 });
+

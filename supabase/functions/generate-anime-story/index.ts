@@ -1,12 +1,11 @@
+import { mistralFetch, MISTRAL_CHAT_URL } from "../_shared/mistral.ts";
 /**
  * Generate Anime Story Edge Function
  * 
  * v8: Character reference embedding for consistency + multi-clip stitching for long scenes
  */
 
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.81.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -113,7 +112,7 @@ interface LibraryImage {
   consistency_score?: number;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -157,8 +156,8 @@ serve(async (req) => {
         durationSeconds: s.durationSeconds || Math.floor(duration / preEditedScenes.length),
       }));
     } else {
-      const scenes = FITILA_IMAGE_API_KEY
-        ? await segmentStory(story, duration, FITILA_IMAGE_API_KEY)
+      const scenes = Deno.env.get('MISTRAL_API_KEY')
+        ? await segmentStory(story, duration)
         : createDefaultScenes(story, duration, Math.min(6, Math.max(3, Math.ceil(duration / 10))));
 
       safeScenes = scenes.length
@@ -375,7 +374,7 @@ async function findLibraryMatch(
     ? normalizeText(sceneText).split(/\s+/).filter(w => w.length > 2)
     : [];
 
-  const scored = data.map((img: any) => {
+  const scored: Array<LibraryImage & { matchScore: number }> = data.map((img: any) => {
     let score = 3; // Base for style match
     if (img.emotion === emotion) score += 2;
     if (img.scene_type === sceneType) score += 2;
@@ -458,7 +457,7 @@ function detectAction(text: string, visualDesc: string): string {
   return 'standing';
 }
 
-async function segmentStory(story: string, totalDuration: number, apiKey: string): Promise<StoryScene[]> {
+async function segmentStory(story: string, totalDuration: number): Promise<StoryScene[]> {
   const targetScenes = Math.min(6, Math.max(3, Math.ceil(totalDuration / 10)));
   
   const prompt = `Tu es un expert en storyboard pour contes animés. Analyse ce conte et découpe-le en ${targetScenes} scènes visuelles distinctes.
@@ -490,14 +489,13 @@ Réponds UNIQUEMENT avec un JSON valide dans ce format exact:
 }`;
 
   try {
-    const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
+    const response = await mistralFetch(MISTRAL_CHAT_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'mistral-small-latest',
         messages: [{ role: 'user', content: prompt }],
         response_format: { type: 'json_object' }
       })
@@ -632,3 +630,4 @@ function createDefaultScenes(story: string, duration: number, count: number): St
   }
   return scenes;
 }
+

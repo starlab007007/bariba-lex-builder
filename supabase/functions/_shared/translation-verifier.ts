@@ -1,6 +1,6 @@
 // Verified-translation helpers shared by the edge functions.
 //
-// 1. Exact translation memory: attested sentences bypass the model (100 % correct).
+// 1. Exact translation memory: attested sentences bypass the model (reference matches, not a quality certificate).
 // 2. Lexical coverage: share of output words known to the FITILA lexicon.
 // 3. Bounded refinement: an LLM edit is accepted only if it stays close to the
 //    model output and does not introduce unknown Baatɔnum words.
@@ -57,8 +57,8 @@ let lexFr: Set<string> | null = null;
 
 async function fromBundle(): Promise<MemoryShape | null> {
   try {
-    const modulePath = "./translation-memory.ts";
-    const m = await import(modulePath);
+    // A literal import lets the Edge bundler include the reference data.
+    const m = await import("./translation-memory.ts");
     return { pairs: m.TM_PAIRS, lexBa: m.LEXICON_BA, lexFr: m.LEXICON_FR };
   } catch {
     return null;
@@ -207,3 +207,4 @@ export function estimateConfidence(
   const value = Math.round(Math.max(5, Math.min(targetLang === "ba" ? 60 : 65, base - (looping ? 40 : 0) + (refined ? 2 : 0))));
   return { confidence: value, kind: "model-unverified" };
 }
+

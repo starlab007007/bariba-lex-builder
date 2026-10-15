@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { mistralFetch } from "../_shared/mistral.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -26,7 +26,7 @@ serve(async (req) => {
       throw new Error("MISTRAL_API_KEY not configured");
     }
 
-    const response = await fetch(
+    const response = await mistralFetch(
       "https://api.mistral.ai/v1/chat/completions",
       {
         method: "POST",
@@ -129,3 +129,4 @@ Si tu vois plusieurs caractères formant un mot ou syllabe, retourne des mots/sy
     );
   }
 });
+
