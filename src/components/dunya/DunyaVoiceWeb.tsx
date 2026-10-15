@@ -1,3 +1,5 @@
+import { supabase } from '@/integrations/supabase/client';
+import { dunyaPilotEligible, getMetaVoiceFlags, resolveDunyaVoice, type DunyaVoiceChoice } from '@/lib/voice/metaVoice';
 import { frenchGreetingAnswer, routeDunyaInput } from '@/lib/dunya/semanticRouter';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Captions, CaptionsOff, Check, ChevronDown, Copy, Languages, Menu, MessageSquare, Mic, MicOff, Send, Settings2, Square, Volume2, X } from 'lucide-react';
@@ -17,6 +19,8 @@ import {
   splitSentences,
   stopSpeaking,
   transcribeBariba,
+  setDunyaMetaVoice,
+  lastVoiceEngine,
   translate,
   type DunyaWebMode,
   type DunyaWebTurn,
@@ -62,6 +66,31 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
   const [subtitles, setSubtitles] = useState(() => loadPreference('subtitles', true));
   const [frSubtitles, setFrSubtitles] = useState(() => loadPreference('frSubtitles', false));
   const [muted, setMuted] = useState(false);
+  const [pilot, setPilot] = useState(false);
+  const [voiceChoice, setVoiceChoice] = useState<DunyaVoiceChoice | null>(() => loadPreference<DunyaVoiceChoice | null>('voiceChoice', null));
+  const [reviewStt, setReviewStt] = useState(() => loadPreference('reviewStt', false));
+
+  // Pilot gating: Meta voices (MMS-TTS CC BY-NC) only for signed-in admin/moderator accounts.
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      const uidv = data.session?.user?.id;
+      if (!uidv) return;
+      const roles: string[] = [];
+      for (const r of ['admin', 'moderator'] as const) {
+        const { data: ok } = await supabase.rpc('has_role', { _user_id: uidv, _role: r });
+        if (ok) roles.push(r);
+      }
+      if (alive) setPilot(dunyaPilotEligible(true, roles));
+    })().catch(() => undefined);
+    return () => { alive = false; };
+  }, []);
+  useEffect(() => {
+    setDunyaMetaVoice(pilot ? resolveDunyaVoice(true, voiceChoice, getMetaVoiceFlags()) : null);
+    return () => setDunyaMetaVoice(null);
+  }, [pilot, voiceChoice]);
+  const metaOn = pilot && voiceChoice !== 'fitila';
 
   const session = useRef(false);
   const abort = useRef<AbortController | null>(null);
@@ -240,7 +269,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
         const blob = await recordUtterance({ onLevel: setLevel, signal: controller.signal });
         if (blob) {
           setPhase('thinking');
-          setStatus('Je vous comprends…');
+          setStatus(metaOn ? 'Je vous comprends (Meta)…' : 'Je vous comprends…');
           heard = await transcribeBariba(blob);
         }
       } else {
@@ -256,7 +285,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           heardLang = 'fr';
         } else if (blob) {
           setPhase('thinking');
-          setStatus('Je vous comprends…');
+          setStatus(metaOn ? 'Je vous comprends (Meta)…' : 'Je vous comprends…');
           heard = await transcribeBariba(blob);
           heardLang = 'bba';
         }
@@ -273,6 +302,16 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
         return;
       }
       emptyListens.current = 0;
+      if (reviewStt && heardLang === 'bba') {
+        // Editable transcription: user checks/corrects before sending.
+        session.current = false;
+        setPhase('idle');
+        setStatus(null);
+        setDraft(heard);
+        setTextView(true);
+        setNotice(`Transcription ${lastVoiceEngine.asr === 'meta' ? 'Meta' : 'FITILA'} : corrigez si besoin puis envoyez.`);
+        return;
+      }
       await runTurn(heard, heardLang, true);
     } catch (error) {
       session.current = false;
@@ -280,7 +319,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
       setStatus(null);
       setNotice(error instanceof Error ? error.message : 'Écoute interrompue.');
     }
-  }, [handsFree, mode, muted, runTurn]);
+  }, [handsFree, mode, muted, reviewStt, runTurn]);
 
   listenTurnRef.current = listenTurn;
 
@@ -509,7 +548,24 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
             <Toggle label="Mains libres (DUNYA réécoute après chaque réponse)" value={handsFree} onChange={(v) => setPref('handsFree', v, setHandsFree)} />
             <Toggle label="Sous-titres en direct" value={subtitles} onChange={(v) => setPref('subtitles', v, setSubtitles)} />
             <Toggle label="Sous-titres français en mode baatɔnum" value={frSubtitles} onChange={(v) => setPref('frSubtitles', v, setFrSubtitles)} />
+            <Toggle label="Vérifier la transcription baatɔnum avant envoi" value={reviewStt} onChange={(v) => setPref('reviewStt', v, setReviewStt)} />
           </div>
+          <fieldset className="mt-3 rounded-2xl border border-[#E4DFCC] p-3 text-[#17131F]" aria-label="Voix baatɔnum">
+            <legend className="px-1 text-sm font-black">Voix baatɔnum</legend>
+            {pilot ? (
+              <>
+                {([['meta', 'Meta MMS + Omnilingual (pilote)'], ['fitila', 'Voix FITILA classique']] as const).map(([v, l]) => (
+                  <label key={v} className="flex cursor-pointer items-center gap-2 py-1.5 text-[14px]">
+                    <input type="radio" name="dunya-voice" checked={(voiceChoice ?? 'meta') === v} onChange={() => setPref<DunyaVoiceChoice | null>('voiceChoice', v, setVoiceChoice)} className="h-4 w-4 accent-[#D4A23A]" />
+                    {l}
+                  </label>
+                ))}
+                <p className="mt-1 text-[12px] text-[#7D7566]">Pilote réservé (licence non commerciale CC BY-NC). En cas de panne, DUNYA repasse automatiquement sur la voix FITILA.</p>
+              </>
+            ) : (
+              <p className="text-[12.5px] text-[#7D7566]">Voix FITILA. La voix Meta est en pilote, réservée aux comptes autorisés.</p>
+            )}
+          </fieldset>
           <p className="mt-3 text-[12.5px] text-[#7D7566]">
             Sur le web, DUNYA utilise Internet : dictée du navigateur pour le français, modèles FITILA pour le baatɔnum. Dans l’application mobile, tout fonctionne sans Internet.
           </p>
