@@ -94,7 +94,7 @@ function OrderBody({
               className="rounded-[14px] border px-3.5 py-2.5 text-[16px] font-bold"
               style={{ backgroundColor: AP_COLORS.goldTint, borderColor: AP_COLORS.gold, color: AP_COLORS.ink }}
             >
-              {task.options[optionIndex]}
+              <span lang="bba">{task.options[optionIndex]}</span>
             </button></div>
           ))}
         </div>
@@ -109,7 +109,7 @@ function OrderBody({
             className="rounded-[14px] border px-3.5 py-2.5 text-[16px] font-bold"
             style={{ backgroundColor: AP_COLORS.surface, borderColor: AP_COLORS.lineStrong, color: AP_COLORS.ink }}
           >
-            {task.options[optionIndex]}
+            <span lang="bba">{task.options[optionIndex]}</span>
           </button></div>
         ))}
       </div>
@@ -289,15 +289,15 @@ function ApSessionRun({
             <div className="mt-2.5 rounded-[24px] border p-5" style={{ borderColor: AP_COLORS.line, backgroundColor: AP_COLORS.surface }}>
               {task.promptIsBariba ? (
                 <div className="flex items-start gap-3">
-                  <ApLinguisticText text={task.prompt} bariba className={`font-bold ${oral ? 'text-[30px]' : 'text-[26px]'}`} />
+                  <ApLinguisticText preserve text={task.prompt} bariba className={`font-bold ${oral ? 'text-[30px]' : 'text-[26px]'}`} />
                 </div>
               ) : (
-                <p className={`font-extrabold ${oral ? 'text-[26px]' : 'text-[22px]'}`}><ApLinguisticText text={task.prompt} /></p>
+                <p className={`font-extrabold ${oral ? 'text-[26px]' : 'text-[22px]'}`}><ApLinguisticText preserve text={task.prompt} /></p>
               )}
               {task.promptIsBariba && showTranscription && task.transcription && (
                 <p className="mt-1 text-sm" style={{ color: AP_COLORS.muted }}>[{task.transcription}]</p>
               )}
-              {task.promptSub && <p className="mt-2 text-sm" style={{ color: AP_COLORS.muted }}><ApLinguisticText text={task.promptSub} /></p>}
+              {task.promptSub && <p className="mt-2 text-sm" style={{ color: AP_COLORS.muted }}><ApLinguisticText preserve text={task.promptSub} /></p>}
               {!task.verified && (
                 <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: AP_COLORS.clayTint, color: AP_COLORS.clayInk }}>
                   <HelpCircle className="h-3.5 w-3.5" /> Forme en cours de validation
@@ -319,7 +319,7 @@ function ApSessionRun({
                     const { bg, border, fg } = optionStyle(state);
                     return (
                       <div key={option} onClick={() => { if (!answered) choose(option); }} className={`flex w-full items-center justify-between gap-3 rounded-[18px] px-3 py-2 text-left ${oral ? 'min-h-[66px]' : 'min-h-[58px]'}`} style={{backgroundColor:bg,color:fg,border:`${state==='idle'||state==='dimmed'?1:2}px solid ${border}`}}>
-                        <span className="min-w-0 flex-1" style={{fontSize:oral?19:17}}><ApLinguisticText text={option} bariba={task.optionsAreBariba} /></span>
+                        <span className="min-w-0 flex-1" style={{fontSize:oral?19:17}}><ApLinguisticText preserve text={option} bariba={task.optionsAreBariba} /></span>
                         <button type="button" onClick={event=>{event.stopPropagation();choose(option);}} disabled={answered} aria-label={`Choisir : ${option}`} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border disabled:opacity-60" style={{borderColor:border}}>
                           {state==='wrong'?<XCircle className="h-5 w-5"/>:<CheckCircle2 className="h-5 w-5"/>}
                         </button>
@@ -375,7 +375,7 @@ function ApSessionRun({
                     <p className="text-[11px] font-extrabold uppercase tracking-wide" style={{ color: wasCorrect ? AP_COLORS.sageInk : AP_COLORS.clayInk }}>
                       Bonne réponse
                     </p>
-                    <p className="text-[17px] font-bold" style={{ color: AP_COLORS.ink }}><ApLinguisticText text={task.answer} bariba={task.optionsAreBariba || task.kind === "speak"} /></p>
+                    <p className="text-[17px] font-bold" style={{ color: AP_COLORS.ink }}><ApLinguisticText preserve text={task.answer} bariba={task.optionsAreBariba || task.kind === "speak"} /></p>
                   </div>
                 )}
                 {task.explain && <p className="mt-2 text-[13.5px]" style={{ color: AP_COLORS.ink }}><ApLinguisticText text={task.explain} /></p>}

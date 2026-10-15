@@ -45,13 +45,13 @@ export const voiceMenuLabels: VoiceMenuLabels = {
   // Actions
   newPost: { fr: "Nouvelle publication", ba: "Sɔ́ɔ̀rù yɔ́yɔ́" },
   vocalPoll: { fr: "Sondage vocal", ba: "Bìɔ̀ ohùn" },
-  skipAudio: { fr: "Publier sans audio", ba: "Sọ láìsí ohùn" },
-  publish: { fr: "Publier", ba: "Sọ" },
+  skipAudio: { fr: "Publier sans audio", ba: "Publier sans audio" },
+  publish: { fr: "Publier", ba: "Publier" },
   cancel: { fr: "Annuler", ba: "Gbɛ́" },
   // Announcements with context
-  feedAnnounce: { fr: "Fil d'actualité ouvert", ba: "Sɔ́ɔ̀rù gbɛ̀ ti ṣí" },
-  messagesAnnounce: { fr: "Messages ouverts", ba: "Bàátɔ́kɔ̀ ti ṣí" },
-  communitiesAnnounce: { fr: "Communautés ouvertes", ba: "Gbɛ̀kú ti ṣí" },
+  feedAnnounce: { fr: "Fil d'actualité ouvert", ba: "Fil d'actualité ouvert" },
+  messagesAnnounce: { fr: "Messages ouverts", ba: "Messages ouverts" },
+  communitiesAnnounce: { fr: "Communautés ouvertes", ba: "Communautés ouvertes" },
   liveAnnounce: { fr: "Salles en direct", ba: "Ilé dìn" },
 };
 

@@ -5,6 +5,7 @@ import DictionaryManager from '@/components/admin/DictionaryManager';
 import AnalyticsDashboard from '@/components/admin/AnalyticsDashboard';
 import UserRoleManager from '@/components/admin/UserRoleManager';
 import AdminSettings from '@/components/admin/AdminSettings';
+import PlatformLocaleAdmin from '@/components/admin/PlatformLocaleAdmin';
 import { TranslationDiagnosticDashboard } from '@/components/admin/TranslationDiagnosticDashboard';
 import GrammaticalStatsDashboard from '@/components/admin/GrammaticalStatsDashboard';
 import DictionaryExporter from '@/components/admin/DictionaryExporter';
@@ -126,6 +127,7 @@ export default function AdminDashboard() {
     '/admin/export': 'export',
     '/admin/users': 'users',
     '/admin/settings': 'settings',
+    '/admin/localization': 'localization',
   };
   const tabToPath: Record<string, string> = Object.fromEntries(
     Object.entries(pathToTab).map(([path, tab]) => [tab, path])
@@ -201,6 +203,7 @@ export default function AdminDashboard() {
       items: [
         { value: 'users', label: 'Utilisateurs & rôles', icon: Users },
         { value: 'settings', label: 'Paramètres', icon: Settings },
+        { value: 'localization', label: 'Langues et traductions', icon: Globe },
       ],
     },
   ];
@@ -211,6 +214,7 @@ export default function AdminDashboard() {
 
   const renderContents = (
     <>
+      <TabsContent value="localization" className="m-0"><TabErrorBoundary tabName="localization"><PlatformLocaleAdmin /></TabErrorBoundary></TabsContent>
       <TabsContent value="overview" className="m-0"><TabErrorBoundary tabName="overview"><AdminOverview /></TabErrorBoundary></TabsContent>
       <TabsContent value="model-health" className="m-0">
         <TabErrorBoundary tabName="model-health">
@@ -386,3 +390,4 @@ export default function AdminDashboard() {
     </AdminErrorBoundary>
   );
 }
+

@@ -87,7 +87,7 @@ function HanduniaFeed({embedded=false}:{embedded?:boolean}) {
             <span>{f.period_label||'Mémoire transmise'}</span>
           </div>
           {f.audio_url?<audio controls preload="none" className="mb-4 w-full" src={f.audio_url}/>:<div className="mb-4 flex h-16 items-center justify-center rounded-2xl border" style={{borderColor:C.border}}><Volume2 className="mr-2"/> Voix non jointe</div>}
-          <p className="line-clamp-5 text-lg font-semibold leading-relaxed">{text||'Souvenir vocal'}</p>
+          <p data-i18n-preserve className="line-clamp-5 text-lg font-semibold leading-relaxed">{text||'Souvenir vocal'}</p>
           <div className="mt-5 grid grid-cols-3 gap-2 text-[11px] font-bold">
             <button onClick={()=>nav('/handunia/ask?lieu='+encodeURIComponent(f.lieu_id))} className="rounded-xl border px-2 py-3" style={{borderColor:C.border}}>Mémoire</button>
             <button onClick={()=>nav('/handunia/memory/'+f.id)} className="rounded-xl border px-2 py-3" style={{borderColor:C.border}}>Voir souvenir</button>
@@ -253,7 +253,7 @@ function HanduniaAsk() {
   if(user===null)return <Shell><LoginRequired/></Shell>;
   return <Shell><BackTitle title="Demander à la mémoire" subtitle="Réponses sourcées — sans invention"/>
     <div className="flex gap-2"><input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&ask()} placeholder="Comment ? Quand ? Qui ?" className="flex-1 rounded-2xl border bg-transparent p-4 outline-none" style={{borderColor:C.border}}/><button onClick={ask} disabled={busy} className="rounded-2xl px-5" style={{background:C.gold,color:'#2B2110'}}><Send/></button></div>
-    {answer&&<div className="mt-5 rounded-3xl border p-5" style={{borderColor:C.border,background:'#fff'}}><p className="text-lg leading-relaxed">{answer.answer||answer.message||'La communauté ne l’a pas encore raconté.'}</p>{Array.isArray(answer.sources)&&answer.sources.length>0&&<div className="mt-4 space-y-2 text-sm" style={{color:C.muted}}>{answer.sources.map((s:any)=><div key={s.id}>[{s.index}] {s.witness} · {s.year} · {s.place}</div>)}</div>}</div>}
+    {answer&&<div className="mt-5 rounded-3xl border p-5" style={{borderColor:C.border,background:'#fff'}}><p data-i18n-preserve className="text-lg leading-relaxed">{answer.answer||answer.message||'La communauté ne l’a pas encore raconté.'}</p>{Array.isArray(answer.sources)&&answer.sources.length>0&&<div className="mt-4 space-y-2 text-sm" style={{color:C.muted}}>{answer.sources.map((s:any)=><div key={s.id}>[{s.index}] {s.witness} · {s.year} · {s.place}</div>)}</div>}</div>}
   </Shell>;
 }
 
@@ -342,7 +342,7 @@ function SagesseBattle({embedded=false}:{embedded?:boolean}) {
           <textarea value={response} onChange={e=>setResponse(e.target.value)} placeholder="Ta réponse en Bàátɔ̀nú…" className="min-h-28 w-full rounded-2xl border p-3 outline-none"/>
           <button disabled={busy||!response.trim()} onClick={answer} className="mt-3 w-full rounded-full py-3 font-black disabled:opacity-50" style={{background:C.gold}}>{busy?'Envoi…':'Publier ma réponse'}</button>
         </div>
-        <div className="mt-5 space-y-3"><h3 className="text-lg font-black">{responses.length} réponse{responses.length>1?'s':''}</h3>{responses.map(r=><div key={r.id} className="rounded-2xl border bg-white p-4" style={{borderColor:C.border}}><p>{r.response_text||r.answer_text}</p><div className="mt-2 text-xs" style={{color:C.muted}}>Score {r.ai_score??r.local_score??r.score??0} · {r.votes_count??0} vote(s)</div></div>)}</div>
+        <div className="mt-5 space-y-3"><h3 className="text-lg font-black">{responses.length} réponse{responses.length>1?'s':''}</h3>{responses.map(r=><div key={r.id} className="rounded-2xl border bg-white p-4" style={{borderColor:C.border}}><p data-i18n-preserve>{r.response_text||r.answer_text}</p><div className="mt-2 text-xs" style={{color:C.muted}}>Score {r.ai_score??r.local_score??r.score??0} · {r.votes_count??0} vote(s)</div></div>)}</div>
       </>}
     </div>;
   }
@@ -393,3 +393,4 @@ export function HanduniaCanonicalPage() {
 export function SagesseCanonicalPage() {
   return <Shell><SagesseBattle/></Shell>;
 }
+

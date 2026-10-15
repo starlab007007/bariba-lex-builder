@@ -14,7 +14,8 @@ let plugin: BaribaKeyboardPlugin | null = null;
 async function getPlugin(): Promise<BaribaKeyboardPlugin | null> {
   if (plugin) return plugin;
   try {
-    const { registerPlugin } = await import('@capacitor/core');
+    const { Capacitor, registerPlugin } = await import('@capacitor/core');
+    if (!Capacitor.isNativePlatform() || !Capacitor.isPluginAvailable('BaribaKeyboard')) return null;
     plugin = registerPlugin<BaribaKeyboardPlugin>('BaribaKeyboard');
     return plugin;
   } catch {

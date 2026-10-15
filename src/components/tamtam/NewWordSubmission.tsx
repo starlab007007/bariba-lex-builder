@@ -240,11 +240,11 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
                   >
                     <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
                     <h4 className="text-xl font-bold text-gray-800 mb-2">
-                      {currentLang === 'ba' ? 'Ó ṣeun!' : 'Merci !'}
+                      {currentLang === 'ba' ? "Merci !" : 'Merci !'}
                     </h4>
                     <p className="text-gray-500">
                       {currentLang === 'ba' 
-                        ? 'Ɔ̀rɔ̀ rẹ ti wọ́lé. A ó ṣàyẹ̀wò rẹ̀.'
+                        ? "Votre mot a été soumis pour validation."
                         : 'Votre mot a été soumis pour validation.'}
                     </p>
                   </motion.div>
@@ -260,7 +260,7 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
                           type="text"
                           value={word}
                           onChange={(e) => setWord(e.target.value)}
-                          placeholder={currentLang === 'ba' ? 'Kọ ɔ̀rɔ̀ náà...' : 'Tapez le mot...'}
+                          placeholder={currentLang === 'ba' ? "Tapez le mot..." : 'Tapez le mot...'}
                           className="flex-1 p-3 bg-gray-50 rounded-xl text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
                         />
                         <MicButton field="word" />
@@ -312,13 +312,13 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
                     {/* Definition input */}
                     <div>
                       <label className="text-sm font-medium text-gray-500 mb-2 block">
-                        {currentLang === 'ba' ? 'Ìtúmọ̀ (Fàránsé) *' : 'Définition (français) *'}
+                        {currentLang === 'ba' ? "Définition (français) *" : 'Définition (français) *'}
                       </label>
                       <div className="flex gap-2">
                         <textarea
                           value={definition}
                           onChange={(e) => setDefinition(e.target.value)}
-                          placeholder={currentLang === 'ba' ? 'Kọ ìtúmọ̀ sí Fàránsé...' : 'Écrivez la définition...'}
+                          placeholder={currentLang === 'ba' ? "Écrivez la définition..." : 'Écrivez la définition...'}
                           className="flex-1 p-3 bg-gray-50 rounded-xl text-gray-800 placeholder:text-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
                           rows={2}
                         />
@@ -335,13 +335,13 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
                     {/* Example bariba */}
                     <div>
                       <label className="text-sm font-medium text-gray-500 mb-2 block">
-                        {currentLang === 'ba' ? 'Àpẹẹrẹ Bàátɔ̀nú' : 'Exemple en bariba'}
+                        {currentLang === 'ba' ? "Exemple en bariba" : 'Exemple en bariba'}
                       </label>
                       <div className="flex gap-2">
                         <textarea
                           value={exampleBariba}
                           onChange={(e) => setExampleBariba(e.target.value)}
-                          placeholder={currentLang === 'ba' ? 'Kọ gbólóhùn kan...' : 'Écrivez une phrase exemple...'}
+                          placeholder={currentLang === 'ba' ? "Écrivez une phrase exemple..." : 'Écrivez une phrase exemple...'}
                           className="flex-1 p-3 bg-gray-50 rounded-xl text-gray-800 placeholder:text-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
                           rows={2}
                         />
@@ -358,12 +358,12 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
                     {/* Example français */}
                     <div>
                       <label className="text-sm font-medium text-gray-500 mb-2 block">
-                        {currentLang === 'ba' ? 'Ìtumọ̀ àpẹẹrẹ' : 'Traduction de l\'exemple'}
+                        {currentLang === 'ba' ? "Traduction de l'exemple" : 'Traduction de l\'exemple'}
                       </label>
                       <textarea
                         value={exampleFrancais}
                         onChange={(e) => setExampleFrancais(e.target.value)}
-                        placeholder={currentLang === 'ba' ? 'Túmọ̀ gbólóhùn náà sí Fàránsé...' : 'Traduisez l\'exemple en français...'}
+                        placeholder={currentLang === 'ba' ? "Traduisez l'exemple en français..." : 'Traduisez l\'exemple en français...'}
                         className="w-full p-3 bg-gray-50 rounded-xl text-gray-800 placeholder:text-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
                         rows={2}
                       />
@@ -379,7 +379,7 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
                     <div className="space-y-2">
                       <div className="flex items-center justify-center gap-2 text-indigo-500">
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>{currentLang === 'ba' ? 'Ń fi ránṣẹ́...' : 'Envoi en cours...'}</span>
+                        <span>{currentLang === 'ba' ? "Envoi en cours..." : 'Envoi en cours...'}</span>
                       </div>
                       <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                         <div 
@@ -395,7 +395,7 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
                       className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
                     >
                       <Send className="w-5 h-5" />
-                      {currentLang === 'ba' ? 'Fi ránṣẹ́' : 'Soumettre'}
+                      {currentLang === 'ba' ? "Soumettre" : 'Soumettre'}
                     </button>
                   )}
                 </div>

@@ -396,7 +396,7 @@ export const DuoMode: React.FC<DuoModeProps> = ({
           
           {/* Your label */}
           <div className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-primary/80 text-white text-xs">
-            {currentLang === 'ba' ? 'Ìwọ' : 'Vous'}
+            {currentLang === 'ba' ? "Vous" : 'Vous'}
           </div>
         </div>
 
@@ -498,7 +498,7 @@ export const DuoMode: React.FC<DuoModeProps> = ({
                 ) : (
                   <>
                     <Send className="w-5 h-5" />
-                    <span>{currentLang === 'ba' ? 'Tẹ̀jáde' : 'Publier'}</span>
+                    <span>{currentLang === 'ba' ? "Publier" : 'Publier'}</span>
                   </>
                 )}
               </motion.button>

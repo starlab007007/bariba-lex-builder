@@ -10,9 +10,9 @@ export function ApPronunciationProvider({children}:{children:ReactNode}) {
   return <Lexicon.Provider value={lexicon}>{children}</Lexicon.Provider>;
 }
 /** Explicit language fields use whole-phrase audio; mixed prose keeps its French text. */
-export default function ApLinguisticText({text,bariba=false,column,className=''}:{text:string;bariba?:boolean;column?:string;className?:string}) {
+export default function ApLinguisticText({text,bariba=false,column,className='',preserve=false}:{text:string;bariba?:boolean;column?:string;className?:string;preserve?:boolean}) {
   const lexicon=useContext(Lexicon);
   if(bariba)return <BaribaAudioText text={text} compact className={className} />;
   const parts=column?tablePronunciationParts(text,column,lexicon):mixedPronunciationParts(text,lexicon);
-  return <span className={`whitespace-pre-wrap break-words ${className}`}>{parts.map((part,index)=>part.bariba?<BaribaAudioText key={index} text={part.text} compact className="align-middle" />:part.text)}</span>;
+  return <span data-i18n-preserve={preserve?true:undefined} className={`whitespace-pre-wrap break-words ${className}`}>{parts.map((part,index)=>part.bariba?<BaribaAudioText key={index} text={part.text} compact className="align-middle" />:part.text)}</span>;
 }

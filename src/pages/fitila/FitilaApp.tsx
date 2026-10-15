@@ -1,7 +1,7 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, createContext, useContext } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { FitilaLanguageProvider, useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
+import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { AudioDescriptionProvider } from '@/contexts/AudioDescriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTamTamProfile } from '@/hooks/useTamTamProfile';
@@ -463,11 +463,9 @@ function DesktopTopBar() {
 
 export default function FitilaApp() {
   return (
-    <FitilaLanguageProvider>
       <AudioDescriptionProvider>
         <AppContent />
       </AudioDescriptionProvider>
-    </FitilaLanguageProvider>
   );
 }
 

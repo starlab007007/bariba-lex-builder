@@ -488,7 +488,7 @@ export default function TamTamTranslator() {
                     <div className="flex items-center gap-2 mb-1">
                       <LanguageBadge lang={msg.sourceLanguage} size="sm" />
                     </div>
-                    <p className="whitespace-pre-wrap break-words text-[#241F2E]">{msg.sourceText}</p>
+                    <p data-i18n-preserve className="whitespace-pre-wrap break-words text-[#241F2E]">{msg.sourceText}</p>
                     <div className="flex flex-wrap items-center gap-2 mt-2 justify-end">
                       <div className="w-full"><ReplyAudioPlayer text={msg.sourceText} lang={msg.sourceLanguage === 'bariba' ? 'bba' : 'fr'} label="Écouter le texte source" /></div>
                       <button
@@ -513,7 +513,7 @@ export default function TamTamTranslator() {
                         <Bot className="w-4 h-4 text-[#6758C9]" />
                         <LanguageBadge lang={msg.targetLanguage} size="sm" />
                       </div>
-                      <p className="whitespace-pre-wrap break-words text-base font-medium leading-relaxed text-[#241F2E]">{msg.translatedText}</p>
+                      <p data-i18n-preserve className="whitespace-pre-wrap break-words text-base font-medium leading-relaxed text-[#241F2E]">{msg.translatedText}</p>
                       <div className="flex flex-wrap items-center gap-2 mt-2">
                         <div className="w-full"><ReplyAudioPlayer text={msg.translatedText} lang={msg.targetLanguage === 'bariba' ? 'bba' : 'fr'} label="Écouter la traduction" /></div>
                         <button

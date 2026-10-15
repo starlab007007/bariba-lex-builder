@@ -1,0 +1,482 @@
+[
+  {
+    "file": "src/components/market/VoiceGuidedJobCreator.tsx",
+    "fr": "Traitement...",
+    "excluded": "Ń ṣiṣẹ́...",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/market/VoiceGuidedJobCreator.tsx",
+    "fr": "Ajoutez des photos",
+    "excluded": "Fi àwọn fọ́tò kun",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/market/VoiceGuidedJobCreator.tsx",
+    "fr": "Facultatif (max 3)",
+    "excluded": "Àṣàyàn (ó pọ̀ jù 3)",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/market/VoiceGuidedJobCreator.tsx",
+    "fr": "Offre d'emploi",
+    "excluded": "Sɔmburu tí wọ́n ń pèsè",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/market/VoiceGuidedJobCreator.tsx",
+    "fr": "Demande d'emploi",
+    "excluded": "Ẹni tó ń wá iṣẹ́",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/market/VoiceGuidedJobCreator.tsx",
+    "fr": "Écouter la présentation",
+    "excluded": "Gbọ́ àpèjúwe",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/market/VoiceGuidedJobCreator.tsx",
+    "fr": "Publier",
+    "excluded": "Jẹ́rìísí",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DomainChatbot.tsx",
+    "fr": "Premiers secours",
+    "excluded": "Ìrànwọ́ àkọ́kọ́",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DomainChatbot.tsx",
+    "fr": "Maternité",
+    "excluded": "Ìbímọ",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DomainChatbot.tsx",
+    "fr": "Nutrition",
+    "excluded": "Oúnjẹ",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DomainChatbot.tsx",
+    "fr": "Agriculture",
+    "excluded": "Àgbẹ̀",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DomainChatbot.tsx",
+    "fr": "Météo",
+    "excluded": "Ojú ọjọ́",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DomainChatbot.tsx",
+    "fr": "Cultures",
+    "excluded": "Ohun ọ̀gbìn",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DomainChatbot.tsx",
+    "fr": "Élevage",
+    "excluded": "Ẹran ọ̀sìn",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DomainChatbot.tsx",
+    "fr": "Technicien",
+    "excluded": "Oníṣẹ́",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DomainChatbot.tsx",
+    "fr": "Tontine",
+    "excluded": "Àjọ",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DomainChatbot.tsx",
+    "fr": "Épargne",
+    "excluded": "Ìfipamọ́",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DomainChatbot.tsx",
+    "fr": "Conseiller",
+    "excluded": "Olùdámọ̀ràn",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DomainChatbot.tsx",
+    "fr": "Éducation",
+    "excluded": "Ẹ̀kọ́",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DomainChatbot.tsx",
+    "fr": "Cours cultures",
+    "excluded": "Ẹ̀kọ́ ohun ọ̀gbìn",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DomainChatbot.tsx",
+    "fr": "Cours élevage",
+    "excluded": "Ẹ̀kọ́ ẹran",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DomainChatbot.tsx",
+    "fr": "Cours commerce",
+    "excluded": "Ẹ̀kọ́ òwò",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DomainChatbot.tsx",
+    "fr": "Cours santé",
+    "excluded": "Ẹ̀kọ́ ìlera",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DomainChatbot.tsx",
+    "fr": "Marché",
+    "excluded": "Ọjà",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DuoMode.tsx",
+    "fr": "Vous",
+    "excluded": "Ìwọ",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/DuoMode.tsx",
+    "fr": "Publier",
+    "excluded": "Tẹ̀jáde",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/NewWordSubmission.tsx",
+    "fr": "Merci !",
+    "excluded": "Ó ṣeun!",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/NewWordSubmission.tsx",
+    "fr": "Votre mot a été soumis pour validation.",
+    "excluded": "Ɔ̀rɔ̀ rẹ ti wọ́lé. A ó ṣàyẹ̀wò rẹ̀.",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/NewWordSubmission.tsx",
+    "fr": "Tapez le mot...",
+    "excluded": "Kọ ɔ̀rɔ̀ náà...",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/NewWordSubmission.tsx",
+    "fr": "Définition (français) *",
+    "excluded": "Ìtúmọ̀ (Fàránsé) *",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/NewWordSubmission.tsx",
+    "fr": "Écrivez la définition...",
+    "excluded": "Kọ ìtúmọ̀ sí Fàránsé...",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/NewWordSubmission.tsx",
+    "fr": "Exemple en bariba",
+    "excluded": "Àpẹẹrẹ Bàátɔ̀nú",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/NewWordSubmission.tsx",
+    "fr": "Écrivez une phrase exemple...",
+    "excluded": "Kọ gbólóhùn kan...",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/NewWordSubmission.tsx",
+    "fr": "Traduction de l'exemple",
+    "excluded": "Ìtumọ̀ àpẹẹrẹ",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/NewWordSubmission.tsx",
+    "fr": "Traduisez l'exemple en français...",
+    "excluded": "Túmọ̀ gbólóhùn náà sí Fàránsé...",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/NewWordSubmission.tsx",
+    "fr": "Envoi en cours...",
+    "excluded": "Ń fi ránṣẹ́...",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/NewWordSubmission.tsx",
+    "fr": "Soumettre",
+    "excluded": "Fi ránṣẹ́",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/RaconteMoiAssistant.tsx",
+    "fr": "Je vous écoute. Dites ce que vous voulez faire.",
+    "excluded": "Mo ń gbọ́ ọ. Sọ ohun tí o fẹ́.",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/RaconteMoiAssistant.tsx",
+    "fr": "Erreur",
+    "excluded": "Àṣìṣe",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/RaconteMoiAssistant.tsx",
+    "fr": "Impossible de comprendre",
+    "excluded": "Kò lè gbọ́ ohun",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/RaconteMoiAssistant.tsx",
+    "fr": "Erreur",
+    "excluded": "Àṣìṣe",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/RaconteMoiAssistant.tsx",
+    "fr": "Désolé, réessayez",
+    "excluded": "Má bìnú, gbìyànjú lẹ́ẹ̀kan sí i",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/RaconteMoiAssistant.tsx",
+    "fr": "J'ai entendu:",
+    "excluded": "Mo gbọ́:",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/RaconteMoiAssistant.tsx",
+    "fr": "Navigation en cours...",
+    "excluded": "Ń lọ sí ibẹ̀...",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/RaconteMoiAssistant.tsx",
+    "fr": "🎤 Commencer à parler",
+    "excluded": "🎤 Bẹ̀rẹ̀ sísọ",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/RadioVisualFeedCard.tsx",
+    "fr": "Refaire",
+    "excluded": "Ṣe báyìí",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/SmartChatbot.tsx",
+    "fr": "Agriculture",
+    "excluded": "Àgbẹ̀",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/SmartChatbot.tsx",
+    "fr": "Éducation",
+    "excluded": "Ẹ̀kọ́",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/SmartChatbot.tsx",
+    "fr": "Marché",
+    "excluded": "Ọjà",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/TamTamStoryCreator.tsx",
+    "fr": "Erreur",
+    "excluded": "Àṣìṣe",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/TamTamStoryCreator.tsx",
+    "fr": "Impossible de démarrer l'enregistrement",
+    "excluded": "Kò lè bẹ̀rẹ̀ ìgbàsílẹ̀",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/TamTamStoryCreator.tsx",
+    "fr": "Erreur",
+    "excluded": "Àṣìṣe",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/TamTamStoryCreator.tsx",
+    "fr": "Veuillez enregistrer un audio",
+    "excluded": "Jọ̀wọ́ ṣe ìgbàsílẹ̀ ohùn kan",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/TamTamStoryCreator.tsx",
+    "fr": "Votre story sera visible pendant 24h",
+    "excluded": "Ìtàn rẹ yóò wà fún wákàtí 24",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/TamTamStoryCreator.tsx",
+    "fr": "Votre story a été publiée!",
+    "excluded": "Ìtàn rẹ ti jáde!",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/TamTamStoryCreator.tsx",
+    "fr": "Erreur",
+    "excluded": "Àṣìṣe",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/TamTamStoryCreator.tsx",
+    "fr": "Impossible de publier la story",
+    "excluded": "Kò lè fi ìtàn sílẹ̀",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/TamTamStoryCreator.tsx",
+    "fr": "Créer une Story",
+    "excluded": "Ṣẹ̀dá Ìtàn",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/TamTamStoryCreator.tsx",
+    "fr": "Ajoutez une photo (optionnel)",
+    "excluded": "Fi àwòrán kun (kò pọn dandan)",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/TamTamStoryCreator.tsx",
+    "fr": "Votre audio",
+    "excluded": "Ohùn rẹ",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/TamTamStoryCreator.tsx",
+    "fr": "Enregistrement... Appuyez pour arrêter",
+    "excluded": "Ń gbàsílẹ̀... Tẹ láti dúró",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/TamTamStoryCreator.tsx",
+    "fr": "Appuyez ➤ pour publier",
+    "excluded": "Tẹ ➤ láti fi ìtàn sílẹ̀",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/TamTamStoryCreator.tsx",
+    "fr": "Appuyez 🎤 pour commencer",
+    "excluded": "Tẹ 🎤 láti bẹ̀rẹ̀",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/VocalDictionaryFeedback.tsx",
+    "fr": "Envoyer",
+    "excluded": "Fi ránṣẹ́",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/VoiceGuidedCreator.tsx",
+    "fr": "Aperçu",
+    "excluded": "Ṣàyẹ̀wò",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/components/tamtam/VoiceGuidedCreator.tsx",
+    "fr": "Publier",
+    "excluded": "Tẹ̀jáde",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/contexts/AudioDescriptionContext.tsx",
+    "fr": "Vous êtes sur l'écran d'accueil. Appuyez sur le micro central pour parler.",
+    "excluded": "A wá ní ilé. Tẹ̀ maikírófòònù láti sọ̀rọ̀.",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/contexts/AudioDescriptionContext.tsx",
+    "fr": "Fil d'actualité. Écoutez les publications de vos amis.",
+    "excluded": "Sɔ́ɔ̀rù gbɛ̀. Gbọ́ sɔ́ɔ̀rù àwọn ọ̀rẹ́.",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/contexts/AudioDescriptionContext.tsx",
+    "fr": "Messages vocaux. Écoutez et envoyez des messages audio.",
+    "excluded": "Bàátɔ́kɔ̀. Gbọ́ kí o sì fi ránṣẹ́.",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/contexts/AudioDescriptionContext.tsx",
+    "fr": "Salles audio en direct. Rejoignez une conversation.",
+    "excluded": "Yàrá ohùn. Darapọ̀ mọ́ ìjíròrò.",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/contexts/AudioDescriptionContext.tsx",
+    "fr": "Marché. Achetez et vendez avec des descriptions audio.",
+    "excluded": "Ọjà. Ra kí o tà pẹ̀lú ohùn.",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/contexts/AudioDescriptionContext.tsx",
+    "fr": "Services. Traducteur, santé, finance et plus.",
+    "excluded": "Sínsín. Tùnkɔ̀, àlàfíà, sìká àti púpọ̀.",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/contexts/AudioDescriptionContext.tsx",
+    "fr": "Urgence. Appuyez sur le bouton rouge pour appeler à l'aide.",
+    "excluded": "Kpákpá. Tẹ̀ bọ́tìnì pupa fún ìràn.",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/contexts/AudioDescriptionContext.tsx",
+    "fr": "Votre profil. Gérez vos paramètres.",
+    "excluded": "Mɛ̀ rẹ. Ṣàkóso ètò rẹ.",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/contexts/AudioDescriptionContext.tsx",
+    "fr": "Créer une publication. Choisissez le type de contenu.",
+    "excluded": "Ṣẹ̀dá sɔ́ɔ̀rù. Yan irú ohun.",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/hooks/useVoiceMenu.ts",
+    "fr": "Publier sans audio",
+    "excluded": "Sọ láìsí ohùn",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/hooks/useVoiceMenu.ts",
+    "fr": "Publier",
+    "excluded": "Sọ",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/hooks/useVoiceMenu.ts",
+    "fr": "Fil d'actualité ouvert",
+    "excluded": "Sɔ́ɔ̀rù gbɛ̀ ti ṣí",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/hooks/useVoiceMenu.ts",
+    "fr": "Messages ouverts",
+    "excluded": "Bàátɔ́kɔ̀ ti ṣí",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  },
+  {
+    "file": "src/hooks/useVoiceMenu.ts",
+    "fr": "Communautés ouvertes",
+    "excluded": "Gbɛ̀kú ti ṣí",
+    "reason": "Graphie hors du référentiel Baatɔnum : validation requise."
+  }
+]

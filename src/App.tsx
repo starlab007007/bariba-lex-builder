@@ -10,6 +10,7 @@ import OfflineBanner from "@/components/common/OfflineBanner";
 import React, { Suspense, lazy } from "react";
 
 import FitilaApp from "./pages/fitila/FitilaApp";
+import { FitilaLanguageProvider } from '@/contexts/FitilaLanguageContext';
 
 const FitilaSocialCanonical = lazy(() => import("./pages/fitila/FitilaCanonicalCommunity").then(m => ({ default: m.FitilaSocialCanonical })));
 const FitilaCreatorCanonical = lazy(() => import("./pages/fitila/FitilaCanonicalCommunity").then(m => ({ default: m.FitilaCreatorCanonical })));
@@ -82,7 +83,7 @@ const queryClient = new QueryClient({
 });
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <QueryClientProvider client={queryClient}><FitilaLanguageProvider>
     <TooltipProvider>
       <AuthProvider>
         <Toaster />
@@ -183,7 +184,8 @@ const App = () => (
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
-  </QueryClientProvider>
+  </FitilaLanguageProvider></QueryClientProvider>
 );
 
 export default App;
+

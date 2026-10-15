@@ -75,8 +75,8 @@ export const TamTamStoryCreator: React.FC<TamTamStoryCreatorProps> = ({
     } catch (error) {
       console.error('Error starting recording:', error);
       toast({
-        title: currentLang === 'ba' ? 'Àṣìṣe' : 'Erreur',
-        description: currentLang === 'ba' ? 'Kò lè bẹ̀rẹ̀ ìgbàsílẹ̀' : 'Impossible de démarrer l\'enregistrement',
+        title: currentLang === 'ba' ? "Erreur" : 'Erreur',
+        description: currentLang === 'ba' ? "Impossible de démarrer l'enregistrement" : 'Impossible de démarrer l\'enregistrement',
         variant: 'destructive'
       });
     }
@@ -106,8 +106,8 @@ export const TamTamStoryCreator: React.FC<TamTamStoryCreatorProps> = ({
   const handlePublish = useCallback(async () => {
     if (!audioBlob) {
       toast({
-        title: currentLang === 'ba' ? 'Àṣìṣe' : 'Erreur',
-        description: currentLang === 'ba' ? 'Jọ̀wọ́ ṣe ìgbàsílẹ̀ ohùn kan' : 'Veuillez enregistrer un audio',
+        title: currentLang === 'ba' ? "Erreur" : 'Erreur',
+        description: currentLang === 'ba' ? "Veuillez enregistrer un audio" : 'Veuillez enregistrer un audio',
         variant: 'destructive'
       });
       return;
@@ -164,12 +164,12 @@ export const TamTamStoryCreator: React.FC<TamTamStoryCreatorProps> = ({
       
       toast({
         title: currentLang === 'ba' ? 'Ìtàn ti jáde!' : 'Story publiée !',
-        description: currentLang === 'ba' ? 'Ìtàn rẹ yóò wà fún wákàtí 24' : 'Votre story sera visible pendant 24h',
+        description: currentLang === 'ba' ? "Votre story sera visible pendant 24h" : 'Votre story sera visible pendant 24h',
       });
       
       // Speak confirmation
       speakCurrentLang(currentLang === 'ba' 
-        ? 'Ìtàn rẹ ti jáde!'
+        ? "Votre story a été publiée!"
         : 'Votre story a été publiée!'
       );
       
@@ -179,8 +179,8 @@ export const TamTamStoryCreator: React.FC<TamTamStoryCreatorProps> = ({
     } catch (error) {
       console.error('Error publishing story:', error);
       toast({
-        title: currentLang === 'ba' ? 'Àṣìṣe' : 'Erreur',
-        description: currentLang === 'ba' ? 'Kò lè fi ìtàn sílẹ̀' : 'Impossible de publier la story',
+        title: currentLang === 'ba' ? "Erreur" : 'Erreur',
+        description: currentLang === 'ba' ? "Impossible de publier la story" : 'Impossible de publier la story',
         variant: 'destructive'
       });
     } finally {
@@ -224,7 +224,7 @@ export const TamTamStoryCreator: React.FC<TamTamStoryCreatorProps> = ({
               <X className="w-5 h-5 text-white" />
             </button>
             <h2 className="text-white font-bold text-lg">
-              {currentLang === 'ba' ? 'Ṣẹ̀dá Ìtàn' : 'Créer une Story'}
+              {currentLang === 'ba' ? "Créer une Story" : 'Créer une Story'}
             </h2>
             <div className="w-10" />
           </div>
@@ -241,7 +241,7 @@ export const TamTamStoryCreator: React.FC<TamTamStoryCreatorProps> = ({
               <div className="w-64 h-64 rounded-3xl bg-gradient-to-br from-purple-500 to-pink-500 flex flex-col items-center justify-center gap-4">
                 <Camera className="w-16 h-16 text-white/60" />
                 <p className="text-white/60 text-center px-4">
-                  {currentLang === 'ba' ? 'Fi àwòrán kun (kò pọn dandan)' : 'Ajoutez une photo (optionnel)'}
+                  {currentLang === 'ba' ? "Ajoutez une photo (optionnel)" : 'Ajoutez une photo (optionnel)'}
                 </p>
               </div>
             )}
@@ -274,7 +274,7 @@ export const TamTamStoryCreator: React.FC<TamTamStoryCreatorProps> = ({
                 </button>
                 <div className="flex-1">
                   <p className="text-white font-medium">
-                    {currentLang === 'ba' ? 'Ohùn rẹ' : 'Votre audio'}
+                    {currentLang === 'ba' ? "Votre audio" : 'Votre audio'}
                   </p>
                   <p className="text-white/60 text-sm">{formatDuration(recordingDuration)}</p>
                 </div>
@@ -340,10 +340,10 @@ export const TamTamStoryCreator: React.FC<TamTamStoryCreatorProps> = ({
             {/* Instructions */}
             <p className="text-white/60 text-center text-sm">
               {isRecording 
-                ? (currentLang === 'ba' ? 'Ń gbàsílẹ̀... Tẹ láti dúró' : 'Enregistrement... Appuyez pour arrêter')
+                ? (currentLang === 'ba' ? "Enregistrement... Appuyez pour arrêter" : 'Enregistrement... Appuyez pour arrêter')
                 : audioBlob
-                  ? (currentLang === 'ba' ? 'Tẹ ➤ láti fi ìtàn sílẹ̀' : 'Appuyez ➤ pour publier')
-                  : (currentLang === 'ba' ? 'Tẹ 🎤 láti bẹ̀rẹ̀' : 'Appuyez 🎤 pour commencer')
+                  ? (currentLang === 'ba' ? "Appuyez ➤ pour publier" : 'Appuyez ➤ pour publier')
+                  : (currentLang === 'ba' ? "Appuyez 🎤 pour commencer" : 'Appuyez 🎤 pour commencer')
               }
             </p>
           </div>

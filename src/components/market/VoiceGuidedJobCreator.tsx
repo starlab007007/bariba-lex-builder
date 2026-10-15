@@ -424,7 +424,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
                   <div className="flex items-center justify-center mt-6 gap-2">
                     <Loader2 className="w-5 h-5 animate-spin text-tamtam-primary" />
                     <span className="text-tamtam-text-muted">
-                      {currentLang === 'ba' ? 'Ń ṣiṣẹ́...' : 'Traitement...'}
+                      {currentLang === 'ba' ? "Traitement..." : 'Traitement...'}
                     </span>
                   </div>
                 )}
@@ -447,10 +447,10 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
                     <span className="text-4xl">{jobData.emoji_icon || '💼'}</span>
                   </div>
                   <p className="text-tamtam-text font-medium">
-                    {currentLang === 'ba' ? 'Fi àwọn fọ́tò kun' : 'Ajoutez des photos'}
+                    {currentLang === 'ba' ? "Ajoutez des photos" : 'Ajoutez des photos'}
                   </p>
                   <p className="text-tamtam-text-muted text-sm">
-                    {currentLang === 'ba' ? 'Àṣàyàn (ó pọ̀ jù 3)' : 'Facultatif (max 3)'}
+                    {currentLang === 'ba' ? "Facultatif (max 3)" : 'Facultatif (max 3)'}
                   </p>
                 </div>
 
@@ -500,8 +500,8 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
                         jobData.job_type === 'offer' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'
                       }`}>
                         {jobData.job_type === 'offer' 
-                          ? (currentLang === 'ba' ? 'Sɔmburu tí wọ́n ń pèsè' : 'Offre d\'emploi')
-                          : (currentLang === 'ba' ? 'Ẹni tó ń wá iṣẹ́' : 'Demande d\'emploi')
+                          ? (currentLang === 'ba' ? "Offre d'emploi" : 'Offre d\'emploi')
+                          : (currentLang === 'ba' ? "Demande d'emploi" : 'Demande d\'emploi')
                         }
                       </span>
                       <h3 className="font-bold text-tamtam-text text-lg mt-1">{jobData.title_fr}</h3>
@@ -529,7 +529,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
                       className="mt-3 flex items-center gap-2 text-tamtam-primary"
                     >
                       <Volume2 className="w-4 h-4" />
-                      <span className="text-sm">{currentLang === 'ba' ? 'Gbọ́ àpèjúwe' : 'Écouter la présentation'}</span>
+                      <span className="text-sm">{currentLang === 'ba' ? "Écouter la présentation" : 'Écouter la présentation'}</span>
                     </button>
                   )}
                 </div>
@@ -544,7 +544,7 @@ export function VoiceGuidedJobCreator({ isOpen, onClose, onComplete, initialType
                   ) : (
                     <>
                       <Check className="w-6 h-6" />
-                      <span>{currentLang === 'ba' ? 'Jẹ́rìísí' : 'Publier'}</span>
+                      <span>{currentLang === 'ba' ? "Publier" : 'Publier'}</span>
                     </>
                   )}
                 </button>

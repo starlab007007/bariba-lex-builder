@@ -355,7 +355,7 @@ export const VoiceGuidedCreator: React.FC<VoiceGuidedCreatorProps> = ({
               {phase === 'record' && selectedTemplate && (
                 currentLang === 'ba' ? selectedTemplate.label_ba : selectedTemplate.label_fr
               )}
-              {phase === 'preview' && (currentLang === 'ba' ? 'Ṣàyẹ̀wò' : 'Aperçu')}
+              {phase === 'preview' && (currentLang === 'ba' ? "Aperçu" : 'Aperçu')}
             </h3>
           </div>
           <button onClick={handleClose} className="p-2 rounded-full bg-gray-100">
@@ -577,7 +577,7 @@ export const VoiceGuidedCreator: React.FC<VoiceGuidedCreatorProps> = ({
                       <span>Publication...</span>
                     </>
                   ) : (
-                    <span>{currentLang === 'ba' ? 'Tẹ̀jáde' : 'Publier'}</span>
+                    <span>{currentLang === 'ba' ? "Publier" : 'Publier'}</span>
                   )}
                 </motion.button>
 
