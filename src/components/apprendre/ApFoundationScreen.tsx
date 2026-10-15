@@ -1,3 +1,4 @@
+import ApLinguisticText from './ApLinguisticText';
 // Portage fidèle de `ApFoundationScreen` (fitila_flutter/lib/apprendre/apprendre_foundation.dart,
 // branche feat/apprendre-v2.4-build19-20260927) — leçon de fondation : en-tête,
 // sections (explications, astuces, exemples, culture, tableaux, paires
@@ -115,12 +116,12 @@ export default function ApFoundationScreen({ unit, content, store, onBack }: ApF
                 {unit.title_fr}
               </p>
               {unit.title_ba && unit.title_ba.length > 0 && (
-                <p className="text-[15px] font-bold" style={{ color: AP_COLORS.goldDeep }}>{unit.title_ba}</p>
+                <p className="text-[15px] font-bold" style={{ color: AP_COLORS.goldDeep }}><ApLinguisticText text={unit.title_ba} bariba /></p>
               )}
             </div>
           </div>
 
-          <p className="mt-3 text-[15px] leading-[1.45]" style={{ color: AP_COLORS.inkSoft }}>{unit.summary}</p>
+          <p className="mt-3 text-[15px] leading-[1.45]" style={{ color: AP_COLORS.inkSoft }}><ApLinguisticText text={unit.summary} /></p>
 
           {unit.sections.map((section, i) => (
             <div key={i} className="mt-[18px]">
@@ -154,3 +155,4 @@ export default function ApFoundationScreen({ unit, content, store, onBack }: ApF
     </div>
   );
 }
+

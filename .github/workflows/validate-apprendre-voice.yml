@@ -11,6 +11,10 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/validate-apprendre-voice.yml'
+      - 'tests/voice/apprendrePronunciation.test.ts'
+      - 'e2e/apprendre-audio.spec.ts'
+      - 'e2e/fixtures/apprendre-audio.*'
+      - 'playwright.apprendre-audio.config.ts'
   workflow_dispatch:
 
 permissions:
@@ -32,3 +36,14 @@ jobs:
           VITE_BUILD_SHA: ${{ github.sha }}
           VITE_SUPABASE_URL: https://dvswhjawiooprghzeyol.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_Rs6ysvbwQ0oGpHuYulZ5Hw_loUqyGKw
+      - uses: denoland/setup-deno@v2
+        with: { deno-version: v2.x }
+      - run: deno test --unstable-sloppy-imports --node-modules-dir=none --allow-read=src/data tests/voice/apprendrePronunciation.test.ts
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --config=playwright.apprendre-audio.config.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: apprendre-pronunciation-results
+          path: test-results
+

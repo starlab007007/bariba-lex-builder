@@ -188,14 +188,14 @@ export function useApprovedAudio(contentKey: string | undefined) {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('classe_content_audios')
-        .select('id,storage_path,file_name,duration_seconds,content_text,storage_available,storage_checked_at,storage_error')
+        .select('id,storage_path,file_name,duration_seconds,content_text,status,is_current,storage_available,storage_checked_at,storage_error')
         .eq('content_key', contentKey!)
         .eq('is_current', true)
         .eq('status', 'approved')
         .eq('storage_available', true)
         .maybeSingle();
       if (error) throw error;
-      if (!data) return null;
+      if (!data || data.status !== 'approved' || data.is_current !== true || data.storage_available !== true) return null;
       return { ...data, storage_broken: false };
     },
   });

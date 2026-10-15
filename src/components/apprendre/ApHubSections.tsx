@@ -202,12 +202,13 @@ export function ApDueTile({ ba, fr, retention, onTap }: { ba: string; fr: string
   const pct = Math.round(retention * 100);
   const urgent = pct < 50;
   return (
-    <ApHubCardBox onClick={onTap} radius={18} padding={0}>
-      <div className="flex items-center py-3 pl-4 pr-3.5">
-        <div className="min-w-0 flex-1">
+    <ApHubCardBox radius={18} padding={0}>
+      <div className="flex items-center gap-2 py-3 pl-4 pr-3.5">
+        <BaribaAudioButton text={ba} compact />
+        <button type="button" onClick={onTap} className="min-w-0 flex-1 text-left">
           <p className="text-[16px] font-bold" style={{ color: AP_COLORS.ink }}>{ba}</p>
           <p className="truncate text-sm" style={{ color: AP_COLORS.quiet }}>{fr}</p>
-        </div>
+        </button>
         <ApHubPill
           label={`mémoire ${pct} %`}
           background={urgent ? AP_COLORS.clayTint : AP_COLORS.goldTint}
@@ -300,8 +301,7 @@ const SCENE_TOPICS: { icon: IconComp; label: string }[] = [
 
 export function ApScenesEntryCard({ onOpen }: { onOpen?: () => void }) {
   return (
-    <button
-      onClick={onOpen}
+    <div
       className="block w-full rounded-[24px] p-4 text-left"
       style={{ background: `linear-gradient(135deg, ${AP_COLORS.clay}, ${AP_COLORS.goldDeep})` }}
     >
@@ -321,9 +321,9 @@ export function ApScenesEntryCard({ onOpen }: { onOpen?: () => void }) {
         ))}
       </div>
       <div className="mt-3.5">
-        <ApHubPrimaryButton label="Explorer les scènes" icon={ChevronRight} />
+        <ApHubPrimaryButton label="Explorer les scènes" icon={ChevronRight} onClick={onOpen} />
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -336,8 +336,8 @@ export function ApProverbCard({ proverb }: { proverb: ApProverb }) {
     <div className="rounded-[24px] p-[18px]" style={{ backgroundColor: AP_COLORS.night }}>
       <p className="text-[11.5px] font-bold tracking-wide" style={{ color: AP_COLORS.goldTint }}>SAGESSE DU JOUR</p>
       <div className="mt-2 flex items-start gap-2">
-        <p className="min-w-0 flex-1 text-lg font-bold leading-[1.35] text-white">{proverb.ba}</p>
-        <BaribaAudioButton text={proverb.ba} compact dark hideUnavailable />
+        <BaribaAudioButton text={proverb.ba} compact dark />
+        <p lang="bba" className="min-w-0 flex-1 text-lg font-bold leading-[1.35] text-white">{proverb.ba}</p>
       </div>
       <p className="mt-1.5 text-sm" style={{ color: AP_COLORS.nightText }}>{proverb.fr}</p>
       <p className="mt-1.5 text-[11px]" style={{ color: '#B7AF98' }}>Dictionnaire, {proverb.src}</p>
@@ -361,3 +361,4 @@ export function ApLinkChip({ label, icon: Icon, onTap }: { label: string; icon: 
     </button>
   );
 }
+

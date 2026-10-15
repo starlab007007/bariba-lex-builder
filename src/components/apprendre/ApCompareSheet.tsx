@@ -1,3 +1,4 @@
+import ApLinguisticText from './ApLinguisticText';
 // Portage fidèle de `_CompareSheet` (fitila_flutter/lib/apprendre/apprendre_voice_ui.dart,
 // branche feat/apprendre-v2.4-build19-20260927) — feuille « Compare ta
 // voix » : écoute de la référence, enregistrement micro, analyse, résultat
@@ -269,7 +270,7 @@ export default function ApCompareSheet({ text, fr, settings = DEFAULT_COMPARE_SE
             COMPARE TA VOIX
           </p>
           <div className="mt-1.5 flex items-center gap-2">
-            <p className="min-w-0 flex-1 text-[26px] font-bold" style={{ color: AP_COLORS.ink }}>{text}</p>
+            <p className="min-w-0 flex-1 text-[26px] font-bold" style={{ color: AP_COLORS.ink }}><ApLinguisticText text={text} bariba /></p>
             <button
               type="button"
               disabled={!entry}
@@ -339,7 +340,7 @@ export default function ApCompareSheet({ text, fr, settings = DEFAULT_COMPARE_SE
                     style={{ borderColor: AP_COLORS.lineStrong, color: AP_COLORS.ink, backgroundColor: AP_COLORS.surfaceAlt }}
                   />
                   <p className="mt-1 text-[11px]" style={{ color: AP_COLORS.muted }}>
-                    Attendu : <span style={{ color: AP_COLORS.ink }}>{text}</span>
+                    Attendu : <span style={{ color: AP_COLORS.ink }}><ApLinguisticText text={text} bariba /></span>
                     {' — '}
                     {transcript.trim().toLowerCase() === text.trim().toLowerCase() ? 'identique' : 'à comparer avec la voix humaine'}
                   </p>
@@ -481,3 +482,4 @@ function SecondaryButton({ label, icon: Icon, onClick }: { label: string; icon: 
     </button>
   );
 }
+

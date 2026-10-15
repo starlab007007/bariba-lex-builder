@@ -1,3 +1,4 @@
+import ApLinguisticText from './ApLinguisticText';
 // Portage fidèle de `ApSceneDetailScreen` (fitila_flutter/lib/apprendre/apprendre_scenes_ui.dart,
 // branche feat/apprendre-v2.4-build19-20260927) — une scène de bout en bout :
 // présentation, dialogue (écoute ou jeu de rôle), culture, vocabulaire et
@@ -211,8 +212,8 @@ function SceneBubble({ line, name, mine, showFrench }: { line: ScLine; name: str
       >
         <p className="text-[11px] font-extrabold" style={{ color: mine ? AP_COLORS.goldTint : AP_COLORS.goldDeep }}>{name}</p>
         <div className="mt-0.5 flex items-start gap-1.5">
-          <p className="min-w-0 flex-1 text-[17px] font-bold" style={{ color: mine ? '#FFFFFF' : AP_COLORS.ink }}>{line.ba}</p>
           <AudioButton text={line.ba} size={30} dark={mine} />
+          <p lang="bba" className="min-w-0 flex-1 text-[17px] font-bold" style={{ color: mine ? '#FFFFFF' : AP_COLORS.ink }}>{line.ba}</p>
         </div>
         {showFrench && (
           <p className="mt-[3px] text-xs" style={{ color: mine ? NIGHT_TEXT : QUIET }}>{line.fr}</p>
@@ -341,7 +342,7 @@ export default function ApSceneDetailScreen({ scene, content, progress, store, o
               <Pill label={`Niveau ${scene.level}`} icon={SignalHigh} />
               <Pill label={`${scene.spoken.length} répliques`} icon={MessagesSquare} background={AP_COLORS.surfaceAlt} foreground={AP_COLORS.inkSoft} />
             </div>
-            <p className="mt-3.5 text-[15px]" style={{ color: AP_COLORS.inkSoft }}>{scene.intro}</p>
+            <p className="mt-3.5 text-[15px]" style={{ color: AP_COLORS.inkSoft }}><ApLinguisticText text={scene.intro} /></p>
 
             <SectionTitle title="Les personnages" />
             {(['a', 'b'] as const).map((who) => (
@@ -366,8 +367,8 @@ export default function ApSceneDetailScreen({ scene, content, progress, store, o
               {scene.vocab.map((word, i) => (
                 <div key={i} className="rounded-[14px] border px-3 py-2" style={{ borderColor: AP_COLORS.line, backgroundColor: AP_COLORS.surface }}>
                   <div className="flex items-center gap-2">
-                    <p className="text-[15px] font-bold" style={{ color: AP_COLORS.ink }}>{word.ba}</p>
-                    <BaribaAudioButton text={word.ba} compact hideUnavailable />
+                    <BaribaAudioButton text={word.ba} compact />
+                    <p lang="bba" className="text-[15px] font-bold" style={{ color: AP_COLORS.ink }}>{word.ba}</p>
                   </div>
                   <p className="text-[11.5px]" style={{ color: AP_COLORS.muted }}>{word.fr}</p>
                 </div>
@@ -397,7 +398,7 @@ export default function ApSceneDetailScreen({ scene, content, progress, store, o
               <>
                 <div className="mt-2 flex items-start gap-2.5 rounded-[18px] p-3.5" style={{ backgroundColor: AP_COLORS.sageTint }}>
                   <Flame className="h-5 w-5 shrink-0" style={{ color: AP_COLORS.sageInk }} />
-                  <p className="text-sm" style={{ color: AP_COLORS.sageInk }}>{scene.culture}</p>
+                  <p className="text-sm" style={{ color: AP_COLORS.sageInk }}><ApLinguisticText text={scene.culture} /></p>
                 </div>
                 <div className="mt-4 space-y-2.5">
                   <PrimaryButton
@@ -429,8 +430,8 @@ export default function ApSceneDetailScreen({ scene, content, progress, store, o
               <div className="mt-1.5 flex items-center gap-2">
                 {hint ? (
                   <>
-                    <p className="text-lg font-bold" style={{ color: AP_COLORS.ink }}>{current.ba}</p>
                     <AudioButton text={current.ba} size={36} />
+                    <p lang="bba" className="text-lg font-bold" style={{ color: AP_COLORS.ink }}>{current.ba}</p>
                   </>
                 ) : (
                   <button onClick={() => setHint(true)} className="flex items-center gap-1.5 text-sm font-bold" style={{ color: AP_COLORS.goldDeep }}>
@@ -456,3 +457,4 @@ export default function ApSceneDetailScreen({ scene, content, progress, store, o
     </div>
   );
 }
+

@@ -60,9 +60,10 @@ async function loadFromSupabase(): Promise<{ core: ApprendreContentJson; scenes:
       .in('id', ['core', 'scenes']);
     if (error || !data) return null;
 
-    const core = data.find((row) => row.id === 'core')?.content;
-    const scenes = data.find((row) => row.id === 'scenes')?.content;
-    const version = data.find((row) => row.id === 'core')?.content_version ?? data[0]?.content_version;
+    const rows = data as { id: string; content: unknown; content_version?: string }[];
+    const core = rows.find((row) => row.id === 'core')?.content;
+    const scenes = rows.find((row) => row.id === 'scenes')?.content;
+    const version = rows.find((row) => row.id === 'core')?.content_version ?? rows[0]?.content_version;
     if (!looksLikeUsableCoreJson(core) || !looksLikeUsableScenesJson(scenes)) return null;
 
     return { core, scenes, version: version ?? 'supabase' };
@@ -124,3 +125,4 @@ export function useApprendreContent() {
     retry: 1,
   });
 }
+
