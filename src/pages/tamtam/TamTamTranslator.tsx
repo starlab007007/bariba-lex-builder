@@ -30,6 +30,7 @@ import { useTranslationHistory, TranslationHistoryItem } from '@/hooks/useTransl
 import { PhotoTranslator } from '@/components/tamtam/PhotoTranslator';
 import VoiceInput from '@/components/voice/VoiceInput';
 import ReplyAudioPlayer from '@/components/voice/ReplyAudioPlayer';
+import TranslationReferenceReview from '@/components/voice/TranslationReferenceReview';
 import { OfflineIndicator } from '@/components/tamtam/OfflineIndicator';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -514,6 +515,7 @@ export default function TamTamTranslator() {
                         <LanguageBadge lang={msg.targetLanguage} size="sm" />
                       </div>
                       <p className="whitespace-pre-wrap break-words text-base font-medium leading-relaxed text-[#241F2E]">{msg.translatedText}</p>
+                      <TranslationReferenceReview text={msg.translatedText} language={msg.targetLanguage === 'bariba' ? 'bba' : 'fr'} scope="translation" originalInput={msg.sourceText} onApply={(previous, next) => { if (msg.translatedText !== previous) return false; setMessages(current => current.map(item => item.id === msg.id && item.translatedText === previous ? { ...item, translatedText: next } : item)); return true; }} />
                       <div className="flex flex-wrap items-center gap-2 mt-2">
                         <div className="w-full"><ReplyAudioPlayer text={msg.translatedText} lang={msg.targetLanguage === 'bariba' ? 'bba' : 'fr'} label="Écouter la traduction" /></div>
                         <button
@@ -588,6 +590,7 @@ export default function TamTamTranslator() {
           }
           style={{ paddingBottom: keyboardOpen ? '4px' : 'max(8px, env(safe-area-inset-bottom))' }}
         >
+          {(translator.currentMode === 'text' || translator.currentMode === 'audio') && <TranslationReferenceReview text={textInput} language={translator.sourceLanguage === 'bariba' ? 'bba' : 'fr'} scope="source" disabled={translator.isProcessing || voiceBusy} onApply={(previous, next) => { if (textInput !== previous) return false; setTextInput(next); return true; }} />}
           {/* Clear button */}
           {messages.length > 0 && !keyboardOpen && (
             <div className="flex justify-center mb-2">
