@@ -70,6 +70,15 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
     const active = () => !controller.signal.aborted && turnId === turnCounter.current;
     let answer: DunyaWebTurn | undefined, playback = Promise.resolve(), playbackError = '', audioReceived = false;
     const cached: string[] = [];
+    const rememberAudio = () => {
+      if (!cached.length || !active() || audioCache.current.get(assistantId) === cached) return;
+      audioCache.current.get(assistantId)?.forEach(URL.revokeObjectURL);
+      audioCache.current.set(assistantId, cached);
+      if (audioCache.current.size > 6) {
+        const oldest = audioCache.current.keys().next().value!;
+        audioCache.current.get(oldest)?.forEach(URL.revokeObjectURL); audioCache.current.delete(oldest);
+      }
+    };
     setPhase('thinking'); setCaption(''); setSubCaption(null); setNotice(null); setStatus(input.audio ? 'Je vous comprends…' : 'Je prépare votre réponse…');
     setDiagnostic({});
     try {
@@ -120,6 +129,9 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           }
         },
       });
+      // The server may finish while playback is paused. Preserve the completed audio
+      // before waiting for the speaker so Stop -> Replay never regenerates it.
+      rememberAudio();
       await playback;
       if (!active()) return;
       if (answer?.lang === 'fr' && !audioReceived) {
@@ -131,11 +143,8 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
       if (!active()) return;
       session.current = false; setNotice(error instanceof Error ? error.message : 'Service vocal indisponible.');
     } finally {
-      if (cached.length && active()) {
-        audioCache.current.get(assistantId)?.forEach(URL.revokeObjectURL);
-        audioCache.current.set(assistantId, cached);
-        if (audioCache.current.size > 6) { const oldest = audioCache.current.keys().next().value!; audioCache.current.get(oldest)?.forEach(URL.revokeObjectURL); audioCache.current.delete(oldest); }
-      } else if (cached.length) cached.forEach(URL.revokeObjectURL);
+      rememberAudio();
+      if (cached.length && audioCache.current.get(assistantId) !== cached) cached.forEach(URL.revokeObjectURL);
       if (active()) {
         setStatus(null); setPhase('idle');
         if (session.current && handsFree && input.spoken) void listenTurnRef.current();
