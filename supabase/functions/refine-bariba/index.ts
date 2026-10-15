@@ -1,6 +1,5 @@
 import { aiFetch, AI_CHAT_URL, getActiveAIKey } from "../_shared/ai-provider.ts";
 import { repairRecognizedTranscript } from '../_shared/transcription-resources.ts';
-import { reviewTranslationReferences } from '../_shared/translation-reference-resources.ts';
 import { normalizeBaribaText, isInvalidUiLikeText, applyHardCorrections, detectRefinementChanges, buildRefineSystemPrompt } from '../_shared/bariba-linguistic-rules.ts';
 import { acceptRefinement, ensureMemory, estimateConfidence, foldBa, lexicalCoverage, memoryLookup } from '../_shared/translation-verifier.ts';
 
@@ -39,10 +38,9 @@ export async function handleRefine(req: Request): Promise<Response> {
     if (text.length > 4000) return reply({ error: 'Text too long' }, 413);
     const direction: Direction = body.direction === 'ba-fr' ? 'ba-fr' : 'fr-ba';
     if (body.type === 'reference-review') {
-      if (!['fr','bba'].includes(body.language) || !['source','translation'].includes(body.scope) || !text) return reply({ error: 'Invalid reference review' }, 400);
-      if (body.scope === 'translation' && (typeof body.originalInput !== 'string' || !body.originalInput.trim() || body.originalInput.length > 4000)) return reply({ error: 'Source required' }, 400);
-      const review = await reviewTranslationReferences(body.text, body.language, body.scope, body.originalInput ?? '', req.signal);
-      return reply({ review, meta: { aiUsed: false, requiresHumanValidation: true, duration: Date.now() - started } });
+      // Retired typed/target rewrite route. Cached clients must not fall through
+      // into the normal translation post-editor or consume a provider request.
+      return reply({ error: 'reference_review_retired', code: 'voice_transcription_only', message: 'Les propositions FITILA sont réservées aux transcriptions vocales.' }, 410);
     }
     const transcription = body.type === 'transcription';
     if (transcription) {

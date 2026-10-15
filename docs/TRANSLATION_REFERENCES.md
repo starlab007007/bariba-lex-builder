@@ -1,59 +1,33 @@
-# Formulations sourcées du traducteur
+# Traducteur : reconstruction réservée à la voix
 
-Le traducteur dispose d’une comparaison sur demande avant traduction et sur
-chaque réponse. Les boutons « Comparer aux ressources », « Appliquer la
-proposition » et « Rétablir » permettent un choix explicite. Le texte initial,
-la provenance et les références restent consultables. La copie et la lecture
-vocale utilisent la formulation choisie de la réponse concernée.
+Le 15 octobre 2026, l’écran du traducteur est rétabli à sa version du commit
+`9decada33f3690d0147384a6f96ce17c5f3b4ffc`, avant les panneaux de comparaison
+ajoutés dans #93. La saisie écrite, collée, photographiée ou importée et le
+résultat traduit ne proposent plus de reformulation par proximité avec le
+corpus. La route `reference-review` de `refine-bariba` répond explicitement
+410, y compris pour un ancien client en cache : aucune recherche ni requête
+Mistral/Gemini ne doit être déclenchée par ce mode retiré.
 
-## Recherche
+Le moteur ByT5, sa configuration Hugging Face, ses correspondances attestées,
+son post-traitement antérieur et son repli corpus restent ceux du parcours
+précédent. Ce retour ciblé ne remplace pas le modèle et ne retire pas la lecture
+vocale des traductions par Meta MMS.
 
-- Réutilisation serveur des références en direct du dictionnaire, des phrases
-  actives et des contenus Apprendre, sans ajouter de droit public sur les tables.
-- Comparaison de graphie, distance d’édition, rapprochement approximatif des
-  lettres et recouvrement des mots ; reprise des graphies de la référence.
-- Proposition d’une inversion adjacente uniquement si une phrase existante
-  contient les mêmes mots. Cette proximité ne prouve pas le maintien du sens.
-- Recherche lexicale des mots isolés dans les entrées/formes. Lettres manquantes
-  ou variantes proches : une modification au maximum pour les mots de quatre
-  à sept caractères, deux pour les mots plus longs, avec un seuil de proximité.
-  Les mots courts et les mots capitalisés ne sont pas corrigés isolément.
-- Contrôle des nombres, négations et pronoms recensés, identifiants et mots
-  capitalisés. Le premier mot capitalisé est également protégé, à l’exception
-  d’une graphie à clé phonétique équivalente. Ce repérage reste heuristique.
-- Pour une proposition sur le résultat traduit, la référence cible doit disposer
-  d’une référence source de même origine et identifiant, elle-même proche du
-  texte demandé. Sans cette preuve bilingue, la proposition est retirée.
-  Cette preuve utilise uniquement les lignes bilingues plates du corpus et du
-  catalogue Apprendre, avec le même type. Les fiches JSON et tableaux du
-  dictionnaire peuvent regrouper mots/exemples : leur identifiant commun ne
-  suffit pas à établir un couple bilingue. Ils restent recherchés dans le
-  texte source, et le catalogue Apprendre fournit leurs couples explicites.
+La reconstruction après reconnaissance vocale Omnilingual reste active dans
+`bariba-stt`, `dunya-voice-turn` et le mode `transcription` de `refine-bariba`.
+Les graphies proches, lettres manquantes et phrases proches sont comparées aux
+références du dictionnaire, du corpus et d’Apprendre. Les contrôles existants
+préservent les nombres, négations, pronoms et noms capitalisés repérés. Les
+scores restent des similarités, sans certification de naturalité.
 
-La recherche ne remplace pas le moteur ByT5 et ne requiert ni Mistral ni Gemini.
-Elle ne fabrique pas une grammaire Baatɔnum à partir de mots isolés. Les phrases
-non couvertes restent inchangées ; les alternatives restent à confirmer par
-l’utilisateur. Les erreurs initiales d’une référence peuvent subsister : le
-catalogue n’est pas une certification linguistique.
+Le panneau de vérification apparaît uniquement après un vocal. La proposition
+reste facultative et réversible ; elle remplace seulement le fragment reconnu.
+Une introduction écrite, un brouillon modifié et les doublons ambigus sont
+protégés. Écrire dans l’onglet Voix ne déclenche aucune reconstruction. L’envoi
+du message reste une action explicite de l’utilisateur.
 
-## Limites et exploitation
-
-Entrée de 4 000 caractères au maximum ; douze passages et un total de vingt-quatre
-recherches par requête. Les passages et mots non examinés sont conservés, et les
-comptages ne portent que sur les mots effectivement recherchés. Recherche sur
-clic pour éviter de solliciter la base à chaque frappe. Quotas persistants
-indépendants : 60 comparaisons/minute et 1 500/jour globalement. Délai global de
-huit secondes, dont cinq pour la recherche initiale.
-
-Un brouillon modifié pendant/après la recherche ne reçoit pas une ancienne
-proposition. Un changement de langue ou un démontage du composant annule la
-requête. Les choix ne deviennent pas automatiquement des données d’entraînement.
-Aucun nouvel enregistrement d’audio, de texte utilisateur ou de retour n’est
-créé par cette couche. L’historique existant conserve la traduction initiale ;
-le choix de reformulation concerne la réponse visible de la session.
-
-Les tests synthétiques vérifient les protections, les mots incomplets,
-l’inversion adjacente, la provenance bilingue, l’annulation et les contrôles
-vocaux du résultat affiché. Le gain réel de naturalité et de fidélité
-nécessite encore un jeu de références indépendant et une évaluation par des
-locuteurs Baatɔnum. Aucun score de similarité n’est affiché comme une probabilité.
+Les tests de régression contrôlent les deux directions écrites à 375/768/1280
+pixels, le résultat exact du moteur, la lecture vocale de ce résultat, l’absence
+des anciens panneaux/appels, la saisie écrite dans l’onglet Voix et les messages
+mixtes conservant les faits écrits après application/annulation d’une proposition
+sur le vocal. Les contrôles ASR et IA existants restent exécutés.
