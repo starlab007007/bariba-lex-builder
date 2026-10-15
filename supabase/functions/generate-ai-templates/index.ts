@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { mistralFetch, MISTRAL_CHAT_URL } from "../_shared/mistral.ts";
+import { createClient } from "npm:@supabase/supabase-js@2.81.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -247,19 +247,16 @@ function getExpertTikTokPrompts(template: any): ScenePrompt[] {
 // EDGE FUNCTION PRINCIPALE
 // ============================================
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const FITILA_IMAGE_API_KEY = Deno.env.get("FITILA_IMAGE_API_KEY");
+    const FITILA_IMAGE_API_KEY = Deno.env.get("FITILA_IMAGE_API_KEY") || "";
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!FITILA_IMAGE_API_KEY) {
-      throw new Error("FITILA_IMAGE_API_KEY not configured");
-    }
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
     const { action, templates, templateKey, templateId, batchSize = 3 } = await req.json() as GenerationRequest;
@@ -382,7 +379,7 @@ serve(async (req) => {
           .eq('template_key', templateKey);
 
         try {
-          const aiContent = await generateAIContent(FITILA_IMAGE_API_KEY, template);
+          const aiContent = await generateAIContent(template);
 
           const { error: updateError } = await supabase
             .from('ai_generated_templates')
@@ -443,7 +440,7 @@ serve(async (req) => {
               .update({ generation_status: 'generating' })
               .eq('id', template.id);
 
-            const aiContent = await generateAIContent(FITILA_IMAGE_API_KEY, template);
+            const aiContent = await generateAIContent(template);
 
             await supabase
               .from('ai_generated_templates')
@@ -480,6 +477,7 @@ serve(async (req) => {
       }
 
       case 'generate_single_visual': {
+        if (!FITILA_IMAGE_API_KEY || !Deno.env.get('FITILA_IMAGE_API_URL')) throw new Error('Le service de génération d’images n’est pas configuré.');
         // Génère les visuels pour UN seul template (pour progression scene par scene)
         const id = templateId || templateKey;
         if (!id) {
@@ -540,6 +538,7 @@ serve(async (req) => {
       }
 
       case 'generate_visuals_batch': {
+        if (!FITILA_IMAGE_API_KEY || !Deno.env.get('FITILA_IMAGE_API_URL')) throw new Error('Le service de génération d’images n’est pas configuré.');
         // Traite UN template à la fois pour éviter rate limits et permettre progression granulaire
         const { data: pendingTemplate, error: fetchError } = await supabase
           .from('ai_generated_templates')
@@ -646,7 +645,7 @@ serve(async (req) => {
           throw new Error(`Template not found: ${templateKey}`);
         }
 
-        const analysis = await analyzeTemplate(FITILA_IMAGE_API_KEY, template);
+        const analysis = await analyzeTemplate(template);
 
         await supabase
           .from('ai_generated_templates')
@@ -673,7 +672,7 @@ serve(async (req) => {
           throw new Error(`Template not found: ${templateKey}`);
         }
 
-        const enhanced = await enhanceTemplate(FITILA_IMAGE_API_KEY, template);
+        const enhanced = await enhanceTemplate(template);
 
         await supabase
           .from('ai_generated_templates')
@@ -856,12 +855,11 @@ Output: ONE stunning vertical image ready for video template preview.`;
 // GÉNÉRATION CONTENU AI (texte)
 // ============================================
 
-async function generateAIContent(apiKey: string, template: any) {
-  const [voiceDesc, analysis, storyboard] = await Promise.all([
-    generateVoiceDescription(apiKey, template),
-    analyzeTemplate(apiKey, template),
-    generateStoryboard(apiKey, template),
-  ]);
+async function generateAIContent(template: any) {
+  // Avoid three simultaneous requests against the same organisation quota.
+  const voiceDesc = await generateVoiceDescription(template);
+  const analysis = await analyzeTemplate(template);
+  const storyboard = await generateStoryboard(template);
 
   return {
     voiceDescriptionFr: voiceDesc.fr,
@@ -872,7 +870,7 @@ async function generateAIContent(apiKey: string, template: any) {
   };
 }
 
-async function generateVoiceDescription(apiKey: string, template: any) {
+async function generateVoiceDescription(template: any) {
   const prompt = `Tu es un expert en création de contenu accessible pour des utilisateurs africains, dont beaucoup ne savent pas lire.
 
 Voici un template de création vidéo :
@@ -892,14 +890,13 @@ Génère 3 textes courts et simples :
 
 Réponds en JSON avec les clés: "fr", "ba", "enhanced"`;
 
-  const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
+  const response = await mistralFetch(MISTRAL_CHAT_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "mistral-small-latest",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
     }),
@@ -923,7 +920,7 @@ Réponds en JSON avec les clés: "fr", "ba", "enhanced"`;
   }
 }
 
-async function analyzeTemplate(apiKey: string, template: any) {
+async function analyzeTemplate(template: any) {
   const prompt = `Analyse ce template de création vidéo et évalue-le :
 
 Template: ${template.label_fr}
@@ -946,14 +943,13 @@ Ajoute aussi :
 
 Réponds en JSON.`;
 
-  const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
+  const response = await mistralFetch(MISTRAL_CHAT_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "mistral-small-latest",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
     }),
@@ -982,7 +978,7 @@ Réponds en JSON.`;
   }
 }
 
-async function generateStoryboard(apiKey: string, template: any) {
+async function generateStoryboard(template: any) {
   const prompt = `Crée un storyboard simple pour ce template vidéo :
 
 Template: ${template.label_fr}
@@ -999,14 +995,13 @@ Génère un storyboard de 3-5 étapes, chaque étape avec :
 
 Réponds en JSON avec une clé "steps" contenant le tableau d'étapes.`;
 
-  const response = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
+  const response = await mistralFetch(MISTRAL_CHAT_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "mistral-small-latest",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
     }),
@@ -1032,6 +1027,7 @@ Réponds en JSON avec une clé "steps" contenant le tableau d'étapes.`;
   }
 }
 
-async function enhanceTemplate(apiKey: string, template: any) {
-  return generateVoiceDescription(apiKey, template);
+async function enhanceTemplate(template: any) {
+  return generateVoiceDescription(template);
 }
+

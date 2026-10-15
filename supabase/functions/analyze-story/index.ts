@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { mistralFetch } from "../_shared/mistral.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -99,7 +99,7 @@ Retourne UNIQUEMENT un JSON valide avec cette structure:
   "totalDuration": 30
 }`;
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -127,7 +127,7 @@ serve(async (req) => {
 
     console.log(`[analyze-story] Analyzing transcript (${transcript.length} chars) for ${duration}s video`);
     
-    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    const response = await mistralFetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${MISTRAL_API_KEY}`,
@@ -258,3 +258,4 @@ function createDefaultStructure(duration: number, transcript?: string): StoryStr
     totalDuration: duration
   };
 }
+

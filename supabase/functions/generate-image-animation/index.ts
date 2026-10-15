@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { mistralFetch, MISTRAL_CHAT_URL } from "../_shared/mistral.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -95,7 +95,7 @@ function parseEmotionAnalysis(content: string, duration: number): EmotionAnalysi
   };
 }
 
-serve(async (req) => {
+export async function handleImageAnimation(req: Request): Promise<Response> {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -104,16 +104,16 @@ serve(async (req) => {
   try {
     const { imageBase64, story, style, duration = 15, analysisType = 'full' } = await req.json();
 
-    const FITILA_IMAGE_API_KEY = Deno.env.get('FITILA_IMAGE_API_KEY');
-    if (!FITILA_IMAGE_API_KEY) {
-      throw new Error('FITILA_IMAGE_API_KEY is not configured');
+    const MISTRAL_API_KEY = Deno.env.get('MISTRAL_API_KEY');
+    if (!MISTRAL_API_KEY) {
+      throw new Error('MISTRAL_API_KEY is not configured');
     }
 
     const results: { imageAnalysis?: ImageAnalysis; emotionAnalysis?: EmotionAnalysis } = {};
 
-    // Image Analysis with Gemini Vision
+    // Image Analysis with Mistral Vision
     if (imageBase64 && (analysisType === 'full' || analysisType === 'image')) {
-      console.log('[generate-image-animation] Analyzing image with Gemini Vision...');
+      console.log('[generate-image-animation] Analyzing image with Mistral Vision...');
       
       const imagePrompt = `You are an expert cinematographer and animator. Analyze this image for creating a Ken Burns style animation.
 
@@ -141,14 +141,13 @@ Return ONLY a JSON object with this exact structure (no markdown, no explanation
 Style hint: ${style || 'traditional african storytelling'}
 Story context: ${story || 'A traditional African tale'}`;
 
-      const imageResponse = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
+      const imageResponse = await mistralFetch(MISTRAL_CHAT_URL, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${FITILA_IMAGE_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: 'mistral-small-latest',
           messages: [
             {
               role: 'user',
@@ -199,14 +198,13 @@ Return ONLY a JSON object with this exact structure (no markdown, no explanation
 
 Make segments that cover the full duration proportionally to the story content.`;
 
-      const emotionResponse = await fetch((Deno.env.get("FITILA_IMAGE_API_URL") || ""), {
+      const emotionResponse = await mistralFetch(MISTRAL_CHAT_URL, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${FITILA_IMAGE_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: 'mistral-small-latest',
           messages: [{ role: 'user', content: emotionPrompt }]
         })
       });
@@ -250,4 +248,6 @@ Make segments that cover the full duration proportionally to the story content.`
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
-});
+}
+
+if (Deno.env.get("FITILA_AI_TEST") !== "1") Deno.serve(handleImageAnimation);

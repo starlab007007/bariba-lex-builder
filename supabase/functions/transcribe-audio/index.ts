@@ -1,3 +1,4 @@
+import { mistralFetch } from "../_shared/mistral.ts";
 /**
  * Transcribe Audio Edge Function
  * 
@@ -7,7 +8,6 @@
  * Returns: { text, words[], language }
  */
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,7 +15,7 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -92,7 +92,7 @@ async function transcribeWithMistral(
 
   console.log('[transcribe-audio] Calling Mistral Voxtral Mini STT...');
 
-  const response = await fetch('https://api.mistral.ai/v1/audio/transcriptions', {
+  const response = await mistralFetch('https://api.mistral.ai/v1/audio/transcriptions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
@@ -118,3 +118,4 @@ async function transcribeWithMistral(
     language: data.language || 'fr',
   };
 }
+

@@ -1,259 +1,94 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import {
-  normalizeBaribaText,
-  isInvalidUiLikeText,
-  applyHardCorrections,
-  detectRefinementChanges,
-  computeRefinementConfidence,
-  buildRefineSystemPrompt,
-} from "../_shared/bariba-linguistic-rules.ts";
+import { mistralFetch, MISTRAL_CHAT_URL } from '../_shared/mistral.ts';
+import { normalizeBaribaText, isInvalidUiLikeText, applyHardCorrections, detectRefinementChanges, buildRefineSystemPrompt } from '../_shared/bariba-linguistic-rules.ts';
+import { acceptRefinement, ensureMemory, estimateConfidence, foldBa, lexicalCoverage, memoryLookup } from '../_shared/translation-verifier.ts';
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const GLOBAL_TIMEOUT_MS = 12_000;
+type Direction = 'fr-ba' | 'ba-fr';
 
-type RefineType = "translate" | "translation" | "transcription";
-type RefineDirection = "fr-ba" | "ba-fr";
-type RefineStyle = "correct" | "simplify" | "natural" | "formal";
-
-interface RefineRequest {
-  text?: string;
-  type?: RefineType;
-  direction?: RefineDirection;
-  originalInput?: string;
-  style?: RefineStyle;
+/** A conservative editing guard, not a semantic accuracy certificate. */
+export function controlledEdit(original: string, candidate: string, target: 'ba' | 'fr'): { accepted: boolean; reason: string } {
+  const base = acceptRefinement(original, candidate, target);
+  if (!base.accepted) return base;
+  const numbers = (s: string) => (s.match(/\d+(?:[.,]\d+)*/g) ?? []).sort().join('|');
+  if (numbers(original) !== numbers(candidate)) return { accepted: false, reason: 'numbers_changed' };
+  if (target === 'ba') {
+    const existing = new Set(foldBa(original).split(' '));
+    const introduced = foldBa(candidate).split(' ').filter(word => word && !existing.has(word));
+    if (introduced.some(word => !/^\d+$/.test(word) && lexicalCoverage(word, 'ba') === 0)) return { accepted: false, reason: 'unattested_word' };
+  } else {
+    const negation = (s: string) => /\b(pas|jamais|aucun|aucune|sans|ni|non)\b/iu.test(s);
+    if (negation(original) !== negation(candidate)) return { accepted: false, reason: 'negation_changed' };
+  }
+  return { accepted: true, reason: 'bounded_edit' };
 }
 
-serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  const startedAt = Date.now();
-  const timeoutController = new AbortController();
-  const timeoutId = setTimeout(() => timeoutController.abort(), GLOBAL_TIMEOUT_MS);
-
+export async function handleRefine(req: Request): Promise<Response> {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  const started = Date.now();
+  const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   try {
-    const body: RefineRequest = await req.json().catch(() => ({}));
-
-    const text = typeof body.text === "string" ? body.text : "";
-    const type: RefineType =
-      body.type === "translate" || body.type === "transcription" || body.type === "translation"
-        ? body.type
-        : "translation";
-    const direction: RefineDirection | undefined =
-      body.direction === "fr-ba" || body.direction === "ba-fr" ? body.direction : undefined;
-    const style: RefineStyle =
-      body.style === "simplify" || body.style === "natural" || body.style === "formal" || body.style === "correct"
-        ? body.style
-        : "correct";
-
-    const originalInput =
-      typeof body.originalInput === "string" ? normalizeBaribaText(body.originalInput) : undefined;
-
-    if (!normalizeBaribaText(text)) {
-      clearTimeout(timeoutId);
-      return new Response(
-        JSON.stringify({
-          refined: "",
-          changes: [],
-          confidence: 0,
-          meta: { duration: Date.now() - startedAt, fallback: true },
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    const MISTRAL_API_KEY = Deno.env.get("MISTRAL_API_KEY");
-    const cleanedText = normalizeBaribaText(text);
-
-    // Fallback immédiat si texte ressemble à du bruit UI
-    if (isInvalidUiLikeText(cleanedText)) {
-      clearTimeout(timeoutId);
-      return new Response(
-        JSON.stringify({
-          refined: cleanedText,
-          changes: [],
-          confidence: 35,
-          error: "Invalid input text",
-          meta: { duration: Date.now() - startedAt, fallback: true, aiUsed: false },
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    // Si pas de clé IA, on applique seulement les hard corrections
-    if (!MISTRAL_API_KEY) {
-      const fallbackRefined = applyHardCorrections(cleanedText);
-      const changes = detectRefinementChanges({
-        original: cleanedText,
-        refined: fallbackRefined,
-        originalInput,
-      });
-
-      clearTimeout(timeoutId);
-      return new Response(
-        JSON.stringify({
-          refined: fallbackRefined,
-          changes,
-          confidence: computeRefinementConfidence({
-            original: cleanedText,
-            refined: fallbackRefined,
-            changes,
-            aiUsed: false,
-          }),
-          error: "MISTRAL_API_KEY missing",
-          meta: { duration: Date.now() - startedAt, fallback: true, aiUsed: false },
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    const baseSystemPrompt = buildRefineSystemPrompt(type, direction);
-    const styleInstruction: Record<RefineStyle, string> = {
-      correct: "Corrige les erreurs linguistiques et rends le texte exact, sans changer le sens.",
-      simplify: "Simplifie la formulation pour la rendre plus courte et plus facile à comprendre, sans supprimer d’information essentielle.",
-      natural: "Rends la formulation plus naturelle, idiomatique et fluide pour un locuteur natif, sans changer le sens.",
-      formal: "Rends la formulation plus formelle, claire et respectueuse, sans changer le sens.",
+    const body = await req.json().catch(() => ({}));
+    const text = normalizeBaribaText(typeof body.text === 'string' ? body.text : '');
+    if (text.length > 4000) return reply({ error: 'Text too long' }, 413);
+    const direction: Direction = body.direction === 'ba-fr' ? 'ba-fr' : 'fr-ba';
+    const transcription = body.type === 'transcription';
+    const target = direction === 'ba-fr' && !transcription ? 'fr' : 'ba';
+    const originalInput = normalizeBaribaText(typeof body.originalInput === 'string' ? body.originalInput : '').slice(0, 4000);
+    const normalizeTarget = (value: string) => target === 'fr' ? normalizeBaribaText(value) : applyHardCorrections(value);
+    const fallback = normalizeTarget(text);
+    const result = (refined: string, meta: Record<string, unknown>, error?: string) => reply({
+      refined,
+      changes: detectRefinementChanges({ original: text, refined, originalInput }),
+      ...estimateConfidence(refined, target, false),
+      confidenceKind: meta.attested ? 'attested-reference' : 'heuristic-unverified',
+      ...(error ? { error } : {}),
+      meta: { duration: Date.now() - started, direction, type: transcription ? 'transcription' : 'translation', requiresHumanValidation: !meta.attested, ...meta },
+    });
+    if (!text || isInvalidUiLikeText(text)) return result(text, { fallback: true, aiUsed: false }, 'Invalid input text');
+    await ensureMemory();
+    // A known source/target pair takes precedence over an unconstrained rewrite.
+    const attested = originalInput && !transcription ? memoryLookup(originalInput, direction) : null;
+    if (attested) return result(attested.translation, { fallback: false, aiUsed: false, attested: true, grade: attested.grade });
+    if (!Deno.env.get('MISTRAL_API_KEY')?.trim()) return result(fallback, { fallback: true, aiUsed: false }, 'llm_not_configured');
+    const style = ['simplify', 'natural', 'formal'].includes(body.style) ? body.style : 'correct';
+    const instructions: Record<string, string> = {
+      correct: 'Corrige seulement les erreurs certaines.',
+      simplify: 'Simplifie uniquement si tu peux conserver exactement toutes les informations.',
+      natural: 'Améliore la fluidité uniquement avec des formulations attestées, sans inventer de mot.',
+      formal: 'Ajuste le registre sans modifier les faits ni le sens.',
     };
-    const systemPrompt = baseSystemPrompt + "\n\nSTYLE DE POST-ÉDITION DEMANDÉ :\n" + styleInstruction[style] + "\nRetourne uniquement le texte final.";
-    const userPrompt = originalInput
-      ? `Texte source : "${originalInput}"\nTexte à traiter : "${cleanedText}"`
-      : cleanedText;
-
-    console.log(
-      `🔧 refine-bariba: type=${type}, direction=${direction || "-"}, text="${cleanedText.substring(0, 80)}..."`,
-    );
-
-    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${MISTRAL_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "mistral-small-latest",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        max_tokens: 700,
-        temperature: type === "translate" ? 0.1 : 0.15,
-      }),
-      signal: timeoutController.signal,
+    // `translate` is the legacy ByT5 alias for post-editing an existing draft.
+    // French output must never be subjected to Bariba word substitutions.
+    const basePrompt = target === 'fr'
+      ? 'Tu révises une traduction française existante. Retourne uniquement du français. Ne retraduis pas le brouillon en bariba. Préserve les noms propres, nombres, négations et le sens. En cas de doute, recopie le brouillon.'
+      : buildRefineSystemPrompt(transcription ? 'transcription' : 'translation', direction);
+    const response = await mistralFetch(MISTRAL_CHAT_URL, {
+      body: JSON.stringify({ model: 'mistral-small-latest', max_tokens: 700, temperature: 0.1, messages: [
+        { role: 'system', content: `${basePrompt}\n${instructions[style]}\nAucune information ajoutée. Préserve les nombres, noms et négations. Une correction non certaine doit être abandonnée. Retourne uniquement le texte final.` },
+        { role: 'user', content: JSON.stringify({ source: originalInput || undefined, draft: text }) },
+      ] }),
+      signal: AbortSignal.any([req.signal, AbortSignal.timeout(12_000)]),
     });
-
     if (!response.ok) {
-      const errText = await response.text().catch(() => "");
-      console.error(`❌ AI gateway error ${response.status}: ${errText.substring(0, 200)}`);
-
-      const fallbackRefined = applyHardCorrections(cleanedText);
-      const changes = detectRefinementChanges({
-        original: cleanedText,
-        refined: fallbackRefined,
-        originalInput,
-      });
-
-      clearTimeout(timeoutId);
-      return new Response(
-        JSON.stringify({
-          refined: fallbackRefined,
-          changes,
-          confidence: computeRefinementConfidence({
-            original: cleanedText,
-            refined: fallbackRefined,
-            changes,
-            aiUsed: false,
-            hadError: true,
-          }),
-          error:
-            response.status === 429
-              ? "Rate limited"
-              : response.status === 402
-              ? "Credits exhausted"
-              : "AI error",
-          meta: {
-            duration: Date.now() - startedAt,
-            fallback: true,
-            aiUsed: false,
-            status: response.status,
-          },
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      const failure = await response.json().catch(() => ({}));
+      console.warn(JSON.stringify({ event: 'refine_mistral_unavailable', status: response.status }));
+      return result(fallback, { fallback: true, aiUsed: false, status: response.status }, failure.error?.code || 'llm_unavailable');
     }
-
-    const json = await response.json().catch(() => ({}));
-    const rawRefined = String(json?.choices?.[0]?.message?.content || "");
-
-    let refined = applyHardCorrections(rawRefined);
-
-    // Si l'IA renvoie vide / bruit, fallback sur texte original + hard corrections
-    if (!refined || isInvalidUiLikeText(refined)) {
-      console.warn("⚠️ AI returned empty or invalid response, using hard-correction fallback");
-      refined = applyHardCorrections(cleanedText);
-    }
-
-    const changes = detectRefinementChanges({
-      original: cleanedText,
-      refined,
-      originalInput,
-    });
-
-    const confidence = computeRefinementConfidence({
-      original: cleanedText,
-      refined,
-      changes,
-      aiUsed: true,
-    });
-
-    clearTimeout(timeoutId);
-
-    console.log(`✅ refine-bariba: ${changes.length} change(s), confidence=${confidence}`);
-    console.log(`   Original: "${cleanedText.substring(0, 60)}"`);
-    console.log(`   Refined:  "${refined.substring(0, 60)}"`);
-
-    return new Response(
-      JSON.stringify({
-        refined,
-        changes,
-        confidence,
-        meta: {
-          duration: Date.now() - startedAt,
-          fallback: false,
-          aiUsed: true,
-          type,
-          direction: direction || null,
-          style,
-        },
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  } catch (error: unknown) {
-    clearTimeout(timeoutId);
-
-    const message = error instanceof Error ? error.message : "Unknown error";
-    const isTimeout = /aborted|timeout/i.test(message);
-
-    console.error("Fatal error in refine-bariba:", error);
-
-    return new Response(
-      JSON.stringify({
-        refined: "",
-        changes: [],
-        confidence: 0,
-        error: isTimeout ? "Request timeout" : message,
-        meta: {
-          duration: Date.now() - startedAt,
-          fallback: true,
-          aiUsed: false,
-        },
-      }),
-      { status: isTimeout ? 504 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    const data = await response.json();
+    const candidate = normalizeTarget(String(data?.choices?.[0]?.message?.content || ''));
+    const verdict = candidate && !isInvalidUiLikeText(candidate) ? controlledEdit(text, candidate, target) : { accepted: false, reason: 'invalid_response' };
+    const refined = verdict.accepted ? candidate : fallback;
+    console.log(JSON.stringify({ event: 'refine_completed', accepted: verdict.accepted, duration: Date.now() - started }));
+    return result(refined, { fallback: !verdict.accepted, aiUsed: true, model: data.model || 'mistral-small-latest', accepted: verdict.accepted, guard: verdict.reason, style });
+  } catch (error) {
+    // Preserve the draft on provider/network timeout. Never invent a corrected text.
+    console.warn(JSON.stringify({ event: 'refine_unavailable', timeout: error instanceof Error && /abort|timeout/i.test(error.message) }));
+    return reply({ refined: '', changes: [], confidence: 0, confidenceKind: 'unavailable', error: 'Refinement unavailable', meta: { fallback: true, aiUsed: false, duration: Date.now() - started } }, 503);
   }
-});
+}
+
+if (Deno.env.get('FITILA_AI_TEST') !== '1') Deno.serve(handleRefine);

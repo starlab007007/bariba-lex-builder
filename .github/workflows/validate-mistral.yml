@@ -1,0 +1,20 @@
+name: Validate FITILA Mistral integration
+on:
+  pull_request:
+    paths: ['supabase/functions/**', 'tests/ai/**', 'tests/voice/**', 'src/lib/dunya/voiceProtocol.ts', '.github/workflows/validate-mistral.yml']
+  push:
+    branches: [main]
+    paths: ['supabase/functions/**', 'tests/ai/**', 'tests/voice/**', 'src/lib/dunya/voiceProtocol.ts']
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with: { deno-version: v2.x }
+      - name: Check all Mistral integrations
+        run: deno check --node-modules-dir=none $(rg -l 'mistralFetch' supabase/functions/*/index.ts) supabase/functions/dunya-voice-turn/index.ts supabase/functions/byt5-bariba-translate/index.ts
+      - name: Test transport, application contracts and voice pipeline
+        run: deno test --node-modules-dir=none --allow-env --allow-read=supabase/functions/_shared tests/ai/mistral.test.ts tests/voice/dunyaVoice.test.ts tests/voice/metaVoiceCore.test.ts supabase/functions/_shared/translation-verifier_test.ts

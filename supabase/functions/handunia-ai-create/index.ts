@@ -1,4 +1,5 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { mistralFetch } from "../_shared/mistral.ts";
+import { createClient } from "npm:@supabase/supabase-js@2.81.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -51,7 +52,7 @@ async function callAi(messages: Array<{ role: string; content: string }>, maxTok
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
-      const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+      const response = await mistralFetch("https://api.mistral.ai/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -457,3 +458,4 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ state: "unavailable", message: "Lumière IA indisponible", detail: message }, 503);
   }
 });
+

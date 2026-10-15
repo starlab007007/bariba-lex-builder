@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { mistralFetch } from "../_shared/mistral.ts";
+import { createClient } from "npm:@supabase/supabase-js@2.81.1";
 import {
   normalizeBaribaText,
   analyzeBaribaPairRules,
@@ -42,7 +42,7 @@ async function fetchWithTimeout(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    return await mistralFetch(url, { ...init, signal: controller.signal });
   } finally {
     clearTimeout(timer);
   }
@@ -103,7 +103,7 @@ function mergeScores(ruleScore: number, aiScore: number | null): number {
   return clamp01(ruleScore * 0.65 + aiScore * 0.35);
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -410,3 +410,4 @@ serve(async (req: Request) => {
     );
   }
 });
+

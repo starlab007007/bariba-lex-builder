@@ -67,10 +67,10 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.agri-advisor]
-verify_jwt = false
+verify_jwt = true
 
 [functions.smart-assistant]
-verify_jwt = false
+verify_jwt = true
 
 [functions.espace-ocr]
 verify_jwt = true
@@ -79,37 +79,37 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.generate-content]
-verify_jwt = false
+verify_jwt = true
 
 [functions.process-template]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-template-assets]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-ai-templates]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-template-visuals]
 verify_jwt = false
 
 [functions.analyze-story]
-verify_jwt = false
+verify_jwt = true
 
 [functions.analyze-news]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-image-animation]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-anime-story]
-verify_jwt = false
+verify_jwt = true
 
 [functions.transcribe-audio]
 verify_jwt = false
 
 [functions.analyze-asset]
-verify_jwt = false
+verify_jwt = true
 
 [functions.video-enhance]
 verify_jwt = false
@@ -129,3 +129,24 @@ verify_jwt = true
 [functions.tts-audio]
 verify_jwt = false
 
+
+[functions.aburu-fim-ai]
+verify_jwt = true
+
+[functions.fitila-ia-chat]
+verify_jwt = false
+
+[functions.fitila-tem-ia-chat]
+verify_jwt = true
+
+[functions.generate-content-stream]
+verify_jwt = true
+
+[functions.handunia-ai-create]
+verify_jwt = true
+
+[functions.handunia-memory-query]
+verify_jwt = true
+
+[functions.super-ia-create]
+verify_jwt = true

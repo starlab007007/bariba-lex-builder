@@ -47,7 +47,7 @@ Deno.env.set('FITILA_VOICE_SERVICE_URL', 'https://voice.test');
 Deno.env.set('FITILA_MODEL_API_TOKEN', 'test-private-token');
 const { handleVoiceTurn } = await import('../../supabase/functions/dunya-voice-turn/index.ts');
 const realFetch = globalThis.fetch;
-type Scenario = { quota?: boolean; quotaError?: boolean; asrEmpty?: boolean; asrFails?: boolean; ttsFails?: boolean; leaseError?: boolean };
+type Scenario = { quota?: boolean; quotaError?: boolean; asrEmpty?: boolean; asrFails?: boolean; ttsFails?: boolean; leaseError?: boolean; brainLimited?: boolean };
 async function scenario(body: Record<string, unknown>, config: Scenario = {}, token?: string) {
   const calls: string[] = [];
   globalThis.fetch = async (input, init) => {
@@ -66,7 +66,7 @@ async function scenario(body: Record<string, unknown>, config: Scenario = {}, to
       return response({ audio_base64: bytesToBase64(wav()) });
     }
     if (url.endsWith('byt5-bariba-translate')) return response({ translation: payload.sourceLang === 'bariba' ? 'Bonjour' : 'A kua' });
-    if (url.endsWith('fitila-ia-chat')) { assert(payload.skip_translation === true); return response({ response_fr: 'Bonjour.', model: 'test-brain' }); }
+    if (url.endsWith('fitila-ia-chat')) { assert(payload.skip_translation === true); if (config.brainLimited) return response({ error: 'llm_rate_limited' }, 429); return response({ response_fr: 'Bonjour.', model: 'test-brain' }); }
     if (url.endsWith('bariba-stt')) return response({ transcription: 'A kua' });
     if (url.endsWith('bariba-tts')) return response({ audio_url: 'https://audio.test/fallback.wav' });
     throw new Error('Unexpected call: ' + url);
@@ -147,4 +147,14 @@ Deno.test('cancelling a visitor does not release a CPU lease before its inferenc
     assert(!modelSignal?.aborted, 'VPS fetch remains alive until completion');
     resolveModel(); await response.text(); assert(released, 'lease released after the model finishes');
   } finally { resolveModel(); globalThis.fetch = realFetch; }
+});
+
+Deno.test('Mistral quota is distinct from a busy speech CPU and does not invent a spoken answer', async () => {
+  const r = await scenario({ text: 'Explique FITILA.', lang: 'fr' }, { brainLimited: true });
+  assert(r.events.some(e => e.type === 'error' && e.code === 'brain_rate_limited'));
+  assert(!r.events.some(e => e.type === 'audio' || e.type === 'answer'));
+  let message = '';
+  try { await consumeVoiceStream(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode(r.body)); c.close(); } }), () => {}); }
+  catch (e) { message = e instanceof Error ? e.message : ''; }
+  assert(message.includes('service de réponse IA') && message.includes('limité'));
 });

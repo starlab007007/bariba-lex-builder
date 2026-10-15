@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { mistralFetch } from "../_shared/mistral.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -54,7 +54,7 @@ Retourne UNIQUEMENT un JSON valide avec cette structure:
   "language": "bilingual"
 }`;
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -84,7 +84,7 @@ serve(async (req) => {
       `- Type: ${item.type}, Titre: ${item.title}, Description: ${item.description}${item.location ? `, Lieu: ${item.location}` : ''}`
     ).join('\n');
     
-    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    const response = await mistralFetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${MISTRAL_API_KEY}`,
@@ -213,3 +213,4 @@ function createDefaultNewsShow(villageName: string, language: string): NewsShowS
     language: language as 'french' | 'bariba' | 'bilingual'
   };
 }
+

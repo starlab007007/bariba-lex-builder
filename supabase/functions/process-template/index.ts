@@ -1,11 +1,11 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { mistralFetch } from "../_shared/mistral.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -37,7 +37,7 @@ ${hasAudio ? 'Le contenu inclut un enregistrement audio.' : ''}
 Génère une narration de 2-3 phrases maximum, en français simple et accessible.
 Format: intro accrocheuse + message principal + conclusion mémorable.`;
 
-        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        const response = await mistralFetch('https://api.mistral.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${MISTRAL_API_KEY}`,
@@ -78,7 +78,7 @@ Génère 3-5 segments de sous-titres en JSON avec ce format:
 
 Utilise des emojis pertinents: 🌾 agriculture, 💰 argent, ☀️ météo, 🏥 santé, 📚 éducation, etc.`;
 
-        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        const response = await mistralFetch('https://api.mistral.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${MISTRAL_API_KEY}`,
@@ -128,7 +128,7 @@ Tu donnes des conseils courts et pratiques.`;
 
 Réponds en français simple, format très court.`;
 
-        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        const response = await mistralFetch('https://api.mistral.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${MISTRAL_API_KEY}`,
@@ -172,3 +172,4 @@ Réponds en français simple, format très court.`;
     });
   }
 });
+

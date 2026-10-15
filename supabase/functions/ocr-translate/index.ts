@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { mistralFetch } from "../_shared/mistral.ts";
 import {
   normalizeBaribaText,
   safeJsonExtract,
@@ -129,7 +129,7 @@ Expected JSON format:
       ? `Extract all visible text exactly as written (likely French source text). Return ONLY JSON.${pageNumber ? ` Page ${pageNumber}.` : ""}`
       : `Extract all visible text exactly as written (likely Bariba source text). Return ONLY JSON.${pageNumber ? ` Page ${pageNumber}.` : ""}`;
 
-  const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+  const response = await mistralFetch("https://api.mistral.ai/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${mistralApiKey}`,
@@ -319,7 +319,7 @@ async function translateLongText(params: {
   };
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -604,3 +604,4 @@ serve(async (req) => {
     );
   }
 });
+
