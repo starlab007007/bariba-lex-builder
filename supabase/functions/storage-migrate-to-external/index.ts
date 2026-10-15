@@ -49,6 +49,19 @@ async function fetchBytes(c: SupabaseClient, bucket: string, path: string) {
   return { ok: true as const, buf, type: data.type, size: buf.byteLength, sha: await sha256(buf) };
 }
 
+// Sonde directe avec code HTTP : 200 = présent, 400/404 + not_found = absent, sinon inconnu.
+async function probeDst(url: string, key: string, bucket: string, path: string) {
+  const enc = path.split("/").map(encodeURIComponent).join("/");
+  const r = await fetch(`${url}/storage/v1/object/authenticated/${bucket}/${enc}`, { headers: { Authorization: `Bearer ${key}`, apikey: key } });
+  if (r.ok) {
+    const buf = await r.arrayBuffer();
+    return { ok: true as const, size: buf.byteLength, sha: await sha256(buf) };
+  }
+  const t = await r.text();
+  const missing = (r.status === 404 || r.status === 400) && /not.?found|NoSuchKey/i.test(t);
+  return { ok: false as const, missing, error: `HTTP ${r.status} ${t.slice(0, 160)}` };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   const json = (b: unknown, s = 200) =>
@@ -115,7 +128,7 @@ Deno.serve(async (req) => {
       const s = await fetchBytes(src, bucket, path);
       if (!s.ok) { manifest.push({ path, state: "source_bytes_missing", error: s.error }); continue; }
       if (s.size === 0) { manifest.push({ path, state: "source_empty_skipped", size: 0 }); continue; }
-      const d = await fetchBytes(dst, bucket, path);
+      const d = await probeDst(DST_URL, DST_KEY, bucket, path);
       if (d.ok) {
         manifest.push({ path, size: s.size, sha256: s.sha, state: d.sha === s.sha ? "already_identical" : "divergent_not_touched", dst_size: d.size });
         continue;
@@ -123,8 +136,12 @@ Deno.serve(async (req) => {
       if (!d.missing) { manifest.push({ path, size: s.size, sha256: s.sha, state: "dst_unknown_not_touched", error: d.error }); continue; }
       if (mode !== "copy") { manifest.push({ path, size: s.size, sha256: s.sha, state: "would_copy" }); continue; }
       const { error: upErr } = await dst.storage.from(bucket).upload(path, new Blob([s.buf], { type: s.type || "application/octet-stream" }), { upsert: false, contentType: s.type || undefined });
-      if (upErr) { manifest.push({ path, size: s.size, sha256: s.sha, state: "copy_failed", error: upErr.message }); continue; }
-      const v = await fetchBytes(dst, bucket, path);
+      if (upErr) {
+        // La destination a déjà une fiche d'objet mais ses octets sont introuvables : on ne remplace pas.
+        const st = /already exists/i.test(upErr.message) ? "dst_metadata_without_bytes_blocked" : "copy_failed";
+        manifest.push({ path, size: s.size, sha256: s.sha, state: st, dst_probe: d.error, error: upErr.message }); continue;
+      }
+      const v = await probeDst(DST_URL, DST_KEY, bucket, path);
       manifest.push({ path, size: s.size, sha256: s.sha, state: v.ok && v.sha === s.sha && v.size === s.size ? "copied_verified" : "copied_unverified", error: v.ok ? undefined : v.error });
     }
     const summary: Record<string, number> = {};
