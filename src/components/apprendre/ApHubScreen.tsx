@@ -353,7 +353,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
           <div className="mt-4 flex items-center gap-2.5 rounded-2xl border px-3.5 py-2.5" style={{ borderColor: AP_COLORS.line, backgroundColor: AP_COLORS.surface }}>
             <Volume2 className="h-4 w-4 shrink-0" style={{ color: AP_COLORS.goldDeep }} />
             <p className="text-[12.5px]" style={{ color: AP_COLORS.inkSoft }}>
-              {audioManifest.size} texte{audioManifest.size > 1 ? 's' : ''} avec avec voix humaine publiée.
+              {audioManifest.size} texte{audioManifest.size > 1 ? 's' : ''} avec voix humaine publiée.
             </p>
           </div>
         )}

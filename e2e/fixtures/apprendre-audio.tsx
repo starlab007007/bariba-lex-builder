@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {MemoryRouter,Routes,Route} from 'react-router-dom';
+import {AuthProvider} from '@/contexts/AuthContext';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import core from '@/data/apprendre_v2.json';
 import scenes from '@/data/scenes_v2.json';
@@ -20,7 +21,7 @@ import '@/index.css';
 const content=new ApprendreContent(core as unknown as ApprendreContentJson),sceneContent=new ScenesContent(scenes as unknown as ScenesContentJson);
 const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
 client.setQueryData(['apprendre-content-bundle'],{content,scenesContent:sceneContent,source:'bundled'});
-const store=ApprendreStore.open();store.progress.profile='fr';
+const store=ApprendreStore.open();store.progress.profile='fr';store.save();
 const query=new URLSearchParams(location.search),view=query.get('view')||'audio';
 const task=(partial:Partial<ApTask>):ApTask=>({kind:'choice',instruction:'Choisis la bonne réponse',prompt:'Cette banane est bonne',promptIsBariba:false,options:['Agɛdɛ ye ya do.','Nim mu boo yiba.'],optionsAreBariba:true,answer:'Agɛdɛ ye ya do.',orderAnswer:[],explain:'Agɛdɛ ye ya do. — Cette banane est bonne.',source:'Dictionnaire',verified:true,skill:'recall',...partial});
 const tasks=[task({}),task({kind:'order',prompt:'Remets les mots dans l’ordre',options:['ye','Agɛdɛ','do','ya'],answer:'Agɛdɛ ye ya do',orderAnswer:['Agɛdɛ','ye','ya','do'],skill:'order'})];
@@ -36,4 +37,4 @@ function Fixture(){
 }
 const theme=content.themes.find(theme=>theme.cards.length>120)||content.themes[0];
 const route=view==='theme'?'/learn/theme/'+(query.get('id')||theme.id):'/learn';
-createRoot(document.getElementById('root')!).render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[route]}><ApPronunciationProvider><div className="h-[100dvh] bg-[#F7F5EC]"><Fixture/></div></ApPronunciationProvider></MemoryRouter></QueryClientProvider>);
+createRoot(document.getElementById('root')!).render(<QueryClientProvider client={client}><AuthProvider><MemoryRouter initialEntries={[route]}><ApPronunciationProvider><div className="h-[100dvh] bg-[#F7F5EC]"><Fixture/></div></ApPronunciationProvider></MemoryRouter></AuthProvider></QueryClientProvider>);

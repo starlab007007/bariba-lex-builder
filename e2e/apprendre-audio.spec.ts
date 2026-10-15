@@ -27,6 +27,11 @@ async function setup(page:Page,opts:{human?:boolean;brokenHuman?:boolean;delayed
 }
 const goto=(page:Page,view='audio',id='')=>page.goto('/e2e/fixtures/apprendre-audio.html?view='+view+(id?'&id='+encodeURIComponent(id):''));
 const texts=(page:Page)=>page.locator('[data-ap-audio-text]').evaluateAll(elements=>elements.map(element=>element.getAttribute('data-ap-audio-text')));
+test('The actual learning home exposes greeting and proverb pronunciations to a visitor',async({page})=>{
+ await page.setViewportSize({width:375,height:900});const {requests}=await setup(page);await goto(page,'hub');await expect(page.getByRole('heading',{name:'Apprendre',exact:true})).toBeVisible();
+ await expect(page.getByText(/Appuyez sur le haut-parleur devant/)).toBeVisible();const audio=await texts(page);expect(audio.some(text=>text==='Mɛɛribu'||text==='A kpuna n do ?')).toBe(true);expect(core.proverbs.some((proverb:any)=>audio.includes(proverb.ba))).toBe(true);
+ expect(requests).toHaveLength(0);expect(await page.locator('button button').count()).toBe(0);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
 for(const width of [375,768,1280])test(`A visitor can listen, stop and replay without a flag or human recording at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:900});const {requests}=await setup(page);await goto(page);
  expect(requests).toHaveLength(0);await page.getByRole('button',{name:'Écouter : '+first,exact:true}).click();await expect(page.getByRole('button',{name:'Arrêter : '+first,exact:true})).toBeVisible();
