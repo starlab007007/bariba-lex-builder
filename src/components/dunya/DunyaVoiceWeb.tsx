@@ -319,7 +319,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
       setStatus(null);
       setNotice(error instanceof Error ? error.message : 'Écoute interrompue.');
     }
-  }, [handsFree, mode, muted, reviewStt, runTurn]);
+  }, [handsFree, metaOn, mode, muted, reviewStt, runTurn]);
 
   listenTurnRef.current = listenTurn;
 
