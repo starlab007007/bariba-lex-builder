@@ -1,3 +1,4 @@
+import { replaceTranscriptDraft } from '@/lib/voice/transcriptionReview';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Scale, User, BookOpen, ShieldCheck, Headphones } from 'lucide-react';
@@ -231,7 +232,7 @@ export default function FitilaTemIA() {
       </div>
 
       {/* Smart Input */}
-      <form onSubmit={handleSubmit} className="px-[18px] py-3 border-t border-[#E4DFCC] bg-[#F7F5EC]">
+      <form onSubmit={handleSubmit} className="max-h-[62dvh] overflow-y-auto overscroll-contain px-[18px] py-3 border-t border-[#E4DFCC] bg-[#F7F5EC]">
         <div className="flex items-end gap-2">
           <div className="flex-1 min-w-0">
             <BaribaSmartTextarea
@@ -258,7 +259,7 @@ export default function FitilaTemIA() {
           <span className="inline-flex items-center gap-1.5 text-[10px] text-[#716B5F]"><Headphones className="h-3 w-3" />Une voix pour chaque réponse</span>
           <select aria-label="Langue du vocal" value={voiceLang} disabled={isBusy} onChange={e => setVoiceLang(e.target.value as SpeechLanguage)} className="h-9 rounded-xl border border-[#E4DFCC] bg-white px-2 text-xs"><option value="bba">Baatɔnum</option><option value="fr">Français</option></select>
         </div>
-        <div className="mt-2"><VoiceInput lang={voiceLang} disabled={isProcessing} onBusyChange={setVoiceBusy} onTranscript={text => setInput(previous => [previous.trim(), text].filter(Boolean).join('\n'))} /></div>
+        <div className="mt-2"><VoiceInput onReplaceTranscript={(previous, next) => { const result = replaceTranscriptDraft(input, previous, next); if (result.replaced) setInput(result.text); return result.replaced; }} lang={voiceLang} disabled={isProcessing} onBusyChange={setVoiceBusy} onTranscript={text => setInput(previous => [previous.trim(), text].filter(Boolean).join('\n'))} /></div>
         <p className="mt-2 text-center text-[10px] text-[#716B5F]">Recherche locale · dictée et voix Baatɔnum avec connexion</p>
       </form>
 

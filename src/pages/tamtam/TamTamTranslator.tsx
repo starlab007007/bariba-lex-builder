@@ -1,3 +1,4 @@
+import { replaceTranscriptDraft } from '@/lib/voice/transcriptionReview';
 import { useState, useRef, useEffect } from 'react';
 import FitilaPageHeader from '@/components/fitila/FitilaPageHeader';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -582,8 +583,8 @@ export default function TamTamTranslator() {
         {/* Input Area */}
         <div
           className={keyboardOpen
-            ? "sticky bottom-0 flex-shrink-0 px-2 pt-1 pb-1 bg-[#F7F5EC]/98 z-50 border-t border-[#E4DFCC] shadow-[0_-8px_24px_rgba(36,31,46,0.06)] backdrop-blur"
-            : "sticky bottom-0 flex-shrink-0 px-3 sm:px-[18px] pt-2 pb-2 bg-[#F7F5EC]/98 z-50 border-t border-[#E4DFCC] shadow-[0_-8px_24px_rgba(36,31,46,0.06)] backdrop-blur"
+            ? "sticky bottom-0 max-h-[64dvh] overflow-y-auto overscroll-contain flex-shrink-0 px-2 pt-1 pb-1 bg-[#F7F5EC]/98 z-50 border-t border-[#E4DFCC] shadow-[0_-8px_24px_rgba(36,31,46,0.06)] backdrop-blur"
+            : "sticky bottom-0 max-h-[64dvh] overflow-y-auto overscroll-contain flex-shrink-0 px-3 sm:px-[18px] pt-2 pb-2 bg-[#F7F5EC]/98 z-50 border-t border-[#E4DFCC] shadow-[0_-8px_24px_rgba(36,31,46,0.06)] backdrop-blur"
           }
           style={{ paddingBottom: keyboardOpen ? '4px' : 'max(8px, env(safe-area-inset-bottom))' }}
         >
@@ -633,7 +634,7 @@ export default function TamTamTranslator() {
                 className="w-full"
               >
                 <div className="space-y-2">
-                  <VoiceInput lang={translator.sourceLanguage === 'bariba' ? 'bba' : 'fr'} disabled={translator.isProcessing} onBusyChange={setVoiceBusy} onTranscript={text => setTextInput(previous => [previous.trim(), text].filter(Boolean).join('\n'))} />
+                  <VoiceInput onReplaceTranscript={(previous, next) => { const result = replaceTranscriptDraft(textInput, previous, next); if (result.replaced) setTextInput(result.text); return result.replaced; }} lang={translator.sourceLanguage === 'bariba' ? 'bba' : 'fr'} disabled={translator.isProcessing} onBusyChange={setVoiceBusy} onTranscript={text => setTextInput(previous => [previous.trim(), text].filter(Boolean).join('\n'))} />
                   <Textarea aria-label="Texte à traduire" value={textInput} onChange={event => setTextInput(event.target.value)} onKeyDown={handleKeyDown} placeholder="Votre transcription apparaît ici. Relisez-la avant de traduire…" className="min-h-[64px] max-h-28 resize-none rounded-2xl border-[#E4DFCC] bg-white text-[16px]" />
                   <Button onClick={handleTextSubmit} disabled={!textInput.trim() || translator.isProcessing || voiceBusy} className="h-11 w-full rounded-xl bg-[#241F2E] text-white hover:bg-[#3C3449]"><Send className="mr-2 h-4 w-4" />Traduire le message</Button>
                 </div>

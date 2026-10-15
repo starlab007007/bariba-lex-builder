@@ -2,14 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 import { FileAudio, Loader2, Mic, RotateCcw, Square, X } from 'lucide-react';
 import { runServerVoice } from '@/lib/dunya/serverVoice';
 import { claimVoice, VOICE_FOCUS_EVENT, type SpeechLanguage } from '@/lib/voice/replySpeech';
+import TranscriptionReview from './TranscriptionReview';
+import type { TranscriptRepair } from '@/lib/voice/transcriptionReview';
 
 type Phase = 'idle' | 'permission' | 'recording' | 'transcribing';
-export default function VoiceInput({ lang, onTranscript, disabled = false, onBusyChange }: {
+export default function VoiceInput({ lang, onTranscript, onReplaceTranscript, disabled = false, onBusyChange }: {
   lang: SpeechLanguage; onTranscript: (text: string) => void; disabled?: boolean; onBusyChange?: (busy: boolean) => void;
+  onReplaceTranscript?: (previous: string, next: string) => boolean;
 }) {
   const [phase, setPhase] = useState<Phase>('idle'), [seconds, setSeconds] = useState(0);
   const [blob, setBlob] = useState<Blob | null>(null), [preview, setPreview] = useState('');
   const [error, setError] = useState(''), [notice, setNotice] = useState('');
+  const [repair, setRepair] = useState<TranscriptRepair | null>(null), [selectedText, setSelectedText] = useState('');
   const recorder = useRef<MediaRecorder | null>(null), stream = useRef<MediaStream | null>(null);
   const abort = useRef<AbortController | null>(null), generation = useRef(0), mounted = useRef(true);
   const owner = useRef(crypto.randomUUID());
@@ -40,24 +44,27 @@ export default function VoiceInput({ lang, onTranscript, disabled = false, onBus
 
   const transcribe = async (audio: Blob, ticket = ++generation.current) => {
     if (audio.size > 20_000_000) { setError('Ce fichier dépasse 20 Mo. Choisissez un vocal de deux minutes maximum.'); setPhase('idle'); return; }
-    setError(''); setNotice(''); setPhase('transcribing');
+    setError(''); setNotice(''); setRepair(null); setPhase('transcribing');
     abort.current?.abort(); const controller = new AbortController(); abort.current = controller;
-    let transcript = '', engine = '';
+    let transcript = '', engine = '', report: TranscriptRepair | undefined;
     try {
       await runServerVoice({ audio, lang, transcribeOnly: true, signal: controller.signal, onEvent(event) {
-        if (event.type === 'transcript') { transcript = event.text?.trim() || ''; engine = event.engine || ''; }
+        if (event.type === 'transcript') { transcript = event.text?.trim() || ''; engine = event.engine || ''; report = event.repair; }
         if (event.type === 'stage' && event.stage === 'waiting' && ticket === generation.current) setNotice('Le service termine un autre vocal…');
+        if (event.type === 'stage' && event.stage === 'analyzing_transcript' && ticket === generation.current) setNotice('Comparaison avec le dictionnaire et les phrases FITILA…');
       } });
       if (ticket !== generation.current || !mounted.current) return;
       if (!transcript) throw new Error('Aucune parole reconnue. Réessayez en parlant plus près du micro.');
       onTranscript(transcript);
+      setSelectedText(transcript);
+      if (report?.version === 'reference-v1' && Array.isArray(report.proposals)) setRepair(report);
       setNotice(`${engine === 'meta-asr-300m' ? 'Omnilingual' : 'Reconnaissance FITILA de secours'} · texte ajouté. Relisez puis envoyez.`);
     } catch (reason) {
       if (!controller.signal.aborted && ticket === generation.current && mounted.current) setError(reason instanceof Error ? reason.message : 'Transcription impossible. Réessayez.');
     } finally { if (ticket === generation.current && mounted.current) setPhase('idle'); }
   };
   const start = async () => {
-    setError(''); setNotice(''); setSeconds(0); setPhase('permission'); previewAudio.current?.pause(); claimVoice(owner.current);
+    setError(''); setNotice(''); setRepair(null); setSeconds(0); setPhase('permission'); previewAudio.current?.pause(); claimVoice(owner.current);
     const ticket = ++generation.current;
     try {
       if (!navigator.onLine) throw new Error('La dictée nécessite une connexion. Vous pouvez toujours écrire.');
@@ -96,6 +103,7 @@ export default function VoiceInput({ lang, onTranscript, disabled = false, onBus
     </div>
     {preview && <div className="mt-2 flex min-w-0 items-center gap-1.5"><audio ref={previewAudio} controls preload="metadata" src={preview} aria-label="Votre vocal" className="h-9 min-w-0 flex-1" onPlay={() => claimVoice(owner.current)} />{!busy && <button type="button" aria-label="Supprimer le vocal" onClick={() => { setBlob(null); setNotice(''); setError(''); }} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[#716B5F]"><X className="h-4 w-4" /></button>}</div>}
     {notice && <p role="status" className="mt-2 text-[11px] text-[#3F6E52]">{notice}</p>}
+    {repair && onReplaceTranscript && <TranscriptionReview report={repair} selected={selectedText} onChoose={text => { const ok = onReplaceTranscript(selectedText, text); if (ok) setSelectedText(text); return ok; }} />}
     {error && <div role="alert" className="mt-2 text-xs text-[#9C3C30]"><p>{error}</p>{blob && !busy && <button type="button" onClick={() => void transcribe(blob)} className="mt-2 inline-flex min-h-9 items-center gap-1 rounded-lg border border-[#E5BCB5] px-2 font-bold"><RotateCcw className="h-3 w-3" />Réessayer la transcription</button>}</div>}
   </section>;
 }

@@ -142,6 +142,20 @@ Deno.test('an attested source takes precedence without a Mistral rewrite', async
     const data = await response.json(); assert(data.refined.includes('Aagu') && data.meta.attested && !data.meta.aiUsed && data.meta.requiresHumanValidation && data.linguisticQualityCertified === false);
   });
 });
+Deno.test('transcription reconstruction uses references without calling either LLM and keeps raw words', async () => {
+  let requests = 0;
+  await mocked(async (url) => {
+    requests++;
+    if (String(url).includes('consume_dunya_voice_quota')) return json(true);
+    if (String(url).includes('fitila_asr_reference_candidates')) return json([{ query_index: 0, text: 'Agɛdɛ ye ya do.', source: 'apprendre', source_id: 'lesson', validation: 'catalogue', kind: 'lecon' }]);
+    throw new Error('transcription must not use the conversational provider');
+  }, async () => {
+    const data = await (await handleRefine(req({ text: 'Agede ye ya do', type: 'transcription' }))).json();
+    assert(data.refined === 'Agede ye ya do' && data.raw_transcription === 'Agede ye ya do');
+    assert(data.repair.proposals[0].text === 'Agɛdɛ ye ya do.' && !data.meta.aiUsed && data.meta.requiresHumanValidation);
+    assert(requests === 3);
+  });
+});
 Deno.test('French post-editing preserves its direction and reports an unverified heuristic', async () => {
   await mocked(async (_url, init) => {
     const body = JSON.parse(String(init?.body)); assert(body.messages[0].content.includes('Retourne uniquement du français'));

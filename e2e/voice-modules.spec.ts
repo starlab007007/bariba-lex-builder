@@ -6,7 +6,7 @@ function wav() {
   for (let n = 44; n < buffer.length; n += 2) buffer.writeInt16LE(Math.round(Math.sin(n / 15) * 8000), n);
   return buffer;
 }
-async function setup(page: Page, opts: { voiceFailure?: boolean; delayed?: boolean } = {}) {
+async function setup(page: Page, opts: { voiceFailure?: boolean; delayed?: boolean; repair?: boolean } = {}) {
   const requests: any[] = [], translations: any[] = [];
   await page.addInitScript(() => {
     const state = { media: [] as any[], finish() { const active = this.media.findLast((m: any) => !m.stopped); active?.onended?.(); if (active) active.stopped = true; } };
@@ -32,7 +32,8 @@ async function setup(page: Page, opts: { voiceFailure?: boolean; delayed?: boole
     const body = route.request().postDataJSON(); requests.push(body);
     if (opts.delayed) await new Promise(resolve => setTimeout(resolve, 600));
     if (opts.voiceFailure) { await route.fulfill({ status: 429, headers: cors, json: { code: 'rate_limited' } }); return; }
-    const events = body.transcribe_only ? [{ type: 'stage', stage: 'transcribing' }, { type: 'transcript', text: 'Saria 14se ya nɛɛ mba?', engine: 'meta-asr-300m', lang: body.lang }, { type: 'done' }]
+    const repair = { version: 'reference-v1', raw: 'Agede ye ya do', text: 'Agede ye ya do', language: body.lang, status: 'suggestion', source_count: 2, matched_segments: 0, analyzed_segments: 1, total_segments: 1, requires_confirmation: true, linguistic_quality_certified: false, score_is_probability: false, proposals: [{ text: 'Agɛdɛ ye ya do.', similarity: 0.94, sources: [{ source: 'apprendre', source_id: 'lesson', validation: 'catalogue', text: 'Agɛdɛ ye ya do.', kind: 'lecon' }], changes: [{ from: 'Agede ye ya do', to: 'Agɛdɛ ye ya do.' }] }] };
+    const events = body.transcribe_only ? [{ type: 'stage', stage: 'transcribing' }, { type: 'transcript', text: opts.repair ? repair.text : 'Saria 14se ya nɛɛ mba?', ...(opts.repair ? { raw_text: repair.raw, repair } : {}), engine: 'meta-asr-300m', lang: body.lang }, { type: 'done' }]
       : [{ type: 'audio', audio_base64: wav().toString('base64'), engine: 'meta-mms-tts-bba', text: body.text }, { type: 'done' }];
     await route.fulfill({ headers: { ...cors, 'Content-Type': 'application/x-ndjson' }, body: events.map(event => JSON.stringify({ request_id: 'test', ...event })).join('\n') + '\n' });
   });
@@ -160,4 +161,42 @@ test('A speech quota error leaves the answer readable and offers a retry', async
   await expect(page.getByRole('alert')).toContainText('très sollicité');
   await expect(page.getByRole('button', { name: 'Réessayer', exact: true })).toBeVisible();
   await expect(page.getByTestId('reply-audio-player')).toHaveCount(1);
+});
+for (const width of [375, 768, 1280]) {
+  test(`A sourced transcription proposal requires confirmation, preserves the draft and can be undone at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 }); await setup(page, { repair: true });
+    await page.goto('/e2e/fixtures/voice-modules.html?module=ia');
+    const draft = page.locator('textarea').first(); await draft.fill('Mon introduction');
+    await page.getByLabel('Fichier vocal').setInputFiles({ name: 'question.wav', mimeType: 'audio/wav', buffer: wav() });
+    await expect(draft).toHaveValue('Mon introduction\nAgede ye ya do');
+    const review = page.getByRole('region', { name: 'Vérification de la transcription', exact: true });
+    await expect(review.getByText('Agɛdɛ ye ya do.', { exact: true })).toBeVisible();
+    await expect(review).toContainText('Apprendre'); await expect(review).not.toContainText('%');
+    await review.getByRole('button', { name: 'Utiliser cette proposition', exact: true }).click();
+    await expect(draft).toHaveValue('Mon introduction\nAgɛdɛ ye ya do.');
+    await review.getByText('Voir la transcription brute', { exact: true }).click();
+    await expect(review.getByTestId('raw-transcript')).toHaveText('Agede ye ya do');
+    await review.getByRole('button', { name: 'Revenir au texte reconnu', exact: true }).click();
+    await expect(draft).toHaveValue('Mon introduction\nAgede ye ya do');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `test-results/transcription-review-${width}.png`, fullPage: true });
+    await draft.fill('Mon texte corrigé à la main');
+    await review.getByRole('button', { name: 'Utiliser cette proposition', exact: true }).click();
+    await expect(draft).toHaveValue('Mon texte corrigé à la main');
+    await expect(review.getByRole('status')).toContainText('brouillon a été modifié');
+  });
+}
+test('Translator submits the explicitly chosen reconstruction in the correct language', async ({ page }) => {
+  const { requests, translations } = await setup(page, { repair: true });
+  await page.goto('/e2e/fixtures/voice-modules.html?module=translator');
+  await page.getByRole('button', { name: 'Inverser les langues', exact: true }).click();
+  await page.getByRole('button', { name: 'Voix', exact: true }).click();
+  await page.getByLabel('Fichier vocal').setInputFiles({ name: 'question.wav', mimeType: 'audio/wav', buffer: wav() });
+  const draft = page.getByLabel('Texte à traduire'); await expect(draft).toHaveValue('Agede ye ya do');
+  expect(requests[0].lang).toBe('bba'); expect(translations).toHaveLength(0);
+  await page.getByRole('button', { name: 'Utiliser cette proposition', exact: true }).click();
+  await expect(draft).toHaveValue('Agɛdɛ ye ya do.');
+  await page.getByRole('button', { name: 'Traduire le message', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Écouter la traduction', exact: true })).toHaveCount(1);
+  expect(translations.at(-1).text).toBe('Agɛdɛ ye ya do.'); expect(translations.at(-1).sourceLang).toBe('bariba');
 });

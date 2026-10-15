@@ -1,9 +1,12 @@
-// Shared, dependency-free protocol and bounded media handling. No inferred confidence scores.
+import type { TranscriptRepair } from './transcription-repair.ts';
+// Shared protocol and bounded media handling. No inferred confidence scores.
 export type VoiceEvent = {
   type: 'stage' | 'transcript' | 'answer' | 'audio' | 'notice' | 'done' | 'error';
   request_id: string;
   stage?: string;
   text?: string;
+  raw_text?: string;
+  repair?: TranscriptRepair;
   subtitle?: string;
   lang?: 'fr' | 'bba';
   engine?: string;
@@ -95,3 +98,4 @@ export function segmentVoiceWav(encoded: string): Uint8Array[] {
   }
   return segments;
 }
+
