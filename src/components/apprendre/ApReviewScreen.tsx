@@ -182,19 +182,15 @@ function WordRow({ card, retention, onClick }: { card: ApCard; retention: number
   const color = pct < 50 ? AP_COLORS.clay : pct < 70 ? AP_COLORS.gold : AP_COLORS.sage;
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onClick(); }}
       className="flex w-full cursor-pointer items-center gap-3 rounded-[18px] border px-3.5 py-2.5 text-left"
       style={{ borderColor: AP_COLORS.line, backgroundColor: AP_COLORS.surface }}
     >
       <RetentionRing value={retention} label={`${pct} %`} color={color} />
-      <div className="min-w-0 flex-1">
+      <BaribaAudioButton text={card.ba} compact />
+      <button type="button" onClick={onClick} className="min-w-0 flex-1 text-left">
         <p className="text-[16px] font-bold" style={{ color: AP_COLORS.ink }}>{card.ba}</p>
         <p className="truncate text-sm" style={{ color: AP_COLORS.muted }}>{card.fr}</p>
-      </div>
-      <BaribaAudioButton text={card.ba} compact hideUnavailable />
+      </button>
       <ChevronRight className="h-5 w-5 shrink-0" style={{ color: AP_COLORS.muted }} />
     </div>
   );
@@ -382,3 +378,4 @@ export default function ApReviewScreen({ content, store, onBack, onWordTap }: Ap
     </div>
   );
 }
+

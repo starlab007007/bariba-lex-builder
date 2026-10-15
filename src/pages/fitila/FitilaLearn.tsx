@@ -13,18 +13,20 @@
 
 import { useLocation, useNavigate } from 'react-router-dom';
 import ApHubScreen from '@/components/apprendre/ApHubScreen';
+import { ApPronunciationProvider } from '@/components/apprendre/ApLinguisticText';
 
 export default function FitilaLearn() {
   const navigate = useNavigate();
   const location = useLocation();
 
   return (
-    <ApHubScreen
+    <ApPronunciationProvider><ApHubScreen
       onOpenVoiceStudio={() => navigate('/learn/voice-studio')}
       onOpenVoiceReview={() => navigate('/learn/voice-review')}
       onOpenProgress={() => navigate('/learn/progress')}
       routePath={location.pathname}
       onNavigate={(path) => navigate(path)}
-    />
+    /></ApPronunciationProvider>
   );
 }
+

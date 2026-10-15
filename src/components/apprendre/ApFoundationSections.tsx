@@ -1,3 +1,4 @@
+import ApLinguisticText from './ApLinguisticText';
 // Portage fidèle de `ApSectionView` et de ses six rendus par type
 // (fitila_flutter/lib/apprendre/apprendre_foundation.dart, branche
 // feat/apprendre-v2.4-build19-20260927) — dispatch exact sur `section.type` :
@@ -16,14 +17,7 @@
 // différente, fallback différent — volontairement non fusionnées, comme le
 // souligne la spec).
 //
-// Audio : comme documenté en tête de `ApSceneDetailScreen.tsx`, aucune
-// bibliothèque de voix de référence n'est portée ici (`ApAudioButton`/
-// `ApAudioService`) — ce module reste hors-ligne et sans appel réseau. Le
-// bouton d'écoute est donc un repli local, meilleur effort, via la synthèse
-// vocale du navigateur. La clé de lookup conceptuelle reste néanmoins le
-// texte bariba brut passé en argument (`example.ba`, ou les mots d'un
-// `order` rejoints par un espace) — pas un id — pour rester compatible avec
-// un futur câblage sur un vrai catalogue de voix (spec §12.3).
+// Écoute sur demande : voix humaine publiée en priorité, puis MMS Baatɔnum.
 
 import type { ComponentType, CSSProperties, ReactNode } from 'react';
 import {
@@ -78,8 +72,7 @@ export function apIcon(name: string): IconComp {
   return AP_ICONS[name] ?? BookOpen;
 }
 
-/** Voix de référence validée/published. Le bouton disparaît tant qu'aucune
- * prise approuvée et activée n'existe pour ce texte. */
+/** Écoute explicite, disponible également sans voix humaine publiée. */
 export function ApAudioButton({ text, size = 34 }: { text: string; size?: number }) {
   return <PublishedBaribaAudioButton text={text} compact={size <= 32} hideUnavailable />;
 }
@@ -124,7 +117,7 @@ function SectionTitle({ title, icon: Icon, iconColor }: { title: string; icon?: 
   return (
     <div className="mb-2.5 flex items-center gap-1.5">
       {Icon && <Icon className="h-[18px] w-[18px] shrink-0" style={{ color: iconColor }} />}
-      <p className="text-[16.5px] font-extrabold" style={{ color: AP_COLORS.ink }}>{title}</p>
+      <p className="text-[16.5px] font-extrabold" style={{ color: AP_COLORS.ink }}><ApLinguisticText text={title} /></p>
     </div>
   );
 }
@@ -137,9 +130,9 @@ function Explain({ section }: { section: Extract<ApFoundationSection, { type: 'e
   return (
     <div>
       {section.title.length > 0 && (
-        <p className="mb-1.5 text-[16.5px] font-extrabold" style={{ color: AP_COLORS.ink }}>{section.title}</p>
+        <p className="mb-1.5 text-[16.5px] font-extrabold" style={{ color: AP_COLORS.ink }}><ApLinguisticText text={section.title} /></p>
       )}
-      <p className="text-sm leading-[1.45]" style={{ color: AP_COLORS.inkSoft }}>{section.body}</p>
+      <p className="text-sm leading-[1.45]" style={{ color: AP_COLORS.inkSoft }}><ApLinguisticText text={section.body} /></p>
     </div>
   );
 }
@@ -153,7 +146,7 @@ function Tip({ section }: { section: Extract<ApFoundationSection, { type: 'tip' 
     <div className="flex items-start gap-2.5 rounded-[18px] p-3.5" style={{ backgroundColor: AP_COLORS.sageTint }}>
       <Lightbulb className="h-5 w-5 shrink-0" style={{ color: AP_COLORS.sageInk }} />
       {/* Couleur exacte du Dart (0xFF24452F), distincte de sageInk. */}
-      <p className="text-[13.5px] leading-[1.45]" style={{ color: '#24452F' }}>{section.body}</p>
+      <p className="text-[13.5px] leading-[1.45]" style={{ color: '#24452F' }}><ApLinguisticText text={section.body} /></p>
     </div>
   );
 }
@@ -172,12 +165,11 @@ export function ApExampleTile({ example, culture = false }: { example: ApExample
       borderColor={culture ? AP_COLORS.goldTint : AP_COLORS.line}
     >
       <div className="flex items-start gap-2.5">
-        <p className="min-w-0 flex-1 text-[17px] font-bold" style={{ color: AP_COLORS.ink }}>{example.ba}</p>
-        <ApAudioButton text={example.ba} size={34} />
+        <ApLinguisticText text={example.ba} bariba className="text-[17px] font-bold" />
       </div>
       <p className="mt-[3px] text-sm leading-[1.45]" style={{ color: AP_COLORS.quiet }}>{example.fr}</p>
       {example.note && example.note.length > 0 && (
-        <p className="mt-1.5 text-xs font-semibold" style={{ color: AP_COLORS.goldDeep }}>{example.note}</p>
+        <p className="mt-1.5 text-xs font-semibold" style={{ color: AP_COLORS.goldDeep }}><ApLinguisticText text={example.note} /></p>
       )}
       <div className="mt-2">
         <ApSourceTag source={example.src} verified={verified} />
@@ -230,9 +222,9 @@ function TableRowCard({
       style={{ borderTop: first ? 'none' : `1px solid ${AP_COLORS.line}` }}
     >
       <div className="flex items-baseline gap-3">
-        <p className="shrink-0 text-[16px] font-bold" style={{ color: AP_COLORS.ink, minWidth: 64, maxWidth: 150 }}>{lead}</p>
+        <p className="shrink-0 text-[16px] font-bold" style={{ color: AP_COLORS.ink, minWidth: 64, maxWidth: 150 }}><ApLinguisticText text={lead} column={columns[0] ?? ""} /></p>
         <p className="min-w-0 flex-1 text-[15px] font-semibold" style={{ color: AP_COLORS.inkSoft }}>
-          {isSourceColumn(1) ? '' : second}
+          {!isSourceColumn(1) && <ApLinguisticText text={second} column={columns[1] ?? ''} />}
         </p>
       </div>
       {cells.slice(2).map((cell, i0) => {
@@ -241,7 +233,7 @@ function TableRowCard({
         return (
           <p key={i} className="mt-[3px] text-xs" style={{ color: AP_COLORS.inkSoft }}>
             {i < columns.length && <span className="font-bold">{columns[i]} : </span>}
-            <span>{cell}</span>
+            <ApLinguisticText text={cell} column={columns[i] ?? ""} />
           </p>
         );
       })}
@@ -264,7 +256,7 @@ function TableView({ section }: { section: Extract<ApFoundationSection, { type: 
   return (
     <div>
       {section.title && section.title.length > 0 && (
-        <p className="mb-2.5 text-[16.5px] font-extrabold" style={{ color: AP_COLORS.ink }}>{section.title}</p>
+        <p className="mb-2.5 text-[16.5px] font-extrabold" style={{ color: AP_COLORS.ink }}><ApLinguisticText text={section.title} /></p>
       )}
       <CardBox padding="0" radius={18}>
         {section.rows.map((row, r) => (
@@ -289,10 +281,9 @@ function TableView({ section }: { section: Extract<ApFoundationSection, { type: 
 
 function PairSide({ example, color }: { example: ApExample; color: string }) {
   return (
-    <div className="flex-1 rounded-2xl p-3" style={{ backgroundColor: color }}>
+    <div className="min-w-0 flex-1 rounded-2xl p-3" style={{ backgroundColor: color }}>
       <div className="flex items-start gap-2">
-        <p className="min-w-0 flex-1 text-xl font-bold" style={{ color: AP_COLORS.ink }}>{example.ba}</p>
-        <ApAudioButton text={example.ba} size={32} />
+        <ApLinguisticText text={example.ba} bariba className="text-xl font-bold" />
       </div>
       <p className="mt-0.5 text-[13px] leading-[1.45]" style={{ color: AP_COLORS.inkSoft }}>{example.fr}</p>
       <p className="mt-1 text-[10.5px]" style={{ color: AP_COLORS.muted }}>{example.src}</p>
@@ -303,7 +294,7 @@ function PairSide({ example, color }: { example: ApExample; color: string }) {
 function Pairs({ section }: { section: Extract<ApFoundationSection, { type: 'pairs' }> }) {
   return (
     <div>
-      <p className="mb-2.5 text-[16.5px] font-extrabold" style={{ color: AP_COLORS.ink }}>{section.title}</p>
+      <p className="mb-2.5 text-[16.5px] font-extrabold" style={{ color: AP_COLORS.ink }}><ApLinguisticText text={section.title} /></p>
       <div className="space-y-2.5">
         {section.items.map((pair, i) => (
           <div key={i} className="flex items-stretch gap-2">
@@ -331,23 +322,22 @@ const ROLE_COLORS: Record<string, string> = {
 function Order({ section }: { section: Extract<ApFoundationSection, { type: 'order' }> }) {
   return (
     <CardBox radius={22}>
-      <p className="text-[16.5px] font-extrabold" style={{ color: AP_COLORS.ink }}>{section.title}</p>
-      <p className="mt-1 text-sm leading-[1.45]" style={{ color: AP_COLORS.inkSoft }}>{section.body}</p>
+      <p className="text-[16.5px] font-extrabold" style={{ color: AP_COLORS.ink }}><ApLinguisticText text={section.title} /></p>
+      <p className="mt-1 text-sm leading-[1.45]" style={{ color: AP_COLORS.inkSoft }}><ApLinguisticText text={section.body} /></p>
       <div className="mt-3.5 flex flex-wrap gap-2">
         {section.ba.map((word, i) => {
           const role = i < section.roles.length ? section.roles[i] : undefined;
           const bg = role !== undefined ? (ROLE_COLORS[role] ?? AP_COLORS.surfaceAlt) : AP_COLORS.surfaceAlt;
           return (
             <div key={i} className="rounded-[14px] px-3 py-2 text-center" style={{ backgroundColor: bg }}>
-              <p className="text-lg font-bold" style={{ color: AP_COLORS.ink }}>{word}</p>
+              <p className="text-lg font-bold" style={{ color: AP_COLORS.ink }}><ApLinguisticText text={word} bariba /></p>
               {role !== undefined && <p className="text-[11px]" style={{ color: AP_COLORS.muted }}>{role}</p>}
             </div>
           );
         })}
       </div>
       <div className="mt-3 flex items-start gap-2.5">
-        <p className="min-w-0 flex-1 text-sm leading-[1.45]" style={{ color: AP_COLORS.quiet }}>{section.fr}</p>
-        <ApAudioButton text={section.ba.join(' ')} size={34} />
+        <div className="min-w-0 flex-1"><ApLinguisticText text={section.ba.join(' ')} bariba /><p className="mt-1 text-sm leading-[1.45]" style={{ color: AP_COLORS.quiet }}>{section.fr}</p></div>
       </div>
       <div className="mt-1.5">
         <ApSourceTag source={section.src} />
@@ -380,3 +370,4 @@ export function ApSectionView({ section }: { section: ApFoundationSection }) {
       return null;
   }
 }
+

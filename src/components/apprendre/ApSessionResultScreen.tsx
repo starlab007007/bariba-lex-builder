@@ -1,3 +1,4 @@
+import ApLinguisticText from './ApLinguisticText';
 // Portage fidèle de `ApResultScreen` (fitila_flutter/lib/apprendre/apprendre_session.dart,
 // branche feat/apprendre-v2.4-build19-20260927) — écran de fin de séance :
 // anneau de score, titre, points, série, détail par type d'exercice, mots à
@@ -163,8 +164,8 @@ export default function ApSessionResultScreen({ title, result, missed, store, fo
             <div className="space-y-2">
               {missed.slice(0, 6).map((task, i) => (
                 <div key={`${task.cardId ?? task.answer}-${i}`} className="rounded-[16px] border p-3.5" style={{ borderColor: AP_COLORS.line, backgroundColor: AP_COLORS.surface }}>
-                  <p className={task.promptIsBariba ? 'text-[16px] font-bold' : 'text-sm font-bold'} style={{ color: AP_COLORS.ink }}>{task.prompt}</p>
-                  <p className={`mt-1 ${task.optionsAreBariba ? 'font-bold' : ''} text-[15px]`} style={{ color: AP_COLORS.sageInk }}>{task.answer}</p>
+                  <p className={task.promptIsBariba ? 'text-[16px] font-bold' : 'text-sm font-bold'} style={{ color: AP_COLORS.ink }}><ApLinguisticText text={task.prompt} bariba={task.promptIsBariba} /></p>
+                  <p className={`mt-1 ${task.optionsAreBariba ? 'font-bold' : ''} text-[15px]`} style={{ color: AP_COLORS.sageInk }}><ApLinguisticText text={task.answer} bariba={task.optionsAreBariba || task.kind === "speak"} /></p>
                   <div className="mt-1.5">
                     <SourceTag source={task.source} verified={task.verified} />
                   </div>
@@ -200,3 +201,4 @@ export default function ApSessionResultScreen({ title, result, missed, store, fo
     </div>
   );
 }
+

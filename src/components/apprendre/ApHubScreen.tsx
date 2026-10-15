@@ -1,3 +1,4 @@
+import ApLinguisticText from './ApLinguisticText';
 // Portage fidèle du Hub Apprendre (`apprendre_hub.dart`, branche
 // feat/apprendre-v2.4-build19-20260927) — écran d'accueil du module,
 // assemble tous les écrans déjà portés et vérifiés (Séance, Révision,
@@ -221,7 +222,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
         <div className="mb-4 flex min-h-12 items-center pl-14">
           <div className="min-w-0">
             <h1 className="truncate text-[22px] font-black leading-tight" style={{ color: AP_COLORS.ink }}>Apprendre</h1>
-            <p className="truncate text-[13px]" style={{ color: AP_COLORS.muted }}>Mɛɛribu · bàátɔ̀nú ⇄ français</p>
+            <p className="truncate text-[13px]" style={{ color: AP_COLORS.muted }}><ApLinguisticText text="Mɛɛribu" bariba /> · bàátɔ̀nú ⇄ français</p>
           </div>
           <button
             type="button"
@@ -243,12 +244,13 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
             </button>
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-2xl font-bold" style={{ color: AP_COLORS.ink }}>{greeting}</p>
+            <p className="truncate text-2xl font-bold" style={{ color: AP_COLORS.ink }}><ApLinguisticText text={greeting} bariba /></p>
             <p className="mt-0.5 truncate text-sm" style={{ color: AP_COLORS.muted }}>{greetingSub}</p>
           </div>
           <ApHubPill label={`${progress.streak} j`} icon={Flame} background={AP_COLORS.clayTint} foreground={AP_COLORS.clayInk} />
         </div>
 
+        <p className="mt-3 rounded-2xl border border-[#E4DFCC] bg-white px-3 py-2 text-xs text-[#716B5F]">Appuyez sur le haut-parleur devant un mot ou une phrase. Voix humaine publiée en priorité, sinon voix synthétique Baatɔnum avec connexion.</p>
         {/* 2. _GuideHero */}
         <div className="mt-4">
           {nextFoundation ? (
@@ -351,7 +353,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
           <div className="mt-4 flex items-center gap-2.5 rounded-2xl border px-3.5 py-2.5" style={{ borderColor: AP_COLORS.line, backgroundColor: AP_COLORS.surface }}>
             <Volume2 className="h-4 w-4 shrink-0" style={{ color: AP_COLORS.goldDeep }} />
             <p className="text-[12.5px]" style={{ color: AP_COLORS.inkSoft }}>
-              {audioManifest.size} texte{audioManifest.size > 1 ? 's' : ''} avec voix de référence, disponibles hors-ligne une fois écoutés.
+              {audioManifest.size} texte{audioManifest.size > 1 ? 's' : ''} avec avec voix humaine publiée.
             </p>
           </div>
         )}
@@ -383,3 +385,4 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
     </div>
   );
 }
+

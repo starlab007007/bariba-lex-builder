@@ -7,6 +7,7 @@
 
 import { ApCard, ApFoundation, ApTheme, ApprendreContent, baseForm, cardConjugation, cardHasExample, cardSource, cardVerified, sentenceWords } from './content';
 import type { ApprendreProgress } from './store';
+import { buildPronunciationLexicon, optionsAreNative } from './pronunciation';
 
 export type ApTaskKind = 'choice' | 'order' | 'speak';
 
@@ -112,6 +113,7 @@ export class ApTaskFactory {
   /** Questions du test de fin de fondation. */
   foundationQuiz(unit: ApFoundation): ApTask[] {
     const tasks: ApTask[] = [];
+    const lexicon = buildPronunciationLexicon(this.content.raw);
     for (const quiz of unit.quiz) {
       if (quiz.type === 'order' && quiz.answer.length > 0) {
         tasks.push(baseTask({
@@ -132,7 +134,7 @@ export class ApTaskFactory {
           instruction: 'Choisis la bonne réponse',
           prompt: quiz.prompt,
           options: shuffled(quiz.options),
-          optionsAreBariba: quiz.options.some(looksBariba),
+          optionsAreBariba: quiz.options.some(looksBariba) || optionsAreNative(quiz.options, lexicon),
           answer: quiz.answer,
           explain: quiz.explain,
           source: quiz.src,
@@ -424,3 +426,4 @@ export class ApTaskFactory {
     return { ...task, options: shuffled(task.options) };
   }
 }
+
