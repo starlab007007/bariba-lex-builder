@@ -26,7 +26,11 @@ export class DomLocalizer {
     private locale: UiLocale,
   ) {}
   private protected(node: Element | null) {
-    return !node || !!node.closest(excluded);
+    if (!node) return true;
+    const protectedRoot = node.closest(excluded);
+    // html.lang describes the selected interface, while a nested lang="bba"
+    // identifies original linguistic content. Only the nested scope is exempt.
+    return !!protectedRoot && protectedRoot !== document.documentElement;
   }
   private processText(node: Text) {
     if (

@@ -10,6 +10,7 @@ import {
 } from "@/contexts/FitilaLanguageContext";
 import FitilaNavPanel from "@/components/fitila/FitilaNavPanel";
 import TamTamTranslator from "@/pages/tamtam/TamTamTranslator";
+import PlatformLocaleAdmin from "@/components/admin/PlatformLocaleAdmin";
 import "@/index.css";
 const client = new QueryClient({
   defaultOptions: { queries: { retry: false } },
@@ -23,6 +24,8 @@ function Fixture() {
   useEffect(() => {
     (window as any).__locale = locale.setLanguage;
   }, [locale.setLanguage]);
+  if (new URLSearchParams(location.search).has("admin"))
+    return <PlatformLocaleAdmin />;
   return (
     <div className="grid min-w-0 gap-4 p-4 md:grid-cols-[250px_1fr]">
       <aside>
