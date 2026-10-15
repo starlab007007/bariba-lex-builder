@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +24,7 @@ interface ChatMessage {
 }
 
 interface FitilaRequest {
+  skip_translation?: boolean;
   message?: string;
   history?: ChatMessage[];
   conversationHistory?: ChatMessage[];
@@ -127,7 +127,7 @@ async function callLLMWithFallback(args: {
         continue;
       }
 
-      console.log(`[fitila] LLM OK with ${model}: "${text.substring(0, 80)}..."`);
+      console.log(`[fitila] LLM OK with ${model}`);
       return { text, model };
     } catch (e) {
       console.warn(`[fitila] Model ${model} error: ${e instanceof Error ? e.message : "unknown"}`);
@@ -178,14 +178,14 @@ async function translateViaByT5(args: {
       return { translation: null, error: data?.error || "ByT5 returned empty translation" };
     }
 
-    console.log(`[fitila] ByT5 OK: "${translation.substring(0, 80)}..."`);
+    console.log('[fitila] ByT5 OK');
     return { translation };
   } catch (e) {
     return { translation: null, error: e instanceof Error ? e.message : "ByT5 failed" };
   }
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -222,7 +222,7 @@ serve(async (req: Request) => {
       { role: "user", content: message },
     ];
 
-    console.log(`[fitila] Incoming: "${message.substring(0, 120)}"`);
+    console.log('[fitila] Request received');
 
     // Step 1: LLM generates French response
     // Providers, in order: Mistral (MISTRAL_API_KEY), then the Hugging Face router
@@ -270,7 +270,7 @@ serve(async (req: Request) => {
     let responseBa: string | null = null;
     let isFallback = true;
 
-    if (supabaseUrl && serviceKey) {
+    if (supabaseUrl && serviceKey && body.skip_translation !== true) {
       const byt5Result = await translateViaByT5({
         text: responseFr,
         supabaseUrl,
@@ -283,7 +283,7 @@ serve(async (req: Request) => {
       } else {
         console.warn(`[fitila] ByT5 translation failed: ${byt5Result.error}`);
       }
-    } else {
+    } else if (body.skip_translation !== true) {
       console.warn("[fitila] Missing SUPABASE_URL/key, skipping ByT5 translation");
     }
 
@@ -321,3 +321,4 @@ serve(async (req: Request) => {
     );
   }
 });
+

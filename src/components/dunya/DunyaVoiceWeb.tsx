@@ -1,393 +1,207 @@
 import { supabase } from '@/integrations/supabase/client';
-import { DUNYA_PILOT_ROLES, getMetaVoiceFlags, nextPilotStatus, resolveDunyaVoice, type DunyaPilotStatus, type DunyaVoiceChoice } from '@/lib/voice/metaVoice';
-import { frenchGreetingAnswer, routeDunyaInput } from '@/lib/dunya/semanticRouter';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Captions, CaptionsOff, Check, ChevronDown, Copy, Languages, Menu, MessageSquare, Mic, MicOff, Send, Settings2, Square, Volume2, X } from 'lucide-react';
-import {
-  askDunya,
-  hasFrenchRecognition,
-  loadHistory,
-  loadPreference,
-  looksFrench,
-  MODE_LABEL,
-  recognizeFrench,
-  recordUtterance,
-  saveHistory,
-  savePreference,
-  speakBariba,
-  speakFrench,
-  splitSentences,
-  stopSpeaking,
-  transcribeBariba,
-  setDunyaMetaVoice,
-  lastVoiceEngine,
-  translate,
-  type DunyaWebMode,
-  type DunyaWebTurn,
-} from '@/lib/dunya/voiceWeb';
+import { Captions, CaptionsOff, Check, ChevronDown, Copy, Languages, Menu, MessageSquare, Mic, MicOff, Send, Settings2, Square, Volume2, X, Paperclip, Pause, Play } from 'lucide-react';
+import { runServerVoice, voiceMessage, type VoiceEvent } from '@/lib/dunya/serverVoice';
+import { hasFrenchRecognition, loadHistory, loadPreference, looksFrench, MODE_LABEL, recognizeFrench,
+  recordUtterance, saveHistory, savePreference, speakFrench, stopSpeaking, playUrl, pauseSpeaking, resumeSpeaking,
+  type DunyaWebMode, type DunyaWebTurn } from '@/lib/dunya/voiceWeb';
 
 type Phase = 'idle' | 'listening' | 'thinking' | 'speaking';
-
-type Props = {
-  onOpenMenu?: () => void;
-  /** Local, offline answer used when the browser has no network. */
-  offlineAnswer?: (question: string) => string;
-};
-
+type Props = { onOpenMenu?: () => void; offlineAnswer?: (question: string) => string };
 const MODE_HINT: Record<DunyaWebMode, string> = {
-  fr: 'DUNYA écoute et répond uniquement en français.',
-  bba: 'DUNYA écoute et répond uniquement en baatɔnum.',
-  both: 'Parlez l’une ou l’autre langue : DUNYA répond dans la vôtre.',
+  fr: 'DUNYA écoute et répond en français.', bba: 'DUNYA écoute et répond en baatɔnum.', both: 'DUNYA répond dans la langue de votre demande.',
 };
-
 const SUGGESTIONS: Record<DunyaWebMode, string[]> = {
-  fr: ['Comment soigner une plaie légère ?', 'Explique-moi la rotation des cultures', 'Comment dit-on merci en baatɔnum ?'],
-  bba: ['A kua', 'Bɛɛ ka weru'],
-  both: ['Comment dit-on merci en baatɔnum ?', 'A kua'],
+  fr: ['Explique-moi la rotation des cultures', 'Comment dit-on merci en baatɔnum ?'], bba: ['A kua', 'Bɛɛ ka weru'], both: ['Comment dit-on merci en baatɔnum ?', 'A kua'],
 };
-
-const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
+const uid = () => crypto.randomUUID();
 
 export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
-  const [mode, setMode] = useState<DunyaWebMode>(() => loadPreference<DunyaWebMode>('mode', 'fr'));
-  const [turns, setTurns] = useState<DunyaWebTurn[]>(() => loadHistory(loadPreference<DunyaWebMode>('mode', 'fr')));
+  const [mode, setMode] = useState<DunyaWebMode>(() => loadPreference('mode', 'fr'));
+  const [turns, setTurns] = useState<DunyaWebTurn[]>(() => loadHistory(loadPreference('mode', 'fr')));
   const [phase, setPhase] = useState<Phase>('idle');
-  const [level, setLevel] = useState(0);
-  const [caption, setCaption] = useState('');
+  const [level, setLevel] = useState(0), [caption, setCaption] = useState('');
   const [subCaption, setSubCaption] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [textView, setTextView] = useState(false);
-  const [draft, setDraft] = useState('');
-  const [modePicker, setModePicker] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [status, setStatus] = useState<string | null>(null), [notice, setNotice] = useState<string | null>(null);
+  const [textView, setTextView] = useState(false), [draft, setDraft] = useState('');
+  const [modePicker, setModePicker] = useState(false), [settingsOpen, setSettingsOpen] = useState(false);
   const [onboarded, setOnboarded] = useState(() => loadPreference('onboarded', false));
   const [handsFree, setHandsFree] = useState(() => loadPreference('handsFree', true));
   const [subtitles, setSubtitles] = useState(() => loadPreference('subtitles', true));
   const [frSubtitles, setFrSubtitles] = useState(() => loadPreference('frSubtitles', false));
-  const [muted, setMuted] = useState(false);
-  const [pilotStatus, setPilotStatus] = useState<DunyaPilotStatus>('checking');
-  const pilot = pilotStatus === 'eligible';
-  const [voiceChoice, setVoiceChoice] = useState<DunyaVoiceChoice | null>(() => loadPreference<DunyaVoiceChoice | null>('voiceChoice', null));
   const [reviewStt, setReviewStt] = useState(() => loadPreference('reviewStt', false));
+  const [muted, setMuted] = useState(false), [paused, setPaused] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [diagnostic, setDiagnostic] = useState<{ request?: string; asr?: string; tts?: string; elapsed?: number }>({});
+  const session = useRef(false), turnCounter = useRef(0), emptyListens = useRef(0);
+  const abort = useRef<AbortController | null>(null), recordStop = useRef<AbortController | null>(null);
+  const scroller = useRef<HTMLDivElement | null>(null), fileInput = useRef<HTMLInputElement | null>(null);
+  const turnsRef = useRef(turns); turnsRef.current = turns;
+  const audioCache = useRef(new Map<string, string[]>());
+  const listenTurnRef = useRef<() => Promise<void>>(async () => {});
 
-  // Pilot gating: Meta voices (MMS-TTS CC BY-NC) only for signed-in admin/editor accounts.
-  // An RPC failure never clears an already-confirmed pilot status.
   useEffect(() => {
     let alive = true;
     const check = async () => {
       const { data } = await supabase.auth.getSession();
-      const uidv = data.session?.user?.id;
-      if (!uidv) { if (alive) setPilotStatus('signed_out'); return; }
-      const roles: string[] = [];
-      let failed = false;
-      for (const r of DUNYA_PILOT_ROLES) {
-        try {
-          const { data: ok, error } = await supabase.rpc('has_role', { _user_id: uidv, _role: r });
-          if (error) failed = true; else if (ok) roles.push(r);
-        } catch { failed = true; }
-      }
-      if (alive) setPilotStatus((prev) => nextPilotStatus(prev, true, roles, failed));
+      if (!data.session) { if (alive) setIsAdmin(false); return; }
+      const { data: ok } = await supabase.rpc('has_role', { _user_id: data.session.user.id, _role: 'admin' });
+      if (alive) setIsAdmin(ok === true);
     };
-    void check().catch(() => { if (alive) setPilotStatus((p) => (p === 'eligible' ? p : 'check_failed')); });
-    const { data: sub } = supabase.auth.onAuthStateChange((evt) => {
-      if (evt === 'SIGNED_IN' || evt === 'SIGNED_OUT') void check().catch(() => undefined);
-    });
-    return () => { alive = false; sub.subscription.unsubscribe(); };
+    void check().catch(() => undefined);
+    const { data } = supabase.auth.onAuthStateChange(() => { setTimeout(() => void check().catch(() => undefined), 0); });
+    return () => { alive = false; data.subscription.unsubscribe(); };
   }, []);
-  useEffect(() => {
-    setDunyaMetaVoice(pilot ? resolveDunyaVoice(true, voiceChoice, getMetaVoiceFlags()) : null);
-    return () => setDunyaMetaVoice(null);
-  }, [pilot, voiceChoice]);
-  const metaOn = pilot && voiceChoice !== 'fitila';
-  const effective = pilot ? resolveDunyaVoice(true, voiceChoice, getMetaVoiceFlags()) : getMetaVoiceFlags();
-  const pilotLabel: Record<DunyaPilotStatus, string> = {
-    checking: 'Vérification du compte…',
-    signed_out: 'Non connecté — voix FITILA utilisée.',
-    eligible: 'Compte pilote autorisé.',
-    not_eligible: 'Compte non pilote — voix FITILA utilisée.',
-    check_failed: 'Vérification du rôle impossible (réseau) — voix FITILA utilisée.',
-  };
-
-  const session = useRef(false);
-  const abort = useRef<AbortController | null>(null);
-  const turnCounter = useRef(0);
-  const emptyListens = useRef(0);
-  const scroller = useRef<HTMLDivElement | null>(null);
-  const turnsRef = useRef(turns);
-  turnsRef.current = turns;
-
   useEffect(() => saveHistory(mode, turns), [mode, turns]);
-  useEffect(() => {
-    if (scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight;
-  }, [turns, textView]);
+  useEffect(() => { if (scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight; }, [turns, textView]);
   useEffect(() => () => {
-    session.current = false;
-    abort.current?.abort();
-    stopSpeaking();
+    session.current = false; turnCounter.current++; abort.current?.abort(); stopSpeaking();
+    audioCache.current.forEach(urls => urls.forEach(URL.revokeObjectURL));
   }, []);
-
   const interrupt = useCallback(() => {
-    abort.current?.abort();
-    abort.current = null;
-    stopSpeaking();
+    turnCounter.current++; abort.current?.abort(); abort.current = null; stopSpeaking(); setPaused(false);
   }, []);
+  const endSession = useCallback(() => { session.current = false; interrupt(); setPhase('idle'); setStatus(null); }, [interrupt]);
 
-  const endSession = useCallback(() => {
-    session.current = false;
+  const performTurn = useCallback(async (input: { text?: string; audio?: Blob; lang: 'fr' | 'bba'; spoken: boolean; replayId?: string }) => {
     interrupt();
-    setPhase('idle');
-  }, [interrupt]);
-
-  // -------------------------------------------------------------------------
-  // Speaking
-  // -------------------------------------------------------------------------
-
-  const speak = useCallback(
-    async (text: string, lang: 'fr' | 'bba', subtitle: string | undefined, turnId: number) => {
-      const sentences = lang === 'fr' ? splitSentences(text) : [text];
-      for (const s of sentences) {
-        if (turnId !== turnCounter.current) return;
-        setPhase('speaking');
-        setCaption(s);
-        setSubCaption(lang === 'bba' && frSubtitles ? subtitle ?? null : null);
-        if (lang === 'fr') {
-          await speakFrench(s);
-        } else {
-          try {
-            const ok = await speakBariba(s);
-            if (!ok) setNotice('Voix baatɔnum momentanément indisponible.');
-          } catch {
-            setNotice('Voix baatɔnum momentanément indisponible.');
-          }
-        }
-      }
-    },
-    [frSubtitles],
-  );
-
-  // -------------------------------------------------------------------------
-  // One turn
-  // -------------------------------------------------------------------------
-
-  const listenTurnRef = useRef<() => Promise<void>>(async () => {});
-
-  const runTurn = useCallback(
-    async (heard: string, heardLang: 'fr' | 'bba', spoken: boolean) => {
-      const clean = heard.trim();
-      if (!clean) {
-        if (session.current && handsFree) void listenTurnRef.current();
-        else setPhase('idle');
-        return;
-      }
-      const turnId = ++turnCounter.current;
-      const replyLang: 'fr' | 'bba' = mode === 'fr' ? 'fr' : mode === 'bba' ? 'bba' : heardLang;
-      const user: DunyaWebTurn = { id: uid(), role: 'user', text: clean, lang: heardLang, createdAt: Date.now() };
-      setTurns((t) => [...t, user]);
-      setPhase('thinking');
-      setCaption('');
-      setNotice(null);
-
-      const routed = routeDunyaInput(clean, heardLang, spoken ? 'voice' : 'text');
-      let answerText = '';
-      let answerSub: string | undefined;
-      try {
-        const direct = replyLang === 'fr' ? frenchGreetingAnswer(routed) : null;
-        if (direct) {
-          answerText = direct;
-        } else if (!navigator.onLine) {
-          answerText = offlineAnswer?.(clean) ?? 'Pas de connexion. Réessayez quand le réseau revient.';
-          setNotice('Hors ligne : réponse tirée des ressources FITILA de ce navigateur.');
-        } else {
-          let question = clean;
-          if (heardLang === 'bba') {
-            setStatus('Je traduis…');
-            const translatedQuestion = await translate(clean, 'bba', 'fr');
-            if (!translatedQuestion) {
-              throw new Error('La demande baatɔnum ne peut pas être traduite avec fiabilité. Reformulez-la ou essayez en français.');
-            }
-            question = translatedQuestion;
-          }
-          setStatus(routed.route === 'knowledge' ? 'Je consulte les connaissances…' : 'Je réfléchis…');
-          const answer = await askDunya(question, turnsRef.current, replyLang === 'bba');
-          if (replyLang === 'bba') {
-            // Sentence by sentence: ByT5 is most reliable on short sentences, and
-            // attested sentences come straight from the translation memory.
-            const parts = splitSentences(answer.fr);
-            const translated = await Promise.all(parts.map((p) => translate(p, 'fr', 'bba')));
-            const perSentence = translated.every((t) => t && t.trim()) ? translated.join(' ') : null;
-            const ba = perSentence ?? answer.ba;
-            if (ba) {
-              answerText = ba;
-              answerSub = answer.fr;
-            } else {
-              answerText = answer.fr;
-              setNotice('Traduction vers le baatɔnum indisponible : réponse en français.');
-            }
-          } else {
-            answerText = answer.fr;
-          }
-        }
-      } catch (error) {
-        // Cloud outage must not discard useful, already installed FITILA knowledge.
-        // Offline fallback is a sourced extract, not a generated answer.
-        const local = offlineAnswer?.(clean)?.trim();
-        answerText = local || 'Je n’ai pas trouvé de réponse fiable dans les ressources disponibles.';
-        answerSub = undefined;
-        setNotice(local
-          ? 'Service distant indisponible : extrait des ressources locales FITILA (non génératif).'
-          : error instanceof Error ? error.message : 'Service momentanément indisponible.');
-      } finally {
-        setStatus(null);
-      }
-      if (turnId !== turnCounter.current) return;
-
-      const speakLang: 'fr' | 'bba' = replyLang === 'bba' && answerSub ? 'bba' : 'fr';
-      const assistant: DunyaWebTurn = {
-        id: uid(),
-        role: 'assistant',
-        text: answerText,
-        lang: speakLang,
-        subtitle: answerSub,
-        createdAt: Date.now(),
-      };
-      setTurns((t) => [...t, assistant]);
-      await speak(answerText, speakLang, answerSub, turnId);
-      if (turnId !== turnCounter.current) return;
-      if (session.current && handsFree && spoken) void listenTurnRef.current();
-      else setPhase('idle');
-    },
-    [handsFree, mode, offlineAnswer, speak],
-  );
-
-  // -------------------------------------------------------------------------
-  // Listening (hands-free loop)
-  // -------------------------------------------------------------------------
-
-  const listenTurn = useCallback(async () => {
-    if (!session.current) return;
-    if (muted) {
-      setPhase('idle');
-      return;
-    }
-    const controller = new AbortController();
-    abort.current = controller;
-    setPhase('listening');
-    setCaption('');
-    setSubCaption(null);
-    setLevel(0);
+    const controller = new AbortController(); abort.current = controller;
+    const turnId = turnCounter.current, assistantId = input.replayId ?? uid();
+    const active = () => !controller.signal.aborted && turnId === turnCounter.current;
+    let answer: DunyaWebTurn | undefined, playback = Promise.resolve(), playbackError = '', audioReceived = false;
+    const cached: string[] = [];
+    setPhase('thinking'); setCaption(''); setSubCaption(null); setNotice(null); setStatus(input.audio ? 'Je vous comprends…' : 'Je prépare votre réponse…');
+    setDiagnostic({});
     try {
-      let heard = '';
-      let heardLang: 'fr' | 'bba' = mode === 'bba' ? 'bba' : 'fr';
-      if (mode === 'fr') {
-        const r = await recognizeFrench({ onInterim: setCaption, signal: controller.signal });
-        heard = r.text;
-      } else if (mode === 'bba') {
-        const blob = await recordUtterance({ onLevel: setLevel, signal: controller.signal });
-        if (blob) {
-          setPhase('thinking');
-          setStatus(metaOn ? 'Je vous comprends (Meta)…' : 'Je vous comprends…');
-          heard = await transcribeBariba(blob);
-        }
-      } else {
-        // Both languages: run the two recognisers together, keep the clearer one.
-        const [fr, blob] = await Promise.all([
-          hasFrenchRecognition()
-            ? recognizeFrench({ onInterim: setCaption, signal: controller.signal }).catch(() => ({ text: '', confidence: 0 }))
-            : Promise.resolve({ text: '', confidence: 0 }),
-          recordUtterance({ onLevel: setLevel, signal: controller.signal }),
-        ]);
-        if (fr.text && looksFrench(fr.text, fr.confidence)) {
-          heard = fr.text;
-          heardLang = 'fr';
-        } else if (blob) {
-          setPhase('thinking');
-          setStatus(metaOn ? 'Je vous comprends (Meta)…' : 'Je vous comprends…');
-          heard = await transcribeBariba(blob);
-          heardLang = 'bba';
-        }
+      if (!navigator.onLine) {
+        if (input.audio) throw new Error('Internet est nécessaire pour comprendre ce vocal.');
+        const local = offlineAnswer?.(input.text ?? '') ?? 'Aucune ressource locale disponible.';
+        setTurns(t => [...t, { id: uid(), role: 'user', text: input.text ?? '', lang: input.lang, createdAt: Date.now() },
+          { id: assistantId, role: 'assistant', text: local, lang: 'fr', createdAt: Date.now() }]);
+        setNotice('Hors ligne : extrait des ressources locales FITILA.'); setCaption(local); setPhase('speaking'); await speakFrench(local); return;
       }
+      await runServerVoice({
+        text: input.text, audio: input.audio, lang: input.lang, replyLang: input.replayId ? input.lang : mode === 'both' ? input.lang : mode,
+        history: turnsRef.current.map(t => ({ role: t.role, content: t.subtitle ?? t.text })),
+        transcribeOnly: !!input.audio && reviewStt && !input.replayId, speechOnly: !!input.replayId,
+        signal: controller.signal,
+        onEvent(event: VoiceEvent) {
+          if (!active()) return;
+          setDiagnostic(d => ({ ...d, request: event.request_id, elapsed: event.elapsed_ms }));
+          if (event.type === 'stage' && !audioReceived) {
+            const labels: Record<string, string> = { waiting: 'Un instant, je prépare la voix…', transcribing: 'Je vous comprends…', thinking: 'Je prépare votre réponse…', synthesizing: 'Je prépare la voix…' };
+            setStatus(labels[event.stage ?? ''] ?? null);
+          }
+          if (event.type === 'notice') setNotice(voiceMessage(event.code));
+          if (event.type === 'transcript') {
+            setDiagnostic(d => ({ ...d, asr: event.engine }));
+            if (input.replayId) return;
+            if (input.audio && reviewStt) {
+              session.current = false; setDraft(event.text ?? ''); setTextView(true); setNotice('Vérifiez la transcription puis envoyez.');
+            } else setTurns(t => [...t, { id: uid(), role: 'user', text: event.text ?? '', lang: event.lang ?? input.lang, createdAt: Date.now() }]);
+          }
+          if (event.type === 'answer') {
+            answer = { id: assistantId, role: 'assistant', text: event.text ?? '', subtitle: event.subtitle, lang: event.lang ?? 'fr', createdAt: Date.now() };
+            if (!input.replayId) setTurns(t => [...t, answer!]);
+          }
+          if (event.type === 'audio') {
+            audioReceived = true;
+            const audioUrl = event.audio_base64
+              ? URL.createObjectURL(new Blob([Uint8Array.from(atob(event.audio_base64), c => c.charCodeAt(0))], { type: 'audio/wav' }))
+              : event.audio_url;
+            if (!audioUrl) return;
+            cached.push(audioUrl);
+            playback = playback.then(async () => {
+              if (!active() || playbackError) return;
+              setPhase('speaking'); setStatus(null); setCaption(event.text ?? ''); setSubCaption(frSubtitles ? answer?.subtitle ?? null : null);
+              setDiagnostic(d => ({ ...d, tts: event.engine }));
+              await playUrl(audioUrl, controller.signal);
+            }).catch(error => { if (active()) playbackError = error instanceof Error ? error.message : 'Touchez Réécouter.'; });
+          }
+        },
+      });
+      await playback;
+      if (!active()) return;
+      if (answer?.lang === 'fr' && !audioReceived) {
+        setPhase('speaking'); setStatus(null); setCaption(answer.text); setDiagnostic(d => ({ ...d, tts: 'navigateur-fr' })); await speakFrench(answer.text);
+      }
+      if (playbackError) { session.current = false; setNotice(playbackError); }
+    } catch (error) {
+      await playback;
+      if (!active()) return;
+      session.current = false; setNotice(error instanceof Error ? error.message : 'Service vocal indisponible.');
+    } finally {
+      if (cached.length && active()) {
+        audioCache.current.get(assistantId)?.forEach(URL.revokeObjectURL);
+        audioCache.current.set(assistantId, cached);
+        if (audioCache.current.size > 6) { const oldest = audioCache.current.keys().next().value!; audioCache.current.get(oldest)?.forEach(URL.revokeObjectURL); audioCache.current.delete(oldest); }
+      } else if (cached.length) cached.forEach(URL.revokeObjectURL);
+      if (active()) {
+        setStatus(null); setPhase('idle');
+        if (session.current && handsFree && input.spoken) void listenTurnRef.current();
+      }
+    }
+  }, [frSubtitles, handsFree, interrupt, mode, offlineAnswer, reviewStt]);
+  const runTurn = (text: string, lang: 'fr' | 'bba', spoken: boolean) => performTurn({ text, lang, spoken });
+
+  const replay = async (turn: DunyaWebTurn) => {
+    session.current = false; interrupt();
+    const urls = audioCache.current.get(turn.id);
+    if (!urls?.length) { await performTurn({ text: turn.text, lang: turn.lang, spoken: false, replayId: turn.id }); return; }
+    const controller = new AbortController(); abort.current = controller;
+    setPhase('speaking'); setCaption(turn.text); setNotice(null);
+    try { for (const url of urls) { controller.signal.throwIfAborted(); await playUrl(url, controller.signal); } }
+    catch (error) { if (!controller.signal.aborted) setNotice(error instanceof Error ? error.message : 'Lecture indisponible.'); }
+    finally { if (!controller.signal.aborted) setPhase('idle'); }
+  };
+  const listenTurn = useCallback(async () => {
+    if (!session.current || muted) return;
+    const controller = new AbortController(); abort.current = controller;
+    const finish = new AbortController(); recordStop.current = finish;
+    setPhase('listening'); setCaption(''); setSubCaption(null); setLevel(0); setNotice(null);
+    try {
+      let text = '', audio: Blob | null = null, lang: 'fr' | 'bba' = mode === 'fr' ? 'fr' : 'bba';
+      if (mode === 'fr' && hasFrenchRecognition()) {
+        const result = await recognizeFrench({ onInterim: setCaption, signal: controller.signal, finishSignal: finish.signal }); text = result.text;
+      } else if (mode === 'both' && hasFrenchRecognition()) {
+        const [fr, blob] = await Promise.all([
+          recognizeFrench({ onInterim: setCaption, signal: controller.signal, finishSignal: finish.signal }).catch(() => ({ text: '', confidence: 0 })),
+          recordUtterance({ onLevel: setLevel, signal: controller.signal, finishSignal: finish.signal }),
+        ]);
+        if (fr.text && looksFrench(fr.text, fr.confidence)) { text = fr.text; lang = 'fr'; } else audio = blob;
+      } else audio = await recordUtterance({ onLevel: setLevel, signal: controller.signal, finishSignal: finish.signal });
       if (controller.signal.aborted || !session.current) return;
-      if (!heard.trim()) {
-        emptyListens.current += 1;
-        if (emptyListens.current >= 2 || !handsFree) {
-          session.current = false;
-          setPhase('idle');
-        } else {
-          void listenTurnRef.current();
-        }
+      if (!audio && !text.trim()) {
+        if (++emptyListens.current < 2 && handsFree) void listenTurnRef.current();
+        else { session.current = false; setPhase('idle'); setNotice('Je n’ai pas entendu de voix. Touchez la sphère pour réessayer.'); }
         return;
       }
       emptyListens.current = 0;
-      if (reviewStt && heardLang === 'bba') {
-        // Editable transcription: user checks/corrects before sending.
-        session.current = false;
-        setPhase('idle');
-        setStatus(null);
-        setDraft(heard);
-        setTextView(true);
-        setNotice(`Transcription ${lastVoiceEngine.asr === 'meta' ? 'Meta' : 'FITILA'} : corrigez si besoin puis envoyez.`);
-        return;
-      }
-      await runTurn(heard, heardLang, true);
+      await performTurn({ text: audio ? undefined : text, audio: audio ?? undefined, lang, spoken: true });
     } catch (error) {
-      session.current = false;
-      setPhase('idle');
-      setStatus(null);
-      setNotice(error instanceof Error ? error.message : 'Écoute interrompue.');
+      if (controller.signal.aborted) return;
+      session.current = false; setPhase('idle'); setNotice(error instanceof DOMException && error.name === 'NotAllowedError' ? 'Autorisez le microphone dans votre navigateur pour parler à DUNYA.' : error instanceof Error ? error.message : 'Microphone indisponible.');
     }
-  }, [handsFree, metaOn, mode, muted, reviewStt, runTurn]);
-
+  }, [handsFree, mode, muted, performTurn]);
   listenTurnRef.current = listenTurn;
-
   const onOrb = async () => {
-    if (phase === 'speaking') {
-      turnCounter.current += 1;
-      interrupt();
-      if (session.current) void listenTurn();
-      else setPhase('idle');
-      return;
-    }
-    if (phase === 'listening') {
-      abort.current?.abort();
-      return;
-    }
-    if (phase === 'thinking') {
-      turnCounter.current += 1;
-      interrupt();
-      setPhase('idle');
-      return;
-    }
-    if (mode === 'fr' && !hasFrenchRecognition()) {
-      setNotice('Ce navigateur ne gère pas la dictée en français : utilisez Chrome ou Edge, ou écrivez à DUNYA.');
-      setTextView(true);
-      return;
-    }
-    session.current = true;
-    emptyListens.current = 0;
-    void listenTurn();
+    if (phase === 'listening') { recordStop.current?.abort(); return; }
+    if (phase === 'thinking') { endSession(); return; }
+    if (phase === 'speaking') { interrupt(); session.current = true; void listenTurn(); return; }
+    if (muted) { setNotice('Réactivez le microphone pour parler.'); return; }
+    session.current = true; emptyListens.current = 0; void listenTurn();
   };
-
   const sendText = async () => {
-    const text = draft.trim();
-    if (!text || phase === 'thinking') return;
-    setDraft('');
-    interrupt();
-    const lang: 'fr' | 'bba' = mode === 'bba' ? 'bba' : mode === 'fr' ? 'fr' : looksFrench(text, 0.9) ? 'fr' : 'bba';
-    await runTurn(text, lang, false);
+    const text = draft.trim(); if (!text) return;
+    setDraft(''); session.current = false;
+    await runTurn(text, mode === 'both' ? looksFrench(text, 0.9) ? 'fr' : 'bba' : mode, false);
   };
-
-  const changeMode = (next: DunyaWebMode) => {
-    endSession();
-    setMode(next);
-    savePreference('mode', next);
-    setTurns(loadHistory(next));
-    setModePicker(false);
-  };
-
-  const setPref = <T,>(key: string, value: T, setter: (v: T) => void) => {
-    setter(value);
-    savePreference(key, value);
+  const changeMode = (next: DunyaWebMode) => { endSession(); setMode(next); savePreference('mode', next); setTurns(loadHistory(next)); setModePicker(false); };
+  const setPref = <T,>(key: string, value: T, setter: (v: T) => void) => { setter(value); savePreference(key, value); };
+  const uploadVoice = async (file?: File) => {
+    if (!file) return;
+    session.current = false;
+    await performTurn({ audio: file, lang: mode === 'fr' ? 'fr' : 'bba', spoken: false });
   };
 
   const label =
@@ -396,27 +210,30 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
         : phase === 'speaking' ? 'Touchez pour m’interrompre'
           : muted ? 'Micro coupé' : 'Touchez la sphère pour parler';
 
+  const lastAssistant = [...turns].reverse().find((t) => t.role === 'assistant');
   const lastUser = [...turns].reverse().find((t) => t.role === 'user')?.text ?? '';
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden text-white" style={{ background: '#17131F' }}>
-      <header className="flex shrink-0 items-center gap-2 px-3 pb-2 pt-3 md:px-5">
+      <header className="flex shrink-0 items-center gap-1 px-2 pb-2 pt-3 sm:gap-2 md:px-5">
         {onOpenMenu && (
-          <button onClick={onOpenMenu} className="grid h-10 w-10 place-items-center rounded-full bg-white/10 md:hidden" aria-label="Menu">
+          <button onClick={onOpenMenu} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/10 md:hidden" aria-label="Menu">
             <Menu className="h-5 w-5" />
           </button>
         )}
-        <button onClick={() => setModePicker(true)} className="flex items-center gap-2 rounded-full bg-[#2A2433] px-4 py-2 text-sm font-extrabold">
-          <Languages className="h-4 w-4 text-[#D4A23A]" />
-          {MODE_LABEL[mode]}
+        <button onClick={() => setModePicker(true)} className="flex min-h-11 min-w-0 max-w-[104px] items-center gap-1 rounded-full bg-[#2A2433] px-2 py-2 text-sm font-extrabold sm:max-w-none sm:gap-2 sm:px-4">
+          <Languages className="hidden h-4 w-4 shrink-0 text-[#D4A23A] sm:block" />
+          <span className="truncate">{MODE_LABEL[mode]}</span>
           <ChevronDown className="h-4 w-4 opacity-70" />
         </button>
         <span className="hidden rounded-full bg-[#52A47A]/15 px-3 py-1.5 text-[11px] font-extrabold text-[#8FD3A8] sm:inline">DUNYA IA · en ligne</span>
         <div className="flex-1" />
-        <button onClick={() => setTextView((v) => !v)} className="grid h-10 w-10 place-items-center rounded-full hover:bg-white/10" aria-label="Conversation écrite">
+        <input ref={fileInput} type="file" accept="audio/*,.webm,.wav,.m4a,.mp3,.ogg" className="hidden" aria-label="Choisir un vocal" onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; void uploadVoice(file); }} />
+        <button onClick={() => fileInput.current?.click()} className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/10" aria-label="Joindre un vocal"><Paperclip className="h-5 w-5" /></button>
+        <button onClick={() => setTextView((v) => !v)} className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/10" aria-label="Conversation écrite">
           <MessageSquare className="h-5 w-5" />
         </button>
-        <button onClick={() => setSettingsOpen(true)} className="grid h-10 w-10 place-items-center rounded-full hover:bg-white/10" aria-label="Réglages">
+        <button onClick={() => setSettingsOpen(true)} className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/10" aria-label="Réglages">
           <Settings2 className="h-5 w-5" />
         </button>
       </header>
@@ -433,7 +250,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
                   <button
                     className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10"
                     aria-label="Réécouter"
-                    onClick={() => void speak(t.text, t.lang, t.subtitle, ++turnCounter.current).then(() => setPhase('idle'))}
+                    onClick={() => void replay(t)}
                   >
                     <Volume2 className="h-4 w-4 text-[#D4A23A]" />
                   </button>
@@ -451,7 +268,11 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           <button onClick={() => void onOrb()} aria-label={label} className="relative grid place-items-center outline-none">
             <Orb phase={phase} level={level} />
           </button>
-          <p className="mt-5 text-base font-bold">{label}</p>
+          <p className="mt-5 text-base font-bold" role="status" aria-live="polite">{label}</p>
+          {lastAssistant && <div className="mt-3 flex gap-2">
+            <button onClick={() => void replay(lastAssistant)} className="flex min-h-11 items-center gap-2 rounded-full bg-white/10 px-4 text-sm"><Volume2 className="h-4 w-4" />Réécouter</button>
+            {phase === 'speaking' && <button onClick={() => { if (paused) resumeSpeaking(); else pauseSpeaking(); setPaused(!paused); }} className="flex min-h-11 items-center gap-2 rounded-full bg-white/10 px-4 text-sm">{paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}{paused ? 'Reprendre' : 'Pause'}</button>}
+          </div>}
           <div className="flex-1" />
           {subtitles && (
             <div className="mx-auto mb-3 max-w-2xl text-center">
@@ -460,7 +281,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
               {subCaption && <p className="mt-1.5 line-clamp-3 text-sm text-white/55">{subCaption}</p>}
             </div>
           )}
-          {notice && <p className="mb-2 max-w-xl text-center text-[12.5px] text-[#E9C46A]">{notice}</p>}
+          {notice && <p role="status" aria-live="polite" className="mb-2 max-w-xl text-center text-[12.5px] text-[#E9C46A]">{notice}</p>}
           {turns.length === 0 && phase === 'idle' && (
             <div className="mb-3 flex max-w-full gap-2 overflow-x-auto pb-1">
               {SUGGESTIONS[mode].map((s) => (
@@ -477,6 +298,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
         </div>
       )}
 
+      {textView && notice && <p role="status" aria-live="polite" className="px-4 text-center text-sm text-[#E9C46A]">{notice}</p>}
       {textView ? (
         <footer className="mx-auto flex w-full max-w-3xl items-end gap-2 px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-1.5">
           <textarea
@@ -516,7 +338,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
             onClick={() => {
               const next = !muted;
               setMuted(next);
-              if (next) abort.current?.abort();
+              if (next) endSession();
             }}
             icon={muted ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
           />
@@ -567,33 +389,17 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
             <Toggle label="Sous-titres français en mode baatɔnum" value={frSubtitles} onChange={(v) => setPref('frSubtitles', v, setFrSubtitles)} />
             <Toggle label="Vérifier la transcription baatɔnum avant envoi" value={reviewStt} onChange={(v) => setPref('reviewStt', v, setReviewStt)} />
           </div>
-          <fieldset className="mt-3 rounded-2xl border border-[#E4DFCC] p-3 text-[#17131F]" aria-label="Voix baatɔnum">
-            <legend className="px-1 text-sm font-black">Voix baatɔnum</legend>
-            {pilot ? (
-              <>
-                {([['meta', 'Meta MMS + Omnilingual (pilote)'], ['fitila', 'Voix FITILA classique']] as const).map(([v, l]) => (
-                  <label key={v} className="flex cursor-pointer items-center gap-2 py-1.5 text-[14px]">
-                    <input type="radio" name="dunya-voice" checked={(voiceChoice ?? 'meta') === v} onChange={() => setPref<DunyaVoiceChoice | null>('voiceChoice', v, setVoiceChoice)} className="h-4 w-4 accent-[#D4A23A]" />
-                    {l}
-                  </label>
-                ))}
-                <p className="mt-1 text-[12px] text-[#7D7566]">Pilote réservé (licence non commerciale CC BY-NC). En cas de panne, DUNYA repasse automatiquement sur la voix FITILA.</p>
-              </>
-            ) : (
-              <p className="text-[12.5px] text-[#7D7566]">Voix FITILA. La voix Meta est en pilote, réservée aux comptes autorisés.</p>
-            )}
-            <div className="mt-2 rounded-xl bg-[#F4EFE0] p-2 text-[12px] text-[#4A4356]" aria-label="Diagnostic voix">
-              <p><b>Statut :</b> {pilotLabel[pilotStatus]}</p>
-              <p><b>Reconnaissance (ASR) :</b> {effective.asr ? 'Meta Omnilingual' : 'FITILA (secours)'}</p>
-              <p><b>Synthèse (TTS) :</b> {effective.tts ? 'Meta MMS' : 'FITILA (secours)'}</p>
-              <p><b>Mode actuel :</b> {mode === 'fr' ? 'Français (voix Meta inactive en mode français)' : mode === 'bba' ? 'Baatɔnum' : 'Bilingue'}</p>
-            </div>
-          </fieldset>
-          <p className="mt-3 text-[12.5px] text-[#7D7566]">
-            Sur le web, DUNYA utilise Internet : dictée du navigateur pour le français, modèles FITILA pour le baatɔnum. Dans l’application mobile, tout fonctionne sans Internet.
-          </p>
+          <p className="mt-3 text-sm text-[#7D7566]">Parlez ou joignez un vocal. Le traitement est automatique, pour tous les utilisateurs. Internet est nécessaire pour les services vocaux en ligne.</p>
+          {isAdmin && <div className="mt-3 rounded-xl bg-[#F4EFE0] p-3 text-[12px] text-[#4A4356]" aria-label="Diagnostic vocal réel">
+            <p><b>Dernier échange :</b> {diagnostic.request ?? 'aucun'}</p>
+            <p><b>Reconnaissance utilisée :</b> {diagnostic.asr ?? 'non exécutée'}</p>
+            <p><b>Synthèse utilisée :</b> {diagnostic.tts ?? 'non exécutée'}</p>
+            <p><b>Traitement serveur :</b> {diagnostic.elapsed == null ? '—' : `${(diagnostic.elapsed / 1000).toFixed(2)} s`}</p>
+            <p>MMS-TTS : licence CC BY-NC 4.0.</p>
+          </div>}
           <button
             onClick={() => {
+              endSession();
               setTurns([]);
               saveHistory(mode, []);
               setSettingsOpen(false);
@@ -671,3 +477,4 @@ function Toggle({ label, value, onChange }: { label: string; value: boolean; onC
     </label>
   );
 }
+

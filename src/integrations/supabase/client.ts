@@ -15,6 +15,8 @@ const SUPABASE_PUBLISHABLE_KEY = SUPABASE_URL === configuredUrl
   ? configuredKey
   : FITILA_SUPABASE_PUBLISHABLE_KEY;
 
+export { SUPABASE_URL as FITILA_API_URL, SUPABASE_PUBLISHABLE_KEY as FITILA_API_PUBLIC_KEY };
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
@@ -22,3 +24,4 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
   },
 });
+
