@@ -1,4 +1,4 @@
-import { mistralFetch } from "../_shared/mistral.ts";
+import { aiFetch, AI_CHAT_URL, getActiveAIKey } from "../_shared/ai-provider.ts";
 // Espace — OCR Bàátɔ̀nú (étape « inférence IA » du pipeline).
 // Entrée : { pages: string[] (data URL déjà prétraitées côté client), fileName?, mode?: 'printed'|'handwritten' }
 // Sortie : { engine, text, confidence, pages: [{ page, text, confidence, notes[] }] }
@@ -47,7 +47,7 @@ function cleanup(text: string): string {
 }
 
 async function ocrPage(apiKey: string, dataUrl: string, page: number, mode: string) {
-  const res = await mistralFetch("https://api.mistral.ai/v1/chat/completions", {
+  const res = await aiFetch(AI_CHAT_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -97,11 +97,11 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "Méthode non autorisée" });
 
   try {
-    const apiKey = Deno.env.get("MISTRAL_API_KEY");
+    const apiKey = await getActiveAIKey();
     if (!apiKey) {
       return json(503, {
         error: "OCR_NOT_CONFIGURED",
-        message: "Le moteur OCR n'est pas encore configuré côté serveur (secret MISTRAL_API_KEY).",
+        message: "Le moteur OCR n'est pas encore configuré côté serveur (clé du fournisseur IA actif).",
       });
     }
     const body = await req.json().catch(() => null);

@@ -1,4 +1,4 @@
-import { mistralFetch, MISTRAL_CHAT_URL } from "../_shared/mistral.ts";
+import { aiFetch, AI_CHAT_URL } from "../_shared/ai-provider.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.81.1";
 
 const corsHeaders = {
@@ -890,7 +890,7 @@ Génère 3 textes courts et simples :
 
 Réponds en JSON avec les clés: "fr", "ba", "enhanced"`;
 
-  const response = await mistralFetch(MISTRAL_CHAT_URL, {
+  const response = await aiFetch(AI_CHAT_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -943,7 +943,7 @@ Ajoute aussi :
 
 Réponds en JSON.`;
 
-  const response = await mistralFetch(MISTRAL_CHAT_URL, {
+  const response = await aiFetch(AI_CHAT_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -995,7 +995,7 @@ Génère un storyboard de 3-5 étapes, chaque étape avec :
 
 Réponds en JSON avec une clé "steps" contenant le tableau d'étapes.`;
 
-  const response = await mistralFetch(MISTRAL_CHAT_URL, {
+  const response = await aiFetch(AI_CHAT_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

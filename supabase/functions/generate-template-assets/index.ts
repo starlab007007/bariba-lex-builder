@@ -1,4 +1,4 @@
-import { mistralFetch, MISTRAL_CHAT_URL } from "../_shared/mistral.ts";
+import { aiFetch, AI_CHAT_URL } from "../_shared/ai-provider.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -163,7 +163,7 @@ Règles:
 
 Important: Le texte sera lu à voix haute à des personnes qui ne savent pas lire. Sois naturel et direct.`;
 
-        const response = await mistralFetch(MISTRAL_CHAT_URL, {
+        const response = await aiFetch(AI_CHAT_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -276,7 +276,7 @@ Réponds UNIQUEMENT en JSON valide:
   "context_interpretation": "ce que j'ai compris de la demande"
 }`;
 
-        const response = await mistralFetch(MISTRAL_CHAT_URL, {
+        const response = await aiFetch(AI_CHAT_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -365,7 +365,7 @@ Réponds en JSON:
   ]
 }`;
 
-        const response = await mistralFetch(MISTRAL_CHAT_URL, {
+        const response = await aiFetch(AI_CHAT_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -434,7 +434,7 @@ Réponds en JSON:
   ]
 }`;
 
-        const response = await mistralFetch(MISTRAL_CHAT_URL, {
+        const response = await aiFetch(AI_CHAT_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

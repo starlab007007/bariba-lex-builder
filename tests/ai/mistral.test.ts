@@ -86,10 +86,13 @@ await ensureMemory();
 const realFetch = globalThis.fetch;
 
 async function mocked<T>(fetcher: typeof fetch, run: () => Promise<T>): Promise<T> {
-  const names = ['MISTRAL_API_KEY', 'HF_INFERENCE_TOKEN', 'HUGGING_FACE_API_TOKEN', 'FITILA_IMAGE_API_KEY', 'FITILA_IMAGE_API_URL'];
+  const names = ['MISTRAL_API_KEY', 'HF_INFERENCE_TOKEN', 'HUGGING_FACE_API_TOKEN', 'FITILA_IMAGE_API_KEY', 'FITILA_IMAGE_API_URL', 'GEMINI_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
   const before = names.map(name => Deno.env.get(name));
   names.forEach(name => Deno.env.delete(name)); Deno.env.set('MISTRAL_API_KEY', 'server-test-key');
-  globalThis.fetch = fetcher;
+  Deno.env.set('SUPABASE_URL', 'https://project.test'); Deno.env.set('SUPABASE_SERVICE_ROLE_KEY', 'test-server-key');
+  globalThis.fetch = async (url, init) => String(url).includes('/rest/v1/fitila_ai_settings')
+    ? json([{ id: 1, active_provider: 'mistral', version: 1, updated_at: '2026-10-15T00:00:00Z', updated_by: null }])
+    : fetcher(url, init);
   try { return await run(); }
   finally { globalThis.fetch = realFetch; names.forEach((name, i) => before[i] === undefined ? Deno.env.delete(name) : Deno.env.set(name, before[i]!)); }
 }

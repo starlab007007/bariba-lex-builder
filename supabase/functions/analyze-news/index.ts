@@ -1,4 +1,4 @@
-import { mistralFetch } from "../_shared/mistral.ts";
+import { aiFetch, AI_CHAT_URL, getActiveAIKey } from "../_shared/ai-provider.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -69,25 +69,25 @@ Deno.serve(async (req) => {
       });
     }
 
-    const MISTRAL_API_KEY = Deno.env.get('MISTRAL_API_KEY');
+    const ACTIVE_AI_KEY = await getActiveAIKey();
     
-    if (!MISTRAL_API_KEY) {
-      console.warn('[analyze-news] MISTRAL_API_KEY not configured, using default structure');
+    if (!ACTIVE_AI_KEY) {
+      console.warn('[analyze-news] ACTIVE_AI_KEY not configured, using default structure');
       return new Response(JSON.stringify(createDefaultNewsShow(villageName, language)), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log('[analyze-news] Generating news script with Mistral AI...');
+    console.log('[analyze-news] Generating news script with Active AI...');
     
     const newsContent = newsItems.map((item: { type: string; title: string; description: string; location?: string }) => 
       `- Type: ${item.type}, Titre: ${item.title}, Description: ${item.description}${item.location ? `, Lieu: ${item.location}` : ''}`
     ).join('\n');
     
-    const response = await mistralFetch('https://api.mistral.ai/v1/chat/completions', {
+    const response = await aiFetch(AI_CHAT_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${MISTRAL_API_KEY}`,
+        'Authorization': `Bearer ${ACTIVE_AI_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

@@ -1,10 +1,11 @@
 # Mistral dans FITILA
 
-Les fonctions texte, vision et transcription française utilisent le même secret
-serveur `MISTRAL_API_KEY`, via `supabase/functions/_shared/mistral.ts`.
-Aucune clé Mistral n’est envoyée au navigateur. Ajouter ou remplacer le secret
-dans les Edge Functions du projet FITILA suffit ; aucune clé n’est à saisir dans
-les pages de l’application.
+Le fournisseur actif se choisit dans `/admin/settings`, comme décrit dans
+[AI_PROVIDER_SELECTION.md](AI_PROVIDER_SELECTION.md). Lorsque Mistral est choisi,
+les fonctions texte, vision et transcription française utilisent le secret
+serveur `MISTRAL_API_KEY`, via le routeur commun puis `_shared/mistral.ts`.
+Aucune clé Mistral n’est envoyée au navigateur. Les secrets se configurent dans les Edge Functions ; l’administration permet
+ensuite de tester et d’activer Mistral ou Gemini sans exposer les clés.
 
 ## Configuration facultative côté serveur
 

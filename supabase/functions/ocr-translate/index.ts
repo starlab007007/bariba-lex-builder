@@ -1,4 +1,4 @@
-import { mistralFetch } from "../_shared/mistral.ts";
+import { aiFetch, AI_CHAT_URL, getActiveAIKey } from "../_shared/ai-provider.ts";
 import {
   normalizeBaribaText,
   safeJsonExtract,
@@ -129,7 +129,7 @@ Expected JSON format:
       ? `Extract all visible text exactly as written (likely French source text). Return ONLY JSON.${pageNumber ? ` Page ${pageNumber}.` : ""}`
       : `Extract all visible text exactly as written (likely Bariba source text). Return ONLY JSON.${pageNumber ? ` Page ${pageNumber}.` : ""}`;
 
-  const response = await mistralFetch("https://api.mistral.ai/v1/chat/completions", {
+  const response = await aiFetch(AI_CHAT_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${mistralApiKey}`,
@@ -337,9 +337,9 @@ Deno.serve(async (req) => {
       translateMode = "per_page",
     }: OCRTranslateRequest = await req.json();
 
-    const MISTRAL_API_KEY = Deno.env.get("MISTRAL_API_KEY");
-    if (!MISTRAL_API_KEY) {
-      throw new Error("MISTRAL_API_KEY is not configured");
+    const ACTIVE_AI_KEY = await getActiveAIKey();
+    if (!ACTIVE_AI_KEY) {
+      throw new Error("La clé du fournisseur IA actif est absente.");
     }
 
     // ─────────────────────────────────────────────
@@ -374,7 +374,7 @@ Deno.serve(async (req) => {
 
     for (let i = 0; i < pageImages.length; i++) {
       const ocr = await callVisionOcr({
-        mistralApiKey: MISTRAL_API_KEY,
+        mistralApiKey: ACTIVE_AI_KEY,
         dataUrl: pageImages[i],
         targetLanguage,
         pageNumber: i + 1,

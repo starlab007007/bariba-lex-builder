@@ -1,4 +1,4 @@
-import { mistralFetch, mistralFailure } from "../_shared/mistral.ts";
+import { aiFetch, AI_CHAT_URL, aiFailure } from "../_shared/ai-provider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,11 +7,7 @@ const corsHeaders = {
 };
 
 const GLOBAL_TIMEOUT_MS = 60_000;
-const LLM_TIMEOUT_MS = 20_000;
 const BYT5_TIMEOUT_MS = 30_000;
-
-// Optimisation: modèle unique le plus économique, pas de cascade coûteuse
-const MODELS_TO_TRY = ["mistral-small-latest"];
 
 const SYSTEM_PROMPT = `Tu es Fitila, un assistant intelligent et bienveillant.
 Réponds TOUJOURS en français, de manière claire et concise.
@@ -48,92 +44,15 @@ function sanitizeHistory(input: unknown): ChatMessage[] {
     .filter((m) => m.content.length > 0);
 }
 
-const HF_ROUTER_MODELS = ["Qwen/Qwen2.5-7B-Instruct", "meta-llama/Llama-3.1-8B-Instruct"];
-
-async function callHuggingFaceRouter(args: {
-  token: string;
-  messages: ChatMessage[];
-  temperature: number;
-  maxTokens: number;
-}): Promise<{ text: string; model: string; error?: string; retryAfter?: number }> {
-  for (const model of HF_ROUTER_MODELS) {
-    try {
-      const resp = await fetch("https://router.huggingface.co/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${args.token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model, messages: args.messages, temperature: args.temperature, max_tokens: args.maxTokens }),
-        signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
-      });
-      if (resp.status === 401 || resp.status === 403) {
-        await resp.body?.cancel();
-        return { text: "", model, error: "llm_forbidden" };
-      }
-      if (!resp.ok) {
-        console.warn(`[fitila] HF router ${model} HTTP ${resp.status}`);
-        await resp.body?.cancel();
-        continue;
-      }
-      const data = await resp.json();
-      const text = normalizeText(String(data?.choices?.[0]?.message?.content ?? ""));
-      if (text) return { text, model: `hf:${model}` };
-    } catch (e) {
-      console.warn(`[fitila] HF router ${model} error: ${e instanceof Error ? e.message : e}`);
-    }
-  }
-  return { text: "", model: "", error: "HF router failed" };
-}
-
-async function callLLMWithFallback(args: {
-  apiKey: string;
-  messages: ChatMessage[];
-  temperature: number;
-  maxTokens: number;
-}): Promise<{ text: string; model: string; error?: string; retryAfter?: number }> {
-  for (const model of MODELS_TO_TRY) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
-
-      const resp = await mistralFetch("https://api.mistral.ai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${args.apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          messages: args.messages,
-          ...(model.startsWith("openai/")
-            ? { max_completion_tokens: args.maxTokens }
-            : { temperature: args.temperature, max_tokens: args.maxTokens }),
-        }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timer);
-
-      if (!resp.ok) {
-        const failure = await resp.json().catch(() => ({}));
-        console.warn(`[fitila] Mistral HTTP ${resp.status}`);
-        return { text: "", model, error: failure?.error?.code || "llm_unavailable", retryAfter: Number(failure.retry_after) || undefined };
-      }
-
-      const data = await resp.json();
-      const text = normalizeText(String(data?.choices?.[0]?.message?.content || ""));
-      if (!text) {
-        console.warn(`[fitila] Model ${model} returned empty response`);
-        continue;
-      }
-
-      console.log(`[fitila] LLM OK with ${model}`);
-      return { text, model: data.model || model };
-    } catch (e) {
-      console.warn(`[fitila] Model ${model} error: ${e instanceof Error ? e.message : "unknown"}`);
-      continue;
-    }
-  }
-
-  return { text: "", model: "", error: "Tous les modèles ont échoué" };
+async function callActiveAI(args: { messages: ChatMessage[]; temperature: number; maxTokens: number }): Promise<{ text: string; model: string; provider: string; error?: string; retryAfter?: number }> {
+  const response = await aiFetch(AI_CHAT_URL, {
+    body: JSON.stringify({ messages: args.messages, temperature: args.temperature, max_tokens: args.maxTokens }),
+    signal: AbortSignal.timeout(20_000),
+  });
+  const provider = response.headers.get('X-Fitila-AI-Provider') || '';
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return { text: '', model: '', provider, error: data.error?.code || 'llm_unavailable', retryAfter: Number(data.retry_after) || undefined };
+  return { text: normalizeText(String(data?.choices?.[0]?.message?.content || '')), model: data.model || response.headers.get('X-Fitila-AI-Model') || '', provider };
 }
 
 async function translateViaByT5(args: {
@@ -203,8 +122,6 @@ export async function handleChat(req: Request): Promise<Response> {
       );
     }
 
-    const MISTRAL_API_KEY = Deno.env.get("MISTRAL_API_KEY") || "";
-    const HF_LLM_TOKEN = Deno.env.get("HF_INFERENCE_TOKEN") || Deno.env.get("HUGGING_FACE_API_TOKEN") || "";
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY");
@@ -222,18 +139,8 @@ export async function handleChat(req: Request): Promise<Response> {
 
     console.log('[fitila] Request received');
 
-    // Step 1: LLM generates French response
-    // Providers, in order: Mistral (MISTRAL_API_KEY), then the Hugging Face router
-    // (HF_INFERENCE_TOKEN, a token allowed to call Inference Providers).
-    let llmResult: { text: string; model: string; error?: string; retryAfter?: number } = { text: "", model: "", error: "llm_not_configured" };
-    if (MISTRAL_API_KEY) {
-      llmResult = await callLLMWithFallback({ apiKey: MISTRAL_API_KEY, messages: chatMessages, temperature, maxTokens });
-    }
-    if ((llmResult.error || !llmResult.text) && HF_LLM_TOKEN) {
-      const hf = await callHuggingFaceRouter({ token: HF_LLM_TOKEN, messages: chatMessages, temperature, maxTokens });
-      if (hf.text) llmResult = hf;
-      else if (llmResult.error === "llm_not_configured") llmResult = hf;
-    }
+    // Use exactly the provider selected by an administrator.
+    const llmResult = await callActiveAI({ messages: chatMessages, temperature, maxTokens });
     if (!llmResult.text && (llmResult.error === "llm_not_configured" || llmResult.error === "llm_forbidden")) {
       clearTimeout(globalTimer);
       return new Response(
@@ -250,7 +157,7 @@ export async function handleChat(req: Request): Promise<Response> {
       clearTimeout(globalTimer);
       const retryAfter = llmResult.retryAfter || 30;
       return new Response(JSON.stringify({
-        error: "llm_rate_limited", message: mistralFailure(429, retryAfter).message,
+        error: "llm_rate_limited", message: aiFailure(429, retryAfter).message,
         retry_after: retryAfter, duration: Date.now() - startedAt,
       }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(retryAfter) } });
     }
@@ -304,6 +211,7 @@ export async function handleChat(req: Request): Promise<Response> {
         response_fr: responseFr,
         fallback: isFallback,
         model: llmResult.model,
+        provider: llmResult.provider,
         duration,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },

@@ -1,4 +1,4 @@
-import { mistralFetch, MISTRAL_CHAT_URL } from '../_shared/mistral.ts';
+import { aiFetch, AI_CHAT_URL, getActiveAIKey } from "../_shared/ai-provider.ts";
 import { normalizeBaribaText, isInvalidUiLikeText, applyHardCorrections, detectRefinementChanges, buildRefineSystemPrompt } from '../_shared/bariba-linguistic-rules.ts';
 import { acceptRefinement, ensureMemory, estimateConfidence, foldBa, lexicalCoverage, memoryLookup } from '../_shared/translation-verifier.ts';
 
@@ -55,7 +55,7 @@ export async function handleRefine(req: Request): Promise<Response> {
     // A known source/target pair takes precedence over an unconstrained rewrite.
     const attested = originalInput && !transcription ? memoryLookup(originalInput, direction) : null;
     if (attested) return result(attested.translation, { fallback: false, aiUsed: false, attested: true, grade: attested.grade });
-    if (!Deno.env.get('MISTRAL_API_KEY')?.trim()) return result(fallback, { fallback: true, aiUsed: false }, 'llm_not_configured');
+    if (!(await getActiveAIKey()).trim()) return result(fallback, { fallback: true, aiUsed: false }, 'llm_not_configured');
     const style = ['simplify', 'natural', 'formal'].includes(body.style) ? body.style : 'correct';
     const instructions: Record<string, string> = {
       correct: 'Corrige seulement les erreurs certaines.',
@@ -68,7 +68,7 @@ export async function handleRefine(req: Request): Promise<Response> {
     const basePrompt = target === 'fr'
       ? 'Tu révises une traduction française existante. Retourne uniquement du français. Ne retraduis pas le brouillon en bariba. Préserve les noms propres, nombres, négations et le sens. En cas de doute, recopie le brouillon.'
       : buildRefineSystemPrompt(transcription ? 'transcription' : 'translation', direction);
-    const response = await mistralFetch(MISTRAL_CHAT_URL, {
+    const response = await aiFetch(AI_CHAT_URL, {
       body: JSON.stringify({ model: 'mistral-small-latest', max_tokens: 700, temperature: 0.1, messages: [
         { role: 'system', content: `${basePrompt}\n${instructions[style]}\nAucune information ajoutée. Préserve les nombres, noms et négations. Une correction non certaine doit être abandonnée. Retourne uniquement le texte final.` },
         { role: 'user', content: JSON.stringify({ source: originalInput || undefined, draft: text }) },
@@ -77,7 +77,7 @@ export async function handleRefine(req: Request): Promise<Response> {
     });
     if (!response.ok) {
       const failure = await response.json().catch(() => ({}));
-      console.warn(JSON.stringify({ event: 'refine_mistral_unavailable', status: response.status }));
+      console.warn(JSON.stringify({ event: 'refine_ai_unavailable', status: response.status }));
       return result(fallback, { fallback: true, aiUsed: false, status: response.status }, failure.error?.code || 'llm_unavailable');
     }
     const data = await response.json();
@@ -85,7 +85,7 @@ export async function handleRefine(req: Request): Promise<Response> {
     const verdict = candidate && !isInvalidUiLikeText(candidate) ? controlledEdit(text, candidate, target) : { accepted: false, reason: 'invalid_response' };
     const refined = verdict.accepted ? candidate : fallback;
     console.log(JSON.stringify({ event: 'refine_completed', accepted: verdict.accepted, duration: Date.now() - started }));
-    return result(refined, { fallback: !verdict.accepted, aiUsed: true, model: data.model || 'mistral-small-latest', accepted: verdict.accepted, guard: verdict.reason, style });
+    return result(refined, { fallback: !verdict.accepted, aiUsed: true, model: data.model || response.headers.get('X-Fitila-AI-Model') || '', provider: response.headers.get('X-Fitila-AI-Provider'), accepted: verdict.accepted, guard: verdict.reason, style });
   } catch (error) {
     // Preserve the draft on provider/network timeout. Never invent a corrected text.
     console.warn(JSON.stringify({ event: 'refine_unavailable', timeout: error instanceof Error && /abort|timeout/i.test(error.message) }));

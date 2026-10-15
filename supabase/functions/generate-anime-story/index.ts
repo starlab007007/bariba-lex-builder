@@ -1,4 +1,4 @@
-import { mistralFetch, MISTRAL_CHAT_URL } from "../_shared/mistral.ts";
+import { aiFetch, AI_CHAT_URL, getActiveAIKey } from "../_shared/ai-provider.ts";
 /**
  * Generate Anime Story Edge Function
  * 
@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
         durationSeconds: s.durationSeconds || Math.floor(duration / preEditedScenes.length),
       }));
     } else {
-      const scenes = Deno.env.get('MISTRAL_API_KEY')
+      const scenes = await getActiveAIKey()
         ? await segmentStory(story, duration)
         : createDefaultScenes(story, duration, Math.min(6, Math.max(3, Math.ceil(duration / 10))));
 
@@ -489,7 +489,7 @@ Réponds UNIQUEMENT avec un JSON valide dans ce format exact:
 }`;
 
   try {
-    const response = await mistralFetch(MISTRAL_CHAT_URL, {
+    const response = await aiFetch(AI_CHAT_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

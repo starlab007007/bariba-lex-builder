@@ -1,4 +1,4 @@
-import { mistralFetch, MISTRAL_CHAT_URL } from "../_shared/mistral.ts";
+import { aiFetch, AI_CHAT_URL, getActiveAIKey } from "../_shared/ai-provider.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -104,16 +104,16 @@ export async function handleImageAnimation(req: Request): Promise<Response> {
   try {
     const { imageBase64, story, style, duration = 15, analysisType = 'full' } = await req.json();
 
-    const MISTRAL_API_KEY = Deno.env.get('MISTRAL_API_KEY');
-    if (!MISTRAL_API_KEY) {
-      throw new Error('MISTRAL_API_KEY is not configured');
+    const ACTIVE_AI_KEY = await getActiveAIKey();
+    if (!ACTIVE_AI_KEY) {
+      throw new Error('La clé du fournisseur IA actif est absente.');
     }
 
     const results: { imageAnalysis?: ImageAnalysis; emotionAnalysis?: EmotionAnalysis } = {};
 
-    // Image Analysis with Mistral Vision
+    // Image Analysis with active vision provider
     if (imageBase64 && (analysisType === 'full' || analysisType === 'image')) {
-      console.log('[generate-image-animation] Analyzing image with Mistral Vision...');
+      console.log('[generate-image-animation] Analyzing image with active vision provider...');
       
       const imagePrompt = `You are an expert cinematographer and animator. Analyze this image for creating a Ken Burns style animation.
 
@@ -141,7 +141,7 @@ Return ONLY a JSON object with this exact structure (no markdown, no explanation
 Style hint: ${style || 'traditional african storytelling'}
 Story context: ${story || 'A traditional African tale'}`;
 
-      const imageResponse = await mistralFetch(MISTRAL_CHAT_URL, {
+      const imageResponse = await aiFetch(AI_CHAT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -198,7 +198,7 @@ Return ONLY a JSON object with this exact structure (no markdown, no explanation
 
 Make segments that cover the full duration proportionally to the story content.`;
 
-      const emotionResponse = await mistralFetch(MISTRAL_CHAT_URL, {
+      const emotionResponse = await aiFetch(AI_CHAT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
