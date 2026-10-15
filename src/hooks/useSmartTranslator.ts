@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useBaribaTTS } from '@/hooks/useBaribaTTS';
 import { useFrenchTTS } from '@/hooks/useFrenchTTS';
-import { useBaribaSTT } from '@/hooks/useBaribaSTT';
+import { runServerVoice } from '@/lib/dunya/serverVoice';
 import { useWebSpeechSTT } from '@/hooks/useWebSpeechSTT';
 import { byT5TranslationService } from '@/services/ByT5TranslationService';
 import { translationCache } from '@/services/TranslationCache';
@@ -38,7 +38,7 @@ interface UseSmartTranslatorReturn {
   setCurrentMode: (mode: InputMode) => void;
   translateFromAudio: (audioBase64: string) => Promise<void>;
   translateFromLiveAudio: () => Promise<void>;
-  translateFromText: (text: string) => Promise<void>;
+  translateFromText: (text: string, from?: SourceLanguage) => Promise<boolean>;
   translateFromImage: (imageBase64: string) => Promise<void>;
   translateFromClipboard: () => Promise<void>;
   translateFromDocument: (file: File) => Promise<void>;
@@ -50,6 +50,7 @@ interface UseSmartTranslatorReturn {
   
   // Controls
   swapLanguages: () => void;
+  setLanguage: (from: SourceLanguage) => void;
   reset: () => void;
   copyToClipboard: () => Promise<void>;
   setSourceText: (text: string) => void;
@@ -85,7 +86,6 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
   const frenchTTS = useFrenchTTS();
   
   // STT hooks
-  const baribaSTT = useBaribaSTT();
   const webSpeechSTT = useWebSpeechSTT(); // For French - uses Web Speech API directly
   
   // Initialize offline services and connectivity detection
@@ -202,17 +202,10 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     try {
       let transcription = '';
       
-      // For Bariba: use server-side HuggingFace STT
-      if (sourceLanguage === 'bariba') {
-        const result = await baribaSTT.transcribe(audioBase64);
-        transcription = result?.transcription || '';
-      } else {
-        // For French: Web Speech API cannot use pre-recorded audio base64
-        // This path should rarely be used - prefer translateFromLiveAudio for French
-        console.warn('[SmartTranslator] French audio base64 received but Web Speech API requires live audio. Falling back to empty transcription.');
-        transcription = '';
-      }
-      
+      const encoded = audioBase64.includes(',') ? audioBase64.split(',').pop()! : audioBase64;
+      const bytes = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
+      await runServerVoice({ audio: new Blob([bytes]), lang: sourceLanguage === 'bariba' ? 'bba' : 'fr', transcribeOnly: true, signal: AbortSignal.timeout(140_000), onEvent(event) { if (event.type === 'transcript') transcription = event.text || ''; } });
+
       if (!transcription) {
         throw new Error('Transcription échouée - utilisez le mode vocal direct pour le français');
       }
@@ -230,14 +223,6 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
         targetLanguage
       });
       
-      // Auto-speak the translation
-      if (translation) {
-        if (targetLanguage === 'bariba') {
-          await baribaTTS.speak(translation);
-        } else {
-          frenchTTS.speak(translation);
-        }
-      }
       
       tamtamFeedback.play('success');
       
@@ -252,7 +237,7 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     } finally {
       setIsProcessing(false);
     }
-  }, [sourceLanguage, targetLanguage, baribaSTT, baribaTTS, frenchTTS, performTranslation, toast]);
+  }, [sourceLanguage, targetLanguage, baribaTTS, frenchTTS, performTranslation, toast]);
 
   // Translate from live audio using Web Speech API (for French)
   const translateFromLiveAudio = useCallback(async () => {
@@ -285,14 +270,6 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
         targetLanguage
       });
       
-      // Auto-speak the translation
-      if (translation) {
-        if (targetLanguage === 'bariba') {
-          await baribaTTS.speak(translation);
-        } else {
-          frenchTTS.speak(translation);
-        }
-      }
       
       tamtamFeedback.play('success');
       
@@ -310,25 +287,29 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
   }, [sourceLanguage, targetLanguage, webSpeechSTT, baribaTTS, frenchTTS, performTranslation, toast]);
 
   // Translate from text input
-  const translateFromText = useCallback(async (text: string) => {
-    if (!text.trim()) return;
+  const translateFromText = useCallback(async (text: string, fromOverride?: SourceLanguage) => {
+    if (!text.trim()) return false;
+    const from = fromOverride ?? sourceLanguage;
+    const to = from === 'french' ? 'bariba' : 'french';
+    setSourceLanguage(from); setTargetLanguage(to);
     
     setIsProcessing(true);
     setSourceText(text);
     tamtamFeedback.play('send');
     
     try {
-      const translation = await performTranslation(text, sourceLanguage, targetLanguage);
+      const translation = await performTranslation(text, from, to);
       setTranslatedText(translation);
       
       setLastResult({
         sourceText: text,
         translatedText: translation,
-        sourceLanguage,
-        targetLanguage
+        sourceLanguage: from,
+        targetLanguage: to
       });
       
       tamtamFeedback.play('success');
+      return true;
       
     } catch (error: any) {
       console.error('[SmartTranslator] Text translation error:', error);
@@ -338,6 +319,7 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
         variant: "destructive"
       });
       tamtamFeedback.play('error');
+      return false;
     } finally {
       setIsProcessing(false);
     }
@@ -372,14 +354,6 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
         targetLanguage
       });
       
-      // Auto-speak the translation
-      if (translation) {
-        if (targetLanguage === 'bariba') {
-          await baribaTTS.speak(translation);
-        } else {
-          frenchTTS.speak(translation);
-        }
-      }
       
       tamtamFeedback.play('success');
       
@@ -604,6 +578,7 @@ export const useSmartTranslator = (): UseSmartTranslatorReturn => {
     speakTranslation,
     isSpeaking,
     swapLanguages,
+    setLanguage: (from: SourceLanguage) => { setSourceLanguage(from); setTargetLanguage(from === 'bariba' ? 'french' : 'bariba'); },
     reset,
     copyToClipboard,
     setSourceText,

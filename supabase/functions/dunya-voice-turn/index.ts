@@ -36,11 +36,6 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
   const secret = await crypto.subtle.importKey('raw', new TextEncoder().encode(voiceKey), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const signature = await crypto.subtle.sign('HMAC', secret, new TextEncoder().encode(`dunya-quota:${actor}`));
   const actorHash = [...new Uint8Array(signature)].map(x => x.toString(16).padStart(2, '0')).join('');
-  for (const [bucket, limit, seconds] of [['global', 60, 60], ['global-day', 1000, 86400], [actorHash, auth ? 12 : 6, 60]] as const) {
-    const { data, error } = await db.rpc('consume_dunya_voice_quota', { p_key: bucket, p_limit: limit, p_window: seconds });
-    if (error) return reply(503, 'quota_unavailable'); // fail closed before any paid/model inference
-    if (data !== true) return reply(429, 'rate_limited');
-  }
   // Stream the body through a byte limit; Content-Length is neither required nor trusted.
   const reader = req.body?.getReader();
   if (!reader) return reply(400, 'invalid_request');
@@ -66,6 +61,16 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
   const replyLang: 'fr' | 'bba' = body.reply_lang === 'fr' ? 'fr' : body.reply_lang === 'bba' ? 'bba' : lang;
   let segments: Uint8Array[] = [];
   if (audio) { try { segments = segmentVoiceWav(audio); } catch { return reply(400, 'invalid_audio'); } }
+  // Listening to a long answer consumes small speech chunks, never another AI answer.
+  // Separate that bounded capability from input/brain quotas; the shared CPU/day budgets remain.
+  const speechOnly = body.speech_only === true;
+  if (speechOnly && (!text || audio || body.transcribe_only === true)) return reply(400, 'invalid_request');
+  for (const [bucket, limit, seconds] of [['global', 60, 60], ['global-day', 1000, 86400],
+    [`${speechOnly ? 'speech' : 'input'}:${actorHash}`, speechOnly ? (auth ? 40 : 30) : (auth ? 12 : 6), 60]] as const) {
+    const { data, error } = await db.rpc('consume_dunya_voice_quota', { p_key: bucket, p_limit: limit, p_window: seconds });
+    if (error) return reply(503, 'quota_unavailable');
+    if (data !== true) return reply(429, 'rate_limited');
+  }
   const history = (Array.isArray(body.history) ? body.history : []).slice(-8)
     .filter(x => x && ['user', 'assistant'].includes(x.role) && typeof x.content === 'string')
     .map(x => ({ role: x.role, content: clean(x.content).slice(0, MAX_VOICE_TEXT) }));
@@ -142,6 +147,8 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
             catch (error) {
               if (abort.signal.aborted) throw error;
               if (error instanceof Error && error.message === 'busy') throw error;
+              // A French recording must never be sent to a Bariba-only fallback.
+              if (lang === 'fr') throw new Error('transcription_unavailable');
               engine = 'bariba-stt';
               send({ type: 'notice', code: 'asr_fallback', engine });
               const fallback = await fn('bariba-stt', { audio: `data:audio/wav;base64,${encoded}`, robustMode: true });
@@ -198,7 +205,7 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
         send({ type: 'done' });
       } catch (error) {
         const code = error instanceof Error ? error.message : 'service_unavailable';
-        send({ type: 'error', code: ['clarification_required', 'translation_unavailable', 'busy', 'brain_unavailable', 'brain_rate_limited'].includes(code) ? code : 'service_unavailable' });
+        send({ type: 'error', code: ['clarification_required', 'transcription_unavailable', 'translation_unavailable', 'busy', 'brain_unavailable', 'brain_rate_limited'].includes(code) ? code : 'service_unavailable' });
       } finally {
         clearTimeout(timer); req.signal.removeEventListener('abort', cancel);
         console.log(JSON.stringify({ event: 'dunya_voice_turn', request_id: id, elapsed_ms: Date.now() - started, cancelled: abort.signal.aborted }));

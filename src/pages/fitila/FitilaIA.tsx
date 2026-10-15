@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Mic, MicOff, Loader2, Bot, User, Languages, Keyboard, ChevronDown } from 'lucide-react';
+import { Send, Loader2, Bot, User, Languages, Keyboard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAudioRecorder } from '@/hooks/useAudioRecorder';
-import { useBaribaSTT } from '@/hooks/useBaribaSTT';
+import VoiceInput from '@/components/voice/VoiceInput';
+import ReplyAudioPlayer from '@/components/voice/ReplyAudioPlayer';
+import type { SpeechLanguage } from '@/lib/voice/replySpeech';
 import { usePhoneticSuggestions } from '@/hooks/usePhoneticSuggestions';
 import { toast } from 'sonner';
 
@@ -27,37 +28,6 @@ const BARIBA_CHARS = [
   'ǹ', 'ń',
 ];
 
-// Typing animation component
-function TypingText({ content, onComplete }: { content: string; onComplete: () => void }) {
-  const [displayed, setDisplayed] = useState('');
-  const indexRef = useRef(0);
-
-  useEffect(() => {
-    indexRef.current = 0;
-    setDisplayed('');
-    const interval = setInterval(() => {
-      indexRef.current++;
-      if (indexRef.current >= content.length) {
-        setDisplayed(content);
-        clearInterval(interval);
-        onComplete();
-      } else {
-        setDisplayed(content.slice(0, indexRef.current));
-      }
-    }, 18);
-    return () => clearInterval(interval);
-  }, [content, onComplete]);
-
-  return (
-    <div className="whitespace-pre-wrap leading-relaxed">
-      {displayed}
-      {displayed.length < content.length && (
-        <span className="inline-block w-0.5 h-4 bg-gray-800 animate-pulse ml-0.5 align-text-bottom" />
-      )}
-    </div>
-  );
-}
-
 export default function FitilaIA() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -68,8 +38,8 @@ export default function FitilaIA() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Hooks
-  const { startRecording, stopRecording, isRecording } = useAudioRecorder();
-  const { transcribe, isTranscribing } = useBaribaSTT();
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const [voiceLang, setVoiceLang] = useState<SpeechLanguage>('bba');
   const { getSuggestions } = usePhoneticSuggestions();
 
   // Word suggestions
@@ -83,10 +53,6 @@ export default function FitilaIA() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
-
-  const handleTypingComplete = useCallback((msgId: string) => {
-    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isTyping: false } : m));
-  }, []);
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isProcessing) return;
@@ -141,7 +107,7 @@ export default function FitilaIA() {
                 ...m, 
                 content: formatted, 
                 isLoading: false, 
-                isTyping: true,
+                isTyping: false,
                 // If fallback, pre-fill French translation since response is already in French
                 ...(isFallback ? { translationFr: responseFr, isFallbackFr: true } : {}),
               }
@@ -182,22 +148,6 @@ export default function FitilaIA() {
     sendMessage(input);
   };
 
-  const handleVoiceToggle = async () => {
-    if (isRecording) {
-      const base64 = await stopRecording();
-      if (base64) {
-        const result = await transcribe(base64);
-        if (result?.transcription) {
-          sendMessage(result.transcription);
-        } else {
-          toast.error('Transcription impossible');
-        }
-      }
-    } else {
-      await startRecording();
-    }
-  };
-
   const insertChar = (char: string) => {
     const el = inputRef.current;
     if (!el) { setInput(prev => prev + char); return; }
@@ -219,10 +169,10 @@ export default function FitilaIA() {
     inputRef.current?.focus();
   };
 
-  const isBusy = isProcessing || isTranscribing;
+  const isBusy = isProcessing || voiceBusy;
 
   return (
-    <div className="mx-auto flex h-full w-full max-w-[960px] flex-col bg-[#F7F5EC] text-[#241F2E]">
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-[960px] flex-col overflow-hidden bg-[#F7F5EC] text-[#241F2E]">
       {/* Header */}
       <div className="flex items-center gap-3 pl-[74px] md:pl-[18px] pr-4 pt-[14px] pb-2 z-10">
                 <div className="flex items-center gap-2.5 flex-1">
@@ -234,7 +184,7 @@ export default function FitilaIA() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-4">
             <div className="w-[86px] h-[86px] rounded-[28px] bg-[#ECE8FA] flex items-center justify-center border border-[#D9D2F3]">
@@ -288,8 +238,8 @@ export default function FitilaIA() {
                 </div>
 
                 {/* Bubble + translation */}
-                <div className="flex flex-col gap-1">
-                  <div className={`px-4 py-3 rounded-[18px] text-sm ${
+                <div className="min-w-0 flex flex-col gap-1">
+                  <div className={`break-words px-4 py-3 rounded-[18px] text-sm ${
                     msg.role === 'user'
                       ? 'bg-[#C99530] text-[#2B2110] rounded-tr-md'
                       : 'bg-white text-[#241F2E] rounded-tl-md border border-[#E4DFCC]'
@@ -303,15 +253,12 @@ export default function FitilaIA() {
                         </div>
                         <span className="text-gray-400 text-xs">Ǹ nɛ́ɛ̀ dɔɔ bírú...</span>
                       </div>
-                    ) : msg.isTyping ? (
-                      <TypingText
-                        content={msg.content}
-                        onComplete={() => handleTypingComplete(msg.id)}
-                      />
                     ) : (
                       <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
                     )}
                   </div>
+
+                  {msg.role === 'assistant' && !msg.isLoading && <ReplyAudioPlayer text={msg.content} lang={msg.isFallbackFr ? 'fr' : 'bba'} />}
 
                   {/* Fallback notice when response is in French */}
                   {msg.role === 'assistant' && !msg.isLoading && !msg.isTyping && msg.isFallbackFr && (
@@ -342,6 +289,7 @@ export default function FitilaIA() {
                         >
                           <span className="font-medium text-[#6758C9] text-[10px] uppercase tracking-wide block mb-1">Français</span>
                           {msg.translationFr}
+                          <ReplyAudioPlayer text={msg.translationFr} lang="fr" label="Écouter en français" />
                         </motion.div>
                       )}
                     </>
@@ -428,35 +376,13 @@ export default function FitilaIA() {
             onFocus={() => setShowSuggestions(true)}
             placeholder="Yaa sɔ̃ɔ..."
             disabled={isBusy}
-            className="flex-1 h-[50px] bg-white border border-[#E4DFCC] rounded-[24px] px-4 text-[#241F2E] text-[15px] placeholder:text-[#8C8571] focus:outline-none focus:border-[#C99530] disabled:opacity-50 transition-all"
+            className="min-w-0 flex-1 h-[50px] bg-white border border-[#E4DFCC] rounded-[24px] px-4 text-[#241F2E] text-[15px] placeholder:text-[#8C8571] focus:outline-none focus:border-[#C99530] disabled:opacity-50 transition-all"
           />
-
-          {/* Mic */}
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.9 }}
-            onClick={handleVoiceToggle}
-            disabled={isProcessing || isTranscribing}
-            className={`w-[46px] h-[46px] rounded-[14px] flex items-center justify-center transition-all ${
-              isRecording
-                ? 'bg-red-500 animate-pulse shadow-lg shadow-red-200'
-                : isTranscribing
-                  ? 'bg-amber-100'
-                  : 'bg-white border border-[#E4DFCC] text-[#241F2E] hover:bg-[#F1EDDF]'
-            }`}
-          >
-            {isTranscribing ? (
-              <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
-            ) : isRecording ? (
-              <MicOff className="w-5 h-5 text-white" />
-            ) : (
-              <Mic className="w-5 h-5" />
-            )}
-          </motion.button>
 
           {/* Send */}
           <motion.button
             type="submit"
+            aria-label="Envoyer le message"
             whileTap={{ scale: 0.9 }}
             disabled={!input.trim() || isBusy}
             className="w-[46px] h-[46px] rounded-[14px] bg-[#6758C9] flex items-center justify-center disabled:opacity-60 transition-opacity"
@@ -468,6 +394,8 @@ export default function FitilaIA() {
             )}
           </motion.button>
         </div>
+        <div className="mt-2 flex justify-end"><select aria-label="Langue du vocal" disabled={isBusy} value={voiceLang} onChange={e => setVoiceLang(e.target.value as SpeechLanguage)} className="h-9 rounded-xl border border-[#E4DFCC] bg-white px-2 text-xs"><option value="bba">Baatɔnum</option><option value="fr">Français</option></select></div>
+        <div className="mt-2"><VoiceInput lang={voiceLang} disabled={isProcessing} onBusyChange={setVoiceBusy} onTranscript={text => setInput(previous => [previous.trim(), text].filter(Boolean).join(' '))} /></div>
       </form>
     </div>
   );
