@@ -582,6 +582,12 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
             ) : (
               <p className="text-[12.5px] text-[#7D7566]">Voix FITILA. La voix Meta est en pilote, réservée aux comptes autorisés.</p>
             )}
+            <div className="mt-2 rounded-xl bg-[#F4EFE0] p-2 text-[12px] text-[#4A4356]" aria-label="Diagnostic voix">
+              <p><b>Statut :</b> {pilotLabel[pilotStatus]}</p>
+              <p><b>Reconnaissance (ASR) :</b> {effective.asr ? 'Meta Omnilingual' : 'FITILA (secours)'}</p>
+              <p><b>Synthèse (TTS) :</b> {effective.tts ? 'Meta MMS' : 'FITILA (secours)'}</p>
+              <p><b>Mode actuel :</b> {mode === 'fr' ? 'Français (voix Meta inactive en mode français)' : mode === 'bba' ? 'Baatɔnum' : 'Bilingue'}</p>
+            </div>
           </fieldset>
           <p className="mt-3 text-[12.5px] text-[#7D7566]">
             Sur le web, DUNYA utilise Internet : dictée du navigateur pour le français, modèles FITILA pour le baatɔnum. Dans l’application mobile, tout fonctionne sans Internet.
