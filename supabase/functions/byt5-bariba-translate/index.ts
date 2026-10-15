@@ -320,7 +320,8 @@ async function tryRefineTranslation(params: {
 }
 
 function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  const payload = body && typeof body === "object" ? { ...body, confidenceIsProbability: false, linguisticQualityCertified: false } : body;
+  return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
 export async function handleByT5(req: Request): Promise<Response> {
