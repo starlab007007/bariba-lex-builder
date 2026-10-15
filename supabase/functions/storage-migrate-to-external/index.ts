@@ -134,12 +134,22 @@ Deno.serve(async (req) => {
         continue;
       }
       if (!d.missing) { manifest.push({ path, size: s.size, sha256: s.sha, state: "dst_unknown_not_touched", error: d.error }); continue; }
-      if (mode !== "copy") { manifest.push({ path, size: s.size, sha256: s.sha, state: "would_copy" }); continue; }
-      const { error: upErr } = await dst.storage.from(bucket).upload(path, new Blob([s.buf], { type: s.type || "application/octet-stream" }), { upsert: false, contentType: s.type || undefined });
+      if (mode !== "copy" && mode !== "repair") { manifest.push({ path, size: s.size, sha256: s.sha, state: "would_copy" }); continue; }
+      const blob = () => new Blob([s.buf], { type: s.type || "application/octet-stream" });
+      const { error: upErr } = await dst.storage.from(bucket).upload(path, blob(), { upsert: false, contentType: s.type || undefined });
       if (upErr) {
-        // La destination a déjà une fiche d'objet mais ses octets sont introuvables : on ne remplace pas.
-        const st = /already exists/i.test(upErr.message) ? "dst_metadata_without_bytes_blocked" : "copy_failed";
-        manifest.push({ path, size: s.size, sha256: s.sha, state: st, dst_probe: d.error, error: upErr.message }); continue;
+        const metaOnly = /already exists/i.test(upErr.message);
+        if (!metaOnly || mode !== "repair") {
+          manifest.push({ path, size: s.size, sha256: s.sha, state: metaOnly ? "dst_metadata_without_bytes_blocked" : "copy_failed", dst_probe: d.error, error: upErr.message }); continue;
+        }
+        // Autorisé par l'utilisateur : fiche sans octets. Re-sonde juste avant d'écrire.
+        const again = await probeDst(DST_URL, DST_KEY, bucket, path);
+        if (again.ok || !again.missing) { manifest.push({ path, state: "repair_skipped_dst_changed" }); continue; }
+        const { error: rErr } = await dst.storage.from(bucket).upload(path, blob(), { upsert: true, contentType: s.type || undefined });
+        if (rErr) { manifest.push({ path, size: s.size, state: "repair_failed", error: rErr.message }); continue; }
+        const v2 = await probeDst(DST_URL, DST_KEY, bucket, path);
+        manifest.push({ path, size: s.size, sha256: s.sha, state: v2.ok && v2.sha === s.sha && v2.size === s.size ? "repaired_verified" : "repaired_unverified" });
+        continue;
       }
       const v = await probeDst(DST_URL, DST_KEY, bucket, path);
       manifest.push({ path, size: s.size, sha256: s.sha, state: v.ok && v.sha === s.sha && v.size === s.size ? "copied_verified" : "copied_unverified", error: v.ok ? undefined : v.error });
