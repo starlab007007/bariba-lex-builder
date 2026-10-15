@@ -136,7 +136,7 @@ Deno.test('post-editing rejects changed quantities, French negation and unattest
 Deno.test('an attested source takes precedence without a Mistral rewrite', async () => {
   await mocked(async () => { throw new Error('attested pair must not call Mistral'); }, async () => {
     const response = await handleRefine(req({ originalInput: 'Salut ! Bonne arrivée !', text: 'un brouillon erroné', direction: 'fr-ba', type: 'translate' }));
-    const data = await response.json(); assert(data.refined.includes('Aagu') && data.meta.attested && !data.meta.aiUsed);
+    const data = await response.json(); assert(data.refined.includes('Aagu') && data.meta.attested && !data.meta.aiUsed && data.meta.requiresHumanValidation && data.linguisticQualityCertified === false);
   });
 });
 Deno.test('French post-editing preserves its direction and reports an unverified heuristic', async () => {

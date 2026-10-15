@@ -43,10 +43,12 @@ export async function handleRefine(req: Request): Promise<Response> {
     const result = (refined: string, meta: Record<string, unknown>, error?: string) => reply({
       refined,
       changes: detectRefinementChanges({ original: text, refined, originalInput }),
-      ...estimateConfidence(refined, target, false),
+      confidence: estimateConfidence(refined, target, false).confidence,
+      confidenceIsProbability: false,
+      linguisticQualityCertified: false,
       confidenceKind: meta.attested ? 'attested-reference' : 'heuristic-unverified',
       ...(error ? { error } : {}),
-      meta: { duration: Date.now() - started, direction, type: transcription ? 'transcription' : 'translation', requiresHumanValidation: !meta.attested, ...meta },
+      meta: { duration: Date.now() - started, direction, type: transcription ? 'transcription' : 'translation', requiresHumanValidation: true, ...meta },
     });
     if (!text || isInvalidUiLikeText(text)) return result(text, { fallback: true, aiUsed: false }, 'Invalid input text');
     await ensureMemory();
