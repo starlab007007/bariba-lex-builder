@@ -165,6 +165,7 @@ export function stopSpeaking() {
   finishCurrentSpeech = null;
   try {
     window.speechSynthesis?.cancel();
+    window.speechSynthesis?.resume(); // reset a paused French queue before the next turn
   } catch {
     // ignore
   }
