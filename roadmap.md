@@ -7,3 +7,7 @@
   - [-] EXCLU par le propriétaire : videos, tamtam-media, tamtam-audio, anime-library, envato-assets, tous les audios Classe — ne rien migrer
   - [x] bariba-voice-corpus re-audité : 17/17 identiques SHA-256, 1 fichier source vide ignoré
   - [ ] 2 lignes vocales divergentes (validated) : audio vérifié des deux côtés, attente décision humaine
+- [~] Voix Meta (MMS-TTS bba + Omnilingual ASR 300M) derrière flags
+  - [x] Passerelle meta-voice-gateway, client, Apprendre (humain > Meta > indispo), exercice parler, DUNYA, docs, tests
+  - [ ] Déploiement VPS (pas d'accès SSH)
+  - [ ] Déploiement passerelle sur dvswhjawiooprghzeyol + secrets (SUPABASE_ACCESS_TOKEN GitHub invalide)
