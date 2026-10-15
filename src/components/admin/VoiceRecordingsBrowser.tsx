@@ -66,12 +66,10 @@ export default function VoiceRecordingsBrowser() {
         );
       }
 
-      // Build signed URLs (private bucket)
+      // Signed URL + 1-byte read-back (private bucket). Metadata ≠ physical bytes.
       const withUrls = await Promise.all(rows.map(async (r: any) => {
-        const { data: signed } = await supabase.storage
-          .from('bariba-voice-corpus')
-          .createSignedUrl(r.storage_path, 3600);
-        return { ...r, audio_url: signed?.signedUrl };
+        const probe = await probeVoiceObject(r.storage_path);
+        return { ...r, audio_url: probe.signedUrl ?? undefined, byte_status: probe.status };
       }));
 
       // Resolve usernames
@@ -110,6 +108,14 @@ export default function VoiceRecordingsBrowser() {
   useEffect(() => { load(); }, [load]);
 
   const setStatus = async (id: string, patch: Partial<Recording>) => {
+    if (patch.validated) {
+      const rec = recordings.find(r => r.id === id);
+      const probe = rec ? await probeVoiceObject(rec.storage_path) : null;
+      if (probe?.status !== 'present') {
+        toast.error("Validation refusée : le fichier audio est introuvable dans le stockage (métadonnées seules).");
+        return;
+      }
+    }
     const { error } = await supabase
       .from('bariba_voice_recordings')
       .update(patch as any)
