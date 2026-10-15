@@ -339,3 +339,30 @@ test("A visitor cannot enter the translation publishing tool", async ({
     page.getByRole("button", { name: "Valider et publier", exact: true }),
   ).toHaveCount(0);
 });
+
+test("The real application keeps its language across the main pages and protected route redirects", async ({ page }) => {
+  test.setTimeout(180000);
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await setup(page);
+  await page.route("**/functions/v1/**", (route) =>
+    route.fulfill({ headers: cors, json: {} }),
+  );
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/learn");
+  await page.getByRole("button", { name: "Bàátɔ̀nú", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "bba");
+  await expect(page.getByRole("button", { name: "Tire mɛro", exact: true })).toBeVisible();
+  for (const path of ["/learn", "/translator", "/ia", "/dunya", "/classe", "/dictionary", "/keyboard", "/settings", "/auth", "/social", "/creator", "/espace", "/teacher", "/admin/localization"]) {
+    await page.goto(path);
+    await expect(page.locator("html"), path).toHaveAttribute("lang", "bba");
+    await expect(page.locator("main"), path).toBeVisible();
+    await expect.poll(async () => (await page.locator("main").innerText()).trim().length, { message: path }).toBeGreaterThan(5);
+    await expect(page.getByText(/❌ Une erreur est survenue/), path).toHaveCount(0);
+  }
+  await page.goto("/learn");
+  await page.getByRole("button", { name: "Français", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "fr");
+  await expect(page.getByRole("button", { name: "Dictionnaire", exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+});
