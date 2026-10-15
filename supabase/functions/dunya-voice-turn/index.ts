@@ -87,7 +87,12 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
           method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${upstreamKey}`, apikey: key },
           body: JSON.stringify(payload), signal: abort.signal,
         });
-        if (!response.ok) { await response.body?.cancel(); throw new Error(response.status === 429 ? 'busy' : 'upstream_failed'); }
+        if (!response.ok) {
+          const failure = await response.json().catch(() => ({}));
+          console.warn(JSON.stringify({ event: 'dunya_upstream_failure', request_id: id, target: new URL(target).pathname, status: response.status }));
+          if (failure.error === 'llm_not_configured') throw new Error('brain_unavailable');
+          throw new Error(response.status === 429 ? 'busy' : 'upstream_failed');
+        }
         const value = await response.json();
         if (value.error) throw new Error('upstream_failed');
         return value;
@@ -184,7 +189,7 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
         send({ type: 'done' });
       } catch (error) {
         const code = error instanceof Error ? error.message : 'service_unavailable';
-        send({ type: 'error', code: ['clarification_required', 'translation_unavailable', 'busy'].includes(code) ? code : 'service_unavailable' });
+        send({ type: 'error', code: ['clarification_required', 'translation_unavailable', 'busy', 'brain_unavailable'].includes(code) ? code : 'service_unavailable' });
       } finally {
         clearTimeout(timer); req.signal.removeEventListener('abort', cancel);
         console.log(JSON.stringify({ event: 'dunya_voice_turn', request_id: id, elapsed_ms: Date.now() - started, cancelled: abort.signal.aborted }));

@@ -11,6 +11,7 @@ const messages: Record<string, string> = {
   translation_fallback: 'La traduction est indisponible : réponse en français.',
   asr_fallback: 'Reconnaissance vocale de secours utilisée.',
   tts_fallback: 'Voix de secours utilisée pour cette réponse.',
+  brain_unavailable: 'La réponse conversationnelle est temporairement indisponible. Votre vocal a bien été compris ; réessayez plus tard.',
 };
 export const voiceMessage = (code?: string): string => messages[code ?? ''] ?? 'Service vocal momentanément indisponible. Réessayez.';
 
