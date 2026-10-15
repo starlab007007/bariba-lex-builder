@@ -151,38 +151,38 @@ export const DomainChatbot: React.FC<DomainChatbotProps> = ({
     const labels: Record<string, { fr: string; ba: string }> = {
       // Health
       'health': { fr: 'Santé', ba: 'Ìlera' },
-      'health_first_aid': { fr: 'Premiers secours', ba: 'Ìrànwọ́ àkọ́kọ́' },
+      'health_first_aid': { fr: 'Premiers secours', ba: "Premiers secours" },
       'health_medication': { fr: 'Médicaments', ba: 'Oògùn' },
-      'health_maternity': { fr: 'Maternité', ba: 'Ìbímọ' },
+      'health_maternity': { fr: 'Maternité', ba: "Maternité" },
       'health_diseases': { fr: 'Maladies', ba: 'Àrùn' },
-      'health_nutrition': { fr: 'Nutrition', ba: 'Oúnjẹ' },
+      'health_nutrition': { fr: 'Nutrition', ba: "Nutrition" },
       'health_emergency': { fr: 'Urgence', ba: 'Pàjáwìrì' },
       // Agriculture
-      'agriculture': { fr: 'Agriculture', ba: 'Àgbẹ̀' },
-      'agriculture_weather': { fr: 'Météo', ba: 'Ojú ọjọ́' },
-      'agriculture_crops': { fr: 'Cultures', ba: 'Ohun ọ̀gbìn' },
-      'agriculture_livestock': { fr: 'Élevage', ba: 'Ẹran ọ̀sìn' },
+      'agriculture': { fr: 'Agriculture', ba: "Agriculture" },
+      'agriculture_weather': { fr: 'Météo', ba: "Météo" },
+      'agriculture_crops': { fr: 'Cultures', ba: "Cultures" },
+      'agriculture_livestock': { fr: 'Élevage', ba: "Élevage" },
       'agriculture_water': { fr: 'Irrigation', ba: 'Omi' },
       'agriculture_prices': { fr: 'Prix', ba: 'Owó' },
-      'agriculture_technician': { fr: 'Technicien', ba: 'Oníṣẹ́' },
+      'agriculture_technician': { fr: 'Technicien', ba: "Technicien" },
       // Finance
       'finance': { fr: 'Finance', ba: 'Owó' },
       'finance_sales': { fr: 'Ventes', ba: 'Títà' },
       'finance_expenses': { fr: 'Dépenses', ba: 'Náírà' },
-      'finance_tontine': { fr: 'Tontine', ba: 'Àjọ' },
+      'finance_tontine': { fr: 'Tontine', ba: "Tontine" },
       'finance_credit': { fr: 'Crédit', ba: 'Àwìn' },
-      'finance_savings': { fr: 'Épargne', ba: 'Ìfipamọ́' },
-      'finance_advisor': { fr: 'Conseiller', ba: 'Olùdámọ̀ràn' },
+      'finance_savings': { fr: 'Épargne', ba: "Épargne" },
+      'finance_advisor': { fr: 'Conseiller', ba: "Conseiller" },
       // Education
-      'education': { fr: 'Éducation', ba: 'Ẹ̀kọ́' },
-      'education_crops': { fr: 'Cours cultures', ba: 'Ẹ̀kọ́ ohun ọ̀gbìn' },
-      'education_livestock': { fr: 'Cours élevage', ba: 'Ẹ̀kọ́ ẹran' },
-      'education_business': { fr: 'Cours commerce', ba: 'Ẹ̀kọ́ òwò' },
-      'education_health': { fr: 'Cours santé', ba: 'Ẹ̀kọ́ ìlera' },
+      'education': { fr: 'Éducation', ba: "Éducation" },
+      'education_crops': { fr: 'Cours cultures', ba: "Cours cultures" },
+      'education_livestock': { fr: 'Cours élevage', ba: "Cours élevage" },
+      'education_business': { fr: 'Cours commerce', ba: "Cours commerce" },
+      'education_health': { fr: 'Cours santé', ba: "Cours santé" },
       'education_qa': { fr: 'Questions', ba: 'Ìbéèrè' },
       // Others
       'general': { fr: 'Général', ba: 'Gbogbogbò' },
-      'market': { fr: 'Marché', ba: 'Ọjà' }
+      'market': { fr: 'Marché', ba: "Marché" }
     };
     return labels[context] || labels['general'];
   };

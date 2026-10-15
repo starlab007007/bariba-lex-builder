@@ -103,7 +103,7 @@ export default function FitilaNavPanel({ onNavigate, compact = false }: { onNavi
       {!compact && (
         <>
           <GroupTitle>Langue</GroupTitle>
-          <div className="grid grid-cols-2 gap-2">
+          <div translate="no" className="grid grid-cols-2 gap-2">
             {([['fr', 'Français'], ['ba', 'Bàátɔ̀nú']] as const).map(([code, label]) => (
               <button
                 key={code}

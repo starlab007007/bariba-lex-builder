@@ -181,7 +181,7 @@ export default function FitilaTemIA() {
                         ? 'bg-amber-50 text-amber-900 rounded-tl-md border border-amber-200'
                         : 'bg-white text-[#241F2E] rounded-tl-md border border-gray-100'
                   }`}>
-                    <div className="whitespace-pre-wrap break-words leading-relaxed">{msg.content}</div>
+                    <div data-i18n-preserve className="whitespace-pre-wrap break-words leading-relaxed">{msg.content}</div>
                   </div>
 
                   {msg.role === 'assistant' && <ReplyAudioPlayer text={msg.content} lang="bba" />}

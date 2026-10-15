@@ -45,7 +45,7 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
     
     // Welcome message in current language
     await speakCurrentLang(currentLang === 'ba' 
-      ? 'Mo ń gbọ́ ọ. Sọ ohun tí o fẹ́.'
+      ? "Je vous écoute. Dites ce que vous voulez faire."
       : 'Je vous écoute. Dites ce que vous voulez faire.'
     );
     
@@ -71,8 +71,8 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
       
       if (!sttResult?.transcription) {
         toast({
-          title: currentLang === 'ba' ? 'Àṣìṣe' : 'Erreur',
-          description: currentLang === 'ba' ? 'Kò lè gbọ́ ohun' : 'Impossible de comprendre',
+          title: currentLang === 'ba' ? "Erreur" : 'Erreur',
+          description: currentLang === 'ba' ? "Impossible de comprendre" : 'Impossible de comprendre',
           variant: 'destructive'
         });
         setIsProcessing(false);
@@ -132,8 +132,8 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
     } catch (error) {
       console.error('Raconte-Moi error:', error);
       toast({
-        title: currentLang === 'ba' ? 'Àṣìṣe' : 'Erreur',
-        description: currentLang === 'ba' ? 'Má bìnú, gbìyànjú lẹ́ẹ̀kan sí i' : 'Désolé, réessayez',
+        title: currentLang === 'ba' ? "Erreur" : 'Erreur',
+        description: currentLang === 'ba' ? "Désolé, réessayez" : 'Désolé, réessayez',
         variant: 'destructive'
       });
     } finally {
@@ -251,7 +251,7 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
               {transcript && (
                 <div className="bg-white/10 rounded-2xl p-4 mb-4">
                   <p className="text-white/70 text-xs mb-1">
-                    {currentLang === 'ba' ? 'Mo gbọ́:' : "J'ai entendu:"}
+                    {currentLang === 'ba' ? "J'ai entendu:" : "J'ai entendu:"}
                   </p>
                   <p className="text-white font-medium">{transcript}</p>
                 </div>
@@ -269,7 +269,7 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
                   </p>
                   {response.type === 'navigate' && (
                     <p className="text-green-300 text-sm mt-2">
-                      ✓ {currentLang === 'ba' ? 'Ń lọ sí ibẹ̀...' : 'Navigation en cours...'}
+                      ✓ {currentLang === 'ba' ? "Navigation en cours..." : 'Navigation en cours...'}
                     </p>
                   )}
                 </motion.div>
@@ -287,7 +287,7 @@ export const RaconteMoiAssistant: React.FC<RaconteMoiAssistantProps> = ({ onActi
               >
                 {isListening 
                   ? (currentLang === 'ba' ? '⏹️ Dúró' : '⏹️ Arrêter')
-                  : (currentLang === 'ba' ? '🎤 Bẹ̀rẹ̀ sísọ' : '🎤 Commencer à parler')
+                  : (currentLang === 'ba' ? "🎤 Commencer à parler" : '🎤 Commencer à parler')
                 }
               </button>
 

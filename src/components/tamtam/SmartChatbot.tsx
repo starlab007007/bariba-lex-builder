@@ -99,10 +99,10 @@ export const SmartChatbot: React.FC<SmartChatbotProps> = ({
   };
 
   const contextLabels: Record<ConversationContext, { fr: string; ba: string }> = {
-    agriculture: { fr: 'Agriculture', ba: 'Àgbẹ̀' },
+    agriculture: { fr: 'Agriculture', ba: "Agriculture" },
     finance: { fr: 'Finance', ba: 'Owó' },
-    education: { fr: 'Éducation', ba: 'Ẹ̀kọ́' },
-    market: { fr: 'Marché', ba: 'Ọjà' },
+    education: { fr: 'Éducation', ba: "Éducation" },
+    market: { fr: 'Marché', ba: "Marché" },
     health: { fr: 'Santé', ba: 'Ìlera' },
     general: { fr: 'Général', ba: 'Gbogbogbò' }
   };

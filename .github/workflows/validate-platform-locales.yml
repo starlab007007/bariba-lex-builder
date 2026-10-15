@@ -1,0 +1,28 @@
+name: Validate platform languages
+on:
+  pull_request:
+    paths: ['src/**','scripts/*platform-locales.mjs','tests/i18n/**','e2e/platform-locale.spec.ts','e2e/fixtures/platform-locale.*','playwright.locale.config.ts','supabase/migrations/*platform_baatonum*','.github/workflows/validate-platform-locales.yml']
+permissions:
+  contents: read
+jobs:
+  localization:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22',cache: npm}
+      - run: npm ci --legacy-peer-deps
+      - run: node scripts/build-platform-locales.mjs
+      - run: npm run build
+      - uses: denoland/setup-deno@v2
+        with: {deno-version: v2.x}
+      - run: deno test --node-modules-dir=none tests/i18n/catalog.test.ts
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --config=playwright.locale.config.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: platform-locale-tests
+          path: |
+            test-results
+            docs/audits/platform-localization.json

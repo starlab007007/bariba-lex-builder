@@ -16,39 +16,39 @@ const AudioDescriptionContext = createContext<AudioDescriptionContextType | null
 const screenDescriptions: Record<string, { fr: string; ba: string }> = {
   home: { 
     fr: "Vous êtes sur l'écran d'accueil. Appuyez sur le micro central pour parler.",
-    ba: "A wá ní ilé. Tẹ̀ maikírófòònù láti sọ̀rọ̀."
+    ba: "Vous êtes sur l'écran d'accueil. Appuyez sur le micro central pour parler."
   },
   social: { 
     fr: "Fil d'actualité. Écoutez les publications de vos amis.",
-    ba: "Sɔ́ɔ̀rù gbɛ̀. Gbọ́ sɔ́ɔ̀rù àwọn ọ̀rẹ́."
+    ba: "Fil d'actualité. Écoutez les publications de vos amis."
   },
   messages: { 
     fr: "Messages vocaux. Écoutez et envoyez des messages audio.",
-    ba: "Bàátɔ́kɔ̀. Gbọ́ kí o sì fi ránṣẹ́."
+    ba: "Messages vocaux. Écoutez et envoyez des messages audio."
   },
   live: { 
     fr: "Salles audio en direct. Rejoignez une conversation.",
-    ba: "Yàrá ohùn. Darapọ̀ mọ́ ìjíròrò."
+    ba: "Salles audio en direct. Rejoignez une conversation."
   },
   market: { 
     fr: "Marché. Achetez et vendez avec des descriptions audio.",
-    ba: "Ọjà. Ra kí o tà pẹ̀lú ohùn."
+    ba: "Marché. Achetez et vendez avec des descriptions audio."
   },
   services: { 
     fr: "Services. Traducteur, santé, finance et plus.",
-    ba: "Sínsín. Tùnkɔ̀, àlàfíà, sìká àti púpọ̀."
+    ba: "Services. Traducteur, santé, finance et plus."
   },
   sos: { 
     fr: "Urgence. Appuyez sur le bouton rouge pour appeler à l'aide.",
-    ba: "Kpákpá. Tẹ̀ bọ́tìnì pupa fún ìràn."
+    ba: "Urgence. Appuyez sur le bouton rouge pour appeler à l'aide."
   },
   profile: { 
     fr: "Votre profil. Gérez vos paramètres.",
-    ba: "Mɛ̀ rẹ. Ṣàkóso ètò rẹ."
+    ba: "Votre profil. Gérez vos paramètres."
   },
   createPost: {
     fr: "Créer une publication. Choisissez le type de contenu.",
-    ba: "Ṣẹ̀dá sɔ́ɔ̀rù. Yan irú ohun."
+    ba: "Créer une publication. Choisissez le type de contenu."
   },
 };
 
