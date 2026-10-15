@@ -83,10 +83,10 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
         if (closed || abort.signal.aborted) return;
         controller.enqueue(encoder.encode(JSON.stringify({ ...event, request_id: id, elapsed_ms: Date.now() - started }) + '\n'));
       };
-      const jsonFetch = async (target: string, payload: unknown, upstreamKey: string) => {
+      const jsonFetch = async (target: string, payload: unknown, upstreamKey: string, signal = abort.signal) => {
         const response = await fetch(target, {
           method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${upstreamKey}`, apikey: key },
-          body: JSON.stringify(payload), signal: abort.signal,
+          body: JSON.stringify(payload), signal,
         });
         if (!response.ok) {
           const failure = await response.json().catch(() => ({}));
@@ -105,8 +105,13 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
           const { data, error } = await db.rpc('lease_dunya_voice_cpu', { p_owner: id });
           if (error) throw new Error('busy');
           if (data === true) {
-            try { return await jsonFetch(`${voiceUrl}/infer`, payload, voiceKey); }
-            finally { await db.rpc('release_dunya_voice_cpu', { p_owner: id }); }
+            // Cancelling HTTP does not stop a synchronous CPU inference on the VPS.
+            // Keep its lease until that inference returns, while discarding stale output.
+            const pending = jsonFetch(`${voiceUrl}/infer`, payload, voiceKey, AbortSignal.timeout(90_000))
+              .finally(async () => { await db.rpc('release_dunya_voice_cpu', { p_owner: id }); });
+            const runtime = globalThis as typeof globalThis & { EdgeRuntime?: { waitUntil: (task: Promise<unknown>) => void } };
+            runtime.EdgeRuntime?.waitUntil(pending.catch(() => undefined));
+            return await pending;
           }
           send({ type: 'stage', stage: 'waiting' });
           await new Promise<void>((resolve, reject) => {
