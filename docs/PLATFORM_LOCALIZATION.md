@@ -58,6 +58,12 @@ ni le moteur du traducteur, ni les voix humaines validées de Classe.
 
 ## Vérification
 
+Le catalogue et son audit sont régénérés avant chaque build de production.
+L’administrateur peut aussi ajouter de nouveaux libellés français et publier
+leurs traductions validées sans reconstruire l’application. Les valeurs
+dynamiques et les contenus originaux restent soumis aux protections décrites
+ci-dessus.
+
 Tests du catalogue, des références et des paramètres protégés ; Chromium sur
 mobile/tablette/bureau, saisie et curseur conservés, mises à jour React,
 portails/fenêtres, persistance et retour au français ; contrôles existants du

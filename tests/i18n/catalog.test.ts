@@ -1,5 +1,6 @@
 import {
   PlatformCatalog,
+  localeId,
   type LocaleEntry,
 } from "../../src/lib/i18n/catalog.ts";
 const assert = (value: unknown, message = "assertion failed") => {
@@ -90,5 +91,18 @@ Deno.test(
     assert(
       c.lookup("Écouter") === undefined && c.lookup("Retour") === undefined,
     );
+  },
+);
+Deno.test(
+  "newly reviewed dynamic interface phrases are usable without rebuilding the application",
+  () => {
+    const fr = "Nouveau libellé public";
+    const c = new PlatformCatalog([], [{ id: localeId(fr), fr, ba: "Yora" }]);
+    assert(c.translate(fr, "ba") === "Yora" && c.coverage.approved === 1);
+    const invalid = new PlatformCatalog(
+      [],
+      [{ id: "0000000000000000", fr, ba: "Yora" }],
+    );
+    assert(invalid.translate(fr, "ba") === fr);
   },
 );

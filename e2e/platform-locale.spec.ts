@@ -17,7 +17,7 @@ const cors = {
 async function setup(page: Page) {
   const calls: string[] = [];
   page.on("request", (request) => {
-    if (request.url().includes("/functions/")) calls.push(request.url());
+    if (request.url().includes("/functions/v1/")) calls.push(request.url());
   });
   await page.route("**/rest/v1/**", (route) =>
     route.fulfill({ headers: cors, json: [] }),

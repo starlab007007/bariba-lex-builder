@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useFitilaLanguage } from "@/contexts/FitilaLanguageContext";
 import catalogue from "@/data/locales/platform.json";
 import audit from "@/data/locales/audit.json";
-import { localeKey, type LocaleEntry } from "@/lib/i18n/catalog";
+import { localeKey, localeId, type LocaleEntry } from "@/lib/i18n/catalog";
 type Saved = {
   id: string;
   fr: string;
@@ -16,7 +16,7 @@ type Saved = {
 const entries = catalogue.entries as LocaleEntry[];
 const paths = audit.files as Record<string, string[]>;
 export default function PlatformLocaleAdmin() {
-  const { isAdmin } = useAuth(),
+  const { isAdmin, user } = useAuth(),
     client = useQueryClient(),
     language = useFitilaLanguage();
   const [query, setQuery] = useState(""),
@@ -29,7 +29,7 @@ export default function PlatformLocaleAdmin() {
     [notice, setNotice] = useState("");
   const db = supabase as any;
   const published = useQuery({
-    queryKey: ["platform-locale-admin"],
+    queryKey: ["platform-locale-admin", user?.id],
     enabled: isAdmin,
     queryFn: async () => {
       const result: Saved[] = [];
@@ -50,9 +50,20 @@ export default function PlatformLocaleAdmin() {
     () => new Map((published.data ?? []).map((row) => [row.id, row])),
     [published.data],
   );
+  const [newFr, setNewFr] = useState("");
+  const allEntries = useMemo(() => {
+    const known = new Map(entries.map((row) => [row.id, row]));
+    for (const row of published.data ?? [])
+      if (!known.has(row.id))
+        known.set(row.id, {
+          ...row,
+          sources: [{ source: "validation", id: row.id }],
+        });
+    return [...known.values()];
+  }, [published.data]);
   const visible = useMemo(
     () =>
-      entries.filter((row) => {
+      allEntries.filter((row) => {
         const current = saved.get(row.id),
           state = current?.status ?? (row.ba ? "catalogue" : "missing");
         return (
@@ -62,7 +73,7 @@ export default function PlatformLocaleAdmin() {
           (filter === "all" || state === filter)
         );
       }),
-    [query, filter, saved],
+    [query, filter, saved, allEntries],
   );
   const open = (row: LocaleEntry) => {
     setSelected(row);
@@ -124,7 +135,7 @@ export default function PlatformLocaleAdmin() {
     }
   };
   const exportCatalogue = () => {
-    const content = entries.map((row) => ({
+    const content = allEntries.map((row) => ({
       id: row.id,
       fr: row.fr,
       ba: saved.get(row.id)?.ba ?? row.ba ?? "",
@@ -151,11 +162,25 @@ export default function PlatformLocaleAdmin() {
       const content = JSON.parse(await file.text());
       if (!Array.isArray(content) || content.length > 20000)
         throw new Error("Format de catalogue invalide.");
-      const known = new Map(entries.map((row) => [row.id, row])),
+      const known = new Map(allEntries.map((row) => [row.id, row])),
         seen = new Set<string>(),
         rows: { id: string; fr: string; ba: string; status: "draft" }[] = [];
       for (const item of content) {
-        const source = known.get(item.id);
+        if (!item || typeof item !== "object") continue;
+        const source =
+          known.get(item.id) ??
+          (typeof item.fr === "string" &&
+          item.fr.trim().length > 0 &&
+          item.fr.length <= 4000 &&
+          localeId(item.fr) === item.id
+            ? {
+                id: item.id,
+                fr: item.fr,
+                ba: null,
+                status: "missing",
+                sources: [],
+              }
+            : undefined);
         if (
           !source ||
           typeof item.fr !== "string" ||
@@ -196,6 +221,37 @@ export default function PlatformLocaleAdmin() {
   if (!isAdmin) return <p>Accès administrateur requis.</p>;
   return (
     <section className="space-y-5" aria-label="Traductions de la plateforme">
+      <div className="flex flex-wrap gap-2 rounded-2xl border bg-white p-3">
+        <input
+          translate="no"
+          aria-label="Nouveau libellé français"
+          value={newFr}
+          onChange={(e) => setNewFr(e.target.value)}
+          maxLength={4000}
+          placeholder="Nouveau libellé français"
+          className="min-w-0 flex-1 rounded-xl border p-2"
+        />
+        <button
+          disabled={!newFr.trim()}
+          onClick={() => {
+            const fr = newFr.trim(),
+              id = localeId(fr);
+            open(
+              allEntries.find((row) => row.id === id) ?? {
+                id,
+                fr,
+                ba: null,
+                status: "missing",
+                sources: [],
+              },
+            );
+            setNewFr("");
+          }}
+          className="rounded-xl border px-3 disabled:opacity-40"
+        >
+          Ajouter un libellé
+        </button>
+      </div>
       <header className="rounded-3xl border border-[#E4DFCC] bg-white p-5">
         <h2 className="text-xl font-bold">Français ↔ Baatɔnum</h2>
         <p className="mt-2 text-sm text-[#716B5F]">

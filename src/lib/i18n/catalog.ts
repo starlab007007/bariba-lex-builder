@@ -21,6 +21,14 @@ export const localeKey = (value: string) =>
     .replace(/[.!…]+$/u, "")
     .trim();
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+export function localeId(text: string): string {
+  let hash = 0xcbf29ce484222325n;
+  for (const letter of localeKey(text)) {
+    hash ^= BigInt(letter.codePointAt(0)!);
+    hash = BigInt.asUintN(64, hash * 0x100000001b3n);
+  }
+  return hash.toString(16).padStart(16, "0");
+}
 export class PlatformCatalog {
   readonly entries: LocaleEntry[];
   private direct = new Map<string, string>();
@@ -36,6 +44,16 @@ export class PlatformCatalog {
         ? { ...row, ba: update.ba, status: "approved" }
         : row;
     });
+    const known = new Set(entries.map((row) => row.id));
+    for (const row of overrides)
+      if (!known.has(row.id) && localeId(row.fr) === row.id) {
+        known.add(row.id);
+        this.entries.push({
+          ...row,
+          status: "approved",
+          sources: [{ source: "validation", id: row.id }],
+        });
+      }
     for (const row of this.entries) {
       this.registered.add(localeKey(row.fr));
       if (

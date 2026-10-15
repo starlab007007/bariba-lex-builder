@@ -45,7 +45,7 @@ function GroupTitle({ children }: { children: React.ReactNode }) {
 export default function FitilaNavPanel({ onNavigate, compact = false }: { onNavigate?: (path: string) => void; compact?: boolean }) {
   const nav = useNavigate();
   const { pathname } = useLocation();
-  const { currentLang, setLanguage } = useFitilaLanguage();
+  const { currentLang, setLanguage, coverage } = useFitilaLanguage();
   const { user, isAdmin } = useAuth();
   const access = useFitilaRoles();
   const go = (p: string) => (onNavigate ? onNavigate(p) : nav(p));
@@ -117,6 +117,7 @@ export default function FitilaNavPanel({ onNavigate, compact = false }: { onNavi
               </button>
             ))}
           </div>
+          {currentLang === 'ba' && coverage.available < coverage.total && <p className="mt-2 px-1 text-[10px]" style={{color:SIG.muted}}>Baatɔnum · validation en cours. Certaines formulations restent en français.</p>}
           {isAdmin && (
             <button type="button" onClick={() => go('/admin')} className="mt-4 rounded-[16px] border p-3 text-left text-[13px] font-extrabold" style={{ borderColor: SIG.hairline, background: SIG.surfaceAlt }}>
               Administration

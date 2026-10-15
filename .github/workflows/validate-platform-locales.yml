@@ -1,7 +1,7 @@
 name: Validate platform languages
 on:
   pull_request:
-    paths: ['src/**','scripts/*platform-locales.mjs','tests/i18n/**','e2e/platform-locale.spec.ts','e2e/fixtures/platform-locale.*','playwright.locale.config.ts','supabase/migrations/*platform_baatonum*','.github/workflows/validate-platform-locales.yml']
+    paths: ['src/**','package.json','scripts/*platform-locales.mjs','tests/i18n/**','e2e/platform-locale.spec.ts','e2e/fixtures/platform-locale.*','playwright.locale.config.ts','supabase/migrations/*platform_baatonum*','.github/workflows/validate-platform-locales.yml']
 permissions:
   contents: read
 jobs:
