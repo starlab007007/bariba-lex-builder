@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { probeVoiceObject } from '@/lib/voiceCorpusStorage';
 import { Loader2, Download, CheckCircle2, XCircle, Trash2, RefreshCw, Filter, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -244,6 +245,8 @@ export default function VoiceRecordingsBrowser() {
                       </span>
                     )}
                     {r.validated && <span className="text-xs text-emerald-600 font-bold">✓ Validé</span>}
+                    {(r as any).byte_status === 'missing' && <span className="text-xs text-destructive font-bold">⚠ Fichier absent du stockage</span>}
+                    {(r as any).byte_status === 'unknown' && <span className="text-xs text-muted-foreground">? Fichier non vérifié</span>}
                     {r.rejected && <span className="text-xs text-destructive font-bold">✗ Rejeté</span>}
                     {!r.validated && !r.rejected && <span className="text-xs text-amber-600 font-bold">⏳ En attente</span>}
                   </div>
