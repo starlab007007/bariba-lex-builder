@@ -1,0 +1,10 @@
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
+import { Toaster } from 'sonner';
+import FitilaTemIA from '@/pages/fitila/FitilaTemIA';
+import TamTamTranslator from '@/pages/tamtam/TamTamTranslator';
+import ReplyAudioPlayer from '@/components/voice/ReplyAudioPlayer';
+import '@/index.css';
+const module = new URLSearchParams(location.search).get('module');
+createRoot(document.getElementById('root')!).render(<MemoryRouter initialEntries={[module === 'translator' ? '/translator' : '/ia']}><div className="h-[100dvh] bg-[#F7F5EC]">{module === 'reader' ? <div className="mx-auto max-w-xl p-4"><ReplyAudioPlayer text={Array.from({ length: 100 }, (_, n) => `Bàátɔ̀nú saria ${n + 1}se.`).join(' ')} lang="bba" /></div> : module === 'translator' ? <TamTamTranslator /> : <FitilaTemIA />}</div><Toaster /></MemoryRouter>);

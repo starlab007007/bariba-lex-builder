@@ -50,12 +50,13 @@ const realFetch = globalThis.fetch;
 type Scenario = { quota?: boolean; quotaError?: boolean; asrEmpty?: boolean; asrFails?: boolean; ttsFails?: boolean; leaseError?: boolean; brainLimited?: boolean };
 async function scenario(body: Record<string, unknown>, config: Scenario = {}, token?: string) {
   const calls: string[] = [];
+  const quotas: { p_key: string; p_limit: number; p_window: number }[] = [];
   globalThis.fetch = async (input, init) => {
     const url = String(input), payload = JSON.parse(String(init?.body ?? '{}'));
     calls.push(url + ':' + (payload.engine ?? ''));
     const response = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
     if (url.includes('/auth/v1/user')) return response({ message: 'Invalid JWT' }, 401);
-    if (url.includes('consume_dunya_voice_quota')) return config.quotaError ? response({ message: 'quota unavailable' }, 500) : response(config.quota !== false);
+    if (url.includes('consume_dunya_voice_quota')) { quotas.push(payload); return config.quotaError ? response({ message: 'quota unavailable' }, 500) : response(config.quota !== false); }
     if (url.includes('lease_dunya_voice_cpu')) return config.leaseError ? response({ message: 'lease unavailable' }, 500) : response(true);
     if (url.includes('release_dunya_voice_cpu')) return response(null);
     if (url.endsWith('/infer')) {
@@ -75,7 +76,7 @@ async function scenario(body: Record<string, unknown>, config: Scenario = {}, to
     const response = await handleVoiceTurn(new Request('https://edge.test', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) }));
     const text = await response.text();
     const events = response.status === 200 ? text.trim().split('\n').map(s => JSON.parse(s)) : [];
-    return { status: response.status, events, calls, body: text };
+    return { status: response.status, events, calls, quotas, body: text };
   } finally { globalThis.fetch = realFetch; }
 }
 Deno.test('guest: full Omnilingual -> translation -> brain -> MMS chain with genuine engine trace', async () => {
@@ -99,6 +100,29 @@ Deno.test('French greetings preserve the existing local fast path without a mode
 Deno.test('transcription review stops before reasoning and synthesis', async () => {
   const r = await scenario({ audio_base64: bytesToBase64(wav()), lang: 'bba', transcribe_only: true });
   assert(r.events.some(e => e.type === 'transcript')); assert(!r.calls.some(x => x.includes('fitila-ia-chat')));
+});
+Deno.test('translator French recording uses Omnilingual and never a Bariba-only fallback', async () => {
+  const request = { audio_base64: bytesToBase64(wav()), lang: 'fr', transcribe_only: true };
+  const ok = await scenario(request);
+  assert(ok.events.some(e => e.type === 'transcript' && e.engine === 'meta-asr-300m' && e.lang === 'fr'));
+  const failed = await scenario(request, { asrFails: true });
+  assert(failed.events.some(e => e.type === 'error' && e.code === 'transcription_unavailable'));
+  assert(!failed.calls.some(x => /bariba-stt|fitila-ia-chat|byt5-bariba/.test(x)));
+});
+Deno.test('reply listening has its own bounded budget without consuming the input budget', async () => {
+  const speech = await scenario({ text: 'A kua.', lang: 'bba', speech_only: true });
+  const input = await scenario({ audio_base64: bytesToBase64(wav()), lang: 'bba', transcribe_only: true });
+  assert(speech.quotas.some(q => q.p_key.startsWith('speech:') && q.p_limit === 30));
+  assert(input.quotas.some(q => q.p_key.startsWith('input:') && q.p_limit === 6));
+  assert(speech.quotas.some(q => q.p_key === 'global-day' && q.p_limit === 1000));
+});
+Deno.test('ambiguous voice-only requests cannot use the listening budget for ASR or reasoning', async () => {
+  for (const body of [
+    { audio_base64: bytesToBase64(wav()), lang: 'bba', speech_only: true },
+    { text: 'A kua', lang: 'bba', speech_only: true, transcribe_only: true },
+  ]) {
+    const r = await scenario(body); assert(r.status === 400); assert(!r.calls.some(x => /infer|fitila-ia-chat/.test(x)));
+  }
 });
 Deno.test('bad ASR never generates an invented answer', async () => {
   const r = await scenario({ audio_base64: bytesToBase64(wav()), lang: 'bba' }, { asrEmpty: true });

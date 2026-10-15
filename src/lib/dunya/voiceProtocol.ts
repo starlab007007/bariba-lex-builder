@@ -1,11 +1,12 @@
 import type { VoiceEvent } from '../../../supabase/functions/_shared/dunya-voice-core.ts';
 const messages: Record<string, string> = {
-  rate_limited: 'DUNYA est très sollicitée. Réessayez dans une minute.',
+  rate_limited: 'Le service vocal est très sollicité. Réessayez dans une minute.',
   busy: 'Le service vocal est occupé. Réessayez dans un instant.',
   not_configured: 'Le service vocal est momentanément indisponible.',
   quota_unavailable: 'Le service vocal est momentanément indisponible.',
   auth_required: 'Votre session a expiré. Reconnectez-vous ou continuez comme visiteur.',
   invalid_audio: 'Ce vocal ne peut pas être lu. Réenregistrez-le.',
+  transcription_unavailable: 'La reconnaissance vocale est indisponible. Votre enregistrement est conservé à l’écran ; réessayez ou écrivez votre message.',
   clarification_required: 'Je n’ai pas bien compris. Pouvez-vous répéter ?',
   translation_unavailable: 'Je n’arrive pas à traduire votre demande. Reformulez ou essayez en français.',
   translation_fallback: 'La traduction est indisponible : réponse en français.',

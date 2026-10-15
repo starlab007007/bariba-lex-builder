@@ -27,8 +27,8 @@ import { useSmartTranslator, InputMode } from '@/hooks/useSmartTranslator';
 import { useLanguageDetection } from '@/hooks/useLanguageDetection';
 import { useTranslationHistory, TranslationHistoryItem } from '@/hooks/useTranslationHistory';
 import { PhotoTranslator } from '@/components/tamtam/PhotoTranslator';
-import { VoiceLangPanel } from '@/components/tamtam/VoiceLangPanel';
-import { useBaribaSTT } from '@/hooks/useBaribaSTT';
+import VoiceInput from '@/components/voice/VoiceInput';
+import ReplyAudioPlayer from '@/components/voice/ReplyAudioPlayer';
 import { OfflineIndicator } from '@/components/tamtam/OfflineIndicator';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -61,7 +61,7 @@ export default function TamTamTranslator() {
   const translator = useSmartTranslator();
   const { detectLanguage } = useLanguageDetection();
   const historyManager = useTranslationHistory();
-  const { transcribe: transcribeBariba, isTranscribing: isSTTTranscribing, isWakingUp: isSTTWakingUp } = useBaribaSTT();
+  const [voiceBusy, setVoiceBusy] = useState(false);
   
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [textInput, setTextInput] = useState('');
@@ -73,9 +73,6 @@ export default function TamTamTranslator() {
   const [autoDetectEnabled, setAutoDetectEnabled] = useState(true);
   const [conversationMode, setConversationMode] = useState(() => location.pathname.endsWith('/conversation') || !location.pathname.includes('/history'));
   const [detectedLang, setDetectedLang] = useState<'bariba' | 'french' | null>(null);
-  const [baribaTranscribedText, setBaribaTranscribedText] = useState<string>('');
-  const [voicePanelSuccess, setVoicePanelSuccess] = useState(false);
-  const [voicePanelError, setVoicePanelError] = useState('');
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [viewportHeight, setViewportHeight] = useState<number>(() => window.visualViewport?.height ?? window.innerHeight);
 
@@ -113,12 +110,12 @@ export default function TamTamTranslator() {
 
   // Auto-detect language as user types
   useEffect(() => {
-    if (autoDetectEnabled && textInput.length >= 3) {
+    if (autoDetectEnabled && !voiceBusy && !translator.isProcessing && textInput.length >= 3) {
       const result = detectLanguage(textInput);
       if (result.confidence > 0.6 && result.language !== 'unknown') {
         setDetectedLang(result.language);
         if (result.language !== translator.sourceLanguage) {
-          translator.swapLanguages();
+          translator.setLanguage(result.language);
         }
       }
     }
@@ -128,12 +125,12 @@ export default function TamTamTranslator() {
   useEffect(() => {
     if (translator.lastResult && translator.translatedText) {
       const newMessage: ChatMessage = {
-        id: Date.now().toString(),
+        id: crypto.randomUUID(),
         type: 'translator',
-        sourceText: translator.sourceText,
-        translatedText: translator.translatedText,
-        sourceLanguage: translator.sourceLanguage,
-        targetLanguage: translator.targetLanguage,
+        sourceText: translator.lastResult.sourceText,
+        translatedText: translator.lastResult.translatedText,
+        sourceLanguage: translator.lastResult.sourceLanguage,
+        targetLanguage: translator.lastResult.targetLanguage,
         inputMode: translator.currentMode,
         timestamp: new Date()
       };
@@ -154,10 +151,10 @@ export default function TamTamTranslator() {
       } : undefined;
 
       historyManager.addToHistory({
-        source_text: translator.sourceText,
-        translated_text: translator.translatedText,
-        source_language: translator.sourceLanguage,
-        target_language: translator.targetLanguage,
+        source_text: newMessage.sourceText,
+        translated_text: newMessage.translatedText!,
+        source_language: newMessage.sourceLanguage,
+        target_language: newMessage.targetLanguage,
         input_mode: translator.currentMode,
         confidence_score: translator.lastResult.confidence,
         context_data: contextData
@@ -175,50 +172,12 @@ export default function TamTamTranslator() {
     }
   };
 
-  const handleVoiceResult = async (result: {
-    audioBase64: string;
-    transcription?: string;
-    sourceLang: 'ba' | 'fr';
-  }) => {
-    setVoicePanelSuccess(false);
-    setVoicePanelError('');
-
-    if (result.sourceLang === 'ba' && result.audioBase64) {
-      setBaribaTranscribedText('');
-      const sttResult = await transcribeBariba(result.audioBase64, { robustMode: true, speakerType: 'Auto' });
-      if (sttResult?.transcription) {
-        setBaribaTranscribedText(sttResult.transcription);
-        await translator.translateFromText(sttResult.transcription);
-        setVoicePanelSuccess(true);
-      } else {
-        setVoicePanelError('Transcription échouée — réessayez');
-        await translator.translateFromAudio(result.audioBase64);
-      }
-    } else if (result.sourceLang === 'fr') {
-      if (result.transcription) {
-        await translator.translateFromText(result.transcription);
-        setVoicePanelSuccess(true);
-      } else {
-        setVoicePanelError('Aucun texte détecté — réessayez');
-      }
-    }
-  };
-
   const handleTextSubmit = async () => {
-    if (textInput.trim()) {
-      if (autoDetectEnabled) {
-        const result = detectLanguage(textInput);
-        if (result.confidence > 0.6 && result.language !== 'unknown') {
-          if (result.language !== translator.sourceLanguage) {
-            translator.swapLanguages();
-          }
-        }
-      }
-      
-      await translator.translateFromText(textInput);
-      setTextInput('');
-      setDetectedLang(null);
-    }
+    if (!textInput.trim() || translator.isProcessing || voiceBusy) return;
+    const result = autoDetectEnabled ? detectLanguage(textInput) : null;
+    const source = result && result.confidence > 0.6 && result.language !== 'unknown' ? result.language : translator.sourceLanguage;
+    const ok = await translator.translateFromText(textInput, source);
+    if (ok) { setTextInput(''); setDetectedLang(null); }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -267,15 +226,6 @@ export default function TamTamTranslator() {
     setTextInput(item.source_text);
     setShowHistory(false); if(location.pathname.includes('/history')) navigate('/translator');
     tamtamFeedback.play('click');
-  };
-
-  const speakText = async (text: string, lang: 'bariba' | 'french') => {
-    tamtamFeedback.play('click');
-    if (lang === 'bariba') {
-      translator.speakSource();
-    } else {
-      translator.speakTranslation();
-    }
   };
 
   const copyText = async (text: string) => {
@@ -413,6 +363,7 @@ export default function TamTamTranslator() {
         <ArrowLeftRight className="w-3 h-3 text-[#8C8571]" />
       </div>
       <p className="text-sm font-medium text-[#241F2E] truncate">{item.translated_text}</p>
+      <div onClick={event => event.stopPropagation()}><ReplyAudioPlayer text={item.translated_text} lang={item.target_language === 'bariba' ? 'bba' : 'fr'} label="Écouter cette traduction" /></div>
       <p className="text-xs text-[#8C8571] mt-1">
         {new Date(item.created_at).toLocaleDateString()}
       </p>
@@ -422,9 +373,9 @@ export default function TamTamTranslator() {
   return (
     <div
       className="mx-auto min-h-0 w-full max-w-[960px] bg-[#F7F5EC] text-[#241F2E] flex flex-col overflow-hidden"
-      style={{ height: viewportHeight ? `${Math.floor(viewportHeight)}px` : '100dvh', maxHeight: '100dvh' }}
+      style={{ height: '100%', maxHeight: viewportHeight ? `${Math.floor(viewportHeight)}px` : '100dvh' }}
     >
-      {!keyboardOpen && <FitilaPageHeader title="Traducteur" subtitle="Français ⇄ Bàátɔ̀nú" />}
+      {!keyboardOpen && <FitilaPageHeader title="Traducteur" subtitle="Français ⇄ Bàátɔ̀nú · écrivez, dictez, écoutez" />}
 
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* Sub-header with language toggle */}
@@ -456,6 +407,8 @@ export default function TamTamTranslator() {
                 />
                 <motion.button
                   whileTap={{ scale: 0.9, rotate: 180 }}
+                  disabled={translator.isProcessing || voiceBusy}
+                  aria-label="Inverser les langues"
                   onClick={() => {
                     translator.swapLanguages();
                     setDetectedLang(null);
@@ -504,8 +457,6 @@ export default function TamTamTranslator() {
               className="text-center py-3 sm:py-5"
             >
               <motion.div
-                animate={{ scale: [1, 1.1, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
                 className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#F3E3B9] text-[#9C6B1D]"
               >
                 <Globe className="h-5 w-5" />
@@ -528,7 +479,7 @@ export default function TamTamTranslator() {
               >
                 {/* User message (source) */}
                 <div className="flex justify-end">
-                  <div className={`max-w-[85%] rounded-[18px] rounded-tr-sm p-3 ${
+                  <div className={`min-w-0 w-full max-w-[94%] sm:max-w-[85%] rounded-[22px] rounded-tr-sm p-3 ${
                     msg.sourceLanguage === 'bariba' 
                       ? 'bg-[#FFF6E6] border border-[#F0D9A8]' 
                       : 'bg-white border border-[#E4DFCC]'
@@ -536,14 +487,9 @@ export default function TamTamTranslator() {
                     <div className="flex items-center gap-2 mb-1">
                       <LanguageBadge lang={msg.sourceLanguage} size="sm" />
                     </div>
-                    <p className="text-[#241F2E]">{msg.sourceText}</p>
-                    <div className="flex items-center gap-1 mt-2 justify-end">
-                      <button
-                        onClick={() => speakText(msg.sourceText, msg.sourceLanguage)}
-                        className="p-1 rounded-full hover:bg-gray-100"
-                      >
-                        <Volume2 className="w-3.5 h-3.5 text-[#8C8571]" />
-                      </button>
+                    <p className="whitespace-pre-wrap break-words text-[#241F2E]">{msg.sourceText}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-2 justify-end">
+                      <div className="w-full"><ReplyAudioPlayer text={msg.sourceText} lang={msg.sourceLanguage === 'bariba' ? 'bba' : 'fr'} label="Écouter le texte source" /></div>
                       <button
                         onClick={() => copyText(msg.sourceText)}
                         className="p-1 rounded-full hover:bg-gray-100"
@@ -557,7 +503,7 @@ export default function TamTamTranslator() {
                 {/* Translator message (translation) */}
                 {msg.translatedText && (
                   <div className="flex justify-start">
-                    <div className={`max-w-[85%] rounded-[18px] rounded-tl-sm p-3 ${
+                    <div className={`min-w-0 w-full max-w-[94%] sm:max-w-[85%] rounded-[22px] rounded-tl-sm p-3 ${
                       msg.targetLanguage === 'bariba' 
                         ? 'bg-white border border-[#C99530]' 
                         : 'bg-white border border-[#E4DFCC]'
@@ -566,16 +512,9 @@ export default function TamTamTranslator() {
                         <Bot className="w-4 h-4 text-[#6758C9]" />
                         <LanguageBadge lang={msg.targetLanguage} size="sm" />
                       </div>
-                      <p className="text-lg font-medium text-[#241F2E]">{msg.translatedText}</p>
-                      <div className="flex items-center gap-1 mt-2">
-                        <button
-                          onClick={() => speakText(msg.translatedText!, msg.targetLanguage)}
-                          className={`p-1.5 rounded-full ${
-                            'bg-[#F3E3B9] text-[#9C6B1D]'
-                          }`}
-                        >
-                          <Volume2 className="w-4 h-4" />
-                        </button>
+                      <p className="whitespace-pre-wrap break-words text-base font-medium leading-relaxed text-[#241F2E]">{msg.translatedText}</p>
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        <div className="w-full"><ReplyAudioPlayer text={msg.translatedText} lang={msg.targetLanguage === 'bariba' ? 'bba' : 'fr'} label="Écouter la traduction" /></div>
                         <button
                           onClick={() => copyText(msg.translatedText!)}
                           className="p-1.5 rounded-full bg-[#F1EDDF] text-[#241F2E]"
@@ -669,6 +608,7 @@ export default function TamTamTranslator() {
                 key={mode.id}
                 whileTap={{ scale: 0.96 }}
                 onClick={() => handleModeChange(mode.id)}
+                disabled={translator.isProcessing || voiceBusy}
                 aria-label={mode.label}
                 className={(keyboardOpen || viewportHeight < 700 ? "h-9 min-w-[48px] px-2 " : "h-10 min-w-[54px] px-2.5 ") + "rounded-[13px] flex items-center justify-center gap-1 transition-all shrink-0 touch-manipulation " + (
                   translator.currentMode === mode.id
@@ -692,28 +632,11 @@ export default function TamTamTranslator() {
                 exit={{ opacity: 0, y: -10 }}
                 className="w-full"
               >
-                <VoiceLangPanel
-                  defaultLang={translator.sourceLanguage === 'bariba' ? 'ba' : 'fr'}
-                  onResult={handleVoiceResult}
-                  onLangChange={(l) => {
-                    const tLang = l === 'ba' ? 'bariba' : 'french';
-                    if (tLang !== translator.sourceLanguage) {
-                      translator.swapLanguages();
-                    }
-                  }}
-                  isProcessingExternal={translator.isProcessing || isSTTTranscribing}
-                  isWakingUp={isSTTWakingUp}
-                  lastTranscription={baribaTranscribedText || undefined}
-                  lastError={voicePanelError || undefined}
-                  showSuccess={voicePanelSuccess}
-                  onSpeakAgain={() => {
-                    setVoicePanelSuccess(false);
-                    setVoicePanelError('');
-                    setBaribaTranscribedText('');
-                  }}
-                  disabled={translator.isProcessing}
-                  uiLang="fr"
-                />
+                <div className="space-y-2">
+                  <VoiceInput lang={translator.sourceLanguage === 'bariba' ? 'bba' : 'fr'} disabled={translator.isProcessing} onBusyChange={setVoiceBusy} onTranscript={text => setTextInput(previous => [previous.trim(), text].filter(Boolean).join('\n'))} />
+                  <Textarea aria-label="Texte à traduire" value={textInput} onChange={event => setTextInput(event.target.value)} onKeyDown={handleKeyDown} placeholder="Votre transcription apparaît ici. Relisez-la avant de traduire…" className="min-h-[64px] max-h-28 resize-none rounded-2xl border-[#E4DFCC] bg-white text-[16px]" />
+                  <Button onClick={handleTextSubmit} disabled={!textInput.trim() || translator.isProcessing || voiceBusy} className="h-11 w-full rounded-xl bg-[#241F2E] text-white hover:bg-[#3C3449]"><Send className="mr-2 h-4 w-4" />Traduire le message</Button>
+                </div>
               </motion.div>
             )}
 
@@ -748,8 +671,9 @@ export default function TamTamTranslator() {
                     rows={keyboardOpen ? 2 : 1}
                   />
                   <Button
+                    aria-label="Traduire le texte"
                     onClick={handleTextSubmit}
-                    disabled={!textInput.trim() || translator.isProcessing}
+                    disabled={!textInput.trim() || translator.isProcessing || voiceBusy}
                     className="h-[52px] w-[52px] shrink-0 p-0 bg-[#C99530] hover:bg-[#B98626] text-[#2B2110] rounded-[16px] shadow-sm touch-manipulation"
                   >
                     <Send className="w-5 h-5" />
