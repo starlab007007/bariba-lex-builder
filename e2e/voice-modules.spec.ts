@@ -6,8 +6,8 @@ function wav() {
   for (let n = 44; n < buffer.length; n += 2) buffer.writeInt16LE(Math.round(Math.sin(n / 15) * 8000), n);
   return buffer;
 }
-async function setup(page: Page, opts: { voiceFailure?: boolean; delayed?: boolean; repair?: boolean } = {}) {
-  const requests: any[] = [], translations: any[] = [];
+async function setup(page: Page, opts: { voiceFailure?: boolean; delayed?: boolean; repair?: boolean; referenceDelay?: boolean; referenceTarget?: boolean } = {}) {
+  const requests: any[] = [], translations: any[] = [], reviews: any[] = [];
   await page.addInitScript(() => {
     const state = { media: [] as any[], finish() { const active = this.media.findLast((m: any) => !m.stopped); active?.onended?.(); if (active) active.stopped = true; } };
     (window as any).__voiceTest = state;
@@ -25,7 +25,15 @@ async function setup(page: Page, opts: { voiceFailure?: boolean; delayed?: boole
   await page.route('**/functions/v1/byt5-bariba-translate', route => {
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
     const body = route.request().postDataJSON(); translations.push(body);
-    return route.fulfill({ headers: cors, json: { translation: body.sourceLang === 'french' ? `Baatɔnum ${body.text}.` : `Français ${body.text}.`, method: 'test-byt5' } });
+    return route.fulfill({ headers: cors, json: { translation: opts.referenceTarget ? 'Agede ye ya do' : body.sourceLang === 'french' ? `Baatɔnum ${body.text}.` : `Français ${body.text}.`, method: 'test-byt5' } });
+  });
+  await page.route('**/functions/v1/refine-bariba', async route => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    const body = route.request().postDataJSON(); reviews.push(body);
+    if (opts.referenceDelay) await new Promise(resolve => setTimeout(resolve, 650));
+    const candidate = body.language === 'fr' ? 'Je vais prier Dieu' : 'Agɛdɛ ye ya do.';
+    const reference = { text: candidate, source: 'apprendre', source_id: 'lesson', validation: 'catalogue', kind: 'phrase' };
+    return route.fulfill({ headers: cors, json: { review: { version: 'reference-v1', raw: body.text, text: body.text, language: body.language, scope: body.scope, status: 'suggestion', proposals: [{ text: candidate, similarity: 0.94, sources: [reference], changes: [{ from: body.text, to: candidate }] }], lexical_proposals: [], recognized_terms: 2, analyzed_terms: 4, total_terms: 4, bilingual_check: body.scope === 'translation' ? 'checked' : 'not-applicable', source_count: 1, matched_segments: 0, analyzed_segments: 1, total_segments: 1, requires_confirmation: true, linguistic_quality_certified: false, score_is_probability: false } } });
   });
   await page.route('**/functions/v1/dunya-voice-turn', async route => {
     if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: cors }); return; }
@@ -37,7 +45,7 @@ async function setup(page: Page, opts: { voiceFailure?: boolean; delayed?: boole
       : [{ type: 'audio', audio_base64: wav().toString('base64'), engine: 'meta-mms-tts-bba', text: body.text }, { type: 'done' }];
     await route.fulfill({ headers: { ...cors, 'Content-Type': 'application/x-ndjson' }, body: events.map(event => JSON.stringify({ request_id: 'test', ...event })).join('\n') + '\n' });
   });
-  return { requests, translations };
+  return { requests, translations, reviews };
 }
 for (const width of [375, 768, 1280]) {
   test(`IA: every local answer has working MMS controls and no overflow at ${width}px`, async ({ page }) => {
@@ -199,4 +207,40 @@ test('Translator submits the explicitly chosen reconstruction in the correct lan
   await page.getByRole('button', { name: 'Traduire le message', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Écouter la traduction', exact: true })).toHaveCount(1);
   expect(translations.at(-1).text).toBe('Agɛdɛ ye ya do.'); expect(translations.at(-1).sourceLang).toBe('bariba');
+});
+for (const width of [375, 768, 1280]) {
+  test(`Translator reference review is explicit, sourced and reversible at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 }); const { translations, reviews } = await setup(page);
+    await page.goto('/e2e/fixtures/voice-modules.html?module=translator'); await page.getByRole('checkbox').first().uncheck();
+    const input = page.getByPlaceholder('Écrivez en français…'); await input.fill('Je va prier Dieu');
+    const review = page.getByRole('region', { name: 'Références du texte source', exact: true });
+    await review.getByRole('button', { name: 'Comparer aux ressources', exact: true }).click();
+    await expect(review.getByText('Je vais prier Dieu', { exact: true })).toBeVisible(); await expect(input).toHaveValue('Je va prier Dieu');
+    expect(translations).toHaveLength(0); expect(reviews[0].scope).toBe('source'); expect(reviews[0].language).toBe('fr');
+    await review.getByRole('button', { name: 'Appliquer la proposition', exact: true }).click(); await expect(input).toHaveValue('Je vais prier Dieu');
+    await review.getByText('Voir les références', { exact: true }).click(); await expect(review).toContainText('lesson'); await expect(review).not.toContainText('%');
+    await review.getByRole('button', { name: 'Rétablir le texte initial', exact: true }).click(); await expect(input).toHaveValue('Je va prier Dieu');
+    await input.fill('Mon brouillon modifié'); await review.getByRole('button', { name: 'Appliquer la proposition', exact: true }).click();
+    await expect(input).toHaveValue('Mon brouillon modifié'); await expect(review.getByRole('status')).toContainText('brouillon a été modifié');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
+}
+test('A stale reference response cannot replace a manually edited source', async ({ page }) => {
+  await setup(page, { referenceDelay: true }); await page.goto('/e2e/fixtures/voice-modules.html?module=translator'); await page.getByRole('checkbox').first().uncheck();
+  const input = page.getByPlaceholder('Écrivez en français…'); await input.fill('Je va prier Dieu');
+  const review = page.getByRole('region', { name: 'Références du texte source', exact: true });
+  await review.getByRole('button', { name: 'Comparer aux ressources', exact: true }).click(); await input.fill('Texte modifié pendant la recherche');
+  await expect(review.getByRole('status')).toContainText('Votre texte a changé'); await expect(review.getByRole('button', { name: 'Appliquer la proposition', exact: true })).toHaveCount(0);
+  await expect(input).toHaveValue('Texte modifié pendant la recherche');
+});
+test('Choosing a target formulation updates its speech and can restore the initial translation', async ({ page }) => {
+  const { requests, reviews } = await setup(page, { referenceTarget: true }); await page.goto('/e2e/fixtures/voice-modules.html?module=translator'); await page.getByRole('checkbox').first().uncheck();
+  await page.getByPlaceholder('Écrivez en français…').fill('Cette banane est bonne'); await page.getByRole('button', { name: 'Traduire le texte', exact: true }).click();
+  const review = page.getByRole('region', { name: 'Références de la traduction', exact: true }); await review.getByRole('button', { name: 'Comparer aux ressources', exact: true }).click();
+  await expect(review.getByText('Agɛdɛ ye ya do.', { exact: true })).toBeVisible(); expect(reviews[0].scope).toBe('translation'); expect(reviews[0].originalInput).toBe('Cette banane est bonne');
+  await review.getByRole('button', { name: 'Appliquer la proposition', exact: true }).click();
+  await page.getByRole('button', { name: 'Écouter la traduction', exact: true }).click(); await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+  expect(requests.at(-1).text).toBe('Agɛdɛ ye ya do.'); await page.getByRole('button', { name: 'Arrêter la lecture', exact: true }).click();
+  await review.getByRole('button', { name: 'Rétablir la traduction initiale', exact: true }).click();
+  await page.getByRole('button', { name: 'Écouter la traduction', exact: true }).click(); await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible(); expect(requests.at(-1).text).toBe('Agede ye ya do');
 });

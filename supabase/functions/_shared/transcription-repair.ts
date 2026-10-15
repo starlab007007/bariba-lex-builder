@@ -35,8 +35,8 @@ function protectedSequence(text: string, set: Set<string>): string {
   return words(text).map(asrSearchKey).filter(token => set.has(token) || (token.startsWith("n'") && set.has("n'")) || (token.startsWith("j'") && set.has("j'"))).map(token => token.startsWith("n'") ? "n'" : token.startsWith("j'") ? "j'" : token).join('|');
 }
 /** Refuse reconstructions that alter explicit facts, polarity, persons or named tokens. */
-export function reconstructionGuard(raw: string, candidate: string, lang: RepairLanguage): string | null {
-  if (normalizeTranscript(candidate).length > 320 || !candidate.trim()) return 'invalid_length';
+export function reconstructionGuard(raw: string, candidate: string, lang: RepairLanguage, maxLength = 320): string | null {
+  if (normalizeTranscript(candidate).length > maxLength || !candidate.trim()) return 'invalid_length';
   if (/[<>]|https?:|www\.|\b(?:undefined|null|loading|submit|share via)\b/iu.test(candidate)) return 'invalid_reference';
   const numbers = (s: string) => (s.match(/\p{N}+(?:[.,:/-]\p{N}+)*/gu) ?? []).join('|');
   if (numbers(raw) !== numbers(candidate)) return 'numbers_changed';
@@ -45,6 +45,12 @@ export function reconstructionGuard(raw: string, candidate: string, lang: Repair
   const originalWords = words(raw), proposed = new Set(words(candidate).map(token => token.toLowerCase()));
   const names = originalWords.filter((token, n) => n > 0 && /^\p{Lu}/u.test(token));
   if (names.some(name => !proposed.has(name.toLowerCase()))) return 'name_changed';
+  const originalLower = new Set(originalWords.map(word => word.toLowerCase()));
+  if (words(candidate).some((word, index) => index > 0 && /^\p{Lu}/u.test(word) && !originalLower.has(word.toLowerCase()))) return 'name_introduced';
+  // A first capitalized token can also be a name. Only equivalent folded spelling is allowed.
+  const firstWord = originalWords[0];
+  if (firstWord && /^\p{Lu}/u.test(firstWord) && !proposed.has(firstWord.toLowerCase()) &&
+    !words(candidate).some(word => asrSearchKey(word) === asrSearchKey(firstWord))) return 'name_changed';
   const identifiers = (s: string) => s.match(/[\w.+-]+@[\w.-]+|https?:\/\/\S+|\b[A-Z]{2,}\d+\b/g) ?? [];
   if (identifiers(raw).join('|') !== identifiers(candidate).join('|')) return 'identifier_changed';
   if (Math.abs(words(candidate).length - originalWords.length) > Math.max(1, Math.floor(originalWords.length / 5))) return 'content_added_or_removed';
@@ -67,7 +73,7 @@ export function transcriptSegments(text: string): TranscriptSegment[] {
   }
   return result;
 }
-function rankReference(raw: string, reference: TranscriptReference, lang: RepairLanguage) {
+function rankReference(raw: string, reference: TranscriptReference, lang: RepairLanguage, allowReordering = false) {
   const target = normalizeTranscript(reference.text);
   if (reconstructionGuard(raw, target, lang)) return null;
   const rawKey = asrSearchKey(raw), key = asrSearchKey(target);
@@ -77,13 +83,18 @@ function rankReference(raw: string, reference: TranscriptReference, lang: Repair
   const targetSet = new Set(targetTokens);
   const anchors = sourceTokens.filter(token => targetSet.has(token)).length;
   const overlap = anchors / Math.max(sourceTokens.length, targetTokens.length, 1);
+  // Reordering is review-only: all words must agree and only one adjacent swap is allowed.
+  const mismatches = sourceTokens.map((token, index) => token === targetTokens[index] ? -1 : index).filter(index => index >= 0);
+  const adjacentSwap = allowReordering && sourceTokens.length >= 3 && sourceTokens.length === targetTokens.length && mismatches.length === 2 &&
+    mismatches[1] === mismatches[0] + 1 && sourceTokens[mismatches[0]] === targetTokens[mismatches[1]] && sourceTokens[mismatches[1]] === targetTokens[mismatches[0]];
+  if (adjacentSwap) return { text: target, similarity: Math.round((0.86 + 0.1 * surface) * 1000) / 1000, sources: [reference], changes: [{ from: raw, to: target }] };
   if (phonetic < 0.74 || surface < 0.58) return null;
   if (sourceTokens.length >= 3 && anchors < Math.max(2, Math.ceil(sourceTokens.length * 0.5))) return null;
   if (sourceTokens.length <= 2 && (phonetic < 0.9 || surface < 0.78)) return null;
   const score = 0.48 * phonetic + 0.32 * surface + 0.2 * overlap;
   return score >= 0.78 ? { text: target, similarity: Math.round(score * 1000) / 1000, sources: [reference], changes: [{ from: raw, to: target }] } : null;
 }
-export function reconstructTranscript(raw: string, lang: RepairLanguage, references: TranscriptReference[][] = [], unavailable = false): TranscriptRepair {
+export function reconstructTranscript(raw: string, lang: RepairLanguage, references: TranscriptReference[][] = [], unavailable = false, allowReordering = false): TranscriptRepair {
   const text = normalizeTranscript(raw), segments = transcriptSegments(text);
   const base: TranscriptRepair = { version: 'reference-v1', raw, text, language: lang, status: unavailable ? 'unavailable' : text === raw ? 'unchanged' : 'normalized', proposals: [], source_count: 0, matched_segments: 0, analyzed_segments: Math.min(references.length, segments.length), total_segments: segments.length, requires_confirmation: true, linguistic_quality_certified: false, score_is_probability: false };
   const candidates: TranscriptProposal[] = [];
@@ -94,7 +105,7 @@ export function reconstructTranscript(raw: string, lang: RepairLanguage, referen
     if (references[index].some(reference => !['pending','rejected'].includes(reference.validation) && !reconstructionGuard(segment.text, reference.text, lang) && normalizeTranscript(reference.text).toLowerCase() === segment.text.toLowerCase())) { base.matched_segments++; base.status = 'matched'; continue; }
     for (const reference of references[index].slice(0, 24)) {
       if (reference.validation === 'pending' || reference.validation === 'rejected') continue;
-      const candidate = rankReference(segment.text, reference, lang);
+      const candidate = rankReference(segment.text, reference, lang, allowReordering);
       if (!candidate) continue;
       const key = candidate.text.toLowerCase().replace(/\.$/, '');
       const prior = grouped.get(key);
