@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { probeVoiceObject } from '@/lib/voiceCorpusStorage';
 import { Loader2, Download, CheckCircle2, XCircle, Trash2, RefreshCw, Filter, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -66,12 +67,10 @@ export default function VoiceRecordingsBrowser() {
         );
       }
 
-      // Build signed URLs (private bucket)
+      // Signed URL + 1-byte read-back (private bucket). Metadata ≠ physical bytes.
       const withUrls = await Promise.all(rows.map(async (r: any) => {
-        const { data: signed } = await supabase.storage
-          .from('bariba-voice-corpus')
-          .createSignedUrl(r.storage_path, 3600);
-        return { ...r, audio_url: signed?.signedUrl };
+        const probe = await probeVoiceObject(r.storage_path);
+        return { ...r, audio_url: probe.signedUrl ?? undefined, byte_status: probe.status };
       }));
 
       // Resolve usernames
@@ -110,6 +109,14 @@ export default function VoiceRecordingsBrowser() {
   useEffect(() => { load(); }, [load]);
 
   const setStatus = async (id: string, patch: Partial<Recording>) => {
+    if (patch.validated) {
+      const rec = recordings.find(r => r.id === id);
+      const probe = rec ? await probeVoiceObject(rec.storage_path) : null;
+      if (probe?.status !== 'present') {
+        toast.error("Validation refusée : le fichier audio est introuvable dans le stockage (métadonnées seules).");
+        return;
+      }
+    }
     const { error } = await supabase
       .from('bariba_voice_recordings')
       .update(patch as any)
@@ -238,6 +245,8 @@ export default function VoiceRecordingsBrowser() {
                       </span>
                     )}
                     {r.validated && <span className="text-xs text-emerald-600 font-bold">✓ Validé</span>}
+                    {(r as any).byte_status === 'missing' && <span className="text-xs text-destructive font-bold">⚠ Fichier absent du stockage</span>}
+                    {(r as any).byte_status === 'unknown' && <span className="text-xs text-muted-foreground">? Fichier non vérifié</span>}
                     {r.rejected && <span className="text-xs text-destructive font-bold">✗ Rejeté</span>}
                     {!r.validated && !r.rejected && <span className="text-xs text-amber-600 font-bold">⏳ En attente</span>}
                   </div>

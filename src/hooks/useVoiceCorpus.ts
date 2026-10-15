@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { probeVoiceObject } from '@/lib/voiceCorpusStorage';
 
 export interface CorpusPhrase {
   id: string;
@@ -194,6 +195,12 @@ export function useVoiceCorpus(category: string | 'all') {
           upsert: false,
         });
       if (upErr) throw upErr;
+
+      // Read-back: never write metadata unless the bytes are confirmed in storage.
+      const probe = await probeVoiceObject(storagePath);
+      if (probe.status !== 'present') {
+        throw new Error("L'audio n'a pas pu être confirmé dans le stockage. Réessayez — rien n'a été enregistré.");
+      }
 
       // Insert DB row
       const { error: dbErr } = await supabase
