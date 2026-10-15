@@ -11,3 +11,9 @@
   - [x] Passerelle meta-voice-gateway, client, Apprendre (humain > Meta > indispo), exercice parler, DUNYA, docs, tests
   - [ ] Déploiement VPS (pas d'accès SSH)
   - [ ] Déploiement passerelle sur dvswhjawiooprghzeyol + secrets (SUPABASE_ACCESS_TOKEN GitHub invalide)
+
+## DUNYA voix Meta — pilote (oct. 2026)
+- [x] Pilote Meta MMS-TTS + Omnilingual ASR dans DUNYA pour comptes admin/editor connectés (actif par défaut, choix « Voix FITILA classique » possible), repli bariba-stt/bariba-tts
+- [x] Option « Vérifier la transcription baatɔnum avant envoi » (texte modifiable)
+- [ ] Test navigateur connecté avec preuve réseau meta-voice-gateway 200 — bloqué : aucune session de compte du backend canonique disponible dans l'agent
+- [ ] Mise en production VPS — bloquée : déclenchement par le workflow deploy.yml (push main) non vérifiable d'ici
