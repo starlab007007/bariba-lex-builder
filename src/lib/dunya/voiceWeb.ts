@@ -8,6 +8,7 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { isOffline, memoryTranslate } from '@/lib/translation/translationMemory';
+import { getMetaVoiceFlags, metaAsr, metaTts } from '@/lib/voice/metaVoice';
 
 export type DunyaWebMode = 'fr' | 'bba' | 'both';
 
@@ -78,6 +79,15 @@ async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<T> 
 }
 
 export async function transcribeBariba(audio: Blob): Promise<string> {
+  // Optional Meta Omnilingual ASR (flag); falls back to the existing bariba-stt.
+  if (getMetaVoiceFlags().asr) {
+    try {
+      const t = await metaAsr(audio);
+      if (t) return t;
+    } catch (e) {
+      console.warn('[dunya] Meta ASR indisponible, repli bariba-stt:', e instanceof Error ? e.message : e);
+    }
+  }
   const dataUrl = await blobToDataUrl(audio);
   const data = await invoke<{ transcription?: string; text?: string; error?: string }>('bariba-stt', {
     audio: dataUrl,
@@ -176,6 +186,15 @@ export function speakFrench(text: string, rate = 1): Promise<void> {
 
 export async function speakBariba(text: string): Promise<boolean> {
   if (!text.trim()) return false;
+  // Optional Meta MMS-TTS (flag); falls back to the existing bariba-tts.
+  if (getMetaVoiceFlags().tts) {
+    try {
+      await playUrl(await metaTts(text));
+      return true;
+    } catch (e) {
+      console.warn('[dunya] Meta TTS indisponible, repli bariba-tts:', e instanceof Error ? e.message : e);
+    }
+  }
   const data = await invoke<{ success?: boolean; audio_url?: string }>('bariba-tts', { text, skipRefine: true });
   if (!data.audio_url) return false;
   await playUrl(data.audio_url);

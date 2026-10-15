@@ -3,6 +3,7 @@ import { Volume2, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { chooseListenSource, getMetaVoiceFlags, metaTts } from '@/lib/voice/metaVoice';
 
 const db = supabase as unknown as SupabaseClient;
 
@@ -72,6 +73,18 @@ async function signedUrl(path: string) {
   return data.signedUrl;
 }
 
+/** Joue la voix humaine publiée ; sinon la voix synthétique Meta si activée. */
+async function playSource(entry: PublishedAudio | null, text: string, onDone: () => void, onFail: () => void) {
+  if (activeAudio) { activeAudio.pause(); activeAudio = null; }
+  const url = entry ? await signedUrl(entry.storage_path) : await metaTts(text);
+  const audio = new Audio(url);
+  activeAudio = audio;
+  audio.preload = 'auto';
+  audio.onended = () => { onDone(); if (activeAudio === audio) activeAudio = null; };
+  audio.onerror = () => { onFail(); if (activeAudio === audio) activeAudio = null; };
+  await audio.play();
+}
+
 export function useApprendrePublishedAudio() {
   return useQuery({
     queryKey: ['apprendre-published-audio-manifest'],
@@ -112,52 +125,37 @@ export default function BaribaAudioText({
     return rows[0];
   }, [manifest, preferredVoice, text]);
 
+  const source = chooseListenSource(!!entry, getMetaVoiceFlags());
+  const canPlay = source !== 'unavailable';
+
   const play = async (event: React.MouseEvent) => {
     event.stopPropagation();
     event.preventDefault();
-    if (!entry || playing) return;
-
+    if (!canPlay || playing) return;
     setFailed(false);
     setPlaying(true);
     try {
-      if (activeAudio) {
-        activeAudio.pause();
-        activeAudio = null;
-      }
-      const url = await signedUrl(entry.storage_path);
-      const audio = new Audio(url);
-      activeAudio = audio;
-      audio.preload = 'auto';
-      audio.onended = () => {
-        setPlaying(false);
-        if (activeAudio === audio) activeAudio = null;
-      };
-      audio.onerror = () => {
-        setPlaying(false);
-        setFailed(true);
-        if (activeAudio === audio) activeAudio = null;
-      };
-      await audio.play();
+      await playSource(entry, text, () => setPlaying(false), () => { setPlaying(false); setFailed(true); });
     } catch {
       setPlaying(false);
       setFailed(true);
     }
   };
 
-  const unavailable = !isLoading && !entry;
+  const unavailable = !isLoading && !canPlay;
 
   return (
     <span className={`inline-flex min-w-0 items-center gap-2 ${className}`}>
-      {!hideUnavailable || entry || isLoading ? (
+      {!hideUnavailable || canPlay || isLoading ? (
         <button
           type="button"
           onClick={play}
-          disabled={!entry || playing}
-          aria-label={entry ? `Écouter : ${text}` : `Voix en préparation : ${text}`}
-          title={entry ? 'Écouter la voix de référence' : failed ? 'Lecture impossible' : 'Voix en préparation'}
+          disabled={!canPlay || playing}
+          aria-label={canPlay ? `Écouter : ${text}` : `Voix indisponible : ${text}`}
+          title={failed ? 'Lecture impossible, réessayez' : source === 'human' ? 'Écouter la voix de référence' : source === 'meta-tts' ? 'Voix synthétique (Meta MMS)' : 'Voix indisponible'}
           className={`inline-flex shrink-0 items-center justify-center rounded-full border transition-all
             ${compact ? 'h-7 w-7' : 'h-9 w-9'}
-            ${entry
+            ${canPlay
               ? 'border-[#D8B86A] bg-[#FFF8E7] text-[#9C6B1D] hover:bg-[#F3E3B9] active:scale-95'
               : 'border-[#E4DFCC] bg-[#F5F2E8] text-[#B8B19D] opacity-70'}
           `}
@@ -169,7 +167,10 @@ export default function BaribaAudioText({
       ) : null}
       <span className={`min-w-0 ${textClassName}`}>{text}</span>
       {unavailable && !hideUnavailable && !compact && (
-        <span className="shrink-0 text-[10px] font-semibold text-[#9C9480]">voix bientôt</span>
+        <span className="shrink-0 text-[10px] font-semibold text-[#9C9480]">{failed ? 'lecture impossible' : 'voix indisponible'}</span>
+      )}
+      {source === 'meta-tts' && !compact && (
+        <span className="shrink-0 text-[10px] font-semibold text-[#9C9480]">voix synthétique</span>
       )}
     </span>
   );
@@ -206,38 +207,24 @@ export function BaribaAudioButton({
     return rows[0];
   }, [manifest, preferredVoice, text]);
 
+  const source = chooseListenSource(!!entry, getMetaVoiceFlags());
+  const canPlay = source !== 'unavailable';
+
   const play = async (event: React.MouseEvent) => {
     event.stopPropagation();
     event.preventDefault();
-    if (!entry || playing) return;
+    if (!canPlay || playing) return;
     setFailed(false);
     setPlaying(true);
     try {
-      if (activeAudio) {
-        activeAudio.pause();
-        activeAudio = null;
-      }
-      const url = await signedUrl(entry.storage_path);
-      const audio = new Audio(url);
-      activeAudio = audio;
-      audio.preload = 'auto';
-      audio.onended = () => {
-        setPlaying(false);
-        if (activeAudio === audio) activeAudio = null;
-      };
-      audio.onerror = () => {
-        setPlaying(false);
-        setFailed(true);
-        if (activeAudio === audio) activeAudio = null;
-      };
-      await audio.play();
+      await playSource(entry, text, () => setPlaying(false), () => { setPlaying(false); setFailed(true); });
     } catch {
       setPlaying(false);
       setFailed(true);
     }
   };
 
-  if (!isLoading && !entry && hideUnavailable) return null;
+  if (!isLoading && !canPlay && hideUnavailable) return null;
   const size = compact ? 'h-7 w-7' : 'h-9 w-9';
   const iconSize = compact ? 'h-3.5 w-3.5' : 'h-4 w-4';
 
@@ -245,11 +232,11 @@ export function BaribaAudioButton({
     <button
       type="button"
       onClick={play}
-      disabled={!entry || playing}
-      aria-label={entry ? `Écouter : ${text}` : `Voix en préparation : ${text}`}
-      title={entry ? (entry.speaker_name ? `Voix de ${entry.speaker_name}` : 'Écouter la voix de référence') : failed ? 'Lecture impossible' : 'Voix en préparation'}
+      disabled={!canPlay || playing}
+      aria-label={canPlay ? `Écouter : ${text}` : `Voix indisponible : ${text}`}
+      title={failed ? 'Lecture impossible, réessayez' : entry ? (entry.speaker_name ? `Voix de ${entry.speaker_name}` : 'Écouter la voix de référence') : source === 'meta-tts' ? 'Voix synthétique (Meta MMS)' : 'Voix indisponible'}
       className={`inline-flex shrink-0 items-center justify-center rounded-full border transition-all ${size} ${className} ${
-        entry
+        canPlay
           ? dark
             ? 'border-white/30 bg-white/15 text-white hover:bg-white/25 active:scale-95'
             : 'border-[#D8B86A] bg-[#FFF8E7] text-[#9C6B1D] hover:bg-[#F3E3B9] active:scale-95'
