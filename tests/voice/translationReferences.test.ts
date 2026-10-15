@@ -35,17 +35,24 @@ Deno.test('proper names never receive isolated dictionary spelling suggestions',
 Deno.test('a target phrase with a different paired source is refused', () => {
   const result = review('Agede ye ya do', [ref('Agɛdɛ ye ya do.')], 'translation');
   assert(result.proposals.length === 1);
-  const rejected = constrainTranslationPairs(result, 'Je mange des ignames', 'fr', [{ text: 'Cette banane est bonne', source: 'apprendre', source_id: 'lesson' }]);
+  const rejected = constrainTranslationPairs(result, 'Je mange des ignames', 'fr', [{ text: 'Cette banane est bonne', source: 'apprendre', source_id: 'lesson', kind: 'phrase' }]);
   assert(!rejected.proposals.length && rejected.raw === result.raw);
 });
 Deno.test('a target phrase can be chosen when its bilingual source also matches the input', () => {
-  const result = constrainTranslationPairs(review('Agede ye ya do', [ref('Agɛdɛ ye ya do.')], 'translation'), 'Cette banne est bonne', 'fr', [{ text: 'banane', source: 'apprendre', source_id: 'lesson' }, { text: 'Cette banane est bonne', source: 'apprendre', source_id: 'lesson' }]);
+  const result = constrainTranslationPairs(review('Agede ye ya do', [ref('Agɛdɛ ye ya do.')], 'translation'), 'Cette banne est bonne', 'fr', [{ text: 'banane', source: 'apprendre', source_id: 'lesson', kind: 'phrase' }, { text: 'Cette banane est bonne', source: 'apprendre', source_id: 'lesson', kind: 'phrase' }]);
   assert(result.proposals[0]?.text === 'Agɛdɛ ye ya do.' && result.bilingual_check === 'checked');
   assert(result.paired_references?.length === 1 && result.paired_references[0].text === 'Cette banane est bonne');
 });
 Deno.test('unavailable pairing never permits a plausible target rewrite', () => {
   const result = constrainTranslationPairs(review('Agede ye ya do', [ref('Agɛdɛ ye ya do.')], 'translation'), 'Cette banane est bonne', 'fr', null);
   assert(!result.proposals.length && result.bilingual_check === 'unavailable');
+});
+Deno.test('a headword and example in one JSON card are not a direct bilingual pair', () => {
+  const result = review('Agede ye ya do', [ref('Agɛdɛ ye ya do.', 'example', 'apprendre-content', 'core:BA-00042')], 'translation');
+  const constrained = constrainTranslationPairs(result, 'banane', 'fr', [{ text: 'banane', source: 'apprendre-content', source_id: 'core:BA-00042', kind: 'content' }]);
+  assert(result.proposals.length === 1 && constrained.proposals.length === 0);
+  const mixed = constrainTranslationPairs(review('Agede ye ya do', [ref('Agɛdɛ ye ya do.', 'example')], 'translation'), 'banane', 'fr', [{ text: 'banane', source: 'apprendre', source_id: 'lesson', kind: 'word' }]);
+  assert(mixed.proposals.length === 0);
 });
 Deno.test('queries are bounded and long unanalysed text is preserved', () => {
   const raw = ('une phrase inconnue à conserver. ').repeat(70);
@@ -61,7 +68,7 @@ Deno.test('the server uses independent quotas, paired references and never eithe
       const url = String(input); calls.push(url); assert(new Headers(init?.headers).get('Authorization') === 'Bearer server-key');
       if (url.includes('consume_')) { const body = JSON.parse(String(init?.body)); assert(body.p_key.startsWith('translation-review-')); return Response.json(true); }
       if (url.includes('reference_candidates')) return Response.json([{ query_index: 0, ...ref('Agɛdɛ ye ya do.') }]);
-      if (url.includes('/fitila_asr_references?')) return Response.json([{ text: 'Cette banane est bonne', source: 'apprendre', source_id: 'lesson' }]);
+      if (url.includes('/fitila_asr_references?')) return Response.json([{ text: 'Cette banane est bonne', source: 'apprendre', source_id: 'lesson', kind: 'phrase' }]);
       throw new Error('Unexpected destination');
     },
   });

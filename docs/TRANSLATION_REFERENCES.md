@@ -24,6 +24,11 @@ vocale utilisent la formulation choisie de la réponse concernée.
 - Pour une proposition sur le résultat traduit, la référence cible doit disposer
   d’une référence source de même origine et identifiant, elle-même proche du
   texte demandé. Sans cette preuve bilingue, la proposition est retirée.
+  Cette preuve utilise uniquement les lignes bilingues plates du corpus et du
+  catalogue Apprendre, avec le même type. Les fiches JSON et tableaux du
+  dictionnaire peuvent regrouper mots/exemples : leur identifiant commun ne
+  suffit pas à établir un couple bilingue. Ils restent recherchés dans le
+  texte source, et le catalogue Apprendre fournit leurs couples explicites.
 
 La recherche ne remplace pas le moteur ByT5 et ne requiert ni Mistral ni Gemini.
 Elle ne fabrique pas une grammaire Baatɔnum à partir de mots isolés. Les phrases
