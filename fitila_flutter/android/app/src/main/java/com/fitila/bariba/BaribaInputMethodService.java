@@ -261,7 +261,7 @@ public class BaribaInputMethodService extends InputMethodService {
         // Suggestions bar (bilingual chips: Bariba on top, FR definition below)
         suggestionsBar = new LinearLayout(ctx);
         suggestionsBar.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 78)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 44)));
         suggestionsBar.setOrientation(LinearLayout.HORIZONTAL);
         suggestionsBar.setBackgroundColor(0xFF0F3460);
         suggestionsBar.setGravity(Gravity.CENTER_VERTICAL);
@@ -309,7 +309,7 @@ public class BaribaInputMethodService extends InputMethodService {
 
     private LinearLayout buildLetterRow(Context ctx, final List<String> letters, final boolean useShift) {
         LinearLayout row = new LinearLayout(ctx);
-        row.setLayoutParams(rowParams(ctx, 46));
+        row.setLayoutParams(rowParams(ctx, 42));
         row.setOrientation(LinearLayout.HORIZONTAL);
         for (final String c : letters) {
             TextView k = makeKey(ctx, c, new Runnable() {
@@ -325,7 +325,7 @@ public class BaribaInputMethodService extends InputMethodService {
 
     private LinearLayout buildRow3(Context ctx) {
         LinearLayout row = new LinearLayout(ctx);
-        row.setLayoutParams(rowParams(ctx, 46));
+        row.setLayoutParams(rowParams(ctx, 42));
         row.setOrientation(LinearLayout.HORIZONTAL);
 
         shiftKey = makeKey(ctx, "\u21E7", new Runnable() {
@@ -363,7 +363,7 @@ public class BaribaInputMethodService extends InputMethodService {
 
     private LinearLayout buildSymRow3(Context ctx) {
         LinearLayout row = new LinearLayout(ctx);
-        row.setLayoutParams(rowParams(ctx, 46));
+        row.setLayoutParams(rowParams(ctx, 42));
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.addView(makeKey(ctx, "\u2248", new Runnable() {
             @Override public void run() { typeCharacter("\u2248"); }
@@ -382,7 +382,7 @@ public class BaribaInputMethodService extends InputMethodService {
     /** Unique Bariba row: 7 nasals + 4 specials (ɔ ɛ ŋ ə) + ◌̀ combining grave. */
     private LinearLayout buildBaribaRow(Context ctx) {
         LinearLayout row = new LinearLayout(ctx);
-        row.setLayoutParams(rowParams(ctx, 46));
+        row.setLayoutParams(rowParams(ctx, 42));
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setBackgroundColor(0xFF0F3460);
 
@@ -488,7 +488,7 @@ public class BaribaInputMethodService extends InputMethodService {
 
     private LinearLayout buildBottomRow(Context ctx, boolean symbols) {
         LinearLayout row = new LinearLayout(ctx);
-        row.setLayoutParams(rowParams(ctx, 48));
+        row.setLayoutParams(rowParams(ctx, 44));
         row.setOrientation(LinearLayout.HORIZONTAL);
 
         TextView modeKey = makeKey(ctx, symbols ? "ABC" : "?123", new Runnable() {
@@ -743,7 +743,7 @@ public class BaribaInputMethodService extends InputMethodService {
             chip.setOrientation(LinearLayout.VERTICAL);
             chip.setGravity(Gravity.CENTER);
             chip.setBackgroundColor(0xFF0F3460);
-            int hp = dp(ctx, 6), vp = dp(ctx, 6);
+            int hp = dp(ctx, 6), vp = dp(ctx, 3);
             chip.setPadding(hp, vp, hp, vp);
             chip.setClickable(true);
 
