@@ -207,4 +207,60 @@ public class KeyboardTranslatorInputTest {
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_NORMAL));
     }
 
+    @Test public void detectsFrenchWordAndDisplaysBaatonumUnderFrenchCandidate() throws Exception {
+        View keyboard = (View) field("keyboardContainer");
+        for (char letter : "demain".toCharArray()) {
+            TextView key = key(keyboard, String.valueOf(letter));
+            assertNotNull(key);
+            assertTrue(key.performClick());
+        }
+        LinearLayout bar = (LinearLayout) field("suggestionsBar");
+        assertTrue(bar.getChildCount() > 0);
+        LinearLayout first = (LinearLayout) bar.getChildAt(0);
+        assertEquals("demain", ((TextView) first.getChildAt(0)).getText().toString());
+        assertEquals("sia", ((TextView) first.getChildAt(1)).getText().toString());
+        assertEquals("demain, sia", first.getContentDescription().toString());
+        assertTrue(first.performClick());
+        assertEquals("demain ", service.host.toString());
+    }
+
+    @Test public void autoDirectionUsesFrenchAndBaatonumConfirmedEntries() {
+        BaribaDictionary dict = BaribaDictionary.get(service);
+        BaribaDictionary.Prediction fr = dict.predictBidirectional("demain", "", 3);
+        assertEquals("fr", fr.detectedLanguage);
+        assertEquals("demain", fr.suggestions.get(0).word);
+        assertEquals("sia", fr.suggestions.get(0).translation);
+        assertEquals("fr", fr.suggestions.get(0).sourceLanguage);
+
+        BaribaDictionary.Prediction ba = dict.predictBidirectional("sia", "", 3);
+        assertEquals("ba", ba.detectedLanguage);
+        assertEquals("sia", ba.suggestions.get(0).word);
+        assertEquals("demain", ba.suggestions.get(0).translation);
+        assertEquals("ba", ba.suggestions.get(0).sourceLanguage);
+
+        BaribaDictionary.Prediction thanks = dict.predictBidirectional("remercier", "", 3);
+        assertEquals("fr", thanks.detectedLanguage);
+        assertEquals("siara", thanks.suggestions.get(0).translation);
+        assertEquals("siara", dict.translateFrToBa("remercier"));
+    }
+
+    @Test public void prefixPredictionRecognizesFrenchWithoutLanguageToggle() {
+        BaribaDictionary dict = BaribaDictionary.get(service);
+        BaribaDictionary.Prediction fr = dict.predictBidirectional("dem", "", 3);
+        assertEquals("fr", fr.detectedLanguage);
+        assertTrue(fr.suggestions.stream().anyMatch(s -> "demain".equals(s.word) && "sia".equals(s.translation)));
+        BaribaDictionary.Prediction ba = dict.predictBidirectional("sia", "", 3);
+        assertEquals("ba", ba.detectedLanguage);
+    }
+
+    @Test public void noInventedTranslationsOnUnknownWords() {
+        BaribaDictionary dict = BaribaDictionary.get(service);
+        BaribaDictionary.Prediction unknown = dict.predictBidirectional("zzzzzzz", "", 3);
+        assertEquals("unknown", unknown.detectedLanguage);
+        assertTrue(unknown.suggestions.isEmpty());
+        assertNull(dict.translateFrToBa("zzzzzzz"));
+        assertEquals("", BaribaDictionary.frenchHeadword("faire vomir"));
+        assertEquals("venir", BaribaDictionary.frenchHeadword("venir (présent)"));
+    }
+
 }
