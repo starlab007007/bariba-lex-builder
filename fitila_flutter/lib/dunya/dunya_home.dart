@@ -3,6 +3,9 @@ import 'dunya_core.dart';
 import 'dunya_local_store.dart';
 import 'dunya_models.dart';
 import 'voice/dunya_voice_page.dart';
+import 'voice/dunya_assistant.dart';
+import 'voice/dunya_settings.dart';
+import 'voice/dunya_voice_brain.dart';
 
 class DunyaOfflinePage extends StatefulWidget {
   const DunyaOfflinePage({super.key});
@@ -14,11 +17,12 @@ class DunyaOfflinePage extends StatefulWidget {
 class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
   final _store = DunyaLocalStore.instance;
   final _knowledge = DunyaAssetKnowledgeRepository();
-  final _engine = DunyaFallbackInferenceEngine();
-  late final DunyaIntelligenceRouter _router = DunyaIntelligenceRouter(
+  final _settings = DunyaSettings.instance;
+  late final DunyaAssistant _assistant = DunyaAssistant(
     knowledge: _knowledge,
-    fallbackEngine: _engine,
+    skills: DunyaVoiceBrain(knowledge: _knowledge),
   );
+  String _lastEngine = 'Essentiel';
   final _input = TextEditingController();
   final _scroll = ScrollController();
   List<DunyaMessage> _messages = [];
@@ -36,19 +40,20 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
   @override
   void dispose() {
     _input.dispose();
+    _assistant.interrupt();
     _scroll.dispose();
     super.dispose();
   }
 
   Future<void> _load() async {
     try {
+      await _settings.load();
       _messages = await _store.loadMessages();
       _memories = await _store.loadMemories();
       await _knowledge.initialize();
       await _store.audit('dunya_opened', {
-        'offline': true,
-        'model_id': _engine.modelId,
-        'profile': _engine.profile.name,
+        'execution_mode': _settings.execution.key,
+        'model_id': 'dunya-hybrid',
       });
     } catch (error) {
       _messages = const [];
@@ -63,82 +68,85 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
     if (mounted) setState(() => _loading = false);
   }
 
+  /// One unified text path for Online / Auto / Offline. Uses exactly the
+  /// same assistant and translation chain as the voice conversation, rather
+  /// than leaving the text tab permanently stuck on the fallback extractor.
   Future<void> _send() async {
     if (_generating) {
-      await _engine.cancel();
+      await _assistant.interrupt();
       if (mounted) setState(() => _generating = false);
       return;
     }
-
     final clean = _input.text.trim();
     if (clean.isEmpty) return;
-
     final user = DunyaMessage(role: 'user', content: clean);
+    if (!mounted) return;
     setState(() {
       _messages = [..._messages, user];
       _input.clear();
       _generating = true;
     });
     await _store.appendMessage(user);
-
-    final routed = await _router.route(
-      query: clean,
-      history: _messages,
-    );
-
-    var generated = '';
     final assistantIndex = _messages.length;
     setState(() {
-      _messages = [
-        ..._messages,
-        DunyaMessage(
-          role: 'assistant',
-          content: '',
-          sources: routed.metadata.sources,
-        ),
-      ];
+      _messages = [..._messages, DunyaMessage(role: 'assistant', content: '')];
     });
-
+    var generated = '';
+    var sources = <DunyaSource>[];
+    var engine = 'essential';
     try {
-      await for (final chunk in routed.stream) {
-        generated += chunk;
+      await for (final event in _assistant.reply(clean, _settings.mode)) {
         if (!mounted) return;
+        switch (event) {
+          case DunyaSentenceEvent sentence:
+            generated = '$generated ${sentence.utterance.text}'.trim();
+          case DunyaDoneEvent done:
+            if (generated.isEmpty) generated = done.display;
+            sources = done.sources;
+            engine = done.engine;
+          case DunyaStatusEvent _:
+            break;
+        }
+        if (mounted) {
+          setState(() {
+            final list = [..._messages];
+            list[assistantIndex] = DunyaMessage(
+              role: 'assistant', content: generated, sources: sources);
+            _messages = list;
+          });
+        }
+      }
+      if (generated.isEmpty) generated = 'Réponse indisponible. Réessayez.';
+      _lastEngine = engine;
+      await _store.appendMessage(DunyaMessage(
+        role: 'assistant', content: generated, sources: sources));
+      await _store.audit('dunya_query', {
+        'execution_mode': _settings.execution.key,
+        'model_id': engine,
+        'source_count': sources.length,
+      });
+    } catch (error) {
+      generated = 'DUNYA est momentanément indisponible. Réessayez.';
+      await _store.audit('dunya_query_error',
+          {'error': error.toString()}, severity: 'warning');
+    } finally {
+      if (mounted) {
         setState(() {
-          final next = [..._messages];
-          next[assistantIndex] = DunyaMessage(
-            role: 'assistant',
-            content: generated,
-            sources: routed.metadata.sources,
-          );
-          _messages = next;
+          _generating = false;
+          if (assistantIndex < _messages.length) {
+            final next = [..._messages];
+            next[assistantIndex] = DunyaMessage(
+              role: 'assistant', content: generated, sources: sources);
+            _messages = next;
+          }
         });
       }
-
-      final assistant = DunyaMessage(
-        role: 'assistant',
-        content: generated,
-        sources: routed.metadata.sources,
-      );
-      await _store.appendMessage(assistant);
-      await _store.audit('dunya_query', {
-        'execution_mode': routed.metadata.executionMode,
-        'model_id': routed.metadata.modelId,
-        'language': routed.metadata.language,
-        'confidence_status': routed.metadata.confidenceStatus.name,
-        'source_count': routed.metadata.sources.length,
-        'tools_used': routed.metadata.toolsUsed,
-      });
-    } finally {
-      if (mounted) setState(() => _generating = false);
     }
-
     await Future<void>.delayed(const Duration(milliseconds: 80));
     if (_scroll.hasClients) {
-      await _scroll.animateTo(
-        _scroll.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-      );
+      await _scroll.animateTo(_scroll.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic);
     }
   }
 
@@ -264,7 +272,7 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
                       children: [
                         Icon(Icons.cloud_off_rounded, size: 14, color: sage),
                         SizedBox(width: 5),
-                        Text('LOCAL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: sage)),
+                        Text(_settings.execution.label.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: sage)),
                       ],
                     ),
                   ),
@@ -316,8 +324,8 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
                                 Expanded(
                                   child: _status(
                                     Icons.memory_rounded,
-                                    'DUNYA Fallback',
-                                    _generating ? 'Génération locale…' : 'Prêt à répondre',
+                                    'DUNYA ${_settings.execution.label}',
+                                    _generating ? 'Réponse en cours…' : _lastEngine,
                                     sage,
                                   ),
                                 ),
