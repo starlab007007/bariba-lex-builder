@@ -754,6 +754,9 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     ));
     try {
       await job((f, label) => status.value = (f, label));
+      // Refresh the native voice and translation engines only after successful
+      // installation; packs are optional and independently installable.
+      await _startEngine();
       navigator.pop();
       _toast('Installé et vérifié.');
     } catch (error) {
@@ -1415,6 +1418,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   final _brain = DunyaBrain.instance;
   DunyaDeviceInfo? _device;
   bool _brainInstalled = false;
+  bool _byt5Installed = false;
   double? _brainProgress;
   String? _brainLabel;
   bool _downloading = false;
@@ -1439,6 +1443,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   Future<void> _load() async {
     _device = await _brain.deviceInfo();
     _brainInstalled = await _brain.isInstalled();
+    _byt5Installed = await DunyaByt5.instance.activateIfInstalled();
     if (mounted) setState(() {});
   }
 
@@ -1474,8 +1479,12 @@ class _SettingsSheetState extends State<_SettingsSheet> {
     if (mounted) setState(() {});
   }
 
-  bool _packInstalled(DunyaPackSource source) =>
-      source.id == dunyaVoiceCorePackId ? widget.paths.canListen : widget.paths.canSpeakFrenchOffline;
+  bool _packInstalled(DunyaPackSource source) => switch (source.id) {
+    dunyaVoiceCorePackId => widget.paths.canListen,
+    dunyaVoiceFrPackId => widget.paths.canSpeakFrenchOffline,
+    dunyaTranslationPackId => _byt5Installed,
+    _ => false,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -1586,6 +1595,13 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                         child: const Text('Télécharger'),
                       ),
               ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 6),
+              child: Text('Meta Omnilingual ASR pour la reconnaissance et Meta MMS-TTS Baatɔnum '
+                  'pour la parole. Sans pack : services en ligne FITILA. '
+                  'Un pack hors ligne ne fonctionne qu’une fois publié, téléchargé et vérifié.',
+                  style: TextStyle(fontSize: 11.5, color: Color(0xFF7D7566))),
+            ),
             OutlinedButton.icon(
               onPressed: () {
                 Navigator.of(context).pop();
