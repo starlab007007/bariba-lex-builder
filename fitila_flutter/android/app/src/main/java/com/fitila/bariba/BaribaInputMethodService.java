@@ -52,7 +52,7 @@ import java.util.concurrent.Future;
 /**
  * Production-grade Bariba Fitila IME — Java implementation.
  *
- * BUILD_TAG: fitila-ime-2026-10-16-v12-bilingual-predictions
+ * BUILD_TAG: fitila-ime-2026-10-16-v13-auto-bidirectional
  *
  * v10 highlights:
  *  - Auto green translation banner REMOVED (FR↔BA dictionary stays in suggestion bar).
@@ -64,7 +64,7 @@ import java.util.concurrent.Future;
 public class BaribaInputMethodService extends InputMethodService {
 
     private static final String TAG = "BaribaKeyboard";
-    private static final String BUILD_TAG = "fitila-ime-2026-10-16-v12-bilingual-predictions";
+    private static final String BUILD_TAG = "fitila-ime-2026-10-16-v13-auto-bidirectional";
     private static final String PREFS = "bariba_keyboard_data";
     private static final int MAX_HISTORY = 50;
     private static final int MAX_SUGGESTIONS = 3;
@@ -820,8 +820,9 @@ public class BaribaInputMethodService extends InputMethodService {
         }
         try {
             BaribaDictionary dict = BaribaDictionary.get(this);
-            List<BaribaDictionary.Entry> picks = dict.predict(partial, lastCommittedWord, MAX_SUGGESTIONS);
-            renderBilingualBar(picks);
+            BaribaDictionary.Prediction result = dict.predictBidirectional(
+                    partial, lastCommittedWord, MAX_SUGGESTIONS);
+            renderBilingualBar(result.suggestions);
         } catch (Throwable t) { Log.w(TAG, "updateSuggestions failed", t); }
     }
 
@@ -838,14 +839,14 @@ public class BaribaInputMethodService extends InputMethodService {
         return first < 0 ? value : value.substring(0, first).trim();
     }
 
-    private void renderBilingualBar(List<BaribaDictionary.Entry> picks) {
+    private void renderBilingualBar(List<BaribaDictionary.Suggestion> picks) {
         final LinearLayout bar = suggestionsBar;
         if (bar == null) return;
         Context ctx = bar.getContext();
         bar.removeAllViews();
         if (picks == null || picks.isEmpty()) return;
         for (int i = 0; i < picks.size(); i++) {
-            final BaribaDictionary.Entry e = picks.get(i);
+            final BaribaDictionary.Suggestion e = picks.get(i);
             LinearLayout chip = new LinearLayout(ctx);
             chip.setOrientation(LinearLayout.VERTICAL);
             chip.setGravity(Gravity.CENTER);
@@ -855,7 +856,7 @@ public class BaribaInputMethodService extends InputMethodService {
             chip.setClickable(true);
 
             TextView ba = new TextView(ctx);
-            ba.setText(e.keyboardWord());
+            ba.setText(e.word);
             ba.setTextColor(Color.WHITE);
             ba.setTypeface(null, Typeface.BOLD);
             ba.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
@@ -865,7 +866,8 @@ public class BaribaInputMethodService extends InputMethodService {
             chip.addView(ba);
 
             TextView fr = new TextView(ctx);
-            fr.setText(visibleFrenchGloss(e.fr));
+            fr.setText("ba".equals(e.sourceLanguage)
+                    ? visibleFrenchGloss(e.translation) : e.translation);
             fr.setTextColor(0xFFFFD54F);
             fr.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
             fr.setGravity(Gravity.CENTER);
@@ -876,16 +878,16 @@ public class BaribaInputMethodService extends InputMethodService {
             flp.topMargin = dp(ctx, 3);
             chip.addView(fr, flp);
 
-            chip.setContentDescription(e.keyboardWord() + ", " + e.fr);
+            chip.setContentDescription(e.word + ", " + e.translation);
             chip.setOnLongClickListener(new View.OnLongClickListener() {
                 @Override public boolean onLongClick(View v) {
                     Toast.makeText(BaribaInputMethodService.this,
-                            e.keyboardWord() + " : " + e.fr, Toast.LENGTH_LONG).show();
+                            e.word + " : " + e.translation, Toast.LENGTH_LONG).show();
                     return true;
                 }
             });
             chip.setOnClickListener(new View.OnClickListener() {
-                @Override public void onClick(View v) { commitSuggestion(e.keyboardWord()); }
+                @Override public void onClick(View v) { commitSuggestion(e.word); }
             });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
