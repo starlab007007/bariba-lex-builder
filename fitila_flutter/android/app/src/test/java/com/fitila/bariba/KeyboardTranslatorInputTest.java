@@ -3,6 +3,11 @@ package com.fitila.bariba;
 import static org.junit.Assert.*;
 import android.text.Editable;
 import android.text.InputType;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.view.inputmethod.EditorInfo;
+import java.util.concurrent.atomic.AtomicInteger;
 import android.widget.LinearLayout;
 import java.util.List;
 import android.view.View;
@@ -282,6 +287,97 @@ public class KeyboardTranslatorInputTest {
         assertNull(dict.translateFrToBa("zzzzzzz"));
         assertEquals("", BaribaDictionary.frenchHeadword("faire vomir"));
         assertEquals("venir", BaribaDictionary.frenchHeadword("venir (présent)"));
+    }
+
+    @Test public void byt5ResultShowsExplicitCopyAndSendWithoutLosingOriginalDraft() throws Exception {
+        EditText draft = open();
+        draft.setText("Bonjour, comment allez-vous ?");
+        LinearLayout messages = new LinearLayout(service);
+        service.addTranslationActions(messages, "A kpuna n do ?");
+        TextView copy = key(messages, "Copier");
+        TextView send = key(messages, "Envoyer");
+        assertNotNull(copy);
+        assertNotNull(send);
+        assertEquals("Copier la traduction", copy.getContentDescription().toString());
+        assertEquals("Envoyer la traduction", send.getContentDescription().toString());
+        assertTrue(copy.performClick());
+        ClipboardManager clipboard =
+            (ClipboardManager) service.getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clip = clipboard.getPrimaryClip();
+        assertNotNull(clip);
+        assertEquals("A kpuna n do ?", clip.getItemAt(0).getText().toString());
+        assertEquals("", service.host.toString());
+        assertEquals("Bonjour, comment allez-vous ?", draft.getText().toString());
+
+        // Robolectric's host editor doesn't advertise a SEND action:
+        // insert the translation, close the panel, and let the app send it.
+        assertTrue(send.performClick());
+        assertEquals("A kpuna n do ?", service.host.toString());
+        assertFalse((Boolean) field("translatorOpen"));
+        assertFalse(send.isEnabled());
+    }
+
+    @Test public void sendOnlyDispatchesWhenEditorAdvertisesNativeSendAction() {
+        final StringBuilder received = new StringBuilder();
+        final AtomicInteger count = new AtomicInteger();
+        InputConnection host = new BaseInputConnection(new EditText(service), true) {
+            @Override public boolean commitText(CharSequence text, int pos) {
+                received.append(text); return true;
+            }
+            @Override public boolean performEditorAction(int code) {
+                count.incrementAndGet();
+                assertEquals(EditorInfo.IME_ACTION_SEND, code);
+                return true;
+            }
+        };
+        EditorInfo info = new EditorInfo();
+        info.imeOptions = EditorInfo.IME_ACTION_SEND;
+        assertEquals(BaribaInputMethodService.TranslationDelivery.SEND_REQUESTED,
+            BaribaInputMethodService.deliverTranslatedText(host, info, "ɔ̃ bonjour"));
+        assertEquals("ɔ̃ bonjour", received.toString());
+        assertEquals(1, count.get());
+    }
+
+    @Test public void neverConfusesDoneOrGoWithSendAndDoesNotInventDeliveryReceipt() {
+        final StringBuilder received = new StringBuilder();
+        final AtomicInteger count = new AtomicInteger();
+        InputConnection host = new BaseInputConnection(new EditText(service), true) {
+            @Override public boolean commitText(CharSequence text, int pos) {
+                received.append(text); return true;
+            }
+            @Override public boolean performEditorAction(int code) {
+                count.incrementAndGet(); return true;
+            }
+        };
+        EditorInfo info = new EditorInfo();
+        info.imeOptions = EditorInfo.IME_ACTION_DONE;
+        assertEquals(BaribaInputMethodService.TranslationDelivery.INSERTED_ONLY,
+            BaribaInputMethodService.deliverTranslatedText(host, info, "Traduction"));
+        info.imeOptions = EditorInfo.IME_ACTION_GO;
+        assertEquals(BaribaInputMethodService.TranslationDelivery.INSERTED_ONLY,
+            BaribaInputMethodService.deliverTranslatedText(host, info, "Bonjour"));
+        assertEquals("TraductionBonjour", received.toString());
+        assertEquals(0, count.get());
+    }
+
+    @Test public void sendFallsBackToInsertionIfHostDeclinesSendAction() {
+        final AtomicInteger count = new AtomicInteger();
+        InputConnection host = new BaseInputConnection(new EditText(service), true) {
+            @Override public boolean commitText(CharSequence text, int pos) {
+                count.incrementAndGet(); return true;
+            }
+            @Override public boolean performEditorAction(int code) { return false; }
+        };
+        EditorInfo editor = new EditorInfo();
+        editor.imeOptions = EditorInfo.IME_ACTION_SEND;
+        assertEquals(BaribaInputMethodService.TranslationDelivery.INSERTED_ONLY,
+            BaribaInputMethodService.deliverTranslatedText(host, editor, "Naa"));
+        assertEquals(1, count.get());
+        assertEquals(BaribaInputMethodService.TranslationDelivery.UNAVAILABLE,
+            BaribaInputMethodService.deliverTranslatedText(null, editor, "Bonjour"));
+        assertEquals(BaribaInputMethodService.TranslationDelivery.UNAVAILABLE,
+            BaribaInputMethodService.deliverTranslatedText(host, editor, "  "));
+        assertEquals(1, count.get());
     }
 
 }

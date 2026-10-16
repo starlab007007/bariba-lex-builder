@@ -143,8 +143,19 @@ try:
     assert translated and translated not in ('Bonjour', 'Traduction en cours…'), translated
     assert find('content-desc', 'Texte à traduire').get('text') == 'Bonjour'
     screenshot('02-reponse-byt5.png')
-    tap(result, long=True)
-    tap(find('content-desc', 'Fermer le traducteur'))
+    # Exercise the new explicit result actions through the real system IME.
+    # Copy must NOT modify the original app's draft or the translated text.
+    copy = find('content-desc', 'Copier la traduction')
+    send_translation = find('content-desc', 'Envoyer la traduction')
+    screenshot('02-byt5-copier-envoyer.png')
+    tap(copy)
+    host = find('content-desc', 'Application hôte : texte de test')
+    assert host.get('text') in ('', 'La traduction sera insérée ici'), host.attrib
+    assert find('content-desc', 'Texte à traduire').get('text') == 'Bonjour'
+    # The debug-only host advertises IME_ACTION_SEND. It records the action
+    # without sending any real message to a third-party service.
+    tap(send_translation)
+    find('content-desc', 'Application hôte : action SEND reçue')
     host = find('content-desc', 'Application hôte : texte de test')
     assert host.get('text', '').strip() == translated, host.attrib
     tap(find('text', 'x'))
@@ -153,7 +164,8 @@ try:
     screenshot('03-insertion-application.png')
     (OUT / 'result.json').write_text(json.dumps({'passed': True, 'source': 'Bonjour', 'translation': translated,
         'endpoint': 'byt5-bariba-translate', 'host_isolated_during_typing': True,
-        'explicit_insertion': True, 'host_typing_restored': True, 'bilingual_native_predictions': True,
+        'explicit_insertion': True, 'copy_action_verified': True, 'native_send_action_verified': True,
+        'host_typing_restored': True, 'bilingual_native_predictions': True,
         'candidate_inserted_without_french': True, 'automatic_bidirectional_predictions': True,
         'french_word_insertion_verified': True}, ensure_ascii=False, indent=2))
     print('Native Android keyboard end-to-end test passed:', translated)
