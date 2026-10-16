@@ -115,18 +115,20 @@ void _wireBaribaKeyboard() {
     );
     return out.trim().isEmpty ? null : out;
   };
-  // Cerveau en ligne de DUNYA (téléphones sans le modèle Gemma) : fitila-ia-chat répond
+  DunyaAssistant.onlineAvailable = () =>
+      FitilaBackend.configured && FitilaOffline.online.value;
+  // Cerveau en ligne DUNYA : aucune installation Gemma nécessaire, même en visiteur.
   // en français ; DUNYA traduit lui-même chaque phrase (mémoire attestée puis ByT5).
   DunyaAssistant.cloudBrain = ({required system, required history, required message}) async {
     final token = FitilaBackend.client.auth.currentSession?.accessToken;
-    if (token == null || token.isEmpty || !FitilaOffline.online.value) return null;
+    if (!FitilaBackend.configured || !FitilaOffline.online.value) return null;
     try {
       final response = await http
           .post(
             Uri.parse('${FitilaBackend.supabaseUrl}/functions/v1/fitila-ia-chat'),
             headers: {
               'content-type': 'application/json',
-              'Authorization': 'Bearer $token',
+              'Authorization': 'Bearer ${token ?? FitilaBackend.supabaseAnonKey}',
               if (FitilaBackend.supabaseAnonKey.isNotEmpty) 'apikey': FitilaBackend.supabaseAnonKey,
             },
             body: jsonEncode({
