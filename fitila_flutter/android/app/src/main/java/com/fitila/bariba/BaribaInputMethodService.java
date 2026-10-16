@@ -217,6 +217,7 @@ public class BaribaInputMethodService extends InputMethodService {
 
     private View buildRoot() {
         Context ctx = themedContext();
+        cancelTranslation();
         translatorOpen = false;
         translatorInput = null;
         root = new LinearLayout(ctx);
@@ -1115,6 +1116,7 @@ public class BaribaInputMethodService extends InputMethodService {
     }
 
     private void attachInsertOnLongPress(final TextView bubble) {
+        bubble.setContentDescription("Traduction reçue. Touchez pour copier, appui long pour insérer.");
         bubble.setLongClickable(true);
         bubble.setOnLongClickListener(new View.OnLongClickListener() {
             @Override public boolean onLongClick(View v) {

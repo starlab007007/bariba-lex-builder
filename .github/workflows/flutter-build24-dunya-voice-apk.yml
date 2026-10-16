@@ -120,6 +120,32 @@ jobs:
           set -o pipefail
           flutter test --dart-define-from-file=.ci-dart-defines.json --reporter expanded 2>&1 | tee build/ci-report/test.txt
 
+      - name: Build emulator APK
+        run: flutter build apk --debug --target-platform android-x64 --dart-define-from-file=.ci-dart-defines.json
+
+      - name: Enable KVM
+        run: sudo chmod 666 /dev/kvm
+
+      - name: Exercise real Android keyboard and deployed ByT5
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            adb install -r fitila_flutter/build/app/outputs/flutter-apk/app-debug.apk
+            python3 scripts/test-native-keyboard-translator.py
+
+      - name: Upload native keyboard emulator evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FITILA-Keyboard-Translator-Android-Evidence
+          path: keyboard-emulator-proof/
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Prepare Android release signing
         env:
           FITILA_KEYSTORE_BASE64: ${{ secrets.FITILA_KEYSTORE_BASE64 }}
