@@ -162,7 +162,7 @@ function DashboardTab() {
       <div className="grid gap-3 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Couverture obligatoire des textes bàátɔ̀nú</CardTitle>
+            <CardTitle className="text-base">Couverture obligatoire des textes Baatɔnum</CardTitle>
             <CardDescription>Objectif : chaque mot, forme, phrase, expression, exemple et réplique doit avoir au moins une voix validée et publiée.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">

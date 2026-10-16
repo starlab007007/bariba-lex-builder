@@ -220,7 +220,7 @@ export function AccessibleVoiceLauncher({
           </TooltipTrigger>
           <TooltipContent side="right" className="bg-gradient-to-r from-cyan-600 to-teal-600 text-white border-none">
             <p className="font-medium">🎤 Traducteur Vocal</p>
-            <p className="text-xs opacity-80">Bariba ↔ Français</p>
+            <p className="text-xs opacity-80">Baatɔnum ↔ Français</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

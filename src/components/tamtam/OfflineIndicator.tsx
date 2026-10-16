@@ -117,11 +117,11 @@ export function OfflineIndicator() {
                 available={capabilities.frenchTTS}
               />
               <CapabilityItem
-                label="Dictée bariba"
+                label="Dictée Baatɔnum"
                 available={capabilities.baribaSTT}
               />
               <CapabilityItem
-                label="Lecture bariba"
+                label="Lecture Baatɔnum"
                 available={capabilities.baribaTTS}
               />
               <CapabilityItem

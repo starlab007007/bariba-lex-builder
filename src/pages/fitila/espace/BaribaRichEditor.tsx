@@ -24,7 +24,7 @@ const WORD_TAIL = /[\p{L}\p{M}'’]+$/u;
 /** Palette des caractères Bàátɔ̀nú + tons (réutilisée par l'éditeur et l'écran de numérisation). */
 export function BaribaCharPalette({ onInsert, className = '' }: { onInsert: (s: string) => void; className?: string }) {
   return (
-    <div className={`flex flex-wrap items-center gap-1.5 ${className}`} role="group" aria-label="Caractères Bàátɔ̀nú">
+    <div className={`flex flex-wrap items-center gap-1.5 ${className}`} role="group" aria-label="Caractères Baatɔnum">
       {BARIBA_LETTERS.map((c) => (
         <button key={c} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => onInsert(c)} aria-label={`Insérer ${c}`}
           className="h-9 min-w-9 rounded-[10px] border bg-white px-2 text-[16px] font-bold transition-transform hover:-translate-y-0.5 active:scale-90" style={{ borderColor: SIG.hairline, color: SIG.goldDeep }}>
@@ -303,7 +303,7 @@ const BaribaRichEditor = forwardRef<BaribaEditorHandle, Props>(function BaribaRi
             <ToolBtn label="Justifier" onClick={() => exec('justifyFull')}><AlignJustify className="h-4 w-4" /></ToolBtn>
             <ToolBtn label="Effacer la mise en forme" onClick={() => exec('removeFormat')}><Eraser className="h-4 w-4" /></ToolBtn>
             <span className="mx-1 h-5 w-px shrink-0" style={{ background: SIG.hairline }} />
-            <ToolBtn label="Clavier Bàátɔ̀nú (caractères et tons)" active={showKeys} onClick={() => setShowKeys((v) => !v)}><Keyboard className="h-4 w-4" /></ToolBtn>
+            <ToolBtn label="Clavier Baatɔnum (caractères et tons)" active={showKeys} onClick={() => setShowKeys((v) => !v)}><Keyboard className="h-4 w-4" /></ToolBtn>
             <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setShowSpell((v) => !v)} aria-pressed={showSpell}
               className="relative ml-1 flex h-9 shrink-0 items-center gap-1.5 rounded-[10px] px-2.5 text-[12.5px] font-bold" style={{ background: showSpell ? SIG.goldTint : undefined, color: SIG.ink }}>
               <SpellCheck2 className="h-4 w-4" /> Orthographe
@@ -361,7 +361,7 @@ const BaribaRichEditor = forwardRef<BaribaEditorHandle, Props>(function BaribaRi
         {showSpell && !readOnly && (
           <aside className="w-[min(88vw,300px)] shrink-0 overflow-y-auto border-l bg-white p-3" style={{ borderColor: SIG.hairline }} aria-label="Vérification orthographique">
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-[13px] font-extrabold">Orthographe Bàátɔ̀nú</h3>
+              <h3 className="text-[13px] font-extrabold">Orthographe Baatɔnum</h3>
               <button type="button" onClick={() => setShowSpell(false)} aria-label="Fermer" className="rounded-full p-1 hover:bg-[#F1EDDF]"><X className="h-4 w-4" /></button>
             </div>
             {!lexicon ? (
@@ -388,7 +388,7 @@ const BaribaRichEditor = forwardRef<BaribaEditorHandle, Props>(function BaribaRi
                 ))}
               </ul>
             )}
-            <p className="mt-3 text-[11px] leading-relaxed" style={{ color: SIG.muted }}>Les mots absents du dictionnaire (noms propres, mots récents) peuvent être ignorés. « {foldText('Bàátɔ̀nú')} » ≈ « Bàátɔ̀nú » : les suggestions rétablissent tons et caractères spéciaux.</p>
+            <p className="mt-3 text-[11px] leading-relaxed" style={{ color: SIG.muted }}>Les mots absents du dictionnaire (noms propres, mots récents) peuvent être ignorés. « {foldText('Bàátɔ̀nú')} » ≈ « Baatɔnum » : les suggestions rétablissent tons et caractères spéciaux.</p>
           </aside>
         )}
       </div>

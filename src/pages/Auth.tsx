@@ -69,7 +69,7 @@ export default function Auth() {
               <BookOpen className="h-8 w-8 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Dictionnaire Bààtɔ̀nú</CardTitle>
+          <CardTitle className="text-2xl font-bold">Dictionnaire Baatɔnum</CardTitle>
           <CardDescription>
             Connectez-vous pour accéder à toutes les fonctionnalités
           </CardDescription>

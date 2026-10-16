@@ -87,7 +87,7 @@ export default function BaribaKeyboardCompanion() {
       >
         <div className="flex items-center gap-2">
           <Keyboard className="w-4 h-4 text-amber-500" />
-          <span className="text-sm font-semibold">Clavier Bariba Natif</span>
+          <span className="text-sm font-semibold">Clavier Baatɔnum Natif</span>
           {history.length > 0 && (
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold">
               {history.length}
@@ -130,7 +130,7 @@ export default function BaribaKeyboardCompanion() {
             <div className="px-4 py-2 border-t border-border/30">
               <div className="flex items-center justify-between mb-1.5">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Historique Bariba
+                  Historique Baatɔnum
                 </p>
                 {history.length > 0 && (
                   <div className="flex items-center gap-2">

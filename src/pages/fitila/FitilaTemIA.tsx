@@ -118,7 +118,7 @@ export default function FitilaTemIA() {
         <div className="flex items-center gap-2 bg-[#DCEAE0] border border-[#3F6E52]/30 rounded-[16px] px-3 py-2">
           <ShieldCheck className="w-4 h-4 text-[#3F6E52] flex-shrink-0" />
           <p className="text-[11px] text-[#3F6E52] font-extrabold leading-tight">
-            🔒 Source locale embarquée : <strong>Code Foncier Bariba</strong> — 207 articles
+            🔒 Source locale embarquée : <strong>Code Foncier Baatɔnum</strong> — 207 articles
           </p>
         </div>
       </div>

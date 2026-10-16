@@ -137,7 +137,7 @@ export function VocalDictionaryResult({
               <div className="flex-1">
                 <div className="mb-1">
                   <span className="text-sm text-amber-700 font-medium flex items-center gap-2">
-                    <span>🇧🇯</span> Exemple en bariba
+                    <span>🇧🇯</span> Exemple en Baatɔnum
                   </span>
                 </div>
                 <p className="text-amber-900 text-lg italic">"{entry.example_bariba}"</p>

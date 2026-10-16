@@ -39,7 +39,7 @@ export default function FoncierSourcesModal({ sources, onClose }: Props) {
               </div>
               <div className="flex-1">
                 <h3 className="font-bold text-gray-800 text-base">Sources citées</h3>
-                <p className="text-xs text-gray-500">{sources.length} article{sources.length > 1 ? 's' : ''} du Code Foncier Bariba</p>
+                <p className="text-xs text-gray-500">{sources.length} article{sources.length > 1 ? 's' : ''} du Code Foncier Baatɔnum</p>
               </div>
               <button onClick={onClose} className="w-9 h-9 rounded-full bg-white/80 hover:bg-white flex items-center justify-center transition-colors">
                 <X className="w-5 h-5 text-gray-600" />
@@ -60,7 +60,7 @@ export default function FoncierSourcesModal({ sources, onClose }: Props) {
             </div>
 
             <div className="px-5 py-3 border-t border-gray-100 bg-gray-50">
-              <p className="text-[10px] text-gray-500 text-center italic">Loi n° 2013-01 — Code foncier et domanial du Bénin (traduction Bariba)</p>
+              <p className="text-[10px] text-gray-500 text-center italic">Loi n° 2013-01 — Code foncier et domanial du Bénin (traduction Baatɔnum)</p>
             </div>
           </motion.div>
         </>

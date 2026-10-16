@@ -16,12 +16,12 @@ export const SearchToggle = ({ searchDirection, onDirectionChange }: SearchToggl
     },
     {
       key: "bariba-to-french",
-      label: "Bariba → FR",
+      label: "Baatɔnum → FR",
       icon: <ArrowRight className="h-4 w-4" />
     },
     {
       key: "french-to-bariba", 
-      label: "FR → Bariba",
+      label: "FR → Baatɔnum",
       icon: <ArrowLeft className="h-4 w-4" />
     }
   ];

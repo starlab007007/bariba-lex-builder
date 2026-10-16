@@ -66,7 +66,7 @@ export default function FitilaLearnScenes() {
           </button>
           <div>
             <h1 className="font-extrabold">Scènes de vie</h1>
-            <p className="text-xs text-[#6F6955]">Dialogues bàátɔ̀nú · écouter et comprendre</p>
+            <p className="text-xs text-[#6F6955]">Dialogues Baatɔnum · écouter et comprendre</p>
           </div>
         </div>
       </div>

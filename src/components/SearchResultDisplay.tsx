@@ -127,7 +127,7 @@ export const SearchResultDisplay = ({ entry, query, index, relevanceScore }: Sea
             {entry.example_bariba && entry.example_bariba.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold text-primary flex items-center gap-2">
-                  Exemples en Bààtɔ̀nú
+                  Exemples en Baatɔnum
                   <Volume2 className="h-3 w-3" />
                 </h4>
                 <div className="space-y-1">

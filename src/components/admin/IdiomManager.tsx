@@ -339,7 +339,7 @@ export function IdiomManager() {
         <CardHeader>
           <CardTitle>Gestion des Expressions Idiomatiques</CardTitle>
           <CardDescription>
-            Gérez les {stats.total} expressions idiomatiques baatonum
+            Gérez les {stats.total} expressions idiomatiques Baatɔnum
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -380,7 +380,7 @@ export function IdiomManager() {
                     {editingIdiom ? 'Modifier' : 'Ajouter'} un idiome
                   </DialogTitle>
                   <DialogDescription>
-                    Renseignez les expressions françaises et baatonum
+                    Renseignez les expressions françaises et Baatɔnum
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -394,7 +394,7 @@ export function IdiomManager() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Expression baatonum</label>
+                    <label className="text-sm font-medium">Expression Baatɔnum</label>
                     <Input
                       required
                       value={formData.bariba_expression}
@@ -496,7 +496,7 @@ export function IdiomManager() {
                     />
                   </TableHead>
                   <TableHead>Français</TableHead>
-                  <TableHead>Baatonum</TableHead>
+                  <TableHead>Baatɔnum</TableHead>
                   <TableHead>Catégorie</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead className="text-right">Actions</TableHead>

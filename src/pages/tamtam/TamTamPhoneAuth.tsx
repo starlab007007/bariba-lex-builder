@@ -76,7 +76,7 @@ function Hero({ compact }: { compact: boolean }) {
           </span>
           <div>
             <div className="text-[25px] font-semibold leading-none tracking-wide" style={{ fontFamily: SERIF, color: SIG.goldDeep }}>FITILA</div>
-            <div className="mt-1 text-[11.5px] font-semibold" style={{ color: SIG.muted }}>Bàátɔ̀nú · Culture · IA</div>
+            <div className="mt-1 text-[11.5px] font-semibold" style={{ color: SIG.muted }}>Baatɔnum · Culture · IA</div>
           </div>
         </div>
         <h2 className="mt-4 font-semibold leading-[1.06] tracking-tight md:mt-8" style={{ fontFamily: SERIF, color: SIG.ink, fontSize: compact ? 25 : 42 }}>

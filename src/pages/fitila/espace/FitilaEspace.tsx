@@ -158,7 +158,7 @@ export default function FitilaEspace() {
           <div className="fitila-rise rounded-[24px] border bg-white p-7 text-center" style={{ borderColor: SIG.hairline }}>
             <Lock className="mx-auto h-8 w-8" style={{ color: SIG.goldDeep }} />
             <h2 className="mt-3 text-[18px] font-extrabold">Votre coffre-fort est privé</h2>
-            <p className="mt-1.5 text-[13px]" style={{ color: SIG.muted }}>Connectez-vous pour créer, numériser et archiver vos documents en Bàátɔ̀nú.</p>
+            <p className="mt-1.5 text-[13px]" style={{ color: SIG.muted }}>Connectez-vous pour créer, numériser et archiver vos documents en Baatɔnum.</p>
             <button type="button" onClick={() => nav('/auth')} className="mt-5 h-11 rounded-full px-7 text-[14px] font-extrabold" style={{ background: SIG.gold, color: '#2B2110' }}>Se connecter</button>
           </div>
         </div>
@@ -204,7 +204,7 @@ export default function FitilaEspace() {
         <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
           <label className="relative flex-1">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: SIG.muted }} />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher — « baatonu » trouve « Bàátɔ̀nú »" aria-label="Rechercher dans l’Espace" className="h-11 w-full rounded-full border bg-white pl-10 pr-10 text-[14px] outline-none focus:border-[#C99530]" style={{ borderColor: SIG.hairline }} />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher — « Baatɔnum » trouve « Baatɔnum »" aria-label="Rechercher dans l’Espace" className="h-11 w-full rounded-full border bg-white pl-10 pr-10 text-[14px] outline-none focus:border-[#C99530]" style={{ borderColor: SIG.hairline }} />
             {query && <button type="button" aria-label="Effacer la recherche" onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2"><X className="h-4 w-4" style={{ color: SIG.muted }} /></button>}
           </label>
           <div className="flex gap-2">
@@ -329,7 +329,7 @@ function Hero({ children }: { children?: React.ReactNode }) {
         <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full opacity-40 blur-2xl" style={{ background: SIG.gold }} />
         <p className="text-[11px] font-extrabold uppercase tracking-[.14em]" style={{ color: SIG.goldDeep }}>Coffre-fort numérique</p>
         <h1 className="mt-1.5 text-[30px] font-semibold leading-tight md:text-[38px]" style={{ fontFamily: SERIF }}>Espace</h1>
-        <p className="mt-1.5 max-w-[560px] text-[13.5px] leading-relaxed" style={{ color: SIG.inkSoft }}>Écrivez, numérisez et archivez vos documents en Bàátɔ̀nú — éditeur relié au dictionnaire, OCR des tons et caractères ɛ ɔ ŋ, historique des versions et partage sécurisé.</p>
+        <p className="mt-1.5 max-w-[560px] text-[13.5px] leading-relaxed" style={{ color: SIG.inkSoft }}>Écrivez, numérisez et archivez vos documents en Baatɔnum — éditeur relié au dictionnaire, OCR des tons et caractères ɛ ɔ ŋ, historique des versions et partage sécurisé.</p>
         {children}
       </div>
     </section>

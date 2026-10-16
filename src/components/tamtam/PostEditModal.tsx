@@ -171,12 +171,12 @@ export const PostEditModal: React.FC<PostEditModalProps> = ({
 
           {/* Transcription BA */}
           <div className="space-y-2">
-            <Label htmlFor="transcript-ba">Transcription (Bariba)</Label>
+            <Label htmlFor="transcript-ba">Transcription (Baatɔnum)</Label>
             <Textarea
               id="transcript-ba"
               value={transcriptBa}
               onChange={(e) => setTranscriptBa(e.target.value)}
-              placeholder="Transcription en bariba..."
+              placeholder="Transcription en Baatɔnum..."
               rows={3}
             />
           </div>

@@ -270,7 +270,7 @@ function BaribaNumberExercise({ exo, index, onResult }: {
         <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-400 flex items-center justify-center shadow-md">
           <span className="text-white text-2xl font-black">{exo.digits}</span>
         </div>
-        <span className="text-gray-500 text-xs font-medium">A yoruo bariba sɔɔ</span>
+        <span className="text-gray-500 text-xs font-medium">A yoruo Baatɔnum sɔɔ</span>
       </div>
       <BaribaSmartTextarea
         value={text}

@@ -376,7 +376,7 @@ export default function TamTamTranslator() {
       className="mx-auto min-h-0 w-full max-w-[960px] bg-[#F7F5EC] text-[#241F2E] flex flex-col overflow-hidden"
       style={{ height: '100%', maxHeight: viewportHeight ? `${Math.floor(viewportHeight)}px` : '100dvh' }}
     >
-      {!keyboardOpen && <FitilaPageHeader title="Traducteur" subtitle="Français ⇄ Bàátɔ̀nú · écrivez, dictez, écoutez" />}
+      {!keyboardOpen && <FitilaPageHeader title="Traducteur" subtitle="Français ⇄ Baatɔnum · écrivez, dictez, écoutez" />}
 
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* Sub-header with language toggle */}
@@ -463,7 +463,7 @@ export default function TamTamTranslator() {
                 <Globe className="h-5 w-5" />
               </motion.div>
               <h2 className="text-lg font-black text-[#241F2E] mb-1">Traduisez simplement</h2>
-              <p className="text-[#8C8571] text-sm">Français ⇄ Bàátɔ̀nú · détection automatique</p>
+              <p className="text-[#8C8571] text-sm">Français ⇄ Baatɔnum · détection automatique</p>
 
             </motion.div>
           )}

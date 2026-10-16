@@ -73,7 +73,7 @@ export const TranslationModelSwitcher = ({
     {
       id: 'byt5-expert',
       name: 'ByT5 Expert',
-      description: 'Modèle spécialisé Bariba, haute qualité',
+      description: 'Modèle spécialisé Baatɔnum, haute qualité',
       icon: <Bot className="h-4 w-4" />,
       badge: 'Recommandé',
       badgeVariant: 'default',

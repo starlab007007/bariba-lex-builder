@@ -128,7 +128,7 @@ export function AudioServicesMonitor() {
         <div>
           <h2 className="text-2xl font-bold">Monitoring Services Audio</h2>
           <p className="text-muted-foreground">
-            État des services TTS et STT pour Bariba et Français
+            État des services TTS et STT pour Baatɔnum et Français
           </p>
         </div>
         
@@ -273,13 +273,13 @@ export function AudioServicesMonitor() {
             <Button variant="outline" size="sm" asChild>
               <a href="https://huggingface.co/spaces/zimesongbian/baatonum_tts_api_v001" target="_blank" rel="noopener noreferrer">
                 <Volume2 className="h-4 w-4 mr-2" />
-                TTS Bariba Space
+                TTS Baatɔnum Space
               </a>
             </Button>
             <Button variant="outline" size="sm" asChild>
               <a href="https://huggingface.co/spaces/zimesongbian/baatonum_asr_stt_api_v001_improve" target="_blank" rel="noopener noreferrer">
                 <Mic className="h-4 w-4 mr-2" />
-                STT Bariba Space
+                STT Baatɔnum Space
               </a>
             </Button>
           </div>

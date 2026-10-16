@@ -230,7 +230,7 @@ export default function AdminDashboard() {
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-[#E4DFCC] bg-white p-5 shadow-sm">
               <div>
-                <h2 className="flex items-center gap-2 text-lg font-extrabold text-[#241F2E]"><Mic className="h-5 w-5 text-[#9C6B1D]" /> Corpus Voix Bariba</h2>
+                <h2 className="flex items-center gap-2 text-lg font-extrabold text-[#241F2E]"><Mic className="h-5 w-5 text-[#9C6B1D]" /> Corpus Voix Baatɔnum</h2>
                 <p className="text-sm text-[#6F6955]">Écouter, valider et exporter les enregistrements collectés via le Voice Lab.</p>
               </div>
               <Link to="/admin/voice-corpus" className="inline-flex items-center gap-2 rounded-full bg-[#241F2E] px-4 py-2.5 text-sm font-bold text-white hover:opacity-90">

@@ -254,7 +254,7 @@ export const PhraseTranslator = () => {
       {/* Header */}
       <div className="text-center space-y-4">
         <h2 className="text-2xl lg:text-3xl font-bold text-foreground font-sans">
-          Traducteur <span className="bariba-text">Bààtɔ̀nú</span>
+          Traducteur <span className="bariba-text">Baatɔnum</span>
         </h2>
         <p className="text-muted-foreground">
           Traduction de phrases avec ByT5 Expert
@@ -270,7 +270,7 @@ export const PhraseTranslator = () => {
           <div className="text-sm text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 dark:text-yellow-400 px-3 py-2 rounded-md flex items-center justify-center gap-2">
             <AlertCircle className="h-4 w-4" />
             <span>
-              Services audio Bariba indisponibles (HuggingFace Spaces en veille).
+              Services audio Baatɔnum indisponibles (HuggingFace Spaces en veille).
               {baribaTTSUsedFallback && " Fallback français utilisé."}
             </span>
           </div>
@@ -293,7 +293,7 @@ export const PhraseTranslator = () => {
           disabled={isCurrentlyTranslating}
           className="text-xs sm:text-sm"
         >
-          Français → <span className="bariba-text ml-1">Bààtɔ̀nú</span>
+          Français → <span className="bariba-text ml-1">Baatɔnum</span>
         </Button>
         
         <Button
@@ -313,7 +313,7 @@ export const PhraseTranslator = () => {
           onClick={() => setDirection("bariba-to-french")}
           disabled={isCurrentlyTranslating}
         >
-          <span className="bariba-text mr-1">Bààtɔ̀nú</span> → Français
+          <span className="bariba-text mr-1">Baatɔnum</span> → Français
         </Button>
         
       {/* Détection de langue (informatif uniquement) */}
@@ -349,7 +349,7 @@ export const PhraseTranslator = () => {
         <Card className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <Badge variant="outline">
-              {direction === "french-to-bariba" ? "Français" : <span className="bariba-text">Bààtɔ̀nú</span>}
+              {direction === "french-to-bariba" ? "Français" : <span className="bariba-text">Baatɔnum</span>}
             </Badge>
             <div className="flex gap-1">
               <Button
@@ -395,7 +395,7 @@ export const PhraseTranslator = () => {
         <Card className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <Badge variant="secondary">
-              {direction === "french-to-bariba" ? <span className="bariba-text">Bààtɔ̀nú</span> : "Français"}
+              {direction === "french-to-bariba" ? <span className="bariba-text">Baatɔnum</span> : "Français"}
             </Badge>
             <div className="flex gap-1">
               {translatedText && (

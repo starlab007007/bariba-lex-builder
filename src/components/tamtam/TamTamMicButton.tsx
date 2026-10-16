@@ -310,12 +310,12 @@ export function TamTamMicButton({
                 setShowRetry(true);
                 toast({
                   title: "⚠️ Transcription échouée",
-                  description: "Le service Bariba n'a pas pu transcrire. Parlez plus clairement et réessayez.",
+                  description: "Le service Baatɔnum n'a pas pu transcrire. Parlez plus clairement et réessayez.",
                   variant: "destructive"
                 });
               } else {
                 toast({
-                  title: "✅ Transcription Bariba",
+                  title: "✅ Transcription Baatɔnum",
                   description: transcription.substring(0, 50) + (transcription.length > 50 ? '...' : '')
                 });
               }

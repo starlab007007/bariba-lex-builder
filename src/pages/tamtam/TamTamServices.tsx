@@ -11,7 +11,7 @@ const SERVICES = [
   { icon: GraduationCap, title: 'Éducation', subtitle: 'Cours, exercices, classe et apprentissage.', route: '/education' },
   { icon: Wallet, title: 'Finance', subtitle: 'Ventes, dépenses, tontine, crédit et épargne.', route: '/finance' },
   { icon: Tractor, title: 'Agriculture', subtitle: 'Météo, cultures, élevage, eau et prix.', route: '/agriculture' },
-  { icon: BookOpen, title: 'Dictionnaire', subtitle: 'Recherche Bàátɔ̀nú ↔ Français.', route: '/dictionary' },
+  { icon: BookOpen, title: 'Dictionnaire', subtitle: 'Recherche Baatɔnum ↔ Français.', route: '/dictionary' },
   { icon: Siren, title: 'Sécurité / SOS', subtitle: 'Alerte, contacts et message vocal.', route: '/sos' },
   { icon: Store, title: 'Marché', subtitle: 'Acheter, vendre, emploi et espace vendeur.', route: '/market' },
 ] as const;

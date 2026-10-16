@@ -88,7 +88,7 @@ export const VoiceDictation = ({ onTranslate }: VoiceDictationProps) => {
     setBaribaSTTStatus('error');
     
     toast({
-      title: "⚠️ Transcription Bariba échouée",
+      title: "⚠️ Transcription Baatɔnum échouée",
       description: (
         <div className="space-y-1">
           <p>{errorMessage}</p>
@@ -136,7 +136,7 @@ export const VoiceDictation = ({ onTranslate }: VoiceDictationProps) => {
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="bariba" className="flex items-center gap-2">
             <Mic className="h-4 w-4" />
-            <span className="bariba-text">Bààtɔ̀nú</span>
+            <span className="bariba-text">Baatɔnum</span>
           </TabsTrigger>
           <TabsTrigger value="french" className="flex items-center gap-2">
             <Mic className="h-4 w-4" />
@@ -157,7 +157,7 @@ export const VoiceDictation = ({ onTranslate }: VoiceDictationProps) => {
               {baribaSTTStatus === 'available' && !isBaribaWakingUp && (
                 <Badge variant="default" className="flex items-center gap-1 bg-green-500/20 text-green-700 border-green-500/30">
                   <CheckCircle2 className="h-3 w-3" />
-                  STT Bariba disponible
+                  STT Baatɔnum disponible
                 </Badge>
               )}
               {isBaribaWakingUp && (

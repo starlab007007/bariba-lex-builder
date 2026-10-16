@@ -118,7 +118,7 @@ export const VoiceTranslator = () => {
           disabled={isProcessing}
         >
           <Mic className="h-4 w-4 mr-1" />
-          <span className="bariba-text">Bààtɔ̀nú</span>
+          <span className="bariba-text">Baatɔnum</span>
           <ArrowRight className="h-4 w-4 mx-1" />
           Français
         </Button>
@@ -136,7 +136,7 @@ export const VoiceTranslator = () => {
           <Mic className="h-4 w-4 mr-1" />
           Français
           <ArrowRight className="h-4 w-4 mx-1" />
-          <span className="bariba-text">Bààtɔ̀nú</span>
+          <span className="bariba-text">Baatɔnum</span>
         </Button>
       </div>
 

@@ -133,11 +133,11 @@ export default function TrainingDataEnhancer() {
         <Sparkles className="h-4 w-4" />
         <AlertDescription>
           <strong>Architecture Transformer Seq2Seq</strong> : Ce système utilise FITILA AI (Gemini 2.5 Flash) 
-          pour générer des paires de phrases French-Bariba en appliquant :
+          pour générer des paires de phrases French-Baatɔnum en appliquant :
           <ul className="list-disc ml-6 mt-2 space-y-1">
-            <li><strong>Tokenisation</strong> : Reconnaissance des caractères spéciaux bariba (ɔ, ɛ, ɡ, kp, tons)</li>
-            <li><strong>Analyse Sémantique</strong> : Mapping contextuel des concepts français vers bariba</li>
-            <li><strong>Génération Morphologique</strong> : Application des patterns grammaticaux bariba</li>
+            <li><strong>Tokenisation</strong> : Reconnaissance des caractères spéciaux Baatɔnum (ɔ, ɛ, ɡ, kp, tons)</li>
+            <li><strong>Analyse Sémantique</strong> : Mapping contextuel des concepts français vers Baatɔnum</li>
+            <li><strong>Génération Morphologique</strong> : Application des patterns grammaticaux Baatɔnum</li>
             <li><strong>Validation</strong> : Vérification contre le dictionnaire existant</li>
           </ul>
         </AlertDescription>
@@ -228,7 +228,7 @@ export default function TrainingDataEnhancer() {
                       <p className="text-sm">{phrase.french_text}</p>
                     </div>
                     <div>
-                      <span className="text-xs font-medium text-muted-foreground">Bariba:</span>
+                      <span className="text-xs font-medium text-muted-foreground">Baatɔnum:</span>
                       <p className="text-sm bariba-text text-primary">{phrase.bariba_text}</p>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -273,7 +273,7 @@ export default function TrainingDataEnhancer() {
         <h3 className="font-semibold text-lg mb-3">Méthodologie d'Entraînement NMT</h3>
         <div className="space-y-3 text-sm text-muted-foreground">
           <div>
-            <strong className="text-foreground">1. Tokenisation Bariba :</strong> Le modèle apprend à reconnaître 
+            <strong className="text-foreground">1. Tokenisation Baatɔnum :</strong> Le modèle apprend à reconnaître 
             les morphèmes spécifiques (kp, ɡ, ɔ, ɛ) et les marques tonales (á, à, ã).
           </div>
           <div>
@@ -281,8 +281,8 @@ export default function TrainingDataEnhancer() {
             la phrase française et crée une représentation sémantique vectorielle.
           </div>
           <div>
-            <strong className="text-foreground">3. Décodage Bariba :</strong> Le décodeur génère la traduction 
-            token par token en appliquant la grammaire bariba (S+V+O).
+            <strong className="text-foreground">3. Décodage Baatɔnum :</strong> Le décodeur génère la traduction 
+            token par token en appliquant la grammaire Baatɔnum (S+V+O).
           </div>
           <div>
             <strong className="text-foreground">4. Apprentissage Supervisé :</strong> Le modèle compare ses 

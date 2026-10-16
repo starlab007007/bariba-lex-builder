@@ -190,7 +190,7 @@ export default function EnhancedDictionaryEntryForm({ onClose, initialData }: En
             {/* Onglet Base */}
             <TabsContent value="basic" className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="word">Mot Bààtɔ̀nú *</Label>
+                <Label htmlFor="word">Mot Baatɔnum *</Label>
                 <Input
                   id="word"
                   value={formData.word}
@@ -250,7 +250,7 @@ export default function EnhancedDictionaryEntryForm({ onClose, initialData }: En
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="example_bariba">Exemples Bààtɔ̀nú (un par ligne)</Label>
+                  <Label htmlFor="example_bariba">Exemples Baatɔnum (un par ligne)</Label>
                   <Textarea
                     id="example_bariba"
                     value={formData.example_bariba}

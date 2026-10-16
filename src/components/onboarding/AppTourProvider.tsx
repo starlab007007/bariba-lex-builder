@@ -123,7 +123,7 @@ export default function AppTourProvider({ children }: { children: React.ReactNod
                   onClick={() => pickLang('ba')}
                   className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold text-base"
                 >
-                  🇧🇯 Bariba
+                  🇧🇯 Baatɔnum
                 </motion.button>
               </div>
 

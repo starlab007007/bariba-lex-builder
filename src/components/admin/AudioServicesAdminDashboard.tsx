@@ -357,12 +357,12 @@ export function AudioServicesAdminDashboard() {
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" asChild>
                   <a href="https://huggingface.co/spaces/zimesongbian/baatonum_tts_api_v001" target="_blank">
-                    <Volume2 className="h-4 w-4 mr-2" />TTS Bariba
+                    <Volume2 className="h-4 w-4 mr-2" />TTS Baatɔnum
                   </a>
                 </Button>
                 <Button variant="outline" size="sm" asChild>
                   <a href="https://huggingface.co/spaces/zimesongbian/baatonum_asr_stt_api_v001_improve" target="_blank">
-                    <Mic className="h-4 w-4 mr-2" />STT Bariba
+                    <Mic className="h-4 w-4 mr-2" />STT Baatɔnum
                   </a>
                 </Button>
                 <Button variant="outline" size="sm" asChild>

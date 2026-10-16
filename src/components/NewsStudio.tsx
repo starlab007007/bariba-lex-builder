@@ -1188,7 +1188,7 @@ const NewsStudio: React.FC = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="french">Français uniquement</SelectItem>
-              <SelectItem value="bariba">Bariba uniquement</SelectItem>
+              <SelectItem value="bariba">Baatɔnum uniquement</SelectItem>
               <SelectItem value="bilingual">Bilingue (FR + BA)</SelectItem>
             </SelectContent>
           </Select>

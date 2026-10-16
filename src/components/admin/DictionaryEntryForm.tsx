@@ -84,7 +84,7 @@ export default function DictionaryEntryForm({ onClose }: DictionaryEntryFormProp
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="word">Mot Bààtɔ̀nú *</Label>
+            <Label htmlFor="word">Mot Baatɔnum *</Label>
             <Input
               id="word"
               value={formData.word}
@@ -143,7 +143,7 @@ export default function DictionaryEntryForm({ onClose }: DictionaryEntryFormProp
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="example_bariba">Exemples Bààtɔ̀nú (un par ligne)</Label>
+            <Label htmlFor="example_bariba">Exemples Baatɔnum (un par ligne)</Label>
             <Textarea
               id="example_bariba"
               value={formData.example_bariba}

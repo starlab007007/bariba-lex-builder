@@ -151,7 +151,7 @@ export default function VoiceCorpusAdmin() {
           </button>
           <div className="flex-1">
             <h1 className="text-2xl font-black text-gray-900">🎙️ Voice Corpus Admin</h1>
-            <p className="text-sm text-gray-500">Statistiques & export du corpus audio Bariba</p>
+            <p className="text-sm text-gray-500">Statistiques & export du corpus audio Baatɔnum</p>
           </div>
         </div>
 

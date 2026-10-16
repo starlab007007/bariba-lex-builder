@@ -306,11 +306,11 @@ const PLANNING_N2 = [
 ];
 
 const GRAMMAIRE_N2 = [
-  { emoji: '📝', title: 'Bàra bwese bweseka (Classes nominales)', desc: 'Système des classes nominales Bariba : singulier/pluriel, déterminants, pronoms relatifs. Ex: ku/yi, tɛ/na, bu/su' },
+  { emoji: '📝', title: 'Bàra bwese bweseka (Classes nominales)', desc: 'Système des classes nominales Baatɔnum : singulier/pluriel, déterminants, pronoms relatifs. Ex: ku/yi, tɛ/na, bu/su' },
   { emoji: '🔄', title: 'Gɔmbi yiibu (Conjugaison)', desc: 'Forme accomplie, inaccomplie, négative. Verbes réguliers et irréguliers. Temps : passé, présent, futur' },
   { emoji: '📖', title: 'Bàra nirà (Adjectifs)', desc: 'Adjectifs qualificatifs et possessifs. Accord avec la classe nominale du nom' },
   { emoji: '✉️', title: 'Batɛrɛ (Lettres)', desc: 'Lettre familière et lettre administrative. Structure : en-tête, corps, formule de politesse' },
-  { emoji: '📰', title: 'Afisin gari (Articles/Affiches)', desc: 'Rédaction d\'articles informatifs et d\'affiches de sensibilisation en Bariba' },
+  { emoji: '📰', title: 'Afisin gari (Articles/Affiches)', desc: 'Rédaction d\'articles informatifs et d\'affiches de sensibilisation en Baatɔnum' },
   { emoji: '📝', title: 'Gari sɔm sɔ̀ (Texte narratif/descriptif)', desc: 'Production de textes narratifs et descriptifs avec structure logique' },
 ];
 

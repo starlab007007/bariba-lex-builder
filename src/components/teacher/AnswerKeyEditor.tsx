@@ -91,7 +91,7 @@ export default function AnswerKeyEditor({ initial, onSaved, onCancel }: Props) {
       )}
 
       <div>
-        <label className="text-xs font-bold text-muted-foreground">Réponses acceptées (variantes Baatonum / FR)</label>
+        <label className="text-xs font-bold text-muted-foreground">Réponses acceptées (variantes Baatɔnum / FR)</label>
         <div className="space-y-2 mt-1">
           {answers.map((a, i) => (
             <div key={i} className="flex gap-2 items-start">

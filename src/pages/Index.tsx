@@ -91,20 +91,20 @@ const Index = () => {
               <Languages className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-primary" />
             </div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-foreground font-sans tracking-tight px-2">
-              Dictionnaire & Traducteur <span className="bariba-text">Bààtɔ̀nú</span>
+              Dictionnaire & Traducteur <span className="bariba-text">Baatɔnum</span>
             </h1>
             <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mb-2 sm:mb-3 lg:mb-4 px-2">
               <Badge variant="secondary" className="font-sans text-xs sm:text-xs lg:text-sm">
                 <Globe className="h-3 w-3 sm:h-3 sm:w-3 lg:h-4 lg:w-4 mr-1" />
-                <span className="bariba-text">Bààtɔ̀nú</span> ↔ Français
+                <span className="bariba-text">Baatɔnum</span> ↔ Français
               </Badge>
               <Badge variant="outline" className="font-sans text-xs sm:text-xs lg:text-sm">
                 Dictionnaire & Traduction
               </Badge>
             </div>
             <p className="text-sm sm:text-base lg:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed px-3 sm:px-4">
-              Explorez la richesse de la langue bariba (<span className="bariba-text">Bààtɔ̀nú</span>) avec ce dictionnaire interactif 
-              et traduisez des phrases complètes entre le français et le bariba.
+              Explorez la richesse de la langue Baatɔnum (<span className="bariba-text">Baatɔnum</span>) avec ce dictionnaire interactif 
+              et traduisez des phrases complètes entre le français et le Baatɔnum.
             </p>
           </div>
         </div>
@@ -179,13 +179,13 @@ const Index = () => {
                         <div className="flex items-center gap-2">
                           <Badge variant="default" className="font-sans text-xs">
                             {searchDirection === "bariba-to-french" && (
-                              <><span className="bariba-text">Bààtɔ̀nú</span> → Français</>
+                              <><span className="bariba-text">Baatɔnum</span> → Français</>
                             )}
                             {searchDirection === "french-to-bariba" && (
-                              <>Français → <span className="bariba-text">Bààtɔ̀nú</span></>
+                              <>Français → <span className="bariba-text">Baatɔnum</span></>
                             )}
                             {searchDirection === "all" && (
-                              <><span className="bariba-text">Bààtɔ̀nú</span> ↔ Français</>
+                              <><span className="bariba-text">Baatɔnum</span> ↔ Français</>
                             )}
                           </Badge>
                         </div>
@@ -209,13 +209,13 @@ const Index = () => {
                       </h3>
                       <Badge variant="default" className="font-sans text-xs">
                         {searchDirection === "bariba-to-french" && (
-                          <><span className="bariba-text">Bààtɔ̀nú</span> → Français</>
+                          <><span className="bariba-text">Baatɔnum</span> → Français</>
                         )}
                         {searchDirection === "french-to-bariba" && (
-                          <>Français → <span className="bariba-text">Bààtɔ̀nú</span></>
+                          <>Français → <span className="bariba-text">Baatɔnum</span></>
                         )}
                         {searchDirection === "all" && (
-                          <><span className="bariba-text">Bààtɔ̀nú</span> ↔ Français</>
+                          <><span className="bariba-text">Baatɔnum</span> ↔ Français</>
                         )}
                       </Badge>
                     </div>
@@ -341,7 +341,7 @@ const Index = () => {
                         Commencez votre recherche
                       </h3>
                       <p className="text-muted-foreground mb-4">
-                        Tapez un mot en bariba ou en français dans la barre de recherche
+                        Tapez un mot en Baatɔnum ou en français dans la barre de recherche
                       </p>
                       <div className="space-y-2">
                         <p className="text-sm text-muted-foreground">Essayez par exemple :</p>

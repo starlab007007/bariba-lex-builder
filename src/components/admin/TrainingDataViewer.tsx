@@ -358,7 +358,7 @@ export default function TrainingDataViewer() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Français</TableHead>
-                  <TableHead>Bariba</TableHead>
+                  <TableHead>Baatɔnum</TableHead>
                   <TableHead>Source</TableHead>
                   <TableHead>Qualité</TableHead>
                   <TableHead>Validé</TableHead>
@@ -425,7 +425,7 @@ export default function TrainingDataViewer() {
           <DialogHeader>
             <DialogTitle>Modifier la phrase</DialogTitle>
             <DialogDescription>
-              Modifiez la traduction français-bariba
+              Modifiez la traduction français-Baatɔnum
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -438,7 +438,7 @@ export default function TrainingDataViewer() {
               />
             </div>
             <div>
-              <Label>Bariba</Label>
+              <Label>Baatɔnum</Label>
               <Textarea
                 value={editForm.bariba}
                 onChange={(e) => setEditForm({ ...editForm, bariba: e.target.value })}
