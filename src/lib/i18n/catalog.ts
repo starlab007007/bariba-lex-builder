@@ -62,8 +62,9 @@ export class PlatformCatalog {
       this.registered.add(localeKey(row.fr));
       for (const variant of row.legacyVariants ?? []) {
         if (localeKey(variant) === localeKey(row.fr)) continue;
-        const sources = this.legacy.get(localeKey(variant)) ?? new Set<string>();
-        sources.add(row.fr); this.legacy.set(localeKey(variant), sources);
+        const key = localeKey(displayLanguageName(variant));
+        const sources = this.legacy.get(key) ?? new Set<string>();
+        sources.add(displayLanguageName(row.fr)); this.legacy.set(key, sources);
       }
       if (
         !row.ba?.trim() ||
@@ -147,7 +148,7 @@ export class PlatformCatalog {
     return undefined;
   }
   translate(text: string, locale: UiLocale): string {
-    const legacy = this.legacy.get(localeKey(text));
+    const legacy = this.legacy.get(localeKey(displayLanguageName(text)));
     if (legacy?.size === 1 && !this.reverse.has(localeKey(text))) text = (/^\s*/u.exec(text)?.[0] ?? "") + [...legacy][0] + (/\s*$/u.exec(text)?.[0] ?? "");
     if (locale === "fr" || !text.trim()) return displayLanguageName(text);
     const target = this.lookup(text);
