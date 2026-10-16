@@ -160,7 +160,11 @@ class DunyaVoicePackManager {
       final res = await http.get(Uri.parse(source.manifestUrl)).timeout(const Duration(seconds: 20));
       if (res.statusCode != 200) return null;
       final decoded = jsonDecode(utf8.decode(res.bodyBytes));
-      return decoded is Map ? (decoded['total_bytes'] as num?)?.toInt() : null;
+      if (decoded is! Map) return null;
+      // Publishing untested converted weights is insufficient. A public
+      // offline translation pack requires a quality-reviewed manifest.
+      if (source.id == dunyaTranslationPackId && decoded['tested'] != true) return null;
+      return (decoded['total_bytes'] as num?)?.toInt();
     } catch (_) {
       return null;
     }
