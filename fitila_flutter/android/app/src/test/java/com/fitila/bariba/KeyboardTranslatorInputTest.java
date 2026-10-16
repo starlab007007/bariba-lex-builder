@@ -169,8 +169,10 @@ public class KeyboardTranslatorInputTest {
         assertEquals("sia, demain", first.getContentDescription().toString());
         assertEquals("siara", ((TextView) ((LinearLayout) bar.getChildAt(1))
                 .getChildAt(0)).getText().toString());
-        assertTrue(((TextView) ((LinearLayout) bar.getChildAt(1))
-                .getChildAt(1)).getText().toString().contains("remercier"));
+        assertEquals("remercier", ((TextView) ((LinearLayout) bar.getChildAt(1))
+                .getChildAt(1)).getText().toString());
+        assertEquals("faire vomir", BaribaInputMethodService.visibleFrenchGloss("faire vomir"));
+        assertEquals("remercier", BaribaInputMethodService.visibleFrenchGloss("remercier, louer, féliciter"));
         assertTrue(first.performClick());
         assertEquals("sia ", service.host.toString());
     }
