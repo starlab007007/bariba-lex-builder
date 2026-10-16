@@ -99,6 +99,8 @@ dependencies {
     // DUNYA cerveau hors ligne : Gemma via LiteRT-LM (Google AI Edge).
     implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    // Optional installed ByT5 model (not bundled in APK); runs on device CPU.
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.22.0")
 }
 
 
