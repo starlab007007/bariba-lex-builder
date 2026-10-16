@@ -43,14 +43,14 @@ void sidebarMatchesWeb() {
       'Explorer', 'Fil', 'Dictionnaire', 'Classe', 'IA', 'Traducteur', 'Apprendre', 'Créateur', 'Espace',
       'Culture', 'Voice Lab',
       'Compte', 'Clavier', 'Enseignant', 'Profil', 'Paramètres',
-      'Langue', 'Français', 'Bàátɔ̀nú',
+      'Langue', 'Français', 'Baatɔnum',
     ];
     double last = -1;
     for (final label in expected) {
       final f = find.descendant(of: find.byType(Drawer), matching: find.text(label));
       expect(f, findsOneWidget, reason: label);
       final y = tester.getTopLeft(f).dy;
-      expect(y, label == 'Bàátɔ̀nú' ? greaterThanOrEqualTo(last) : greaterThan(last), reason: 'ordre: $label');
+      expect(y, label == 'Baatɔnum' ? greaterThanOrEqualTo(last) : greaterThan(last), reason: 'ordre: $label');
       last = y;
     }
     for (final gone in ['Templates', 'Services', 'Marche', 'Éducation', 'Messages', 'Découvrir', 'Portefeuille', 'Administration']) {
