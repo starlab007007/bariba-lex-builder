@@ -1,0 +1,36 @@
+name: Validate DUNYA Hybrid Web and Mobile Sources
+on:
+  push:
+    branches:
+      - feat/dunya-hybrid-online-offline-mms-omni-20261016
+    paths:
+      - 'src/components/dunya/**'
+      - 'src/lib/dunya/**'
+      - 'src/pages/fitila/FitilaDunyaIA.tsx'
+      - 'scripts/dunya_translate/export_mobile_onnx.py'
+      - '.github/workflows/dunya-hybrid-web-checks.yml'
+  pull_request:
+    paths:
+      - 'src/components/dunya/**'
+      - 'src/lib/dunya/**'
+      - 'src/pages/fitila/FitilaDunyaIA.tsx'
+      - 'scripts/dunya_translate/export_mobile_onnx.py'
+      - '.github/workflows/dunya-hybrid-web-checks.yml'
+permissions:
+  contents: read
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Check ByT5 exporter syntax
+        run: python -m py_compile scripts/dunya_translate/export_mobile_onnx.py
+      - name: Install UI dependencies
+        run: npm ci --legacy-peer-deps
+      - name: Build Web PC and Web mobile
+        run: npm run build
