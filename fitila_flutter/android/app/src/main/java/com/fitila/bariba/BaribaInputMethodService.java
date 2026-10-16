@@ -285,7 +285,7 @@ public class BaribaInputMethodService extends InputMethodService {
         // Suggestions bar (bilingual chips: Bariba on top, FR definition below)
         suggestionsBar = new LinearLayout(ctx);
         suggestionsBar.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 58)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, compactKeyboard() ? 48 : 58)));
         suggestionsBar.setOrientation(LinearLayout.HORIZONTAL);
         suggestionsBar.setBackgroundColor(0xFF0F3460);
         suggestionsBar.setGravity(Gravity.CENTER_VERTICAL);
@@ -327,8 +327,26 @@ public class BaribaInputMethodService extends InputMethodService {
         }
     }
 
+    /**
+     * System IME viewports can be shorter than the app display on Android 15
+     * and some OEMs. Keep all five rows (including ⚡ / space / enter) above
+     * system navigation instead of silently clipping the last action row.
+     */
+    private boolean compactKeyboard() {
+        android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+        float displayHeightDp = dm.density > 0 ? dm.heightPixels / dm.density : 800f;
+        return displayHeightDp < 760f;
+    }
+
     private LinearLayout.LayoutParams rowParams(Context ctx, int heightDp) {
-        return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, translatorOpen ? Math.min(heightDp, compactTranslator() ? 32 : 40) : heightDp));
+        int height;
+        if (translatorOpen) {
+            height = Math.min(heightDp, compactTranslator() ? 28 : 36);
+        } else {
+            height = compactKeyboard() ? (heightDp >= 44 ? 36 : 30) : heightDp;
+        }
+        return new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, height));
     }
 
     private LinearLayout buildLetterRow(Context ctx, final List<String> letters, final boolean useShift) {
