@@ -224,6 +224,7 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
                 </h3>
                 <button
                   onClick={() => setIsOpen(false)}
+                  aria-label="Fermer"
                   className="p-2 rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"
                 >
                   <X className="w-5 h-5" />

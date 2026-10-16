@@ -9,6 +9,7 @@ const localeEntries = JSON.parse(
 const cancelEntry = localeEntries.find(
   (entry: any) => entry.fr.trim().toLowerCase() === "annuler",
 );
+const closeEntry = localeEntries.find((entry: any) => entry.fr.trim().toLowerCase() === "fermer");
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "*",
@@ -50,6 +51,20 @@ async function setup(page: Page) {
   );
   return calls;
 }
+test("The real dictionary contribution form uses sourced labels instead of old hard-coded translations", async ({ page }) => {
+  await setup(page);
+  await page.goto("/dictionary");
+  await page.getByRole("button", {name:"Baatɔnum", exact:true}).click();
+  const propose = page.getByRole("button", {name:"De yɛnu wɛɛru", exact:true});
+  await expect(propose).toBeVisible();
+  await propose.click();
+  await expect(page.getByRole("heading", {name:"Yɛnu wɛɛru", exact:true})).toBeVisible();
+  await expect(page.getByText("Fi ɔ̀rɔ̀ tuntun kún", {exact:true})).toHaveCount(0);
+  await page.getByRole("button", {name:closeEntry.ba, exact:true}).click();
+  await page.getByRole("button", {name:"Français", exact:true}).click();
+  await page.getByRole("button", {name:"Proposer un mot", exact:true}).click();
+  await expect(page.getByRole("heading", {name:"Nouveau mot", exact:true})).toBeVisible();
+});
 for (const width of [375, 768, 1280])
   test(`Language covers real navigation, hard-coded labels and accessibility at ${width}px`, async ({
     page,
