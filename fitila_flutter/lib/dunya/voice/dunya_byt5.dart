@@ -33,6 +33,8 @@ class DunyaByt5 {
       final enc = File('$dir/encoder.onnx');
       final dec = File('$dir/decoder.onnx');
       if (!enc.existsSync() || !dec.existsSync()) {
+        _loaded = false;
+        _loading = null;
         DunyaTranslator.offline = null;
         return false;
       }
@@ -43,6 +45,9 @@ class DunyaByt5 {
         DunyaTranslator.offline = null;
         return false;
       }
+      // The pack may have been replaced by a newer verified version.
+      _loaded = false;
+      _loading = null;
       DunyaTranslator.offline = (text, toBariba) => _translate(enc.path, dec.path, text, toBariba);
       return true;
     } catch (_) {
