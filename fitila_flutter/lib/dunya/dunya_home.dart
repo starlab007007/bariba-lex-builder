@@ -48,7 +48,9 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
   Future<void> _load() async {
     try {
       await _settings.load();
-      _messages = await _store.loadMessages();
+      final inMode = await _store.loadMessages(conversationId: _settings.mode.conversationId);
+      // Preserve old text history for upgrades from the local-only DUNYA tab.
+      _messages = inMode.isNotEmpty ? inMode : await _store.loadMessages();
       _memories = await _store.loadMemories();
       await _knowledge.initialize();
       await _store.audit('dunya_opened', {
@@ -86,7 +88,7 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
       _input.clear();
       _generating = true;
     });
-    await _store.appendMessage(user);
+    await _store.appendMessage(user, conversationId: _settings.mode.conversationId);
     final assistantIndex = _messages.length;
     setState(() {
       _messages = [..._messages, DunyaMessage(role: 'assistant', content: '')];
@@ -119,7 +121,8 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
       if (generated.isEmpty) generated = 'Réponse indisponible. Réessayez.';
       _lastEngine = engine;
       await _store.appendMessage(DunyaMessage(
-        role: 'assistant', content: generated, sources: sources));
+        role: 'assistant', content: generated, sources: sources),
+        conversationId: _settings.mode.conversationId);
       await _store.audit('dunya_query', {
         'execution_mode': _settings.execution.key,
         'model_id': engine,
