@@ -793,6 +793,15 @@ public class BaribaInputMethodService extends InputMethodService {
         return Normalizer.normalize(value.substring(start, end), Normalizer.Form.NFC);
     }
 
+    /** Use existing text around the cursor when the IME is opened mid-sentence. */
+    static String previousKeyboardWord(CharSequence beforeCursor) {
+        if (beforeCursor == null) return "";
+        String value = beforeCursor.toString();
+        String current = trailingKeyboardWord(value);
+        String earlier = value.substring(0, value.length() - current.length()).trim();
+        return trailingKeyboardWord(earlier);
+    }
+
     private void refreshSuggestionsFromEditor() {
         if (translatorOpen || suggestionsBar == null) return;
         if (!maySuggestInCurrentField()) {
@@ -807,6 +816,7 @@ public class BaribaInputMethodService extends InputMethodService {
                 if (context != null) {
                     currentWord.setLength(0);
                     currentWord.append(trailingKeyboardWord(context));
+                    lastCommittedWord = previousKeyboardWord(context);
                 }
             }
         } catch (Throwable t) { Log.w(TAG, "editor context unavailable", t); }
