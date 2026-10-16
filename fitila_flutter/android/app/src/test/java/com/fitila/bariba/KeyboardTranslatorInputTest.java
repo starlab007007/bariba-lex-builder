@@ -9,6 +9,9 @@ import android.view.inputmethod.InputConnection;
 import android.widget.EditText;
 import android.widget.TextView;
 import java.lang.reflect.*;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import org.robolectric.shadows.ShadowLooper;
 import org.junit.*;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
@@ -87,13 +90,36 @@ public class KeyboardTranslatorInputTest {
         assertTrue(result.performLongClick());
         assertEquals("ɔ̀ 12 ", service.host.toString()); assertEquals("Mon brouillon", input.getText().toString());
     }
-    @Test public void directionChangeInvalidatesRequestAndPreservesDraft() throws Exception {
-        EditText input = open(); input.setText("Aïcha n’a pas 12 livres");
-        int before = (Integer) field("translationGeneration");
+    @Test public void directionChangeIgnoresLateFailureAndPreservesDraft() throws Exception {
+        EditText input = open(); input.setText("Aïcha n’a pas 12 livres"); tap("Traduire");
+        TextView pending = (TextView) field("pendingTranslation");
+        ((Future<?>) field("translationTask")).get(3, TimeUnit.SECONDS);
         tap("Baatɔnum → FR  🇧🇯");
-        assertEquals("ba-fr", field("translatorDirection"));
-        assertTrue((Integer) field("translationGeneration") > before);
+        ShadowLooper.idleMainLooper();
+        assertEquals("Traduction annulée. Vous pouvez réessayer.", pending.getText().toString());
+        assertTrue(((TextView) field("translatorSend")).isEnabled());
         assertEquals("Aïcha n’a pas 12 livres", input.getText().toString());
+        assertEquals("", service.host.toString());
+    }
+    @Test public void visibleFailurePreservesDraftAndAllowsRetryWithoutInsertingError() throws Exception {
+        EditText input = open(); tap("a"); tap("Traduire");
+        ((Future<?>) field("translationTask")).get(3, TimeUnit.SECONDS);
+        ShadowLooper.idleMainLooper();
+        assertEquals("a", input.getText().toString());
+        assertTrue(((TextView) field("translatorSend")).isEnabled());
+        TextView error = key(root, "Ouvrez l’application FITILA pour activer la traduction du clavier, puis réessayez.");
+        assertNotNull(error); assertFalse(error.isLongClickable());
+        assertEquals("", service.host.toString());
+        tap("Traduire"); assertNotNull(field("pendingTranslation"));
+    }
+    @Test public void closedPanelCannotReceiveAReplyAfterReopening() throws Exception {
+        open(); tap("a"); tap("Traduire");
+        ((Future<?>) field("translationTask")).get(3, TimeUnit.SECONDS);
+        tap("⚡"); EditText next = open(); tap("b");
+        ShadowLooper.idleMainLooper();
+        assertEquals("b", next.getText().toString());
+        assertNull(key(root, "Ouvrez l’application FITILA pour activer la traduction du clavier, puis réessayez."));
+        assertEquals("", service.host.toString());
     }
     @Test public void finishInputViewClosesPanelAndCancelsPendingRequest() throws Exception {
         open(); int before = (Integer) field("translationGeneration"); service.onFinishInputView(false);

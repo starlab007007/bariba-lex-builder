@@ -13,7 +13,7 @@
     <!-- DUNYA Agir : rappels et minuteurs posés dans l'horloge du téléphone, hors ligne. -->
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <application
-        android:label="FITILA"
+        android:label="${fitilaAppLabel}"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <!-- DUNYA cerveau : accélération GPU optionnelle de LiteRT-LM. -->
@@ -43,7 +43,7 @@
         </activity>
         <service
             android:name="com.fitila.bariba.BaribaInputMethodService"
-            android:label="Clavier Bariba Fitila"
+            android:label="${fitilaKeyboardLabel}"
             android:permission="android.permission.BIND_INPUT_METHOD"
             android:exported="true">
             <intent-filter>
@@ -80,3 +80,4 @@
         </intent>
     </queries>
 </manifest>
+
