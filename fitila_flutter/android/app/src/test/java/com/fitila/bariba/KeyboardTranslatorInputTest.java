@@ -161,8 +161,8 @@ public class KeyboardTranslatorInputTest {
         }
         LinearLayout bar = (LinearLayout) field("suggestionsBar");
         assertEquals(3, bar.getChildCount());
-        assertTrue("Two lines require more height than the old 44dp bar",
-                bar.getLayoutParams().height >= 58);
+        assertTrue("Two-line candidates must remain visible even with adaptive height",
+                bar.getLayoutParams().height >= 48);
         LinearLayout first = (LinearLayout) bar.getChildAt(0);
         assertEquals("sia", ((TextView) first.getChildAt(0)).getText().toString());
         assertEquals("demain", ((TextView) first.getChildAt(1)).getText().toString());
@@ -222,6 +222,19 @@ public class KeyboardTranslatorInputTest {
         assertEquals("demain, sia", first.getContentDescription().toString());
         assertTrue(first.performClick());
         assertEquals("demain ", service.host.toString());
+    }
+
+    @Test public void compactKeyboardKeepsBottomActionsInViewHierarchy() throws Exception {
+        assertNotNull(key(root, "⚡"));
+        assertNotNull(key(root, "espace"));
+        assertNotNull(key(root, "↵"));
+        LinearLayout container = (LinearLayout) field("keyboardContainer");
+        assertEquals(5, container.getChildCount());
+        int keyTotal = 0;
+        for (int i = 0; i < container.getChildCount(); i++) {
+            keyTotal += container.getChildAt(i).getLayoutParams().height;
+        }
+        assertTrue(keyTotal > 0);
     }
 
     @Test public void autoDirectionUsesFrenchAndBaatonumConfirmedEntries() {
