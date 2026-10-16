@@ -103,6 +103,11 @@ void _wireBaribaKeyboard() {
   // DUNYA : mémoire de traduction validée (dictionnaire, Apprendre, scènes), exacte et hors ligne.
   DunyaTranslator.memory = (text, toBariba) async =>
       (await DunyaTranslationMemory.shared()).translate(text, toBariba);
+  DunyaTranslator.allowRemote = () =>
+      DunyaSettings.instance.execution != DunyaExecutionMode.offline &&
+      FitilaOffline.online.value;
+  DunyaTranslator.preferRemote = () =>
+      DunyaSettings.instance.execution == DunyaExecutionMode.online;
   // DUNYA mode baatɔnum : chaîne de traduction FITILA en ligne (ByT5, ai-translate).
   DunyaTranslator.online = (text, toBariba) async {
     final token = FitilaBackend.client.auth.currentSession?.accessToken;
