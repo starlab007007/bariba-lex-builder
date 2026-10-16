@@ -88,7 +88,7 @@ void _wireBaribaKeyboard() {
   }
   BaribaKeyboardServices.translator = (text, direction) async {
     final token = FitilaBackend.client.auth.currentSession?.accessToken;
-    if (token == null || token.isEmpty || !FitilaOffline.online.value) {
+    if (!FitilaBackend.configured || !FitilaOffline.online.value) {
       return null; // engine falls back to the embedded dictionary
     }
     return FitilaServices.translate(
@@ -106,7 +106,7 @@ void _wireBaribaKeyboard() {
   // DUNYA mode baatɔnum : chaîne de traduction FITILA en ligne (ByT5, ai-translate).
   DunyaTranslator.online = (text, toBariba) async {
     final token = FitilaBackend.client.auth.currentSession?.accessToken;
-    if (token == null || token.isEmpty || !FitilaOffline.online.value) return null;
+    if (!FitilaBackend.configured || !FitilaOffline.online.value) return null;
     final out = await FitilaServices.translate(
       text,
       toBariba ? TranslationDirection.frenchToBariba : TranslationDirection.baribaToFrench,
@@ -679,14 +679,13 @@ class FitilaServices {
       return attested;
     }
 
-    // Authenticated remote chain:
-    // 1. byt5-bariba-translate (modèle FITILA : mémoire des phrases attestées + ByT5).
-    //    Il passe avant Gemini, qui ne maîtrise pas le baatɔnum et invente des mots.
-    // 2. ai-translate / ai-translate-lovable (secours généraliste, dernier recours)
-    // 3. embedded dictionary exact match below.
-    if (accessToken != null &&
-        accessToken.isNotEmpty &&
-        FitilaOffline.online.value) {
+    // Même chaîne publique que le Web / clavier natif :
+    // ByT5 et mémoire linguistique d'abord, ai-translate en repli contrôlé.
+    // Aucun appel à l'ancien service Lovable ; secret fournisseur côté serveur.
+    // Utiliser le JWT du compte s'il existe ou la clé *publique* FITILA.
+    if (FitilaOffline.online.value &&
+        ((accessToken?.isNotEmpty ?? false) ||
+            FitilaBackend.supabaseAnonKey.isNotEmpty)) {
       final transport = client ?? http.Client();
       final body = jsonEncode({
         'text': trimmed,
@@ -699,7 +698,8 @@ class FitilaServices {
       });
       final headers = <String, String>{
         'content-type': 'application/json',
-        'Authorization': 'Bearer $accessToken',
+        if (accessToken?.isNotEmpty ?? false)
+          'Authorization': 'Bearer $accessToken',
         if (FitilaBackend.supabaseAnonKey.isNotEmpty)
           'apikey': FitilaBackend.supabaseAnonKey,
       };
@@ -707,12 +707,11 @@ class FitilaServices {
         for (final endpoint in const [
           'byt5-bariba-translate',
           'ai-translate',
-          'ai-translate-lovable',
         ]) {
           try {
             final timeout = switch (endpoint) {
               'ai-translate' => const Duration(seconds: 14),
-              'byt5-bariba-translate' => const Duration(seconds: 30),
+              'byt5-bariba-translate' => const Duration(seconds: 65),
               _ => const Duration(seconds: 14),
             };
             final response = await transport
