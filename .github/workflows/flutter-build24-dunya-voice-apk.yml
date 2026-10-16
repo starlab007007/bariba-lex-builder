@@ -4,6 +4,7 @@ name: FITILA Android Keyboard Translator Fix
 on:
   push:
     branches:
+      - main
       - feat/build24-dunya-voice-offline
       - fix/flutter-keyboard-translator-20261016
       - release/fitila-web-flutter-parity-20261016
