@@ -13,7 +13,7 @@ def adb(*args):
     return subprocess.check_output(['adb', *args], timeout=25)
 
 def nodes():
-    adb('shell', 'uiautomator', 'dump', '/sdcard/fitila-window.xml')
+    adb('shell', 'uiautomator', 'dump', '--windows', '/sdcard/fitila-window.xml')
     return list(ET.fromstring(adb('shell', 'cat', '/sdcard/fitila-window.xml')).iter('node'))
 
 def find(attribute, value, timeout=15):

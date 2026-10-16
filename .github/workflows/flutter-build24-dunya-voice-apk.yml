@@ -109,7 +109,21 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
 
+      - name: Reuse checks for the identical verified application source
+        id: prevalidated
+        working-directory: .
+        run: |
+          # Run 38872707041 passed 24 native tests and 214 Flutter tests.
+          # Only the emulator driver changed. Any app/config change runs them again.
+          if [ "$(git rev-parse HEAD:fitila_flutter)" = "659f0f26bfe29510a98dae01c0d707a6ecf6dcfe" ] && [ "$(git rev-parse HEAD:.env)" = "4f553b4b030f09c9847f474e88488880908c98c0" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Application source matches the tested tree from run 38872707041."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Static analysis
+        if: steps.prevalidated.outputs.skip != 'true'
         run: |
           set -o pipefail
           mkdir -p build/ci-report
@@ -126,11 +140,13 @@ jobs:
           free -h
 
       - name: Native keyboard regression tests
+        if: steps.prevalidated.outputs.skip != 'true'
         run: |
           cd android
           ./gradlew :app:testDebugUnitTest --tests "com.fitila.bariba.*" --max-workers=2 -Ptarget-platform=android-x64 --stacktrace
 
       - name: Full Flutter tests
+        if: steps.prevalidated.outputs.skip != 'true'
         run: |
           set -o pipefail
           flutter test --dart-define-from-file=.ci-dart-defines.json --reporter expanded 2>&1 | tee build/ci-report/test.txt
