@@ -12,6 +12,7 @@ import android.inputmethodservice.InputMethodService;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
+import android.text.InputType;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.util.TypedValue;
@@ -40,6 +41,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +52,7 @@ import java.util.concurrent.Future;
 /**
  * Production-grade Bariba Fitila IME — Java implementation.
  *
- * BUILD_TAG: fitila-ime-2026-10-16-v11-translator-input
+ * BUILD_TAG: fitila-ime-2026-10-16-v12-bilingual-predictions
  *
  * v10 highlights:
  *  - Auto green translation banner REMOVED (FR↔BA dictionary stays in suggestion bar).
@@ -62,10 +64,11 @@ import java.util.concurrent.Future;
 public class BaribaInputMethodService extends InputMethodService {
 
     private static final String TAG = "BaribaKeyboard";
-    private static final String BUILD_TAG = "fitila-ime-2026-10-16-v11-translator-input";
+    private static final String BUILD_TAG = "fitila-ime-2026-10-16-v12-bilingual-predictions";
     private static final String PREFS = "bariba_keyboard_data";
     private static final int MAX_HISTORY = 50;
     private static final int MAX_SUGGESTIONS = 3;
+    private static final int EDITOR_CONTEXT_CHARS = 96;
 
     private static final String COMBINING_GRAVE = "\u0300";
     private static final String COMBINING_ACUTE = "\u0301";
@@ -174,6 +177,27 @@ public class BaribaInputMethodService extends InputMethodService {
         if (!restarting && translatorOpen) closeTranslator();
         currentWord.setLength(0);
         lastCommittedWord = "";
+        if (suggestionsBar != null) renderBilingualBar(Collections.emptyList());
+    }
+
+    @Override
+    public void onStartInputView(EditorInfo info, boolean restarting) {
+        super.onStartInputView(info, restarting);
+        if (!translatorOpen) refreshSuggestionsFromEditor();
+    }
+
+    @Override
+    public void onUpdateSelection(int oldSelStart, int oldSelEnd,
+            int newSelStart, int newSelEnd, int candidatesStart, int candidatesEnd) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd,
+                candidatesStart, candidatesEnd);
+        if (translatorOpen || suggestionsBar == null) return;
+        if (newSelStart != newSelEnd) {
+            currentWord.setLength(0);
+            renderBilingualBar(Collections.emptyList());
+        } else {
+            refreshSuggestionsFromEditor();
+        }
     }
 
     @Override
@@ -261,7 +285,7 @@ public class BaribaInputMethodService extends InputMethodService {
         // Suggestions bar (bilingual chips: Bariba on top, FR definition below)
         suggestionsBar = new LinearLayout(ctx);
         suggestionsBar.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 44)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 58)));
         suggestionsBar.setOrientation(LinearLayout.HORIZONTAL);
         suggestionsBar.setBackgroundColor(0xFF0F3460);
         suggestionsBar.setGravity(Gravity.CENTER_VERTICAL);
@@ -483,6 +507,7 @@ public class BaribaInputMethodService extends InputMethodService {
                     ic.commitText(mark, 1);
                 }
             }
+            if (!translatorOpen) refreshSuggestionsFromEditor();
         } catch (Throwable t) { Log.w(TAG, "toggleCombining failed", t); }
     }
 
@@ -531,7 +556,7 @@ public class BaribaInputMethodService extends InputMethodService {
                     InputConnection ic = typingConnection();
                     if (ic != null) ic.commitText(" ", 1);
                 } catch (Throwable ignored) {}
-                updateSuggestions("");
+                refreshSuggestionsFromEditor();
                 hideTranslationBanner();
             }
         }), weightedParams(3.5f));
@@ -600,10 +625,13 @@ public class BaribaInputMethodService extends InputMethodService {
                 if (isShifted) { isShifted = false; if (shiftKey != null) shiftKey.setText("\u21E7"); }
                 return;
             }
-            if (!s.equals(COMBINING_GRAVE) && !s.equals(COMBINING_ACUTE) && !s.equals(COMBINING_TILDE)) {
+            if (!s.equals(COMBINING_GRAVE) && !s.equals(COMBINING_ACUTE)
+                    && !s.equals(COMBINING_TILDE) && isWordCodePoint(s.codePointAt(0))) {
                 currentWord.append(s);
+            } else if (!isWordCodePoint(s.codePointAt(0))) {
+                currentWord.setLength(0);
             }
-            updateSuggestions(currentWord.toString());
+            refreshSuggestionsFromEditor();
             scheduleAutoTranslate();
             if (isShifted) {
                 isShifted = false;
@@ -627,10 +655,12 @@ public class BaribaInputMethodService extends InputMethodService {
             }
             if (translatorOpen) return;
             if (currentWord.length() > 0) {
-                currentWord.deleteCharAt(currentWord.length() - 1);
-                updateSuggestions(currentWord.toString());
-                scheduleAutoTranslate();
+                int end = currentWord.length();
+                currentWord.delete(end - Character.charCount(
+                        Character.codePointBefore(currentWord, end)), end);
             }
+            refreshSuggestionsFromEditor();
+            scheduleAutoTranslate();
         } catch (Throwable t) { Log.w(TAG, "backspace failed", t); }
     }
 
@@ -671,6 +701,7 @@ public class BaribaInputMethodService extends InputMethodService {
             InputConnection ic = typingConnection();
             if (ic != null) ic.commitText(p, 1);
         } catch (Throwable ignored) {}
+        refreshSuggestionsFromEditor();
         hideTranslationBanner();
     }
 
@@ -691,6 +722,7 @@ public class BaribaInputMethodService extends InputMethodService {
             if (ei != null) ic.performEditorAction(ei.imeOptions & EditorInfo.IME_MASK_ACTION);
             else ic.commitText("\n", 1);
         } catch (Throwable t) { Log.w(TAG, "enter failed", t); }
+        refreshSuggestionsFromEditor();
         hideTranslationBanner();
     }
 
@@ -708,6 +740,7 @@ public class BaribaInputMethodService extends InputMethodService {
     // ─── Suggestions (bilingual) ────────────────────────────────────────────
 
     private void saveToHistory(String word) {
+        if (!maySuggestInCurrentField()) return;
         if (word == null || word.trim().length() < 2) return;
         try {
             SharedPreferences prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -723,12 +756,86 @@ public class BaribaInputMethodService extends InputMethodService {
         } catch (Throwable t) { Log.w(TAG, "saveToHistory failed", t); }
     }
 
+    /** Never predict or remember passwords, PINs, or fields opting out. */
+    private boolean maySuggestInCurrentField() {
+        EditorInfo info = getCurrentInputEditorInfo();
+        return info == null || isPredictableInputType(info.inputType);
+    }
+
+    static boolean isPredictableInputType(int inputType) {
+        int fieldClass = inputType & InputType.TYPE_MASK_CLASS;
+        if (fieldClass != InputType.TYPE_CLASS_TEXT) return false;
+        int variation = inputType & InputType.TYPE_MASK_VARIATION;
+        return variation != InputType.TYPE_TEXT_VARIATION_PASSWORD
+                && variation != InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                && variation != InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD
+                && (inputType & InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) == 0;
+    }
+
+    private static boolean isWordCodePoint(int point) {
+        int kind = Character.getType(point);
+        return Character.isLetterOrDigit(point)
+                || kind == Character.NON_SPACING_MARK
+                || kind == Character.COMBINING_SPACING_MARK;
+    }
+
+    /** Read the word actually before the cursor, including after paste/navigation. */
+    static String trailingKeyboardWord(CharSequence beforeCursor) {
+        if (beforeCursor == null || beforeCursor.length() == 0) return "";
+        String value = beforeCursor.toString();
+        int end = value.length();
+        int start = end;
+        while (start > 0) {
+            int cp = Character.codePointBefore(value, start);
+            if (!isWordCodePoint(cp)) break;
+            start -= Character.charCount(cp);
+        }
+        return Normalizer.normalize(value.substring(start, end), Normalizer.Form.NFC);
+    }
+
+    private void refreshSuggestionsFromEditor() {
+        if (translatorOpen || suggestionsBar == null) return;
+        if (!maySuggestInCurrentField()) {
+            currentWord.setLength(0);
+            renderBilingualBar(Collections.emptyList());
+            return;
+        }
+        try {
+            InputConnection host = getCurrentInputConnection();
+            if (host != null) {
+                CharSequence context = host.getTextBeforeCursor(EDITOR_CONTEXT_CHARS, 0);
+                if (context != null) {
+                    currentWord.setLength(0);
+                    currentWord.append(trailingKeyboardWord(context));
+                }
+            }
+        } catch (Throwable t) { Log.w(TAG, "editor context unavailable", t); }
+        updateSuggestions(currentWord.toString());
+    }
+
     private void updateSuggestions(String partial) {
+        if (!maySuggestInCurrentField()) {
+            renderBilingualBar(Collections.emptyList());
+            return;
+        }
         try {
             BaribaDictionary dict = BaribaDictionary.get(this);
             List<BaribaDictionary.Entry> picks = dict.predict(partial, lastCommittedWord, MAX_SUGGESTIONS);
             renderBilingualBar(picks);
         } catch (Throwable t) { Log.w(TAG, "updateSuggestions failed", t); }
+    }
+
+    /**
+     * A two-line suggestion has limited horizontal space. Show the first
+     * dictionary sense; a long press and TalkBack retain the complete gloss.
+     */
+    static String visibleFrenchGloss(String definition) {
+        if (definition == null) return "";
+        String value = definition.trim();
+        int comma = value.indexOf(',');
+        int semicolon = value.indexOf(';');
+        int first = comma < 0 ? semicolon : (semicolon < 0 ? comma : Math.min(comma, semicolon));
+        return first < 0 ? value : value.substring(0, first).trim();
     }
 
     private void renderBilingualBar(List<BaribaDictionary.Entry> picks) {
@@ -748,7 +855,7 @@ public class BaribaInputMethodService extends InputMethodService {
             chip.setClickable(true);
 
             TextView ba = new TextView(ctx);
-            ba.setText(e.ba);
+            ba.setText(e.keyboardWord());
             ba.setTextColor(Color.WHITE);
             ba.setTypeface(null, Typeface.BOLD);
             ba.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
@@ -758,19 +865,27 @@ public class BaribaInputMethodService extends InputMethodService {
             chip.addView(ba);
 
             TextView fr = new TextView(ctx);
-            fr.setText(e.fr);
+            fr.setText(visibleFrenchGloss(e.fr));
             fr.setTextColor(0xFFFFD54F);
-            fr.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
+            fr.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
             fr.setGravity(Gravity.CENTER);
-            fr.setMaxLines(2);
+            fr.setMaxLines(1);
             fr.setEllipsize(android.text.TextUtils.TruncateAt.END);
             LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             flp.topMargin = dp(ctx, 3);
             chip.addView(fr, flp);
 
+            chip.setContentDescription(e.keyboardWord() + ", " + e.fr);
+            chip.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override public boolean onLongClick(View v) {
+                    Toast.makeText(BaribaInputMethodService.this,
+                            e.keyboardWord() + " : " + e.fr, Toast.LENGTH_LONG).show();
+                    return true;
+                }
+            });
             chip.setOnClickListener(new View.OnClickListener() {
-                @Override public void onClick(View v) { commitSuggestion(e.ba); }
+                @Override public void onClick(View v) { commitSuggestion(e.keyboardWord()); }
             });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
@@ -784,7 +899,12 @@ public class BaribaInputMethodService extends InputMethodService {
         try {
             InputConnection ic = typingConnection();
             if (ic == null) return;
-            if (currentWord.length() > 0) ic.deleteSurroundingText(currentWord.length(), 0);
+            CharSequence selected = ic.getSelectedText(0);
+            if (selected == null || selected.length() == 0) {
+                CharSequence context = ic.getTextBeforeCursor(EDITOR_CONTEXT_CHARS, 0);
+                String replace = context == null ? currentWord.toString() : trailingKeyboardWord(context);
+                if (!replace.isEmpty()) ic.deleteSurroundingText(replace.length(), 0);
+            }
             ic.commitText(word + " ", 1);
             saveToHistory(word);
             lastCommittedWord = word;

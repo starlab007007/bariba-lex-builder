@@ -8,6 +8,7 @@ on:
       - feat/build24-dunya-voice-offline
       - fix/flutter-keyboard-translator-20261016
       - release/fitila-web-flutter-parity-20261016
+      - fix/fitila-bilingual-native-predictions-20261016
     paths:
       - 'fitila_flutter/**'
       - '.github/workflows/flutter-build24-dunya-voice-apk.yml'
@@ -26,7 +27,7 @@ env:
 
 jobs:
   build-apk:
-    name: Android release APK 1.8.18+29
+    name: Android release APK 1.8.19+30
     runs-on: ubuntu-latest
     timeout-minutes: 75
     defaults:
@@ -71,7 +72,7 @@ jobs:
       - name: Verify release metadata
         run: |
           flutter --version
-          grep -q '^version: 1.8.18+29$' pubspec.yaml
+          grep -q '^version: 1.8.19+30$' pubspec.yaml
           grep -q 'sherpa_onnx' pubspec.yaml
           test -x android/gradlew
           grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
@@ -264,7 +265,7 @@ jobs:
             unzip -t "$src" >/dev/null
             unzip -l "$src" | grep -q 'libsherpa-onnx-c-api.so'
             "$APKSIGNER" verify "$src"
-            cp "$src" "build/final-apk/FITILA-Android-v1.8.18-build29-keyboard-translator-$kind.apk"
+            cp "$src" "build/final-apk/FITILA-Android-v1.8.19-build30-keyboard-translator-$kind.apk"
           done
           "$APKSIGNER" verify --print-certs build/final-apk/*-arm64.apk > build/final-apk/SIGNER.txt
           grep -iE "certificate (DN|SHA-256)" build/final-apk/SIGNER.txt || cat build/final-apk/SIGNER.txt
@@ -276,7 +277,7 @@ jobs:
       - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: FITILA-Android-v1.8.18-build29-keyboard-translator
+          name: FITILA-Android-v1.8.19-build30-keyboard-translator
           path: |
             fitila_flutter/build/final-apk/
             fitila_flutter/build/app/reports/tests/

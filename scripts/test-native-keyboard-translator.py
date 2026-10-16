@@ -81,7 +81,28 @@ try:
     quick = find('text', '⚡')
     screenshot('00-clavier-navigation.png')
     (OUT / '00-windows.xml').write_bytes(adb('shell', 'cat', '/sdcard/fitila-window.xml'))
-    tap(quick)
+
+    # The host is a separate Activity, not Flutter: suggestions must come
+    # directly from the Android IME and must include real dictionary glosses.
+    for letter in ('s', 'i', 'a'):
+        tap(find('text', letter))
+    candidate = find('content-desc', 'sia, demain')
+    find('text', 'sia')
+    find('text', 'demain')
+    find('content-desc', 'siara, remercier, louer, féliciter')
+    find('content-desc', 'siasia, faire vomir')
+    screenshot('00-predictions-baatonum-francais.png')
+    (OUT / '00-predictions-ui.xml').write_bytes(
+        adb('shell', 'cat', '/sdcard/fitila-window.xml'))
+    tap(candidate)
+    host = find('content-desc', 'Application hôte : texte de test')
+    assert host.get('text', '').strip() == 'sia', 'Candidate must insert only Baatɔnum: ' + str(host.attrib)
+    for _ in range(4):
+        tap(find('text', '⌫'))
+    host = find('content-desc', 'Application hôte : texte de test')
+    assert host.get('text') in ('', 'La traduction sera insérée ici'), host.attrib
+
+    tap(find('text', '⚡'))
     screenshot('00-traducteur-ouvert.png')
     for label in ['⇧', 'b', 'o', 'n', 'j', 'o', 'u', 'r']:
         tap(find('text', label))
@@ -106,7 +127,8 @@ try:
     screenshot('03-insertion-application.png')
     (OUT / 'result.json').write_text(json.dumps({'passed': True, 'source': 'Bonjour', 'translation': translated,
         'endpoint': 'byt5-bariba-translate', 'host_isolated_during_typing': True,
-        'explicit_insertion': True, 'host_typing_restored': True}, ensure_ascii=False, indent=2))
+        'explicit_insertion': True, 'host_typing_restored': True, 'bilingual_native_predictions': True,
+        'candidate_inserted_without_french': True}, ensure_ascii=False, indent=2))
     print('Native Android keyboard end-to-end test passed:', translated)
 except Exception:
     (OUT / 'logcat.txt').write_bytes(adb('logcat', '-d', '-s', 'BaribaKeyboard', 'InputMethodManager', 'ImeTracker', 'AndroidRuntime'))

@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -35,7 +36,25 @@ public final class BaribaDictionary {
         public final String ba;   // Bariba (NFC)
         public final String fr;   // French short def
         public final int freq;
-        Entry(String ba, String fr, int freq) { this.ba = ba; this.fr = fr; this.freq = freq; }
+        private final String typedWord;
+        private final String foldedWord;
+        private final int homographNumber;
+        Entry(String ba, String fr, int freq) {
+            this.ba = ba;
+            this.fr = fr;
+            this.freq = freq;
+            // Normalize only once at dictionary load, never on the UI's key path.
+            String word = ba.replaceFirst("(?<=\\p{L})[1-9]$", "");
+            this.typedWord = word;
+            this.foldedWord = word.toLowerCase(Locale.ROOT);
+            this.homographNumber = word.length() < ba.length()
+                    ? Character.digit(ba.charAt(ba.length() - 1), 10) : 0;
+        }
+
+        /** Lexicographic indexes (sia1/sia2) must not be typed as letters. */
+        public String keyboardWord() { return typedWord; }
+        String foldedWord() { return foldedWord; }
+        int homographIndex() { return homographNumber; }
     }
 
     public static class Phrase {
@@ -78,8 +97,15 @@ public final class BaribaDictionary {
                     if (ba.isEmpty() || fr.isEmpty()) continue;
                     Entry e = new Entry(ba, fr, o.optInt("freq", 1));
                     entries.add(e);
-                    byBa.put(ba.toLowerCase(), e);
-                    String firstFr = fr.split("[\\s,;.]+")[0].toLowerCase();
+                    String rawKey = ba.toLowerCase(Locale.ROOT);
+                    byBa.put(rawKey, e);
+                    String typedKey = e.foldedWord();
+                    Entry old = byBa.get(typedKey);
+                    if (old == null || (e.homographIndex() > 0
+                            && old.homographIndex() > e.homographIndex())) {
+                        byBa.put(typedKey, e);
+                    }
+                    String firstFr = fr.split("[\\s,;.]+")[0].toLowerCase(Locale.ROOT);
                     if (firstFr.length() >= 2 && !frToBa.containsKey(firstFr)) {
                         frToBa.put(firstFr, ba);
                     }
@@ -94,7 +120,7 @@ public final class BaribaDictionary {
                     if (nx == null) continue;
                     List<String> list = new ArrayList<>(nx.length());
                     for (int i = 0; i < nx.length(); i++) list.add(nx.optString(i, ""));
-                    bigrams.put(k.toLowerCase(), list);
+                    bigrams.put(k.toLowerCase(Locale.ROOT), list);
                 }
             }
             JSONArray ph = root.optJSONArray("phrases");
@@ -114,38 +140,66 @@ public final class BaribaDictionary {
         }
     }
 
-    /** Predict up to N suggestions, prioritising bigram > prefix > corpus freq. */
+    /**
+     * Predict using embedded bilingual entries. Exact keyboard spellings come
+     * first, then contextual bigrams, then frequency-ranked prefix matches.
+     * Homograph labels like "sia1" are shown and inserted as "sia"; one
+     * candidate per written word prevents redundant suggestions.
+     */
     public List<Entry> predict(String prefix, String previousWord, int max) {
         List<Entry> out = new ArrayList<>();
+        if (max <= 0) return out;
         java.util.Set<String> seen = new java.util.HashSet<>();
-        String pfx = prefix == null ? "" : nfc(prefix).toLowerCase();
-        String prev = previousWord == null ? "" : nfc(previousWord).toLowerCase();
+        String pfx = prefix == null ? "" : nfc(prefix).toLowerCase(Locale.ROOT);
+        String prev = previousWord == null ? "" : nfc(previousWord).toLowerCase(Locale.ROOT);
 
-        // 1) bigram successors of previous word, filtered by prefix
+        // Exact spelling: a learner typing "sia" must see "sia (demain)"
+        // rather than losing it behind the more frequent "siara / siasia".
+        if (!pfx.isEmpty()) {
+            Entry exact = byBa.get(pfx);
+            if (exact != null && exact.keyboardWord().equalsIgnoreCase(pfx)) {
+                seen.add(pfx);
+                out.add(exact);
+                if (out.size() >= max) return out;
+            }
+        }
+
         if (!prev.isEmpty()) {
-            List<String> succ = bigrams.get(prev);
-            if (succ != null) {
-                for (String w : succ) {
-                    String wl = w.toLowerCase();
-                    if (!pfx.isEmpty() && !wl.startsWith(pfx)) continue;
-                    Entry e = byBa.get(wl);
-                    if (e != null && seen.add(wl)) {
+            List<String> successors = bigrams.get(prev);
+            if (successors != null) {
+                for (String next : successors) {
+                    Entry e = byBa.get(nfc(next).toLowerCase(Locale.ROOT));
+                    if (e == null) continue;
+                    String typed = e.foldedWord();
+                    if (!pfx.isEmpty() && !typed.startsWith(pfx)) continue;
+                    if (seen.add(typed)) {
                         out.add(e);
                         if (out.size() >= max) return out;
                     }
                 }
             }
         }
-        // 2) prefix matches by frequency
+
         if (!pfx.isEmpty()) {
             List<Entry> matches = new ArrayList<>();
             for (Entry e : entries) {
-                if (e.ba.toLowerCase().startsWith(pfx)) matches.add(e);
-                if (matches.size() > 60) break;
+                if (e.foldedWord().startsWith(pfx)) {
+                    matches.add(e);
+                }
             }
-            java.util.Collections.sort(matches, (a, b) -> b.freq - a.freq);
+            java.util.Collections.sort(matches, (a, b) -> {
+                String aa = a.foldedWord();
+                String bb = b.foldedWord();
+                int frequency = Integer.compare(b.freq, a.freq);
+                if (aa.equals(bb)) {
+                    int sense = Integer.compare(a.homographIndex(), b.homographIndex());
+                    if (sense != 0) return sense;
+                }
+                return frequency;
+            });
             for (Entry e : matches) {
-                if (seen.add(e.ba.toLowerCase())) {
+                String typed = e.foldedWord();
+                if (seen.add(typed)) {
                     out.add(e);
                     if (out.size() >= max) return out;
                 }
@@ -157,14 +211,14 @@ public final class BaribaDictionary {
     /** Local Bariba→French lookup. Returns null if unknown. */
     public String translateBaToFr(String word) {
         if (word == null) return null;
-        Entry e = byBa.get(nfc(word).toLowerCase());
+        Entry e = byBa.get(nfc(word).toLowerCase(Locale.ROOT));
         return e == null ? null : e.fr;
     }
 
     /** Local French→Bariba lookup (first-token match). Returns null if unknown. */
     public String translateFrToBa(String word) {
         if (word == null) return null;
-        return frToBa.get(nfc(word).toLowerCase());
+        return frToBa.get(nfc(word).toLowerCase(Locale.ROOT));
     }
 
     public List<Phrase> phrases() { return phrases; }
