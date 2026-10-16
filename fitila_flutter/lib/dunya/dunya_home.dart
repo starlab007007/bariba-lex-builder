@@ -270,11 +270,11 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                     decoration: BoxDecoration(color: Color(0xFFDDEEE2), borderRadius: BorderRadius.circular(999)),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.cloud_off_rounded, size: 14, color: sage),
-                        SizedBox(width: 5),
+                        const Icon(Icons.cloud_rounded, size: 14, color: sage),
+                        const SizedBox(width: 5),
                         Text(_settings.execution.label.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: sage)),
                       ],
                     ),
