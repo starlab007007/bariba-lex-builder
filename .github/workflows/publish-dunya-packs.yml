@@ -36,6 +36,13 @@ jobs:
           gh release download "$RELEASE_TAG" -R "${{ github.repository }}" -D packs \
             -p 'dunya-voice-core-v1.zip' -p 'dunya-voice-core-v1.manifest.json' \
             -p 'dunya-voice-fr-v1.zip' -p 'dunya-voice-fr-v1.manifest.json'
+          # Optional independently shipped model: it must be a real, validated
+          # fine-tuned FR/Baatɔnum ByT5 export, not google/byt5-small.
+          if gh release view "$RELEASE_TAG" -R "${{ github.repository }}" \
+            --json assets --jq '.assets[].name' | grep -Fxq 'dunya-translate-byt5-v1.zip'; then
+            gh release download "$RELEASE_TAG" -R "${{ github.repository }}" -D packs \
+              -p 'dunya-translate-byt5-v1.zip' -p 'dunya-translate-byt5-v1.manifest.json'
+          fi
           cd packs
           for z in *.zip; do unzip -tq "$z"; done
           sha256sum *.zip *.json > SHA256SUMS
