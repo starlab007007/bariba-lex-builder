@@ -9,6 +9,7 @@ on:
     paths:
       - 'fitila_flutter/**'
       - '.github/workflows/flutter-build24-dunya-voice-apk.yml'
+      - 'scripts/test-native-keyboard-translator.py'
   workflow_dispatch:
 
 concurrency:
