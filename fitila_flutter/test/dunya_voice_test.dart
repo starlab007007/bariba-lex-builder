@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:fitila_native/dunya/voice/dunya_fr_numbers.dart';
+import 'package:fitila_native/dunya/voice/dunya_cloud_voice.dart';
 import 'package:fitila_native/dunya/voice/dunya_mic_capture.dart';
 import 'package:fitila_native/dunya/voice/dunya_speech_engine.dart';
 import 'package:fitila_native/dunya/voice/dunya_voice_brain.dart';
@@ -25,6 +26,19 @@ const _dictionary = <Map<String, String>>[
 ];
 
 void main() {
+  test('Omnilingual cloud input WAV uses RIFF PCM 16 kHz mono', () {
+    final wav = DunyaCloudVoice.wav16k(Float32List.fromList([0, 0.5, -0.5]));
+    expect(String.fromCharCodes(wav.take(4)), 'RIFF');
+    expect(String.fromCharCodes(wav.skip(8).take(4)), 'WAVE');
+    final bytes = ByteData.sublistView(wav);
+    expect(bytes.getUint16(22, Endian.little), 1);
+    expect(bytes.getUint32(24, Endian.little), 16000);
+    expect(bytes.getUint16(34, Endian.little), 16);
+    expect(bytes.getUint32(40, Endian.little), 6);
+    expect(bytes.getInt16(46, Endian.little), 16384);
+    expect(bytes.getInt16(48, Endian.little), -16384);
+  });
+
   group('French spoken numbers', () {
     test('words become digits', () {
       expect(digitizeFrench('trois sacs à quinze mille'), '3 sacs à 15000');
