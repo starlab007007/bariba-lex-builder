@@ -85,7 +85,7 @@ class DunyaCloudVoice {
       request.headers.addAll({
         'content-type': 'application/json',
         'apikey': FitilaBackend.supabaseAnonKey,
-        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        'Authorization': 'Bearer ${token != null && token.isNotEmpty ? token : FitilaBackend.supabaseAnonKey}',
       });
       request.body = jsonEncode({
         if (samples != null) 'audio_base64': base64Encode(wav16k(samples)),
