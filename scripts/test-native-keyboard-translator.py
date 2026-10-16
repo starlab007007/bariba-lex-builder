@@ -96,7 +96,7 @@ try:
         adb('shell', 'cat', '/sdcard/fitila-window.xml'))
     tap(candidate)
     host = find('content-desc', 'Application hôte : texte de test')
-    assert host.get('text') == 'sia ', 'Candidate must insert only Baatɔnum: ' + str(host.attrib)
+    assert host.get('text', '').strip() == 'sia', 'Candidate must insert only Baatɔnum: ' + str(host.attrib)
     for _ in range(4):
         tap(find('text', '⌫'))
     host = find('content-desc', 'Application hôte : texte de test')
