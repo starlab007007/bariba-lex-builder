@@ -426,7 +426,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
             <Toggle label="Sous-titres français en mode Baatɔnum" value={frSubtitles} onChange={(v) => setPref('frSubtitles', v, setFrSubtitles)} />
             <Toggle label="Vérifier la transcription Baatɔnum avant envoi" value={reviewStt} onChange={(v) => setPref('reviewStt', v, setReviewStt)} />
           </div>
-          <p className="mt-3 text-sm text-[#7D7566]">Avec Internet : Omnilingual ASR (reconnaissance), ByT5 (traduction) et Meta MMS-TTS Baatɔnum (voix). Sans Internet : recherche textuelle dans les ressources locales déjà présentes ; pas de modèle vocal ni de LLM téléchargé automatiquement par le navigateur.</p>
+          <p className="mt-3 text-sm text-[#7D7566]">Le traitement est automatique avec Internet : Omnilingual ASR (reconnaissance), ByT5 (traduction) et Meta MMS-TTS Baatɔnum (voix). Sans Internet : recherche textuelle dans les ressources locales déjà présentes ; pas de modèle vocal ni de LLM téléchargé automatiquement par le navigateur.</p>
           {isAdmin && <div className="mt-3 rounded-xl bg-[#F4EFE0] p-3 text-[12px] text-[#4A4356]" aria-label="Diagnostic vocal réel">
             <p><b>Dernier échange :</b> {diagnostic.request ?? 'aucun'}</p>
             <p><b>Reconnaissance utilisée :</b> {diagnostic.asr ?? 'non exécutée'}</p>
