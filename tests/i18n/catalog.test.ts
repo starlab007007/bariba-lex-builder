@@ -139,3 +139,12 @@ Deno.test("Hard-coded legacy labels defer to the sourced catalogue in both langu
   const ambiguous = new PlatformCatalog([row, { ...entry("Nouveau mot", "Yɛnu wɛɛru", "0000000000000002"), legacyVariants: ["Fi ɔ̀rɔ̀ tuntun kún"] }]);
   assert(ambiguous.translate("Fi ɔ̀rɔ̀ tuntun kún", "fr") === "Fi ɔ̀rɔ̀ tuntun kún");
 });
+Deno.test("Language name variants do not create false ambiguity in legacy field labels", () => {
+  const a = {...entry("Mot Bariba *", "Bàátɔ̀nú yɛnu *"), legacyVariants:["Ɔ̀rɔ̀ Bàátɔ̀nú *"]};
+  const b = {...entry("Mot Baatɔnum *", "Bàátɔ̀nú yɛnu *", "0000000000000002"), legacyVariants:["Ɔ̀rɔ̀ Bàátɔ̀nú *"]};
+  const c = new PlatformCatalog([a,b]);
+  for (const source of ["Ɔ̀rɔ̀ Bàátɔ̀nú *", "Ɔ̀rɔ̀ Baatɔnum *"]) {
+    assert(c.translate(source,"ba") === "Baatɔnum yɛnu *");
+    assert(c.translate(source,"fr") === "Mot Baatɔnum *");
+  }
+});
