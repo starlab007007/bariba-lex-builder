@@ -254,6 +254,13 @@ public class KeyboardTranslatorInputTest {
         assertEquals("ba", ba.detectedLanguage);
     }
 
+    @Test public void hostTextContextIsUsedWhenTypingInAnExistingSentence() {
+        assertEquals("demain", BaribaInputMethodService.previousKeyboardWord("bonjour demain si"));
+        assertEquals("sia", BaribaInputMethodService.previousKeyboardWord("bonjour sia siara"));
+        assertEquals("demain", BaribaInputMethodService.previousKeyboardWord("demain "));
+        assertEquals("", BaribaInputMethodService.previousKeyboardWord("siara"));
+    }
+
     @Test public void noInventedTranslationsOnUnknownWords() {
         BaribaDictionary dict = BaribaDictionary.get(service);
         BaribaDictionary.Prediction unknown = dict.predictBidirectional("zzzzzzz", "", 3);
