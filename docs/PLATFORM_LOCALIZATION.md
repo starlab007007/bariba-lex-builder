@@ -31,6 +31,11 @@ une formulation existante, sans nouvelle rédaction Baatɔnum par IA. Les
 marqueurs de champ requis, les qualificatifs optionnels et les décorations
 ne doivent plus empêcher de retrouver un libellé attesté.
 
+Les formulations codées en dur dans les anciennes vues sont également reliées
+à leur source française et au catalogue prioritaire. Une ancienne variante
+non retenue ne doit plus contourner une formulation mieux référencée. Les
+rapprochements qui renvoient à plusieurs sources françaises restent inchangés.
+
 `npm run locales:sync` actualise les ressources linguistiques publiquement
 lisibles. Le corpus réservé aux utilisateurs authentifiés demeure une entrée
 de build du dépôt privé ; ses règles RLS ne sont pas modifiées et son instantané

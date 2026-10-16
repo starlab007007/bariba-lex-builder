@@ -131,3 +131,11 @@ Deno.test("Names inside explicit dynamic slots and colon payloads are never rena
   assert(c.translate("Écouter : Bariba 1200", "ba") === "Gerebu : Bariba 1200");
   assert(c.translate("Bariba : Annuler", "ba") === "Bariba : Gbɛru");
 });
+Deno.test("Hard-coded legacy labels defer to the sourced catalogue in both languages", () => {
+  const row = { ...entry("Proposer un mot", "De yɛnu wɛɛru"), legacyVariants: ["Fi ɔ̀rɔ̀ tuntun kún"] };
+  const c = new PlatformCatalog([row]);
+  assert(c.translate("Fi ɔ̀rɔ̀ tuntun kún", "ba") === "De yɛnu wɛɛru");
+  assert(c.translate("  Fi ɔ̀rɔ̀ tuntun kún  ", "fr") === "  Proposer un mot  ");
+  const ambiguous = new PlatformCatalog([row, { ...entry("Nouveau mot", "Yɛnu wɛɛru", "0000000000000002"), legacyVariants: ["Fi ɔ̀rɔ̀ tuntun kún"] }]);
+  assert(ambiguous.translate("Fi ɔ̀rɔ̀ tuntun kún", "fr") === "Fi ɔ̀rɔ̀ tuntun kún");
+});

@@ -6,6 +6,7 @@ export type LocaleEntry = {
   ba: string | null;
   status: string;
   sources: { source: string; id: string }[];
+  legacyVariants?: string[];
 };
 export type LocaleOverride = {
   id: string;
@@ -38,6 +39,7 @@ export class PlatformCatalog {
     [];
   private registered = new Set<string>();
   private named = new Map<string, Set<string>>();
+  private legacy = new Map<string, Set<string>>();
   constructor(entries: LocaleEntry[], overrides: LocaleOverride[] = []) {
     const updates = new Map(overrides.map((row) => [row.id, row]));
     this.entries = entries.map((row) => {
@@ -58,6 +60,11 @@ export class PlatformCatalog {
       }
     for (const row of this.entries) {
       this.registered.add(localeKey(row.fr));
+      for (const variant of row.legacyVariants ?? []) {
+        if (localeKey(variant) === localeKey(row.fr)) continue;
+        const sources = this.legacy.get(localeKey(variant)) ?? new Set<string>();
+        sources.add(row.fr); this.legacy.set(localeKey(variant), sources);
+      }
       if (
         !row.ba?.trim() ||
         /[<>]/u.test(row.ba) ||
@@ -140,6 +147,8 @@ export class PlatformCatalog {
     return undefined;
   }
   translate(text: string, locale: UiLocale): string {
+    const legacy = this.legacy.get(localeKey(text));
+    if (legacy?.size === 1) text = (/^\s*/u.exec(text)?.[0] ?? "") + [...legacy][0] + (/\s*$/u.exec(text)?.[0] ?? "");
     if (locale === "fr" || !text.trim()) return displayLanguageName(text);
     const target = this.lookup(text);
     if (!target) return displayLanguageName(text);

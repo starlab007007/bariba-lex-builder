@@ -341,6 +341,7 @@ for (const [k, row] of strings) {
           .map(({ source, sourceId }) => ({ source, id: sourceId }))
           .slice(0, 5)
       : [],
+    legacyVariants: [...new Set(candidates.filter(candidate => /^interface/.test(candidate.source) && candidate.ba !== ba).map(candidate => candidate.ba))],
     files: [...row.files].sort(),
     kinds: [...row.kinds],
   });
