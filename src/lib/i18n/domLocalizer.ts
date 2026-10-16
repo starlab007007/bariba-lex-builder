@@ -37,6 +37,11 @@ export class DomLocalizer {
     // A named submit button contributes a server-side value: never translate that payload.
     if (node.matches('input[type="submit"],input[type="reset"],input[type="button"]') && !node.hasAttribute("name")) labels.push("value");
     if (node.matches('meta[name="description"],meta[name="keywords"],meta[property="og:title"],meta[property="og:description"],meta[name="twitter:title"],meta[name="twitter:description"]')) labels.push("content");
+    if (!labels.includes("value") && saved?.has("value")) {
+      const value = saved.get("value")!;
+      if (node.getAttribute("value") === value.applied) node.setAttribute("value", value.source);
+      saved.delete("value");
+    }
     for (const name of labels) {
       const current = node.getAttribute(name);
       if (current === null) { saved?.delete(name); continue; }

@@ -1,7 +1,7 @@
 {
-  "name": "FITILA - Langue Bariba, Culture & IA",
+  "name": "FITILA · Baatɔnum",
   "short_name": "FITILA",
-  "description": "Plateforme africaine pour apprendre le Bariba, traduire, apprendre en s'amusant et utiliser l'IA Bariba",
+  "description": "Plateforme africaine pour apprendre le Baatɔnum, traduire, apprendre en s'amusant et utiliser l'IA Baatɔnum",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F7F5EC",
@@ -21,7 +21,11 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["education", "social"],
+  "categories": [
+    "education",
+    "social"
+  ],
   "lang": "fr",
   "dir": "ltr"
 }
+

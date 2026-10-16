@@ -25,6 +25,10 @@ test("Names and every form label follow the interface language while submission 
   await expect(page.locator("legend")).toHaveText("Gbɛ́ru");
   await expect(page.locator("optgroup")).toHaveAttribute("label", "Gbɛ́ru");
   await expect(page.getByTestId("submit-label")).toHaveValue("Gbɛ́ru");
+  await page.getByTestId("submit-label").evaluate(node => node.setAttribute("name", "action"));
+  await expect(page.getByTestId("submit-label")).toHaveValue("Annuler");
+  await page.getByTestId("submit-label").evaluate(node => node.removeAttribute("name"));
+  await expect(page.getByTestId("submit-label")).toHaveValue("Gbɛ́ru");
   await expect(page.getByTestId("submit-payload")).toHaveValue("Annuler");
   await expect(page.getByTestId("native-field")).toHaveValue("Bariba Ali 1200 ne donne pas");
   await expect(page.getByTestId("native-area")).toHaveValue("Bàátɔ̀nú : Ali ne donne pas 1200");
