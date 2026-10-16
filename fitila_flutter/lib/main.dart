@@ -66,6 +66,7 @@ import 'ui/reference_creation_ui.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await FitilaBackend.initialize();
+  await FitilaLanguage.ensureLoaded();
   if (FitilaBackend.configured) {
     OfflineClasseStore.registerHandlers(SupabaseClasseStore.new);
     FitilaOffline.start();
@@ -237,11 +238,14 @@ class FitilaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'FITILA',
-      theme: SignatureTheme.light(),
-      home: AuthGate(demoMode: demoMode),
+    return ValueListenableBuilder<String>(
+      valueListenable: FitilaLanguage.current,
+      builder: (context, lang, child) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'FITILA',
+        theme: SignatureTheme.light(),
+        home: AuthGate(demoMode: demoMode),
+      ),
     );
   }
 }
@@ -928,7 +932,7 @@ enum FitilaPage {
 
 extension FitilaPageMeta on FitilaPage {
   String get title {
-    return switch (this) {
+    final french = switch (this) {
       FitilaPage.feed => 'Fil',
       FitilaPage.creator => 'Créateur',
       FitilaPage.templates => 'Templates',
@@ -962,10 +966,25 @@ extension FitilaPageMeta on FitilaPage {
       FitilaPage.profile => 'Profil',
       FitilaPage.settings => 'Paramètres',
     };
+    return FitilaLanguage.translate(
+      french,
+      key: switch (this) {
+        FitilaPage.feed => 'nav_feed',
+        FitilaPage.dictionary => 'sidebar_dictionary',
+        FitilaPage.translator => 'sidebar_translator',
+        FitilaPage.learn => 'sidebar_learn',
+        FitilaPage.classe => 'sidebar_classe',
+        FitilaPage.ia => 'sidebar_fitila_ia',
+        FitilaPage.dunya => 'sidebar_dunya_ia',
+        FitilaPage.profile => 'sidebar_profile',
+        FitilaPage.settings => 'sidebar_settings',
+        _ => null,
+      },
+    );
   }
 
   String get description {
-    return switch (this) {
+    final french = switch (this) {
       FitilaPage.feed => 'Publications, vidéos, audios et templates',
       FitilaPage.creator => 'Studio IA de creation de contenu',
       FitilaPage.templates => 'Galerie premium et apercu plein ecran',
@@ -999,6 +1018,7 @@ extension FitilaPageMeta on FitilaPage {
       FitilaPage.profile => 'Identité, posts et statistiques',
       FitilaPage.settings => 'Langue, sécurité et préférences',
     };
+    return FitilaLanguage.translate(french);
   }
 
   IconData get icon {
@@ -7396,8 +7416,10 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
   @override
   Widget build(BuildContext context) {
     return _PageFrame(
-      title: 'Traducteur',
-      subtitle: 'Français ⇄ Bàátɔ̀nú · voix, texte et documents.',
+      title: FitilaLanguage.translate('Traducteur', key: 'sidebar_translator'),
+      subtitle: FitilaLanguage.isBariba
+          ? FitilaLanguage.translate('Voix & Texte', key: 'sidebar_translator_desc')
+          : 'Français ⇄ Baatɔnum · voix, texte et documents.',
       child: TranslatorChat(ports: _ports),
     );
   }
@@ -16926,7 +16948,7 @@ class _SectionLabel extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(6, 16, 6, 5),
       child: Text(
-        text,
+        FitilaLanguage.translate(text),
         style: const TextStyle(
           color: _fitilaMuted,
           fontSize: 10.5,
@@ -17013,7 +17035,7 @@ class _LanguageSwitchState extends State<_LanguageSwitch> {
     }
 
     return Row(
-      children: [button('fr', 'Français'), const SizedBox(width: 8), button('ba', 'Bàátɔ̀nú')],
+      children: [button('fr', 'Français'), const SizedBox(width: 8), button('ba', 'Baatɔnum')],
     );
   }
 }
