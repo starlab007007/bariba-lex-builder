@@ -2,6 +2,9 @@ package com.fitila.bariba;
 
 import static org.junit.Assert.*;
 import android.text.Editable;
+import android.text.InputType;
+import android.widget.LinearLayout;
+import java.util.List;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.BaseInputConnection;
@@ -149,4 +152,57 @@ public class KeyboardTranslatorInputTest {
         open(); tap("a"); tap("b"); tap("espace"); tap(".");
         assertEquals("[]", service.getSharedPreferences("bariba_keyboard_data", 0).getString("history", "[]"));
     }
+    @Test public void bilingualSuggestionsShowWordOverActualFrenchMeaning() throws Exception {
+        View keyboard = (View) field("keyboardContainer");
+        for (String letter : new String[]{"s", "i", "a"}) {
+            TextView letterKey = key(keyboard, letter);
+            assertNotNull(letterKey);
+            assertTrue(letterKey.performClick());
+        }
+        LinearLayout bar = (LinearLayout) field("suggestionsBar");
+        assertEquals(3, bar.getChildCount());
+        assertTrue("Two lines require more height than the old 44dp bar",
+                bar.getLayoutParams().height >= 58);
+        LinearLayout first = (LinearLayout) bar.getChildAt(0);
+        assertEquals("sia", ((TextView) first.getChildAt(0)).getText().toString());
+        assertEquals("demain", ((TextView) first.getChildAt(1)).getText().toString());
+        assertEquals("sia, demain", first.getContentDescription().toString());
+        assertEquals("siara", ((TextView) ((LinearLayout) bar.getChildAt(1))
+                .getChildAt(0)).getText().toString());
+        assertTrue(((TextView) ((LinearLayout) bar.getChildAt(1))
+                .getChildAt(1)).getText().toString().contains("remercier"));
+        assertTrue(first.performClick());
+        assertEquals("sia ", service.host.toString());
+    }
+
+    @Test public void embeddedDictionaryPrefersExactBaatonumAndSuppressesLexicographicDigits() {
+        List<BaribaDictionary.Entry> words = BaribaDictionary.get(service).predict("sia", "", 3);
+        assertEquals(3, words.size());
+        assertEquals("sia", words.get(0).keyboardWord());
+        assertEquals("demain", words.get(0).fr);
+        assertEquals("siara", words.get(1).keyboardWord());
+        assertEquals("siasia", words.get(2).keyboardWord());
+        assertEquals("demain", BaribaDictionary.get(service).translateBaToFr("sia"));
+    }
+
+    @Test public void predictionsTrackWordBeforeCursorWithAccentsAndPunctuation() {
+        assertEquals("siara", BaribaInputMethodService.trailingKeyboardWord("Bonjour siara"));
+        assertEquals("ɔ̃", BaribaInputMethodService.trailingKeyboardWord("Bonjour, ɔ̃"));
+        assertEquals("siasia", BaribaInputMethodService.trailingKeyboardWord("écrire ✨ siasia"));
+        assertEquals("", BaribaInputMethodService.trailingKeyboardWord("Bonjour !"));
+    }
+
+    @Test public void suggestionEligibilityRejectsPasswordAndNumericFields() {
+        assertFalse(BaribaInputMethodService.isPredictableInputType(
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD));
+        assertFalse(BaribaInputMethodService.isPredictableInputType(
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD));
+        assertFalse(BaribaInputMethodService.isPredictableInputType(
+                InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD));
+        assertFalse(BaribaInputMethodService.isPredictableInputType(
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS));
+        assertTrue(BaribaInputMethodService.isPredictableInputType(
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_NORMAL));
+    }
+
 }
