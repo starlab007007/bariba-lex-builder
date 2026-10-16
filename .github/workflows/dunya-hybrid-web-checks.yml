@@ -34,3 +34,10 @@ jobs:
         run: npm ci --legacy-peer-deps
       - name: Build Web PC and Web mobile
         run: npm run build
+      - name: Publish validated Web bundle
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FITILA-DUNYA-Web-PC-Mobile
+          path: dist/
+          retention-days: 7
