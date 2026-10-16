@@ -89,7 +89,7 @@ class DunyaCloudVoice {
       });
       request.body = jsonEncode({
         if (samples != null) 'audio_base64': base64Encode(wav16k(samples)),
-        if (text != null) 'text': text,
+        'text': ?text,
         'lang': language,
         'reply_lang': replyLanguage,
         'history': history.take(8).toList(),
