@@ -161,8 +161,8 @@ public class KeyboardTranslatorInputTest {
         }
         LinearLayout bar = (LinearLayout) field("suggestionsBar");
         assertEquals(3, bar.getChildCount());
-        assertTrue("Two lines require more height than the old 44dp bar",
-                bar.getLayoutParams().height >= 58);
+        assertTrue("Two-line bar must remain large enough on compact Android IME",
+                bar.getLayoutParams().height >= 50);
         LinearLayout first = (LinearLayout) bar.getChildAt(0);
         assertEquals("sia", ((TextView) first.getChildAt(0)).getText().toString());
         assertEquals("demain", ((TextView) first.getChildAt(1)).getText().toString());
@@ -205,6 +205,18 @@ public class KeyboardTranslatorInputTest {
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS));
         assertTrue(BaribaInputMethodService.isPredictableInputType(
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_NORMAL));
+    }
+
+    @Test public void adaptiveKeyboardHeightProtectsActionRowOnAndroid15() {
+        assertTrue(BaribaInputMethodService.useCompactImeRows(731));
+        assertTrue(BaribaInputMethodService.useCompactImeRows(779));
+        assertFalse(BaribaInputMethodService.useCompactImeRows(780));
+        assertFalse(BaribaInputMethodService.useCompactImeRows(851));
+        assertFalse(BaribaInputMethodService.useCompactImeRows(0));
+        // The utility row must remain part of the native hierarchy.
+        assertNotNull("⚡ must remain tappable", key(root, "⚡"));
+        assertNotNull("espace must remain tappable", key(root, "espace"));
+        assertNotNull("Enter must remain tappable", key(root, "↵"));
     }
 
 }
