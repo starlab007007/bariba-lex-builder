@@ -52,7 +52,7 @@ import java.util.concurrent.Future;
 /**
  * Production-grade Bariba Fitila IME — Java implementation.
  *
- * BUILD_TAG: fitila-ime-2026-10-16-v13-auto-bidirectional
+ * BUILD_TAG: fitila-ime-2026-10-16-v14-byt5-copy-send
  *
  * v10 highlights:
  *  - Auto green translation banner REMOVED (FR↔BA dictionary stays in suggestion bar).
@@ -64,7 +64,7 @@ import java.util.concurrent.Future;
 public class BaribaInputMethodService extends InputMethodService {
 
     private static final String TAG = "BaribaKeyboard";
-    private static final String BUILD_TAG = "fitila-ime-2026-10-16-v13-auto-bidirectional";
+    private static final String BUILD_TAG = "fitila-ime-2026-10-16-v14-byt5-copy-send";
     private static final String PREFS = "bariba_keyboard_data";
     private static final int MAX_HISTORY = 50;
     private static final int MAX_SUGGESTIONS = 3;
@@ -1236,7 +1236,10 @@ public class BaribaInputMethodService extends InputMethodService {
                                 send.setEnabled(true);
                                 send.setAlpha(1f);
                                 pending.setText(translated != null ? translated : failure);
-                                if (translated != null) attachInsertOnLongPress(pending);
+                                if (translated != null) {
+                                    attachInsertOnLongPress(pending);
+                                    addTranslationActions(messages, translated);
+                                }
                                 scrollToBottom(scrollRef);
                             }
                         });
@@ -1281,6 +1284,121 @@ public class BaribaInputMethodService extends InputMethodService {
         lp.gravity = Gravity.END;
         container.addView(tv, lp);
         return tv;
+    }
+
+    /**
+     * A keyboard can ask the active editor to perform SEND, but cannot directly
+     * transmit a WhatsApp/SMS/Messenger message itself. Only dispatch a SEND
+     * action if that host field explicitly advertises IME_ACTION_SEND.
+     */
+    enum TranslationDelivery {
+        UNAVAILABLE, INSERTED_ONLY, SEND_REQUESTED
+    }
+
+    static TranslationDelivery deliverTranslatedText(
+            InputConnection host, EditorInfo editor, String translated) {
+        if (host == null || translated == null || translated.trim().isEmpty()) {
+            return TranslationDelivery.UNAVAILABLE;
+        }
+        String clean = Normalizer.normalize(translated, Normalizer.Form.NFC);
+        try {
+            if (!host.commitText(clean, 1)) return TranslationDelivery.UNAVAILABLE;
+        } catch (Throwable t) {
+            return TranslationDelivery.UNAVAILABLE;
+        }
+        // Never treat DONE, GO, SEARCH, ENTER or an unknown custom action as
+        // "send": those can navigate, submit forms or introduce line breaks.
+        if (editor != null
+                && (editor.imeOptions & EditorInfo.IME_MASK_ACTION) == EditorInfo.IME_ACTION_SEND) {
+            try {
+                if (host.performEditorAction(EditorInfo.IME_ACTION_SEND)) {
+                    return TranslationDelivery.SEND_REQUESTED;
+                }
+            } catch (Throwable ignored) {
+                // The translation has already been inserted. Leave the user in
+                // control of sending it through the app's own send button.
+            }
+        }
+        return TranslationDelivery.INSERTED_ONLY;
+    }
+
+    /** Explicit, accessible result actions; the original draft is preserved. */
+    void addTranslationActions(LinearLayout messages, final String translated) {
+        if (messages == null || translated == null || translated.trim().isEmpty()) return;
+        Context ctx = messages.getContext();
+        LinearLayout actions = new LinearLayout(ctx);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        actions.setGravity(Gravity.CENTER_VERTICAL);
+        actions.setPadding(0, dp(ctx, 2), 0, dp(ctx, 5));
+
+        TextView copy = translationActionButton(ctx, "Copier", "Copier la traduction",
+                0xFFE9E4F5, 0xFF382864);
+        copy.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { copyTranslatedText(translated); }
+        });
+        LinearLayout.LayoutParams weight = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        weight.rightMargin = dp(ctx, 8);
+        actions.addView(copy, weight);
+
+        TextView sendToHost = translationActionButton(ctx, "Envoyer", "Envoyer la traduction",
+                0xFF7C5CFF, Color.WHITE);
+        sendToHost.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                TranslationDelivery outcome = deliverTranslatedText(
+                        getCurrentInputConnection(), getCurrentInputEditorInfo(), translated);
+                if (outcome == TranslationDelivery.UNAVAILABLE) {
+                    Toast.makeText(BaribaInputMethodService.this,
+                            "Champ indisponible. Utilisez Copier.", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                // The native input connection acknowledged the send action,
+                // not a delivery receipt. Never tell the user it was delivered.
+                if (outcome == TranslationDelivery.SEND_REQUESTED) {
+                    Toast.makeText(BaribaInputMethodService.this,
+                            "Envoi demandé à l’application", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(BaribaInputMethodService.this,
+                            "Traduction insérée. Envoyez depuis l’application.", Toast.LENGTH_LONG).show();
+                }
+                sendToHost.setEnabled(false);
+                if (translatorOpen) closeTranslator();
+            }
+        });
+        actions.addView(sendToHost, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        messages.addView(actions, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+    }
+
+    private TextView translationActionButton(Context ctx, String label,
+            String description, int background, int foreground) {
+        TextView button = new TextView(ctx);
+        button.setText(label);
+        button.setContentDescription(description);
+        button.setTextColor(foreground);
+        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+        button.setTypeface(null, Typeface.BOLD);
+        button.setGravity(Gravity.CENTER);
+        button.setBackgroundColor(background);
+        button.setPadding(dp(ctx, 10), dp(ctx, 8), dp(ctx, 10), dp(ctx, 8));
+        button.setMinHeight(dp(ctx, 40));
+        button.setClickable(true);
+        button.setFocusable(false);
+        return button;
+    }
+
+    private void copyTranslatedText(String translated) {
+        try {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            if (clipboard == null) throw new IllegalStateException("clipboard unavailable");
+            clipboard.setPrimaryClip(ClipData.newPlainText("Traduction FITILA",
+                    Normalizer.normalize(translated, Normalizer.Form.NFC)));
+            Toast.makeText(this, "Traduction copiée", Toast.LENGTH_SHORT).show();
+        } catch (Throwable t) {
+            Log.w(TAG, "copy translation failed", t);
+            Toast.makeText(this, "Copie indisponible. Réessayez.", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void attachInsertOnLongPress(final TextView bubble) {
