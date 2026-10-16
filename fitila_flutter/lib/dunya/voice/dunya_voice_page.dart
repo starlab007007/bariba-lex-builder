@@ -1464,7 +1464,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
     if (mounted) setState(() {});
     // Distinguish a published, downloadable ByT5 checkpoint from its
     // unpopulated release URL. Never show a working Download button for 404.
-    unawaited(() async {
+    if (_settings.execution != DunyaExecutionMode.offline &&
+        FitilaOffline.online.value) unawaited(() async {
       try {
         final source = dunyaVoicePackSources.firstWhere(
             (p) => p.id == dunyaTranslationPackId);
