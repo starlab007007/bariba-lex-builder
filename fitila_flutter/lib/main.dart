@@ -53,6 +53,7 @@ import 'dictionary/dictionary_experience.dart';
 import 'dunya/voice/dunya_translation_memory.dart';
 import 'dunya/voice/dunya_translator.dart';
 import 'dunya/voice/dunya_assistant.dart';
+import 'dunya/voice/dunya_settings.dart';
 import 'dunya/dunya_home.dart';
 import 'translator/translator_chat.dart';
 import 'ui/offline_banner.dart';
