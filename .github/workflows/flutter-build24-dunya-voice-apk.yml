@@ -6,6 +6,7 @@ on:
     branches:
       - feat/build24-dunya-voice-offline
       - fix/flutter-keyboard-translator-20261016
+      - release/fitila-web-flutter-parity-20261016
     paths:
       - 'fitila_flutter/**'
       - '.github/workflows/flutter-build24-dunya-voice-apk.yml'
