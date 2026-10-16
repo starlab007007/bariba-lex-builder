@@ -42,6 +42,15 @@ void main() {
     });
   });
 
+  group('DUNYA hybrid execution preferences', () {
+    test('automatic is the default, including unknown values', () {
+      expect(DunyaExecutionModeX.parse(null), DunyaExecutionMode.automatic);
+      expect(DunyaExecutionModeX.parse('unknown'), DunyaExecutionMode.automatic);
+      expect(DunyaExecutionModeX.parse('online'), DunyaExecutionMode.online);
+      expect(DunyaExecutionModeX.parse('offline'), DunyaExecutionMode.offline);
+    });
+  });
+
   group('Translator chain', () {
     tearDown(() {
       DunyaTranslator.offline = null;
