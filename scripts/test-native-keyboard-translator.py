@@ -16,13 +16,49 @@ def nodes():
     adb('shell', 'uiautomator', 'dump', '--windows', '/sdcard/fitila-window.xml')
     return list(ET.fromstring(adb('shell', 'cat', '/sdcard/fitila-window.xml')).iter('node'))
 
-def find(attribute, value, timeout=15):
+def _recover_emulator_dialog(visible_nodes):
+    """AOSP Quickstep can ANR during a cold CI boot, covering *all* IME nodes.
+
+    This is an emulator infrastructure recovery only. It cannot make the
+    keyboard/translation assertions pass: those are still exercised below.
+    """
+    global _system_dialog_recoveries
+    titles = [n.get('text', '') for n in visible_nodes]
+    if not any("isn't responding" in title or "is not responding" in title for title in titles):
+        return False
+    if _system_dialog_recoveries >= 3:
+        raise AssertionError('Android emulator repeatedly displays a system ANR dialog')
+    close = next((n for n in visible_nodes if n.get('text') == 'Close app'), None)
+    if close is None:
+        raise AssertionError('Android system ANR is blocking the input method: ' + str(titles))
+    tap(close)
+    _system_dialog_recoveries += 1
+    time.sleep(2)
+    adb('shell', 'am', 'start', '-W', '-n',
+        'bj.fitila.fitila_native/com.fitila.bariba.KeyboardTestActivity')
+    time.sleep(1)
+    return True
+
+
+_system_dialog_recoveries = 0
+
+
+def find(attribute, value, timeout=35):
     until = time.monotonic() + timeout
     while time.monotonic() < until:
-        for node in nodes():
+        visible = nodes()
+        if _recover_emulator_dialog(visible):
+            continue
+        for node in visible:
             if node.get(attribute) == value:
                 return node
-        time.sleep(0.5)
+        # A cold emulator may launch the host without displaying its IME yet.
+        if value == '⚡':
+            host = next((n for n in visible if n.get('content-desc') ==
+                         'Application hôte : texte de test'), None)
+            if host is not None:
+                tap(host)
+        time.sleep(0.6)
     raise AssertionError(f'UI element missing: {attribute}={value}')
 
 def tap(node, long=False):
@@ -41,7 +77,7 @@ try:
     component = package + '/com.fitila.bariba.BaribaInputMethodService'
     adb('shell', 'ime', 'enable', component)
     adb('shell', 'ime', 'set', component)
-    adb('shell', 'am', 'start', '-n', package + '/com.fitila.bariba.KeyboardTestActivity')
+    adb('shell', 'am', 'start', '-W', '-n', package + '/com.fitila.bariba.KeyboardTestActivity')
     quick = find('text', '⚡')
     screenshot('00-clavier-navigation.png')
     (OUT / '00-windows.xml').write_bytes(adb('shell', 'cat', '/sdcard/fitila-window.xml'))
