@@ -59,7 +59,9 @@ test("The real dictionary contribution form uses sourced labels instead of old h
   await propose.click();
   await expect(page.getByRole("heading", {name:"Yɛnu wɛɛru", exact:true})).toBeVisible();
   await expect(page.getByText("Fi ɔ̀rɔ̀ tuntun kún", {exact:true})).toHaveCount(0);
+  await page.keyboard.press("Escape");
   await page.getByRole("button", {name:"Français", exact:true}).click();
+  await page.getByRole("button", {name:"Proposer un mot", exact:true}).click();
   await expect(page.getByRole("heading", {name:"Nouveau mot", exact:true})).toBeVisible();
 });
 for (const width of [375, 768, 1280])

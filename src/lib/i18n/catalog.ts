@@ -148,7 +148,7 @@ export class PlatformCatalog {
   }
   translate(text: string, locale: UiLocale): string {
     const legacy = this.legacy.get(localeKey(text));
-    if (legacy?.size === 1) text = (/^\s*/u.exec(text)?.[0] ?? "") + [...legacy][0] + (/\s*$/u.exec(text)?.[0] ?? "");
+    if (legacy?.size === 1 && !this.reverse.has(localeKey(text))) text = (/^\s*/u.exec(text)?.[0] ?? "") + [...legacy][0] + (/\s*$/u.exec(text)?.[0] ?? "");
     if (locale === "fr" || !text.trim()) return displayLanguageName(text);
     const target = this.lookup(text);
     if (!target) return displayLanguageName(text);
