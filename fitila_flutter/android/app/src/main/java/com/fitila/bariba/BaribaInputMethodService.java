@@ -825,6 +825,19 @@ public class BaribaInputMethodService extends InputMethodService {
         } catch (Throwable t) { Log.w(TAG, "updateSuggestions failed", t); }
     }
 
+    /**
+     * A two-line suggestion has limited horizontal space. Show the first
+     * dictionary sense; a long press and TalkBack retain the complete gloss.
+     */
+    static String visibleFrenchGloss(String definition) {
+        if (definition == null) return "";
+        String value = definition.trim();
+        int comma = value.indexOf(',');
+        int semicolon = value.indexOf(';');
+        int first = comma < 0 ? semicolon : (semicolon < 0 ? comma : Math.min(comma, semicolon));
+        return first < 0 ? value : value.substring(0, first).trim();
+    }
+
     private void renderBilingualBar(List<BaribaDictionary.Entry> picks) {
         final LinearLayout bar = suggestionsBar;
         if (bar == null) return;
@@ -852,7 +865,7 @@ public class BaribaInputMethodService extends InputMethodService {
             chip.addView(ba);
 
             TextView fr = new TextView(ctx);
-            fr.setText(e.fr);
+            fr.setText(visibleFrenchGloss(e.fr));
             fr.setTextColor(0xFFFFD54F);
             fr.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
             fr.setGravity(Gravity.CENTER);
