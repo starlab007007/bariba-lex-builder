@@ -20,6 +20,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
@@ -41,11 +42,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * Production-grade Bariba Fitila IME — Java implementation.
  *
- * BUILD_TAG: fitila-ime-2026-05-15-smart-v10-chatbot
+ * BUILD_TAG: fitila-ime-2026-10-16-v11-translator-input
  *
  * v10 highlights:
  *  - Auto green translation banner REMOVED (FR↔BA dictionary stays in suggestion bar).
@@ -57,7 +61,7 @@ import java.util.Map;
 public class BaribaInputMethodService extends InputMethodService {
 
     private static final String TAG = "BaribaKeyboard";
-    private static final String BUILD_TAG = "fitila-ime-2026-05-15-smart-v10-chatbot";
+    private static final String BUILD_TAG = "fitila-ime-2026-10-16-v11-translator-input";
     private static final String PREFS = "bariba_keyboard_data";
     private static final int MAX_HISTORY = 50;
     private static final int MAX_SUGGESTIONS = 3;
@@ -71,7 +75,7 @@ public class BaribaInputMethodService extends InputMethodService {
     // key is hardcoded here. Without it the keyboard stays fully offline.
     private static final String PREF_SUPABASE_URL = "supabase_url";
     private static final String PREF_SUPABASE_KEY = "supabase_key";
-    private static final String[] TRANSLATE_FUNCTIONS = {"ai-translate", "byt5-bariba-translate"};
+
 
     private static final List<String> ROW1 =
             Arrays.asList("a","z","e","r","t","y","u","i","o","p");
@@ -119,6 +123,14 @@ public class BaribaInputMethodService extends InputMethodService {
     private TextView translationBanner;
     private LinearLayout keyboardContainer;
     private LinearLayout translatorPanel;
+    private EditText translatorInput;
+    private TextView translatorSend;
+    private TextView pendingTranslation;
+    private boolean translatorBusy;
+    private int translationGeneration;
+    private final ExecutorService translationWorker = Executors.newSingleThreadExecutor();
+    private Future<?> translationTask;
+    private volatile KeyboardTranslationClient activeTranslationClient;
     private TextView shiftKey;
     private TextView quickKey; // ⚡
     private PopupWindow currentPopup;
@@ -156,6 +168,7 @@ public class BaribaInputMethodService extends InputMethodService {
     @Override
     public void onStartInput(EditorInfo attribute, boolean restarting) {
         super.onStartInput(attribute, restarting);
+        if (!restarting && translatorOpen) closeTranslator();
         currentWord.setLength(0);
         lastCommittedWord = "";
     }
@@ -167,6 +180,25 @@ public class BaribaInputMethodService extends InputMethodService {
         if (translatorOpen) closeTranslator();
         super.onFinishInput();
     }
+
+    @Override
+    public void onFinishInputView(boolean finishingInput) {
+        stopBackspaceRepeat();
+        if (translatorOpen) closeTranslator();
+        super.onFinishInputView(finishingInput);
+    }
+
+    @Override
+    public void onDestroy() {
+        cancelTranslation();
+        stopBackspaceRepeat();
+        dismissPopup();
+        translationWorker.shutdownNow();
+        super.onDestroy();
+    }
+
+    @Override
+    public boolean onEvaluateFullscreenMode() { return false; }
 
     // ─── View ───────────────────────────────────────────────────────────────
 
@@ -185,6 +217,8 @@ public class BaribaInputMethodService extends InputMethodService {
 
     private View buildRoot() {
         Context ctx = themedContext();
+        translatorOpen = false;
+        translatorInput = null;
         root = new LinearLayout(ctx);
         root.setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -243,7 +277,7 @@ public class BaribaInputMethodService extends InputMethodService {
     }
 
     private LinearLayout.LayoutParams rowParams(Context ctx, int heightDp) {
-        return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, heightDp));
+        return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, translatorOpen ? Math.min(heightDp, compactTranslator() ? 32 : 40) : heightDp));
     }
 
     private LinearLayout buildLetterRow(Context ctx, final List<String> letters, final boolean useShift) {
@@ -402,7 +436,7 @@ public class BaribaInputMethodService extends InputMethodService {
 
     private void toggleCombining(String mark) {
         try {
-            InputConnection ic = getCurrentInputConnection();
+            InputConnection ic = typingConnection();
             if (ic == null) return;
             CharSequence prev = ic.getTextBeforeCursor(1, 0);
             if (prev != null && prev.length() == 1 && prev.charAt(0) == mark.charAt(0)) {
@@ -456,13 +490,18 @@ public class BaribaInputMethodService extends InputMethodService {
 
         row.addView(makeKey(ctx, "espace", new Runnable() {
             @Override public void run() {
+                if (translatorOpen) {
+                    InputConnection ic = typingConnection();
+                    if (ic != null) ic.commitText(" ", 1);
+                    return;
+                }
                 if (currentWord.length() > 0) {
                     saveToHistory(currentWord.toString());
                     lastCommittedWord = currentWord.toString();
                     currentWord.setLength(0);
                 }
                 try {
-                    InputConnection ic = getCurrentInputConnection();
+                    InputConnection ic = typingConnection();
                     if (ic != null) ic.commitText(" ", 1);
                 } catch (Throwable ignored) {}
                 updateSuggestions("");
@@ -528,8 +567,12 @@ public class BaribaInputMethodService extends InputMethodService {
     private void typeCharacter(String c) {
         try {
             String s = Normalizer.normalize(c, Normalizer.Form.NFC);
-            InputConnection ic = getCurrentInputConnection();
+            InputConnection ic = typingConnection();
             if (ic != null) ic.commitText(s, 1);
+            if (translatorOpen) {
+                if (isShifted) { isShifted = false; if (shiftKey != null) shiftKey.setText("\u21E7"); }
+                return;
+            }
             if (!s.equals(COMBINING_GRAVE) && !s.equals(COMBINING_ACUTE) && !s.equals(COMBINING_TILDE)) {
                 currentWord.append(s);
             }
@@ -544,8 +587,18 @@ public class BaribaInputMethodService extends InputMethodService {
 
     private void doBackspace() {
         try {
-            InputConnection ic = getCurrentInputConnection();
-            if (ic != null) ic.deleteSurroundingText(1, 0);
+            InputConnection ic = typingConnection();
+            if (ic != null) {
+                CharSequence selected = ic.getSelectedText(0);
+                if (selected != null && selected.length() > 0) ic.commitText("", 1);
+                else {
+                    CharSequence before = ic.getTextBeforeCursor(2, 0);
+                    int count = before != null && before.length() > 1
+                            && Character.isSurrogatePair(before.charAt(before.length() - 2), before.charAt(before.length() - 1)) ? 2 : 1;
+                    ic.deleteSurroundingText(count, 0);
+                }
+            }
+            if (translatorOpen) return;
             if (currentWord.length() > 0) {
                 currentWord.deleteCharAt(currentWord.length() - 1);
                 updateSuggestions(currentWord.toString());
@@ -577,26 +630,35 @@ public class BaribaInputMethodService extends InputMethodService {
     }
 
     private void commitPunctuation(String p) {
+        if (translatorOpen) {
+            InputConnection ic = typingConnection();
+            if (ic != null) ic.commitText(p, 1);
+            return;
+        }
         if (currentWord.length() > 0) {
             saveToHistory(currentWord.toString());
             lastCommittedWord = currentWord.toString();
             currentWord.setLength(0);
         }
         try {
-            InputConnection ic = getCurrentInputConnection();
+            InputConnection ic = typingConnection();
             if (ic != null) ic.commitText(p, 1);
         } catch (Throwable ignored) {}
         hideTranslationBanner();
     }
 
     private void performEnter() {
+        if (translatorOpen) {
+            if (translatorSend != null) translatorSend.performClick();
+            return;
+        }
         try {
             if (currentWord.length() > 0) {
                 saveToHistory(currentWord.toString());
                 lastCommittedWord = currentWord.toString();
                 currentWord.setLength(0);
             }
-            InputConnection ic = getCurrentInputConnection();
+            InputConnection ic = typingConnection();
             if (ic == null) return;
             EditorInfo ei = getCurrentInputEditorInfo();
             if (ei != null) ic.performEditorAction(ei.imeOptions & EditorInfo.IME_MASK_ACTION);
@@ -693,7 +755,7 @@ public class BaribaInputMethodService extends InputMethodService {
 
     private void commitSuggestion(String word) {
         try {
-            InputConnection ic = getCurrentInputConnection();
+            InputConnection ic = typingConnection();
             if (ic == null) return;
             if (currentWord.length() > 0) ic.deleteSurroundingText(currentWord.length(), 0);
             ic.commitText(word + " ", 1);
@@ -740,67 +802,42 @@ public class BaribaInputMethodService extends InputMethodService {
     private interface RemoteTranslateCallback { void onResult(String translated); }
 
     private void fetchRemoteTranslation(String text, String direction, RemoteTranslateCallback cb) {
+        try { cb.onResult(translationClient().translate(text, direction)); }
+        catch (Exception ignored) { cb.onResult(null); }
+    }
+
+    private KeyboardTranslationClient translationClient() {
         SharedPreferences prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        String base = prefs.getString(PREF_SUPABASE_URL, "");
-        String key = prefs.getString(PREF_SUPABASE_KEY, "");
-        if (base == null || base.isEmpty() || key == null || key.isEmpty()) return;
-        boolean baToFr = "ba-fr".equals(direction);
-        String payload = "{\"text\":" + jsonStr(text)
-                + ",\"sourceLang\":\"" + (baToFr ? "bariba" : "french") + "\""
-                + ",\"targetLang\":\"" + (baToFr ? "french" : "bariba") + "\"}";
-        for (String fn : TRANSLATE_FUNCTIONS) {
-            try {
-                URL url = new URL(base + "/functions/v1/" + fn);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setConnectTimeout(2500);
-                conn.setReadTimeout(6000);
-                conn.setDoOutput(true);
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setRequestProperty("apikey", key);
-                conn.setRequestProperty("Authorization", "Bearer " + key);
-                conn.getOutputStream().write(payload.getBytes(StandardCharsets.UTF_8));
-                int code = conn.getResponseCode();
-                if (code < 200 || code >= 300) { conn.disconnect(); continue; }
-                BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
-                StringBuilder sb = new StringBuilder();
-                String l; while ((l = br.readLine()) != null) sb.append(l);
-                br.close();
-                String t = extractField(sb.toString(), "translation");
-                if (t == null || t.isEmpty()) continue;
-                cb.onResult(t);
-                return;
-            } catch (Throwable t) { /* try next engine, stay silent */ }
-        }
+        return new KeyboardTranslationClient(prefs.getString(PREF_SUPABASE_URL, ""),
+                prefs.getString(PREF_SUPABASE_KEY, ""));
     }
 
-    private static String extractField(String json, String key) {
-        int i = json.indexOf("\"" + key + "\"");
-        if (i < 0) return null;
-        int colon = json.indexOf(':', i);
-        int q1 = json.indexOf('"', colon + 1);
-        if (q1 < 0) return null;
-        StringBuilder sb = new StringBuilder();
-        boolean esc = false;
-        for (int k = q1 + 1; k < json.length(); k++) {
-            char c = json.charAt(k);
-            if (esc) { sb.append(c); esc = false; continue; }
-            if (c == '\\') { esc = true; continue; }
-            if (c == '"') return sb.toString();
-            sb.append(c);
+    private InputConnection typingConnection() {
+        // An IME's current connection belongs to the host app, even when an
+        // EditText inside the IME has focus. Use a local editable connection.
+        if (translatorOpen && translatorInput != null) {
+            return new BaseInputConnection(translatorInput, true) {
+                @Override public Editable getEditable() { return translatorInput.getText(); }
+            };
         }
-        return null;
+        return getCurrentInputConnection();
     }
 
-    private static String jsonStr(String s) {
-        StringBuilder sb = new StringBuilder("\"");
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '"' || c == '\\') sb.append('\\').append(c);
-            else if (c == '\n') sb.append("\\n");
-            else sb.append(c);
-        }
-        sb.append('"'); return sb.toString();
+    private boolean compactTranslator() {
+        return getResources().getConfiguration().screenHeightDp < 420;
+    }
+
+    private void cancelTranslation() {
+        translationGeneration++;
+        if (translationTask != null) translationTask.cancel(true);
+        KeyboardTranslationClient client = activeTranslationClient;
+        if (client != null) client.cancel();
+        activeTranslationClient = null;
+        translationTask = null;
+        translatorBusy = false;
+        if (pendingTranslation != null) pendingTranslation.setText("Traduction annulée. Vous pouvez réessayer.");
+        pendingTranslation = null;
+        if (translatorSend != null) { translatorSend.setEnabled(true); translatorSend.setAlpha(1f); }
     }
 
     private void showTranslation(String source, String translated, boolean fromBariba) {
@@ -815,7 +852,7 @@ public class BaribaInputMethodService extends InputMethodService {
     private void commitTranslation() {
         if (currentTranslation == null || currentTranslation.isEmpty()) return;
         try {
-            InputConnection ic = getCurrentInputConnection();
+            InputConnection ic = typingConnection();
             if (ic == null) return;
             if (currentWord.length() > 0) ic.deleteSurroundingText(currentWord.length(), 0);
             ic.commitText(Normalizer.normalize(currentTranslation, Normalizer.Form.NFC) + " ", 1);
@@ -832,30 +869,33 @@ public class BaribaInputMethodService extends InputMethodService {
     }
 
     private void openTranslator() {
-        try {
-            if (root == null || keyboardContainer == null) return;
-            Context ctx = root.getContext();
-            translatorPanel = buildTranslatorPanel(ctx);
-            keyboardContainer.setVisibility(View.GONE);
-            if (suggestionsBar != null) suggestionsBar.setVisibility(View.GONE);
-            root.addView(translatorPanel, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            translatorOpen = true;
-            if (quickKey != null) quickKey.setTextColor(0xFFFFD54F);
-        } catch (Throwable t) { Log.w(TAG, "openTranslator failed", t); }
+        if (root == null || keyboardContainer == null || translatorOpen) return;
+        dismissPopup();
+        stopBackspaceRepeat();
+        currentWord.setLength(0);
+        translatorOpen = true;
+        translatorPanel = buildTranslatorPanel(root.getContext());
+        if (suggestionsBar != null) suggestionsBar.setVisibility(View.GONE);
+        // Keep the keys visible beneath the panel: a keyboard cannot summon a
+        // second system keyboard to type into its own editor.
+        root.addView(translatorPanel, 0, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(root.getContext(), compactTranslator() ? 154 : 194)));
+        rebuildKeyboard();
+        translatorInput.requestFocus();
     }
 
     private void closeTranslator() {
-        try {
-            if (root != null && translatorPanel != null) {
-                root.removeView(translatorPanel);
-            }
-            translatorPanel = null;
-            if (keyboardContainer != null) keyboardContainer.setVisibility(View.VISIBLE);
-            if (suggestionsBar != null) suggestionsBar.setVisibility(View.VISIBLE);
-            translatorOpen = false;
-            if (quickKey != null) quickKey.setTextColor(0xFFFFFFFF);
-        } catch (Throwable t) { Log.w(TAG, "closeTranslator failed", t); }
+        cancelTranslation();
+        dismissPopup();
+        stopBackspaceRepeat();
+        if (root != null && translatorPanel != null) root.removeView(translatorPanel);
+        translatorPanel = null;
+        translatorInput = null;
+        translatorSend = null;
+        translatorOpen = false;
+        currentWord.setLength(0);
+        if (suggestionsBar != null) suggestionsBar.setVisibility(View.VISIBLE);
+        rebuildKeyboard();
     }
 
     private LinearLayout buildTranslatorPanel(final Context ctx) {
@@ -869,7 +909,7 @@ public class BaribaInputMethodService extends InputMethodService {
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setBackgroundColor(0xFF7C5CFF);
         int hp = dp(ctx, 14);
-        header.setPadding(hp, dp(ctx, 10), hp, dp(ctx, 10));
+        header.setPadding(hp, dp(ctx, 2), hp, dp(ctx, 2));
         TextView title = new TextView(ctx);
         title.setText("\uD83C\uDF10  Traducteur IA \u00B7 ByT5");
         title.setTextColor(Color.WHITE);
@@ -887,6 +927,8 @@ public class BaribaInputMethodService extends InputMethodService {
         close.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { closeTranslator(); }
         });
+        close.setContentDescription("Fermer le traducteur");
+        close.setFocusable(false);
         header.addView(close);
         panel.addView(header);
 
@@ -895,7 +937,7 @@ public class BaribaInputMethodService extends InputMethodService {
         final TextView dirBaFr = new TextView(ctx);
         LinearLayout dirRow = new LinearLayout(ctx);
         dirRow.setOrientation(LinearLayout.HORIZONTAL);
-        dirRow.setPadding(dp(ctx, 10), dp(ctx, 10), dp(ctx, 10), dp(ctx, 6));
+        dirRow.setPadding(dp(ctx, 6), 0, dp(ctx, 6), 0);
         panel.addView(dirRow, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
@@ -908,15 +950,15 @@ public class BaribaInputMethodService extends InputMethodService {
                 dirBaFr.setTextColor(!fr ? Color.WHITE : 0xFF4A3A8A);
             }
         };
-        dirFrBa.setText("\uD83C\uDDEB\uD83C\uDDF7  FR \u2192 BA");
+        dirFrBa.setText("\uD83C\uDDEB\uD83C\uDDF7  FR \u2192 Baatɔnum");
         styleDirChip(ctx, dirFrBa);
         dirFrBa.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { translatorDirection = "fr-ba"; applyDir.run(); }
+            @Override public void onClick(View v) { cancelTranslation(); translatorDirection = "fr-ba"; applyDir.run(); }
         });
-        dirBaFr.setText("BA \u2192 FR  \uD83C\uDDE7\uD83C\uDDEF");
+        dirBaFr.setText("Baatɔnum \u2192 FR  \uD83C\uDDE7\uD83C\uDDEF");
         styleDirChip(ctx, dirBaFr);
         dirBaFr.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { translatorDirection = "ba-fr"; applyDir.run(); }
+            @Override public void onClick(View v) { cancelTranslation(); translatorDirection = "ba-fr"; applyDir.run(); }
         });
         LinearLayout.LayoutParams cw = new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
@@ -934,11 +976,11 @@ public class BaribaInputMethodService extends InputMethodService {
         scroll.addView(messages, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 220));
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
         panel.addView(scroll, slp);
 
         // Greeting bubble
-        addBotBubble(ctx, messages, "Bienvenue ! \uD83D\uDC4B  Tapez votre phrase, je traduis FR \u2194 Bariba.");
+        addBotBubble(ctx, messages, "Écrivez avec les touches ci-dessous, puis appuyez sur Traduire.");
 
         // ── Input row (text + send) ──
         LinearLayout inputRow = new LinearLayout(ctx);
@@ -948,6 +990,13 @@ public class BaribaInputMethodService extends InputMethodService {
         inputRow.setGravity(Gravity.CENTER_VERTICAL);
 
         final EditText input = new EditText(ctx);
+        translatorInput = input;
+        input.setContentDescription("Texte à traduire");
+        input.setShowSoftInputOnFocus(false);
+        input.setFocusableInTouchMode(true);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(5000)});
         input.setHint("Tapez votre texte\u2026");
         input.setHintTextColor(0xFF9A93B5);
         input.setTextColor(0xFF1F1638);
@@ -962,15 +1011,18 @@ public class BaribaInputMethodService extends InputMethodService {
         inputRow.addView(input, ilp);
 
         final TextView send = new TextView(ctx);
-        send.setText("\u27A4");
+        translatorSend = send;
+        send.setText("Traduire");
+        send.setContentDescription("Traduire le texte");
         send.setTextColor(Color.WHITE);
-        send.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f);
+        send.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
         send.setTypeface(null, Typeface.BOLD);
         send.setGravity(Gravity.CENTER);
         send.setBackgroundColor(0xFF7C5CFF);
         int sp = dp(ctx, 12);
         send.setPadding(dp(ctx, 16), sp, dp(ctx, 16), sp);
         send.setClickable(true);
+        send.setFocusable(false);
         LinearLayout.LayoutParams selp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         selp.leftMargin = dp(ctx, 8);
@@ -983,47 +1035,44 @@ public class BaribaInputMethodService extends InputMethodService {
         send.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 final String txt = input.getText() != null ? input.getText().toString().trim() : "";
-                if (txt.isEmpty()) return;
-                addUserBubble(ctx, messages, txt);
-                input.setText("");
-                final TextView pending = addBotBubble(ctx, messages, "\u2026");
+                if (txt.isEmpty() || translatorBusy) return;
+                final String direction = translatorDirection;
+                final int generation = ++translationGeneration;
+                translatorBusy = true;
+                send.setEnabled(false);
+                send.setAlpha(0.5f);
+                addUserBubble(ctx, messages, ("ba-fr".equals(direction) ? "Baatɔnum → FR\n" : "FR → Baatɔnum\n") + txt);
+                final TextView pending = addBotBubble(ctx, messages, "Traduction en cours…");
+                pendingTranslation = pending;
                 scrollToBottom(scrollRef);
-                // Local lookup first
-                try {
-                    BaribaDictionary dict = BaribaDictionary.get(BaribaInputMethodService.this);
-                    String local = "ba-fr".equals(translatorDirection)
-                            ? dict.translateBaToFr(txt) : dict.translateFrToBa(txt);
-                    if (local != null && !local.isEmpty()) {
-                        pending.setText(local);
-                        attachInsertOnLongPress(pending);
-                        scrollToBottom(scrollRef);
-                        return;
-                    }
-                } catch (Throwable ignored) {}
-                new Thread(new Runnable() {
+                // Preserve the draft on failure; it remains editable while the
+                // request runs, and nothing is inserted into the host implicitly.
+                final KeyboardTranslationClient client = translationClient();
+                activeTranslationClient = client;
+                translationTask = translationWorker.submit(new Runnable() {
                     @Override public void run() {
-                        fetchRemoteTranslation(txt, translatorDirection, new RemoteTranslateCallback() {
-                            @Override public void onResult(final String translated) {
-                                handler.post(new Runnable() {
-                                    @Override public void run() {
-                                        pending.setText(translated != null && !translated.isEmpty()
-                                                ? translated : "(pas de traduction)");
-                                        attachInsertOnLongPress(pending);
-                                        scrollToBottom(scrollRef);
-                                    }
-                                });
+                        String result = null;
+                        String error = null;
+                        try { result = client.translate(txt, direction); }
+                        catch (KeyboardTranslationClient.TranslationException e) { error = e.getMessage(); }
+                        final String translated = result;
+                        final String failure = error;
+                        handler.post(new Runnable() {
+                            @Override public void run() {
+                                if (!translatorOpen || translatorPanel != panel || generation != translationGeneration) return;
+                                translatorBusy = false;
+                                activeTranslationClient = null;
+                                translationTask = null;
+                                pendingTranslation = null;
+                                send.setEnabled(true);
+                                send.setAlpha(1f);
+                                pending.setText(translated != null ? translated : failure);
+                                if (translated != null) attachInsertOnLongPress(pending);
+                                scrollToBottom(scrollRef);
                             }
                         });
-                        handler.postDelayed(new Runnable() {
-                            @Override public void run() {
-                                if ("\u2026".contentEquals(pending.getText())) {
-                                    pending.setText("(pas de traduction)");
-                                    scrollToBottom(scrollRef);
-                                }
-                            }
-                        }, 4500);
                     }
-                }).start();
+                });
             }
         });
 
@@ -1073,8 +1122,11 @@ public class BaribaInputMethodService extends InputMethodService {
                 if (r == null || r.length() == 0) return false;
                 try {
                     InputConnection ic = getCurrentInputConnection();
-                    if (ic != null) ic.commitText(
-                            Normalizer.normalize(r.toString(), Normalizer.Form.NFC) + " ", 1);
+                    if (ic == null || !ic.commitText(
+                            Normalizer.normalize(r.toString(), Normalizer.Form.NFC) + " ", 1)) {
+                        Toast.makeText(BaribaInputMethodService.this, "Insertion impossible. Copiez la traduction.", Toast.LENGTH_SHORT).show();
+                        return true;
+                    }
                     Toast.makeText(BaribaInputMethodService.this, "Ins\u00E9r\u00E9", Toast.LENGTH_SHORT).show();
                 } catch (Throwable ignored) {}
                 return true;
@@ -1101,7 +1153,7 @@ public class BaribaInputMethodService extends InputMethodService {
         tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
         tv.setTypeface(null, Typeface.BOLD);
         tv.setGravity(Gravity.CENTER);
-        tv.setPadding(0, dp(ctx, 10), 0, dp(ctx, 10));
+        tv.setPadding(0, dp(ctx, 5), 0, dp(ctx, 5));
         tv.setClickable(true);
     }
 
@@ -1110,3 +1162,4 @@ public class BaribaInputMethodService extends InputMethodService {
                 TypedValue.COMPLEX_UNIT_DIP, v, ctx.getResources().getDisplayMetrics());
     }
 }
+

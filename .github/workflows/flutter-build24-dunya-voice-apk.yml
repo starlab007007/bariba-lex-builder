@@ -1,10 +1,11 @@
 # FITILA Build24 — DUNYA voix hors ligne
-name: FITILA Build24 DUNYA Voice APK
+name: FITILA Android Keyboard Translator Fix
 
 on:
   push:
     branches:
       - feat/build24-dunya-voice-offline
+      - fix/flutter-keyboard-translator-20261016
     paths:
       - 'fitila_flutter/**'
       - '.github/workflows/flutter-build24-dunya-voice-apk.yml'
@@ -22,7 +23,7 @@ env:
 
 jobs:
   build-apk:
-    name: Android release APK 1.8.17+28
+    name: Android release APK 1.8.18+29
     runs-on: ubuntu-latest
     timeout-minutes: 75
     defaults:
@@ -62,7 +63,7 @@ jobs:
       - name: Verify release metadata
         run: |
           flutter --version
-          grep -q '^version: 1.8.17+28$' pubspec.yaml
+          grep -q '^version: 1.8.18+29$' pubspec.yaml
           grep -q 'sherpa_onnx' pubspec.yaml
           test -x android/gradlew
           grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
@@ -108,6 +109,11 @@ jobs:
           set -o pipefail
           mkdir -p build/ci-report
           flutter analyze 2>&1 | tee build/ci-report/analyze.txt
+
+      - name: Native keyboard regression tests
+        run: |
+          cd android
+          ./gradlew :app:testDebugUnitTest --tests "com.fitila.bariba.*" --stacktrace
 
       - name: Full Flutter tests
         run: |
@@ -206,7 +212,7 @@ jobs:
             unzip -t "$src" >/dev/null
             unzip -l "$src" | grep -q 'libsherpa-onnx-c-api.so'
             "$APKSIGNER" verify "$src"
-            cp "$src" "build/final-apk/FITILA-Android-v1.8.17-build28-dunya-voice-$kind.apk"
+            cp "$src" "build/final-apk/FITILA-Android-v1.8.18-build29-keyboard-translator-$kind.apk"
           done
           "$APKSIGNER" verify --print-certs build/final-apk/*-arm64.apk > build/final-apk/SIGNER.txt
           grep -iE "certificate (DN|SHA-256)" build/final-apk/SIGNER.txt || cat build/final-apk/SIGNER.txt
@@ -218,39 +224,13 @@ jobs:
       - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: FITILA-Android-v1.8.17-build28-dunya-voice
-          path: fitila_flutter/build/final-apk/
+          name: FITILA-Android-v1.8.18-build29-keyboard-translator
+          path: |
+            fitila_flutter/build/final-apk/
+            fitila_flutter/build/app/reports/tests/
+            fitila_flutter/build/app/test-results/
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
 
-      - name: Publish CI report (branch ci-reports/build24)
-        if: always()
-        working-directory: .
-        run: |
-          set +e
-          mkdir -p /tmp/report
-          cp -R fitila_flutter/build/ci-report/. /tmp/report/ 2>/dev/null
-          cp fitila_flutter/build/final-apk/SIZES.txt fitila_flutter/build/final-apk/SHA256SUMS.txt fitila_flutter/build/final-apk/SIGNER.txt fitila_flutter/build/final-apk/SIGNING_MODE.txt /tmp/report/ 2>/dev/null
-          echo "${{ github.sha }} ${{ job.status }}" > /tmp/report/STATUS.txt
-          header="$(git config --get http.https://github.com/.extraheader)"
-          cd /tmp/report
-          git init -q
-          git checkout -q -b ci-reports/build24
-          git -c user.name=fitila-ci -c user.email=ci@fitila.bj add -A
-          git -c user.name=fitila-ci -c user.email=ci@fitila.bj commit -qm "CI report ${{ github.sha }}"
-          git -c http.extraheader="$header" push -qf "https://github.com/${{ github.repository }}" ci-reports/build24
 
-      - name: Publish prerelease fitila-v1.8.17-build28
-        env:
-          GH_TOKEN: ${{ github.token }}
-        working-directory: fitila_flutter/build/final-apk
-        run: |
-          set -euo pipefail
-          tag=fitila-v1.8.17-build28
-          notes="FITILA 1.8.17+28 — DUNYA voix d'abord, 100 % hors ligne (écoute FR + baatɔnum, voix baatɔnum, rappels, calculs, mémoire). APK armv7 pour les téléphones d'entrée de gamme, arm64 pour les récents. Installer ensuite le pack voix depuis l'app (release dunya-voice-pack-v1). Signature : $(cat SIGNING_MODE.txt)."
-          if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" *.apk SHA256SUMS.txt SIZES.txt --clobber
-          else
-            gh release create "$tag" *.apk SHA256SUMS.txt SIZES.txt --title "FITILA 1.8.17 Build28 — DUNYA Voix" --notes "$notes" --target "$GITHUB_SHA" --prerelease
-          fi
