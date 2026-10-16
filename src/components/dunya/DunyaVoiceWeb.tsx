@@ -258,8 +258,10 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           <span className="truncate">{MODE_LABEL[mode]}</span>
           <ChevronDown className="h-4 w-4 opacity-70" />
         </button>
-        <span role="status" className={`rounded-full px-2 py-1.5 text-[10px] font-extrabold sm:px-3 sm:text-[11px] ${connected ? 'bg-[#52A47A]/15 text-[#8FD3A8]' : 'bg-[#E0A03C]/15 text-[#E8C47E]'}`}>
-          {connected ? 'DUNYA · En ligne' : 'DUNYA · Ressources locales'}
+        <span role="status" aria-label={connected ? 'DUNYA en ligne' : 'DUNYA hors ligne, ressources locales'}
+          className={`shrink-0 rounded-full px-2 py-1.5 text-[11px] font-extrabold sm:px-3 ${connected ? 'bg-[#52A47A]/15 text-[#8FD3A8]' : 'bg-[#E0A03C]/15 text-[#E8C47E]'}`}>
+          <span className="sm:hidden" aria-hidden="true">{connected ? '●' : '○'}</span>
+          <span className="hidden sm:inline">{connected ? 'DUNYA · En ligne' : 'DUNYA · Ressources locales'}</span>
         </span>
         <div className="flex-1" />
         <input ref={fileInput} type="file" accept="audio/*,.webm,.wav,.m4a,.mp3,.ogg" className="hidden" aria-label="Choisir un vocal" onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; void uploadVoice(file); }} />
