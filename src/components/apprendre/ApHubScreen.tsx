@@ -222,7 +222,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
         <div className="mb-4 flex min-h-12 items-center pl-14">
           <div className="min-w-0">
             <h1 className="truncate text-[22px] font-black leading-tight" style={{ color: AP_COLORS.ink }}>Apprendre</h1>
-            <p className="truncate text-[13px]" style={{ color: AP_COLORS.muted }}><ApLinguisticText text="Mɛɛribu" bariba /> · bàátɔ̀nú ⇄ français</p>
+            <p className="truncate text-[13px]" style={{ color: AP_COLORS.muted }}><ApLinguisticText text="Mɛɛribu" bariba /> · Baatɔnum ⇄ français</p>
           </div>
           <button
             type="button"
@@ -373,7 +373,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
 
         {/* 11. Mention de source */}
         <p className="mt-6 text-center text-[11px]" style={{ color: AP_COLORS.muted }}>
-          Formes bariba issues du dictionnaire bariba-français (page citée sur chaque mot). Les tons et prononciations
+          Formes Baatɔnum issues du dictionnaire Baatɔnum-français (page citée sur chaque mot). Les tons et prononciations
           restent à confirmer par des locuteurs référents.
         </p>
         {!user && (

@@ -665,7 +665,7 @@ export const GriotDigitalCreator: React.FC = () => {
             {[
               { value: 'auto', label: 'Détection auto', icon: '🔍' },
               { value: 'french', label: 'Français', icon: '🇫🇷' },
-              { value: 'bariba', label: 'Bariba', icon: '🇧🇯' }
+              { value: 'bariba', label: 'Baatɔnum', icon: '🇧🇯' }
             ].map((option) => (
               <Label
                 key={option.value}
@@ -791,7 +791,7 @@ export const GriotDigitalCreator: React.FC = () => {
               </Label>
               <Label className="flex items-center gap-2 cursor-pointer">
                 <RadioGroupItem value="bariba" />
-                Bariba
+                Baatɔnum
               </Label>
               <Label className="flex items-center gap-2 cursor-pointer">
                 <RadioGroupItem value="both" />

@@ -147,7 +147,7 @@ export const SmartSearchBar = ({
           onClick={() => onDirectionChange("bariba-to-french")}
           className="font-sans text-xs sm:text-sm"
         >
-          <span className="bariba-text mr-1.5 sm:mr-2">Bààtɔ̀nú</span>
+          <span className="bariba-text mr-1.5 sm:mr-2">Baatɔnum</span>
           <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 mx-0.5 sm:mx-1" />
           <span>Français</span>
         </Button>
@@ -159,7 +159,7 @@ export const SmartSearchBar = ({
         >
           <span className="mr-1.5 sm:mr-2">Français</span>
           <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 mx-0.5 sm:mx-1" />
-          <span className="bariba-text">Bààtɔ̀nú</span>
+          <span className="bariba-text">Baatɔnum</span>
         </Button>
       </div>
 

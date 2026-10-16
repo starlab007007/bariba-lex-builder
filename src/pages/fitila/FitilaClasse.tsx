@@ -350,7 +350,7 @@ export default function FitilaClasse() {
           <h1 className="text-[#241F2E] font-extrabold text-[17px] leading-tight truncate">
             {sectionTitles[section]}
           </h1>
-          <p className="text-[#8C8571] text-[11px] leading-tight">{levelBadge.replace(/[^\w ]/gu, '').trim()} — Bàátɔ̀nú</p>
+          <p className="text-[#8C8571] text-[11px] leading-tight">{levelBadge.replace(/[^\w ]/gu, '').trim()} — Baatɔnum</p>
         </div>
       </div>
 

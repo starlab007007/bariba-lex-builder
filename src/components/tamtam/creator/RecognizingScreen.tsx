@@ -106,7 +106,7 @@ const RecognizingScreen: React.FC<RecognizingScreenProps> = ({
 
         {/* Language availability badge (like Kuaishou) */}
         <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-xs text-white/80">
-          Disponible: Français • Bariba
+          Disponible: Français • Baatɔnum
         </div>
 
         {/* Bottom content */}

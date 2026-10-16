@@ -1,5 +1,15 @@
 # Français et Baatɔnum dans FITILA
 
+Le nom de langue affiché est **Baatɔnum** dans les deux versions. Les anciens
+libellés Bariba/Bàátɔ̀nú sont harmonisés dans les vues, sélecteurs, formulaires,
+titres et métadonnées. Les codes de langue, API, adresses, fichiers techniques,
+textes originaux, documents et valeurs saisis restent indépendants de ce nom.
+
+Les formulaires localisent aussi les placeholders et libellés d’accessibilité
+des champs natifs `lang="bba"`, les groupes de choix et les légendes. Les boutons
+de formulaire rendus avec un input peuvent changer de libellé, tandis que les
+valeurs des contrôles nommés utilisées dans la soumission restent intactes.
+
 Le choix de langue est partagé par l’application, l’administration, les portails
 enseignant, les fenêtres et les messages. Il persiste sur l’appareil et se
 synchronise entre onglets. Le catalogue embarqué fonctionne sans réseau. Les
@@ -13,6 +23,19 @@ rapproche les libellés français des traductions existantes, de la mémoire de
 traduction, du dictionnaire et des couples explicites d’Apprendre et des scènes.
 Chaque proposition conserve ses références. Les ambiguïtés non résolues restent
 à compléter ; les mots ne sont pas assemblés pour inventer une phrase.
+
+Le lot du 16 octobre ajoute les exemples bilingues du dictionnaire, ses sens
+lexicaux, les ressources Apprendre publiées en base et le corpus actif. Les
+équivalences françaises de boutons et champs sont explicites et réutilisent
+une formulation existante, sans nouvelle rédaction Baatɔnum par IA. Les
+marqueurs de champ requis, les qualificatifs optionnels et les décorations
+ne doivent plus empêcher de retrouver un libellé attesté.
+
+`npm run locales:sync` actualise les ressources linguistiques publiquement
+lisibles. Le corpus réservé aux utilisateurs authentifiés demeure une entrée
+de build du dépôt privé ; ses règles RLS ne sont pas modifiées et son instantané
+brut n’est pas importé par le navigateur. Seules les correspondances retenues
+pour les textes de l’application entrent dans le catalogue embarqué.
 
 La couverture exacte du code livré figure dans
 `docs/audits/platform-localization-summary.json`. Le rapport détaillé, avec les

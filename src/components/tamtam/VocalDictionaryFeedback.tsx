@@ -31,7 +31,7 @@ const FEEDBACK_FIELDS = [
   { id: 'word', label: 'Mot', labelBa: 'Yenu' },
   { id: 'phonetic', label: 'Phonétique', labelBa: 'Nɔɔseeru' },
   { id: 'definition', label: 'Définition', labelBa: 'Nɛɛmɔ' },
-  { id: 'example_bariba', label: 'Exemple bariba', labelBa: 'Yirɑ Bàátɔ̀nú' },
+  { id: 'example_bariba', label: 'Exemple Baatɔnum', labelBa: 'Yirɑ Bàátɔ̀nú' },
   { id: 'example_francais', label: 'Exemple français', labelBa: 'Yirɑ Fãsei' },
 ];
 

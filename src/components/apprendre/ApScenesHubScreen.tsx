@@ -366,7 +366,7 @@ export default function ApScenesHubScreen({ content, progress, store, onBack }: 
           ))}
 
           <p className="mt-4 text-[11px]" style={{ color: AP_COLORS.muted }}>
-            Les répliques bariba sont des phrases du dictionnaire bariba-français, recopiées à l’identique.
+            Les répliques Baatɔnum sont des phrases du dictionnaire Baatɔnum-français, recopiées à l’identique.
             Les liaisons en italique et les notes culturelles sont rédigées en français pour situer la scène.
             Les tons et la prononciation restent à confirmer avec des locuteurs référents.
           </p>

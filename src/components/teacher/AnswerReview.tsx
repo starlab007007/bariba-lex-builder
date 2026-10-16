@@ -243,7 +243,7 @@ function AnswerReviewInner({ answer, studentName, onGraded }: AnswerReviewProps)
             title="Poids de la question dans la section" />
         </div>
         <BaribaSmartTextarea
-          placeholder="Appréciation (Baatonum / Français — clavier + écriture manuscrite + prédiction)"
+          placeholder="Appréciation (Baatɔnum / Français — clavier + écriture manuscrite + prédiction)"
           value={comment}
           onChange={(v) => setComment(v.slice(0, 2000))}
           rows={2}

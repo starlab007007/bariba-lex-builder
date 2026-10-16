@@ -87,7 +87,7 @@ export default function AIProviderSettings() {
           })}
         </div>}
         {message && <p role={message.error ? 'alert' : 'status'} className={`rounded-lg border px-3 py-2 text-sm ${message.error ? 'border-red-500/30 bg-red-500/5 text-red-700 dark:text-red-300' : 'border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300'}`}>{message.text}</p>}
-        <p className="text-xs leading-relaxed text-muted-foreground">L’activation vérifie d’abord une réponse réelle. La voix bariba conserve Omnilingual et Meta MMS ; ByT5 et les corpus restent chargés de la traduction.</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">L’activation vérifie d’abord une réponse réelle. La voix Baatɔnum conserve Omnilingual et Meta MMS ; ByT5 et les corpus restent chargés de la traduction.</p>
         <a href="https://supabase.com/dashboard/project/dvswhjawiooprghzeyol/functions/secrets" target="_blank" rel="noreferrer" className="inline-block text-sm underline underline-offset-4">Configurer les clés serveur</a>
       </CardContent>
     </Card>

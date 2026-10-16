@@ -234,7 +234,7 @@ export function TamTamPrivateMessages({ isOpen, onClose, initialConversationId }
                 size="icon"
                 onClick={() => setShowTranslator(true)}
                 className="bg-gradient-to-br from-orange-100 to-blue-100 border-none hover:from-orange-200 hover:to-blue-200"
-                title="Traducteur vocal Bariba ↔ Français"
+                title="Traducteur vocal Baatɔnum ↔ Français"
               >
                 <ArrowRightLeft className="h-5 w-5 text-orange-600" />
               </Button>
@@ -726,7 +726,7 @@ export function TamTamPrivateMessages({ isOpen, onClose, initialConversationId }
                   </div>
                   <div>
                     <h2 className="font-bold">Traducteur Vocal</h2>
-                    <p className="text-xs text-gray-500">Bariba ↔ Français</p>
+                    <p className="text-xs text-gray-500">Baatɔnum ↔ Français</p>
                   </div>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => setShowTranslator(false)}>

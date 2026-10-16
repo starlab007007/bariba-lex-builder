@@ -189,7 +189,7 @@ export default function BaribaSmartInput({ value, onChange, placeholder, classNa
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
             className="mt-1.5 p-2 rounded-xl bg-white border border-gray-200 shadow-md">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-gray-400 text-[10px] font-bold uppercase">Baatonum</span>
+              <span className="text-gray-400 text-[10px] font-bold uppercase">Baatɔnum</span>
               <div className="flex items-center gap-1">
                 <button
                   type="button"

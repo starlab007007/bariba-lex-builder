@@ -400,8 +400,8 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           <div className="mt-3 space-y-1 text-[#17131F]">
             <Toggle label="Mains libres (DUNYA réécoute après chaque réponse)" value={handsFree} onChange={(v) => setPref('handsFree', v, setHandsFree)} />
             <Toggle label="Sous-titres en direct" value={subtitles} onChange={(v) => setPref('subtitles', v, setSubtitles)} />
-            <Toggle label="Sous-titres français en mode baatɔnum" value={frSubtitles} onChange={(v) => setPref('frSubtitles', v, setFrSubtitles)} />
-            <Toggle label="Vérifier la transcription baatɔnum avant envoi" value={reviewStt} onChange={(v) => setPref('reviewStt', v, setReviewStt)} />
+            <Toggle label="Sous-titres français en mode Baatɔnum" value={frSubtitles} onChange={(v) => setPref('frSubtitles', v, setFrSubtitles)} />
+            <Toggle label="Vérifier la transcription Baatɔnum avant envoi" value={reviewStt} onChange={(v) => setPref('reviewStt', v, setReviewStt)} />
           </div>
           <p className="mt-3 text-sm text-[#7D7566]">Parlez ou joignez un vocal. Le traitement est automatique, pour tous les utilisateurs. Internet est nécessaire pour les services vocaux en ligne.</p>
           {isAdmin && <div className="mt-3 rounded-xl bg-[#F4EFE0] p-3 text-[12px] text-[#4A4356]" aria-label="Diagnostic vocal réel">

@@ -122,7 +122,7 @@ const DEFS: Record<string, Def> = {
 };
 
 const PREFS: { key: string; icon: LucideIcon; title: string; def: boolean }[] = [
-  { key: 'bariba_first', icon: Globe, title: 'Afficher le Bariba en premier', def: false },
+  { key: 'bariba_first', icon: Globe, title: 'Afficher le Baatɔnum en premier', def: false },
   { key: 'offline_cache', icon: Zap, title: 'Activer le cache offline', def: true },
   { key: 'auto_audio', icon: Volume2, title: 'Lecture audio automatique', def: true },
   { key: 'notifications', icon: Bell, title: 'Notifications fil, classe et corrections', def: true },

@@ -179,7 +179,7 @@ export default function FitilaIA() {
                 <div className="flex items-center gap-2.5 flex-1">
                     <div>
             <h1 className="text-[#241F2E] font-extrabold text-[17px] leading-tight">Fitila IA</h1>
-            <p className="text-[#8C8571] text-[11px] leading-tight">Assistant intelligent en Bàátɔ̀nú</p>
+            <p className="text-[#8C8571] text-[11px] leading-tight">Assistant intelligent en Baatɔnum</p>
           </div>
         </div>
       </div>
@@ -192,10 +192,10 @@ export default function FitilaIA() {
               <Bot className="w-10 h-10 text-[#6758C9]" />
             </div>
             <p className="text-[#241F2E] text-[16px] text-center max-w-[320px] font-extrabold">
-              Yaa sɔ̃ɔ wírú Bariba mɛ̀, ǹ nɛ́ɛ̀ daa gɔ!
+              Yaa sɔ̃ɔ wírú Baatɔnum mɛ̀, ǹ nɛ́ɛ̀ daa gɔ!
             </p>
             <p className="text-[#8C8571] text-[12px] text-center">
-              Posez vos questions en Bàátɔ̀nú
+              Posez vos questions en Baatɔnum
             </p>
             <div className="flex flex-col items-center gap-3 mt-1">
               {[
@@ -263,7 +263,7 @@ export default function FitilaIA() {
 
                   {/* Fallback notice when response is in French */}
                   {msg.role === 'assistant' && !msg.isLoading && !msg.isTyping && msg.isFallbackFr && (
-                    <p className="text-[10px] text-amber-500 ml-1 mt-0.5 italic">⚠ Réponse en français (traduction bariba indisponible)</p>
+                    <p className="text-[10px] text-amber-500 ml-1 mt-0.5 italic">⚠ Réponse en français (traduction Baatɔnum indisponible)</p>
                   )}
 
                   {/* Translate button for assistant messages */}

@@ -89,7 +89,7 @@ export const SuperIAPanel: React.FC = () => {
           </div>
           <div>
             <h3 className="text-white font-bold text-sm">Super IA — Fitila IA 🤖</h3>
-            <p className="text-white/70 text-xs">Créateur automatisé de contenu culturel bariba</p>
+            <p className="text-white/70 text-xs">Créateur automatisé de contenu culturel Baatɔnum</p>
           </div>
         </div>
       </div>
@@ -171,7 +171,7 @@ export const SuperIAPanel: React.FC = () => {
         {isGenerating && (
           <div className="space-y-2 text-xs text-gray-500">
             <div className="flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin text-violet-500" /> Génération du récit via IA...</div>
-            <div className="flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin text-blue-500" /> Traduction en Bariba (ByT5)...</div>
+            <div className="flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin text-blue-500" /> Traduction en Baatɔnum (ByT5)...</div>
             <div className="flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin text-green-500" /> Synthèse vocale (TTS)...</div>
           </div>
         )}

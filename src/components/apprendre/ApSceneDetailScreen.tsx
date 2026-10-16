@@ -424,7 +424,7 @@ export default function ApSceneDetailScreen({ scene, content, progress, store, o
           {learnerTurn && (
             <>
               <p className="text-[11.5px] font-bold uppercase tracking-wide" style={{ color: AP_COLORS.goldDeep }}>
-                À toi, {scene.roleName(learner)} : dis en bàátɔ̀nú
+                À toi, {scene.roleName(learner)} : dis en Baatɔnum
               </p>
               <p className="mt-1 text-sm font-bold" style={{ color: AP_COLORS.ink }}>« {current.fr} »</p>
               <div className="mt-1.5 flex items-center gap-2">

@@ -1,0 +1,311 @@
+{
+  "name": "Baatɔnum",
+  "files": 76,
+  "labels": 152,
+  "changes": [
+    {
+      "file": "src/components/BaribaKeyboardActivationGuide.tsx",
+      "labels": 3
+    },
+    {
+      "file": "src/components/BaribaKeyboardCompanion.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/components/BiDirectionalSearchBar.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/components/GriotDigitalCreator.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/components/NewsStudio.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/PhraseTranslator.tsx",
+      "labels": 6
+    },
+    {
+      "file": "src/components/SearchResultDisplay.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/SearchToggle.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/components/SelectedEntryDisplay.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/SmartSearchBar.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/components/TranslationModelSwitcher.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/admin/AIProviderSettings.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/admin/AudioServicesAdminDashboard.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/components/admin/AudioServicesMonitor.tsx",
+      "labels": 3
+    },
+    {
+      "file": "src/components/admin/ByT5SpaceConfig.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/admin/DictionaryDataViewer.tsx",
+      "labels": 3
+    },
+    {
+      "file": "src/components/admin/DictionaryEntryForm.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/components/admin/EnhancedDictionaryEntryForm.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/components/admin/IdiomManager.tsx",
+      "labels": 4
+    },
+    {
+      "file": "src/components/admin/SuperIAPanel.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/components/admin/TrainingDataEnhancer.tsx",
+      "labels": 8
+    },
+    {
+      "file": "src/components/admin/TrainingDataViewer.tsx",
+      "labels": 3
+    },
+    {
+      "file": "src/components/admin/apprendre-voice/ApprendreVoiceAdmin.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/apprendre/ApHubScreen.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/components/apprendre/ApSceneDetailScreen.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/apprendre/ApScenesHubScreen.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/classe/BaribaSmartInput.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/classe/BaribaSmartTextarea.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/classe/ClasseCalculView.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/classe/ClasseFacilitateur.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/components/classe/UniversalAnswerCard.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/dunya/DunyaVoiceWeb.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/components/fitila/FoncierSourcesModal.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/components/keyboard/FloatingBaribaKeyboard.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/keyboard/KeyboardActivationGuide.tsx",
+      "labels": 3
+    },
+    {
+      "file": "src/components/keyboard/KeyboardSettingsPanel.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/onboarding/AppTourProvider.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/onboarding/OnboardingGuide.tsx",
+      "labels": 9
+    },
+    {
+      "file": "src/components/tamtam/KuaishouSideMenu.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/tamtam/OfflineIndicator.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/components/tamtam/PostEditModal.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/components/tamtam/TamTamMicButton.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/components/tamtam/TamTamPrivateMessages.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/components/tamtam/VocalDictionaryFeedback.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/tamtam/VocalDictionaryResult.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/tamtam/creator/LiveTemplateEffect.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/tamtam/creator/MusicDrawer.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/tamtam/creator/RecognizingScreen.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/teacher/AnswerKeyEditor.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/teacher/AnswerReview.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/voice/AccessibleVoiceLauncher.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/voice/TextReader.tsx",
+      "labels": 3
+    },
+    {
+      "file": "src/components/voice/VoiceDictation.tsx",
+      "labels": 3
+    },
+    {
+      "file": "src/components/voice/VoiceTab.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/components/voice/VoiceTranslator.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/pages/Auth.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/pages/Index.tsx",
+      "labels": 12
+    },
+    {
+      "file": "src/pages/admin/AdminDashboard.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/pages/admin/VoiceCorpusAdmin.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/pages/fitila/FitilaApprendreVoiceStudio.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/pages/fitila/FitilaCanonicalCommunity.tsx",
+      "labels": 2
+    },
+    {
+      "file": "src/pages/fitila/FitilaClasse.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/pages/fitila/FitilaIA.tsx",
+      "labels": 4
+    },
+    {
+      "file": "src/pages/fitila/FitilaLearnScenes.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/pages/fitila/FitilaLearnTheme.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/pages/fitila/FitilaTemIA.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/pages/fitila/FitilaUtilityParity.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/pages/fitila/FitilaVoiceLab.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/pages/fitila/FloatingKeyboardPage.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/pages/fitila/espace/BaribaRichEditor.tsx",
+      "labels": 4
+    },
+    {
+      "file": "src/pages/fitila/espace/EspaceScanPage.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/pages/fitila/espace/FitilaEspace.tsx",
+      "labels": 3
+    },
+    {
+      "file": "src/pages/tamtam/TamTamDictionary.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/pages/tamtam/TamTamPhoneAuth.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/pages/tamtam/TamTamServices.tsx",
+      "labels": 1
+    },
+    {
+      "file": "src/pages/tamtam/TamTamTranslator.tsx",
+      "labels": 2
+    }
+  ]
+}

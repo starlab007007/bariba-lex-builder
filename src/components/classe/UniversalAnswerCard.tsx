@@ -276,7 +276,7 @@ function UniversalAnswerCardInner({
               </>
             ) : (
               <div className="space-y-2">
-                <p className="text-[11px] text-gray-600">Réponds à voix haute en Baatonum ou en français.</p>
+                <p className="text-[11px] text-gray-600">Réponds à voix haute en Baatɔnum ou en français.</p>
                 <VoiceAnswerRecorder
                   storageSubpath={storageSubpath}
                   onUploaded={handleVoiceUploaded}

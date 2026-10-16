@@ -217,7 +217,7 @@ export const KuaishouSideMenu: React.FC<KuaishouSideMenuProps> = ({
                       : 'bg-white text-gray-700 shadow-sm'
                   }`}
                 >
-                  🇧🇯 Bariba
+                  🇧🇯 Baatɔnum
                 </motion.button>
               </div>
             </div>

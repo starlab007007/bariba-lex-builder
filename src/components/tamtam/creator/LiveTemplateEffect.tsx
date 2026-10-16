@@ -313,7 +313,7 @@ const LiveTemplateEffect: React.FC<LiveTemplateEffectProps> = ({
         )}
         {template.features.translation && (
           <div className="px-3 py-1.5 rounded-full bg-blue-500/70 backdrop-blur-md text-white text-xs font-medium flex items-center gap-2">
-            🌍 FR ↔ Bariba
+            🌍 FR ↔ Baatɔnum
           </div>
         )}
         {template.features.audioEnhance && (

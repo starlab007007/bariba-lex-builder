@@ -67,7 +67,7 @@ export const BiDirectionalSearchBar = ({
           onClick={() => onDirectionChange("bariba-to-french")}
           className="font-sans"
         >
-          <span className="bariba-text mr-2">Bààtɔ̀nú</span>
+          <span className="bariba-text mr-2">Baatɔnum</span>
           <ArrowRight className="h-4 w-4 mx-1" />
           <span>Français</span>
         </Button>
@@ -79,7 +79,7 @@ export const BiDirectionalSearchBar = ({
         >
           <span className="mr-2">Français</span>
           <ArrowLeft className="h-4 w-4 mx-1" />
-          <span className="bariba-text">Bààtɔ̀nú</span>
+          <span className="bariba-text">Baatɔnum</span>
         </Button>
       </div>
 

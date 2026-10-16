@@ -1,5 +1,5 @@
 {
-  "sourceFiles": 807,
+  "sourceFiles": 809,
   "routes": [
     "/",
     "auth",
@@ -72,10 +72,26 @@
     "/admin/*",
     "*"
   ],
-  "strings": 14415,
-  "sourced": 6766,
-  "missing": 7649,
-  "ambiguous": 486,
+  "strings": 14419,
+  "sourced": 7133,
+  "missing": 7286,
+  "ambiguous": 1218,
   "rejected": 0,
-  "quarantined": 80
+  "quarantined": 80,
+  "referenceResources": {
+    "dictionary": 7525,
+    "corpus": 8708,
+    "learning": [
+      {
+        "id": "core",
+        "items": 1847,
+        "version": "v2.4-build19-20260927"
+      },
+      {
+        "id": "scenes",
+        "items": 44,
+        "version": "v2.4-build19-20260927"
+      }
+    ]
+  }
 }

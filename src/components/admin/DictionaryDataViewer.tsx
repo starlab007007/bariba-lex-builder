@@ -350,7 +350,7 @@ export default function DictionaryDataViewer() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Mot Baatonum</TableHead>
+                  <TableHead>Mot Baatɔnum</TableHead>
                   <TableHead>Définition</TableHead>
                   <TableHead>Catégorie</TableHead>
                   <TableHead>Phonétique</TableHead>
@@ -424,12 +424,12 @@ export default function DictionaryDataViewer() {
           <DialogHeader>
             <DialogTitle>Modifier l'entrée</DialogTitle>
             <DialogDescription>
-              Modifiez l'entrée du dictionnaire Baatonum-Français
+              Modifiez l'entrée du dictionnaire Baatɔnum-Français
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Mot Baatonum</Label>
+              <Label>Mot Baatɔnum</Label>
               <Input
                 value={editForm.word}
                 onChange={(e) => setEditForm({ ...editForm, word: e.target.value })}

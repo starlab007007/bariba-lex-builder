@@ -209,7 +209,7 @@ export default function KeyboardSettingsPanel({ settings, onUpdate, onExport, on
           <div>
             <h4 className="font-semibold text-sm text-amber-700 dark:text-amber-400">Clavier natif Android</h4>
             <p className="text-xs text-muted-foreground mt-1">
-              Le clavier Bariba natif est intégré dans l'APK. Activez-le dans l'onglet
+              Le clavier Baatɔnum natif est intégré dans l'APK. Activez-le dans l'onglet
               <span className="inline-flex items-center mx-1 text-amber-600 dark:text-amber-400 font-medium">📱 Natif</span>
               pour l'utiliser dans WhatsApp, SMS et toutes les applications.
             </p>

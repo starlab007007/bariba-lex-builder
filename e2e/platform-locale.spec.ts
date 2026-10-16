@@ -14,6 +14,32 @@ const cors = {
   "Access-Control-Allow-Headers": "*",
   "Access-Control-Allow-Methods": "POST,GET,OPTIONS",
 };
+test("Names and every form label follow the interface language while submission data stays intact", async ({ page }) => {
+  await setup(page);
+  await page.goto("/e2e/fixtures/platform-locale.html");
+  await expect(page.getByTestId("fixed-name")).toHaveText("Baatɔnum");
+  await expect(page.getByTestId("forms").getByRole("heading")).toHaveText("Baatɔnum · Baatɔnum");
+  await page.getByRole("button", {name:"BA test", exact:true}).click();
+  await expect(page.getByTestId("native-field")).toHaveAttribute("placeholder", "Gbɛ́ru");
+  await expect(page.getByTestId("native-area")).toHaveAttribute("aria-label", "Gbɛ́ru");
+  await expect(page.locator("legend")).toHaveText("Gbɛ́ru");
+  await expect(page.locator("optgroup")).toHaveAttribute("label", "Gbɛ́ru");
+  await expect(page.getByTestId("submit-label")).toHaveValue("Gbɛ́ru");
+  await page.getByTestId("submit-label").evaluate(node => node.setAttribute("name", "action"));
+  await expect(page.getByTestId("submit-label")).toHaveValue("Annuler");
+  await page.getByTestId("submit-label").evaluate(node => node.removeAttribute("name"));
+  await expect(page.getByTestId("submit-label")).toHaveValue("Gbɛ́ru");
+  await expect(page.getByTestId("submit-payload")).toHaveValue("Annuler");
+  await expect(page.getByTestId("native-field")).toHaveValue("Bariba Ali 1200 ne donne pas");
+  await expect(page.getByTestId("native-area")).toHaveValue("Bàátɔ̀nú : Ali ne donne pas 1200");
+  await expect(page.getByTestId("language-select")).toHaveValue("ba");
+  await expect(page.getByTestId("original-name")).toHaveText("Bariba · Bàátɔ̀nú");
+  await expect(page.getByTestId("forms").locator("svg")).toHaveAttribute("aria-label", "Gbɛ́ru");
+  await page.getByRole("button", {name:"FR test", exact:true}).click();
+  await expect(page.getByTestId("native-area")).toHaveAttribute("placeholder", "Annuler");
+  await expect(page.getByTestId("submit-label")).toHaveValue("Annuler");
+  await expect(page.getByTestId("fixed-name")).toHaveText("Baatɔnum");
+});
 async function setup(page: Page) {
   const calls: string[] = [];
   page.on("request", (request) => {
@@ -350,10 +376,10 @@ test("The real application keeps its language across the main pages and protecte
   );
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/learn");
-  await page.getByRole("button", { name: "Bàátɔ̀nú", exact: true }).click();
+  await page.getByRole("button", { name: "Baatɔnum", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "bba");
   await expect(page.getByRole("button", { name: "Tire mɛro", exact: true })).toBeVisible();
-  for (const path of ["/learn", "/translator", "/ia", "/dunya", "/classe", "/dictionary", "/keyboard", "/settings", "/auth", "/social", "/creator", "/espace", "/teacher", "/admin/localization"]) {
+  for (const path of ["/learn", "/learn/daily", "/learn/review", "/learn/progress", "/learn/scenes", "/translator", "/ia", "/dunya", "/classe", "/classe/N1", "/dictionary", "/keyboard", "/settings", "/messages", "/auth", "/social", "/creator", "/espace", "/espace/scanner", "/teacher", "/teacher/voice-reading", "/admin/localization"]) {
     await page.goto(path);
     await expect(page.locator("html"), path).toHaveAttribute("lang", "bba");
     await expect(page.locator("main"), path).toBeVisible();

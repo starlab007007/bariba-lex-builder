@@ -60,7 +60,7 @@ const MOODS = [
 ];
 
 const AI_STYLES = [
-  { id: "traditional", label: "Traditionnel", emoji: "🥁", description: "Rythmes Bariba ancestraux" },
+  { id: "traditional", label: "Traditionnel", emoji: "🥁", description: "Rythmes Baatɔnum ancestraux" },
   { id: "modern", label: "Moderne", emoji: "🎧", description: "Fusion afro-contemporaine" },
   { id: "ambient", label: "Ambiance", emoji: "🌿", description: "Sons naturels apaisants" },
   { id: "energetic", label: "Énergique", emoji: "⚡", description: "Beats dynamiques" },

@@ -380,7 +380,7 @@ export default function FloatingBaribaKeyboard() {
                     <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                       <Zap className="w-3 h-3" /> Phrases rapides ({PHRASES_RAPIDES.length})
                     </span>
-                    <span className="text-[10px] text-muted-foreground">tap = bariba · long = fr · 🔊 = écouter</span>
+                    <span className="text-[10px] text-muted-foreground">tap = Baatɔnum · long = fr · 🔊 = écouter</span>
                   </div>
                   <div className="grid grid-cols-2 gap-1.5">
                     {PHRASES_RAPIDES.map((p, i) => (

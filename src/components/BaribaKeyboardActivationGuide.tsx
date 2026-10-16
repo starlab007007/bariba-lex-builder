@@ -6,9 +6,9 @@ type PermissionState = 'unknown' | 'granted' | 'denied' | 'requesting';
 
 const KEYBOARD_STEPS = [
   { icon: Settings, title: 'Ouvrir les paramètres', desc: 'Paramètres Android → Gestion générale → Langue et saisie', color: 'from-blue-500 to-cyan-500' },
-  { icon: Keyboard, title: 'Activer le clavier', desc: 'Clavier virtuel → Gérer les claviers → Activer "Clavier Bariba Fitila"', color: 'from-amber-500 to-orange-500' },
+  { icon: Keyboard, title: 'Activer le clavier', desc: 'Clavier virtuel → Gérer les claviers → Activer "Clavier Baatɔnum Fitila"', color: 'from-amber-500 to-orange-500' },
   { icon: MessageSquare, title: 'Changer de clavier', desc: 'Dans n\'importe quelle app, appuyez longuement sur la barre d\'espace ou l\'icône 🌐', color: 'from-emerald-500 to-teal-500' },
-  { icon: CheckCircle2, title: 'Tapez en Bariba !', desc: 'Sélectionnez "Clavier Bariba Fitila" — touches ɔ ɛ ŋ ã ĩ ũ disponibles', color: 'from-purple-500 to-pink-500' },
+  { icon: CheckCircle2, title: 'Tapez en Baatɔnum !', desc: 'Sélectionnez "Clavier Baatɔnum Fitila" — touches ɔ ɛ ŋ ã ĩ ũ disponibles', color: 'from-purple-500 to-pink-500' },
 ];
 
 export default function BaribaKeyboardActivationGuide() {

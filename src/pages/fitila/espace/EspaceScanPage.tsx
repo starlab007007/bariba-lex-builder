@@ -143,7 +143,7 @@ export default function EspaceScanPage() {
     <div className="h-full overflow-y-auto pb-24" style={{ background: SIG.appBackground, color: SIG.ink }}>
       <header className="fitila-glass sticky top-0 z-20 flex items-center gap-3 border-b px-4 pb-2 pl-[74px] pt-3 md:pl-5" style={{ borderColor: SIG.hairline }}>
         <button type="button" onClick={() => nav('/espace')} aria-label="Retour à l’Espace" className="grid h-9 w-9 place-items-center rounded-full border bg-white" style={{ borderColor: SIG.hairline }}><ArrowLeft className="h-4 w-4" /></button>
-        <div className="min-w-0"><h1 className="truncate text-[17px] font-extrabold leading-tight">Numériser &amp; extraire</h1><p className="truncate text-[11px]" style={{ color: SIG.muted }}>OCR Bàátɔ̀nú — PDF, images, manuscrits</p></div>
+        <div className="min-w-0"><h1 className="truncate text-[17px] font-extrabold leading-tight">Numériser &amp; extraire</h1><p className="truncate text-[11px]" style={{ color: SIG.muted }}>OCR Baatɔnum — PDF, images, manuscrits</p></div>
       </header>
 
       <div className="mx-auto w-full max-w-[1100px] px-4 pt-5 md:px-[18px]">

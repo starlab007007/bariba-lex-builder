@@ -69,7 +69,7 @@ export const TextReader = () => {
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="bariba" className="flex items-center gap-2">
             <Volume2 className="h-4 w-4" />
-            <span className="bariba-text">Bààtɔ̀nú</span>
+            <span className="bariba-text">Baatɔnum</span>
           </TabsTrigger>
           <TabsTrigger value="french" className="flex items-center gap-2">
             <Volume2 className="h-4 w-4" />
@@ -84,13 +84,13 @@ export const TextReader = () => {
                 <Volume2 className="h-4 w-4 text-primary" />
                 <span className="font-medium">Texte à lire</span>
               </div>
-              <Badge variant="secondary" className="bariba-text">Bààtɔ̀nú</Badge>
+              <Badge variant="secondary" className="bariba-text">Baatɔnum</Badge>
             </div>
 
             <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Saisissez le texte bariba à lire..."
+              placeholder="Saisissez le texte Baatɔnum à lire..."
               className="min-h-32 bariba-text"
             />
 

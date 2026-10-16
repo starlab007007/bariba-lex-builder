@@ -292,7 +292,7 @@ export const ByT5SpaceConfig = () => {
           <li>• Assurez-vous que votre token HF a accès au Space privé (permissions FINEGRAINED)</li>
           <li>• Le Space peut prendre 10-30s pour démarrer s'il est en sommeil</li>
           <li>• Le test essaie automatiquement plusieurs endpoints API pour trouver le bon</li>
-          <li>• Consultez les logs de l'Edge Function <code>byt5-bariba-translate</code> pour diagnostic détaillé</li>
+          <li>• Consultez les logs de l'Edge Function <code>byt5-Baatɔnum-translate</code> pour diagnostic détaillé</li>
         </ul>
       </div>
     </Card>

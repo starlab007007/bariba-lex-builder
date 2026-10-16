@@ -439,7 +439,7 @@ export default function FitilaApprendreVoiceStudio() {
     return (
       <div className="h-full overflow-y-auto" style={{ background: AP_COLORS.ivory, color: AP_COLORS.ink }}>
         <header className="sticky top-0 z-10 border-b px-4 py-3" style={{ borderColor: AP_COLORS.line, background: AP_COLORS.ivory }}>
-          <div className="mx-auto flex max-w-3xl items-center gap-3"><button onClick={() => navigate('/learn')} className="flex h-11 w-11 items-center justify-center rounded-full border" style={{ borderColor: AP_COLORS.line }}><ArrowLeft className="h-5 w-5" /></button><div><h1 className="font-black">Studio Voix</h1><p className="text-xs" style={{ color: AP_COLORS.muted }}>Voix de référence du bàátɔ̀nú</p></div></div>
+          <div className="mx-auto flex max-w-3xl items-center gap-3"><button onClick={() => navigate('/learn')} className="flex h-11 w-11 items-center justify-center rounded-full border" style={{ borderColor: AP_COLORS.line }}><ArrowLeft className="h-5 w-5" /></button><div><h1 className="font-black">Studio Voix</h1><p className="text-xs" style={{ color: AP_COLORS.muted }}>Voix de référence du Baatɔnum</p></div></div>
         </header>
         <ConsentPanel settings={settings} onSigned={load} />
       </div>

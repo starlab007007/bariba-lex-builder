@@ -674,7 +674,7 @@ export default function FitilaVoiceLab() {
         </div>
 
         <p className="text-center text-[11px] text-[#8C8571] italic pb-6">
-          🎯 Chaque enregistrement aide à entraîner un modèle de voix Bariba.
+          🎯 Chaque enregistrement aide à entraîner un modèle de voix Baatɔnum.
         </p>
       </main>
     </div>

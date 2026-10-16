@@ -16,7 +16,7 @@ export const VoiceTab = ({ onTranslate }: VoiceTabProps) => {
     <div className="space-y-6">
       <div className="text-center space-y-2">
         <h2 className="text-2xl lg:text-3xl font-bold text-foreground">
-          🎤 <span className="bariba-text">Bààtɔ̀nú</span> ↔ 🇫🇷
+          🎤 <span className="bariba-text">Baatɔnum</span> ↔ 🇫🇷
         </h2>
         <p className="text-muted-foreground text-sm">
           100% vocal • Pas de lecture requise

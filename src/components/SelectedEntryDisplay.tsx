@@ -121,7 +121,7 @@ export const SelectedEntryDisplay = ({ entry, searchDirection }: SelectedEntryDi
         {entry.example_bariba && entry.example_bariba.length > 0 && (
           <div className="space-y-3">
             <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <span className="bariba-text">Exemples en Bààtɔ̀nú</span>
+              <span className="bariba-text">Exemples en Baatɔnum</span>
             </h4>
             <div className="space-y-2">
               {entry.example_bariba.map((example, idx) => (

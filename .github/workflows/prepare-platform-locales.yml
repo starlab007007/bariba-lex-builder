@@ -1,8 +1,8 @@
 name: Prepare platform language catalogue
 on:
   push:
-    branches: [feat/platform-baatonum-localization-20261015]
-    paths: ['scripts/build-platform-locales.mjs','scripts/sanitize-platform-locales.mjs','.github/workflows/prepare-platform-locales.yml']
+    branches: [feat/platform-language-forms-20261016]
+    paths: ['scripts/*platform*.mjs','src/data/platform-ui-equivalences.json','.github/workflows/prepare-platform-locales.yml']
 permissions:
   contents: write
 jobs:
@@ -10,20 +10,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: {ref: feat/platform-baatonum-localization-20261015}
+        with: {ref: feat/platform-language-forms-20261016}
       - uses: actions/setup-node@v4
         with: {node-version: '22',cache: npm}
       - run: npm ci --legacy-peer-deps
       - run: node scripts/sanitize-platform-locales.mjs
+      - run: node scripts/harmonize-platform-name.mjs
+      - run: node scripts/sync-platform-resources.mjs
       - run: node scripts/build-platform-locales.mjs
       - name: Commit generated catalogues on the feature branch
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/data/locales docs/audits/platform-localization-summary.json docs/audits/rejected-platform-locales.json
+          git add src docs/audits/platform-localization-summary.json docs/audits/rejected-platform-locales.json docs/audits/platform-language-name.json
           if ! git diff --cached --quiet; then
             git commit -m 'Generate sourced platform locale catalogue and coverage inventory'
-            git push origin HEAD:feat/platform-baatonum-localization-20261015
+            git push origin HEAD:feat/platform-language-forms-20261016
           fi
       - uses: actions/upload-artifact@v4
         with:

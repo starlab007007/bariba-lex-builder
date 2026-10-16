@@ -6,7 +6,7 @@ const steps = [
   {
     icon: Smartphone,
     title: 'Ouvrez le clavier Fitila',
-    desc: 'Tapez votre texte en Bariba avec les caractères spéciaux et les suggestions intelligentes.',
+    desc: 'Tapez votre texte en Baatɔnum avec les caractères spéciaux et les suggestions intelligentes.',
     color: 'from-amber-500 to-orange-500',
   },
   {
@@ -18,7 +18,7 @@ const steps = [
   {
     icon: MessageSquare,
     title: 'Collez dans WhatsApp',
-    desc: 'Ouvrez WhatsApp ou toute autre application et collez votre texte Bariba.',
+    desc: 'Ouvrez WhatsApp ou toute autre application et collez votre texte Baatɔnum.',
     color: 'from-emerald-500 to-teal-500',
   },
 ];
@@ -29,7 +29,7 @@ export default function KeyboardActivationGuide() {
       <div className="text-center mb-6">
         <h3 className="text-lg font-bold">Comment utiliser le clavier ?</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          3 étapes simples pour écrire en Bariba partout
+          3 étapes simples pour écrire en Baatɔnum partout
         </p>
       </div>
 
