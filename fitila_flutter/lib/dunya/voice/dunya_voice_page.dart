@@ -291,6 +291,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     var language = replyLang;
     String? subtitle;
     var gotAudio = false;
+    var usedLocalFallback = false;
     _stopSpeaking = false;
     if (mounted) setState(() => _phase = _Phase.thinking);
     try {
@@ -370,8 +371,23 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       if (mounted) setState(() => _notice = error.toString());
       await _store.audit('dunya_voice_cloud_error',
           {'error': error.toString()}, severity: 'warning');
+      // Automatic mode falls back to the already-installed Omnilingual
+      // recognizer and local assistant. Online-only mode never silently
+      // changes execution policy.
+      if (_settings.execution == DunyaExecutionMode.automatic &&
+          _paths.canListen && _engine != null && mounted) {
+        try {
+          final localTranscript = await _engine!.transcribe(samples);
+          usedLocalFallback = true;
+          await _runTurn(localTranscript, spoken: true);
+        } catch (localError) {
+          await _store.audit('dunya_voice_offline_fallback_error',
+              {'error': localError.toString()}, severity: 'warning');
+          usedLocalFallback = false;
+        }
+      }
     } finally {
-      if (!mounted || turnId != _turnCounter) return;
+      if (usedLocalFallback || !mounted || turnId != _turnCounter) return;
       _status = null;
       if (_session && _settings.handsFree) {
         unawaited(_listenTurn());
