@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.content.Context;
 import android.view.inputmethod.InputMethodManager;
+import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -32,6 +33,18 @@ public class KeyboardTestActivity extends Activity {
         host = new EditText(this);
         host.setContentDescription("Application hôte : texte de test");
         host.setHint("La traduction sera insérée ici");
+        // Debug-only application host advertising SEND, so the real Android
+        // keyboard can prove end-to-end dispatch without sending any network
+        // message or impersonating WhatsApp/SMS.
+        host.setSingleLine(true);
+        host.setImeOptions(EditorInfo.IME_ACTION_SEND);
+        host.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEND) {
+                title.setContentDescription("Application hôte : action SEND reçue");
+                return true;
+            }
+            return false;
+        });
         root.addView(host);
         setContentView(root);
         host.requestFocus();
