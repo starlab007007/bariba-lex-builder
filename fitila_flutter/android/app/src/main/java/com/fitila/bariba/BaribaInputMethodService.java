@@ -279,7 +279,6 @@ public class BaribaInputMethodService extends InputMethodService {
                     int contentDp = 58 + letterRows * 42 + 44;
                     int requiredHeight = dp(ctx, contentDp) + bottom + 2 * pad;
                     view.setMinimumHeight(requiredHeight);
-                    view.requestLayout();
                 }
                 return insets;
             }
