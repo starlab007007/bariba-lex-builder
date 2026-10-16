@@ -17,6 +17,7 @@ import 'package:path_provider/path_provider.dart';
 
 const dunyaVoiceCorePackId = 'dunya-voice-core';
 const dunyaVoiceFrPackId = 'dunya-voice-fr';
+const dunyaTranslationPackId = 'dunya-translate-byt5';
 
 /// Public mirror on fitila.bj (the GitHub repository is private, so its
 /// release assets are not downloadable by phones).
@@ -43,6 +44,12 @@ const dunyaVoicePackSources = <DunyaPackSource>[
     title: 'Voix française de secours (si le téléphone n’en a pas)',
     zipUrl: '$_releaseBase/dunya-voice-fr-v1.zip',
     manifestUrl: '$_releaseBase/dunya-voice-fr-v1.manifest.json',
+  ),
+  DunyaPackSource(
+    id: dunyaTranslationPackId,
+    title: 'ByT5 Français ↔ Baatɔnum (traduction sans Internet)',
+    zipUrl: '$_releaseBase/dunya-translate-byt5-v1.zip',
+    manifestUrl: '$_releaseBase/dunya-translate-byt5-v1.manifest.json',
   ),
 ];
 
