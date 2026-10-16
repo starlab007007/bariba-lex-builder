@@ -45,6 +45,9 @@ _system_dialog_recoveries = 0
 
 def find(attribute, value, timeout=35):
     until = time.monotonic() + timeout
+    started = time.monotonic()
+    next_restart = started + 9
+    restart_count = 0
     while time.monotonic() < until:
         visible = nodes()
         if _recover_emulator_dialog(visible):
@@ -52,12 +55,18 @@ def find(attribute, value, timeout=35):
         for node in visible:
             if node.get(attribute) == value:
                 return node
-        # A cold emulator may launch the host without displaying its IME yet.
+        # Android 15 sometimes first shows a partially laid-out IME on the
+        # emulator's cold boot. Reopen the same system keyboard as a real user
+        # would; never manufacture a candidate or bypass the UI assertions.
         if value == '⚡':
             host = next((n for n in visible if n.get('content-desc') ==
                          'Application hôte : texte de test'), None)
-            if host is not None:
+            if host is not None and restart_count < 2 and time.monotonic() >= next_restart:
+                adb('shell', 'input', 'keyevent', '4')  # dismiss incomplete IME
+                time.sleep(0.8)
                 tap(host)
+                restart_count += 1
+                next_restart = time.monotonic() + 9
         time.sleep(0.6)
     raise AssertionError(f'UI element missing: {attribute}={value}')
 
