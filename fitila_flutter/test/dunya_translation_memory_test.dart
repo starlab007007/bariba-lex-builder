@@ -39,10 +39,32 @@ void main() {
   });
 
   group('translator engine order', () {
+    setUp(() {
+      // Tests that require a server must enable it explicitly, as main.dart
+      // does after checking mode and connectivity. Production defaults deny.
+      DunyaTranslator.allowRemote = () => true;
+      DunyaTranslator.preferRemote = () => false;
+    });
     tearDown(() {
       DunyaTranslator.memory = null;
       DunyaTranslator.offline = null;
       DunyaTranslator.online = null;
+      DunyaTranslator.allowRemote = null;
+      DunyaTranslator.preferRemote = null;
+    });
+
+    test('default secure policy never makes an unapproved cloud request', () async {
+      DunyaTranslator.allowRemote = null;
+      var cloudCalls = 0;
+      DunyaTranslator.memory = null;
+      DunyaTranslator.offline = null;
+      DunyaTranslator.online = (text, direction) async {
+        cloudCalls++;
+        return 'translation cloud';
+      };
+      final result = await DunyaTranslator.translate('une nouvelle phrase', toBariba: true);
+      expect(result, isNull);
+      expect(cloudCalls, 0);
     });
 
     test('memory answers first and the network is never used for known sentences', () async {
