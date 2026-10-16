@@ -389,12 +389,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         }
       }
     } finally {
-      if (usedLocalFallback || !mounted || turnId != _turnCounter) return;
-      _status = null;
-      if (_session && _settings.handsFree) {
-        unawaited(_listenTurn());
-      } else {
-        setState(() => _phase = _Phase.idle);
+      if (!usedLocalFallback && mounted && turnId == _turnCounter) {
+        _status = null;
+        if (_session && _settings.handsFree) {
+          unawaited(_listenTurn());
+        } else {
+          setState(() => _phase = _Phase.idle);
+        }
       }
     }
   }
@@ -1468,7 +1469,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
     // Distinguish a published, downloadable ByT5 checkpoint from its
     // unpopulated release URL. Never show a working Download button for 404.
     if (_settings.execution != DunyaExecutionMode.offline &&
-        FitilaOffline.online.value) unawaited(() async {
+        FitilaOffline.online.value) {
+      unawaited(() async {
       try {
         final source = dunyaVoicePackSources.firstWhere(
             (p) => p.id == dunyaTranslationPackId);
@@ -1477,7 +1479,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       } catch (_) {
         if (mounted) setState(() => _byt5Published = false);
       }
-    }());
+      }());
+    }
   }
 
   void _onBrainProgress(double? fraction, String label) {
