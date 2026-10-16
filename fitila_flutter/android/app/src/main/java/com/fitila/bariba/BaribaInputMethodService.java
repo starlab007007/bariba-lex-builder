@@ -759,8 +759,10 @@ public class BaribaInputMethodService extends InputMethodService {
     /** Never predict or remember passwords, PINs, or fields opting out. */
     private boolean maySuggestInCurrentField() {
         EditorInfo info = getCurrentInputEditorInfo();
-        if (info == null) return true;
-        int inputType = info.inputType;
+        return info == null || isPredictableInputType(info.inputType);
+    }
+
+    static boolean isPredictableInputType(int inputType) {
         int fieldClass = inputType & InputType.TYPE_MASK_CLASS;
         if (fieldClass != InputType.TYPE_CLASS_TEXT) return false;
         int variation = inputType & InputType.TYPE_MASK_VARIATION;
