@@ -45,6 +45,9 @@ _system_dialog_recoveries = 0
 
 def find(attribute, value, timeout=35):
     until = time.monotonic() + timeout
+    started = time.monotonic()
+    next_restart = started + 9
+    restart_count = 0
     while time.monotonic() < until:
         visible = nodes()
         if _recover_emulator_dialog(visible):
@@ -52,12 +55,18 @@ def find(attribute, value, timeout=35):
         for node in visible:
             if node.get(attribute) == value:
                 return node
-        # A cold emulator may launch the host without displaying its IME yet.
+        # Android 15 sometimes first shows a partially laid-out IME on the
+        # emulator's cold boot. Reopen the same system keyboard as a real user
+        # would; never manufacture a candidate or bypass the UI assertions.
         if value == '⚡':
             host = next((n for n in visible if n.get('content-desc') ==
                          'Application hôte : texte de test'), None)
-            if host is not None:
+            if host is not None and restart_count < 2 and time.monotonic() >= next_restart:
+                adb('shell', 'input', 'keyevent', '4')  # dismiss incomplete IME
+                time.sleep(0.8)
                 tap(host)
+                restart_count += 1
+                next_restart = time.monotonic() + 9
         time.sleep(0.6)
     raise AssertionError(f'UI element missing: {attribute}={value}')
 
@@ -102,6 +111,23 @@ try:
     host = find('content-desc', 'Application hôte : texte de test')
     assert host.get('text') in ('', 'La traduction sera insérée ici'), host.attrib
 
+    # Without a manual direction switch, French text now predicts its
+    # matching Baatɔnum meaning directly in the same native suggestion bar.
+    for letter in 'demain':
+        tap(find('text', letter))
+    french_candidate = find('content-desc', 'demain, sia')
+    find('text', 'demain')
+    screenshot('00-predictions-francais-baatonum.png')
+    (OUT / '00-predictions-fr-ui.xml').write_bytes(
+        adb('shell', 'cat', '/sdcard/fitila-window.xml'))
+    tap(french_candidate)
+    host = find('content-desc', 'Application hôte : texte de test')
+    assert host.get('text', '').strip() == 'demain', host.attrib
+    for _ in range(7):
+        tap(find('text', '⌫'))
+    host = find('content-desc', 'Application hôte : texte de test')
+    assert host.get('text') in ('', 'La traduction sera insérée ici'), host.attrib
+
     tap(find('text', '⚡'))
     screenshot('00-traducteur-ouvert.png')
     for label in ['⇧', 'b', 'o', 'n', 'j', 'o', 'u', 'r']:
@@ -128,7 +154,8 @@ try:
     (OUT / 'result.json').write_text(json.dumps({'passed': True, 'source': 'Bonjour', 'translation': translated,
         'endpoint': 'byt5-bariba-translate', 'host_isolated_during_typing': True,
         'explicit_insertion': True, 'host_typing_restored': True, 'bilingual_native_predictions': True,
-        'candidate_inserted_without_french': True}, ensure_ascii=False, indent=2))
+        'candidate_inserted_without_french': True, 'automatic_bidirectional_predictions': True,
+        'french_word_insertion_verified': True}, ensure_ascii=False, indent=2))
     print('Native Android keyboard end-to-end test passed:', translated)
 except Exception:
     (OUT / 'logcat.txt').write_bytes(adb('logcat', '-d', '-s', 'BaribaKeyboard', 'InputMethodManager', 'ImeTracker', 'AndroidRuntime'))
