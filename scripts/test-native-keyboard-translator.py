@@ -102,6 +102,23 @@ try:
     host = find('content-desc', 'Application hôte : texte de test')
     assert host.get('text') in ('', 'La traduction sera insérée ici'), host.attrib
 
+    # Without a manual direction switch, French text now predicts its
+    # matching Baatɔnum meaning directly in the same native suggestion bar.
+    for letter in 'demain':
+        tap(find('text', letter))
+    french_candidate = find('content-desc', 'demain, sia')
+    find('text', 'demain')
+    screenshot('00-predictions-francais-baatonum.png')
+    (OUT / '00-predictions-fr-ui.xml').write_bytes(
+        adb('shell', 'cat', '/sdcard/fitila-window.xml'))
+    tap(french_candidate)
+    host = find('content-desc', 'Application hôte : texte de test')
+    assert host.get('text', '').strip() == 'demain', host.attrib
+    for _ in range(7):
+        tap(find('text', '⌫'))
+    host = find('content-desc', 'Application hôte : texte de test')
+    assert host.get('text') in ('', 'La traduction sera insérée ici'), host.attrib
+
     tap(find('text', '⚡'))
     screenshot('00-traducteur-ouvert.png')
     for label in ['⇧', 'b', 'o', 'n', 'j', 'o', 'u', 'r']:
@@ -128,7 +145,8 @@ try:
     (OUT / 'result.json').write_text(json.dumps({'passed': True, 'source': 'Bonjour', 'translation': translated,
         'endpoint': 'byt5-bariba-translate', 'host_isolated_during_typing': True,
         'explicit_insertion': True, 'host_typing_restored': True, 'bilingual_native_predictions': True,
-        'candidate_inserted_without_french': True}, ensure_ascii=False, indent=2))
+        'candidate_inserted_without_french': True, 'automatic_bidirectional_predictions': True,
+        'french_word_insertion_verified': True}, ensure_ascii=False, indent=2))
     print('Native Android keyboard end-to-end test passed:', translated)
 except Exception:
     (OUT / 'logcat.txt').write_bytes(adb('logcat', '-d', '-s', 'BaribaKeyboard', 'InputMethodManager', 'ImeTracker', 'AndroidRuntime'))
