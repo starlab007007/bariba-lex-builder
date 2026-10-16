@@ -19,6 +19,13 @@ public class KeyboardTestActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(20, 30, 20, 20);
+        root.setOnApplyWindowInsetsListener((view, insets) -> {
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                android.graphics.Insets bars = insets.getInsets(android.view.WindowInsets.Type.systemBars());
+                view.setPadding(20 + bars.left, 30 + bars.top, 20 + bars.right, 20 + bars.bottom);
+            }
+            return insets;
+        });
         TextView title = new TextView(this);
         title.setText("FITILA — Test du clavier Android"); title.setTextSize(22);
         root.addView(title);

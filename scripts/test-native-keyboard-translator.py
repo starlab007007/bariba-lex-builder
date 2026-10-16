@@ -42,7 +42,11 @@ try:
     adb('shell', 'ime', 'enable', component)
     adb('shell', 'ime', 'set', component)
     adb('shell', 'am', 'start', '-n', package + '/com.fitila.bariba.KeyboardTestActivity')
-    tap(find('text', '⚡'))
+    quick = find('text', '⚡')
+    screenshot('00-clavier-navigation.png')
+    (OUT / '00-windows.xml').write_bytes(adb('shell', 'cat', '/sdcard/fitila-window.xml'))
+    tap(quick)
+    screenshot('00-traducteur-ouvert.png')
     for label in ['⇧', 'b', 'o', 'n', 'j', 'o', 'u', 'r']:
         tap(find('text', label))
     draft = find('content-desc', 'Texte à traduire')
@@ -69,6 +73,8 @@ try:
         'explicit_insertion': True, 'host_typing_restored': True}, ensure_ascii=False, indent=2))
     print('Native Android keyboard end-to-end test passed:', translated)
 except Exception:
+    (OUT / 'logcat.txt').write_bytes(adb('logcat', '-d', '-s', 'BaribaKeyboard', 'InputMethodManager', 'ImeTracker', 'AndroidRuntime'))
+    (OUT / 'input-method-state.txt').write_bytes(adb('shell', 'dumpsys', 'input_method'))
     screenshot('failure.png')
     (OUT / 'failure-ui.xml').write_bytes(adb('shell', 'cat', '/sdcard/fitila-window.xml'))
     raise

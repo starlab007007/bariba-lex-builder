@@ -126,6 +126,25 @@ public class KeyboardTranslatorInputTest {
         assertNull(field("translatorInput")); assertFalse((Boolean) field("translatorOpen"));
         assertTrue((Integer) field("translationGeneration") > before);
     }
+    @Test public void navigationInsetIsReservedWithoutAccumulatingPadding() {
+        int original = root.getPaddingBottom();
+        android.view.WindowInsets insets = new android.view.WindowInsets.Builder()
+            .setInsets(android.view.WindowInsets.Type.navigationBars(), android.graphics.Insets.of(0, 0, 0, 48)).build();
+        root.dispatchApplyWindowInsets(insets);
+        assertEquals(original + 48, root.getPaddingBottom());
+        root.dispatchApplyWindowInsets(insets);
+        assertEquals(original + 48, root.getPaddingBottom());
+        root.dispatchApplyWindowInsets(new android.view.WindowInsets.Builder()
+            .setInsets(android.view.WindowInsets.Type.navigationBars(), android.graphics.Insets.NONE).build());
+        assertEquals(original, root.getPaddingBottom());
+    }
+    @Test public void landscapeNavigationInsetProtectsSideKeys() {
+        int original = root.getPaddingRight();
+        root.dispatchApplyWindowInsets(new android.view.WindowInsets.Builder()
+            .setInsets(android.view.WindowInsets.Type.navigationBars(), android.graphics.Insets.of(0, 0, 48, 0)).build());
+        assertEquals(original + 48, root.getPaddingRight());
+        assertEquals(original, root.getPaddingLeft());
+    }
     @Test public void translatorDraftIsNotSavedToKeyboardHistory() throws Exception {
         open(); tap("a"); tap("b"); tap("espace"); tap(".");
         assertEquals("[]", service.getSharedPreferences("bariba_keyboard_data", 0).getString("history", "[]"));

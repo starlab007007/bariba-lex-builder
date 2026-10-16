@@ -2,6 +2,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <application>
         <activity android:name="com.fitila.bariba.KeyboardTestActivity"
-            android:exported="true" android:windowSoftInputMode="adjustResize|stateAlwaysVisible" />
+            android:exported="true" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:windowSoftInputMode="adjustResize|stateAlwaysVisible" />
     </application>
 </manifest>

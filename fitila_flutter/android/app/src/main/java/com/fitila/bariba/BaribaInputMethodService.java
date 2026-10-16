@@ -19,6 +19,7 @@ import android.view.ContextThemeWrapper;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.InputConnection;
@@ -168,6 +169,8 @@ public class BaribaInputMethodService extends InputMethodService {
     @Override
     public void onStartInput(EditorInfo attribute, boolean restarting) {
         super.onStartInput(attribute, restarting);
+        Log.i(TAG, "startInput restarting=" + restarting + " translator=" + translatorOpen
+                + " target=" + (attribute == null ? "none" : attribute.packageName));
         if (!restarting && translatorOpen) closeTranslator();
         currentWord.setLength(0);
         lastCommittedWord = "";
@@ -183,6 +186,7 @@ public class BaribaInputMethodService extends InputMethodService {
 
     @Override
     public void onFinishInputView(boolean finishingInput) {
+        Log.i(TAG, "finishInputView finishing=" + finishingInput + " translator=" + translatorOpen);
         stopBackspaceRepeat();
         if (translatorOpen) closeTranslator();
         super.onFinishInputView(finishingInput);
@@ -227,6 +231,28 @@ public class BaribaInputMethodService extends InputMethodService {
         root.setBackgroundColor(0xFF1A1A2E);
         int pad = dp(ctx, 2);
         root.setPadding(pad, pad, pad, pad);
+        // Android 15+ can draw an IME behind the system navigation bar. Keep
+        // the space/translator/enter row above its touch area in both navigation
+        // modes. Use the supplied insets so an already-inset parent adds none.
+        root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override public WindowInsets onApplyWindowInsets(View view, WindowInsets insets) {
+                int left, right, bottom;
+                if (android.os.Build.VERSION.SDK_INT >= 30) {
+                    android.graphics.Insets bars = insets.getInsets(WindowInsets.Type.navigationBars());
+                    left = bars.left; right = bars.right; bottom = bars.bottom;
+                } else {
+                    left = insets.getSystemWindowInsetLeft();
+                    right = insets.getSystemWindowInsetRight();
+                    bottom = insets.getSystemWindowInsetBottom();
+                }
+                view.setPadding(pad + left, pad, pad + right, pad + bottom);
+                return insets;
+            }
+        });
+        root.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+            @Override public void onViewAttachedToWindow(View view) { view.requestApplyInsets(); }
+            @Override public void onViewDetachedFromWindow(View view) {}
+        });
 
         // (v10) The green auto-translation banner has been removed — only the
         // bilingual FR↔BA dictionary suggestion bar remains below.
