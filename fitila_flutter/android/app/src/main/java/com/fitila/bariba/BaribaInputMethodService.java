@@ -270,6 +270,17 @@ public class BaribaInputMethodService extends InputMethodService {
                     bottom = insets.getSystemWindowInsetBottom();
                 }
                 view.setPadding(pad + left, pad, pad + right, pad + bottom);
+                // Android 15 may apply the 48dp navigation inset after the
+                // initial WRAP_CONTENT pass. Enforce a new measured minimum
+                // including this inset, otherwise the last row is clipped
+                // although its children exist in the view hierarchy.
+                if (!translatorOpen) {
+                    int letterRows = isSymbols ? 3 : 4;
+                    int contentDp = 58 + letterRows * 42 + 44;
+                    int requiredHeight = dp(ctx, contentDp) + bottom + 2 * pad;
+                    view.setMinimumHeight(requiredHeight);
+                    view.requestLayout();
+                }
                 return insets;
             }
         });
