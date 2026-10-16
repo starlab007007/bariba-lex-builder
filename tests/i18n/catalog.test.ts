@@ -3,6 +3,7 @@ import {
   localeId,
   type LocaleEntry,
 } from "../../src/lib/i18n/catalog.ts";
+import { displayLanguageName } from "../../src/lib/i18n/languageName.ts";
 const assert = (value: unknown, message = "assertion failed") => {
   if (!value) throw new Error(message);
 };
@@ -106,3 +107,27 @@ Deno.test(
     assert(invalid.translate(fr, "ba") === fr);
   },
 );
+Deno.test("Baatɔnum is the display name in both languages and under Unicode variants", () => {
+  for (const name of ["Bariba", "bariba", "BARIBA", "Bàátɔ̀nú", "BÀÁTƆ̀NÚ", "Baatonum", "Baatɔnum", "Bàátɔ̀nú".normalize("NFD")]) {
+    assert(displayLanguageName(name) === "Baatɔnum", name);
+    assert(new PlatformCatalog([]).translate("Langue " + name, "fr") === "Langue Baatɔnum", name);
+  }
+  assert(displayLanguageName("bariba-stt https://model-bariba.hf.space bariba_test contact@bariba.bj") === "Baatɔnum-stt https://model-bariba.hf.space bariba_test contact@bariba.bj");
+});
+Deno.test("Renamed labels still resolve historical attested references without changing their IDs", () => {
+  const fr = "Mot bariba";
+  const c = new PlatformCatalog([entry(fr, "Bàátɔ̀nú yɛnu")]);
+  assert(c.translate("Mot Baatɔnum", "ba") === "Baatɔnum yɛnu");
+  assert(c.entries[0].id === "0000000000000001" && c.entries[0].fr === fr);
+});
+Deno.test("Form required markers and qualifiers reuse attested labels", () => {
+  const c = new PlatformCatalog([entry("Annuler", "Gbɛru"), entry("Optionnel", "Nɛn", "0000000000000002")]);
+  assert(c.translate("Annuler *", "ba") === "Gbɛru *");
+  assert(c.translate("Annuler (facultatif)", "ba") === "Gbɛru (Nɛn)");
+  assert(c.translate("🔎 Annuler", "ba") === "🔎 Gbɛru");
+});
+Deno.test("Names inside explicit dynamic slots and colon payloads are never renamed", () => {
+  const c = new PlatformCatalog([entry("Écouter", "Gerebu"), entry("{nom} : Annuler", "{nom} : Gbɛru", "0000000000000002")]);
+  assert(c.translate("Écouter : Bariba 1200", "ba") === "Gerebu : Bariba 1200");
+  assert(c.translate("Bariba : Annuler", "ba") === "Bariba : Gbɛru");
+});

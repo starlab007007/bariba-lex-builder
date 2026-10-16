@@ -53,7 +53,7 @@ export default defineConfig(({ mode }) => ({
       manifest: {
         name: 'FITILA - Plateforme Vocale Africaine',
         short_name: 'FITILA',
-        description: 'Dictionnaire bariba-français, réseau social audio, création vidéo',
+        description: 'Dictionnaire Baatɔnum-français, réseau social audio, création vidéo',
         theme_color: '#000000',
         background_color: '#000000',
         display: 'standalone',
@@ -112,3 +112,4 @@ export default defineConfig(({ mode }) => ({
     minify: 'esbuild',
   },
 }));
+

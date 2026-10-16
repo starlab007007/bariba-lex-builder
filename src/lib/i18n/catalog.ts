@@ -1,3 +1,4 @@
+import { displayLanguageName } from "./languageName.ts";
 export type UiLocale = "fr" | "ba";
 export type LocaleEntry = {
   id: string;
@@ -36,6 +37,7 @@ export class PlatformCatalog {
   private templates: { pattern: RegExp; names: string[]; target: string }[] =
     [];
   private registered = new Set<string>();
+  private named = new Map<string, Set<string>>();
   constructor(entries: LocaleEntry[], overrides: LocaleOverride[] = []) {
     const updates = new Map(overrides.map((row) => [row.id, row]));
     this.entries = entries.map((row) => {
@@ -65,6 +67,10 @@ export class PlatformCatalog {
       const source = row.fr.trim(),
         target = row.ba.trim();
       this.direct.set(localeKey(source), target);
+      const nameKey = localeKey(displayLanguageName(source));
+      const namedTargets = this.named.get(nameKey) ?? new Set<string>();
+      namedTargets.add(displayLanguageName(target));
+      this.named.set(nameKey, namedTargets);
       const back = this.reverse.get(localeKey(target)) ?? new Set<string>();
       back.add(source);
       this.reverse.set(localeKey(target), back);
@@ -94,7 +100,25 @@ export class PlatformCatalog {
   }
   lookup(text: string): string | undefined {
     const direct = this.direct.get(localeKey(text));
-    if (direct) return direct;
+    if (direct) return displayLanguageName(direct);
+    const named = this.named.get(localeKey(displayLanguageName(text)));
+    if (named?.size === 1) return [...named][0];
+    const decorated = /^((?:[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F\u200D]\s*)+)(.+)$/u.exec(text.trim());
+    if (decorated) {
+      const label = this.direct.get(localeKey(decorated[2]));
+      if (label) return decorated[1] + displayLanguageName(label);
+    }
+    const required = /^(.+?)(\s*\*+)$/u.exec(text.trim());
+    if (required) {
+      const label = this.direct.get(localeKey(required[1]));
+      if (label) return displayLanguageName(label) + required[2];
+    }
+    const qualified = /^([^()]+?)\s*\((optionnel|facultatif|obligatoire|requis)\)$/iu.exec(text.trim());
+    if (qualified) {
+      const label = this.direct.get(localeKey(qualified[1]));
+      const qualifier = this.direct.get(localeKey(/optionnel|facultatif/iu.test(qualified[2]) ? "Optionnel" : "Requis"));
+      if (label && qualifier) return displayLanguageName(label) + " (" + displayLanguageName(qualifier) + ")";
+    }
     const trimmed = text.trim();
     for (const row of this.templates) {
       const match = row.pattern.exec(trimmed);
@@ -102,7 +126,7 @@ export class PlatformCatalog {
       const values = new Map(
         row.names.map((name, index) => [name, match[index + 1]]),
       );
-      return row.target.replace(
+      return displayLanguageName(row.target).replace(
         /\{(\w+)\}/g,
         (token, name: string) => values.get(name) ?? token,
       );
@@ -111,14 +135,14 @@ export class PlatformCatalog {
     const colon = /^(.*?)(\s*[:：]\s*)(.+)$/u.exec(trimmed);
     if (colon) {
       const label = this.direct.get(localeKey(colon[1]));
-      if (label) return label + colon[2] + colon[3];
+      if (label) return displayLanguageName(label) + colon[2] + colon[3];
     }
     return undefined;
   }
   translate(text: string, locale: UiLocale): string {
-    if (locale === "fr" || !text.trim()) return text;
+    if (locale === "fr" || !text.trim()) return displayLanguageName(text);
     const target = this.lookup(text);
-    if (!target) return text;
+    if (!target) return displayLanguageName(text);
     const prefix = /^\s*/u.exec(text)?.[0] ?? "",
       suffix = /\s*$/u.exec(text)?.[0] ?? "";
     const punctuation = /[.!?…]+$/u.exec(text.trim())?.[0] ?? "";

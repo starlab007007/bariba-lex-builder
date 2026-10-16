@@ -183,9 +183,7 @@ export function FitilaLanguageProvider({ children }: { children: ReactNode }) {
     (key: string) => {
       const entry = keys[key];
       if (!entry) return tr(FR_FALLBACK[key] ?? key);
-      return currentLang === "fr"
-        ? entry.fr
-        : catalog.lookup(entry.fr) || entry.ba || entry.fr;
+      return catalog.translate(entry.fr || FR_FALLBACK[key] || key, currentLang);
     },
     [catalog, currentLang, tr],
   );

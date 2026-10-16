@@ -18,7 +18,7 @@ const EXPLORER: Item[] = [
   { label: 'Traducteur', path: '/translator', icon: Languages },
   { label: 'Apprendre', path: '/learn', icon: GraduationCap },
   { label: 'Créateur', path: '/creator', icon: Clapperboard },
-  { label: 'Espace', path: '/espace', icon: Vault, desc: 'Coffre-fort, éditeur et scan OCR Bàátɔ̀nú' },
+  { label: 'Espace', path: '/espace', icon: Vault, desc: 'Coffre-fort, éditeur et scan OCR Baatɔnum' },
 ];
 const CULTURE: Item[] = [{ label: 'Voice Lab', path: '/voice-lab', icon: AudioLines }];
 const COMPTE: Item[] = [
@@ -88,7 +88,7 @@ export default function FitilaNavPanel({ onNavigate, compact = false }: { onNavi
     <div className={`flex h-full flex-col overflow-y-auto pb-6 pt-5 ${compact ? 'items-stretch px-[10px]' : 'px-[18px]'}`} style={{ background: SIG.surface, color: SIG.ink }}>
       <div className={compact ? 'text-center' : 'px-[6px]'}>
         <div className="font-semibold leading-none" style={{ fontFamily: 'Fraunces, ui-serif, serif', color: SIG.goldDeep, fontSize: compact ? 22 : 28 }}>{compact ? 'F' : 'FITILA'}</div>
-        {!compact && <div className="mt-2 text-[11px]" style={{ color: SIG.muted }}>Bàátɔ̀nú · Langue, Culture &amp; IA</div>}
+        {!compact && <div className="mt-2 text-[11px]" style={{ color: SIG.muted }}>Baatɔnum · Langue, Culture &amp; IA</div>}
       </div>
 
       {!compact && <GroupTitle>Explorer</GroupTitle>}
@@ -104,7 +104,7 @@ export default function FitilaNavPanel({ onNavigate, compact = false }: { onNavi
         <>
           <GroupTitle>Langue</GroupTitle>
           <div translate="no" className="grid grid-cols-2 gap-2">
-            {([['fr', 'Français'], ['ba', 'Bàátɔ̀nú']] as const).map(([code, label]) => (
+            {([['fr', 'Français'], ['ba', 'Baatɔnum']] as const).map(([code, label]) => (
               <button
                 key={code}
                 type="button"

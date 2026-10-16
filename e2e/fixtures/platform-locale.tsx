@@ -104,6 +104,22 @@ function Fixture() {
             <p data-testid="unknown">
               Phrase sans référence : Ali ne donne pas 1200.
             </p>
+            <section data-testid="forms">
+              <h2>Bariba · Bàátɔ̀nú</h2>
+              <form onSubmit={event => event.preventDefault()}>
+                <fieldset>
+                  <legend>Annuler</legend>
+                  <label>Mot bariba<input data-testid="native-field" lang="bba" name="word" defaultValue="Bariba Ali 1200 ne donne pas" placeholder="Annuler" aria-label="Annuler" /></label>
+                  <textarea data-testid="native-area" lang="bba" defaultValue="Bàátɔ̀nú : Ali ne donne pas 1200" placeholder="Annuler" aria-label="Annuler" />
+                  <select data-testid="language-select" defaultValue="ba"><optgroup label="Annuler"><option value="ba">Bariba</option></optgroup></select>
+                  <input data-testid="submit-label" type="submit" value="Annuler" />
+                  <input data-testid="submit-payload" type="submit" name="action" value="Annuler" />
+                </fieldset>
+              </form>
+              <span translate="no" data-testid="fixed-name">Bàátɔ̀nú</span>
+              <p data-i18n-preserve data-testid="original-name">Bariba · Bàátɔ̀nú</p>
+              <svg aria-label="Annuler"><title>Bariba</title></svg>
+            </section>
           </>
         )}
       </main>

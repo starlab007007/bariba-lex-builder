@@ -19,6 +19,13 @@ const id = (s) => {
 const resources = new Map(),
   strings = new Map(),
   rejected = [];
+const referenceKey = s => key(s).replace(/(?<![\p{L}\p{N}_])(?:bariba|b[aàáâäãā]{1,2}t[ɔoóòôõöō]\p{M}*n[uúùûũüū]|baat[ɔo]n(?:u|ou)?m)(?![\p{L}\p{N}_])/giu, "baatɔnum");
+function list(value) {
+  if (Array.isArray(value)) return value.filter(v => typeof v === "string");
+  if (typeof value !== "string" || !value.trim()) return [];
+  try { const parsed = JSON.parse(value); if (Array.isArray(parsed)) return parsed.filter(v => typeof v === "string"); } catch {}
+  return [value];
+}
 function addPair(fr, ba, source, sourceId, rank) {
   if (
     typeof fr !== "string" ||
@@ -40,9 +47,9 @@ function addPair(fr, ba, source, sourceId, rank) {
     )
   )
     return;
-  const rows = resources.get(key(fr)) ?? [];
+  const rows = resources.get(referenceKey(fr)) ?? [];
   rows.push({ ba, source, sourceId, rank });
-  resources.set(key(fr), rows);
+  resources.set(referenceKey(fr), rows);
 }
 const legacy = JSON.parse(fs.readFileSync("public/i18n-platform.json", "utf8"));
 for (const [name, row] of Object.entries(legacy))
@@ -63,10 +70,21 @@ const memory = JSON.parse(
 );
 for (const [n, pair] of memory.pairs.entries())
   addPair(pair[0], pair[1], "memoire", String(n), 60);
+function dictionaryPairs(row, source, sourceId) {
+  const definitions = list(row.definition);
+  const rank = row.is_verified ? 45 : 30;
+  for (const definition of definitions) {
+    addPair(definition, row.word, source, sourceId + ":definition", definitions.length === 1 ? rank + 2 : rank);
+    for (const sense of definition.replace(/\b\d+\)\s*/g, "").split(/[,;]/u))
+      if (sense.trim().length > 1) addPair(sense, row.word, source, sourceId + ":sens", rank - 15);
+  }
+  const fr = list(row.example_francais), ba = list(row.example_bariba);
+  if (fr.length === ba.length) for (let i = 0; i < fr.length; i++) addPair(fr[i], ba[i], source + "-exemple", sourceId + ":" + i, 65);
+}
 for (const [n, row] of JSON.parse(
   fs.readFileSync("public/dictionnaire_ameliore.json", "utf8"),
 ).entries())
-  addPair(row.definition, row.word, "dictionnaire", String(n), 30);
+  dictionaryPairs(row, "dictionnaire", String(n));
 function pairs(value, source, where = "root") {
   if (Array.isArray(value)) {
     value.forEach((item, n) => pairs(item, source, where + "." + n));
@@ -99,6 +117,20 @@ pairs(
   "apprendre",
 );
 pairs(JSON.parse(fs.readFileSync("src/data/scenes_v2.json", "utf8")), "scenes");
+const referencesFile = "src/data/locales/references.json";
+const liveReferences = fs.existsSync(referencesFile) ? JSON.parse(fs.readFileSync(referencesFile, "utf8")) : {};
+const corpusFile = "src/data/locales/corpus-references.json";
+if (fs.existsSync(corpusFile)) liveReferences.corpus = JSON.parse(fs.readFileSync(corpusFile, "utf8")).rows;
+for (const row of liveReferences.dictionary ?? []) dictionaryPairs(row, "supabase-dictionnaire", row.id);
+for (const row of liveReferences.corpus ?? []) addPair(row.text_french, row.text_bariba, "supabase-corpus", row.id, 70);
+for (const row of liveReferences.learning ?? []) pairs(row.content, "supabase-apprendre:" + row.id + ":" + row.content_version);
+const equivalents = JSON.parse(fs.readFileSync("src/data/platform-ui-equivalences.json", "utf8"));
+for (const row of equivalents) {
+  const candidates = (resources.get(referenceKey(row.reference)) ?? []).sort((a,b) => b.rank-a.rank);
+  const top = candidates.filter(candidate => candidate.rank === candidates[0]?.rank);
+  const targets = [...new Set(top.map(candidate => candidate.ba))];
+  if (targets.length === 1) addPair(row.fr, targets[0], "equivalence-interface", row.reference + " → " + top[0].source + ":" + top[0].sourceId, 95);
+}
 const uiProps = new Set([
   "title",
   "label",
@@ -292,7 +324,7 @@ const records = [];
 let sourced = 0,
   ambiguous = 0;
 for (const [k, row] of strings) {
-  const candidates = (resources.get(k) ?? []).sort((a, b) => b.rank - a.rank);
+  const candidates = (resources.get(referenceKey(row.fr)) ?? []).sort((a, b) => b.rank - a.rank);
   const top = candidates.filter((x) => x.rank === candidates[0]?.rank),
     unique = [...new Set(top.map((x) => x.ba))];
   const ba = unique.length === 1 ? unique[0] : null;
@@ -321,7 +353,7 @@ for (const [name, row] of Object.entries(legacy))
     typeof row.fr === "string" &&
     !strings.has(key(row.fr))
   ) {
-    const candidates = resources.get(key(row.fr)) ?? [];
+    const candidates = resources.get(referenceKey(row.fr)) ?? [];
     const match = candidates.find(
       (x) => x.source === "interface" && x.sourceId === name,
     );
@@ -357,7 +389,7 @@ fs.writeFileSync(
           {
             fr: r.fr,
             ba: resources
-              .get(key(r.fr ?? ""))
+              .get(referenceKey(r.fr ?? ""))
               ?.some((x) => x.source === "interface" && x.sourceId === k)
               ? r.ba
               : "",
@@ -378,6 +410,7 @@ const summary = {
   ambiguous,
   rejected: rejected.length,
   quarantined: fs.existsSync('docs/audits/rejected-platform-locales.json') ? JSON.parse(fs.readFileSync('docs/audits/rejected-platform-locales.json','utf8')).length : 0,
+  referenceResources: { dictionary: liveReferences.dictionary?.length ?? 0, corpus: liveReferences.corpus?.length ?? 0, learning: (liveReferences.learning ?? []).map(({id, item_count, content_version}) => ({id, items: item_count, version: content_version})) },
 };
 fs.writeFileSync('docs/audits/platform-localization-summary.json',JSON.stringify(summary,null,2)+'\n');
 fs.writeFileSync(
