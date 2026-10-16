@@ -1435,6 +1435,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   DunyaDeviceInfo? _device;
   bool _brainInstalled = false;
   bool _byt5Installed = false;
+  bool _byt5Published = false;
   double? _brainProgress;
   String? _brainLabel;
   bool _downloading = false;
@@ -1461,6 +1462,18 @@ class _SettingsSheetState extends State<_SettingsSheet> {
     _brainInstalled = await _brain.isInstalled();
     _byt5Installed = await DunyaByt5.instance.activateIfInstalled();
     if (mounted) setState(() {});
+    // Distinguish a published, downloadable ByT5 checkpoint from its
+    // unpopulated release URL. Never show a working Download button for 404.
+    unawaited(() async {
+      try {
+        final source = dunyaVoicePackSources.firstWhere(
+            (p) => p.id == dunyaTranslationPackId);
+        final size = await _packs.remoteSize(source);
+        if (mounted) setState(() => _byt5Published = size != null && size > 0);
+      } catch (_) {
+        if (mounted) setState(() => _byt5Published = false);
+      }
+    }());
   }
 
   void _onBrainProgress(double? fraction, String label) {
@@ -1600,10 +1613,15 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 icon: _packInstalled(source) ? Icons.check_circle_rounded : Icons.cloud_download_outlined,
                 iconColor: const Color(0xFF9C6B1D),
                 title: source.title,
-                subtitle: _packInstalled(source) ? 'Installé' : 'Wi-Fi conseillé',
+                subtitle: _packInstalled(source) ? 'Installé'
+                    : source.id == dunyaTranslationPackId && !_byt5Published
+                        ? 'Modèle affiné pas encore publié : installation depuis fichier possible.'
+                        : 'Wi-Fi conseillé',
                 trailing: _packInstalled(source)
                     ? null
-                    : TextButton(
+                    : source.id == dunyaTranslationPackId && !_byt5Published
+                        ? const Text('À publier', style: TextStyle(fontSize: 11))
+                        : TextButton(
                         onPressed: () {
                           Navigator.of(context).pop();
                           unawaited(widget.onDownloadVoice(source));
