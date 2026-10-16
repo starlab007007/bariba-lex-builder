@@ -329,13 +329,15 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
             final b64 = event['audio_base64']?.toString();
             if (b64 != null && b64.isNotEmpty) {
               // Play the actual MMS-TTS WAV supplied by the FITILA server.
+              final finished = _player.onPlayerComplete.first;
               await _player.play(audio.BytesSource(base64Decode(b64)));
-              await _player.onPlayerComplete.first.timeout(const Duration(seconds: 60));
+              await finished.timeout(const Duration(seconds: 60));
             } else {
               final url = event['audio_url']?.toString() ?? '';
               if (Uri.tryParse(url)?.scheme == 'https') {
+                final finished = _player.onPlayerComplete.first;
                 await _player.play(audio.UrlSource(url));
-                await _player.onPlayerComplete.first.timeout(const Duration(seconds: 60));
+                await finished.timeout(const Duration(seconds: 60));
               }
             }
           } else if (type == 'notice') {
