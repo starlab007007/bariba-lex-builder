@@ -7,6 +7,8 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -17,11 +19,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/offline.dart';
 import '../dunya_core.dart';
 import '../dunya_local_store.dart';
 import '../dunya_models.dart';
 import 'dunya_assistant.dart';
 import 'dunya_brain.dart';
+import 'dunya_cloud_voice.dart';
 import 'dunya_byt5.dart';
 import 'dunya_mic_capture.dart';
 import 'dunya_settings.dart';
@@ -64,6 +68,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   final _brain = DunyaBrain.instance;
   final _packs = DunyaVoicePackManager.instance;
   final _mic = DunyaMicCapture();
+  final _cloudVoice = DunyaCloudVoice();
   final _tts = FlutterTts();
   final _player = audio.AudioPlayer();
   final _composer = TextEditingController();
@@ -94,6 +99,9 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
 
   DunyaLanguageMode get _mode => _settings.mode;
 
+  bool get _useOnlineVoice =>
+      _settings.execution != DunyaExecutionMode.offline && FitilaOffline.online.value;
+
   DunyaReplyLanguage get _skillLanguage =>
       _mode == DunyaLanguageMode.bariba ? DunyaReplyLanguage.bariba : DunyaReplyLanguage.french;
 
@@ -114,6 +122,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     unawaited(_tts.stop());
     unawaited(_player.dispose());
     _engine?.dispose();
+    _cloudVoice.cancel();
     _orb.dispose();
     _composer.dispose();
     _scroll.dispose();
@@ -206,7 +215,8 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       case _Phase.idle:
         break;
     }
-    if (!_paths.canListen || _engine == null) {
+    if (!_useOnlineVoice && (!_paths.canListen || _engine == null)) {
+      _toast('Installez Omnilingual ASR pour parler sans Internet.');
       await _openSettings();
       return;
     }
@@ -253,14 +263,120 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       }
       _emptyListens = 0;
       setState(() => _phase = _Phase.thinking);
-      final heard = await _engine!.transcribe(samples);
-      await _runTurn(heard, spoken: true);
+      if (_useOnlineVoice) {
+        await _runCloudVoiceTurn(samples);
+      } else {
+        final heard = await _engine!.transcribe(samples);
+        await _runTurn(heard, spoken: true);
+      }
     } catch (error) {
       await _store.audit('dunya_voice_error', {'stage': 'listen', 'error': error.toString()}, severity: 'error');
       _session = false;
       if (mounted) {
         setState(() => _phase = _Phase.idle);
         _toast('Écoute interrompue. Vérifiez le micro et réessayez.');
+      }
+    }
+  }
+
+  /// Online voice runs through the exact same server used on Web: Meta
+  /// Omnilingual ASR -> FITILA answer/ByT5 -> Meta MMS-TTS Baatɔnum.
+  /// No Gemma, ASR or voice package needs to be installed on the phone.
+  Future<void> _runCloudVoiceTurn(Float32List samples) async {
+    final mode = _mode;
+    final turnId = ++_turnCounter;
+    final replyLang = mode == DunyaLanguageMode.french ? 'fr' : 'bba';
+    var input = '';
+    var answer = '';
+    var language = replyLang;
+    String? subtitle;
+    var gotAudio = false;
+    _stopSpeaking = false;
+    if (mounted) setState(() => _phase = _Phase.thinking);
+    try {
+      await _cloudVoice.turn(
+        samples: samples,
+        language: mode == DunyaLanguageMode.french ? 'fr' : 'bba',
+        replyLanguage: replyLang,
+        history: [
+          for (final t in _turns.reversed.take(8).toList().reversed)
+            {'role': t.role, 'content': t.text},
+        ],
+        onEvent: (event) async {
+          if (!mounted || turnId != _turnCounter) return;
+          final type = event['type']?.toString() ?? '';
+          if (type == 'stage') {
+            setState(() => _status = switch (event['stage']) {
+              'transcribing' => 'Omnilingual ASR vous écoute…',
+              'thinking' => 'DUNYA prépare sa réponse…',
+              'synthesizing' => 'MMS-TTS prépare la voix Baatɔnum…',
+              _ => 'DUNYA traite votre message…',
+            });
+          } else if (type == 'transcript') {
+            input = (event['text'] ?? '').toString();
+          } else if (type == 'answer') {
+            answer = (event['text'] ?? '').toString();
+            subtitle = event['subtitle']?.toString();
+            language = event['lang']?.toString() ?? replyLang;
+            setState(() {
+              _caption = answer;
+              _subCaption = _settings.frenchSubtitlesInBariba ? subtitle : null;
+              _phase = _Phase.speaking;
+            });
+          } else if (type == 'audio') {
+            gotAudio = true;
+            final b64 = event['audio_base64']?.toString();
+            if (b64 != null && b64.isNotEmpty) {
+              // Play the actual MMS-TTS WAV supplied by the FITILA server.
+              await _player.play(audio.BytesSource(base64Decode(b64)));
+              await _player.onPlayerComplete.first.timeout(const Duration(seconds: 60));
+            } else {
+              final url = event['audio_url']?.toString() ?? '';
+              if (Uri.tryParse(url)?.scheme == 'https') {
+                await _player.play(audio.UrlSource(url));
+                await _player.onPlayerComplete.first.timeout(const Duration(seconds: 60));
+              }
+            }
+          } else if (type == 'notice') {
+            if (mounted) setState(() => _notice = 'Voix ou traduction de secours utilisée.');
+          }
+        },
+      );
+      if (!mounted || turnId != _turnCounter) return;
+      if (answer.trim().isEmpty) throw const DunyaCloudVoiceException('Aucune réponse reçue.');
+      if (language == 'fr' && !gotAudio) {
+        await _speakOne(DunyaUtterance(answer, 'fr'));
+      }
+      setState(() {
+        _turns.add(_Turn(role: 'user', text: input.isNotEmpty ? input : 'Vocal'));
+        _turns.add(_Turn(role: 'assistant', text: answer)..subtitle = subtitle);
+        _status = null;
+      });
+      await _quietly(() async {
+        await _store.appendMessage(
+          DunyaMessage(role: 'user', content: input.isNotEmpty ? input : 'Vocal'),
+          conversationId: mode.conversationId,
+        );
+        await _store.appendMessage(
+          DunyaMessage(role: 'assistant', content: answer),
+          conversationId: mode.conversationId,
+        );
+      });
+      await _store.audit('dunya_voice_turn', {
+        'engine': 'cloud-meta-omnilingual-mms',
+        'input': 'voice', 'mode': mode.key,
+      });
+    } catch (error) {
+      if (mounted) setState(() => _notice = error.toString());
+      await _store.audit('dunya_voice_cloud_error',
+          {'error': error.toString()}, severity: 'warning');
+    } finally {
+      if (!mounted || turnId != _turnCounter) return;
+      _status = null;
+      if (_session && _settings.handsFree) {
+        unawaited(_listenTurn());
+      } else {
+        setState(() => _phase = _Phase.idle);
       }
     }
   }
@@ -296,7 +412,8 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
 
     final speechQueue = StreamController<DunyaSentenceEvent>();
     final speaking = _speakQueue(speechQueue.stream);
-    final barge = spoken && _settings.handsFree ? _watchBargeIn(turnId) : Future<void>.value();
+    final barge = spoken && _settings.handsFree && !_useOnlineVoice
+        ? _watchBargeIn(turnId) : Future<void>.value();
 
     DunyaDoneEvent? done;
     try {
@@ -408,6 +525,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
 
   Future<void> _interrupt({bool keepListening = false}) async {
     _stopSpeaking = true;
+    _cloudVoice.cancel();
     await _assistant.interrupt();
     await _tts.stop();
     await _player.stop();
@@ -676,7 +794,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
 
   String get _phaseLabel => switch (_phase) {
         _Phase.preparing => _status ?? 'Préparation…',
-        _Phase.idle => !_paths.canListen
+        _Phase.idle => !_useOnlineVoice && !_paths.canListen
             ? 'Installez la voix DUNYA'
             : _muted
                 ? 'Micro coupé'
@@ -686,7 +804,9 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         _Phase.speaking => 'Touchez pour m’interrompre',
       };
 
-  String get _brainBadge => switch (_settings.intelligence) {
+  String get _brainBadge => _useOnlineVoice
+      ? 'DUNYA en ligne'
+      : switch (_settings.intelligence) {
         DunyaIntelligence.essential => 'Essentiel',
         DunyaIntelligence.smart => switch (_brain.state) {
             DunyaBrainState.ready => 'Cerveau actif',
@@ -1372,6 +1492,26 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             const Text('Réglages DUNYA', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF17131F))),
             const SizedBox(height: 14),
             _section('Intelligence'),
+            const Text('Exécution : Auto · En ligne · Hors ligne',
+                style: TextStyle(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            SegmentedButton<DunyaExecutionMode>(
+              segments: const [
+                ButtonSegment(value: DunyaExecutionMode.automatic, label: Text('Auto')),
+                ButtonSegment(value: DunyaExecutionMode.online, label: Text('En ligne')),
+                ButtonSegment(value: DunyaExecutionMode.offline, label: Text('Hors ligne')),
+              ],
+              selected: {_settings.execution},
+              onSelectionChanged: (v) => _settings.update(execution: v.first),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Auto : serveur FITILA connecté, modèles locaux en secours. '
+              'En ligne : aucun téléchargement nécessaire. '
+              'Hors ligne : aucun dialogue envoyé au serveur ; fonctionnalités selon les packs installés.',
+              style: TextStyle(fontSize: 12, color: Color(0xFF7D7566)),
+            ),
+            const SizedBox(height: 12),
             SegmentedButton<DunyaIntelligence>(
               segments: const [
                 ButtonSegment(value: DunyaIntelligence.essential, label: Text('Essentiel'), icon: Icon(Icons.bolt_rounded)),
@@ -1384,7 +1524,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             Text(
               _settings.intelligence == DunyaIntelligence.essential
                   ? 'Traduction, mémoire, rappels et calculs. Rapide, pour tous les téléphones.'
-                  : 'DUNYA converse librement grâce à un cerveau installé sur le téléphone (Gemma 4, 2,6 Go).',
+                  : 'IA serveur disponible sans modèle ; Gemma local facultatif (2,6 Go) pour parler sans Internet.',
               style: const TextStyle(fontSize: 12.5, color: Color(0xFF7D7566)),
             ),
             if (_settings.intelligence == DunyaIntelligence.smart) ...[
@@ -1457,7 +1597,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             const SizedBox(height: 18),
             _section('Confidentialité'),
             const Text(
-              'Vos conversations restent sur ce téléphone. Rien n’est envoyé sur Internet en mode hors ligne.',
+              'En mode hors ligne, rien n’est envoyé au serveur. En mode Auto ou En ligne, les demandes sont traitées par les services FITILA.',
               style: TextStyle(fontSize: 12.5, color: Color(0xFF7D7566)),
             ),
             TextButton.icon(
