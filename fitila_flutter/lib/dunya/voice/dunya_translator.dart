@@ -28,13 +28,23 @@ class DunyaTranslator {
 
   /// FITILA cloud chain; returns null when offline or signed out.
   static DunyaTranslateFn? online;
+  static bool Function()? allowRemote;
+  static bool Function()? preferRemote;
 
   static bool get hasAnyEngine => memory != null || offline != null || online != null;
 
   static Future<DunyaTranslation?> translate(String text, {required bool toBariba}) async {
     final clean = text.trim();
     if (clean.isEmpty) return null;
-    for (final (engine, fn) in [('memory', memory), ('offline', offline), ('online', online)]) {
+    final remoteOk = allowRemote?.call() ?? false;
+    final remoteFirst = remoteOk && (preferRemote?.call() ?? false);
+    final engines = [
+      ('memory', memory),
+      if (remoteFirst) ('online', online),
+      ('offline', offline),
+      if (!remoteFirst && remoteOk) ('online', online),
+    ];
+    for (final (engine, fn) in engines) {
       if (fn == null) continue;
       try {
         final out = (await fn(clean, toBariba).timeout(const Duration(seconds: 35)))?.trim();
