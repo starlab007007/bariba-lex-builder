@@ -52,7 +52,13 @@ void main() {
   });
 
   group('Translator chain', () {
+    setUp(() {
+      DunyaTranslator.allowRemote = () => true;
+      DunyaTranslator.preferRemote = () => false;
+    });
     tearDown(() {
+      DunyaTranslator.allowRemote = null;
+      DunyaTranslator.preferRemote = null;
       DunyaTranslator.offline = null;
       DunyaTranslator.online = null;
     });
@@ -63,6 +69,19 @@ void main() {
       final t = await DunyaTranslator.translate('merci', toBariba: true);
       expect(t?.text, 'a kua');
       expect(t?.engine, 'online');
+    });
+
+    test('explicit offline mode never invokes server translation', () async {
+      var requests = 0;
+      DunyaTranslator.allowRemote = () => false;
+      DunyaTranslator.offline = null;
+      DunyaTranslator.online = (text, direction) async {
+        requests++;
+        return 'réponse distante';
+      };
+      final output = await DunyaTranslator.translate('phrase non attestée', toBariba: true);
+      expect(output, isNull);
+      expect(requests, 0);
     });
 
     test('rejects echoes and failures', () async {
