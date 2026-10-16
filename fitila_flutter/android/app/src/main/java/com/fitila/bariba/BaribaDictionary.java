@@ -36,20 +36,25 @@ public final class BaribaDictionary {
         public final String ba;   // Bariba (NFC)
         public final String fr;   // French short def
         public final int freq;
-        Entry(String ba, String fr, int freq) { this.ba = ba; this.fr = fr; this.freq = freq; }
-
-        /**
-         * Dictionary homograph indexes (e.g. sia1 / sia2) are editorial markers,
-         * not letters that should be written in the host application's field.
-         */
-        public String keyboardWord() {
-            return ba.replaceFirst("(?<=\\p{L})[1-9]$", "");
+        private final String typedWord;
+        private final String foldedWord;
+        private final int homographNumber;
+        Entry(String ba, String fr, int freq) {
+            this.ba = ba;
+            this.fr = fr;
+            this.freq = freq;
+            // Normalize only once at dictionary load, never on the UI's key path.
+            String word = ba.replaceFirst("(?<=\\p{L})[1-9]$", "");
+            this.typedWord = word;
+            this.foldedWord = word.toLowerCase(Locale.ROOT);
+            this.homographNumber = word.length() < ba.length()
+                    ? Character.digit(ba.charAt(ba.length() - 1), 10) : 0;
         }
 
-        int homographIndex() {
-            String word = keyboardWord();
-            return word.length() < ba.length() ? Character.digit(ba.charAt(ba.length() - 1), 10) : 0;
-        }
+        /** Lexicographic indexes (sia1/sia2) must not be typed as letters. */
+        public String keyboardWord() { return typedWord; }
+        String foldedWord() { return foldedWord; }
+        int homographIndex() { return homographNumber; }
     }
 
     public static class Phrase {
@@ -94,7 +99,7 @@ public final class BaribaDictionary {
                     entries.add(e);
                     String rawKey = ba.toLowerCase(Locale.ROOT);
                     byBa.put(rawKey, e);
-                    String typedKey = e.keyboardWord().toLowerCase(Locale.ROOT);
+                    String typedKey = e.foldedWord();
                     Entry old = byBa.get(typedKey);
                     if (old == null || (e.homographIndex() > 0
                             && old.homographIndex() > e.homographIndex())) {
@@ -165,7 +170,7 @@ public final class BaribaDictionary {
                 for (String next : successors) {
                     Entry e = byBa.get(nfc(next).toLowerCase(Locale.ROOT));
                     if (e == null) continue;
-                    String typed = e.keyboardWord().toLowerCase(Locale.ROOT);
+                    String typed = e.foldedWord();
                     if (!pfx.isEmpty() && !typed.startsWith(pfx)) continue;
                     if (seen.add(typed)) {
                         out.add(e);
@@ -178,13 +183,13 @@ public final class BaribaDictionary {
         if (!pfx.isEmpty()) {
             List<Entry> matches = new ArrayList<>();
             for (Entry e : entries) {
-                if (e.keyboardWord().toLowerCase(Locale.ROOT).startsWith(pfx)) {
+                if (e.foldedWord().startsWith(pfx)) {
                     matches.add(e);
                 }
             }
             java.util.Collections.sort(matches, (a, b) -> {
-                String aa = a.keyboardWord().toLowerCase(Locale.ROOT);
-                String bb = b.keyboardWord().toLowerCase(Locale.ROOT);
+                String aa = a.foldedWord();
+                String bb = b.foldedWord();
                 int frequency = Integer.compare(b.freq, a.freq);
                 if (aa.equals(bb)) {
                     int sense = Integer.compare(a.homographIndex(), b.homographIndex());
@@ -193,7 +198,7 @@ public final class BaribaDictionary {
                 return frequency;
             });
             for (Entry e : matches) {
-                String typed = e.keyboardWord().toLowerCase(Locale.ROOT);
+                String typed = e.foldedWord();
                 if (seen.add(typed)) {
                     out.add(e);
                     if (out.size() >= max) return out;
