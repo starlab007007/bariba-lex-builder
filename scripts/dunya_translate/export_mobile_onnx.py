@@ -121,6 +121,7 @@ def export(args):
     manifest = {
         "format": "dunya-pack/1", "id": "dunya-translate-byt5",
         "version": "v1", "files": files,
+        "total_bytes": sum(f["size"] for f in files),
         "source_checkpoint": args.model, "tested": False,
     }
     zip_path = root / "dunya-translate-byt5-v1.zip"
