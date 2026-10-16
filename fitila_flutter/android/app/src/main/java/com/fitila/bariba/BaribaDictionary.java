@@ -12,11 +12,15 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Embedded Bariba dictionary loaded from assets/bariba_dictionary.json.
@@ -57,6 +61,33 @@ public final class BaribaDictionary {
         int homographIndex() { return homographNumber; }
     }
 
+    /**
+     * Candidate displayed inside the Android system keyboard: first line is a
+     * word in the detected source language, second line its dictionary meaning
+     * in the opposite language. No network translation is used while typing.
+     */
+    public static final class Suggestion {
+        public final String word;
+        public final String translation;
+        public final String sourceLanguage; // "ba" or "fr"
+        public final int frequency;
+        Suggestion(String word, String translation, String sourceLanguage, int frequency) {
+            this.word = word;
+            this.translation = translation;
+            this.sourceLanguage = sourceLanguage;
+            this.frequency = frequency;
+        }
+    }
+
+    public static final class Prediction {
+        public final String detectedLanguage; // "ba", "fr", "ambiguous", "unknown"
+        public final List<Suggestion> suggestions;
+        Prediction(String language, List<Suggestion> suggestions) {
+            this.detectedLanguage = language;
+            this.suggestions = suggestions;
+        }
+    }
+
     public static class Phrase {
         public final String ba;
         public final String fr;
@@ -65,7 +96,7 @@ public final class BaribaDictionary {
 
     private final List<Entry> entries = new ArrayList<>();
     private final Map<String, Entry> byBa = new HashMap<>();        // lowercase ba -> entry
-    private final Map<String, String> frToBa = new HashMap<>();     // lowercase fr first-token -> ba
+    private final Map<String, Entry> frenchHeadwords = new HashMap<>(); // verified complete FR dictionary headwords
     private final Map<String, List<String>> bigrams = new HashMap<>();
     private final List<Phrase> phrases = new ArrayList<>();
 
@@ -105,9 +136,15 @@ public final class BaribaDictionary {
                             && old.homographIndex() > e.homographIndex())) {
                         byBa.put(typedKey, e);
                     }
-                    String firstFr = fr.split("[\\s,;.]+")[0].toLowerCase(Locale.ROOT);
-                    if (firstFr.length() >= 2 && !frToBa.containsKey(firstFr)) {
-                        frToBa.put(firstFr, ba);
+                    // A reverse suggestion must correspond to a real complete
+                    // French headword. Never invent an equivalent from an arbitrary
+                    // French sentence fragment or a partial gloss.
+                    String head = frenchHeadword(fr);
+                    if (!head.isEmpty()) {
+                        Entry previous = frenchHeadwords.get(head);
+                        if (previous == null || preferFrenchEquivalent(e, previous)) {
+                            frenchHeadwords.put(head, e);
+                        }
                     }
                 }
             }
@@ -208,6 +245,122 @@ public final class BaribaDictionary {
         return out;
     }
 
+
+    private static boolean preferFrenchEquivalent(Entry candidate, Entry existing) {
+        // Avoid showing an unnecessarily long BA example or editorial comment
+        // when a canonical dictionary word is also available.
+        boolean candidateSimple = candidate.keyboardWord().matches("[\\p{L}\\p{M}\\d'’-]+");
+        boolean existingSimple = existing.keyboardWord().matches("[\\p{L}\\p{M}\\d'’-]+");
+        if (candidateSimple != existingSimple) return candidateSimple;
+        return candidate.freq > existing.freq;
+    }
+
+    /**
+     * Extract a dictionary headword only, not a sentence. Parenthetical
+     * grammatical qualifiers and alternative comma-separated glosses are
+     * accepted; multi-word definitions are not converted into one-word
+     * translations. This keeps the keyboard conservative on noisy corpora.
+     */
+    static String frenchHeadword(String definition) {
+        if (definition == null) return "";
+        String firstSense = nfc(definition).split("[,;(:/]", 2)[0]
+                .trim().toLowerCase(Locale.ROOT);
+        if (firstSense.length() < 3 || firstSense.length() > 32
+                || !firstSense.matches("[\\p{L}\\p{M}][\\p{L}\\p{M}'’-]*")) {
+            return "";
+        }
+        // Very frequent grammatical filler words yield misleading inverse pairs.
+        if ("avec".equals(firstSense) || "pour".equals(firstSense)
+                || "dans".equals(firstSense) || "sans".equals(firstSense)
+                || "chez".equals(firstSense) || "une".equals(firstSense)
+                || "les".equals(firstSense) || "des".equals(firstSense)
+                || "que".equals(firstSense) || "qui".equals(firstSense)) return "";
+        return firstSense;
+    }
+
+    /** Predict translated French headwords from the same embedded corpus. */
+    public List<Suggestion> predictFrench(String prefix, int max) {
+        List<Suggestion> result = new ArrayList<>();
+        if (max <= 0 || prefix == null || prefix.trim().isEmpty()) return result;
+        String typed = nfc(prefix).toLowerCase(Locale.ROOT);
+        List<Map.Entry<String, Entry>> matches = new ArrayList<>();
+        for (Map.Entry<String, Entry> item : frenchHeadwords.entrySet()) {
+            if (item.getKey().startsWith(typed)) matches.add(item);
+        }
+        Collections.sort(matches, (a, b) -> {
+            boolean ea = a.getKey().equals(typed), eb = b.getKey().equals(typed);
+            if (ea != eb) return ea ? -1 : 1;
+            int byFrequency = Integer.compare(b.getValue().freq, a.getValue().freq);
+            if (byFrequency != 0) return byFrequency;
+            return a.getKey().compareTo(b.getKey());
+        });
+        for (Map.Entry<String, Entry> match : matches) {
+            Entry e = match.getValue();
+            result.add(new Suggestion(match.getKey(), e.keyboardWord(), "fr", e.freq));
+            if (result.size() >= max) break;
+        }
+        return result;
+    }
+
+    /**
+     * Automatic per-word direction: exact known words are decisive; previous
+     * context and available prefix candidates resolve incomplete words. When
+     * both languages remain plausible, show real candidates from both rather
+     * than assigning a fabricated confidence score.
+     */
+    public Prediction predictBidirectional(String prefix, String previousWord, int max) {
+        List<Suggestion> out = new ArrayList<>();
+        if (max <= 0 || prefix == null || prefix.trim().isEmpty()) {
+            return new Prediction("unknown", out);
+        }
+        String pfx = nfc(prefix).toLowerCase(Locale.ROOT);
+        List<Entry> baMatches = predict(prefix, previousWord, Math.max(max, 4));
+        List<Suggestion> frMatches = predictFrench(prefix, Math.max(max, 4));
+        boolean baExact = byBa.containsKey(pfx)
+                && byBa.get(pfx).foldedWord().equals(pfx);
+        boolean frExact = frenchHeadwords.containsKey(pfx);
+
+        String language;
+        if (baExact && frExact) language = "ambiguous";
+        else if (baExact) language = "ba";
+        else if (frExact) language = "fr";
+        else if (baMatches.isEmpty() && frMatches.isEmpty()) language = "unknown";
+        else if (frMatches.isEmpty()) language = "ba";
+        else if (baMatches.isEmpty()) language = "fr";
+        else {
+            String prev = previousWord == null ? "" : nfc(previousWord).toLowerCase(Locale.ROOT);
+            boolean prevBa = byBa.containsKey(prev);
+            boolean prevFr = frenchHeadwords.containsKey(prev);
+            if (prevBa && !prevFr) language = "ba";
+            else if (prevFr && !prevBa) language = "fr";
+            else if (pfx.matches(".*[ɔɛŋəãĩũõẽ].*")) language = "ba";
+            else if (frMatches.size() > baMatches.size()) language = "fr";
+            else if (baMatches.size() > frMatches.size()) language = "ba";
+            else language = "ambiguous";
+        }
+
+        if ("ba".equals(language) || "ambiguous".equals(language)) {
+            for (Entry e : baMatches) {
+                out.add(new Suggestion(e.keyboardWord(), e.fr, "ba", e.freq));
+                if (out.size() >= max && !"ambiguous".equals(language)) break;
+            }
+        }
+        if ("fr".equals(language)) {
+            for (Suggestion candidate : frMatches) {
+                out.add(candidate);
+                if (out.size() >= max) break;
+            }
+        } else if ("ambiguous".equals(language) && !frMatches.isEmpty()) {
+            // Reserve one card for the alternate language without erasing the
+            // Baatɔnum exact-word prediction when both languages are possible.
+            int baQuota = Math.max(1, max - 1);
+            if (out.size() > baQuota) out.subList(baQuota, out.size()).clear();
+            out.add(frMatches.get(0));
+        }
+        if (out.size() > max) out.subList(max, out.size()).clear();
+        return new Prediction(language, out);
+    }
+
     /** Local Bariba→French lookup. Returns null if unknown. */
     public String translateBaToFr(String word) {
         if (word == null) return null;
@@ -218,7 +371,8 @@ public final class BaribaDictionary {
     /** Local French→Bariba lookup (first-token match). Returns null if unknown. */
     public String translateFrToBa(String word) {
         if (word == null) return null;
-        return frToBa.get(nfc(word).toLowerCase(Locale.ROOT));
+        Entry e = frenchHeadwords.get(nfc(word).toLowerCase(Locale.ROOT));
+        return e == null ? null : e.keyboardWord();
     }
 
     public List<Phrase> phrases() { return phrases; }
