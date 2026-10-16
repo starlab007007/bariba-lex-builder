@@ -1434,6 +1434,7 @@ class _SettingsSheet extends StatefulWidget {
 class _SettingsSheetState extends State<_SettingsSheet> {
   final _settings = DunyaSettings.instance;
   final _brain = DunyaBrain.instance;
+  final _packs = DunyaVoicePackManager.instance;
   DunyaDeviceInfo? _device;
   bool _brainInstalled = false;
   bool _byt5Installed = false;
