@@ -1,6 +1,7 @@
 import 'package:flutter_tts/flutter_tts.dart';
 
 import '../apprendre/apprendre_audio.dart';
+import 'offline_bba_voice.dart';
 
 /// Lecture vocale sans Internet :
 ///  - français : synthèse vocale du téléphone ;
@@ -16,7 +17,9 @@ abstract final class LocalSpeech {
       if (bariba) {
         final ap = ApAudioService.instance;
         await ap.ensureLoaded(refresh: false);
-        return ap.has(clean) && await ap.play(clean);
+        if (ap.has(clean) && await ap.play(clean)) return true;
+        // No validated human audio cached: synthesize locally without network.
+        return OfflineBbaVoice.instance.speak(clean);
       }
       final tts = _tts ??= FlutterTts();
       await tts.setLanguage('fr-FR');
