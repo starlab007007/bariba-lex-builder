@@ -18,6 +18,7 @@ def normalize(text: str) -> str:
 
 def build(source: Path, output: Path) -> dict:
     pairs = {}
+    conflicted = set()
     rejected = {"unapproved": 0, "incomplete": 0, "conflict": 0}
     with source.open(encoding="utf-8-sig", newline="") as fh:
         for row in csv.DictReader(fh, delimiter=";"):
@@ -31,8 +32,12 @@ def build(source: Path, output: Path) -> dict:
                 rejected["incomplete"] += 1
                 continue
             key = (direction, src)
+            if key in conflicted:
+                rejected["conflict"] += 1
+                continue
             if key in pairs and pairs[key] != target:
                 rejected["conflict"] += 1
+                conflicted.add(key)
                 del pairs[key]
                 continue
             pairs[key] = target
