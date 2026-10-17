@@ -14,7 +14,7 @@ Aucun redéploiement FITILA Web/Flutter/Supabase production dans ce lot.
 | Flutter partagé | `core/offline_bba_voice.dart`, Apprendre/Dictionnaire/Traducteur/DUNYA | code intégré, Flutter analyzer/tests ciblés verts |
 | Mode village | ZIP local/SD, HTTP Range, sauvegarde de l'ancienne version, contrôle d'espace Android | intégré ; essais réseau/téléphone à faire |
 | Web faible réseau | Workbox StaleWhileRevalidate sur lexique/Apprendre/i18n **publics** | build PWA vert |
-| Quantification INT8 | `tools/dunya_packs/quantize_candidate.py` | expérience disponible, réduction/qualité non évaluées |
+| Quantification INT8 | `tools/dunya_packs/quantize_candidate.py` | essai réel : réduction de 1,89 % (modèle expérimental non retenu) |
 | Qualité Baatɔnum | `tools/dunya_packs/quality_gate.py` + tests des règles | aucune évaluation humaine fournie |
 | APK final | workflow `flutter-build24-dunya-voice-apk.yml` | recette complète encore requise |
 | Distribution publique | miroir `/dunya-packs/v1` et signature APK | bloquée tant qu'il manque QA réelle/validation de déploiement |
@@ -62,3 +62,6 @@ Aucun checkpoint n'est inventé ni publié artificiellement.
 - Accès SSH du VPS / publication CDN à rétablir ; CI système vocale historique
   distincte signale des échecs et doit être réexaminée.
 - Modèle local ByT5 non attesté en l'absence de ses poids véritables.
+
+## Analyse expérimentale INT8
+La quantification CPU a ramené le poids ONNX de 114 303 014 à 112 143 811 octets (gain de 1,89 %). Le format reste lisible mais aucune qualité phonétique n'est certifiée. Ne pas substituer ce modèle expérimental aux poids de référence. Résultat : https://github.com/starlab007007/bariba-lex-builder/actions/runs/39022413633.
