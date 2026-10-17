@@ -28,6 +28,19 @@ class DunyaCloudVoice {
     _active = null;
   }
 
+  /// The DUNYA voice Edge Function has its own bounded guest authentication.
+  /// A public Supabase API key must NOT be masqueraded as a user JWT.
+  /// In guest mode omit Authorization; the server applies guest quotas.
+  static Map<String, String> requestHeaders({
+    required String apiKey,
+    String? userAccessToken,
+  }) => {
+        'content-type': 'application/json',
+        'apikey': apiKey,
+        if (userAccessToken != null && userAccessToken.isNotEmpty)
+          'Authorization': 'Bearer $userAccessToken',
+      };
+
   static Uint8List wav16k(Float32List samples) {
     // The voice endpoint accepts 16 kHz mono signed-16-bit RIFF PCM.
     const hz = 16000;
@@ -82,11 +95,10 @@ class DunyaCloudVoice {
       final token = FitilaBackend.client.auth.currentSession?.accessToken;
       final request = http.Request('POST', Uri.parse(
           '${FitilaBackend.supabaseUrl}/functions/v1/dunya-voice-turn'));
-      request.headers.addAll({
-        'content-type': 'application/json',
-        'apikey': FitilaBackend.supabaseAnonKey,
-        'Authorization': 'Bearer ${token != null && token.isNotEmpty ? token : FitilaBackend.supabaseAnonKey}',
-      });
+      request.headers.addAll(requestHeaders(
+        apiKey: FitilaBackend.supabaseAnonKey,
+        userAccessToken: token,
+      ));
       request.body = jsonEncode({
         if (samples != null) 'audio_base64': base64Encode(wav16k(samples)),
         'text': ?text,
