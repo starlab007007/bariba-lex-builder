@@ -65,6 +65,24 @@ class DunyaByt5Channel(messenger: BinaryMessenger) {
         return results
     }
 
+    // Reject obvious generation loops instead of displaying fabricated sentences.
+    // Do not use this heuristic to alter vocabulary or grammatical meaning.
+    private fun checkedOutput(text: String): String {
+        val normalized = normalizeText(text)
+        require(normalized.isNotEmpty()) { "Traduction vide" }
+        val words = normalized.split(Regex("\\s+"))
+        for (size in 1..3) {
+            if (words.size < size * 4) continue
+            for (start in 0..(words.size - size * 4)) {
+                val unit = words.subList(start, start + size)
+                if ((1..3).all { k -> words.subList(start + k * size, start + (k + 1) * size) == unit }) {
+                    throw IllegalStateException("Répétition détectée : traduction non fiable")
+                }
+            }
+        }
+        return normalized
+    }
+
     init {
         channel.setMethodCallHandler { call, result ->
             when (call.method) {
@@ -107,7 +125,7 @@ class DunyaByt5Channel(messenger: BinaryMessenger) {
                         }
                         val normalized = normalizeText(source)
                         val translated = approvedMemory[memoryKey(direction, normalized)]
-                            ?: infer(prefix + normalized, maxOutput)
+                            ?: checkedOutput(infer(prefix + normalized, maxOutput))
                         ui.post { result.success(translated) }
                     } catch (t: Throwable) {
                         ui.post { result.error("byt5_infer", t.message, null) }
