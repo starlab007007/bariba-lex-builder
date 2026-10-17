@@ -70,6 +70,16 @@ android {
 
     testOptions { unitTests.isIncludeAndroidResources = true }
 
+    // sherpa_onnx already ships libonnxruntime.so for offline Omnilingual
+    // ASR / MMS-TTS. The separate ByT5 ONNX Java binding brings the same
+    // SONAME. Android cannot package both; use one shared native runtime.
+    // Mandatory smoke tests: sherpa audio and ByT5 encoder/decoder on device.
+    packaging {
+        jniLibs {
+            pickFirsts.add("**/libonnxruntime.so")
+        }
+    }
+
     buildTypes {
         release {
             signingConfig = signingConfigs.findByName("fitilaRelease")
