@@ -27,6 +27,12 @@ void main() {
       expect(hit.text, startsWith('Si tu salues le forgeron'));
     });
 
+    test('near hits are suggestions only, not automatic translations', () async {
+      const misspelt = 'a n seko tɔbura a maa wãa wuro tɔbirj';
+      expect(memory.lookup(misspelt, toBariba: false)?.exact, isFalse);
+      expect(await memory.translate(misspelt, false), isNull);
+    });
+
     test('short or unknown sentences do not match approximately', () {
       expect(memory.lookup('domma a nu', toBariba: false), isNull);
       expect(memory.lookup('une phrase inconnue du corpus', toBariba: true), isNull);
