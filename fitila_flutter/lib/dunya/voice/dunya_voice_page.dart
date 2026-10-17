@@ -696,7 +696,12 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     setState(() {});
     final info = await _brain.deviceInfo();
     if (!mounted) return;
-    if (!_paths.canListen || (info.canRun(_brain.model) && _brain.state == DunyaBrainState.absent)) {
+    // Online and Auto-with-Internet must go straight into DUNYA, without
+    // forcing a Gemma/Omnilingual/MMS model download on first launch.
+    // The model manager remains optional from the visible Settings control.
+    if (!_useOnlineVoice &&
+        (!_paths.canListen ||
+          (info.canRun(_brain.model) && _brain.state == DunyaBrainState.absent))) {
       await _openSettings();
     }
   }
