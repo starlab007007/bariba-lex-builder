@@ -211,7 +211,12 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
   }
 
   Future<void> _openChat() async {
-    final messages = await _store.loadMessages();
+    // Open the same language conversation as the voice screen. Otherwise the
+    // text tab displays the legacy default history while new replies are saved
+    // in dunya-fr / dunya-bba / dunya-both.
+    final messages = await _store.loadMessages(
+      conversationId: _settings.mode.conversationId,
+    );
     final memories = await _store.loadMemories();
     if (!mounted) return;
     setState(() {
