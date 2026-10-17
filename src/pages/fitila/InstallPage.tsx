@@ -4,6 +4,9 @@ import { Download, Share2, CheckCircle, Smartphone, AppWindow, Keyboard, Refresh
 import FitilaPageHeader from '@/components/fitila/FitilaPageHeader';
 import { Chip, ChipWrap, FeatureGrid, FitilaPage, MetricStrip, type Feature } from '@/components/fitila/FitilaUi';
 
+type AndroidRelease = { version: string; url: string; size: number; updated: string };
+const RELEASE_API = 'https://api.github.com/repos/starlab007007/bariba-lex-builder/releases/latest';
+
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
@@ -14,6 +17,34 @@ export default function InstallPage() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [apk, setApk] = useState<AndroidRelease | null>(null);
+  const [apkStatus, setApkStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(RELEASE_API, { headers: { Accept: 'application/vnd.github+json' }, signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error('No public production release');
+        return response.json();
+      })
+      .then(release => {
+        // Never offer prereleases, unpublished releases or CI ephemeral-signature APKs.
+        if (release.draft || release.prerelease || !String(release.tag_name || '').startsWith('fitila-android-v')) {
+          throw new Error('No certified Android release');
+        }
+        const asset = (release.assets || []).find((a: any) =>
+          /^FITILA-Android-.*-arm64\.apk$/i.test(String(a.name || '')) &&
+          typeof a.browser_download_url === 'string' &&
+          a.browser_download_url.startsWith('https://github.com/starlab007007/bariba-lex-builder/releases/download/')
+        );
+        if (!asset) throw new Error('No signed ARM64 APK');
+        setApk({ version: release.tag_name, url: asset.browser_download_url,
+          size: asset.size || 0, updated: release.published_at || '' });
+        setApkStatus('ready');
+      })
+      .catch(error => { if (error?.name !== 'AbortError') setApkStatus('unavailable'); });
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     // Detect iOS
@@ -91,6 +122,36 @@ export default function InstallPage() {
             )}
           </div>
         </div>
+
+        {!isIOS && (
+          <div className="px-[18px]">
+            <section className="rounded-[18px] border border-[#E4DFCC] bg-white p-4 space-y-3" aria-label="Télécharger FITILA Android">
+              <h2 className="text-[16px] font-extrabold text-[#2B2110]">Application Android native (APK)</h2>
+              <p className="text-[13px] text-[#3A3448]">
+                Téléchargez FITILA pour Android. Le traducteur ByT5 et les modèles DUNYA restent des téléchargements optionnels séparés.
+              </p>
+              {apkStatus === 'ready' && apk ? (
+                <>
+                  <a href={apk.url} className="flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-[#C99530] px-3 font-extrabold text-[#2B2110]">
+                    <Download className="h-5 w-5" /> Télécharger FITILA APK (ARM64)
+                  </a>
+                  <p className="text-[12px] text-[#766D5A]">
+                    Version : {apk.version} · {Math.round(apk.size / 1024 / 1024)} Mo · publication officielle GitHub
+                  </p>
+                </>
+              ) : (
+                <p role="status" className="text-[13px] text-[#675D49]">
+                  {apkStatus === 'loading' ? 'Vérification de la dernière version Android…'
+                    : "L’APK Android officiel signé n’est pas encore publié. La version Web reste installable."}
+                </p>
+              )}
+              <p className="text-[12px] text-[#675D49]">
+                Sur Android, ouvrez le fichier APK téléchargé puis autorisez l'installation depuis votre navigateur si Android le demande.
+                Une signature différente de celle de votre version installée empêchera sa mise à jour directe.
+              </p>
+            </section>
+          </div>
+        )}
 
         <FeatureGrid items={grid} />
       </div>
