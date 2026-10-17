@@ -179,6 +179,20 @@ class DunyaVoicePackManager {
     final target = File('${root.path}/${source.id}.download.zip');
     final client = http.Client();
     try {
+      // An unreviewed ByT5 export must never be offered as a usable model.
+      // Check the release manifest before spending storage or bandwidth.
+      if (source.id == dunyaTranslationPackId) {
+        final meta = await client.get(Uri.parse(source.manifestUrl))
+            .timeout(const Duration(seconds: 20));
+        if (meta.statusCode != 200) {
+          throw DunyaPackException('Le pack ByT5 vérifié n’est pas encore publié.');
+        }
+        final dynamic parsed = jsonDecode(utf8.decode(meta.bodyBytes));
+        if (parsed is! Map || parsed['id'] != dunyaTranslationPackId ||
+            parsed['format'] != 'dunya-pack/1' || parsed['tested'] != true) {
+          throw DunyaPackException('Le pack ByT5 n’a pas encore réussi les tests qualité.');
+        }
+      }
       final response = await client.send(http.Request('GET', Uri.parse(source.zipUrl)));
       if (response.statusCode == 404) {
         throw DunyaPackException(
