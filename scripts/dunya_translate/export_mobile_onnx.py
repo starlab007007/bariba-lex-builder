@@ -99,8 +99,8 @@ def export(args):
     config = {
         "format": "fitila-byt5-mobile/1",
         "source_checkpoint": args.model,
-        "prefix_fr_ba": "fr-ba: ",
-        "prefix_ba_fr": "ba-fr: ",
+        "prefix_fr_ba": args.prefix_fr_ba,
+        "prefix_ba_fr": args.prefix_ba_fr,
         "tokenizer": "byt5-bytes-plus-3",
         "decoder_start_token_id": 0,
         "eos_token_id": 1,
@@ -141,4 +141,6 @@ if __name__ == "__main__":
     parser.add_argument("--model", required=True, help="Verified FITILA finetuned checkpoint")
     parser.add_argument("--out", required=True)
     parser.add_argument("--quantize-int8", action="store_true")
+    parser.add_argument("--prefix-fr-ba", default="traduire francais en bariba (ordre SOV, voir=wa, mère=bii mɛro, si=yɛ): ")
+    parser.add_argument("--prefix-ba-fr", default="traduire bariba en francais (SOV, wa=voir, mɛɛri=regarder, yaa=viande): ")
     export(parser.parse_args())
