@@ -2,17 +2,17 @@
 Date : 17 octobre 2026. PR : https://github.com/starlab007007/bariba-lex-builder/pull/109
 
 **Statut : candidat préproduction ; ne pas annoncer une version publique stable.**
-Branche parent : `feat/dunya-hybrid-online-offline-mms-omni-20261016` (PR #107 non fusionnée).
+Branche parent initiale : PR #107, fusionnée dans `main` le 17 octobre. La PR #109 cible désormais directement `main`.
 Aucun redéploiement FITILA Web/Flutter/Supabase production dans ce lot.
 
 ## Travaux réalisés
 | Lot | Code / preuve | État |
 | --- | --- | --- |
 | Audit ancien pack ONNX | `dunya-voice-core-v1.zip`, VITS et Omnilingual présents | validé par inspection et hash |
-| Packs indépendants | Script `tools/dunya_packs/split_voice_core.py` | 114 306 539 / 366 709 617 octets ; CI verte |
+| Packs indépendants | Script `tools/dunya_packs/split_voice_core.py` | 114 306 539 / 366 721 784 octets ; CI verte |
 | Synthèse CPU réelle | `tools/dunya_packs/smoke_tts.py` | trois WAV 16 kHz produits par sherpa |
 | Flutter partagé | `core/offline_bba_voice.dart`, Apprendre/Dictionnaire/Traducteur/DUNYA | code intégré, Flutter analyzer/tests ciblés verts |
-| Mode village | ZIP local/SD, HTTP Range, sauvegarde de l'ancienne version, contrôle d'espace Android | intégré ; essais réseau/téléphone à faire |
+| Mode village | ZIP local/SD, HTTP Range testé avec 206/200/416 et échecs, sauvegarde de l'ancienne version, contrôle d'espace Android | intégré ; essais réseau/téléphone à faire |
 | Web faible réseau | Workbox StaleWhileRevalidate sur lexique/Apprendre/i18n **publics** | build PWA vert |
 | Quantification INT8 | `tools/dunya_packs/quantize_candidate.py` | essai réel : réduction de 1,89 % (modèle expérimental non retenu) |
 | Qualité Baatɔnum | `tools/dunya_packs/quality_gate.py` + tests des règles | aucune évaluation humaine fournie |
@@ -23,7 +23,7 @@ Aucun redéploiement FITILA Web/Flutter/Supabase production dans ce lot.
 - MMS : 114 306 539 octets ; SHA-256
   `6c047ac26f83f0f4a90cdfeb72615b0514afcd7cd7892d2a041e9074be5398bf`.
 - ASR : 366 709 617 octets ; SHA-256
-  `2cf5d651d508199a664dd51479c9fc576e634a44c7a5c73250445df72b16d67b`.
+  `11dd459506f8b67ab407cb023bc60c8137078c5341242c38f591dfe4fd8f6ba7`.
 - Sources : pack historiquement publié `dunya-voice-pack-v1`; extrait sans réécrire les poids.
 - CPU runner : `A kua` 0,536 s de calcul pour 0,573 s WAV;
   `N kua weru` 0,548/0,716 s; `Bɛɛ ka weru` 0,429/0,896 s.
@@ -45,7 +45,7 @@ Aucun redéploiement FITILA Web/Flutter/Supabase production dans ce lot.
    s'auto-certifier.
 6. Préparer la release des ZIP et la publication vers `fitila.bj`; corriger d'abord
    l'accès SSH VPS dont le dernier déploiement Web `main` avait échoué.
-7. Fusionner PR #107 puis PR #109 uniquement avec les contraintes fonctionnelles,
+7. PR #107 est fusionnée. Fusionner PR #109 uniquement avec les contraintes fonctionnelles,
    juridiques, CI et sur appareils toutes respectées.
 
 ## Dernière recommandation ByT5
@@ -65,3 +65,10 @@ Aucun checkpoint n'est inventé ni publié artificiellement.
 
 ## Analyse expérimentale INT8
 La quantification CPU a ramené le poids ONNX de 114 303 014 à 112 143 811 octets (gain de 1,89 %). Le format reste lisible mais aucune qualité phonétique n'est certifiée. Ne pas substituer ce modèle expérimental aux poids de référence. Résultat : https://github.com/starlab007007/bariba-lex-builder/actions/runs/39022413633.
+
+## Compléments de sûreté (17 octobre)
+- PR #109 retargetée sur main après fusion #107.
+- Les actifs ZIP MMS, ASR et historiques sont épinglés par SHA-256 dans Flutter.
+- La reprise HTTP Range a des tests automatisés sur reprise 206, serveur répondant 200, 416, contenu corrompu, interruptions et réutilisation cache vérifié.
+- La nouvelle archive ASR inclut désormais la licence Apache-2.0 intégrale et une notice de provenance (nouvelle empreinte ci-dessus).
+- Les archives sont des candidats ; elles ne sont pas annoncées au public comme validées linguistiquement.
