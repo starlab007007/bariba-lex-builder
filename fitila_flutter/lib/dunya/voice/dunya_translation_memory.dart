@@ -120,5 +120,10 @@ class DunyaTranslationMemory {
   }
 
   /// Hook for DunyaTranslator.memory.
-  Future<String?> translate(String text, bool toBariba) async => lookup(text, toBariba: toBariba)?.text;
+  // Near matches can change negation, tone, or meaning. Return suggestions
+  // from lookup() to the UI, but NEVER as validated automatic translations.
+  Future<String?> translate(String text, bool toBariba) async {
+    final hit = lookup(text, toBariba: toBariba);
+    return hit != null && hit.exact ? hit.text : null;
+  }
 }

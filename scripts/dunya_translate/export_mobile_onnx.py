@@ -99,16 +99,31 @@ def export(args):
     config = {
         "format": "fitila-byt5-mobile/1",
         "source_checkpoint": args.model,
-        "prefix_fr_ba": "fr-ba: ",
-        "prefix_ba_fr": "ba-fr: ",
+        "prefix_fr_ba": args.prefix_fr_ba,
+        "prefix_ba_fr": args.prefix_ba_fr,
         "tokenizer": "byt5-bytes-plus-3",
         "decoder_start_token_id": 0,
         "eos_token_id": 1,
         "max_source_bytes": 511,
         "max_output_bytes": 192,
+        "space_pipeline": "v4",
+        "generation_note": "Android currently uses greedy no-cache decoding; Space v4 uses 8-beam search and postprocessing. Validate output quality separately.",
         "quantized": bool(args.quantize_int8),
     }
     (destination / "config.json").write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf8")
+    if args.approved_memory:
+        memory = json.loads(Path(args.approved_memory).read_text(encoding="utf-8"))
+        if memory.get("format") != "fitila-approved-memory/1":
+            raise ValueError("Expected reviewed, approved FITILA translation memory")
+        entries = memory.get("entries", [])
+        if not isinstance(entries, list) or not entries:
+            raise ValueError("No human-approved translation pairs; refusing to bundle empty/unreviewed memory")
+        shutil.copyfile(args.approved_memory, destination / "approved_memory.json")
+    if args.lexical_hints:
+        lexical = json.loads(Path(args.lexical_hints).read_text(encoding="utf-8"))
+        if lexical.get("format") != "fitila-lexical-hints/1" or lexical.get("purpose") != "retrieval-hints-only" or not lexical.get("not_certified_for_exact_answers"):
+            raise ValueError("Lexical assets must be marked retrieval-only")
+        shutil.copyfile(args.lexical_hints, destination / "lexical_hints.json")
     files = []
     for path in sorted(destination.iterdir()):
         if not path.is_file():
@@ -141,4 +156,8 @@ if __name__ == "__main__":
     parser.add_argument("--model", required=True, help="Verified FITILA finetuned checkpoint")
     parser.add_argument("--out", required=True)
     parser.add_argument("--quantize-int8", action="store_true")
+    parser.add_argument("--approved-memory", default=None, help="Optional vetted memory produced by build_approved_memory.py")
+    parser.add_argument("--lexical-hints", default=None, help="Optional read-only train-only lexical hints, not automatic translations")
+    parser.add_argument("--prefix-fr-ba", default="traduire francais en bariba (ordre SOV, voir=wa, mère=bii mɛro, si=yɛ): ")
+    parser.add_argument("--prefix-ba-fr", default="traduire bariba en francais (SOV, wa=voir, mɛɛri=regarder, yaa=viande): ")
     export(parser.parse_args())

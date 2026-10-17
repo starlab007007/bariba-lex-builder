@@ -30,6 +30,19 @@ class DunyaByt5 {
     try {
       final base = await getApplicationSupportDirectory();
       final dir = '${base.path}/dunya_packs/$dunyaByt5PackId/byt5';
+      // Only activate a pack that passed release validation. The importer
+      // verifies file hashes, but hash integrity alone is not a quality gate.
+      final manifestFile = File('${base.path}/dunya_packs/$dunyaByt5PackId/manifest.json');
+      if (!manifestFile.existsSync()) {
+        DunyaTranslator.offline = null;
+        return false;
+      }
+      final manifest = jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
+      if (manifest['id'] != dunyaByt5PackId || manifest['format'] != 'dunya-pack/1' ||
+          manifest['tested'] != true) {
+        DunyaTranslator.offline = null;
+        return false;
+      }
       final enc = File('$dir/encoder.onnx');
       final dec = File('$dir/decoder.onnx');
       if (!enc.existsSync() || !dec.existsSync()) {
@@ -61,7 +74,7 @@ class DunyaByt5 {
     if (!_loaded) return null;
     final prefix = (toBariba ? _config['prefix_fr_ba'] : _config['prefix_ba_fr'])?.toString()
         ?? (toBariba ? 'fr-ba: ' : 'ba-fr: ');
-    final out = await _channel.invokeMethod<String>('translate', {'text': text, 'prefix': prefix, 'maxLen': 0});
+    final out = await _channel.invokeMethod<String>('translate', {'text': text, 'prefix': prefix, 'direction': toBariba ? 'fr-ba' : 'ba-fr', 'maxLen': 0});
     return out?.trim().isEmpty ?? true ? null : out!.trim();
   }
 

@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - feat/byt5-offline-onnx-validation-20261017
       - feat/build24-dunya-voice-offline
       - fix/flutter-keyboard-translator-20261016
       - release/fitila-web-flutter-parity-20261016
@@ -290,3 +291,25 @@ jobs:
           retention-days: 30
 
 
+
+      # Publish only stable main builds signed with the persistent production key.
+      # Feature-branch APKs and ephemeral CI signing never appear as official
+      # downloads on fitila.bj/install.
+      - name: Publish verified production APK on GitHub Releases
+        if: ${{ github.ref == 'refs/heads/main' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: fitila_flutter
+        run: |
+          set -euo pipefail
+          test "$(cat build/SIGNING_MODE.txt)" = "production"
+          TAG="fitila-android-v1.8.22-build33-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" \
+            build/final-apk/FITILA-Android-v1.8.22-build33-keyboard-translator-arm64.apk \
+            build/final-apk/FITILA-Android-v1.8.22-build33-keyboard-translator-armv7.apk \
+            build/final-apk/SHA256SUMS.txt \
+            build/final-apk/SIGNER.txt \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${GITHUB_SHA}" \
+            --title "FITILA Android v1.8.22 build33 (${GITHUB_RUN_NUMBER})" \
+            --notes "APK de production signé ; modèles DUNYA/ByT5 téléchargeables séparément. La disponibilité du moteur ByT5 est limitée aux packs linguistiques certifiés."
