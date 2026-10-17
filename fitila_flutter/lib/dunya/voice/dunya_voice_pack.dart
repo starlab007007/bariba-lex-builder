@@ -136,7 +136,9 @@ class DunyaVoicePackManager {
     for (final entity in root.listSync()) {
       if (entity is! Directory ||
           entity.path.endsWith('.partial') ||
-          entity.path.endsWith('.backup')) continue;
+          entity.path.endsWith('.backup')) {
+        continue;
+      }
       final manifest = File('${entity.path}/manifest.json');
       if (!manifest.existsSync()) continue;
       try {
