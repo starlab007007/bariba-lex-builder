@@ -20,6 +20,14 @@ import 'package:flutter/services.dart';
 const dunyaVoiceCorePackId = 'dunya-voice-core';
 const dunyaVoiceBbaPackId = 'dunya-voice-bba';
 const dunyaAsrOmniPackId = 'dunya-asr-omni';
+
+// Exact hashes from the deterministic GitHub CI conversion run 39020622279.
+// Shipped in the APK, so replacing both a ZIP and its hosted manifest cannot
+// silently install different model weights.
+const trustedVillagePackSha256 = <String, String>{
+  dunyaVoiceBbaPackId: '6c047ac26f83f0f4a90cdfeb72615b0514afcd7cd7892d2a041e9074be5398bf',
+  dunyaAsrOmniPackId: '2cf5d651d508199a664dd51479c9fc576e634a44c7a5c73250445df72b16d67b',
+};
 const dunyaVoiceFrPackId = 'dunya-voice-fr';
 const dunyaTranslationPackId = 'dunya-translate-byt5';
 
@@ -180,7 +188,8 @@ class DunyaVoicePackManager {
       // Split packs are only advertised after a published checksum and real
       // voice QA approval. Candidate CI artifacts are not public downloads.
       if ((source.id == dunyaVoiceBbaPackId || source.id == dunyaAsrOmniPackId) &&
-          (decoded['tested'] != true || decoded['quality_certified'] != true)) return null;
+          (decoded['tested'] != true || decoded['quality_certified'] != true ||
+           decoded['archive_sha256'] != trustedVillagePackSha256[source.id])) return null;
       return (decoded['total_download_bytes'] as num?)?.toInt() ??
           (decoded['total_bytes'] as num?)?.toInt();
     } catch (_) {
@@ -223,8 +232,8 @@ class DunyaVoicePackManager {
         throw DunyaPackException('Ce modèle attend sa validation et sa publication officielle.');
       }
       final hash = manifest['archive_sha256']?.toString() ?? '';
-      if (split && !RegExp(r'^[a-f0-9]{64}$').hasMatch(hash)) {
-        throw DunyaPackException('Archive sans signature d’intégrité publiée.');
+      if (split && hash != trustedVillagePackSha256[source.id]) {
+        throw DunyaPackException('Empreinte officielle du modèle non reconnue. Mise à jour FITILA requise.');
       }
       final expectedSize = (manifest['total_download_bytes'] as num?)?.toInt();
       final expectedUnpacked = (manifest['total_bytes'] as num?)?.toInt() ?? 0;
@@ -380,7 +389,204 @@ Future<Map<String, dynamic>> _installPack(String zipPath, String rootPath, SendP
     final manifest = jsonDecode(utf8.decode(_readEntry(raf, manifestEntry))) as Map<String, dynamic>;
     if (manifest['format'] != 'dunya-pack/1') throw DunyaPackException('Format de pack inconnu.');
     final id = manifest['id'].toString();
-    if (!RegExp(r'^[a-z0-9-]{3,64}$').hasMatch(id)) throw DunyaPackException('Identifiant de pack invalide.');
+    if (!RegExp(r'^[a-z0-9-]{3,64}
+    final files = (manifest['files'] as List).cast<Map<String, dynamic>>();
+    if (files.isEmpty || files.length > 128 ||
+        files.map((f) => f['path']).toSet().length != files.length) {
+      throw DunyaPackException('Manifeste vide ou doublons.');
+    }
+    final total = files.fold<int>(0, (sum, f) => sum + (f['size'] as num).toInt());
+    if (total > 4 * 1024 * 1024 * 1024) throw DunyaPackException('Archive trop volumineuse.');
+
+    final partial = Directory('$rootPath/$id.partial');
+    if (partial.existsSync()) partial.deleteSync(recursive: true);
+    partial.createSync(recursive: true);
+
+    var done = 0;
+    for (final f in files) {
+      final rel = f['path'].toString();
+      if (rel.startsWith('/') || rel.contains('..') || rel.contains('\\')) {
+        throw DunyaPackException('Chemin interdit dans le pack : $rel');
+      }
+      final entry = entries.where((e) => e.name == rel).firstOrNull;
+      if (entry == null) throw DunyaPackException('Fichier manquant dans le pack : $rel');
+      if (entry.method != 0 || entry.size != (f['size'] as num).toInt()) {
+        throw DunyaPackException('ZIP non compressé attendu, dimensions incohérentes.');
+      }
+      final out = File('${partial.path}/$rel');
+      out.parent.createSync(recursive: true);
+      final digest = await _copyEntryAndHash(raf, entry, out, (copied) {
+        progress.send(['extract', total == 0 ? null : (done + copied) / total, rel]);
+      });
+      if (digest != f['sha256']) {
+        partial.deleteSync(recursive: true);
+        throw DunyaPackException('Fichier altéré : $rel. Recopiez le pack et réessayez.');
+      }
+      done += entry.size;
+      progress.send(['verify', total == 0 ? null : done / total, rel]);
+    }
+    File('${partial.path}/manifest.json').writeAsStringSync(jsonEncode(manifest));
+
+    final finalDir = Directory('$rootPath/$id');
+    final previous = Directory('$rootPath/$id.backup');
+    if (previous.existsSync()) previous.deleteSync(recursive: true);
+    if (finalDir.existsSync()) finalDir.renameSync(previous.path);
+    try {
+      partial.renameSync(finalDir.path);
+      if (previous.existsSync()) previous.deleteSync(recursive: true);
+    } catch (_) {
+      if (previous.existsSync() && !finalDir.existsSync()) previous.renameSync(finalDir.path);
+      rethrow;
+    }
+    return manifest;
+  } finally {
+    raf.closeSync();
+  }
+}
+
+/// Reads the central directory of a ZIP (ZIP64 aware).
+List<_ZipEntry> _readStoredZipDirectory(RandomAccessFile raf) {
+  final length = raf.lengthSync();
+  final tailSize = length < 65557 ? length : 65557;
+  raf.setPositionSync(length - tailSize);
+  final tail = raf.readSync(tailSize);
+  var eocd = -1;
+  for (var i = tail.length - 22; i >= 0; i--) {
+    if (tail[i] == 0x50 && tail[i + 1] == 0x4b && tail[i + 2] == 0x05 && tail[i + 3] == 0x06) {
+      eocd = i;
+      break;
+    }
+  }
+  if (eocd < 0) throw DunyaPackException('Fichier ZIP invalide.');
+  final bd = ByteData.sublistView(tail);
+  var count = bd.getUint16(eocd + 10, Endian.little);
+  var cdSize = bd.getUint32(eocd + 12, Endian.little);
+  var cdOffset = bd.getUint32(eocd + 16, Endian.little);
+
+  if (count == 0xFFFF || cdSize == 0xFFFFFFFF || cdOffset == 0xFFFFFFFF) {
+    final locator = eocd - 20;
+    if (locator < 0 || bd.getUint32(locator, Endian.little) != 0x07064b50) {
+      throw DunyaPackException('ZIP64 invalide.');
+    }
+    final zip64Offset = bd.getUint64(locator + 8, Endian.little);
+    raf.setPositionSync(zip64Offset);
+    final rec = ByteData.sublistView(raf.readSync(56));
+    if (rec.getUint32(0, Endian.little) != 0x06064b50) throw DunyaPackException('ZIP64 invalide.');
+    count = rec.getUint64(32, Endian.little);
+    cdSize = rec.getUint64(40, Endian.little);
+    cdOffset = rec.getUint64(48, Endian.little);
+  }
+
+  raf.setPositionSync(cdOffset);
+  final cd = raf.readSync(cdSize);
+  final c = ByteData.sublistView(cd);
+  final entries = <_ZipEntry>[];
+  var p = 0;
+  for (var n = 0; n < count; n++) {
+    if (c.getUint32(p, Endian.little) != 0x02014b50) throw DunyaPackException('Répertoire ZIP invalide.');
+    final method = c.getUint16(p + 10, Endian.little);
+    var compressed = c.getUint32(p + 20, Endian.little);
+    var size = c.getUint32(p + 24, Endian.little);
+    final nameLen = c.getUint16(p + 28, Endian.little);
+    final extraLen = c.getUint16(p + 30, Endian.little);
+    final commentLen = c.getUint16(p + 32, Endian.little);
+    var offset = c.getUint32(p + 42, Endian.little);
+    final name = utf8.decode(cd.sublist(p + 46, p + 46 + nameLen));
+    var e = p + 46 + nameLen;
+    final extraEnd = e + extraLen;
+    while (e + 4 <= extraEnd) {
+      final id = c.getUint16(e, Endian.little);
+      final len = c.getUint16(e + 2, Endian.little);
+      if (id == 0x0001) {
+        var q = e + 4;
+        if (size == 0xFFFFFFFF) {
+          size = c.getUint64(q, Endian.little);
+          q += 8;
+        }
+        if (compressed == 0xFFFFFFFF) {
+          compressed = c.getUint64(q, Endian.little);
+          q += 8;
+        }
+        if (offset == 0xFFFFFFFF) {
+          offset = c.getUint64(q, Endian.little);
+        }
+      }
+      e += 4 + len;
+    }
+    entries.add(_ZipEntry(name, method, compressed, size, offset));
+    p = extraEnd + commentLen;
+  }
+  return entries;
+}
+
+int _dataStart(RandomAccessFile raf, _ZipEntry entry) {
+  raf.setPositionSync(entry.localHeaderOffset);
+  final header = ByteData.sublistView(raf.readSync(30));
+  if (header.getUint32(0, Endian.little) != 0x04034b50) throw DunyaPackException('Entrée ZIP invalide.');
+  return entry.localHeaderOffset + 30 + header.getUint16(26, Endian.little) + header.getUint16(28, Endian.little);
+}
+
+Uint8List _readEntry(RandomAccessFile raf, _ZipEntry entry) {
+  if (entry.method != 0) throw DunyaPackException('Le pack doit être un ZIP non compressé.');
+  raf.setPositionSync(_dataStart(raf, entry));
+  return raf.readSync(entry.size);
+}
+
+Future<String> _copyEntryAndHash(
+  RandomAccessFile raf,
+  _ZipEntry entry,
+  File out,
+  void Function(int copied) onCopied,
+) async {
+  final start = _dataStart(raf, entry);
+  final digestSink = _DigestSink();
+  final hasher = sha256.startChunkedConversion(digestSink);
+  final writer = out.openSync(mode: FileMode.write);
+  try {
+    const chunk = 1 << 20;
+    var copied = 0;
+    raf.setPositionSync(start);
+    while (copied < entry.size) {
+      final want = entry.size - copied < chunk ? entry.size - copied : chunk;
+      final bytes = raf.readSync(want);
+      if (bytes.isEmpty) throw DunyaPackException('Pack tronqué : ${entry.name}');
+      writer.writeFromSync(bytes);
+      hasher.add(bytes);
+      copied += bytes.length;
+      if (copied % (8 * chunk) < chunk) onCopied(copied);
+    }
+  } finally {
+    writer.closeSync();
+  }
+  hasher.close();
+  return digestSink.value.toString();
+}
+
+class _DigestSink implements Sink<Digest> {
+  late Digest value;
+
+  @override
+  void add(Digest data) => value = data;
+
+  @override
+  void close() {}
+}
+
+/// Installs a pack synchronously in the current isolate (tests, tooling).
+Future<Map<String, dynamic>> installDunyaPackFile(String zipPath, String rootPath) {
+  final port = ReceivePort();
+  return _installPack(zipPath, rootPath, port.sendPort).whenComplete(port.close);
+}
+).hasMatch(id)) throw DunyaPackException('Identifiant de pack invalide.');
+    // A locally shared pack cannot self-authorize via a forged manifest.
+    // Verify its whole ZIP against a digest embedded in the trusted APK.
+    final trusted = trustedVillagePackSha256[id];
+    if (trusted != null) {
+      final actual = await sha256.bind(file.openRead()).first;
+      if (actual.toString() != trusted) {
+        throw DunyaPackException('Ce pack local ne correspond pas à l’édition officielle FITILA.');
+      }
+    }
     final files = (manifest['files'] as List).cast<Map<String, dynamic>>();
     if (files.isEmpty || files.length > 128 ||
         files.map((f) => f['path']).toSet().length != files.length) {
