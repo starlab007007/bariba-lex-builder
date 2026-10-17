@@ -38,5 +38,13 @@ class OfflineMemoryTests(unittest.TestCase):
                  "Traduction_corrigee":"Bonjour", "Statut_validation":"VALIDE"}]
         self.assertEqual(self.run_builder(rows)["entries"], [])
 
+    def test_conflicting_translations_never_resurface(self):
+        base = {"Direction": "fr-ba", "Source": "Bonjour", "Reference_verifiee": "Test",
+                "Statut_validation": "VALIDE"}
+        rows = [dict(base, Traduction_corrigee=t) for t in ("A", "B", "B")]
+        result = self.run_builder(rows)
+        self.assertEqual(result["entries"], [])
+        self.assertEqual(result["rejected"]["conflict"], 2)
+
 if __name__ == "__main__":
     unittest.main()
