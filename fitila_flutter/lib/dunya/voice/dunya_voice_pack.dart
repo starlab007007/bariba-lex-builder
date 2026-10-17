@@ -134,7 +134,9 @@ class DunyaVoicePackManager {
     final root = await _root();
     final result = <String, Map<String, dynamic>>{};
     for (final entity in root.listSync()) {
-      if (entity is! Directory || entity.path.endsWith('.partial')) continue;
+      if (entity is! Directory ||
+          entity.path.endsWith('.partial') ||
+          entity.path.endsWith('.backup')) continue;
       final manifest = File('${entity.path}/manifest.json');
       if (!manifest.existsSync()) continue;
       try {
@@ -169,11 +171,16 @@ class DunyaVoicePackManager {
       return DunyaTtsVoiceFiles(model: model, tokens: tokens, normalization: normalization);
     }
 
-    final separateAsr = existing(dunyaAsrOmniPackId, 'asr/model.int8.onnx');
+    final separateModel = existing(dunyaAsrOmniPackId, 'asr/model.int8.onnx');
+    final separateTokens = existing(dunyaAsrOmniPackId, 'asr/tokens.txt');
+    // Never pair an incomplete ASR pack with the old complete core.
+    final separateIsComplete = separateModel != null && separateTokens != null;
     return DunyaVoicePaths(
-      asrModel: separateAsr ?? existing(dunyaVoiceCorePackId, 'asr/model.int8.onnx'),
-      asrTokens: separateAsr != null
-          ? existing(dunyaAsrOmniPackId, 'asr/tokens.txt')
+      asrModel: separateIsComplete
+          ? separateModel
+          : existing(dunyaVoiceCorePackId, 'asr/model.int8.onnx'),
+      asrTokens: separateIsComplete
+          ? separateTokens
           : existing(dunyaVoiceCorePackId, 'asr/tokens.txt'),
       ttsBba: voice(dunyaVoiceBbaPackId, 'tts-bba') ?? voice(dunyaVoiceCorePackId, 'tts-bba'),
       ttsFra: voice(dunyaVoiceFrPackId, 'tts-fra'),
