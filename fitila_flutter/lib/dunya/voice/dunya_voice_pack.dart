@@ -179,17 +179,17 @@ class DunyaVoicePackManager {
   Future<int?> remoteSize(DunyaPackSource source) async {
     try {
       final res = await http.get(Uri.parse(source.manifestUrl)).timeout(const Duration(seconds: 20));
-      if (res.statusCode != 200) return null;
+      if (res.statusCode != 200) { return null; }
       final decoded = jsonDecode(utf8.decode(res.bodyBytes));
-      if (decoded is! Map) return null;
+      if (decoded is! Map) { return null; }
       // Publishing untested converted weights is insufficient. A public
       // offline translation pack requires a quality-reviewed manifest.
-      if (source.id == dunyaTranslationPackId && decoded['tested'] != true) return null;
+      if (source.id == dunyaTranslationPackId && decoded['tested'] != true) { return null; }
       // Split packs are only advertised after a published checksum and real
       // voice QA approval. Candidate CI artifacts are not public downloads.
       if ((source.id == dunyaVoiceBbaPackId || source.id == dunyaAsrOmniPackId) &&
           (decoded['tested'] != true || decoded['quality_certified'] != true ||
-           decoded['archive_sha256'] != trustedVillagePackSha256[source.id])) return null;
+           decoded['archive_sha256'] != trustedVillagePackSha256[source.id])) { return null; }
       return (decoded['total_download_bytes'] as num?)?.toInt() ??
           (decoded['total_bytes'] as num?)?.toInt();
     } catch (_) {
