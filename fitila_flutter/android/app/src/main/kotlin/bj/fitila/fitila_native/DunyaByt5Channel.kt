@@ -10,6 +10,8 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.charset.StandardCharsets
+import java.text.Normalizer
+import org.json.JSONObject
 import java.util.concurrent.Executors
 
 /**
@@ -36,6 +38,32 @@ class DunyaByt5Channel(messenger: BinaryMessenger) {
     }
     private var encoder: OrtSession? = null
     private var decoder: OrtSession? = null
+    private val approvedMemory = HashMap<String, String>()
+
+    private fun normalizeText(value: String): String =
+        Normalizer.normalize(value, Normalizer.Form.NFC).trim()
+            .replace(Regex("\\s+"), " ")
+
+    private fun memoryKey(direction: String, source: String): String =
+        direction + "\u0000" + normalizeText(source)
+
+    private fun readApprovedMemory(file: File): Map<String, String> {
+        if (!file.isFile) return emptyMap()
+        val root = JSONObject(file.readText(Charsets.UTF_8))
+        require(root.optString("format") == "fitila-approved-memory/1")
+        val entries = root.getJSONArray("entries")
+        val results = HashMap<String, String>()
+        for (i in 0 until entries.length()) {
+            val e = entries.getJSONObject(i)
+            val direction = e.getString("direction")
+            require(direction == "fr-ba" || direction == "ba-fr")
+            val source = normalizeText(e.getString("source"))
+            val target = normalizeText(e.getString("target"))
+            require(source.isNotEmpty() && target.isNotEmpty())
+            require(results.putIfAbsent(memoryKey(direction, source), target) == null)
+        }
+        return results
+    }
 
     init {
         channel.setMethodCallHandler { call, result ->
@@ -53,6 +81,9 @@ class DunyaByt5Channel(messenger: BinaryMessenger) {
                         require(newDecoder.inputNames.containsAll(setOf(
                             "decoder_input_ids", "encoder_hidden_states", "encoder_attention_mask"
                         ))) { "Export ByT5 incompatible : decoder sans entrées attendues" }
+                        val verifiedMemory = readApprovedMemory(File(enc.parentFile, "approved_memory.json"))
+                        approvedMemory.clear()
+                        approvedMemory.putAll(verifiedMemory)
                         encoder?.close()
                         decoder?.close()
                         encoder = newEncoder
@@ -69,7 +100,14 @@ class DunyaByt5Channel(messenger: BinaryMessenger) {
                         val maxOutput = (call.argument<Int>("maxLen") ?: 0).let {
                             if (it <= 0) 192 else it.coerceIn(8, 256)
                         }
-                        val translated = infer(prefix + source, maxOutput)
+                        val direction = call.argument<String>("direction") ?: when {
+                            prefix.contains("francais en bariba", ignoreCase = true) -> "fr-ba"
+                            prefix.contains("bariba en francais", ignoreCase = true) -> "ba-fr"
+                            else -> ""
+                        }
+                        val normalized = normalizeText(source)
+                        val translated = approvedMemory[memoryKey(direction, normalized)]
+                            ?: infer(prefix + normalized, maxOutput)
                         ui.post { result.success(translated) }
                     } catch (t: Throwable) {
                         ui.post { result.error("byt5_infer", t.message, null) }
