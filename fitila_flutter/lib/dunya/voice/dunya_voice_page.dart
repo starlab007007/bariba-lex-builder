@@ -69,6 +69,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   final _packs = DunyaVoicePackManager.instance;
   final _mic = DunyaMicCapture();
   final _cloudVoice = DunyaCloudVoice();
+  DunyaExecutionMode _previousExecution = DunyaSettings.instance.execution;
   final _tts = FlutterTts();
   final _player = audio.AudioPlayer();
   final _composer = TextEditingController();
@@ -130,6 +131,22 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   }
 
   void _onSettings() {
+    final execution = _settings.execution;
+    if (execution == DunyaExecutionMode.offline &&
+        _previousExecution != DunyaExecutionMode.offline) {
+      // Switching to Offline is a privacy boundary, not merely a badge.
+      // Abort any in-flight remote voice/translation immediately, stop
+      // recording, and require a fresh local session from the user.
+      _session = false;
+      _cloudVoice.cancel();
+      unawaited(_assistant.interrupt());
+      unawaited(_mic.cancel());
+      unawaited(_player.stop());
+      unawaited(_tts.stop());
+      _status = 'Mode hors ligne activé';
+      _phase = _Phase.idle;
+    }
+    _previousExecution = execution;
     if (mounted) setState(() {});
   }
 
@@ -147,7 +164,11 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     setState(() => _phase = _Phase.idle);
     if (!_settings.onboarded) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _openOnboarding());
-    } else if (_brain.state == DunyaBrainState.installed && _settings.intelligence == DunyaIntelligence.smart) {
+    } else if (_brain.state == DunyaBrainState.installed &&
+        _settings.intelligence == DunyaIntelligence.smart &&
+        !_useOnlineVoice) {
+      // Do not allocate ~2.6 GB RAM merely because the user launched DUNYA
+      // while connected. Load Gemma only when local execution is chosen.
       unawaited(_brain.ensureLoaded().catchError((Object _) {}));
     }
   }
