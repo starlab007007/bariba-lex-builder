@@ -19,7 +19,7 @@ abstract final class LocalSpeech {
         await ap.ensureLoaded(refresh: false);
         if (ap.has(clean) && await ap.play(clean)) return true;
         // No validated human audio cached: synthesize locally without network.
-        return OfflineBbaVoice.instance.speak(clean);
+        return await OfflineBbaVoice.instance.speak(clean);
       }
       final tts = _tts ??= FlutterTts();
       await tts.setLanguage('fr-FR');
