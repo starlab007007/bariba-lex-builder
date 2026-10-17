@@ -44,7 +44,7 @@ class HumanQualityGateTests(unittest.TestCase):
 
     def test_requires_multiple_independent_human_judgments(self):
         with self.assertRaisesRegex(ValueError, "5 locuteurs"):
-            self.score(self.rows()[:60])
+            self.score([row for row in self.rows() if row["speaker_id"] != "speaker-4"])
 
     def test_refuses_duplicate_text_speaker(self):
         rows = self.rows()
