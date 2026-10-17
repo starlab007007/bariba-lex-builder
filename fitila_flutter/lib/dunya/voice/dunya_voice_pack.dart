@@ -315,6 +315,9 @@ Future<Map<String, dynamic>> _installPack(String zipPath, String rootPath, SendP
     if (manifestEntry == null) throw DunyaPackException('Ce fichier n’est pas un pack DUNYA (manifest absent).');
     final manifest = jsonDecode(utf8.decode(_readEntry(raf, manifestEntry))) as Map<String, dynamic>;
     if (manifest['format'] != 'dunya-pack/1') throw DunyaPackException('Format de pack inconnu.');
+    if (manifest['id'] == dunyaTranslationPackId && manifest['tested'] != true) {
+      throw DunyaPackException('Pack ByT5 non certifié : tests bilingues et Android requis.');
+    }
     final id = manifest['id'].toString();
     if (!RegExp(r'^[a-z0-9-]{3,64}$').hasMatch(id)) throw DunyaPackException('Identifiant de pack invalide.');
     final files = (manifest['files'] as List).cast<Map<String, dynamic>>();
