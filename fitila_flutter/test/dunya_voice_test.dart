@@ -26,6 +26,29 @@ const _dictionary = <Map<String, String>>[
 ];
 
 void main() {
+  test('rural MMS voice and Omnilingual ASR are independent, optional packs', () {
+    final bba = dunyaVoicePackSources.firstWhere((p) => p.id == dunyaVoiceBbaPackId);
+    final asr = dunyaVoicePackSources.firstWhere((p) => p.id == dunyaAsrOmniPackId);
+    expect(bba.zipUrl, contains('dunya-voice-bba-v1.zip'));
+    expect(asr.zipUrl, contains('dunya-asr-omni-v1.zip'));
+    expect(bba.id, isNot(asr.id));
+    final localTts = DunyaVoicePaths(
+      ttsBba: const DunyaTtsVoiceFiles(
+        model: '/offline/tts-bba/model.onnx',
+        tokens: '/offline/tts-bba/tokens.txt',
+        normalization: <String, String>{},
+      ),
+    );
+    expect(localTts.canSpeakBariba, isTrue);
+    expect(localTts.canListen, isFalse);
+    final localAsr = const DunyaVoicePaths(
+        asrModel: '/offline/asr/model.int8.onnx',
+        asrTokens: '/offline/asr/tokens.txt');
+    expect(localAsr.canListen, isTrue);
+    expect(localAsr.canSpeakBariba, isFalse);
+  });
+
+
   test('DUNYA voice guest sends only a public API key, not an invalid user JWT', () {
     final headers = DunyaCloudVoice.requestHeaders(apiKey: 'public-key');
     expect(headers['apikey'], 'public-key');
@@ -203,7 +226,7 @@ void main() {
       final tokens = utf8.encode('a 1\nb 2\n');
       Map<String, Object> manifest(List<int> modelBytes) => {
             'format': 'dunya-pack/1',
-            'id': 'dunya-voice-core',
+            'id': 'dunya-test-fixture',
             'title': 'test',
             'version': 1,
             'files': [
@@ -220,8 +243,8 @@ void main() {
           'asr/tokens.txt': tokens,
         }));
       final installed = await installDunyaPackFile(good.path, tmp.path);
-      expect(installed['id'], 'dunya-voice-core');
-      expect(File('${tmp.path}/dunya-voice-core/asr/tokens.txt').readAsStringSync(), 'a 1\nb 2\n');
+      expect(installed['id'], 'dunya-test-fixture');
+      expect(File('${tmp.path}/dunya-test-fixture/asr/tokens.txt').readAsStringSync(), 'a 1\nb 2\n');
 
       final bad = File('${tmp.path}/bad.zip')
         ..writeAsBytesSync(_storedZip({
@@ -231,6 +254,31 @@ void main() {
         }));
       await expectLater(installDunyaPackFile(bad.path, '${tmp.path}/b'), throwsA(isA<DunyaPackException>()));
     });
+    test('rejects a forged official legacy MMS/ASR pack', () async {
+      final claimed = {
+        'format': 'dunya-pack/1',
+        'id': dunyaVoiceCorePackId,
+        'version': 1,
+        'files': [
+          {
+            'path': 'asr/tokens.txt',
+            'size': 2,
+            'sha256': sha256.convert(utf8.encode('a\\n')).toString(),
+          },
+        ],
+        'total_bytes': 2,
+      };
+      final forged = File('${tmp.path}/forged-official.zip')
+        ..writeAsBytesSync(_storedZip({
+          'manifest.json': utf8.encode(jsonEncode(claimed)),
+          'asr/tokens.txt': utf8.encode('a\\n'),
+        }));
+      await expectLater(
+        installDunyaPackFile(forged.path, tmp.path),
+        throwsA(isA<DunyaPackException>()),
+      );
+    });
+
   });
 }
 

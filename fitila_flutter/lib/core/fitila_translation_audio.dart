@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'fitila_backend.dart';
 import 'fitila_media.dart';
+import 'offline_bba_voice.dart';
 
 class FitilaGeneratedAudio {
   const FitilaGeneratedAudio({
@@ -121,8 +122,23 @@ class FitilaTranslationAudio {
     if (clean.isEmpty) {
       throw StateError('Aucun texte à lire.');
     }
+    if (bariba) {
+      // Local MMS-TTS first saves mobile data and works in airplane mode.
+      // No hidden network inference when the pack is available.
+      try {
+        final local = await OfflineBbaVoice.instance.synthesizeToFile(clean);
+        if (local != null) {
+          return FitilaGeneratedAudio(
+            bytes: await File(local).readAsBytes(),
+            mimeType: 'audio/wav',
+          );
+        }
+      } catch (_) {
+        // The network engine remains available only when configured.
+      }
+    }
     if (!FitilaBackend.configured) {
-      throw StateError('Serveur FITILA indisponible.');
+      throw StateError('Voix hors ligne non installée et serveur FITILA indisponible.');
     }
 
     if (bariba) {

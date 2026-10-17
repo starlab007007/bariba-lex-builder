@@ -26,6 +26,20 @@ export default defineConfig(({ mode }) => ({
         navigateFallbackDenylist: [/^\/~oauth/],
         runtimeCaching: [
           {
+            // Demand-driven cache for *public static* Baatɔnum learning and
+            // lexicon resources. Never cache personal accounts or model ZIPs.
+            urlPattern: ({ url, request }) =>
+              request.method === 'GET' &&
+              url.origin === self.location.origin &&
+              /^\/(?:dictionnaire-10-3\.json|dictionnaire_ameliore\.json|i18n-platform\.json|idiomes_[\w-]+\.json|data\/(?:learning_idiomes|learning_system|translation-memory)\.json)$/.test(url.pathname),
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'fitila-public-learning-data',
+              expiration: { maxEntries: 16, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+          {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
             handler: 'NetworkFirst',
             options: {

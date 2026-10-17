@@ -1,0 +1,41 @@
+name: FITILA Rural Web Offline Readiness
+
+on:
+  push:
+    branches:
+      - feat/fitila-village-offline-mms-packs-20261017
+    paths:
+      - 'vite.config.ts'
+      - '.github/workflows/fitila-village-web-ci.yml'
+  pull_request:
+    paths:
+      - 'vite.config.ts'
+      - '.github/workflows/fitila-village-web-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Build Web PWA and inspect cache configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install lockfile dependencies
+        run: npm ci --legacy-peer-deps
+      - name: Compile FITILA Web production PWA
+        run: npm run build
+      - name: Prove service worker and static JSON manifests
+        run: |
+          test -s dist/sw.js
+          test -s dist/dictionnaire-10-3.json
+          test -s dist/i18n-platform.json
+          test -s dist/data/translation-memory.json
+          grep -q 'fitila-public-learning-data' dist/sw.js
+          # No cache of model archives; models stay in Flutter.
+          ! grep -q 'dunya-voice-bba-v1.zip' dist/sw.js

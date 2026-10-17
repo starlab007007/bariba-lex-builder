@@ -1,0 +1,66 @@
+name: FITILA Village Offline Voice Packs
+on:
+  push:
+    branches:
+      - feat/fitila-village-offline-mms-packs-20261017
+    paths:
+      - 'tools/dunya_packs/**'
+      - '.github/workflows/fitila-village-voice-packs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  split-and-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify splitter with corruption fixtures
+        run: |
+          python -m unittest discover -s tools/dunya_packs -p 'test_*.py' -v
+      - name: Download existing validated core asset from private release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p source
+          gh release download dunya-voice-pack-v1 -R "${{ github.repository }}" \
+            -D source -p 'dunya-voice-core-v1.zip'
+          unzip -tq source/dunya-voice-core-v1.zip
+      - name: Split MMS Baatonum from Omnilingual ASR without re-encoding weights
+        run: |
+          python tools/dunya_packs/split_voice_core.py \
+            --source source/dunya-voice-core-v1.zip --out dist
+          ls -lh dist
+      - name: Assert independent packs and valid metadata
+        run: |
+          python - <<'PY'
+          import json, pathlib, zipfile
+          for name in ['dunya-voice-bba', 'dunya-asr-omni']:
+              base = pathlib.Path('dist')
+              m = json.loads((base / f'{name}-v1.manifest.json').read_text())
+              assert m['archive_sha256'] and m['total_download_bytes'] > 0
+              assert m['quality_certified'] is False
+              with zipfile.ZipFile(base / f'{name}-v1.zip') as z:
+                  assert 'manifest.json' in z.namelist()
+                  assert all(z.getinfo(f['path']).compress_type == 0 for f in m['files'])
+              print(name, m['total_download_bytes'], m['license'])
+          PY
+      - name: Install sherpa-onnx Python inference runtime
+        run: |
+          python -m pip install --disable-pip-version-check sherpa-onnx==1.13.0
+      - name: Real CPU inference with MMS Baatonum ONNX
+        run: |
+          python tools/dunya_packs/smoke_tts.py --pack dist/dunya-voice-bba-v1.zip --out dist/smoke
+          test -s dist/smoke/bba_00.wav
+          test -s dist/smoke/bba_01.wav
+          test -s dist/smoke/bba_02.wav
+
+      - name: Upload candidate packs (NOT approved for production)
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitila-village-voice-packs-candidate
+          path: dist/
+          retention-days: 14
+          compression-level: 0

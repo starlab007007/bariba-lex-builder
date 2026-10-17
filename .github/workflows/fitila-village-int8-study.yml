@@ -1,0 +1,64 @@
+name: FITILA MMS Baatonum INT8 Research
+
+on:
+  push:
+    branches:
+      - feat/fitila-village-offline-mms-packs-20261017
+    paths:
+      - '.github/workflows/fitila-village-int8-study.yml'
+      - 'tools/dunya_packs/quantize_candidate.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  int8-prototype:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download official archived offline ONNX (not new weights)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p source work
+          gh release download dunya-voice-pack-v1 -R "${{ github.repository }}" \
+            -D source -p 'dunya-voice-core-v1.zip'
+      - name: Extract only existing Baatonum VITS ONNX
+        run: |
+          python - <<'PY'
+          import zipfile
+          with zipfile.ZipFile('source/dunya-voice-core-v1.zip') as z:
+              assert 'tts-bba/model.onnx' in z.namelist()
+              z.extract('tts-bba/model.onnx', 'work')
+          PY
+      - name: Prepare offline CPU quantizer
+        run: python -m pip install --disable-pip-version-check 'onnxruntime>=1.19' 'onnx>=1.17'
+      - name: Try conservative MatMul/Gemm QInt8 quantization
+        run: |
+          python tools/dunya_packs/quantize_candidate.py \
+            --model work/tts-bba/model.onnx \
+            --out work/experimental/model.int8.onnx
+          cat work/experimental/QUANTIZATION_REPORT.json
+      - name: Check model readability and original ONNX output signatures
+        run: |
+          python - <<'PY'
+          import onnx
+          orig = onnx.load('work/tts-bba/model.onnx', load_external_data=False)
+          quant = onnx.load('work/experimental/model.int8.onnx', load_external_data=False)
+          onnx.checker.check_model(quant)
+          before = [v.name for v in orig.graph.input], [v.name for v in orig.graph.output]
+          after = [v.name for v in quant.graph.input], [v.name for v in quant.graph.output]
+          if before != after:
+              raise SystemExit('Quantized model changed tensor interface')
+          print('Tensor signatures retained; acoustic quality NOT certified')
+          PY
+      - name: Upload unapproved technical report (NO weights)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitila-mms-int8-experiment-report
+          path: work/experimental/QUANTIZATION_REPORT.json
+          if-no-files-found: ignore
+          retention-days: 14
