@@ -61,7 +61,7 @@ class DunyaByt5 {
     if (!_loaded) return null;
     final prefix = (toBariba ? _config['prefix_fr_ba'] : _config['prefix_ba_fr'])?.toString()
         ?? (toBariba ? 'fr-ba: ' : 'ba-fr: ');
-    final out = await _channel.invokeMethod<String>('translate', {'text': text, 'prefix': prefix, 'maxLen': 0});
+    final out = await _channel.invokeMethod<String>('translate', {'text': text, 'prefix': prefix, 'direction': toBariba ? 'fr-ba' : 'ba-fr', 'maxLen': 0});
     return out?.trim().isEmpty ?? true ? null : out!.trim();
   }
 
