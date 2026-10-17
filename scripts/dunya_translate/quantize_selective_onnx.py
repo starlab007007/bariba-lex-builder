@@ -9,7 +9,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import shutil
+import onnx
 import zipfile
 from pathlib import Path
 
@@ -22,7 +24,7 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def build(base: Path, out: Path, mode: str, op: str) -> dict:
+def build(base: Path, out: Path, mode: str, op: str, exclude_regex: str = "") -> dict:
     from onnxruntime.quantization import QuantType, quantize_dynamic
 
     inp = base / "byt5"
@@ -40,10 +42,18 @@ def build(base: Path, out: Path, mode: str, op: str) -> dict:
             raise FileNotFoundError(source)
         sizes_before[name] = source.stat().st_size
         if name in quantized:
+            exclusions = []
+            if exclude_regex:
+                pattern = re.compile(exclude_regex)
+                graph = onnx.load(str(source), load_external_data=False)
+                exclusions = [node.name for node in graph.graph.node
+                              if node.name and node.op_type == op and pattern.search(node.name)]
+                del graph
             quantize_dynamic(
                 str(source), str(target),
                 weight_type=QuantType.QInt8,
                 op_types_to_quantize=[op],
+                nodes_to_exclude=exclusions,
             )
         else:
             shutil.copyfile(source, target)
@@ -52,6 +62,7 @@ def build(base: Path, out: Path, mode: str, op: str) -> dict:
     config["quantized"] = True
     config["quantization_profile"] = {
         "mode": mode, "op_types": [op], "weight_type": "QInt8",
+        "exclude_node_regex": exclude_regex,
         "source": "FP32 exported ONNX", "quality_certified": False,
     }
     (dest / "config.json").write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -88,13 +99,14 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--fp32-pack-dir", required=True)
     p.add_argument("--out-root", required=True)
+    p.add_argument("--exclude-node-regex", default="", help="Optional ONNX node-name regex to keep FP32; inspect node names first")
     p.add_argument("--profiles", nargs="+", choices=["encoder-only", "decoder-only", "both-matmul"],
                    default=["encoder-only", "decoder-only", "both-matmul"])
     args = p.parse_args()
     results = []
     for mode in args.profiles:
         out = Path(args.out_root) / mode
-        results.append(build(Path(args.fp32_pack_dir), out, mode, "MatMul"))
+        results.append(build(Path(args.fp32_pack_dir), out, mode, "MatMul", args.exclude_node_regex))
         print(json.dumps(results[-1], ensure_ascii=False), flush=True)
     (Path(args.out_root) / "profiles.json").write_text(
         json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
