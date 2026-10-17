@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/fitila_backend.dart';
 import '../core/offline.dart';
+import '../core/offline_bba_voice.dart';
 import 'apprendre_ui.dart';
 import 'apprendre_voice_analysis.dart';
 
@@ -282,7 +283,7 @@ class ApAudioService {
     if (file.existsSync() && file.lengthSync() > 44) {
       return file;
     }
-    if (!FitilaBackend.configured) {
+    if (!FitilaBackend.configured || !FitilaOffline.online.value) {
       return null;
     }
     try {
@@ -294,22 +295,29 @@ class ApAudioService {
     }
   }
 
-  /// Joue la voix de référence d'un texte. Renvoie false si elle n'existe pas.
+  /// Priority: published human recording, then an installed local MMS model.
+  /// No network call is made by the synthesized offline fallback.
   Future<bool> play(String text, {double rate = 1.0}) async {
     final entry = entryFor(text);
-    if (entry == null) {
+    final file = entry == null ? null : await fileFor(entry);
+    if (file != null && entry != null) {
+      final player = _player ??= audio.AudioPlayer();
+      await player.stop();
+      playingKey = entry.key;
+      await player.setPlaybackRate(rate);
+      await player.play(audio.DeviceFileSource(file.path));
+      return true;
+    }
+    try {
+      final path = await OfflineBbaVoice.instance.synthesizeToFile(text, speed: rate);
+      if (path == null) return false;
+      final player = _player ??= audio.AudioPlayer();
+      await player.stop();
+      await player.play(audio.DeviceFileSource(path));
+      return true;
+    } catch (_) {
       return false;
     }
-    final file = await fileFor(entry);
-    if (file == null) {
-      return false;
-    }
-    final player = _player ??= audio.AudioPlayer();
-    await player.stop();
-    playingKey = entry.key;
-    await player.setPlaybackRate(rate);
-    await player.play(audio.DeviceFileSource(file.path));
-    return true;
   }
 
   Future<void> playFile(String path, {double rate = 1.0}) async {
@@ -497,27 +505,13 @@ class ApAudioButton extends StatelessWidget {
       valueListenable: service.revision,
       builder: (context, _, _) {
         final entry = service.entryFor(text);
-        if (entry == null) {
-          if (!placeholder) {
-            return const SizedBox.shrink();
-          }
-          return Tooltip(
-            message: 'Voix de référence en préparation',
-            child: SizedBox(
-              width: size,
-              height: size,
-              child: Icon(
-                Icons.volume_off_rounded,
-                size: size * .5,
-                color: dark ? ApColors.nightText : ApColors.lineStrong,
-              ),
-            ),
-          );
-        }
-        final speaker = entry.speakerName;
+        // Offer the button even when no human recording exists: a downloaded
+        // MMS voice may synthesize the lesson without any Internet connection.
+        // Without the pack, the button explains the installation requirement.
+        final speaker = entry?.speakerName;
         return Tooltip(
           message: speaker == null
-              ? 'Écouter · appui long : ralenti'
+              ? 'Écouter avec MMS hors ligne (pack vocal FITILA)'
               : 'Voix de $speaker · appui long : ralenti',
           child: Material(
             color: dark ? Colors.white.withValues(alpha: .12) : ApColors.goldTint,
@@ -547,7 +541,7 @@ class ApAudioButton extends StatelessWidget {
     final ok = await ApAudioService.instance.play(text, rate: rate);
     if (!ok) {
       messenger?.showSnackBar(
-        const SnackBar(content: Text('Voix indisponible hors connexion : télécharge-la d’abord.')),
+        const SnackBar(content: Text('Installez le pack Voix Baatɔnum dans DUNYA pour écouter sans Internet.')),
       );
     }
   }
