@@ -119,6 +119,11 @@ def export(args):
         if not isinstance(entries, list) or not entries:
             raise ValueError("No human-approved translation pairs; refusing to bundle empty/unreviewed memory")
         shutil.copyfile(args.approved_memory, destination / "approved_memory.json")
+    if args.lexical_hints:
+        lexical = json.loads(Path(args.lexical_hints).read_text(encoding="utf-8"))
+        if lexical.get("format") != "fitila-lexical-hints/1" or lexical.get("purpose") != "retrieval-hints-only" or not lexical.get("not_certified_for_exact_answers"):
+            raise ValueError("Lexical assets must be marked retrieval-only")
+        shutil.copyfile(args.lexical_hints, destination / "lexical_hints.json")
     files = []
     for path in sorted(destination.iterdir()):
         if not path.is_file():
@@ -152,6 +157,7 @@ if __name__ == "__main__":
     parser.add_argument("--out", required=True)
     parser.add_argument("--quantize-int8", action="store_true")
     parser.add_argument("--approved-memory", default=None, help="Optional vetted memory produced by build_approved_memory.py")
+    parser.add_argument("--lexical-hints", default=None, help="Optional read-only train-only lexical hints, not automatic translations")
     parser.add_argument("--prefix-fr-ba", default="traduire francais en bariba (ordre SOV, voir=wa, mère=bii mɛro, si=yɛ): ")
     parser.add_argument("--prefix-ba-fr", default="traduire bariba en francais (SOV, wa=voir, mɛɛri=regarder, yaa=viande): ")
     export(parser.parse_args())
