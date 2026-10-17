@@ -62,6 +62,7 @@ def main() -> None:
     ap.add_argument("--gold", default="data/translation/gold_candidates.jsonl")
     ap.add_argument("--samples-per-direction", type=int, default=12)
     ap.add_argument("--max-new-tokens", type=int, default=192)
+    ap.add_argument("--float-pack-dir", default=None, help="Optional FP32 pack to compare quantization impact")
     ap.add_argument("--out", default="byt5_onnx_parity.json")
     args = ap.parse_args()
 
@@ -73,6 +74,12 @@ def main() -> None:
     opts = ort.SessionOptions()
     encoder = ort.InferenceSession(str(directory / "encoder.onnx"), opts, providers=["CPUExecutionProvider"])
     decoder = ort.InferenceSession(str(directory / "decoder.onnx"), opts, providers=["CPUExecutionProvider"])
+
+    float_encoder = float_decoder = None
+    if args.float_pack_dir:
+        float_root = Path(args.float_pack_dir) / "byt5"
+        float_encoder = ort.InferenceSession(str(float_root / "encoder.onnx"), opts, providers=["CPUExecutionProvider"])
+        float_decoder = ort.InferenceSession(str(float_root / "decoder.onnx"), opts, providers=["CPUExecutionProvider"])
 
     gold = [json.loads(line) for line in Path(args.gold).open(encoding="utf-8") if line.strip()]
     cases = []
@@ -86,9 +93,11 @@ def main() -> None:
             prompt = config[prefix_key] + record[src_key]
             hf = hf_greedy(model, prompt, args.max_new_tokens)
             onnx = onnx_greedy(encoder, decoder, prompt, args.max_new_tokens)
+            float_result = onnx_greedy(float_encoder, float_decoder, prompt, args.max_new_tokens) if float_encoder else None
             cases.append({
                 "id": record.get("id"), "direction": direction, "reference": record.get("ba" if direction == "fr-ba" else "fr"),
                 "hf": hf, "onnx": onnx, "exact_parity": hf == onnx,
+                "onnx_fp32": float_result, "fp32_exact_parity": hf == float_result if float_result is not None else None,
             })
 
     by_dir = {direction: {
@@ -96,10 +105,15 @@ def main() -> None:
         "matched": sum(c["direction"] == direction and c["exact_parity"] for c in cases),
     } for direction in ("fr-ba", "ba-fr")}
     report = {"checkpoint": args.model, "quantized": config.get("quantized"),
+              "fp32_pack_dir": args.float_pack_dir,
               "by_direction": by_dir, "cases": cases,
               "parity_only_not_quality_certification": True}
     Path(args.out).write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({"by_direction": by_dir, "report": args.out}, ensure_ascii=False))
+    if args.float_pack_dir:
+        for direction in ("fr-ba", "ba-fr"):
+            samples = [c for c in cases if c["direction"] == direction]
+            print(f"FP32 {direction}: {sum(c['fp32_exact_parity'] for c in samples)}/{len(samples)} exact matches")
     if any(not c["exact_parity"] for c in cases):
         raise SystemExit("ONNX/HF greedy mismatch: inspect report before publication")
 
