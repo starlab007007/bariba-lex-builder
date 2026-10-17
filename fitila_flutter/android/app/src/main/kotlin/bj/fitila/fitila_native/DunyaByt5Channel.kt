@@ -26,7 +26,13 @@ class DunyaByt5Channel(messenger: BinaryMessenger) {
     private val channel = MethodChannel(messenger, "fitila/dunya_byt5")
     private val worker = Executors.newSingleThreadExecutor()
     private val ui = Handler(Looper.getMainLooper())
-    private val env: OrtEnvironment = OrtEnvironment.getEnvironment()
+    // Do not initialize a second ONNX JNI stack during app startup.
+    // Shared Sherpa/ByT5 runtime compatibility is validated only on
+    // an explicit local model load; missing/incompatible packs cannot
+    // crash DUNYA's online-only users.
+    private val env: OrtEnvironment by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        OrtEnvironment.getEnvironment()
+    }
     private var encoder: OrtSession? = null
     private var decoder: OrtSession? = null
 
