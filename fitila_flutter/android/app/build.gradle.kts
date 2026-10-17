@@ -70,6 +70,16 @@ android {
 
     testOptions { unitTests.isIncludeAndroidResources = true }
 
+    // sherpa_onnx already ships libonnxruntime.so for offline Omnilingual
+    // ASR / MMS-TTS. The separate ByT5 ONNX Java binding brings the same
+    // SONAME. Android cannot package both; use one shared native runtime.
+    // Mandatory smoke tests: sherpa audio and ByT5 encoder/decoder on device.
+    packaging {
+        jniLibs {
+            pickFirsts.add("**/libonnxruntime.so")
+        }
+    }
+
     buildTypes {
         release {
             signingConfig = signingConfigs.findByName("fitilaRelease")
@@ -99,6 +109,8 @@ dependencies {
     // DUNYA cerveau hors ligne : Gemma via LiteRT-LM (Google AI Edge).
     implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    // Optional installed ByT5 model (not bundled in APK); runs on device CPU.
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.22.0")
 }
 
 

@@ -17,6 +17,7 @@ import 'package:path_provider/path_provider.dart';
 
 const dunyaVoiceCorePackId = 'dunya-voice-core';
 const dunyaVoiceFrPackId = 'dunya-voice-fr';
+const dunyaTranslationPackId = 'dunya-translate-byt5';
 
 /// Public mirror on fitila.bj (the GitHub repository is private, so its
 /// release assets are not downloadable by phones).
@@ -43,6 +44,12 @@ const dunyaVoicePackSources = <DunyaPackSource>[
     title: 'Voix française de secours (si le téléphone n’en a pas)',
     zipUrl: '$_releaseBase/dunya-voice-fr-v1.zip',
     manifestUrl: '$_releaseBase/dunya-voice-fr-v1.manifest.json',
+  ),
+  DunyaPackSource(
+    id: dunyaTranslationPackId,
+    title: 'ByT5 Français ↔ Baatɔnum (traduction sans Internet)',
+    zipUrl: '$_releaseBase/dunya-translate-byt5-v1.zip',
+    manifestUrl: '$_releaseBase/dunya-translate-byt5-v1.manifest.json',
   ),
 ];
 
@@ -153,7 +160,11 @@ class DunyaVoicePackManager {
       final res = await http.get(Uri.parse(source.manifestUrl)).timeout(const Duration(seconds: 20));
       if (res.statusCode != 200) return null;
       final decoded = jsonDecode(utf8.decode(res.bodyBytes));
-      return decoded is Map ? (decoded['total_bytes'] as num?)?.toInt() : null;
+      if (decoded is! Map) return null;
+      // Publishing untested converted weights is insufficient. A public
+      // offline translation pack requires a quality-reviewed manifest.
+      if (source.id == dunyaTranslationPackId && decoded['tested'] != true) return null;
+      return (decoded['total_bytes'] as num?)?.toInt();
     } catch (_) {
       return null;
     }

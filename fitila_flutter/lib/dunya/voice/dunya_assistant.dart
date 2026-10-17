@@ -76,6 +76,7 @@ typedef DunyaCloudBrainFn = Future<String?> Function({
 class DunyaAssistant {
   /// Set by the app (fitila-ia-chat). Used only when the on-device brain is absent.
   static DunyaCloudBrainFn? cloudBrain;
+  static bool Function()? onlineAvailable;
 
   DunyaAssistant({
     required this.knowledge,
@@ -173,8 +174,15 @@ class DunyaAssistant {
     // --- Reliable skills -------------------------------------------------------------
     final intent = parseDunyaIntent(french, awaitingConfirmation: skills.pending != null);
     final wantsBrain = !_skillIntents.contains(intent.kind);
-    final useBrain = wantsBrain && await brainAvailable();
-    if (wantsBrain && !useBrain && cloudBrain != null) {
+    final execution = _settings.execution;
+    final connected = onlineAvailable?.call() ?? false;
+    final useCloud = wantsBrain && execution != DunyaExecutionMode.offline &&
+        connected && cloudBrain != null;
+    // Auto uses the FITILA server immediately without downloading Gemma.
+    // Explicit Offline never contacts the server.
+    var useBrain = wantsBrain && execution != DunyaExecutionMode.online &&
+        !useCloud && await brainAvailable();
+    if (useCloud) {
       yield const DunyaStatusEvent('Je réfléchis…');
       final sources = await _groundingSources(french);
       String? answer;
@@ -219,7 +227,14 @@ class DunyaAssistant {
         }
       }
     }
+    if (!useBrain && wantsBrain && execution != DunyaExecutionMode.online) {
+      // Server returned no answer: try Gemma only when it is installed.
+      useBrain = await brainAvailable();
+    }
     if (!useBrain) {
+      if (wantsBrain && execution == DunyaExecutionMode.online && !connected) {
+        notice ??= 'Internet indisponible : réponse essentielle locale uniquement.';
+      }
       final lang = replyLang == 'bba' ? DunyaReplyLanguage.bariba : DunyaReplyLanguage.french;
       final reply = await skills.respond(french, lang);
       yield* _emitSkillReply(reply, replyLang, inputLang, notice: notice);

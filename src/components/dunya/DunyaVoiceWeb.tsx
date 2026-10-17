@@ -35,6 +35,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
   const [reviewStt, setReviewStt] = useState(() => loadPreference('reviewStt', false));
   const [muted, setMuted] = useState(false), [paused, setPaused] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [connected, setConnected] = useState(() => typeof navigator !== 'undefined' && navigator.onLine);
   const [diagnostic, setDiagnostic] = useState<{ request?: string; asr?: string; tts?: string; elapsed?: number }>({});
   const session = useRef(false), turnCounter = useRef(0), emptyListens = useRef(0);
   const abort = useRef<AbortController | null>(null), recordStop = useRef<AbortController | null>(null);
@@ -56,6 +57,12 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
     return () => { alive = false; data.subscription.unsubscribe(); };
   }, []);
   useEffect(() => saveHistory(mode, turns), [mode, turns]);
+  useEffect(() => {
+    const sync = () => setConnected(navigator.onLine);
+    window.addEventListener('online', sync);
+    window.addEventListener('offline', sync);
+    return () => { window.removeEventListener('online', sync); window.removeEventListener('offline', sync); };
+  }, []);
   useEffect(() => { if (scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight; }, [turns, textView]);
   useEffect(() => () => {
     session.current = false; turnCounter.current++; abort.current?.abort(); stopSpeaking();
@@ -145,7 +152,19 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
     } catch (error) {
       await playback;
       if (!active()) return;
-      session.current = false; setNotice(error instanceof Error ? error.message : 'Service vocal indisponible.');
+      session.current = false;
+      // A transient network failure must not strand a text user on a blank
+      // screen. This is a sourced dictionary excerpt, NOT a local LLM answer.
+      if (!input.audio && !input.replayId && !answer && offlineAnswer && input.text?.trim() &&
+          (!navigator.onLine || error instanceof TypeError)) {
+        const excerpt = offlineAnswer(input.text);
+        setTurns(t => [...t, { id: uid(), role: 'user', text: input.text!, lang: input.lang, createdAt: Date.now() },
+          { id: assistantId, role: 'assistant', text: excerpt, lang: 'fr', createdAt: Date.now() }]);
+        setCaption(excerpt);
+        setNotice('Service injoignable : extrait du dictionnaire FITILA, sans modèle génératif local.');
+      } else {
+        setNotice(error instanceof Error ? error.message : 'Service vocal indisponible.');
+      }
     } finally {
       rememberAudio();
       if (cached.length && audioCache.current.get(assistantId) !== cached) cached.forEach(URL.revokeObjectURL);
@@ -239,7 +258,11 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           <span className="truncate">{MODE_LABEL[mode]}</span>
           <ChevronDown className="h-4 w-4 opacity-70" />
         </button>
-        <span className="hidden rounded-full bg-[#52A47A]/15 px-3 py-1.5 text-[11px] font-extrabold text-[#8FD3A8] sm:inline">DUNYA IA · en ligne</span>
+        <span role="status" aria-label={connected ? 'DUNYA en ligne' : 'DUNYA hors ligne, ressources locales'}
+          className={`shrink-0 rounded-full px-2 py-1.5 text-[11px] font-extrabold sm:px-3 ${connected ? 'bg-[#52A47A]/15 text-[#8FD3A8]' : 'bg-[#E0A03C]/15 text-[#E8C47E]'}`}>
+          <span className="sm:hidden" aria-hidden="true">{connected ? '●' : '○'}</span>
+          <span className="hidden sm:inline">{connected ? 'DUNYA · En ligne' : 'DUNYA · Ressources locales'}</span>
+        </span>
         <div className="flex-1" />
         <input ref={fileInput} type="file" accept="audio/*,.webm,.wav,.m4a,.mp3,.ogg" className="hidden" aria-label="Choisir un vocal" onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; void uploadVoice(file); }} />
         <button onClick={() => fileInput.current?.click()} className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/10" aria-label="Joindre un vocal"><Paperclip className="h-5 w-5" /></button>
@@ -403,7 +426,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
             <Toggle label="Sous-titres français en mode Baatɔnum" value={frSubtitles} onChange={(v) => setPref('frSubtitles', v, setFrSubtitles)} />
             <Toggle label="Vérifier la transcription Baatɔnum avant envoi" value={reviewStt} onChange={(v) => setPref('reviewStt', v, setReviewStt)} />
           </div>
-          <p className="mt-3 text-sm text-[#7D7566]">Parlez ou joignez un vocal. Le traitement est automatique, pour tous les utilisateurs. Internet est nécessaire pour les services vocaux en ligne.</p>
+          <p className="mt-3 text-sm text-[#7D7566]">Le traitement est automatique avec Internet : Omnilingual ASR (reconnaissance), ByT5 (traduction) et Meta MMS-TTS Baatɔnum (voix). Sans Internet : recherche textuelle dans les ressources locales déjà présentes ; pas de modèle vocal ni de LLM téléchargé automatiquement par le navigateur.</p>
           {isAdmin && <div className="mt-3 rounded-xl bg-[#F4EFE0] p-3 text-[12px] text-[#4A4356]" aria-label="Diagnostic vocal réel">
             <p><b>Dernier échange :</b> {diagnostic.request ?? 'aucun'}</p>
             <p><b>Reconnaissance utilisée :</b> {diagnostic.asr ?? 'non exécutée'}</p>

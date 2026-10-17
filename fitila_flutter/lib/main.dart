@@ -53,6 +53,7 @@ import 'dictionary/dictionary_experience.dart';
 import 'dunya/voice/dunya_translation_memory.dart';
 import 'dunya/voice/dunya_translator.dart';
 import 'dunya/voice/dunya_assistant.dart';
+import 'dunya/voice/dunya_settings.dart';
 import 'dunya/dunya_home.dart';
 import 'translator/translator_chat.dart';
 import 'ui/offline_banner.dart';
@@ -103,6 +104,11 @@ void _wireBaribaKeyboard() {
   // DUNYA : mémoire de traduction validée (dictionnaire, Apprendre, scènes), exacte et hors ligne.
   DunyaTranslator.memory = (text, toBariba) async =>
       (await DunyaTranslationMemory.shared()).translate(text, toBariba);
+  DunyaTranslator.allowRemote = () =>
+      DunyaSettings.instance.execution != DunyaExecutionMode.offline &&
+      FitilaOffline.online.value;
+  DunyaTranslator.preferRemote = () =>
+      DunyaSettings.instance.execution == DunyaExecutionMode.online;
   // DUNYA mode baatɔnum : chaîne de traduction FITILA en ligne (ByT5, ai-translate).
   DunyaTranslator.online = (text, toBariba) async {
     final token = FitilaBackend.client.auth.currentSession?.accessToken;
@@ -115,18 +121,20 @@ void _wireBaribaKeyboard() {
     );
     return out.trim().isEmpty ? null : out;
   };
-  // Cerveau en ligne de DUNYA (téléphones sans le modèle Gemma) : fitila-ia-chat répond
+  DunyaAssistant.onlineAvailable = () =>
+      FitilaBackend.configured && FitilaOffline.online.value;
+  // Cerveau en ligne DUNYA : aucune installation Gemma nécessaire, même en visiteur.
   // en français ; DUNYA traduit lui-même chaque phrase (mémoire attestée puis ByT5).
   DunyaAssistant.cloudBrain = ({required system, required history, required message}) async {
     final token = FitilaBackend.client.auth.currentSession?.accessToken;
-    if (token == null || token.isEmpty || !FitilaOffline.online.value) return null;
+    if (!FitilaBackend.configured || !FitilaOffline.online.value) return null;
     try {
       final response = await http
           .post(
             Uri.parse('${FitilaBackend.supabaseUrl}/functions/v1/fitila-ia-chat'),
             headers: {
               'content-type': 'application/json',
-              'Authorization': 'Bearer $token',
+              'Authorization': 'Bearer ${token ?? FitilaBackend.supabaseAnonKey}',
               if (FitilaBackend.supabaseAnonKey.isNotEmpty) 'apikey': FitilaBackend.supabaseAnonKey,
             },
             body: jsonEncode({
