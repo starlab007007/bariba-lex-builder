@@ -236,8 +236,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       case _Phase.idle:
         break;
     }
+    if (_settings.execution == DunyaExecutionMode.online &&
+        !FitilaOffline.online.value) {
+      _toast('Internet indisponible. Passez en mode Auto ou rétablissez la connexion.');
+      return;
+    }
     if (!_useOnlineVoice && (!_paths.canListen || _engine == null)) {
-      _toast('Installez Omnilingual ASR pour parler sans Internet.');
+      _toast('Sans Internet, installez le pack local Meta Omnilingual ASR.');
       await _openSettings();
       return;
     }
