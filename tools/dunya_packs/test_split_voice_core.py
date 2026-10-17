@@ -16,7 +16,7 @@ class SplitVoicePacksTest(unittest.TestCase):
             "asr/tokens.txt": b"mock-asr-tokens",
             "tts-bba/model.onnx": b"mock-vits-onnx",
             "tts-bba/tokens.txt": b"mock-bba-tokens",
-            "tts-bba/normalize.json": b'{"ɔ":"o"}',
+            "tts-bba/normalize.json": '{"ɔ":"o"}'.encode("utf-8"),
         }
         manifest = {"id": "dunya-voice-core", "format": "dunya-pack/1",
                     "files": [{"path": path, "size": len(content),
