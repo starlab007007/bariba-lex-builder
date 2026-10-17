@@ -34,4 +34,4 @@ jobs:
       - name: Analyzer (strict)
         run: flutter analyze
       - name: Voice / pack / privacy unit tests
-        run: flutter test test/dunya_voice_test.dart --reporter expanded
+        run: flutter test test/dunya_voice_test.dart test/dunya_resumable_download_test.dart --reporter expanded
