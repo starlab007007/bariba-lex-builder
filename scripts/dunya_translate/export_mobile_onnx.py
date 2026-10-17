@@ -111,6 +111,14 @@ def export(args):
         "quantized": bool(args.quantize_int8),
     }
     (destination / "config.json").write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf8")
+    if args.approved_memory:
+        memory = json.loads(Path(args.approved_memory).read_text(encoding="utf-8"))
+        if memory.get("format") != "fitila-approved-memory/1":
+            raise ValueError("Expected reviewed, approved FITILA translation memory")
+        entries = memory.get("entries", [])
+        if not isinstance(entries, list) or not entries:
+            raise ValueError("No human-approved translation pairs; refusing to bundle empty/unreviewed memory")
+        shutil.copyfile(args.approved_memory, destination / "approved_memory.json")
     files = []
     for path in sorted(destination.iterdir()):
         if not path.is_file():
@@ -143,6 +151,7 @@ if __name__ == "__main__":
     parser.add_argument("--model", required=True, help="Verified FITILA finetuned checkpoint")
     parser.add_argument("--out", required=True)
     parser.add_argument("--quantize-int8", action="store_true")
+    parser.add_argument("--approved-memory", default=None, help="Optional vetted memory produced by build_approved_memory.py")
     parser.add_argument("--prefix-fr-ba", default="traduire francais en bariba (ordre SOV, voir=wa, mère=bii mɛro, si=yɛ): ")
     parser.add_argument("--prefix-ba-fr", default="traduire bariba en francais (SOV, wa=voir, mɛɛri=regarder, yaa=viande): ")
     export(parser.parse_args())
