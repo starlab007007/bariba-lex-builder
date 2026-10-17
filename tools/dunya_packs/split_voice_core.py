@@ -88,12 +88,28 @@ def prepare(source: pathlib.Path, output: pathlib.Path):
                         while chunk := source_member.read(1024 * 1024):
                             dest.write(chunk)
                     files.append({"path": path, "size": n, "sha256": found_sha})
+                notices = {}
                 if pack_id == MMS_ID:
-                    note = ATTRIBUTION.encode("utf-8")
-                    notice_info = zipfile.ZipInfo("ATTRIBUTION-MMS.txt", date_time=(2026, 1, 1, 0, 0, 0))
+                    notices["ATTRIBUTION-MMS.txt"] = ATTRIBUTION.encode("utf-8")
+                else:
+                    # Apache 2.0 §4 requires providing the complete license
+                    # text when redistributing the ASR model.
+                    license_path = pathlib.Path(__file__).with_name("LICENSE-APACHE-2.0.txt")
+                    if not license_path.is_file():
+                        raise ValueError("Licence Apache-2.0 complète manquante")
+                    notices["LICENSE-APACHE-2.0.txt"] = license_path.read_bytes()
+                    notices["NOTICE-OMNILINGUAL.txt"] = (
+                        "Reconnaissance vocale Omnilingual ASR CTC 300M de Meta AI.\\n"
+                        "Source : https://huggingface.co/facebook/omniASR-CTC-300M\\n"
+                        "Licence : Apache License 2.0, jointe au pack.\\n"
+                        "Conversion ONNX/sherpa-onnx ; usage hors ligne dans FITILA.\\n"
+                        "Ce modèle n'implique aucun soutien ni affiliation avec Meta.\\n"
+                    ).encode("utf-8")
+                for notice_name, note in notices.items():
+                    notice_info = zipfile.ZipInfo(notice_name, date_time=(2026, 1, 1, 0, 0, 0))
                     notice_info.compress_type = zipfile.ZIP_STORED
                     new.writestr(notice_info, note)
-                    files.append({"path": "ATTRIBUTION-MMS.txt", "size": len(note),
+                    files.append({"path": notice_name, "size": len(note),
                                   "sha256": hashlib.sha256(note).hexdigest()})
                 created = {
                     "format": "dunya-pack/1", "id": pack_id, "version": 1,
