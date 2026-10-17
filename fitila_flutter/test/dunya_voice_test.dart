@@ -26,6 +26,21 @@ const _dictionary = <Map<String, String>>[
 ];
 
 void main() {
+  test('DUNYA voice guest sends only a public API key, not an invalid user JWT', () {
+    final headers = DunyaCloudVoice.requestHeaders(apiKey: 'public-key');
+    expect(headers['apikey'], 'public-key');
+    expect(headers.containsKey('Authorization'), isFalse);
+  });
+
+  test('DUNYA voice authenticated user sends their own bearer token', () {
+    final headers = DunyaCloudVoice.requestHeaders(
+      apiKey: 'public-key',
+      userAccessToken: 'user-access-jwt',
+    );
+    expect(headers['apikey'], 'public-key');
+    expect(headers['Authorization'], 'Bearer user-access-jwt');
+  });
+
   test('Omnilingual cloud input WAV uses RIFF PCM 16 kHz mono', () {
     final wav = DunyaCloudVoice.wav16k(Float32List.fromList([0, 0.5, -0.5]));
     expect(String.fromCharCodes(wav.take(4)), 'RIFF');
