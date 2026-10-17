@@ -30,7 +30,7 @@ class DunyaByt5 {
     try {
       final base = await getApplicationSupportDirectory();
       final dir = '${base.path}/dunya_packs/$dunyaByt5PackId/byt5';
-      final enc = File('$dir/encoder.onnx');
+      // Only activate a pack that passed release validation. The importer\n      // verifies file hashes, but hash integrity alone is not a quality gate.\n      final manifestFile = File('${base.path}/dunya_packs/$dunyaByt5PackId/manifest.json');\n      if (!manifestFile.existsSync()) {\n        DunyaTranslator.offline = null;\n        return false;\n      }\n      final manifest = jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;\n      if (manifest['id'] != dunyaByt5PackId || manifest['format'] != 'dunya-pack/1' ||\n          manifest['tested'] != true) {\n        DunyaTranslator.offline = null;\n        return false;\n      }\n      final enc = File('$dir/encoder.onnx');
       final dec = File('$dir/decoder.onnx');
       if (!enc.existsSync() || !dec.existsSync()) {
         _loaded = false;
