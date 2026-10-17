@@ -1,0 +1,37 @@
+name: Validate FITILA Rural Flutter Voice
+on:
+  push:
+    branches:
+      - feat/fitila-village-offline-mms-packs-20261017
+    paths:
+      - 'fitila_flutter/**'
+      - '.github/workflows/fitila-village-flutter-quick-checks.yml'
+  pull_request:
+    paths:
+      - 'fitila_flutter/**'
+      - '.github/workflows/fitila-village-flutter-quick-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  flutter:
+    name: Flutter static and targeted voice regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: fitila_flutter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          channel: stable
+          cache: true
+      - name: Dependencies
+        run: flutter pub get
+      - name: Analyzer (strict)
+        run: flutter analyze
+      - name: Voice / pack / privacy unit tests
+        run: flutter test test/dunya_voice_test.dart --reporter expanded
