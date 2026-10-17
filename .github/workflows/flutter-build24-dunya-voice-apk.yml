@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - feat/byt5-offline-onnx-validation-20261017
       - feat/build24-dunya-voice-offline
       - fix/flutter-keyboard-translator-20261016
       - release/fitila-web-flutter-parity-20261016
