@@ -66,7 +66,8 @@ def prepare(source: pathlib.Path, output: pathlib.Path):
         for pack_id, required in mandatory.items():
             if not all(p in groups[pack_id] for p in required):
                 raise ValueError("Poids ou vocabulaire absents : " + pack_id)
-        source_sha = hashlib.sha256(source.read_bytes()).hexdigest()
+        with source.open("rb") as stream:
+            _, source_sha = digest(stream)
         reports = {}
         for pack_id, members in groups.items():
             filename = f"{pack_id}-v1.zip"
@@ -81,13 +82,17 @@ def prepare(source: pathlib.Path, output: pathlib.Path):
                         n, found_sha = digest(source_member)
                     if found_sha != info["sha256"] or n != info["size"]:
                         raise ValueError(f"Hash de la source incorrect : {path}")
-                    with old.open(path) as source_member, new.open(path, "w", force_zip64=True) as dest:
+                    stable = zipfile.ZipInfo(path, date_time=(2026, 1, 1, 0, 0, 0))
+                    stable.compress_type = zipfile.ZIP_STORED
+                    with old.open(path) as source_member, new.open(stable, "w", force_zip64=True) as dest:
                         while chunk := source_member.read(1024 * 1024):
                             dest.write(chunk)
                     files.append({"path": path, "size": n, "sha256": found_sha})
                 if pack_id == MMS_ID:
                     note = ATTRIBUTION.encode("utf-8")
-                    new.writestr("ATTRIBUTION-MMS.txt", note)
+                    notice_info = zipfile.ZipInfo("ATTRIBUTION-MMS.txt", date_time=(2026, 1, 1, 0, 0, 0))
+                    notice_info.compress_type = zipfile.ZIP_STORED
+                    new.writestr(notice_info, note)
                     files.append({"path": "ATTRIBUTION-MMS.txt", "size": len(note),
                                   "sha256": hashlib.sha256(note).hexdigest()})
                 created = {
@@ -99,9 +104,11 @@ def prepare(source: pathlib.Path, output: pathlib.Path):
                     "commercial_use_allowed": False if pack_id == MMS_ID else True,
                     "tested": False, "quality_certified": False,
                 }
-                new.writestr("manifest.json", json.dumps(created, ensure_ascii=False, indent=2) + "\n")
+                manifest_info = zipfile.ZipInfo("manifest.json", date_time=(2026, 1, 1, 0, 0, 0))
+                manifest_info.compress_type = zipfile.ZIP_STORED
+                new.writestr(manifest_info, json.dumps(created, ensure_ascii=False, indent=2) + "\n")
             sidecar = dict(created)
-            sidecar["archive_sha256"] = hashlib.sha256(archive.read_bytes()).hexdigest()
+            sidecar["archive_sha256"] = digest(archive.open("rb"))[1]
             sidecar["total_download_bytes"] = archive.stat().st_size
             (output / f"{pack_id}-v1.manifest.json").write_text(
                 json.dumps(sidecar, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
