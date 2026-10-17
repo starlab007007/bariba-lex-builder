@@ -32,6 +32,8 @@ class SplitVoicePacksTest(unittest.TestCase):
             path = pathlib.Path(d)
             self.build_fixture(path / "input.zip")
             results = prepare(path / "input.zip", path / "out")
+            twice = prepare(path / "input.zip", path / "again")
+            self.assertEqual(results, twice, "Pack bytes must be reproducible")
             self.assertEqual(set(results), {MMS_ID, ASR_ID})
             with zipfile.ZipFile(path / "out" / f"{MMS_ID}-v1.zip") as z:
                 self.assertIn("ATTRIBUTION-MMS.txt", z.namelist())
