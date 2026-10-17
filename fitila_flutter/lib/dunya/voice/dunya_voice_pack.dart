@@ -17,6 +17,8 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
 
+import 'dunya_resumable_download.dart';
+
 const dunyaVoiceCorePackId = 'dunya-voice-core';
 const dunyaVoiceBbaPackId = 'dunya-voice-bba';
 const dunyaAsrOmniPackId = 'dunya-asr-omni';
@@ -27,6 +29,9 @@ const dunyaAsrOmniPackId = 'dunya-asr-omni';
 const trustedVillagePackSha256 = <String, String>{
   dunyaVoiceBbaPackId: '6c047ac26f83f0f4a90cdfeb72615b0514afcd7cd7892d2a041e9074be5398bf',
   dunyaAsrOmniPackId: '2cf5d651d508199a664dd51479c9fc576e634a44c7a5c73250445df72b16d67b',
+  // Previously published and inspectable release assets (11 Oct 2026).
+  dunyaVoiceCorePackId: '623f17b2cf774dd99ef2ac85aad72fa9740d3c2cfd870ca8609f07956d25839c',
+  dunyaVoiceFrPackId: 'c8352f9c98e9b06159d867628aa13bb547c64fd01d354dffa0f75d76bfe85077',
 };
 const dunyaVoiceFrPackId = 'dunya-voice-fr';
 const dunyaTranslationPackId = 'dunya-translate-byt5';
@@ -241,69 +246,33 @@ class DunyaVoicePackManager {
       if (free != null && free < expectedUnpacked + 32 * 1024 * 1024) {
         throw DunyaPackException('Espace insuffisant pour installer ce modèle.');
       }
-      var offset = target.existsSync() ? target.lengthSync() : 0;
-      if (expectedSize != null && (offset > expectedSize || offset == expectedSize && offset == 0)) {
-        await target.delete();
-        offset = 0;
+      final expectedHash = trustedVillagePackSha256[source.id] ??
+          manifest['archive_sha256']?.toString() ?? '';
+      if (!RegExp(r'^[a-f0-9]{64}$').hasMatch(expectedHash)) {
+        throw DunyaPackException('SHA-256 officiel du pack non publié.');
       }
-      for (var attempt = 0; attempt < 2; attempt++) {
-        final request = http.Request('GET', Uri.parse(source.zipUrl));
-        if (offset > 0) request.headers['Range'] = 'bytes=$offset-';
-        final response = await client.send(request).timeout(const Duration(seconds: 30));
-        if (response.statusCode == 416 && offset > 0) {
-          await target.delete();
-          offset = 0;
-          continue;
-        }
-        if (response.statusCode != 200 && response.statusCode != 206) {
-          throw DunyaPackException('Téléchargement impossible (HTTP ${response.statusCode}).');
-        }
-        final type = response.headers['content-type'] ?? '';
-        if (type.contains('text/html')) throw DunyaPackException('Le serveur a renvoyé une page HTML.');
-        if (response.statusCode == 206) {
-          final match = RegExp(r'^bytes (\d+)-(\d+)/(\d+)$')
-              .firstMatch(response.headers['content-range'] ?? '');
-          if (offset == 0 || match == null || int.parse(match.group(1)!) != offset ||
-              expectedSize != null && int.parse(match.group(3)!) != expectedSize) {
-            throw DunyaPackException('Reprise refusée : plage HTTP incohérente.');
-          }
-        } else {
-          // Servers that ignore Range require a fresh download, never append.
-          offset = 0;
-        }
-        final sink = target.openWrite(mode: offset > 0 ? FileMode.append : FileMode.write);
-        var received = offset;
-        try {
-          await for (final chunk in response.stream.timeout(const Duration(seconds: 45))) {
-            received += chunk.length;
-            if (expectedSize != null && received > expectedSize) {
-              throw DunyaPackException('Archive plus grande que le manifeste.');
-            }
-            sink.add(chunk);
-            onProgress?.call(DunyaPackProgress('download',
-                expectedSize == null || expectedSize == 0 ? null : received / expectedSize,
-                _mb(received)));
-          }
-        } finally {
-          await sink.close();
-        }
-        if (expectedSize != null && received != expectedSize) {
-          throw const SocketException('Téléchargement interrompu');
-        }
-        break;
-      }
-      if (hash.isNotEmpty) {
-        final digest = await sha256.bind(target.openRead()).first;
-        if (digest.toString() != hash) {
-          await target.delete();
-          throw DunyaPackException('SHA-256 incorrect : archive remplacée ou endommagée.');
-        }
+      try {
+        await DunyaResumableDownload.save(
+          client: client,
+          uri: Uri.parse(source.zipUrl),
+          target: target,
+          sha256Expected: expectedHash,
+          expectedSize: expectedSize,
+          progress: (received, total) => onProgress?.call(DunyaPackProgress(
+              'download', total == null ? null : received / total, _mb(received))),
+        );
+      } on FormatException catch (error) {
+        throw DunyaPackException('Téléchargement rejeté : ${error.message}');
+      } on HttpException catch (error) {
+        throw DunyaPackException(error.message);
       }
       return await installFromFile(target.path, onProgress: onProgress, deleteSource: true);
     } on SocketException {
       throw DunyaPackException('Connexion interrompue. Votre téléchargement est conservé pour une reprise.');
     } on TimeoutException {
       throw DunyaPackException('Réseau lent. Votre téléchargement est conservé pour une reprise.');
+    } on http.ClientException {
+      throw DunyaPackException('Réseau instable. Le téléchargement pourra reprendre.');
     } finally {
       client.close();
     }
