@@ -42,6 +42,9 @@ class SplitVoicePacksTest(unittest.TestCase):
             with zipfile.ZipFile(path / "out" / f"{ASR_ID}-v1.zip") as z:
                 self.assertIn("asr/model.int8.onnx", z.namelist())
                 self.assertNotIn("tts-bba/model.onnx", z.namelist())
+                self.assertIn("LICENSE-APACHE-2.0.txt", z.namelist())
+                self.assertIn("NOTICE-OMNILINGUAL.txt", z.namelist())
+                self.assertIn(b"TERMS AND CONDITIONS", z.read("LICENSE-APACHE-2.0.txt"))
             sidecar = json.loads((path / "out" / f"{MMS_ID}-v1.manifest.json").read_text())
             self.assertFalse(sidecar["quality_certified"])
             self.assertEqual(sidecar["license"], "CC-BY-NC-4.0")
