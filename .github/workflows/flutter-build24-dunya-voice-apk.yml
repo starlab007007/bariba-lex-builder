@@ -12,6 +12,7 @@ on:
       - feat/fitila-native-keyboard-auto-bidirectional-20261016
       - feat/fitila-byt5-keyboard-copy-send-20261016
       - feat/dunya-hybrid-online-offline-mms-omni-20261016
+      - feat/fitila-village-offline-mms-packs-20261017
     paths:
       - 'fitila_flutter/**'
       - '.github/workflows/flutter-build24-dunya-voice-apk.yml'
