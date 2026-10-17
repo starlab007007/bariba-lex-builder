@@ -6,6 +6,7 @@
 /// integrity checks are 100 % offline.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
@@ -14,8 +15,11 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart';
 
 const dunyaVoiceCorePackId = 'dunya-voice-core';
+const dunyaVoiceBbaPackId = 'dunya-voice-bba';
+const dunyaAsrOmniPackId = 'dunya-asr-omni';
 const dunyaVoiceFrPackId = 'dunya-voice-fr';
 const dunyaTranslationPackId = 'dunya-translate-byt5';
 
@@ -34,10 +38,16 @@ class DunyaPackSource {
 
 const dunyaVoicePackSources = <DunyaPackSource>[
   DunyaPackSource(
-    id: dunyaVoiceCorePackId,
-    title: 'Voix DUNYA : écoute français + baatɔnum, voix baatɔnum',
-    zipUrl: '$_releaseBase/dunya-voice-core-v1.zip',
-    manifestUrl: '$_releaseBase/dunya-voice-core-v1.manifest.json',
+    id: dunyaVoiceBbaPackId,
+    title: 'Voix Baatɔnum seule · utilisable sans Internet',
+    zipUrl: '$_releaseBase/dunya-voice-bba-v1.zip',
+    manifestUrl: '$_releaseBase/dunya-voice-bba-v1.manifest.json',
+  ),
+  DunyaPackSource(
+    id: dunyaAsrOmniPackId,
+    title: 'Écoute vocale Omnilingual · optionnelle',
+    zipUrl: '$_releaseBase/dunya-asr-omni-v1.zip',
+    manifestUrl: '$_releaseBase/dunya-asr-omni-v1.manifest.json',
   ),
   DunyaPackSource(
     id: dunyaVoiceFrPackId,
@@ -146,10 +156,13 @@ class DunyaVoicePackManager {
       return DunyaTtsVoiceFiles(model: model, tokens: tokens, normalization: normalization);
     }
 
+    final separateAsr = existing(dunyaAsrOmniPackId, 'asr/model.int8.onnx');
     return DunyaVoicePaths(
-      asrModel: existing(dunyaVoiceCorePackId, 'asr/model.int8.onnx'),
-      asrTokens: existing(dunyaVoiceCorePackId, 'asr/tokens.txt'),
-      ttsBba: voice(dunyaVoiceCorePackId, 'tts-bba'),
+      asrModel: separateAsr ?? existing(dunyaVoiceCorePackId, 'asr/model.int8.onnx'),
+      asrTokens: separateAsr != null
+          ? existing(dunyaAsrOmniPackId, 'asr/tokens.txt')
+          : existing(dunyaVoiceCorePackId, 'asr/tokens.txt'),
+      ttsBba: voice(dunyaVoiceBbaPackId, 'tts-bba') ?? voice(dunyaVoiceCorePackId, 'tts-bba'),
       ttsFra: voice(dunyaVoiceFrPackId, 'tts-fra'),
     );
   }
@@ -164,72 +177,127 @@ class DunyaVoicePackManager {
       // Publishing untested converted weights is insufficient. A public
       // offline translation pack requires a quality-reviewed manifest.
       if (source.id == dunyaTranslationPackId && decoded['tested'] != true) return null;
-      return (decoded['total_bytes'] as num?)?.toInt();
+      // Split packs are only advertised after a published checksum and real
+      // voice QA approval. Candidate CI artifacts are not public downloads.
+      if ((source.id == dunyaVoiceBbaPackId || source.id == dunyaAsrOmniPackId) &&
+          (decoded['tested'] != true || decoded['quality_certified'] != true)) return null;
+      return (decoded['total_download_bytes'] as num?)?.toInt() ??
+          (decoded['total_bytes'] as num?)?.toInt();
     } catch (_) {
       return null;
     }
   }
 
-  /// Occasional Wi-Fi download, then the same offline install as a file.
+  /// Available storage reported by Android StatFs; null on other platforms.
+  static const _storage = MethodChannel('fitila/offline/storage');
+  Future<int?> freeBytes() async {
+    try {
+      return await _storage.invokeMethod<int>('freeBytes');
+    } on MissingPluginException {
+      return null;
+    } on PlatformException {
+      return null;
+    }
+  }
+
+  /// Resume partial downloads after weak-network interruptions. Every new
+  /// split pack requires its release sidecar SHA-256 before acceptance.
   Future<Map<String, dynamic>> download(
     DunyaPackSource source, {
     void Function(DunyaPackProgress progress)? onProgress,
   }) async {
     final root = await _root();
-    final target = File('${root.path}/${source.id}.download.zip');
+    final target = File('${root.path}/${source.id}.download.part');
     final client = http.Client();
     try {
-      final response = await client.send(http.Request('GET', Uri.parse(source.zipUrl)));
-      if (response.statusCode == 404) {
-        throw DunyaPackException(
-          'Ce pack n’est pas encore disponible sur fitila.bj. Réessayez plus tard ou installez-le depuis un fichier.',
-        );
+      final remote = await client.get(Uri.parse(source.manifestUrl))
+          .timeout(const Duration(seconds: 25));
+      if (remote.statusCode != 200) {
+        throw DunyaPackException('Pack non publié : ${source.id}. Installez un fichier vérifié si disponible.');
       }
-      if (response.statusCode != 200) {
-        throw DunyaPackException('Téléchargement impossible (code ${response.statusCode}).');
+      final manifest = jsonDecode(utf8.decode(remote.bodyBytes)) as Map<String, dynamic>;
+      if (manifest['id'] != source.id) throw DunyaPackException('Manifeste du pack inattendu.');
+      final split = source.id == dunyaVoiceBbaPackId || source.id == dunyaAsrOmniPackId;
+      if (source.id == dunyaTranslationPackId && manifest['tested'] != true ||
+          split && (manifest['tested'] != true || manifest['quality_certified'] != true)) {
+        throw DunyaPackException('Ce modèle attend sa validation et sa publication officielle.');
       }
-      final type = response.headers['content-type'] ?? '';
-      if (type.contains('text/html')) {
-        throw DunyaPackException('Le serveur a renvoyé une page au lieu du pack. Réessayez plus tard.');
+      final hash = manifest['archive_sha256']?.toString() ?? '';
+      if (split && !RegExp(r'^[a-f0-9]{64}$').hasMatch(hash)) {
+        throw DunyaPackException('Archive sans signature d’intégrité publiée.');
       }
-      final total = response.contentLength;
-      final sink = target.openWrite();
-      var received = 0;
-      var lastReport = 0;
-      try {
-        await for (final chunk in response.stream) {
-          sink.add(chunk);
-          received += chunk.length;
-          if (received - lastReport > 2 * 1024 * 1024) {
-            lastReport = received;
-            onProgress?.call(DunyaPackProgress('download', total == null || total == 0 ? null : received / total, _mb(received)));
-          }
+      final expectedSize = (manifest['total_download_bytes'] as num?)?.toInt();
+      final expectedUnpacked = (manifest['total_bytes'] as num?)?.toInt() ?? 0;
+      final free = await freeBytes();
+      if (free != null && free < expectedUnpacked + 32 * 1024 * 1024) {
+        throw DunyaPackException('Espace insuffisant pour installer ce modèle.');
+      }
+      var offset = target.existsSync() ? target.lengthSync() : 0;
+      if (expectedSize != null && (offset > expectedSize || offset == expectedSize && offset == 0)) {
+        await target.delete();
+        offset = 0;
+      }
+      for (var attempt = 0; attempt < 2; attempt++) {
+        final request = http.Request('GET', Uri.parse(source.zipUrl));
+        if (offset > 0) request.headers['Range'] = 'bytes=$offset-';
+        final response = await client.send(request).timeout(const Duration(seconds: 30));
+        if (response.statusCode == 416 && offset > 0) {
+          await target.delete();
+          offset = 0;
+          continue;
         }
-      } finally {
-        await sink.close();
+        if (response.statusCode != 200 && response.statusCode != 206) {
+          throw DunyaPackException('Téléchargement impossible (HTTP ${response.statusCode}).');
+        }
+        final type = response.headers['content-type'] ?? '';
+        if (type.contains('text/html')) throw DunyaPackException('Le serveur a renvoyé une page HTML.');
+        if (response.statusCode == 206) {
+          final match = RegExp(r'^bytes (\d+)-(\d+)/(\d+)$')
+              .firstMatch(response.headers['content-range'] ?? '');
+          if (offset == 0 || match == null || int.parse(match.group(1)!) != offset ||
+              expectedSize != null && int.parse(match.group(3)!) != expectedSize) {
+            throw DunyaPackException('Reprise refusée : plage HTTP incohérente.');
+          }
+        } else {
+          // Servers that ignore Range require a fresh download, never append.
+          offset = 0;
+        }
+        final sink = target.openWrite(mode: offset > 0 ? FileMode.append : FileMode.write);
+        var received = offset;
+        try {
+          await for (final chunk in response.stream.timeout(const Duration(seconds: 45))) {
+            received += chunk.length;
+            if (expectedSize != null && received > expectedSize) {
+              throw DunyaPackException('Archive plus grande que le manifeste.');
+            }
+            sink.add(chunk);
+            onProgress?.call(DunyaPackProgress('download',
+                expectedSize == null || expectedSize == 0 ? null : received / expectedSize,
+                _mb(received)));
+          }
+        } finally {
+          await sink.close();
+        }
+        if (expectedSize != null && received != expectedSize) {
+          throw const SocketException('Téléchargement interrompu');
+        }
+        break;
       }
-      if (total != null && total > 0 && received != total) {
-        throw DunyaPackException('Téléchargement incomplet (${_mb(received)} sur ${_mb(total)}). Réessayez en Wi-Fi.');
+      if (hash.isNotEmpty) {
+        final digest = await sha256.bind(target.openRead()).first;
+        if (digest.toString() != hash) {
+          await target.delete();
+          throw DunyaPackException('SHA-256 incorrect : archive remplacée ou endommagée.');
+        }
       }
       return await installFromFile(target.path, onProgress: onProgress, deleteSource: true);
-    } on DunyaPackException {
-      _deleteQuietly(target);
-      rethrow;
     } on SocketException {
-      _deleteQuietly(target);
-      throw DunyaPackException('Pas de connexion. Copiez le fichier du pack sur le téléphone et touchez « Installer depuis un fichier du téléphone ».');
-    } catch (error) {
-      _deleteQuietly(target);
-      throw DunyaPackException('Téléchargement interrompu ($error). Réessayez en Wi-Fi.');
+      throw DunyaPackException('Connexion interrompue. Votre téléchargement est conservé pour une reprise.');
+    } on TimeoutException {
+      throw DunyaPackException('Réseau lent. Votre téléchargement est conservé pour une reprise.');
     } finally {
       client.close();
     }
-  }
-
-  void _deleteQuietly(File file) {
-    try {
-      if (file.existsSync()) file.deleteSync();
-    } catch (_) {}
   }
 
   /// Install a pack ZIP already on the phone. Fully offline.
@@ -239,6 +307,16 @@ class DunyaVoicePackManager {
     bool deleteSource = false,
   }) async {
     final root = await _root();
+    // Old versions of a pack remain available if a replacement fails.
+    final available = await freeBytes();
+    if (available != null) {
+      final bytes = File(zipPath).lengthSync();
+      // Uncompressed ZIP requires approximately its own size again while
+      // staged. Subtract the source only after the atomic install succeeds.
+      if (available < bytes + 32 * 1024 * 1024) {
+        throw DunyaPackException('Stockage insuffisant pour extraire le pack : libérez de l’espace.');
+      }
+    }
     onProgress?.call(const DunyaPackProgress('extract', null, 'Ouverture du pack…'));
     final port = ReceivePort();
     final sub = port.listen((message) {
@@ -304,7 +382,12 @@ Future<Map<String, dynamic>> _installPack(String zipPath, String rootPath, SendP
     final id = manifest['id'].toString();
     if (!RegExp(r'^[a-z0-9-]{3,64}$').hasMatch(id)) throw DunyaPackException('Identifiant de pack invalide.');
     final files = (manifest['files'] as List).cast<Map<String, dynamic>>();
+    if (files.isEmpty || files.length > 128 ||
+        files.map((f) => f['path']).toSet().length != files.length) {
+      throw DunyaPackException('Manifeste vide ou doublons.');
+    }
     final total = files.fold<int>(0, (sum, f) => sum + (f['size'] as num).toInt());
+    if (total > 4 * 1024 * 1024 * 1024) throw DunyaPackException('Archive trop volumineuse.');
 
     final partial = Directory('$rootPath/$id.partial');
     if (partial.existsSync()) partial.deleteSync(recursive: true);
@@ -318,7 +401,9 @@ Future<Map<String, dynamic>> _installPack(String zipPath, String rootPath, SendP
       }
       final entry = entries.where((e) => e.name == rel).firstOrNull;
       if (entry == null) throw DunyaPackException('Fichier manquant dans le pack : $rel');
-      if (entry.method != 0) throw DunyaPackException('Le pack doit être un ZIP non compressé.');
+      if (entry.method != 0 || entry.size != (f['size'] as num).toInt()) {
+        throw DunyaPackException('ZIP non compressé attendu, dimensions incohérentes.');
+      }
       final out = File('${partial.path}/$rel');
       out.parent.createSync(recursive: true);
       final digest = await _copyEntryAndHash(raf, entry, out, (copied) {
@@ -334,8 +419,16 @@ Future<Map<String, dynamic>> _installPack(String zipPath, String rootPath, SendP
     File('${partial.path}/manifest.json').writeAsStringSync(jsonEncode(manifest));
 
     final finalDir = Directory('$rootPath/$id');
-    if (finalDir.existsSync()) finalDir.deleteSync(recursive: true);
-    partial.renameSync(finalDir.path);
+    final previous = Directory('$rootPath/$id.backup');
+    if (previous.existsSync()) previous.deleteSync(recursive: true);
+    if (finalDir.existsSync()) finalDir.renameSync(previous.path);
+    try {
+      partial.renameSync(finalDir.path);
+      if (previous.existsSync()) previous.deleteSync(recursive: true);
+    } catch (_) {
+      if (previous.existsSync() && !finalDir.existsSync()) previous.renameSync(finalDir.path);
+      rethrow;
+    }
     return manifest;
   } finally {
     raf.closeSync();
