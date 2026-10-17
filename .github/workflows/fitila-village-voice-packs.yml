@@ -47,6 +47,17 @@ jobs:
                   assert all(z.getinfo(f['path']).compress_type == 0 for f in m['files'])
               print(name, m['total_download_bytes'], m['license'])
           PY
+      - name: Install sherpa-onnx Python inference runtime
+        run: |
+          python -m pip install --disable-pip-version-check sherpa-onnx==1.13.0
+      - name: Real CPU inference with MMS Baatonum ONNX
+        run: |
+          python tools/dunya_packs/smoke_tts.py \\
+            --pack dist/dunya-voice-bba-v1.zip --out dist/smoke
+          test -s dist/smoke/bba_00.wav
+          test -s dist/smoke/bba_01.wav
+          test -s dist/smoke/bba_02.wav
+
       - name: Upload candidate packs (NOT approved for production)
         uses: actions/upload-artifact@v4
         with:
