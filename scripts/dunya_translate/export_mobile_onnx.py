@@ -106,6 +106,8 @@ def export(args):
         "eos_token_id": 1,
         "max_source_bytes": 511,
         "max_output_bytes": 192,
+        "space_pipeline": "v4",
+        "generation_note": "Android currently uses greedy no-cache decoding; Space v4 uses 8-beam search and postprocessing. Validate output quality separately.",
         "quantized": bool(args.quantize_int8),
     }
     (destination / "config.json").write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf8")
