@@ -16,7 +16,7 @@ Aucun redéploiement FITILA Web/Flutter/Supabase production dans ce lot.
 | Web faible réseau | Workbox StaleWhileRevalidate sur lexique/Apprendre/i18n **publics** | build PWA vert |
 | Quantification INT8 | `tools/dunya_packs/quantize_candidate.py` | essai réel : réduction de 1,89 % (modèle expérimental non retenu) |
 | Qualité Baatɔnum | `tools/dunya_packs/quality_gate.py` + tests des règles | aucune évaluation humaine fournie |
-| APK final | workflow `flutter-build24-dunya-voice-apk.yml` | recette complète encore requise |
+| APK pilote | workflow `flutter-build24-dunya-voice-apk.yml`, version **1.8.23+34** | nouvelle compilation/recette complète requise |
 | Distribution publique | miroir `/dunya-packs/v1` et signature APK | bloquée tant qu'il manque QA réelle/validation de déploiement |
 
 ## Mesures vérifiées
@@ -72,3 +72,8 @@ La quantification CPU a ramené le poids ONNX de 114 303 014 à 112 143 811 octe
 - La reprise HTTP Range a des tests automatisés sur reprise 206, serveur répondant 200, 416, contenu corrompu, interruptions et réutilisation cache vérifié.
 - La nouvelle archive ASR inclut désormais la licence Apache-2.0 intégrale et une notice de provenance (nouvelle empreinte ci-dessus).
 - Les archives sont des candidats ; elles ne sont pas annoncées au public comme validées linguistiquement.
+
+## Version pilote Android
+- La branche FITILA Villages cible maintenant **1.8.23+34**, volontairement distincte de la version DUNYA 1.8.22+33 déjà intégrée.
+- Les artefacts APK de la CI sont destinés aux tests; vérifier le mode de signature (production ou éphémère) avant toute tentative de mise à jour de l'application installée.
+- Une compilation réussie sans essais sur téléphones physiques ne constitue pas une certification de mise en production.
