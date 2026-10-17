@@ -26,6 +26,29 @@ const _dictionary = <Map<String, String>>[
 ];
 
 void main() {
+  test('rural MMS voice and Omnilingual ASR are independent, optional packs', () {
+    final bba = dunyaVoicePackSources.firstWhere((p) => p.id == dunyaVoiceBbaPackId);
+    final asr = dunyaVoicePackSources.firstWhere((p) => p.id == dunyaAsrOmniPackId);
+    expect(bba.zipUrl, contains('dunya-voice-bba-v1.zip'));
+    expect(asr.zipUrl, contains('dunya-asr-omni-v1.zip'));
+    expect(bba.id, isNot(asr.id));
+    final localTts = DunyaVoicePaths(
+      ttsBba: const DunyaTtsVoiceFiles(
+        model: '/offline/tts-bba/model.onnx',
+        tokens: '/offline/tts-bba/tokens.txt',
+        normalization: <String, String>{},
+      ),
+    );
+    expect(localTts.canSpeakBariba, isTrue);
+    expect(localTts.canListen, isFalse);
+    final localAsr = const DunyaVoicePaths(
+        asrModel: '/offline/asr/model.int8.onnx',
+        asrTokens: '/offline/asr/tokens.txt');
+    expect(localAsr.canListen, isTrue);
+    expect(localAsr.canSpeakBariba, isFalse);
+  });
+
+
   test('DUNYA voice guest sends only a public API key, not an invalid user JWT', () {
     final headers = DunyaCloudVoice.requestHeaders(apiKey: 'public-key');
     expect(headers['apikey'], 'public-key');
