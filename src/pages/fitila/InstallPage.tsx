@@ -4,8 +4,8 @@ import { Download, Share2, CheckCircle, Smartphone, AppWindow, Keyboard, Refresh
 import FitilaPageHeader from '@/components/fitila/FitilaPageHeader';
 import { Chip, ChipWrap, FeatureGrid, FitilaPage, MetricStrip, type Feature } from '@/components/fitila/FitilaUi';
 
-type AndroidRelease = { version: string; url: string; size: number; updated: string };
-const RELEASE_API = 'https://api.github.com/repos/starlab007007/bariba-lex-builder/releases/latest';
+type AndroidRelease = { version: string; url: string; size: number; updated: string; armv7?: string };
+const RELEASE_API = 'https://api.github.com/repos/starlab007007/bariba-lex-builder/releases?per_page=30';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -18,6 +18,7 @@ export default function InstallPage() {
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [apk, setApk] = useState<AndroidRelease | null>(null);
+  const [apkHistory, setApkHistory] = useState<AndroidRelease[]>([]);
   const [apkStatus, setApkStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
 
   useEffect(() => {
@@ -27,20 +28,27 @@ export default function InstallPage() {
         if (!response.ok) throw new Error('No public production release');
         return response.json();
       })
-      .then(release => {
-        // Never offer prereleases, unpublished releases or CI ephemeral-signature APKs.
-        if (release.draft || release.prerelease || !String(release.tag_name || '').startsWith('fitila-android-v')) {
-          throw new Error('No certified Android release');
-        }
-        const asset = (release.assets || []).find((a: any) =>
-          /^FITILA-Android-.*-arm64\.apk$/i.test(String(a.name || '')) &&
-          typeof a.browser_download_url === 'string' &&
-          a.browser_download_url.startsWith('https://github.com/starlab007007/bariba-lex-builder/releases/download/')
-        );
-        if (!asset) throw new Error('No signed ARM64 APK');
-        setApk({ version: release.tag_name, url: asset.browser_download_url,
-          size: asset.size || 0, updated: release.published_at || '' });
-        setApkStatus('ready');
+      .then(releases => {
+        if (!Array.isArray(releases)) throw new Error('Invalid release list');
+        const verified = releases
+          .filter(release => !release.draft && !release.prerelease &&
+            /^fitila-android-v\\d/.test(String(release.tag_name || '')))
+          .map(release => {
+            const assets = Array.isArray(release.assets) ? release.assets : [];
+            const valid = (a: any) => typeof a.browser_download_url === 'string' &&
+              a.browser_download_url.startsWith('https://github.com/starlab007007/bariba-lex-builder/releases/download/');
+            const arm64 = assets.find((a: any) => valid(a) && /^FITILA-Android-.*-arm64\\.apk$/i.test(String(a.name)));
+            if (!arm64) return null;
+            const armv7 = assets.find((a: any) => valid(a) && /^FITILA-Android-.*-armv7\\.apk$/i.test(String(a.name)));
+            return { version: String(release.tag_name), url: arm64.browser_download_url,
+              size: arm64.size || 0, updated: release.published_at || '',
+              armv7: armv7?.browser_download_url } as AndroidRelease;
+          })
+          .filter((release): release is AndroidRelease => release !== null);
+        verified.sort((a, b) => (b.updated || '').localeCompare(a.updated || ''));
+        setApk(verified[0] || null);
+        setApkHistory(verified.slice(1));
+        setApkStatus(verified.length ? 'ready' : 'unavailable');
       })
       .catch(error => { if (error?.name !== 'AbortError') setApkStatus('unavailable'); });
     return () => controller.abort();
@@ -135,6 +143,9 @@ export default function InstallPage() {
                   <a href={apk.url} className="flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-[#C99530] px-3 font-extrabold text-[#2B2110]">
                     <Download className="h-5 w-5" /> Télécharger FITILA APK (ARM64)
                   </a>
+                  {apk.armv7 && <a href={apk.armv7} className="inline-flex items-center gap-2 text-[13px] font-semibold text-[#765017] underline">
+                    <Download className="h-4 w-4" /> APK pour anciens téléphones (ARMv7)
+                  </a>}
                   <p className="text-[12px] text-[#766D5A]">
                     Version : {apk.version} · {Math.round(apk.size / 1024 / 1024)} Mo · publication officielle GitHub
                   </p>
@@ -144,6 +155,24 @@ export default function InstallPage() {
                   {apkStatus === 'loading' ? 'Vérification de la dernière version Android…'
                     : "L’APK Android officiel signé n’est pas encore publié. La version Web reste installable."}
                 </p>
+              )}
+              {apkHistory.length > 0 && (
+                <details className="rounded-xl border border-[#E4DFCC] p-3">
+                  <summary className="cursor-pointer text-[13px] font-bold text-[#3A3448]">
+                    Historique des versions ({apkHistory.length})
+                  </summary>
+                  <ul className="mt-3 space-y-3">
+                    {apkHistory.map(release => (
+                      <li key={release.version} className="flex flex-wrap items-center justify-between gap-2 text-[12px]">
+                        <span>{release.version} · {release.updated ? new Date(release.updated).toLocaleDateString('fr-FR') : 'Date indisponible'}</span>
+                        <span className="flex gap-3">
+                          <a className="font-bold underline" href={release.url}>ARM64</a>
+                          {release.armv7 && <a className="font-bold underline" href={release.armv7}>ARMv7</a>}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               )}
               <p className="text-[12px] text-[#675D49]">
                 Sur Android, ouvrez le fichier APK téléchargé puis autorisez l'installation depuis votre navigateur si Android le demande.
