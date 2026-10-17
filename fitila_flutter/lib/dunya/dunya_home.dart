@@ -267,16 +267,41 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-                    decoration: BoxDecoration(color: Color(0xFFDDEEE2), borderRadius: BorderRadius.circular(999)),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.cloud_rounded, size: 14, color: sage),
-                        const SizedBox(width: 5),
-                        Text(_settings.execution.label.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: sage)),
-                      ],
+                  PopupMenuButton<DunyaExecutionMode>(
+                    tooltip: 'Choisir le fonctionnement de DUNYA',
+                    initialValue: _settings.execution,
+                    onSelected: (mode) async {
+                      if (mode == DunyaExecutionMode.offline) {
+                        // Switching to Offline must stop a remote reply, not
+                        // just change the text badge while sending data.
+                        await _assistant.interrupt();
+                      }
+                      await _settings.update(execution: mode);
+                      if (mounted) setState(() {});
+                    },
+                    itemBuilder: (context) => [
+                      for (final mode in DunyaExecutionMode.values)
+                        PopupMenuItem<DunyaExecutionMode>(
+                          value: mode, child: Text(mode.label),
+                        ),
+                    ],
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDDEEE2),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.settings_ethernet_rounded, size: 14, color: sage),
+                          const SizedBox(width: 5),
+                          Text(_settings.execution.label.toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 10, fontWeight: FontWeight.w900, color: sage)),
+                          const Icon(Icons.arrow_drop_down, size: 16, color: sage),
+                        ],
+                      ),
                     ),
                   ),
                   IconButton(
