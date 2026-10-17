@@ -20,6 +20,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/offline.dart';
+import '../../core/offline_bba_voice.dart';
 import '../dunya_core.dart';
 import '../dunya_local_store.dart';
 import '../dunya_models.dart';
@@ -122,7 +123,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     unawaited(_mic.dispose());
     unawaited(_tts.stop());
     unawaited(_player.dispose());
-    _engine?.dispose();
+    // Offline voice runtime belongs to the entire FITILA app, not this page.
     _cloudVoice.cancel();
     _orb.dispose();
     _composer.dispose();
@@ -187,15 +188,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   }
 
   Future<void> _startEngine() async {
-    _engine?.dispose();
+    // Shared across DUNYA, Dictionnaire, Apprendre and other local readers.
     _engine = null;
-    _paths = await _packs.resolvePaths();
     await DunyaByt5.instance.activateIfInstalled();
-    if (!_paths.canListen && !_paths.canSpeakBariba && !_paths.canSpeakFrenchOffline) return;
     try {
-      final temp = await getTemporaryDirectory();
-      _engine = await DunyaSpeechEngine.start(_paths, tempDir: temp.path);
-      if (_paths.canListen) {
+      _engine = await OfflineBbaVoice.instance.reload();
+      _paths = OfflineBbaVoice.instance.paths;
+      if (_engine != null && _paths.canListen) {
         if (mounted) setState(() => _status = 'Préparation de l’écoute…');
         await _engine!.warmUp();
       }
@@ -1471,6 +1470,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   bool _brainInstalled = false;
   bool _byt5Installed = false;
   bool _byt5Published = false;
+  final Map<String, bool> _publishedVoicePacks = {};
   double? _brainProgress;
   String? _brainLabel;
   bool _downloading = false;
@@ -1511,6 +1511,13 @@ class _SettingsSheetState extends State<_SettingsSheet> {
         if (mounted) setState(() => _byt5Published = false);
       }
       }());
+      for (final source in dunyaVoicePackSources.where(
+          (p) => p.id == dunyaVoiceBbaPackId || p.id == dunyaAsrOmniPackId)) {
+        unawaited(() async {
+          final size = await _packs.remoteSize(source);
+          if (mounted) setState(() => _publishedVoicePacks[source.id] = size != null && size > 0);
+        }());
+      }
     }
   }
 
@@ -1547,6 +1554,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   }
 
   bool _packInstalled(DunyaPackSource source) => switch (source.id) {
+    dunyaVoiceBbaPackId => widget.paths.canSpeakBariba,
+    dunyaAsrOmniPackId => widget.paths.canListen,
     dunyaVoiceCorePackId => widget.paths.canListen,
     dunyaVoiceFrPackId => widget.paths.canSpeakFrenchOffline,
     dunyaTranslationPackId => _byt5Installed,
@@ -1651,14 +1660,19 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 icon: _packInstalled(source) ? Icons.check_circle_rounded : Icons.cloud_download_outlined,
                 iconColor: const Color(0xFF9C6B1D),
                 title: source.title,
-                subtitle: _packInstalled(source) ? 'Installé'
+                subtitle: _packInstalled(source) ? 'Installé · utilisation sans Internet'
                     : source.id == dunyaTranslationPackId && !_byt5Published
                         ? 'Modèle affiné pas encore publié : installation depuis fichier possible.'
-                        : 'Wi-Fi conseillé',
+                        : (source.id == dunyaVoiceBbaPackId || source.id == dunyaAsrOmniPackId) &&
+                            _publishedVoicePacks[source.id] != true
+                        ? 'Pack candidat en validation — import local possible après approbation'
+                        : 'Téléchargement reprenable · Wi-Fi conseillé',
                 trailing: _packInstalled(source)
                     ? null
-                    : source.id == dunyaTranslationPackId && !_byt5Published
-                        ? const Text('À publier', style: TextStyle(fontSize: 11))
+                    : source.id == dunyaTranslationPackId && !_byt5Published ||
+                        ((source.id == dunyaVoiceBbaPackId || source.id == dunyaAsrOmniPackId) &&
+                            _publishedVoicePacks[source.id] != true)
+                        ? const Text('À valider', style: TextStyle(fontSize: 11))
                         : TextButton(
                         onPressed: () {
                           Navigator.of(context).pop();
