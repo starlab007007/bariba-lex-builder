@@ -23,6 +23,7 @@ import java.util.concurrent.Executors
  * export_mobile_onnx.py. Reject other graphs instead of pretending success.
  */
 class DunyaByt5Channel(messenger: BinaryMessenger) {
+    companion object { private const val EOS_ID = 1L }
     private val channel = MethodChannel(messenger, "fitila/dunya_byt5")
     private val worker = Executors.newSingleThreadExecutor()
     private val ui = Handler(Looper.getMainLooper())
@@ -82,8 +83,10 @@ class DunyaByt5Channel(messenger: BinaryMessenger) {
     private fun infer(source: String, maxOutput: Int): String {
         val enc = encoder ?: error("ByT5 non chargé")
         val dec = decoder ?: error("ByT5 non chargé")
+        // Keep the same byte-level truncation as the FITILA ByT5 training pipeline.
+        // The 511-byte limit includes the direction prefix and reserves EOS.
         val encoded = source.toByteArray(StandardCharsets.UTF_8)
-            .take(511).map { (it.toInt() and 0xff).toLong() + 3L } + 1L
+            .take(511).map { (it.toInt() and 0xff).toLong() + 3L } + EOS_ID
         val inputs = longArrayOf(*encoded.toLongArray())
         val mask = LongArray(inputs.size) { 1L }
         OnnxTensor.createTensor(env, arrayOf(inputs)).use { ids ->
