@@ -28,7 +28,7 @@ const dunyaAsrOmniPackId = 'dunya-asr-omni';
 // silently install different model weights.
 const trustedVillagePackSha256 = <String, String>{
   dunyaVoiceBbaPackId: '6c047ac26f83f0f4a90cdfeb72615b0514afcd7cd7892d2a041e9074be5398bf',
-  dunyaAsrOmniPackId: '2cf5d651d508199a664dd51479c9fc576e634a44c7a5c73250445df72b16d67b',
+  dunyaAsrOmniPackId: '11dd459506f8b67ab407cb023bc60c8137078c5341242c38f591dfe4fd8f6ba7',
   // Previously published and inspectable release assets (11 Oct 2026).
   dunyaVoiceCorePackId: '623f17b2cf774dd99ef2ac85aad72fa9740d3c2cfd870ca8609f07956d25839c',
   dunyaVoiceFrPackId: 'c8352f9c98e9b06159d867628aa13bb547c64fd01d354dffa0f75d76bfe85077',
