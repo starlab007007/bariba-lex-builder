@@ -248,7 +248,12 @@ class DunyaAssistant {
     // --- Brain -------------------------------------------------------------------------
     yield DunyaStatusEvent(_brain.state == DunyaBrainState.ready ? 'Je réfléchis…' : 'Je réveille mon cerveau…');
     final sources = await _groundingSources(french);
-    final history = await _history(mode);
+    // Gemma receives a French reasoning prompt. Do not inject raw Baatonum
+    // conversation turns as French context; they may invert intent or meaning.
+    // Future bilingual history requires separately verified French equivalents.
+    final history = mode == DunyaLanguageMode.french
+        ? await _history(mode)
+        : <({String role, String text})>[];
     try {
       await _brain.prepareConversation(
         key: '${mode.key}-${(_turns[mode] ?? 0) ~/ 5}',
