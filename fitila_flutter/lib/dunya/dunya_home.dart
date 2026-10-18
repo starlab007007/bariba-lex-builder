@@ -5,6 +5,7 @@ import 'dunya_models.dart';
 import 'voice/dunya_voice_page.dart';
 import 'voice/dunya_assistant.dart';
 import 'voice/dunya_cloud_voice.dart';
+import 'voice/dunya_online_routing.dart';
 import '../core/offline.dart';
 import 'voice/dunya_settings.dart';
 import 'voice/dunya_voice_brain.dart';
@@ -106,22 +107,21 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
           FitilaOffline.online.value) {
         // Match the Web: text and speech use the same server-side DUNYA pipeline.
         // Do not silently send a Baatonum display history to the French brain.
-        final lang = switch (_settings.mode) {
-          DunyaLanguageMode.french => 'fr',
-          DunyaLanguageMode.bariba => 'bba',
-          DunyaLanguageMode.bilingual =>
-            DunyaVoiceBrain(knowledge: _knowledge).detectLanguage(clean),
-        };
+        final lang = dunyaOnlineLanguage(
+          _settings.mode,
+          DunyaVoiceBrain(knowledge: _knowledge).detectLanguage(clean),
+        );
         await _cloudVoice.turn(
           text: clean,
           language: lang,
           replyLanguage: lang,
-          history: [
-            if (_settings.mode == DunyaLanguageMode.french)
-              for (final m in _messages.take(_messages.length - 2).toList().reversed.take(8).toList().reversed)
-                if (m.content.trim().isNotEmpty)
-                  {'role': m.role, 'content': m.content},
-          ],
+          history: dunyaFrenchReasoningHistory(
+            _settings.mode,
+            [
+              for (final m in _messages.take(_messages.length - 2))
+                {'role': m.role, 'content': m.content},
+            ],
+          ),
           onEvent: (event) async {
             if (!mounted || _settings.execution == DunyaExecutionMode.offline) {
               _cloudVoice.cancel();
