@@ -1,0 +1,42 @@
+name: Validate DUNYA Flutter parity
+on:
+  push:
+    branches:
+      - fix/dunya-flutter-online-web-parity-20261018
+    paths:
+      - 'fitila_flutter/**'
+      - '.github/workflows/validate-dunya-flutter-parity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-dunya-flutter-parity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          channel: stable
+          cache: true
+      - name: Dependencies
+        working-directory: fitila_flutter
+        run: flutter pub get
+      - name: Static analysis
+        working-directory: fitila_flutter
+        run: flutter analyze
+      - name: DUNYA routing regression tests
+        working-directory: fitila_flutter
+        run: |
+          flutter test test/dunya_online_routing_test.dart
+          flutter test test/dunya_assistant_test.dart
+      - name: Full Flutter test suite
+        working-directory: fitila_flutter
+        run: flutter test
