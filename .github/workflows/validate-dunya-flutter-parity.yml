@@ -34,6 +34,14 @@ jobs:
       - name: Static analysis
         working-directory: fitila_flutter
         run: flutter analyze
+      - name: Android toolchain
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Compile Android debug Kotlin
+        working-directory: fitila_flutter
+        run: flutter build apk --debug
       - name: DUNYA routing regression tests
         working-directory: fitila_flutter
         run: |
