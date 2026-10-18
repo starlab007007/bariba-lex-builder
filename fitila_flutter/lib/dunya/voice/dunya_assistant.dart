@@ -102,6 +102,9 @@ class DunyaAssistant {
   /// Turns per mode: the native conversation is rebuilt every few turns so the
   /// context window (2048 tokens) never overflows on small phones.
   final _turns = <DunyaLanguageMode, int>{};
+  Future<void>? _knowledgeLoading;
+
+  Future<void> _ensureKnowledge() => _knowledgeLoading ??= knowledge.initialize();
 
   static const _skillIntents = {
     DunyaIntentKind.translateToBariba,
@@ -139,7 +142,7 @@ class DunyaAssistant {
 
   Stream<DunyaAssistantEvent> reply(String heard, DunyaLanguageMode mode) async* {
     _cancelled = false;
-    await knowledge.initialize();
+    await _ensureKnowledge();
     final text = heard.trim();
     final detected = skills.detectLanguage(text);
     final inputLang = switch (mode) {
@@ -184,21 +187,26 @@ class DunyaAssistant {
         !useCloud && await brainAvailable();
     if (useCloud) {
       yield const DunyaStatusEvent('Je réfléchis…');
-      final sources = await _groundingSources(french);
+      // Start grounding early, concurrently with remote inference preparation.
+      final sourcesFuture = _groundingSources(french);
       String? answer;
       try {
+        final historyFuture = mode == DunyaLanguageMode.french
+            ? _history(mode) : Future<List<({String role, String text})>>.value(const []);
+        final sources = await sourcesFuture;
         answer = await cloudBrain!(
           system: _systemPrompt(mode, replyLang, online: true),
           // Stored Baatɔnum replies are display text, not verified French
           // reasoning history. Passing them to a French-only cloud brain
           // contaminates context. Until bilingual history is persisted with
           // certified French counterparts, keep those turns out of the prompt.
-          history: mode == DunyaLanguageMode.french ? await _history(mode) : const [],
+          history: await historyFuture,
           message: _composePrompt(french, sources),
         );
       } catch (_) {
         answer = null;
       }
+      final sources = await sourcesFuture;
       if (answer != null && answer.trim().isNotEmpty && !_cancelled) {
         final splitter = DunyaSentenceSplitter();
         final sentences = [...splitter.add(answer), ?splitter.flush()];
