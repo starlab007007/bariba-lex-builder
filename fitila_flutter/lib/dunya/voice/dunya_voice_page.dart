@@ -83,6 +83,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   DunyaVoicePaths _paths = const DunyaVoicePaths();
   var _phase = _Phase.preparing;
   var _session = false; // hands-free loop running
+  String? _bilingualVoiceLanguage; // explicit selection to avoid silent Baatonum default
   var _muted = false;
   var _textView = false;
   var _systemFrenchVoice = false;
@@ -247,6 +248,29 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       await _openSettings();
       return;
     }
+    if (_useOnlineVoice && _mode == DunyaLanguageMode.bilingual) {
+      // Unlike the Web, native Flutter has no parallel French speech
+      // recognizer. Require a language choice instead of silently assuming bba.
+      final selected = await showModalBottomSheet<String>(
+        context: context,
+        showDragHandle: true,
+        builder: (context) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ListTile(title: Text('Langue du message vocal'),
+                subtitle: Text('Choisissez pour éviter une mauvaise traduction.')),
+              ListTile(title: const Text('Français'),
+                onTap: () => Navigator.of(context).pop('fr')),
+              ListTile(title: const Text('Baatɔnum'),
+                onTap: () => Navigator.of(context).pop('bba')),
+            ],
+          ),
+        ),
+      );
+      if (selected == null || !mounted) return;
+      _bilingualVoiceLanguage = selected;
+    }
     if (!await _mic.hasPermission()) {
       _toast('DUNYA a besoin du micro pour vous écouter.');
       return;
@@ -258,6 +282,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
 
   Future<void> _endSession() async {
     _session = false;
+    _bilingualVoiceLanguage = null;
     await _interrupt();
     await _mic.cancel();
     if (mounted) setState(() => _phase = _Phase.idle);
@@ -314,7 +339,9 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     final turnId = ++_turnCounter;
     final detected = text != null && mode == DunyaLanguageMode.bilingual
         ? _skills.detectLanguage(text) : null;
-    final replyLang = dunyaOnlineLanguage(mode, detected ?? 'bba');
+    final replyLang = mode == DunyaLanguageMode.bilingual && samples != null
+        ? (_bilingualVoiceLanguage ?? 'bba')
+        : dunyaOnlineLanguage(mode, detected ?? 'bba');
     var input = text ?? '';
     var answer = '';
     var language = replyLang;
