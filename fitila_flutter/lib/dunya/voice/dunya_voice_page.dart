@@ -248,6 +248,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       await _openSettings();
       return;
     }
+    if (!mounted) return;
     if (_useOnlineVoice && _mode == DunyaLanguageMode.bilingual) {
       // Unlike the Web, native Flutter has no parallel French speech
       // recognizer. Require a language choice instead of silently assuming bba.
