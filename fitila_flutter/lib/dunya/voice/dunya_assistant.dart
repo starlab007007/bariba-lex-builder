@@ -189,7 +189,11 @@ class DunyaAssistant {
       try {
         answer = await cloudBrain!(
           system: _systemPrompt(mode, replyLang, online: true),
-          history: await _history(mode),
+          // Stored Baatɔnum replies are display text, not verified French
+          // reasoning history. Passing them to a French-only cloud brain
+          // contaminates context. Until bilingual history is persisted with
+          // certified French counterparts, keep those turns out of the prompt.
+          history: mode == DunyaLanguageMode.french ? await _history(mode) : const [],
           message: _composePrompt(french, sources),
         );
       } catch (_) {
