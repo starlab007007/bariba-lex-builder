@@ -2,8 +2,8 @@
 /// printed dictionary, Apprendre, the scenes and the exercise bank
 /// (`scripts/dunya_translate/export_memory.py` → `assets/data/dunya_memory.json`).
 ///
-/// A hit is a human-attested translation: it needs no model, no network and is
-/// instant. DunyaTranslator consults it before ByT5 so that known phrases are
+/// A hit is a corpus-derived translation candidate: it needs no model or network and is
+/// instant, but grade A does not establish independent human approval. DunyaTranslator consults it before ByT5 so that known phrases are
 /// always 100 % correct, offline included.
 library;
 
@@ -16,10 +16,10 @@ import 'dunya_voice_brain.dart' show foldBariba;
 class DunyaMemoryHit {
   const DunyaMemoryHit(this.text, this.grade, {required this.exact});
 
-  /// The attested translation.
+  /// The corpus translation; grade A is not proof of independent human approval.
   final String text;
 
-  /// 'A' attested in the dictionary/scenes, 'B' generated exercise bank.
+  /// Corpus quality grade, not an independent human-approval status.
   final String grade;
 
   /// False when the source only matched after a one-letter recogniser/typing error.
@@ -61,12 +61,29 @@ int boundedEditDistance(String a, String b, int limit) {
 class DunyaTranslationMemory {
   /// [pairs] rows are `[french, bariba, grade]`.
   DunyaTranslationMemory(List<List<String>> pairs) {
+    final ambiguousFr = <String>{};
+    final ambiguousBa = <String>{};
     for (final p in pairs) {
       if (p.length < 3) continue;
       final fr = p[0], ba = p[1], grade = p[2];
-      _frToBa.putIfAbsent(foldFrench(fr), () => (ba, grade));
-      _baToFr.putIfAbsent(foldBariba(ba), () => (fr, grade));
+      final frKey = foldFrench(fr);
+      final baKey = foldBariba(ba);
+      if (frKey.isEmpty || baKey.isEmpty) continue;
+      final frPrevious = _frToBa[frKey];
+      if (frPrevious != null && foldBariba(frPrevious.$1) != baKey) {
+        ambiguousFr.add(frKey);
+      } else {
+        _frToBa.putIfAbsent(frKey, () => (ba, grade));
+      }
+      final baPrevious = _baToFr[baKey];
+      if (baPrevious != null && foldFrench(baPrevious.$1) != frKey) {
+        ambiguousBa.add(baKey);
+      } else {
+        _baToFr.putIfAbsent(baKey, () => (fr, grade));
+      }
     }
+    for (final key in ambiguousFr) { _frToBa.remove(key); }
+    for (final key in ambiguousBa) { _baToFr.remove(key); }
     _baKeys = _baToFr.keys.toList();
   }
 
@@ -108,7 +125,7 @@ class DunyaTranslationMemory {
     return null;
   }
 
-  /// Exact attested translation, or null. Never throws (asset missing, tests, first start):
+  /// Unambiguous corpus translation, or null. Never throws (asset missing, tests, first start):
   /// callers simply continue with the online chain or the offline dictionary.
   static Future<String?> tryExact(String text, {required bool toBariba}) async {
     try {
