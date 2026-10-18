@@ -26,6 +26,7 @@ import '../dunya_models.dart';
 import 'dunya_assistant.dart';
 import 'dunya_brain.dart';
 import 'dunya_cloud_voice.dart';
+import 'dunya_online_routing.dart';
 import 'dunya_byt5.dart';
 import 'dunya_mic_capture.dart';
 import 'dunya_settings.dart';
@@ -313,9 +314,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     final turnId = ++_turnCounter;
     final detected = text != null && mode == DunyaLanguageMode.bilingual
         ? _skills.detectLanguage(text) : null;
-    final replyLang = mode == DunyaLanguageMode.french ? 'fr'
-        : mode == DunyaLanguageMode.bariba ? 'bba'
-        : (detected == 'fr' ? 'fr' : 'bba');
+    final replyLang = dunyaOnlineLanguage(mode, detected ?? 'bba');
     var input = text ?? '';
     var answer = '';
     var language = replyLang;
@@ -330,14 +329,10 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         text: text,
         language: replyLang,
         replyLanguage: replyLang,
-        history: [
-          // Do not inject untranslated Baatonum into a French reasoning history.
-          for (final t in _turns.reversed.take(8).toList().reversed)
-            if (t.role == 'assistant' && (t.subtitle?.trim().isNotEmpty ?? false))
-              {'role': t.role, 'content': t.subtitle!.trim()}
-            else if (mode == DunyaLanguageMode.french)
-              {'role': t.role, 'content': t.text},
-        ],
+        history: dunyaFrenchReasoningHistory(mode, [
+          for (final t in _turns)
+            {'role': t.role, 'content': t.text},
+        ]),
         onEvent: (event) async {
           if (!mounted || turnId != _turnCounter) return;
           final type = event['type']?.toString() ?? '';
