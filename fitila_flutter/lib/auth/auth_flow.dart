@@ -44,9 +44,10 @@ class _AuthFlowState extends State<AuthFlow> {
       _phone.text = '65653468';
       _pin.text = '123456';
     }
+    // On compact phones avoid cycling slides while users type or inspect the form.
     if (widget.autoPlay) {
       _timer = Timer.periodic(const Duration(seconds: 6), (_) {
-        if (!mounted || !_pages.hasClients) return;
+        if (!mounted || !_pages.hasClients || MediaQuery.sizeOf(context).width < 600) return;
         if (DateTime.now().difference(_lastTouch) < const Duration(seconds: 10)) return;
         _pages.animateToPage((_page + 1) % 2, duration: const Duration(milliseconds: 650), curve: Curves.easeInOutCubic);
       });
@@ -163,6 +164,7 @@ class _AuthFlowState extends State<AuthFlow> {
           child: Listener(
             onPointerDown: (_) => _lastTouch = DateTime.now(),
             child: PageView(
+              clipBehavior: Clip.hardEdge,
               key: const ValueKey('landing-slides'),
               controller: _pages,
               onPageChanged: (i) => setState(() => _page = i),
