@@ -41,9 +41,27 @@ jobs:
         run: flutter analyze
       - name: Verify Java toolchain
         run: java -version
-      - name: Compile Android debug Kotlin
+      - name: Compile Android debug Kotlin with complete diagnostics
         working-directory: fitila_flutter
-        run: flutter build apk --debug
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p build/ci-diagnostics
+          echo "=== JDK ==="
+          java -version
+          echo "=== Memory ==="
+          free -h
+          echo "=== Disk ==="
+          df -h .
+          flutter build apk --debug --verbose 2>&1 | tee build/ci-diagnostics/android-debug-build.log
+      - name: Upload Android build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dunya-android-build-diagnostics
+          path: fitila_flutter/build/ci-diagnostics/android-debug-build.log
+          retention-days: 7
+          if-no-files-found: warn
       - name: DUNYA routing regression tests
         working-directory: fitila_flutter
         run: |
