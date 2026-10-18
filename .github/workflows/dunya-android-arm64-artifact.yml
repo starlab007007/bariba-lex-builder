@@ -1,0 +1,85 @@
+name: FITILA DUNYA Android ARM64 test APK
+on:
+  push:
+    branches:
+      - fix/dunya-flutter-online-web-parity-20261018
+    paths:
+      - 'fitila_flutter/**'
+      - '.github/workflows/dunya-android-arm64-artifact.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fitila-dunya-arm64-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space for native dependencies
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift || true
+          df -h .
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          channel: stable
+          cache: true
+      - name: Dependency resolution
+        working-directory: fitila_flutter
+        run: flutter pub get
+      - name: Bound Gradle resource usage for CI
+        working-directory: fitila_flutter
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android/gradle.properties')
+          s=p.read_text().replace('-Xmx8G','-Xmx3G').replace('-XX:MaxMetaspaceSize=4G','-XX:MaxMetaspaceSize=768m')
+          s+='\norg.gradle.workers.max=2\norg.gradle.parallel=false\nkotlin.compiler.execution.strategy=in-process\n'
+          p.write_text(s)
+          PY
+      - name: Build Android ARM64 debug test APK
+        shell: bash
+        working-directory: fitila_flutter
+        run: |
+          mkdir -p "$RUNNER_TEMP/fitila-diagnostics"
+          set -o pipefail
+          flutter build apk --debug --target-platform android-arm64 2>&1 | tee "$RUNNER_TEMP/fitila-diagnostics/build.log"
+      - name: Verify Android APK and write checksum
+        shell: bash
+        working-directory: fitila_flutter
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/fitila-output"
+          SRC="build/app/outputs/flutter-apk/app-debug.apk"
+          test -s "$SRC"
+          unzip -t "$SRC" > /dev/null
+          cp "$SRC" "$RUNNER_TEMP/fitila-output/FITILA-DUNYA-ARM64-TEST.apk"
+          cd "$RUNNER_TEMP/fitila-output"
+          sha256sum FITILA-DUNYA-ARM64-TEST.apk > SHA256SUMS.txt
+          printf 'TEST BUILD ONLY. DEBUG SIGNING. NOT A PRODUCTION UPDATE.\nSource commit: %s\nByT5 packs are installed separately and require certification.\n' "$GITHUB_SHA" > README.txt
+      - name: Upload test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FITILA-DUNYA-ARM64-TEST-${{ github.run_number }}
+          path: ${{ runner.temp }}/fitila-output/
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
+      - name: Upload failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FITILA-DUNYA-BUILD-LOG-${{ github.run_number }}
+          path: ${{ runner.temp }}/fitila-diagnostics/build.log
+          retention-days: 14
+          if-no-files-found: ignore
