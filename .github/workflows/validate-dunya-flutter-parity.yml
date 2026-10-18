@@ -18,7 +18,7 @@ concurrency:
 jobs:
   flutter-validation:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Java 21 for MapLibre Android compilation
@@ -41,6 +41,17 @@ jobs:
         run: flutter analyze
       - name: Verify Java toolchain
         run: java -version
+      - name: Bound CI Gradle memory and workers
+        working-directory: fitila_flutter
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android/gradle.properties')
+          content = p.read_text()
+          content = content.replace('-Xmx8G', '-Xmx3G').replace('-XX:MaxMetaspaceSize=4G', '-XX:MaxMetaspaceSize=768m')
+          content += '\\norg.gradle.workers.max=2\\norg.gradle.parallel=false\\nkotlin.compiler.execution.strategy=in-process\\n'
+          p.write_text(content)
+          PY
       - name: Compile Android debug Kotlin with complete diagnostics
         working-directory: fitila_flutter
         shell: bash
@@ -53,7 +64,7 @@ jobs:
           free -h
           echo "=== Disk ==="
           df -h .
-          flutter build apk --debug --verbose 2>&1 | tee build/ci-diagnostics/android-debug-build.log
+          flutter build apk --debug 2>&1 | tee build/ci-diagnostics/android-debug-build.log
       - name: Upload Android build diagnostics
         if: always()
         uses: actions/upload-artifact@v4
