@@ -392,6 +392,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         _turns.add(_Turn(role: 'user', text: input.isNotEmpty ? input : 'Vocal'));
         _turns.add(_Turn(role: 'assistant', text: answer)..subtitle = subtitle);
         _status = null;
+        _notice = [
+          'DUNYA en ligne',
+          if (samples != null) 'ASR : $asrEngine',
+          'IA : $brainEngine',
+          if (gotAudio) 'Voix : $ttsEngine',
+          if (fallbackCode.isNotEmpty) 'Repli : $fallbackCode',
+        ].join(' · ');
       });
       await _quietly(() async {
         await _store.appendMessage(
