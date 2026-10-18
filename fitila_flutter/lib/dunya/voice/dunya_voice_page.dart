@@ -308,11 +308,15 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   /// Online voice runs through the exact same server used on Web: Meta
   /// Omnilingual ASR -> FITILA answer/ByT5 -> Meta MMS-TTS Baatɔnum.
   /// No Gemma, ASR or voice package needs to be installed on the phone.
-  Future<void> _runCloudVoiceTurn(Float32List samples) async {
+  Future<void> _runCloudVoiceTurn(Float32List? samples, {String? text}) async {
     final mode = _mode;
     final turnId = ++_turnCounter;
-    final replyLang = mode == DunyaLanguageMode.french ? 'fr' : 'bba';
-    var input = '';
+    final detected = text != null && mode == DunyaLanguageMode.bilingual
+        ? _skills.detectLanguage(text) : null;
+    final replyLang = mode == DunyaLanguageMode.french ? 'fr'
+        : mode == DunyaLanguageMode.bariba ? 'bba'
+        : (detected == 'fr' ? 'fr' : 'bba');
+    var input = text ?? '';
     var answer = '';
     var language = replyLang;
     String? subtitle;
@@ -323,11 +327,16 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     try {
       await _cloudVoice.turn(
         samples: samples,
-        language: mode == DunyaLanguageMode.french ? 'fr' : 'bba',
+        text: text,
+        language: replyLang,
         replyLanguage: replyLang,
         history: [
+          // Do not inject untranslated Baatonum into a French reasoning history.
           for (final t in _turns.reversed.take(8).toList().reversed)
-            {'role': t.role, 'content': t.text},
+            if (t.role == 'assistant' && (t.subtitle?.trim().isNotEmpty ?? false))
+              {'role': t.role, 'content': t.subtitle!.trim()}
+            else if (mode == DunyaLanguageMode.french)
+              {'role': t.role, 'content': t.text},
         ],
         onEvent: (event) async {
           if (!mounted || turnId != _turnCounter) return;
@@ -403,7 +412,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       // recognizer and local assistant. Online-only mode never silently
       // changes execution policy.
       if (_settings.execution == DunyaExecutionMode.automatic &&
-          _paths.canListen && _engine != null && mounted) {
+          samples != null && _paths.canListen && _engine != null && mounted) {
         try {
           final localTranscript = await _engine!.transcribe(samples);
           usedLocalFallback = true;
@@ -637,7 +646,11 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     if (text.isEmpty || _phase == _Phase.thinking) return;
     _composer.clear();
     await _interrupt();
-    await _runTurn(text, spoken: false);
+    if (_useOnlineVoice) {
+      await _runCloudVoiceTurn(null, text: text);
+    } else {
+      await _runTurn(text, spoken: false);
+    }
   }
 
   Future<void> _confirm(bool yes) async {
