@@ -252,7 +252,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       if (!mounted) return;
     }
     if (!_useOnlineVoice && (!_paths.canListen || _engine == null)) {
-      _toast('Sans Internet, installez le pack local Meta Omnilingual ASR.');
+      _toast('Pour parler sans Internet, téléchargez d’abord la reconnaissance vocale.');
       await _openSettings();
       return;
     }
@@ -820,7 +820,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
-      backgroundColor: _cream,
+      backgroundColor: const Color(0xFFF9FCFA),
       builder: (_) => _SettingsSheet(
         paths: _paths,
         onInstallVoiceFile: _installVoiceFile,
@@ -1628,10 +1628,10 @@ class _SettingsSheetState extends State<_SettingsSheet> {
           shrinkWrap: true,
           padding: const EdgeInsets.fromLTRB(18, 0, 18, 22),
           children: [
-            const Text('Réglages DUNYA', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF17131F))),
+            const Text('Personnaliser DUNYA', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF17131F))),
             const SizedBox(height: 14),
             _section('Intelligence'),
-            const Text('Exécution : Auto · En ligne · Hors ligne',
+            const Text('Choisissez votre connexion',
                 style: TextStyle(fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             SegmentedButton<DunyaExecutionMode>(
@@ -1645,9 +1645,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Auto : serveur FITILA connecté, modèles locaux en secours. '
-              'En ligne : aucun téléchargement nécessaire. '
-              'Hors ligne : aucun dialogue envoyé au serveur ; fonctionnalités selon les packs installés.',
+              'Auto utilise Internet quand il est disponible. Hors ligne fonctionne avec les options téléchargées.',
               style: TextStyle(fontSize: 12, color: Color(0xFF7D7566)),
             ),
             const SizedBox(height: 12),
@@ -1663,7 +1661,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             Text(
               _settings.intelligence == DunyaIntelligence.essential
                   ? 'Traduction, mémoire, rappels et calculs. Rapide, pour tous les téléphones.'
-                  : 'IA serveur disponible sans modèle ; Gemma local facultatif (2,6 Go) pour parler sans Internet.',
+                  : 'Pour discuter sans Internet, téléchargez l’assistant sur votre téléphone.',
               style: const TextStyle(fontSize: 12.5, color: Color(0xFF7D7566)),
             ),
             if (_settings.intelligence == DunyaIntelligence.smart) ...[
@@ -1671,26 +1669,26 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               _card(
                 icon: _brainInstalled ? Icons.check_circle_rounded : Icons.memory_rounded,
                 iconColor: _brainInstalled ? const Color(0xFF4F8A68) : const Color(0xFF9C6B1D),
-                title: _brainInstalled ? 'Cerveau installé' : 'Cerveau DUNYA (2,6 Go)',
+                title: _brainInstalled ? 'Cerveau installé' : 'Assistant hors ligne (2,6 Go)',
                 subtitle: !canRun
                     ? (device.supportedProcessor
                         ? 'Ce téléphone ($ram Mo de RAM) est trop juste : le mode Essentiel est conseillé.'
-                        : 'Le processeur de ce téléphone (32 bits) ne peut pas faire tourner le cerveau : mode Essentiel.')
+                        : 'Ce téléphone ne prend pas en charge cette option.')
                     : _brainLabel ?? (_brainInstalled ? 'Fonctionne sans Internet.' : 'À télécharger une fois, en Wi-Fi de préférence.'),
                 trailing: _brainInstalled
                     ? TextButton(onPressed: _removeBrain, child: const Text('Supprimer'))
                     : _downloading || !canRun
                         ? null
-                        : TextButton(onPressed: _downloadBrain, child: const Text('Télécharger')),
+                        : TextButton(onPressed: _downloadBrain, child: const Text('Télécharger', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF173E36)))),
                 progress: _downloading ? (_brainProgress ?? -1) : null,
               ),
             ],
             const SizedBox(height: 18),
             _section('Conversation'),
-            _switch('Mains libres (DUNYA réécoute après chaque réponse)', _settings.handsFree,
+            _switch('Écoute automatique', _settings.handsFree,
                 (v) => _settings.update(handsFree: v)),
             _switch('Sous-titres en direct', _settings.subtitles, (v) => _settings.update(subtitles: v)),
-            _switch('Sous-titres français en mode baatɔnum', _settings.frenchSubtitlesInBariba,
+            _switch('Afficher aussi la traduction française', _settings.frenchSubtitlesInBariba,
                 (v) => _settings.update(frenchSubtitlesInBariba: v)),
             Row(
               children: [
@@ -1708,20 +1706,25 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               ],
             ),
             const SizedBox(height: 10),
-            _section('Voix et packs'),
+            _section('À utiliser sans Internet'),
             for (final source in dunyaVoicePackSources)
               _card(
                 icon: _packInstalled(source) ? Icons.check_circle_rounded : Icons.cloud_download_outlined,
                 iconColor: const Color(0xFF9C6B1D),
-                title: source.title,
-                subtitle: _packInstalled(source) ? 'Installé'
+                title: switch (source.id) {
+                  dunyaVoiceCorePackId => 'Parler et écouter sans Internet',
+                  dunyaVoiceFrPackId => 'Voix française hors ligne',
+                  dunyaTranslationPackId => 'Traduire français ↔ Baatɔnum',
+                  _ => source.title,
+                },
+                subtitle: _packInstalled(source) ? 'Prêt à utiliser'
                     : source.id == dunyaTranslationPackId && !_byt5Published
-                        ? 'Modèle affiné pas encore publié : installation depuis fichier possible.'
+                        ? 'Pas encore disponible. Nous préparons une version fiable.'
                         : 'Wi-Fi conseillé',
                 trailing: _packInstalled(source)
                     ? null
                     : source.id == dunyaTranslationPackId && !_byt5Published
-                        ? const Text('À publier', style: TextStyle(fontSize: 11))
+                        ? const Text('Bientôt', style: TextStyle(fontSize: 11))
                         : TextButton(
                         onPressed: () {
                           Navigator.of(context).pop();
@@ -1732,9 +1735,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               ),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 6),
-              child: Text('Meta Omnilingual ASR pour la reconnaissance et Meta MMS-TTS Baatɔnum '
-                  'pour la parole. Sans pack : services en ligne FITILA. '
-                  'Un pack hors ligne ne fonctionne qu’une fois publié, téléchargé et vérifié.',
+              child: Text('Téléchargez une seule fois avec le Wi-Fi. Ensuite, utilisez les fonctions installées sans connexion.',
                   style: TextStyle(fontSize: 11.5, color: Color(0xFF7D7566))),
             ),
             OutlinedButton.icon(
@@ -1743,7 +1744,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 unawaited(widget.onInstallVoiceFile());
               },
               icon: const Icon(Icons.sd_storage_outlined),
-              label: const Text('Installer depuis un fichier (pack ou cerveau)'),
+              label: const Text('Installer un fichier téléchargé'),
             ),
             const SizedBox(height: 18),
             _section('Confidentialité'),
