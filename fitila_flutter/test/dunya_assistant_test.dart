@@ -71,6 +71,20 @@ void main() {
       expect(t?.engine, 'online');
     });
 
+    test('online-first policy uses server instead of an installed local model', () async {
+      DunyaTranslator.preferRemote = () => true;
+      var offlineCalls = 0;
+      DunyaTranslator.offline = (text, direction) async {
+        offlineCalls++;
+        return 'ancienne traduction locale';
+      };
+      DunyaTranslator.online = (text, direction) async => 'traduction serveur';
+      final result = await DunyaTranslator.translate('phrase nouvelle', toBariba: true);
+      expect(result?.engine, 'online');
+      expect(result?.text, 'traduction serveur');
+      expect(offlineCalls, 0);
+    });
+
     test('explicit offline mode never invokes server translation', () async {
       var requests = 0;
       DunyaTranslator.allowRemote = () => false;
