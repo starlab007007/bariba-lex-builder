@@ -159,8 +159,11 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   Future<void> _prepare() async {
     await _settings.load();
     await _prepareFrenchVoice();
-    await _startEngine();
-    await _brain.refreshState();
+    // Online startup must not wait for offline ASR/TTS model loading.
+    if (!_useOnlineVoice) {
+      await _startEngine();
+      await _brain.refreshState();
+    }
     await _loadHistory();
     if (!mounted) return;
     setState(() => _phase = _Phase.idle);
@@ -242,6 +245,11 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         !FitilaOffline.online.value) {
       _toast('Internet indisponible. Passez en mode Auto ou rétablissez la connexion.');
       return;
+    }
+    if (!_useOnlineVoice && _engine == null) {
+      setState(() => _status = 'Chargement des voix hors ligne…');
+      await _startEngine();
+      if (!mounted) return;
     }
     if (!_useOnlineVoice && (!_paths.canListen || _engine == null)) {
       _toast('Sans Internet, installez le pack local Meta Omnilingual ASR.');
