@@ -47,13 +47,41 @@ jobs:
           s+='\norg.gradle.workers.max=2\norg.gradle.parallel=false\nkotlin.compiler.execution.strategy=in-process\n'
           p.write_text(s)
           PY
+      - name: Prepare public Supabase configuration
+        shell: bash
+        working-directory: fitila_flutter
+        env:
+          CI_SUPABASE_URL: ${{ vars.FITILA_SUPABASE_URL }}
+          CI_SUPABASE_ANON_KEY: ${{ secrets.FITILA_SUPABASE_ANON_KEY }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          env = {}
+          path = Path('../.env')
+          if path.is_file():
+              for line in path.read_text(encoding='utf-8').splitlines():
+                  line = line.strip()
+                  if line and not line.startswith('#') and '=' in line:
+                      k, v = line.split('=', 1)
+                      env[k.strip()] = v.strip().strip('"').strip("'")
+          url = os.getenv('CI_SUPABASE_URL') or env.get('SUPABASE_URL') or env.get('VITE_SUPABASE_URL') or ''
+          key = (os.getenv('CI_SUPABASE_ANON_KEY') or env.get('SUPABASE_ANON_KEY') or
+                 env.get('SUPABASE_PUBLISHABLE_KEY') or env.get('VITE_SUPABASE_PUBLISHABLE_KEY') or
+                 env.get('VITE_SUPABASE_ANON_KEY') or '')
+          if not url.startswith('https://') or not key:
+              raise SystemExit('Missing PUBLIC Supabase URL / publishable key: configure FITILA_SUPABASE_URL variable and FITILA_SUPABASE_ANON_KEY secret. Do not publish an unusable APK.')
+          Path('.ci-dart-defines.json').write_text(
+              json.dumps({'SUPABASE_URL': url, 'SUPABASE_ANON_KEY': key}), encoding='utf-8')
+          print('Supabase public configuration ready (value redacted).')
+          PY
       - name: Build Android ARM64 debug test APK
         shell: bash
         working-directory: fitila_flutter
         run: |
           mkdir -p "$RUNNER_TEMP/fitila-diagnostics"
           set -o pipefail
-          flutter build apk --debug --target-platform android-arm64 2>&1 | tee "$RUNNER_TEMP/fitila-diagnostics/build.log"
+          flutter build apk --debug --target-platform android-arm64 --dart-define-from-file=.ci-dart-defines.json 2>&1 | tee "$RUNNER_TEMP/fitila-diagnostics/build.log"
       - name: Verify Android APK and write checksum
         shell: bash
         working-directory: fitila_flutter
