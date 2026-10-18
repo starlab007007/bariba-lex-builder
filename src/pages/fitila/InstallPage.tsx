@@ -23,34 +23,71 @@ export default function InstallPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(RELEASE_API, { headers: { Accept: 'application/vnd.github+json' }, signal: controller.signal })
-      .then(async response => {
+    const officialManifest = '/downloads/android/latest.json';
+
+    const validateRelease = (value: unknown): AndroidRelease | null => {
+      if (!value || typeof value !== 'object') return null;
+      const item = value as Record<string, unknown>;
+      if (typeof item.version !== 'string' || !/^\\d+\\.\\d+\\.\\d+/.test(item.version)) return null;
+      if (item.signed !== true || item.channel !== 'production') return null;
+      if (typeof item.url !== 'string') return null;
+      try {
+        const address = new URL(item.url, window.location.origin);
+        if (address.protocol !== 'https:' || address.origin !== window.location.origin ||
+            !address.pathname.startsWith('/downloads/android/') || !address.pathname.endsWith('.apk')) return null;
+      } catch { return null; }
+      return { version: item.version, url: item.url, size: typeof item.size === 'number' ? item.size : 0,
+        updated: typeof item.updated === 'string' ? item.updated : '',
+        armv7: typeof item.armv7 === 'string' && item.armv7.startsWith('/downloads/android/') &&
+          item.armv7.endsWith('.apk') ? item.armv7 : undefined };
+    };
+
+    const discover = async () => {
+      try {
+        const response = await fetch(officialManifest, { signal: controller.signal, cache: 'no-store' });
+        if (!response.ok) throw new Error('Manifest unavailable');
+        const release = validateRelease(await response.json());
+        if (!release) throw new Error('No verified production release');
+        if (!controller.signal.aborted) {
+          setApk(release);
+          setApkHistory([]);
+          setApkStatus('ready');
+        }
+        return;
+      } catch {
+        if (controller.signal.aborted) return;
+      }
+
+      try {
+        // Legacy discovery stays available only when GitHub Releases are public.
+        const response = await fetch(RELEASE_API, { headers: { Accept: 'application/vnd.github+json' }, signal: controller.signal });
         if (!response.ok) throw new Error('No public production release');
-        return response.json();
-      })
-      .then(releases => {
+        const releases = await response.json();
         if (!Array.isArray(releases)) throw new Error('Invalid release list');
-        const verified = releases
-          .filter(release => !release.draft && !release.prerelease &&
-            /^fitila-android-v\\d/.test(String(release.tag_name || '')))
+        const verified = releases.filter(release => !release.draft && !release.prerelease &&
+          /^fitila-android-v\\d/.test(String(release.tag_name || '')))
           .map(release => {
             const assets = Array.isArray(release.assets) ? release.assets : [];
-            const valid = (a: any) => typeof a.browser_download_url === 'string' &&
-              a.browser_download_url.startsWith('https://github.com/starlab007007/bariba-lex-builder/releases/download/');
-            const arm64 = assets.find((a: any) => valid(a) && /^FITILA-Android-.*-arm64\\.apk$/i.test(String(a.name)));
+            const valid = (asset: any) => typeof asset.browser_download_url === 'string' &&
+              asset.browser_download_url.startsWith('https://github.com/starlab007007/bariba-lex-builder/releases/download/');
+            const arm64 = assets.find((asset: any) => valid(asset) && /^FITILA-Android-.*-arm64\\.apk$/i.test(String(asset.name)));
             if (!arm64) return null;
-            const armv7 = assets.find((a: any) => valid(a) && /^FITILA-Android-.*-armv7\\.apk$/i.test(String(a.name)));
+            const armv7 = assets.find((asset: any) => valid(asset) && /^FITILA-Android-.*-armv7\\.apk$/i.test(String(asset.name)));
             return { version: String(release.tag_name), url: arm64.browser_download_url,
               size: arm64.size || 0, updated: release.published_at || '',
               armv7: armv7?.browser_download_url } as AndroidRelease;
-          })
-          .filter((release): release is AndroidRelease => release !== null);
-        verified.sort((a, b) => (b.updated || '').localeCompare(a.updated || ''));
-        setApk(verified[0] || null);
-        setApkHistory(verified.slice(1));
-        setApkStatus(verified.length ? 'ready' : 'unavailable');
-      })
-      .catch(error => { if (error?.name !== 'AbortError') setApkStatus('unavailable'); });
+          }).filter((release): release is AndroidRelease => release !== null);
+        verified.sort((first, second) => (second.updated || '').localeCompare(first.updated || ''));
+        if (!controller.signal.aborted) {
+          setApk(verified[0] || null);
+          setApkHistory(verified.slice(1));
+          setApkStatus(verified.length ? 'ready' : 'unavailable');
+        }
+      } catch {
+        if (!controller.signal.aborted) setApkStatus('unavailable');
+      }
+    };
+    void discover();
     return () => controller.abort();
   }, []);
 
