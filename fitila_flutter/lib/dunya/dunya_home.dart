@@ -4,6 +4,8 @@ import 'dunya_local_store.dart';
 import 'dunya_models.dart';
 import 'voice/dunya_voice_page.dart';
 import 'voice/dunya_assistant.dart';
+import 'voice/dunya_cloud_voice.dart';
+import '../core/offline.dart';
 import 'voice/dunya_settings.dart';
 import 'voice/dunya_voice_brain.dart';
 
@@ -22,6 +24,7 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
     knowledge: _knowledge,
     skills: DunyaVoiceBrain(knowledge: _knowledge),
   );
+  final _cloudVoice = DunyaCloudVoice();
   String _lastEngine = 'Essentiel';
   final _input = TextEditingController();
   final _scroll = ScrollController();
@@ -41,6 +44,7 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
   void dispose() {
     _input.dispose();
     _assistant.interrupt();
+    _cloudVoice.cancel();
     _scroll.dispose();
     super.dispose();
   }
@@ -76,6 +80,7 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
   Future<void> _send() async {
     if (_generating) {
       await _assistant.interrupt();
+      _cloudVoice.cancel();
       if (mounted) setState(() => _generating = false);
       return;
     }
@@ -97,6 +102,45 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
     var sources = <DunyaSource>[];
     var engine = 'essential';
     try {
+      if (_settings.execution != DunyaExecutionMode.offline &&
+          FitilaOffline.online.value) {
+        // Match the Web: text and speech use the same server-side DUNYA pipeline.
+        // Do not silently send a Baatonum display history to the French brain.
+        final lang = switch (_settings.mode) {
+          DunyaLanguageMode.french => 'fr',
+          DunyaLanguageMode.bariba => 'bba',
+          DunyaLanguageMode.bilingual =>
+            DunyaVoiceBrain(knowledge: _knowledge).detectLanguage(clean),
+        };
+        await _cloudVoice.turn(
+          text: clean,
+          language: lang,
+          replyLanguage: lang,
+          history: [
+            if (_settings.mode == DunyaLanguageMode.french)
+              for (final m in _messages.take(_messages.length - 2).toList().reversed.take(8).toList().reversed)
+                if (m.content.trim().isNotEmpty)
+                  {'role': m.role, 'content': m.content},
+          ],
+          onEvent: (event) async {
+            if (!mounted || _settings.execution == DunyaExecutionMode.offline) {
+              _cloudVoice.cancel();
+              return;
+            }
+            if (event['type'] != 'answer') return;
+            generated = (event['text'] ?? '').toString().trim();
+            engine = 'dunya-voice-turn';
+            setState(() {
+              final list = [..._messages];
+              list[assistantIndex] = DunyaMessage(role: 'assistant', content: generated);
+              _messages = list;
+            });
+          },
+        );
+      } else if (_settings.execution == DunyaExecutionMode.online) {
+        generated = 'Connexion Internet indisponible. Réessayez lorsque le réseau revient.';
+        engine = 'offline-network-warning';
+      } else {
       await for (final event in _assistant.reply(clean, _settings.mode)) {
         if (!mounted) return;
         switch (event) {
@@ -117,6 +161,7 @@ class _DunyaOfflinePageState extends State<DunyaOfflinePage> {
             _messages = list;
           });
         }
+      }
       }
       if (generated.isEmpty) generated = 'Réponse indisponible. Réessayez.';
       _lastEngine = engine;
