@@ -874,9 +874,12 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       _toast('Installé et vérifié.');
     } catch (error) {
       navigator.pop();
-      _toast(error is DunyaPackException || error is DunyaBrainException
-          ? error.toString()
-          : 'Échec : réessayez, de préférence en Wi-Fi.');
+      // Never expose stack traces, HTTP status or model implementation details.
+      _toast(error is DunyaPackException
+          ? 'Téléchargement indisponible. Vérifiez votre connexion ou réessayez plus tard.'
+          : error is DunyaBrainException
+              ? 'Cette option ne peut pas être installée sur ce téléphone pour le moment.'
+              : 'Une difficulté est survenue. Réessayez avec le Wi-Fi.');
     } finally {
       status.dispose();
       await _brain.refreshState();
@@ -1793,9 +1796,12 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       Card(
         elevation: 0,
         color: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFFDCE8E2)),
+        ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+          padding: const EdgeInsets.fromLTRB(15, 14, 10, 14),
           child: Column(
             children: [
               Row(
@@ -1807,7 +1813,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF17131F))),
-                        Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF7D7566))),
+                        Text(subtitle, style: const TextStyle(fontSize: 13, color: Color(0xFF495C53))),
                       ],
                     ),
                   ),
