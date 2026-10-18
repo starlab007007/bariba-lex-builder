@@ -49,7 +49,7 @@ jobs:
           p = Path('android/gradle.properties')
           content = p.read_text()
           content = content.replace('-Xmx8G', '-Xmx3G').replace('-XX:MaxMetaspaceSize=4G', '-XX:MaxMetaspaceSize=768m')
-          content += '\\norg.gradle.workers.max=2\\norg.gradle.parallel=false\\nkotlin.compiler.execution.strategy=in-process\\n'
+          content += '\norg.gradle.workers.max=2\norg.gradle.parallel=false\nkotlin.compiler.execution.strategy=in-process\n'
           p.write_text(content)
           PY
       - name: Compile Android debug Kotlin with complete diagnostics
