@@ -31,6 +31,11 @@ class DunyaTranslator {
   static bool Function()? allowRemote;
   static bool Function()? preferRemote;
 
+  // Avoid repeating expensive ByT5 calls for identical phrases. Bounded cache
+  // never stores failures; online and offline results are isolated.
+  static final _cache = <String, DunyaTranslation>{};
+  static const _maxCacheEntries = 96;
+
   static bool get hasAnyEngine => memory != null || offline != null || online != null;
 
   static Future<DunyaTranslation?> translate(String text, {required bool toBariba}) async {
@@ -38,6 +43,9 @@ class DunyaTranslator {
     if (clean.isEmpty) return null;
     final remoteOk = allowRemote?.call() ?? false;
     final remoteFirst = remoteOk && (preferRemote?.call() ?? false);
+    final cacheKey = '${toBariba ? 'fr-bba' : 'bba-fr'}|${remoteFirst ? 'remote' : 'local'}|${clean.toLowerCase()}';
+    final cached = _cache[cacheKey];
+    if (cached != null && (cached.engine != 'online' || remoteOk)) return cached;
     final engines = [
       ('memory', memory),
       if (remoteFirst) ('online', online),
@@ -49,7 +57,10 @@ class DunyaTranslator {
       try {
         final out = (await fn(clean, toBariba).timeout(const Duration(seconds: 35)))?.trim();
         if (out != null && out.isNotEmpty && out.toLowerCase() != clean.toLowerCase()) {
-          return DunyaTranslation(out, engine);
+          final result = DunyaTranslation(out, engine);
+          if (_cache.length >= _maxCacheEntries) _cache.remove(_cache.keys.first);
+          _cache[cacheKey] = result;
+          return result;
         }
       } catch (_) {
         // Try the next engine.
