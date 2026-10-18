@@ -88,6 +88,13 @@ class DunyaCloudVoice {
     if (samples != null && samples.length > 16000 * 25) {
       throw const DunyaCloudVoiceException('Message vocal trop long.');
     }
+    if ((samples != null && samples.isNotEmpty) && (text != null && text.trim().isNotEmpty)) {
+      throw const DunyaCloudVoiceException('Texte et audio simultanés non autorisés.');
+    }
+    if (!const ['fr', 'bba'].contains(language) ||
+        !const ['fr', 'bba'].contains(replyLanguage)) {
+      throw const DunyaCloudVoiceException('Langue DUNYA non reconnue.');
+    }
     cancel();
     final client = http.Client();
     _active = client;
@@ -104,7 +111,7 @@ class DunyaCloudVoice {
         'text': ?text,
         'lang': language,
         'reply_lang': replyLanguage,
-        'history': history.take(8).toList(),
+        'history': history.length > 8 ? history.sublist(history.length - 8) : history,
       });
       final response = await client.send(request).timeout(const Duration(seconds: 30));
       if (response.statusCode != 200) {
