@@ -108,7 +108,7 @@ void _wireBaribaKeyboard() {
       DunyaSettings.instance.execution != DunyaExecutionMode.offline &&
       FitilaOffline.online.value;
   DunyaTranslator.preferRemote = () =>
-      DunyaSettings.instance.execution == DunyaExecutionMode.online;
+      DunyaSettings.instance.execution != DunyaExecutionMode.offline;
   // DUNYA mode baatɔnum : chaîne de traduction FITILA en ligne (ByT5, ai-translate).
   DunyaTranslator.online = (text, toBariba) async {
     final token = FitilaBackend.client.auth.currentSession?.accessToken;
