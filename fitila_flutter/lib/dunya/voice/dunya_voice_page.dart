@@ -268,10 +268,12 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
           ),
         ),
       );
-      if (selected == null || !mounted) return;
+      if (!mounted || selected == null) return;
       _bilingualVoiceLanguage = selected;
     }
-    if (!await _mic.hasPermission()) {
+    final hasMic = await _mic.hasPermission();
+    if (!mounted) return;
+    if (!hasMic) {
       _toast('DUNYA a besoin du micro pour vous écouter.');
       return;
     }
