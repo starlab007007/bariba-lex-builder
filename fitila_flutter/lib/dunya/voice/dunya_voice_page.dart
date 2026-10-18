@@ -320,6 +320,10 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     var language = replyLang;
     String? subtitle;
     var gotAudio = false;
+    var asrEngine = samples == null ? 'text' : 'unknown';
+    var ttsEngine = 'none';
+    var brainEngine = 'unknown';
+    var fallbackCode = '';
     var usedLocalFallback = false;
     _stopSpeaking = false;
     if (mounted) setState(() => _phase = _Phase.thinking);
@@ -345,8 +349,10 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
             });
           } else if (type == 'transcript') {
             input = (event['text'] ?? '').toString();
+            asrEngine = (event['engine'] ?? asrEngine).toString();
           } else if (type == 'answer') {
             answer = (event['text'] ?? '').toString();
+            brainEngine = (event['model'] ?? brainEngine).toString();
             subtitle = event['subtitle']?.toString();
             language = event['lang']?.toString() ?? replyLang;
             setState(() {
@@ -356,6 +362,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
             });
           } else if (type == 'audio') {
             gotAudio = true;
+            ttsEngine = (event['engine'] ?? 'unknown').toString();
             final b64 = event['audio_base64']?.toString();
             if (b64 != null && b64.isNotEmpty) {
               // Play the actual MMS-TTS WAV supplied by the FITILA server.
@@ -371,7 +378,8 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
               }
             }
           } else if (type == 'notice') {
-            if (mounted) setState(() => _notice = 'Voix ou traduction de secours utilisée.');
+            fallbackCode = (event['code'] ?? 'fallback').toString();
+            if (mounted) setState(() => _notice = 'Service de secours : $fallbackCode');
           }
         },
       );
@@ -397,7 +405,9 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       });
       await _store.audit('dunya_voice_turn', {
         'engine': 'cloud-meta-omnilingual-mms',
-        'input': 'voice', 'mode': mode.key,
+        'input': samples == null ? 'text' : 'voice', 'mode': mode.key,
+        'asr_engine': asrEngine, 'brain_engine': brainEngine,
+        'tts_engine': ttsEngine, 'fallback': fallbackCode,
       });
     } catch (error) {
       if (mounted) setState(() => _notice = error.toString());
