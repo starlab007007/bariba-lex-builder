@@ -52,27 +52,29 @@ jobs:
           content += '\norg.gradle.workers.max=2\norg.gradle.parallel=false\nkotlin.compiler.execution.strategy=in-process\n'
           p.write_text(content)
           PY
-      - name: Compile Android debug Kotlin with complete diagnostics
+      - name: Compile Kotlin Android independently
+        working-directory: fitila_flutter/android
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/dunya-logs"
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew :app:compileDebugKotlin --no-daemon --max-workers=2 --console=plain --stacktrace 2>&1 | tee "$RUNNER_TEMP/dunya-logs/kotlin-debug.log"
+      - name: Build arm64 Android debug APK
         working-directory: fitila_flutter
         shell: bash
         run: |
+          mkdir -p "$RUNNER_TEMP/dunya-logs"
           set -o pipefail
-          mkdir -p build/ci-diagnostics
-          echo "=== JDK ==="
-          java -version
-          echo "=== Memory ==="
-          free -h
-          echo "=== Disk ==="
-          df -h .
-          flutter build apk --debug 2>&1 | tee build/ci-diagnostics/android-debug-build.log
-      - name: Upload Android build diagnostics
+          flutter build apk --debug --target-platform android-arm64 2>&1 | tee "$RUNNER_TEMP/dunya-logs/android-arm64-debug.log"
+      - name: Preserve Android diagnostics independently of Flutter build
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: dunya-android-build-diagnostics
-          path: fitila_flutter/build/ci-diagnostics/android-debug-build.log
+          path: ${{ runner.temp }}/dunya-logs/*.log
           retention-days: 7
-          if-no-files-found: warn
+          if-no-files-found: error
       - name: DUNYA routing regression tests
         working-directory: fitila_flutter
         run: |
