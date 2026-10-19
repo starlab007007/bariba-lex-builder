@@ -33,15 +33,23 @@ bool isApprovedDunyaByt5Beta(Map manifest) {
       manifest['channel'] != 'beta' ||
       manifest['tested'] != false ||
       manifest['quality_certified'] != false ||
-      manifest['version'] != 'v1-both-matmul-matmul') return false;
+      manifest['version'] != 'v1-both-matmul-matmul') {
+    return false;
+  }
   final files = manifest['files'];
-  if (files is! List || files.length != _betaFiles.length) return false;
+  if (files is! List || files.length != _betaFiles.length) {
+    return false;
+  }
   for (final item in files) {
-    if (item is! Map) return false;
+    if (item is! Map) {
+      return false;
+    }
     final path = item['path'];
     if (!_betaFiles.containsKey(path) ||
         item['sha256'].toString().toLowerCase() != _betaFiles[path] ||
-        (item['size'] as num?) == null) return false;
+        (item['size'] as num?) == null) {
+      return false;
+    }
   }
   return true;
 }
