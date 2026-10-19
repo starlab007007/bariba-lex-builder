@@ -40,8 +40,8 @@ void main() {
   });
 
   test('translator skips invalid offline answer', () async {
-    DunyaTranslator.memory = (_, __) async => null;
-    DunyaTranslator.offline = (_, __) async => 'kɔnnɔ kɔnnɔ kɔnnɔ kɔnnɔ';
+    DunyaTranslator.memory = (text, toBariba) async => null;
+    DunyaTranslator.offline = (text, toBariba) async => 'kɔnnɔ kɔnnɔ kɔnnɔ kɔnnɔ';
     DunyaTranslator.online = null;
     DunyaTranslator.allowRemote = () => false;
     final output = await DunyaTranslator.translate(
