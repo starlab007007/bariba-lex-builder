@@ -457,11 +457,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         'tts_engine': ttsEngine, 'fallback': fallbackCode,
       });
     } catch (error) {
-      if (mounted) setState(() {
-        _failedCloudText = text;
-        _notice = 'DUNYA vocal indisponible. Vérifiez la connexion puis réessayez.';
-        _status = null;
-      });
+      if (mounted) {
+        setState(() {
+          _failedCloudText = text;
+          _notice = 'DUNYA vocal indisponible. Vérifiez la connexion puis réessayez.';
+          _status = null;
+        });
+      }
       await _store.audit('dunya_voice_cloud_error',
           {'error': error.toString()}, severity: 'warning');
       // Automatic mode falls back to the already-installed Omnilingual
