@@ -74,7 +74,9 @@ Future<void> main() async {
   }
   _wireBaribaKeyboard();
   if (FitilaBackend.configured) {
-    unawaited(_fitilaMemory.synchronize().catchError((Object _) => 0));
+    // Download only after connectivity is confirmed; refresh again on reconnection.
+    FitilaOffline.online.addListener(_refreshMemoryOnReconnect);
+    if (FitilaOffline.online.value) _refreshMemoryOnReconnect();
   }
   runApp(const FitilaApp());
 }
@@ -82,6 +84,14 @@ Future<void> main() async {
 /// Shares config with the native keyboards and plugs the online translator
 /// used by the keyboard's "Saisir et Traduire" mode.
 final FitilaMemoryStore _fitilaMemory = FitilaMemoryStore();
+bool _memorySyncing = false;
+void _refreshMemoryOnReconnect() {
+  if (!FitilaOffline.online.value || _memorySyncing) return;
+  _memorySyncing = true;
+  unawaited(_fitilaMemory.synchronize()
+      .catchError((Object _) => 0)
+      .whenComplete(() => _memorySyncing = false));
+}
 
 void _wireBaribaKeyboard() {
   if (FitilaBackend.configured) {
