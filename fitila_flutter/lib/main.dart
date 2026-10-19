@@ -24,6 +24,7 @@ import 'core/fitila_live.dart';
 import 'core/fitila_media.dart';
 import 'core/local_speech.dart';
 import 'core/offline.dart';
+import 'core/fitila_memory_store.dart';
 import 'core/fitila_translation_audio.dart';
 import 'core/foncier_rag.dart';
 import 'core/signature_theme.dart';
@@ -72,11 +73,16 @@ Future<void> main() async {
     FitilaOffline.start();
   }
   _wireBaribaKeyboard();
+  if (FitilaBackend.configured) {
+    unawaited(_fitilaMemory.synchronize().catchError((Object _) => 0));
+  }
   runApp(const FitilaApp());
 }
 
 /// Shares config with the native keyboards and plugs the online translator
 /// used by the keyboard's "Saisir et Traduire" mode.
+final FitilaMemoryStore _fitilaMemory = FitilaMemoryStore();
+
 void _wireBaribaKeyboard() {
   if (FitilaBackend.configured) {
     unawaited(
@@ -101,8 +107,13 @@ void _wireBaribaKeyboard() {
     );
   };
   // DUNYA : mémoire de traduction validée (dictionnaire, Apprendre, scènes), exacte et hors ligne.
-  DunyaTranslator.memory = (text, toBariba) async =>
-      (await DunyaTranslationMemory.shared()).translate(text, toBariba);
+  DunyaTranslator.memory = (text, toBariba) async {
+    try {
+      final local = await _fitilaMemory.translate(text, frenchToBariba: toBariba);
+      if (local != null && local.trim().isNotEmpty) return local;
+    } catch (_) { /* no installed memory database yet */ }
+    return (await DunyaTranslationMemory.shared()).translate(text, toBariba);
+  };
   // DUNYA mode baatɔnum : chaîne de traduction FITILA en ligne (ByT5, ai-translate).
   DunyaTranslator.online = (text, toBariba) async {
     final token = FitilaBackend.client.auth.currentSession?.accessToken;
