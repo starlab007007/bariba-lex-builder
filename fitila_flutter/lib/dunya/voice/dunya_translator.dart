@@ -6,15 +6,20 @@
 /// the phone is online. Hooks are set at app start-up (see main.dart).
 library;
 
+import 'dunya_linguistic_quality.dart';
+
 typedef DunyaTranslateFn = Future<String?> Function(String text, bool toBariba);
 
 class DunyaTranslation {
-  const DunyaTranslation(this.text, this.engine);
+  const DunyaTranslation(this.text, this.engine, {this.reviewFlags = const []});
 
   final String text;
 
   /// 'memory' | 'offline' | 'online'
   final String engine;
+
+  /// Nonblocking caution indicators, e.g. grammar requiring human review.
+  final List<String> reviewFlags;
 }
 
 class DunyaTranslator {
@@ -22,6 +27,7 @@ class DunyaTranslator {
 
   /// Validated sentence memory (dictionary, Apprendre, scenes). Instant and exact.
   static DunyaTranslateFn? memory;
+  static const quality = DunyaLinguisticQualityEngine();
 
   /// On-device engine (FITILA ByT5 pack). Null until installed.
   static DunyaTranslateFn? offline;
@@ -57,7 +63,14 @@ class DunyaTranslator {
       try {
         final out = (await fn(clean, toBariba).timeout(const Duration(seconds: 35)))?.trim();
         if (out != null && out.isNotEmpty && out.toLowerCase() != clean.toLowerCase()) {
-          final result = DunyaTranslation(out, engine);
+          // On-device neural translation must not silently show corrupted,
+          // looped, or numerically inconsistent results. Review flags are
+          // propagated, but never used for automatic semantic rewrites.
+          final assessment = engine == 'offline'
+              ? quality.assess(source: clean, candidate: out, toBariba: toBariba)
+              : const DunyaQualityAssessment(accepted: true, flags: []);
+          if (!assessment.accepted) continue;
+          final result = DunyaTranslation(out, engine, reviewFlags: assessment.flags);
           if (_cache.length >= _maxCacheEntries) _cache.remove(_cache.keys.first);
           _cache[cacheKey] = result;
           return result;
