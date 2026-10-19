@@ -6,6 +6,8 @@
 /// the phone is online. Hooks are set at app start-up (see main.dart).
 library;
 
+import 'dunya_local_refiner.dart';
+
 typedef DunyaTranslateFn = Future<String?> Function(String text, bool toBariba);
 
 class DunyaTranslation {
@@ -39,7 +41,8 @@ class DunyaTranslator {
       try {
         final out = (await fn(clean, toBariba).timeout(const Duration(seconds: 35)))?.trim();
         if (out != null && out.isNotEmpty && out.toLowerCase() != clean.toLowerCase()) {
-          return DunyaTranslation(out, engine);
+          final result = DunyaLocalRefiner.refine(out, toBariba: toBariba);
+          return DunyaTranslation(result.text, engine);
         }
       } catch (_) {
         // Try the next engine.
