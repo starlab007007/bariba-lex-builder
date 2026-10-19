@@ -41,7 +41,9 @@ class DunyaTranslator {
       try {
         final out = (await fn(clean, toBariba).timeout(const Duration(seconds: 35)))?.trim();
         if (out != null && out.isNotEmpty && out.toLowerCase() != clean.toLowerCase()) {
+          if (engine == 'memory') return DunyaTranslation(out, engine);
           final result = DunyaLocalRefiner.refine(out, toBariba: toBariba);
+          if (result.status == 'rejected') continue;
           return DunyaTranslation(result.text, engine);
         }
       } catch (_) {
