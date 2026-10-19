@@ -52,6 +52,11 @@ abstract final class DunyaLocalRefiner {
     final similarity = 1 - distance / math.max(original.length, candidate.length);
     // Server's conservative edit-distance guard. Additional lexical checks still
     // take place server-side; client rejects rather than guessing.
+    // Reject any proposed mutation that changes numeric facts.
+    String numbers(String v) => RegExp(r'\d+(?:[.,]\d+)*').allMatches(v).map((m) => m.group(0)!).join('|');
+    if (numbers(original) != numbers(candidate)) {
+      return DunyaRefinement(text: original, status: 'rejected', reason: 'numbers_changed');
+    }
     if (similarity < (toBariba ? .6 : .5)) {
       return DunyaRefinement(text: original, status: 'rejected', reason: 'too_different');
     }
