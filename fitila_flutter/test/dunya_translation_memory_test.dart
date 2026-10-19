@@ -65,6 +65,22 @@ void main() {
           'Bii mɛro u win bii bɔm kɛ̃mɔ.');
     });
 
+    test('similar examples are advisory, not automatic translations', () async {
+      final candidates = memory.suggestSimilar(
+        'Si tu salues le forgeron, salue le forgeron demain.',
+        toBariba: true,
+      );
+      expect(candidates, isNotEmpty);
+      expect(candidates.first.source, contains('forgeron'));
+      expect(await memory.translate(
+        'Si tu salues le forgeron, salue le forgeron demain.', true), isNull);
+    });
+
+    test('similar examples require meaningful overlap', () {
+      expect(memory.suggestSimilar('xyz inconnu', toBariba: true), isEmpty);
+      expect(memory.suggestSimilar('salut', toBariba: true), isEmpty);
+    });
+
     test('edit distance helper stops early', () {
       expect(boundedEditDistance('abc', 'abd', 1), 1);
       expect(boundedEditDistance('abc', 'xyz', 1), greaterThan(1));
