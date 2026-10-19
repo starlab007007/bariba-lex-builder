@@ -5,6 +5,10 @@ on:
       - release/fitila-web-flutter-parity-20261016
     paths:
       - 'fitila_flutter/lib/dunya/**'
+      - 'fitila_flutter/android/app/src/main/kotlin/bj/fitila/fitila_native/DunyaByt5Channel.kt'
+      - 'fitila_flutter/android/app/src/main/kotlin/bj/fitila/fitila_native/MainActivity.kt'
+      - 'fitila_flutter/android/app/build.gradle.kts'
+      - 'fitila_flutter/lib/main.dart'
       - 'fitila_flutter/lib/core/fitila_memory_store.dart'
       - 'fitila_flutter/test/dunya_*'
       - '.github/workflows/dunya-flutter-validation.yml'
@@ -25,9 +29,15 @@ jobs:
           flutter-version: '3.47.4'
           channel: stable
           cache: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
       - name: Resolve dependencies
         run: flutter pub get
       - name: Analyze linguistic modules
         run: dart analyze lib/dunya/voice/dunya_local_refiner.dart lib/dunya/voice/dunya_translator.dart lib/core/fitila_memory_store.dart
       - name: Run DUNYA tests
         run: flutter test test/dunya_local_refiner_test.dart test/dunya_memory_bidirectional_test.dart --reporter expanded
+      - name: Compile Android debug (includes native ONNX bridge)
+        run: flutter build apk --debug --target-platform android-arm64
