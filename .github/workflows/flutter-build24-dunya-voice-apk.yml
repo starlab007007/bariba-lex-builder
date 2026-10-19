@@ -286,3 +286,35 @@ jobs:
           retention-days: 30
 
 
+
+      - name: Prepare public APK bundle
+        if: success()
+        run: |
+          set -euo pipefail
+          test "$(cat build/SIGNING_MODE.txt)" = "production" || { echo "Production signing unavailable; no public APK publication"; exit 1; }
+          mkdir -p build/public-apk
+          cp build/final-apk/*-arm64.apk build/public-apk/FITILA-latest.apk
+          cp build/final-apk/*-armv7.apk build/public-apk/FITILA-armv7.apk
+          python - <<'PY'
+          import json,datetime,hashlib,pathlib
+          f=pathlib.Path('build/public-apk/FITILA-latest.apk')
+          item={'version':'1.8.18','build':29,'published_at':datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),'apk':'/downloads/FITILA-latest.apk','armv7':'/downloads/FITILA-armv7.apk','sha256':hashlib.sha256(f.read_bytes()).hexdigest(),'bytes':f.stat().st_size}
+          pathlib.Path('build/public-apk/version.json').write_text(json.dumps(item,ensure_ascii=False))
+          PY
+
+      - name: Upload public APK to FITILA VPS
+        if: success() && vars.DEPLOY_ENABLED == 'true'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "fitila_flutter/build/public-apk/*"
+          target: "/home/debian/bariba-lex-builder/dist/downloads/"
+          strip_components: 3
+
+      - name: Verify public APK download
+        if: success() && vars.DEPLOY_ENABLED == 'true'
+        run: |
+          curl -fIL --retry 4 --retry-delay 3 --max-time 25 https://fitila.bj/downloads/FITILA-latest.apk
+          curl -fsS --retry 4 --retry-delay 3 --max-time 25 https://fitila.bj/downloads/version.json | grep -q '"version"'
