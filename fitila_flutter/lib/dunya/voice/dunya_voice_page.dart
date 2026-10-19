@@ -769,12 +769,42 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     if (mounted) setState(() {});
   }
 
+  Future<bool> _confirmByt5Beta() async {
+    if (!mounted) return false;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('ByT5 V4 INT8 — Bêta (en test)'),
+        content: const Text(
+          'Ce modèle expérimental traduit le français et le Baatɔnum sans Internet après installation. '
+          'Il n’est pas certifié : les traductions peuvent être inexactes. '
+          'Il nécessite environ 300 Mo de téléchargement et davantage d’espace pour son installation. '
+          'Acceptez-vous de l’installer pour vos essais ?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('J’accepte la version bêta'),
+          ),
+        ],
+      ),
+    );
+    return accepted == true;
+  }
+
   Future<void> _installVoiceFile() async {
     final picked = await FilePicker.platform.pickFiles(type: FileType.any);
     final path = picked?.files.single.path;
     if (path == null) return;
     final cache = await getTemporaryDirectory();
     final isCacheCopy = path.startsWith(cache.path) || path.contains('/cache/');
+    // Consent for file imports is requested explicitly; the installer itself
+    // enforces it again for the hash-pinned ByT5 beta.
+    final betaConsent = await _confirmByt5Beta();
     if (looksLikeBrainFile(path)) {
       await _runJob(
         'Installation du cerveau…',
@@ -783,15 +813,22 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       return;
     }
     await _runJob('Installation du pack…', (progress) async {
-      await _packs.installFromFile(path, deleteSource: isCacheCopy, onProgress: (p) => progress(p.fraction, p.detail));
+      await _packs.installFromFile(path, deleteSource: isCacheCopy, betaConsent: betaConsent, onProgress: (p) => progress(p.fraction, p.detail));
       await _startEngine();
     });
   }
 
-  Future<void> _downloadVoice(DunyaPackSource source) => _runJob('Téléchargement…', (progress) async {
-        await _packs.download(source, onProgress: (p) => progress(p.fraction, p.detail));
-        await _startEngine();
-      });
+  Future<void> _downloadVoice(DunyaPackSource source) async {
+    final betaConsent = source.id == dunyaTranslationPackId
+        ? await _confirmByt5Beta()
+        : false;
+    if (source.id == dunyaTranslationPackId && !betaConsent) return;
+    await _runJob('Téléchargement…', (progress) async {
+      await _packs.download(source, betaConsent: betaConsent,
+          onProgress: (p) => progress(p.fraction, p.detail));
+      await _startEngine();
+    });
+  }
 
   Future<void> _runJob(String title, Future<void> Function(void Function(double?, String) progress) job) async {
     if (!mounted) return;
