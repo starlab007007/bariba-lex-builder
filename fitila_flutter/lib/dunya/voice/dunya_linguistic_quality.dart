@@ -51,7 +51,9 @@ class DunyaLinguisticQualityEngine {
     final inputDigits = _numbers.allMatches(source).map((m) => m.group(0)!).toList();
     final outputDigits = _numbers.allMatches(result).map((m) => m.group(0)!).toList();
     if (inputDigits.isNotEmpty && inputDigits.join('|') != outputDigits.join('|')) {
-      flags.add('number_mismatch');
+      // A language may legitimately spell numerals out; only contradictory
+      // digit-to-digit outputs are a hard failure.
+      flags.add(outputDigits.isNotEmpty ? 'number_mismatch' : 'review_number_words');
     }
 
     // Source-side negation requires language-aware morphology; this is only
@@ -64,7 +66,8 @@ class DunyaLinguisticQualityEngine {
 
     // Only structurally untrustworthy outputs are rejected. Negation review
     // is displayed separately; no unchecked rewrite is generated.
-    final fatal = flags.any((f) => f != 'review_negation');
+    final fatal = flags.any((f) =>
+        f != 'review_negation' && f != 'review_number_words');
     return DunyaQualityAssessment(accepted: !fatal, flags: flags);
   }
 }
