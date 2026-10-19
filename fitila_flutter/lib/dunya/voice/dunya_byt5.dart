@@ -38,6 +38,13 @@ class DunyaByt5 {
       }
       final cfgFile = File('$dir/config.json');
       _config = cfgFile.existsSync() ? (jsonDecode(cfgFile.readAsStringSync()) as Map<String, dynamic>) : const {};
+      if (_config['format'] != 'fitila-byt5-mobile/1' ||
+          _config['tokenizer'] != 'byt5-bytes-plus-3' ||
+          _config['prefix_fr_ba'] is! String ||
+          _config['prefix_ba_fr'] is! String) {
+        DunyaTranslator.offline = null;
+        return false;
+      }
       DunyaTranslator.offline = (text, toBariba) => _translate(enc.path, dec.path, text, toBariba);
       return true;
     } catch (_) {
@@ -50,7 +57,7 @@ class DunyaByt5 {
     await (_loading ??= _load(encoder, decoder));
     if (!_loaded) return null;
     final prefix = (toBariba ? _config['prefix_fr_ba'] : _config['prefix_ba_fr'])?.toString() ?? '';
-    final out = await _channel.invokeMethod<String>('translate', {'text': text, 'prefix': prefix, 'maxLen': 0});
+    final out = await _channel.invokeMethod<String>('translate', {'text': text, 'prefix': prefix, 'direction': toBariba ? 'fr-ba' : 'ba-fr', 'maxLen': 0});
     return out?.trim().isEmpty ?? true ? null : out!.trim();
   }
 
