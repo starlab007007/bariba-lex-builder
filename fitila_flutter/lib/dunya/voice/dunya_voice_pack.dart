@@ -538,7 +538,12 @@ class _DigestSink implements Sink<Digest> {
 }
 
 /// Installs a pack synchronously in the current isolate (tests, tooling).
-Future<Map<String, dynamic>> installDunyaPackFile(String zipPath, String rootPath) {
+Future<Map<String, dynamic>> installDunyaPackFile(
+  String zipPath,
+  String rootPath, {
+  bool betaConsent = false,
+}) {
   final port = ReceivePort();
-  return _installPack(zipPath, rootPath, port.sendPort).whenComplete(port.close);
+  return _installPack(zipPath, rootPath, port.sendPort, betaConsent)
+      .whenComplete(port.close);
 }
