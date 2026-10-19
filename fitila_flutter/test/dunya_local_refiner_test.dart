@@ -16,6 +16,10 @@ void main() {
     expect(r.status, 'applied');
     expect(r.text, 'nim nɔru');
   });
+  test('preserves numeric facts and rejects obvious HTML output', () {
+    expect(DunyaLocalRefiner.refine('Nombre 12', toBariba: true).text, 'Nombre 12');
+    expect(DunyaLocalRefiner.refine('<html>error', toBariba: true).status, 'rejected');
+  });
   test('French output is not modified using Bariba substitutions', () {
     final r = DunyaLocalRefiner.refine('Cette banane est bonne', toBariba: false);
     expect(r.text, 'Cette banane est bonne');
