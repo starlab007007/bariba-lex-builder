@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'dunya_translator.dart';
+import 'dunya_voice_pack.dart' show isAuthorizedDunyaTranslationManifest;
 
 const dunyaByt5PackId = 'dunya-translate-byt5';
 
@@ -39,7 +40,7 @@ class DunyaByt5 {
       }
       final manifest = jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
       if (manifest['id'] != dunyaByt5PackId || manifest['format'] != 'dunya-pack/1' ||
-          manifest['tested'] != true) {
+          !isAuthorizedDunyaTranslationManifest(manifest)) {
         DunyaTranslator.offline = null;
         return false;
       }
