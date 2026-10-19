@@ -53,6 +53,7 @@ import 'keyboard/bariba_input.dart';
 import 'dictionary/dictionary_experience.dart';
 import 'dunya/voice/dunya_translation_memory.dart';
 import 'dunya/voice/dunya_translator.dart';
+import 'dunya/voice/dunya_byt5.dart';
 import 'dunya/voice/dunya_assistant.dart';
 import 'dunya/dunya_home.dart';
 import 'translator/translator_chat.dart';
@@ -73,6 +74,8 @@ Future<void> main() async {
     FitilaOffline.start();
   }
   _wireBaribaKeyboard();
+  // Restore an installed ByT5 pack even when launching directly into the translator.
+  unawaited(DunyaByt5.instance.activateIfInstalled());
   if (FitilaBackend.configured) {
     // Download only after connectivity is confirmed; refresh again on reconnection.
     FitilaOffline.online.addListener(_refreshMemoryOnReconnect);
