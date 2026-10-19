@@ -11,17 +11,17 @@ class DunyaRefinement {
 }
 
 abstract final class DunyaLocalRefiner {
-  static String normalize(String value) => value.replaceAll(RegExp(r'\\s+'), ' ').trim();
+  static String normalize(String value) => value.replaceAll(RegExp(r'\s+'), ' ').trim();
   static final forbidden = RegExp(r'share via link|loading|submit|clear|button|click|select|undefined|<html|<!doctype', caseSensitive: false);
   static final substitutions = <(RegExp, String)>[
     (RegExp(r'Kua dɔ̃ɔ', caseSensitive: false), 'A kpuna n do?'),
     (RegExp(r'Kua wɛrɛ', caseSensitive: false), 'Bɛɛ ka yoka'),
-    (RegExp(r'A kɛra\\s*\\?', caseSensitive: false), 'Anna wunɛn wasi?'),
+    (RegExp(r'A kɛra\s*\?', caseSensitive: false), 'Anna wunɛn wasi?'),
     (RegExp(r'Na kɛra sãa sãa', caseSensitive: false), 'Alaafia'),
     (RegExp(r'A nii koo', caseSensitive: false), 'siara'),
     (RegExp(r'Nɛn yaa', caseSensitive: false), 'bii mɛro'),
     (RegExp(r'Nim nɔnkuru', caseSensitive: false), 'nim nɔru'),
-    (RegExp(r'Goo u g[ɑaã̃]+ kasuu,\\s*u ga bɛri', caseSensitive: false), 'Durɔ goo u kasuu, u ga bɛri'),
+    (RegExp(r'Goo u g[ɑaã̃]+ kasuu,\s*u ga bɛri', caseSensitive: false), 'Durɔ goo u kasuu, u ga bɛri'),
   ];
   static String _correctBariba(String value) {
     var result = normalize(value);
