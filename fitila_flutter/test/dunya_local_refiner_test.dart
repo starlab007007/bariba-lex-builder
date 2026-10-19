@@ -11,6 +11,11 @@ void main() {
     final r = DunyaLocalRefiner.refine('Loading undefined', toBariba: true);
     expect(r.status, 'rejected');
   });
+  test('conservative rules correct attested greeting', () {
+    final r = DunyaLocalRefiner.refine('Kua wɛrɛ', toBariba: true);
+    expect(r.status, 'applied');
+    expect(r.text, 'Bɛɛ ka yoka');
+  });
   test('French output is not modified using Bariba substitutions', () {
     final r = DunyaLocalRefiner.refine('Cette banane est bonne', toBariba: false);
     expect(r.text, 'Cette banane est bonne');
