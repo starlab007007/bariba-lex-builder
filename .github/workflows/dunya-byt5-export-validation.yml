@@ -1,0 +1,29 @@
+name: DUNYA ByT5 mobile exporter validation
+on:
+  push:
+    branches:
+      - release/fitila-web-flutter-parity-20261016
+    paths:
+      - scripts/dunya_translate/export_mobile_onnx.py
+      - .github/workflows/dunya-byt5-export-validation.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check exporter
+        run: python -m py_compile scripts/dunya_translate/export_mobile_onnx.py
+      - name: Confirm trained checkpoint is required
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('scripts/dunya_translate/export_mobile_onnx.py').read_text()
+          required = ['--model', 'google/byt5-small', 'encoder.onnx', 'decoder.onnx', 'source_checkpoint', 'sha256', 'tested']
+          missing = [v for v in required if v not in text]
+          if missing:
+            raise SystemExit('Missing exporter safeguards: ' + repr(missing))
+          print('Exporter preflight passed; real trained checkpoint and Android inference still require validation.')
+          PY
