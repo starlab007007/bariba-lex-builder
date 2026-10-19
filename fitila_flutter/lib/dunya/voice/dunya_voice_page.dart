@@ -96,6 +96,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   String? _subCaption;
   String? _status;
   String? _notice;
+  String? _failedCloudText;
   final _turns = <_Turn>[];
   DunyaPendingAction? _pending;
   Completer<void>? _bargeWatch;
@@ -363,6 +364,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     var brainEngine = 'unknown';
     var fallbackCode = '';
     var usedLocalFallback = false;
+    _failedCloudText = null;
     _stopSpeaking = false;
     if (mounted) setState(() => _phase = _Phase.thinking);
     try {
@@ -455,7 +457,11 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         'tts_engine': ttsEngine, 'fallback': fallbackCode,
       });
     } catch (error) {
-      if (mounted) setState(() => _notice = error.toString());
+      if (mounted) setState(() {
+        _failedCloudText = text;
+        _notice = 'DUNYA vocal indisponible. Vérifiez la connexion puis réessayez.';
+        _status = null;
+      });
       await _store.audit('dunya_voice_cloud_error',
           {'error': error.toString()}, severity: 'warning');
       // Automatic mode falls back to the already-installed Omnilingual
@@ -476,7 +482,11 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     } finally {
       if (!usedLocalFallback && mounted && turnId == _turnCounter) {
         _status = null;
-        if (_session && _settings.handsFree) {
+        // Never restart hands-free recording after a failed cloud turn.
+        if (_notice == 'DUNYA vocal indisponible. Vérifiez la connexion puis réessayez.') {
+          _session = false;
+          setState(() => _phase = _Phase.idle);
+        } else if (_session && _settings.handsFree) {
           unawaited(_listenTurn());
         } else {
           setState(() => _phase = _Phase.idle);
@@ -1077,7 +1087,27 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         if (_notice != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-            child: Text(_notice!, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFFE9C46A), fontSize: 12.5)),
+            child: Column(
+              children: [
+                Text(_notice!, textAlign: TextAlign.center,
+                  style: const TextStyle(color: Color(0xFFE9C46A), fontSize: 12.5)),
+                if (_phase == _Phase.idle &&
+                    _notice == 'DUNYA vocal indisponible. Vérifiez la connexion puis réessayez.')
+                  TextButton.icon(
+                    onPressed: () {
+                      final lastText = _failedCloudText;
+                      setState(() => _notice = null);
+                      if (lastText != null && lastText.isNotEmpty) {
+                        unawaited(_runCloudVoiceTurn(null, text: lastText));
+                      } else {
+                        unawaited(_onOrbTap());
+                      }
+                    },
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Réessayer'),
+                  ),
+              ],
+            ),
           ),
         if (_turns.isEmpty && _phase == _Phase.idle) _suggestions(),
       ],
