@@ -39,42 +39,16 @@ jobs:
       - name: Static analysis
         working-directory: fitila_flutter
         run: flutter analyze
-      - name: Verify Java toolchain
-        run: java -version
-      - name: Bound CI Gradle memory and workers
+      # Android compilation is handled by dunya-android-arm64-artifact.yml.
+      # Do not compile native Kotlin + the full APK again in this QA job:
+      # the duplicate NDK/CMake install exhausted the runner disk.
+      - name: Disk space diagnostics
+        run: df -h /
+      - name: Linguistic quality regressions
         working-directory: fitila_flutter
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('android/gradle.properties')
-          content = p.read_text()
-          content = content.replace('-Xmx8G', '-Xmx3G').replace('-XX:MaxMetaspaceSize=4G', '-XX:MaxMetaspaceSize=768m')
-          content += '\norg.gradle.workers.max=2\norg.gradle.parallel=false\nkotlin.compiler.execution.strategy=in-process\n'
-          p.write_text(content)
-          PY
-      - name: Compile Kotlin Android independently
-        working-directory: fitila_flutter/android
-        shell: bash
-        run: |
-          mkdir -p "$RUNNER_TEMP/dunya-logs"
-          chmod +x gradlew
-          set -o pipefail
-          ./gradlew :app:compileDebugKotlin --no-daemon --max-workers=2 --console=plain --stacktrace 2>&1 | tee "$RUNNER_TEMP/dunya-logs/kotlin-debug.log"
-      - name: Build arm64 Android debug APK
-        working-directory: fitila_flutter
-        shell: bash
-        run: |
-          mkdir -p "$RUNNER_TEMP/dunya-logs"
-          set -o pipefail
-          flutter build apk --debug --target-platform android-arm64 2>&1 | tee "$RUNNER_TEMP/dunya-logs/android-arm64-debug.log"
-      - name: Preserve Android diagnostics independently of Flutter build
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: dunya-android-build-diagnostics
-          path: ${{ runner.temp }}/dunya-logs/*.log
-          retention-days: 7
-          if-no-files-found: error
+          flutter test test/dunya_linguistic_quality_test.dart
+          flutter test test/dunya_translation_memory_test.dart
       - name: DUNYA routing regression tests
         working-directory: fitila_flutter
         run: |
