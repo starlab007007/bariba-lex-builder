@@ -1,0 +1,33 @@
+name: DUNYA Flutter linguistic validation
+on:
+  push:
+    branches:
+      - release/fitila-web-flutter-parity-20261016
+    paths:
+      - 'fitila_flutter/lib/dunya/**'
+      - 'fitila_flutter/lib/core/fitila_memory_store.dart'
+      - 'fitila_flutter/test/dunya_*'
+      - '.github/workflows/dunya-flutter-validation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: fitila_flutter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Analyze linguistic modules
+        run: dart analyze lib/dunya/voice/dunya_local_refiner.dart lib/dunya/voice/dunya_translator.dart lib/core/fitila_memory_store.dart
+      - name: Run DUNYA tests
+        run: flutter test test/dunya_local_refiner_test.dart test/dunya_memory_bidirectional_test.dart --reporter expanded
