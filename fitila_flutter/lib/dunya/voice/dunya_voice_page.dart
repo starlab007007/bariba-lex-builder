@@ -1014,11 +1014,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
             ),
             const Spacer(),
             IconButton(
+              style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Colors.white),
               tooltip: _textView ? 'Mode voix' : 'Voir la conversation écrite',
               onPressed: () => setState(() => _textView = !_textView),
               icon: Icon(_textView ? Icons.graphic_eq_rounded : Icons.chat_bubble_outline_rounded, color: Colors.white),
             ),
             IconButton(
+              style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Colors.white),
               tooltip: 'Réglages',
               onPressed: _openSettings,
               icon: const Icon(Icons.tune_rounded, color: Colors.white),
@@ -1190,18 +1192,21 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                 children: [
                   IconButton(
                     visualDensity: VisualDensity.compact,
+                    style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: _gold),
                     tooltip: 'Réécouter',
                     onPressed: () => _replay(t),
                     icon: const Icon(Icons.volume_up_rounded, size: 18, color: _gold),
                   ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
+                    style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Colors.white70),
                     tooltip: 'Copier',
                     onPressed: () => Clipboard.setData(ClipboardData(text: t.text)),
                     icon: const Icon(Icons.copy_rounded, size: 17, color: Colors.white54),
                   ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
+                    style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Colors.white70),
                     tooltip: 'Mémoriser',
                     onPressed: () => _quietly(() => _store.saveMemory(t.text)),
                     icon: const Icon(Icons.bookmark_add_outlined, size: 18, color: Colors.white54),
