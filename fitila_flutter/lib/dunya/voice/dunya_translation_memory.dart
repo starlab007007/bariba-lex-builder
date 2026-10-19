@@ -58,6 +58,15 @@ int boundedEditDistance(String a, String b, int limit) {
   return prev[b.length];
 }
 
+class DunyaSimilarExample {
+  const DunyaSimilarExample({required this.source, required this.translation, required this.grade, required this.commonWords});
+  final String source;
+  final String translation;
+  /// Corpus grade is not proof of independent human approval.
+  final String grade;
+  final int commonWords;
+}
+
 class DunyaTranslationMemory {
   /// [pairs] rows are `[french, bariba, grade]`.
   DunyaTranslationMemory(List<List<String>> pairs) {
@@ -69,6 +78,8 @@ class DunyaTranslationMemory {
       final frKey = foldFrench(fr);
       final baKey = foldBariba(ba);
       if (frKey.isEmpty || baKey.isEmpty) continue;
+      _originalFrench.putIfAbsent(frKey, () => fr);
+      _originalBariba.putIfAbsent(baKey, () => ba);
       final frPrevious = _frToBa[frKey];
       if (frPrevious != null && foldBariba(frPrevious.$1) != baKey) {
         ambiguousFr.add(frKey);
@@ -88,6 +99,8 @@ class DunyaTranslationMemory {
   }
 
   final Map<String, (String, String)> _frToBa = {};
+  final Map<String, String> _originalFrench = {};
+  final Map<String, String> _originalBariba = {};
   final Map<String, (String, String)> _baToFr = {};
   late final List<String> _baKeys;
 
@@ -123,6 +136,32 @@ class DunyaTranslationMemory {
       }
     }
     return null;
+  }
+
+  /// Advisory retrieval only; never automatically substitutes fuzzy matches.
+  List<DunyaSimilarExample> suggestSimilar(String text,
+      {required bool toBariba, int limit = 3}) {
+    if (limit <= 0) return const [];
+    final key = toBariba ? foldFrench(text) : foldBariba(text);
+    final query = key.split(' ').where((w) => w.length >= 3).toSet();
+    if (query.length < 2) return const [];
+    final table = toBariba ? _frToBa : _baToFr;
+    final originals = toBariba ? _originalFrench : _originalBariba;
+    final examples = <DunyaSimilarExample>[];
+    for (final entry in table.entries) {
+      if (entry.key == key) continue;
+      final candidateWords = entry.key.split(' ').where((w) => w.length >= 3).toSet();
+      final intersection = query.intersection(candidateWords).length;
+      if (intersection < 2 || intersection / query.length < 0.5) continue;
+      examples.add(DunyaSimilarExample(
+        source: originals[entry.key] ?? entry.key,
+        translation: entry.value.$1,
+        grade: entry.value.$2,
+        commonWords: intersection,
+      ));
+    }
+    examples.sort((a, b) => b.commonWords.compareTo(a.commonWords));
+    return examples.take(limit).toList(growable: false);
   }
 
   /// Unambiguous corpus translation, or null. Never throws (asset missing, tests, first start):
