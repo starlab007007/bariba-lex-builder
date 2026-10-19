@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -50,7 +49,10 @@ class FitilaMemoryStore {
         manifest['sha256'] is! String || manifest['record_count'] is! int) {
       throw const FormatException('Manifeste invalide');
     }
-    if (await installedVersion() == manifest['version']) return 0;
+    if (await installedVersion() == manifest['version']) {
+      final current = await (await database).query('metadata', columns: ['value'], where: 'key = ?', whereArgs: ['sha256'], limit: 1);
+      if (current.isNotEmpty && current.first['value'] == manifest['sha256']) return 0;
+    }
     final response = await _client.get(Uri.parse('$base/pack')).timeout(const Duration(seconds: 45));
     if (response.statusCode != 200) throw StateError('Pack mémoire indisponible');
     final hash = sha256.convert(response.bodyBytes).toString();
@@ -76,6 +78,8 @@ class FitilaMemoryStore {
       }
       await batch.commit(noResult: true);
       await txn.insert('metadata', {'key': 'version', 'value': manifest['version']},
+        conflictAlgorithm: ConflictAlgorithm.replace);
+      await txn.insert('metadata', {'key': 'sha256', 'value': hash},
         conflictAlgorithm: ConflictAlgorithm.replace);
     });
     return items.length;
