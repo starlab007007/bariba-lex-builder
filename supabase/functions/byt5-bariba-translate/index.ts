@@ -46,6 +46,8 @@ const INVALID_UI_PATTERNS = [
 function normalizeText(input: string): string {
   return (input || "")
     .normalize("NFC")
+    // The model sometimes emits IPA look-alikes (ɑ U+0251, ɡ U+0261) that are not Baatɔnum spelling.
+    .replace(/\u0251/g, "a").replace(/\u0261/g, "g")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -260,7 +262,7 @@ async function tryRefineTranslation(params: {
   translation: string;
   direction: "fr-ba" | "ba-fr";
   timeoutMs?: number;
-}): Promise<{ refined?: string; changes?: string[]; confidence?: number; error?: string }> {
+}): Promise<{ refined?: string; changes?: string[]; confidence?: number; error?: string; status?: string; reason?: string }> {
   const { req, originalText, translation, direction, timeoutMs = 6000 } = params;
   const supabaseUrl =
     Deno.env.get("SUPABASE_URL") ||
@@ -298,9 +300,12 @@ async function tryRefineTranslation(params: {
       return { error: `Refine HTTP ${resp.status}: ${body.substring(0, 120)}` };
     }
     const data = await resp.json();
-    if (data.error || data.meta?.aiUsed === false || data.meta?.accepted === false) {
-      return { error: typeof data.error === "string" ? data.error : "refinement_not_applied" };
-    }
+    const status = typeof data.meta?.refinementStatus === "string" ? data.meta.refinementStatus : undefined;
+    const reason = typeof data.meta?.guard === "string" ? data.meta.guard : undefined;
+    if (data.error) return { status: status ?? "unavailable", error: String(data.error).slice(0, 80), reason };
+    if (status === "unavailable" || data.meta?.aiUsed === false && !data.meta?.attested && !data.meta?.local) return { status: "unavailable", reason };
+    if (status === "rejected" || data.meta?.accepted === false) return { status: "rejected", reason };
+    if (status === "unchanged") return { status: "unchanged" };
     const refined = typeof data?.refined === "string" ? normalizeText(data.refined) : "";
     if (!refined) {
       return { error: "Refine returned empty text" };
@@ -309,6 +314,7 @@ async function tryRefineTranslation(params: {
       refined,
       changes: Array.isArray(data?.changes) ? data.changes.map(String) : [],
       confidence: typeof data?.confidence === "number" ? data.confidence : undefined,
+      status: status ?? (data.meta?.attested ? "attested" : "applied"), reason,
     };
   } catch (e: unknown) {
     return {
@@ -427,6 +433,7 @@ export async function handleByT5(req: Request): Promise<Response> {
         method: "translation-memory",
         refinement: { applied: false },
         modelInfo: { name: "FITILA translation memory", version: "memory-v1", grade: attested.grade },
+        provenance: { dataset: "fitila-translation-memory", origin: "generated-bundle", source_id: null, reviewer_id: null, reviewed_at: null, validation_evidence: "not-exported", memory_pack_manifest: "/functions/v1/fitila-memory-pack/manifest" },
       });
     }
 
@@ -525,7 +532,7 @@ export async function handleByT5(req: Request): Promise<Response> {
     }
 
     let finalTranslation = normalizeText(translation);
-    let refineMeta: { applied: boolean; confidence?: number; changes?: string[]; error?: string } = { applied: false };
+    let refineMeta: { applied: boolean; status: string; confidence?: number; changes?: string[]; error?: string; reason?: string } = { applied: false, status: skipRefine ? "skipped" : "unavailable" };
 
     if (!skipRefine) {
       const refine = await tryRefineTranslation({ req, originalText: normalizedInput, translation: finalTranslation, direction, timeoutMs: 6000 });
@@ -533,12 +540,12 @@ export async function handleByT5(req: Request): Promise<Response> {
         const verdict = acceptRefinement(finalTranslation, refine.refined, direction === "fr-ba" ? "ba" : "fr");
         if (verdict.accepted) {
           finalTranslation = refine.refined;
-          refineMeta = { applied: finalTranslation !== normalizeText(translation), confidence: refine.confidence, changes: refine.changes || [] };
+          refineMeta = { applied: finalTranslation !== normalizeText(translation), status: finalTranslation !== normalizeText(translation) ? "applied" : "unchanged", confidence: refine.confidence, changes: refine.changes || [] };
         } else {
-          refineMeta = { applied: false, error: `rejected: ${verdict.reason}` };
+          refineMeta = { applied: false, status: "rejected", reason: verdict.reason };
         }
-      } else if (refine.error) {
-        refineMeta = { applied: false, error: refine.error };
+      } else {
+        refineMeta = { applied: false, status: refine.status ?? "unavailable", ...(refine.reason ? { reason: refine.reason } : {}), ...(refine.error ? { error: refine.error } : {}) };
       }
     }
 
