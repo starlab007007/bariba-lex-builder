@@ -70,6 +70,19 @@ android {
 
     testOptions { unitTests.isIncludeAndroidResources = true }
 
+    // LiteRT-LM et ONNX Runtime embarquent chacun leurs bibliothèques natives.
+    // Sans cette règle, mergeDebugNativeLibs échoue sur les fichiers communs
+    // (libc++_shared.so notamment). Sans doublon, la règle ne change rien.
+    packaging {
+        jniLibs {
+            pickFirsts += setOf(
+                "**/libc++_shared.so",
+                "**/libonnxruntime.so",
+                "**/libonnxruntime4j_jni.so",
+            )
+        }
+    }
+
     buildTypes {
         release {
             signingConfig = signingConfigs.findByName("fitilaRelease")
