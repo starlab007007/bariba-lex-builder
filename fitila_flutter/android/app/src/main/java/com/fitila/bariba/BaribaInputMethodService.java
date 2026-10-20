@@ -1254,11 +1254,15 @@ public class BaribaInputMethodService extends InputMethodService {
                         String error = null;
                         boolean betaResult = false;
                         boolean offlineResult = false;
-                        if (isNetworkAvailable()) {
+                        boolean networkIssue = false;
+                        boolean networkUp = isNetworkAvailable();
+                        if (networkUp || !client.isConfigured()) {
                             try { result = client.translate(txt, direction); }
-                            catch (KeyboardTranslationClient.TranslationException e) { error = e.getMessage(); }
+                            catch (KeyboardTranslationClient.TranslationException e) { error = e.getMessage(); networkIssue = e.connectivity; }
+                        } else {
+                            networkIssue = true;
                         }
-                        if (result == null) {
+                        if (result == null && networkIssue) {
                             // No usable network: exact dictionary entry first, then the on-device ByT5 (beta).
                             try {
                                 BaribaDictionary dict = BaribaDictionary.get(BaribaInputMethodService.this);
@@ -1269,7 +1273,7 @@ public class BaribaInputMethodService extends InputMethodService {
                                 String model = OfflineByt5.INSTANCE.translate(BaribaInputMethodService.this, txt, direction);
                                 if (model != null && !model.isEmpty()) { result = model; betaResult = true; offlineResult = true; }
                             }
-                            if (result == null && error == null) {
+                            if (result == null && !networkUp) {
                                 error = OfflineByt5.INSTANCE.isInstalled(BaribaInputMethodService.this)
                                         ? "Hors ligne : le modèle n’a pas pu traduire ce texte. Essayez une phrase plus courte."
                                         : "Hors ligne : installez le modèle de traduction dans FITILA (DUNYA > Réglages) pour traduire sans Internet.";
