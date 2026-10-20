@@ -377,10 +377,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
           final type = event['type']?.toString() ?? '';
           if (type == 'stage') {
             setState(() => _status = switch (event['stage']) {
-              'transcribing' => 'Omnilingual ASR vous écoute…',
-              'thinking' => 'DUNYA prépare sa réponse…',
-              'synthesizing' => 'MMS-TTS prépare la voix Baatɔnum…',
-              _ => 'DUNYA traite votre message…',
+              // Same wording as the web mobile DUNYA (reference).
+              'waiting' => 'Un instant…',
+              'transcribing' => 'Je comprends…',
+              'analyzing_transcript' => 'Je vérifie…',
+              'thinking' => 'Je réfléchis…',
+              'synthesizing' => 'Je prépare la voix…',
+              _ => 'Je réfléchis…',
             });
           } else if (type == 'transcript') {
             input = (event['text'] ?? '').toString();
@@ -1149,7 +1152,9 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
 
   Widget _suggestions() {
     final items = switch (_mode) {
-      DunyaLanguageMode.bariba => const ['A kua', 'gbereru'],
+      // Same suggestions as the web mobile DUNYA (reference).
+      DunyaLanguageMode.bariba => const ['A kua', 'Bɛɛ ka weru'],
+      DunyaLanguageMode.bilingual => const ['Dire merci en baatɔnum', 'A kua'],
       _ => const ['Rotation des cultures ?', 'Dire merci en baatɔnum'],
     };
     return Padding(

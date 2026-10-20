@@ -480,7 +480,7 @@ class _TranslatorChatState extends State<TranslatorChat> {
                   const SizedBox(height: 8),
                   const Text('Traduisez simplement', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: SignatureTheme.ink)),
                   const SizedBox(height: 3),
-                  const Text('Français ⇄ Bàátɔ̀nú', style: TextStyle(color: SignatureTheme.muted, fontSize: 13)),
+                  const Text('Français ⇄ Baatɔnum · détection automatique', style: TextStyle(color: SignatureTheme.muted, fontSize: 13)),
                   const SizedBox(height: 10),
                   Wrap(
                     alignment: WrapAlignment.center,
