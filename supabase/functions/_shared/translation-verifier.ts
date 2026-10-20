@@ -12,7 +12,14 @@
 // (MEMORY_URL, default https://fitila.bj/data/translation-memory.json) with a
 // timeout. If neither works the helpers degrade gracefully (no memory hit,
 // coverage 0) instead of breaking the translation.
-type MemoryShape = { pairs: Array<[string, string, string]>; lexBa: string; lexFr: string };
+type MemoryShape = {
+  pairs: Array<[string, string, string]>;
+  lexBa: string;
+  lexFr: string;
+  // Dictionary entries (single words); only available from the public site file.
+  fr2ba?: Record<string, string>;
+  ba2fr?: Record<string, string>;
+};
 let loaded: MemoryShape | null = null;
 let loadingPromise: Promise<void> | null = null;
 let lastAttempt = 0;
@@ -82,7 +89,13 @@ async function fromSite(): Promise<MemoryShape | null> {
     for (const v of Object.values(data.fr2ba ?? {})) for (const w of foldBa(String(v)).split(" ")) if (w) ba.add(w);
     for (const k of Object.keys(data.ba2fr ?? {})) for (const w of foldBa(k).split(" ")) if (w) ba.add(w);
     for (const v of Object.values(data.ba2fr ?? {})) for (const w of foldFr(String(v)).split(" ")) if (w) fr.add(w);
-    return { pairs: data.pairs, lexBa: [...ba].join(" "), lexFr: [...fr].join(" ") };
+    return {
+      pairs: data.pairs,
+      lexBa: [...ba].join(" "),
+      lexFr: [...fr].join(" "),
+      fr2ba: data.fr2ba && typeof data.fr2ba === "object" ? data.fr2ba : undefined,
+      ba2fr: data.ba2fr && typeof data.ba2fr === "object" ? data.ba2fr : undefined,
+    };
   } catch {
     return null;
   }
@@ -96,12 +109,34 @@ export function ensureMemory(): Promise<void> {
     if (Date.now() - lastAttempt < 60_000 && lastAttempt) return Promise.resolve();
     lastAttempt = Date.now();
     loadingPromise = (async () => {
-      loaded = (await fromBundle()) ?? (await fromSite());
+      const bundled = await fromBundle();
+      if (bundled) {
+        // The generated bundle has sentences only: borrow the single-word
+        // dictionaries from the site file when they are reachable.
+        if (!bundled.fr2ba || !bundled.ba2fr) {
+          const site = await fromSite();
+          if (site) {
+            bundled.fr2ba = site.fr2ba;
+            bundled.ba2fr = site.ba2fr;
+          }
+        }
+        loaded = bundled;
+      } else {
+        loaded = await fromSite();
+      }
     })().finally(() => {
       loadingPromise = null;
     });
   }
   return loadingPromise;
+}
+
+/** Inject the single-word dictionaries (tests, or a host that already holds them) and rebuild the indexes. */
+export function setDictionaries(fr2ba: Record<string, string>, ba2fr: Record<string, string>): void {
+  if (!loaded) loaded = { pairs: [], lexBa: "", lexFr: "" };
+  loaded.fr2ba = fr2ba;
+  loaded.ba2fr = ba2fr;
+  indexed = false;
 }
 
 function ensureIndexes(): void {
@@ -121,6 +156,56 @@ function ensureIndexes(): void {
   }
   lexBa = new Set(mem.lexBa.split(" "));
   lexFr = new Set(mem.lexFr.split(" "));
+  wordFrToBa = buildWordIndex(mem.fr2ba, foldFr);
+  wordBaToFr = buildWordIndex(mem.ba2fr, foldBa);
+}
+
+let wordFrToBa: Map<string, string> | null = null;
+let wordBaToFr: Map<string, string> | null = null;
+
+/** First meaning of a dictionary gloss ("viande, chair" -> "viande"). */
+function glossHead(value: string): string {
+  return String(value ?? "").split(/[;,]/)[0].trim();
+}
+
+/**
+ * Dictionary index of headwords (one to three words, e.g. "a kua"). Keys with
+ * digits are ignored, and a key whose folded form maps to different meanings
+ * is dropped as ambiguous: better to let the model answer than to pick a
+ * meaning at random.
+ */
+const MAX_HEADWORD_WORDS = 3;
+function buildWordIndex(dict: Record<string, string> | undefined, fold: (s: string) => string): Map<string, string> {
+  const index = new Map<string, string>();
+  const ambiguous = new Set<string>();
+  for (const [key, raw] of Object.entries(dict ?? {})) {
+    const k = fold(key);
+    const value = glossHead(raw);
+    if (!k || k.split(" ").length > MAX_HEADWORD_WORDS || /\d/.test(k) || !value) continue;
+    const previous = index.get(k);
+    if (previous !== undefined && previous.toLowerCase() !== value.toLowerCase()) ambiguous.add(k);
+    else index.set(k, value);
+  }
+  for (const k of ambiguous) index.delete(k);
+  return index;
+}
+
+/**
+ * Dictionary translation of an isolated headword (the WHOLE input must be a
+ * dictionary entry). That is exactly where the neural model is weakest
+ * ("merci" -> "siara", a verb) and the attested dictionary is strongest.
+ * Sentences are never handled here.
+ */
+export function lexiconLookup(
+  text: string,
+  direction: "fr-ba" | "ba-fr",
+): { translation: string } | null {
+  ensureIndexes();
+  const index = direction === "fr-ba" ? wordFrToBa : wordBaToFr;
+  const key = direction === "fr-ba" ? foldFr(text) : foldBa(text);
+  if (!index || !key || key.split(" ").length > MAX_HEADWORD_WORDS) return null;
+  const hit = index.get(key);
+  return hit ? { translation: hit } : null;
 }
 
 export function memoryLookup(

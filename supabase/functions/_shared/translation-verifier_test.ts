@@ -1,6 +1,11 @@
-import { acceptRefinement, estimateConfidence, foldBa, foldFr, ensureMemory, lexicalCoverage, memoryLookup, similarity } from "./translation-verifier.ts";
+import { acceptRefinement, estimateConfidence, foldBa, foldFr, ensureMemory, lexicalCoverage, lexiconLookup, memoryLookup, setDictionaries, similarity } from "./translation-verifier.ts";
 
 await ensureMemory();
+// Hermetic: the dictionaries come from the repository copy of the public file, never from the network.
+{
+  const site = JSON.parse(await Deno.readTextFile(new URL("../../../public/data/translation-memory.json", import.meta.url)));
+  setDictionaries(site.fr2ba, site.ba2fr);
+}
 
 function assert(cond: boolean, msg: string) { if (!cond) throw new Error(msg); }
 
@@ -39,4 +44,20 @@ Deno.test("sentences are split on final punctuation", async () => {
   const parts = splitSentences("Va me fermer ma porte. L'allergie va disparaître ! Où ? Ici");
   assert(parts.length === 4, `got ${parts.length}`);
   assert(parts[0] === "Va me fermer ma porte.", parts[0]);
+});
+
+Deno.test("an isolated word comes from the dictionary, never from the model", () => {
+  const merci = lexiconLookup("Merci", "fr-ba");
+  assert(merci !== null && foldBa(merci.translation) === "a kua", `merci -> ${merci?.translation}`);
+  assert(lexiconLookup("Merci !", "fr-ba")?.translation === merci?.translation, "punctuation ignored");
+  const back = lexiconLookup("a kua", "ba-fr");
+  assert(back !== null && foldFr(back.translation) === "merci", `a kua -> ${back?.translation}`);
+  assert(foldBa(lexiconLookup("eau", "fr-ba")?.translation ?? "") === "nim", "eau -> nim");
+});
+
+Deno.test("the dictionary never answers sentences, digits or unknown words", () => {
+  assert(lexiconLookup("Merci beaucoup", "fr-ba") === null, "two words go to memory/model");
+  assert(lexiconLookup("1", "fr-ba") === null, "digit keys are ignored");
+  assert(lexiconLookup("motquinexistepas", "fr-ba") === null, "unknown word");
+  assert(lexiconLookup("", "ba-fr") === null, "empty");
 });
