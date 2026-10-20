@@ -7339,10 +7339,6 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
     super.dispose();
   }
 
-  TranslationDirection _dir(bool toBariba) => toBariba
-      ? TranslationDirection.frenchToBariba
-      : TranslationDirection.baribaToFrench;
-
   TranslatorPorts _livePorts() => TranslatorPorts(
     translate: (text, toBariba) async {
       final result = await DunyaTranslator.translate(text, toBariba: toBariba);
