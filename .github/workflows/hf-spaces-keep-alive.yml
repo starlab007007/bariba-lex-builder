@@ -1,0 +1,28 @@
+# Keeps FITILA's Hugging Face Spaces (ByT5 translation, Baatɔnum voice, ASR) awake.
+# The Supabase pg_cron job "hf-keep-alive" stopped running on 18/09/2026, so the
+# voice Space was found asleep ("Service en veille") on 20/10/2026.
+name: Keep FITILA Hugging Face Spaces awake
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping the Spaces through hf-keep-alive
+        env:
+          # Public anon key (already shipped in the web app); the function only pings.
+          ANON: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2c3doamF3aW9vcHJnaHpleW9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NTgzMTcsImV4cCI6MjEwNTMzNDMxN30.HK488q3C1q5uMDgthIbiTlGw20WMfMlRvEOjnlxPEgc
+        run: |
+          curl -fsS --max-time 60 -X POST \
+            -H "Authorization: Bearer $ANON" -H "apikey: $ANON" -H "Content-Type: application/json" \
+            https://dvswhjawiooprghzeyol.supabase.co/functions/v1/hf-keep-alive -d '{}' | tee result.json
+          echo
+          python3 -c "import json;d=json.load(open('result.json'));print({k:v['status'] for k,v in d['spaces'].items()})"
