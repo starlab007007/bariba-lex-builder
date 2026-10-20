@@ -1009,7 +1009,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
           ),
         ),
         const SizedBox(height: 18),
-        Text(_phaseLabel, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: Text(_phaseLabel,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontSize: 19,
+              fontWeight: FontWeight.w800, height: 1.35)),
+        ),
         const Spacer(),
         if (_settings.subtitles)
           Padding(
@@ -1109,21 +1115,22 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       alignment: user ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: EdgeInsets.only(top: 8, left: user ? 48 : 0, right: user ? 0 : 36),
-        padding: const EdgeInsets.all(13),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: user ? const Color(0xFF3A3146) : const Color(0xFF241E2D),
-          borderRadius: BorderRadius.circular(18),
+          color: user ? const Color(0xFF493622) : const Color(0xFF241F29),
+          border: Border.all(color: const Color(0xFF8D6A35), width: 0.7),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SelectableText(
               t.text.isEmpty ? '…' : t.text,
-              style: const TextStyle(color: Colors.white, fontSize: 15.5, height: 1.42),
+              style: const TextStyle(color: Colors.white, fontSize: 17, height: 1.5, fontWeight: FontWeight.w500),
             ),
             if (!user && t.subtitle != null && _settings.frenchSubtitlesInBariba) ...[
               const SizedBox(height: 6),
-              Text(t.subtitle!, style: const TextStyle(color: Colors.white54, fontSize: 13)),
+              Text(t.subtitle!, style: const TextStyle(color: Colors.white70, fontSize: 14)),
             ],
             if (!user && t.text.isNotEmpty)
               Wrap(
@@ -1152,9 +1159,9 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                       padding: const EdgeInsets.only(right: 6),
                       child: ActionChip(
                         visualDensity: VisualDensity.compact,
-                        backgroundColor: const Color(0xFF332B3E),
+                        backgroundColor: const Color(0xFF3D332D),
                         side: BorderSide.none,
-                        label: Text(s.title, style: const TextStyle(color: _gold, fontSize: 10.5, fontWeight: FontWeight.w800)),
+                        label: Text(s.title, style: const TextStyle(color: Color(0xFFFFD988), fontSize: 12, fontWeight: FontWeight.w700)),
                         onPressed: () => _showSource(s),
                       ),
                     ),
@@ -1200,11 +1207,12 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                 onSubmitted: (_) => _sendText(),
                 decoration: InputDecoration(
                   hintText: _mode == DunyaLanguageMode.bariba ? 'Baatɔnum…' : 'Écrire à DUNYA…',
-                  hintStyle: const TextStyle(color: Colors.white38),
+                  hintStyle: const TextStyle(color: Colors.white70, fontSize: 15),
                   filled: true,
-                  fillColor: const Color(0xFF241E2D),
+                  fillColor: const Color(0xFF292531),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: const BorderSide(color: Color(0xFFB18A48))),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: const BorderSide(color: Color(0xFFB18A48))),,
                 ),
               ),
             ),
@@ -1760,9 +1768,9 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       Card(
         elevation: 0,
         color: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFE7D8B7))),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+          padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
           child: Column(
             children: [
               Row(
@@ -1774,7 +1782,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF17131F))),
-                        Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF7D7566))),
+                        Text(subtitle, style: const TextStyle(fontSize: 12.5, height: 1.35, color: Color(0xFF625B54))),
                       ],
                     ),
                   ),
