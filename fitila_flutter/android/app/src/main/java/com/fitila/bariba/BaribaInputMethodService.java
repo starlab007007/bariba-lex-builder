@@ -228,6 +228,7 @@ public class BaribaInputMethodService extends InputMethodService {
         stopBackspaceRepeat();
         dismissPopup();
         translationWorker.shutdownNow();
+        OfflineByt5.INSTANCE.release();
         super.onDestroy();
     }
 
@@ -993,6 +994,17 @@ public class BaribaInputMethodService extends InputMethodService {
         catch (Exception ignored) { cb.onResult(null); }
     }
 
+    private boolean isNetworkAvailable() {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return true;
+            android.net.Network net = cm.getActiveNetwork();
+            if (net == null) return false;
+            android.net.NetworkCapabilities caps = cm.getNetworkCapabilities(net);
+            return caps != null && caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        } catch (Throwable t) { return true; }
+    }
+
     private KeyboardTranslationClient translationClient() {
         SharedPreferences prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         return new KeyboardTranslationClient(prefs.getString(PREF_SUPABASE_URL, ""),
@@ -1240,10 +1252,37 @@ public class BaribaInputMethodService extends InputMethodService {
                     @Override public void run() {
                         String result = null;
                         String error = null;
-                        try { result = client.translate(txt, direction); }
-                        catch (KeyboardTranslationClient.TranslationException e) { error = e.getMessage(); }
+                        boolean betaResult = false;
+                        boolean offlineResult = false;
+                        boolean networkIssue = false;
+                        boolean networkUp = isNetworkAvailable();
+                        if (networkUp || !client.isConfigured()) {
+                            try { result = client.translate(txt, direction); }
+                            catch (KeyboardTranslationClient.TranslationException e) { error = e.getMessage(); networkIssue = e.connectivity; }
+                        } else {
+                            networkIssue = true;
+                        }
+                        if (result == null && networkIssue) {
+                            // No usable network: exact dictionary entry first, then the on-device ByT5 (beta).
+                            try {
+                                BaribaDictionary dict = BaribaDictionary.get(BaribaInputMethodService.this);
+                                String exact = "ba-fr".equals(direction) ? dict.translateBaToFr(txt) : dict.translateFrToBa(txt);
+                                if (exact != null && !exact.isEmpty()) { result = exact; offlineResult = true; }
+                            } catch (Throwable ignored) { }
+                            if (result == null) {
+                                String model = OfflineByt5.INSTANCE.translate(BaribaInputMethodService.this, txt, direction);
+                                if (model != null && !model.isEmpty()) { result = model; betaResult = true; offlineResult = true; }
+                            }
+                            if (result == null && !networkUp) {
+                                error = OfflineByt5.INSTANCE.isInstalled(BaribaInputMethodService.this)
+                                        ? "Hors ligne : le modèle n’a pas pu traduire ce texte. Essayez une phrase plus courte."
+                                        : "Hors ligne : installez le modèle de traduction dans FITILA (DUNYA > Réglages) pour traduire sans Internet.";
+                            }
+                        }
                         final String translated = result;
                         final String failure = error;
+                        final boolean beta = betaResult;
+                        final boolean offlineNote = offlineResult;
                         handler.post(new Runnable() {
                             @Override public void run() {
                                 if (!translatorOpen || translatorPanel != panel || generation != translationGeneration) return;
@@ -1256,6 +1295,8 @@ public class BaribaInputMethodService extends InputMethodService {
                                 pending.setText(translated != null ? translated : failure);
                                 if (translated != null) {
                                     attachInsertOnLongPress(pending);
+                                    if (beta) addBotBubble(ctx, messages, "Hors ligne \u00b7 test (b\u00eata) : \u00e0 v\u00e9rifier avant d\u2019envoyer");
+                                    else if (offlineNote) addBotBubble(ctx, messages, "Hors ligne \u00b7 dictionnaire local");
                                     addTranslationActions(messages, translated);
                                 }
                                 scrollToBottom(scrollRef);

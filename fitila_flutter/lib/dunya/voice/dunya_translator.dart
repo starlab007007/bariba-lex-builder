@@ -12,6 +12,13 @@ import 'dunya_linguistic_quality.dart';
 /// result it produces is announced as a test result and must be double-checked.
 const dunyaOfflineTestNotice = 'Traduction hors ligne en test (bêta) : à vérifier.';
 
+/// Set by the app each time a result was produced by the offline beta model, so every surface
+/// (DUNYA, translator, keyboard) can show the same "test (bêta)" mention next to it.
+abstract final class DunyaOfflineBeta {
+  static bool lastUsed = false;
+  static const label = 'test (bêta)';
+}
+
 typedef DunyaTranslateFn = Future<String?> Function(String text, bool toBariba);
 
 class DunyaTranslation {

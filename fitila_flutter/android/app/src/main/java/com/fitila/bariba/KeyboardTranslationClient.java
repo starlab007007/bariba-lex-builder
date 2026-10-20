@@ -29,8 +29,13 @@ final class KeyboardTranslationClient {
     interface ConnectionFactory { HttpURLConnection open(URL url) throws IOException; }
 
     static final class TranslationException extends Exception {
-        TranslationException(String message) { super(message); }
+        /** True when the failure is the network itself (offline, timeout), so an on-device fallback makes sense. */
+        final boolean connectivity;
+        TranslationException(String message) { this(message, false); }
+        TranslationException(String message, boolean connectivity) { super(message); this.connectivity = connectivity; }
     }
+
+    boolean isConfigured() { return !baseUrl.isEmpty() && !publicKey.isEmpty(); }
 
     KeyboardTranslationClient(String baseUrl, String publicKey) {
         this(baseUrl, publicKey, url -> (HttpURLConnection) url.openConnection());
@@ -118,9 +123,9 @@ final class KeyboardTranslationClient {
             if (cancelled) throw new TranslationException("Traduction annulée.");
             return Normalizer.normalize(((String) translated).trim(), Normalizer.Form.NFC);
         } catch (SocketTimeoutException e) {
-            throw new TranslationException("Le traducteur met trop de temps à répondre. Votre texte est conservé ; réessayez.");
+            throw new TranslationException("Le traducteur met trop de temps à répondre. Votre texte est conservé ; réessayez.", true);
         } catch (IOException e) {
-            throw new TranslationException(cancelled ? "Traduction annulée." : "Connexion impossible. Vérifiez Internet puis réessayez ; votre texte est conservé.");
+            throw new TranslationException(cancelled ? "Traduction annulée." : "Connexion impossible. Vérifiez Internet puis réessayez ; votre texte est conservé.", !cancelled);
         } catch (org.json.JSONException e) {
             throw new TranslationException("Réponse du traducteur invalide. Réessayez.");
         } finally {

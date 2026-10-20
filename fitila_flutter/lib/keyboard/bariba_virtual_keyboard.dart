@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../core/signature_theme.dart';
+import '../dunya/voice/dunya_translator.dart' show DunyaOfflineBeta;
 import 'bariba_keyboard_engine.dart';
 
 /// Online translator plugged by the app (edge functions). Return null/throw to
@@ -65,6 +66,7 @@ class _BaribaVirtualKeyboardState extends State<BaribaVirtualKeyboard> {
   bool _symbols = false;
   List<KeyboardEntry> _suggestions = const [];
   String? _translation;
+  bool _translationBeta = false;
   bool _translating = false;
   bool _translationOffline = false;
   Timer? _debounce;
@@ -145,6 +147,7 @@ class _BaribaVirtualKeyboardState extends State<BaribaVirtualKeyboard> {
     final offline = _engine?.translateOffline(text, _direction);
     setState(() {
       _translation = offline;
+      _translationBeta = false;
       _translationOffline = offline != null;
       _translating = widget.translator != null;
     });
@@ -155,6 +158,7 @@ class _BaribaVirtualKeyboardState extends State<BaribaVirtualKeyboard> {
     _debounce = Timer(const Duration(milliseconds: 550), () async {
       String? online;
       try {
+        DunyaOfflineBeta.lastUsed = false;
         online = await widget.translator!(text, _direction);
       } catch (_) {
         online = null;
@@ -166,6 +170,7 @@ class _BaribaVirtualKeyboardState extends State<BaribaVirtualKeyboard> {
         _translating = false;
         if (online != null && online.trim().isNotEmpty) {
           _translation = online.trim();
+          _translationBeta = DunyaOfflineBeta.lastUsed;
           _translationOffline = false;
         }
       });
@@ -469,6 +474,14 @@ class _BaribaVirtualKeyboardState extends State<BaribaVirtualKeyboard> {
                     ),
                   ),
           ),
+          if (_translation != null && _translationBeta && !_translating)
+            const Padding(
+              padding: EdgeInsets.only(right: 4),
+              child: Tooltip(
+                message: 'Modèle hors ligne en test (bêta) : à vérifier',
+                child: Text('test (bêta)', key: ValueKey('beta-label'), style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: SignatureTheme.goldDeep)),
+              ),
+            ),
           if (_translation != null && _translationOffline && !_translating)
             const Padding(
               padding: EdgeInsets.only(right: 4),
