@@ -1,5 +1,6 @@
 package bj.fitila.fitila_native
 
+import android.content.Context
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
@@ -13,6 +14,7 @@ import java.nio.charset.StandardCharsets
 import java.text.Normalizer
 import org.json.JSONObject
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /**
  * Offline FR ↔ Baatɔnum ByT5 ONNX channel.
@@ -24,9 +26,20 @@ import java.util.concurrent.Executors
  * The ONNX pack MUST use the documented no-cache graph signatures produced by
  * export_mobile_onnx.py. Reject other graphs instead of pretending success.
  */
-class DunyaByt5Channel(messenger: BinaryMessenger) {
-    companion object { private const val EOS_ID = 1L }
-    private val channel = MethodChannel(messenger, "fitila/dunya_byt5")
+class DunyaByt5Channel private constructor() {
+    companion object {
+        private const val EOS_ID = 1L
+        private val shared by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { DunyaByt5Channel() }
+
+        @JvmStatic
+        fun attach(messenger: BinaryMessenger) = shared.bind(messenger)
+
+        /** Called by Android IME on its worker thread, with no Flutter UI required. */
+        @JvmStatic
+        fun translateFromIme(context: Context, source: String, direction: String): String =
+            shared.translateInstalled(context.applicationContext, source, direction)
+    }
+    private var channel: MethodChannel? = null
     private val worker = Executors.newSingleThreadExecutor()
     private val ui = Handler(Looper.getMainLooper())
     // Do not initialize a second ONNX JNI stack during app startup.
@@ -83,8 +96,10 @@ class DunyaByt5Channel(messenger: BinaryMessenger) {
         return normalized
     }
 
-    init {
-        channel.setMethodCallHandler { call, result ->
+    private fun bind(messenger: BinaryMessenger) {
+        channel?.setMethodCallHandler(null)
+        channel = MethodChannel(messenger, "fitila/dunya_byt5")
+        channel!!.setMethodCallHandler { call, result ->
             when (call.method) {
                 "load" -> worker.execute {
                     try {
@@ -134,6 +149,50 @@ class DunyaByt5Channel(messenger: BinaryMessenger) {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    private fun translateInstalled(context: Context, source: String, direction: String): String {
+        require(direction == "fr-ba" || direction == "ba-fr") { "Direction invalide" }
+        require(source.isNotBlank() && source.length <= 1500) { "Texte invalide" }
+        return worker.submit<String> {
+            val dir = File(context.filesDir, "dunya_packs/dunya-translate-byt5")
+            val manifest = File(dir, "manifest.json")
+            require(manifest.isFile) { "Installez le pack ByT5 Bêta dans FITILA." }
+            val metadata = JSONObject(manifest.readText(Charsets.UTF_8))
+            require(metadata.optString("id") == "dunya-translate-byt5" &&
+                    metadata.optString("format") == "dunya-pack/1" &&
+                    (metadata.optBoolean("tested", false) ||
+                     (metadata.optString("channel") == "beta" &&
+                      metadata.optString("version") == "v1-both-matmul-matmul" &&
+                      !metadata.optBoolean("quality_certified", true)))) { "Pack non autorisé" }
+            val modelDir = File(dir, "byt5")
+            val enc = File(modelDir, "encoder.onnx")
+            val dec = File(modelDir, "decoder.onnx")
+            require(enc.isFile && dec.isFile) { "Pack incomplet" }
+            val cfg = JSONObject(File(modelDir, "config.json").readText(Charsets.UTF_8))
+            require(cfg.optString("format") == "fitila-byt5-mobile/1" &&
+                    cfg.optString("tokenizer") == "byt5-bytes-plus-3") { "Configuration ByT5 incompatible" }
+            if (encoder == null || decoder == null) {
+                val opts = OrtSession.SessionOptions()
+                opts.setIntraOpNumThreads(2)
+                val newEnc = env.createSession(enc.absolutePath, opts)
+                val newDec = env.createSession(dec.absolutePath, opts)
+                require(newEnc.inputNames.containsAll(setOf("input_ids", "attention_mask")) &&
+                        newDec.inputNames.containsAll(setOf(
+                            "decoder_input_ids", "encoder_hidden_states", "encoder_attention_mask"
+                        ))) { "Graphe ByT5 incompatible" }
+                encoder?.close()
+                decoder?.close()
+                encoder = newEnc
+                decoder = newDec
+                approvedMemory.clear()
+                approvedMemory.putAll(readApprovedMemory(File(modelDir, "approved_memory.json")))
+            }
+            val prefix = if (direction == "fr-ba") cfg.optString("prefix_fr_ba", "fr-ba: ")
+                         else cfg.optString("prefix_ba_fr", "ba-fr: ")
+            val text = normalizeText(source)
+            approvedMemory[memoryKey(direction, text)] ?: checkedOutput(infer(prefix + text, 192))
+        }.get(120, TimeUnit.SECONDS)
     }
 
     private fun infer(source: String, maxOutput: Int): String {
