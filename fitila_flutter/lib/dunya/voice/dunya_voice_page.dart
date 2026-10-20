@@ -84,7 +84,6 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   var _phase = _Phase.preparing;
   var _session = false; // hands-free loop running
   String? _bilingualVoiceLanguage; // explicit selection to avoid silent Baatonum default
-  var _muted = false;
   var _textView = false;
   var _systemFrenchVoice = false;
   var _level = 0.0;
@@ -169,7 +168,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     if (!mounted) return;
     setState(() => _phase = _Phase.idle);
     if (!_settings.onboarded) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _openOnboarding());
+      WidgetsBinding.instance.addPostFrameCallback((_) => _completeFirstLaunch());
     } else if (_brain.state == DunyaBrainState.installed &&
         _settings.intelligence == DunyaIntelligence.smart &&
         !_useOnlineVoice) {
@@ -302,10 +301,6 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
 
   Future<void> _listenTurn() async {
     if (!mounted || !_session) return;
-    if (_muted) {
-      setState(() => _phase = _Phase.idle);
-      return;
-    }
     setState(() {
       _phase = _Phase.listening;
       _level = 0;
@@ -598,7 +593,6 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   /// Barge-in: listen while DUNYA answers, with a stronger threshold so its
   /// own voice through the speaker does not count as the user speaking.
   Future<void> _watchBargeIn(int turnId) async {
-    if (_muted) return;
     final watch = Completer<void>();
     _bargeWatch = watch;
     // Give DUNYA a head start so its first syllables are not mistaken for speech.
@@ -760,69 +754,19 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   // Sheets
   // ---------------------------------------------------------------------------
 
-  Future<void> _openOnboarding() async {
-    final mode = await showModalBottomSheet<DunyaLanguageMode>(
-      context: context,
-      isDismissible: false,
-      enableDrag: false,
-      isScrollControlled: true,
-      backgroundColor: _cream,
-      builder: (_) => _OnboardingSheet(onPreview: _previewMode),
-    );
-    if (mode == null) return;
-    await _settings.update(mode: mode, onboarded: true);
-    await _loadHistory();
-    if (!mounted) return;
-    setState(() {});
+  /// First launch: no blocking welcome sheet. The language selector is always
+  /// visible at the top of the screen, French by default.
+  Future<void> _completeFirstLaunch() async {
+    await _settings.update(onboarded: true);
     final info = await _brain.deviceInfo();
     if (!mounted) return;
-    // Online and Auto-with-Internet must go straight into DUNYA, without
-    // forcing a Gemma/Omnilingual/MMS model download on first launch.
-    // The model manager remains optional from the visible Settings control.
+    // Online and Auto-with-Internet go straight into DUNYA without forcing a
+    // model download. Offline mode opens Settings only when voice is missing.
     if (!_useOnlineVoice &&
         (!_paths.canListen ||
           (info.canRun(_brain.model) && _brain.state == DunyaBrainState.absent))) {
       await _openSettings();
     }
-  }
-
-  Future<void> _previewMode(DunyaLanguageMode mode) async {
-    _stopSpeaking = false;
-    switch (mode) {
-      case DunyaLanguageMode.french:
-        await _speakOne(const DunyaUtterance('Je parlerai uniquement français avec vous.', 'fr'));
-      case DunyaLanguageMode.bariba:
-        await _speakOne(const DunyaUtterance('Baatɔnum.', 'bba'));
-      case DunyaLanguageMode.bilingual:
-        await _speakOne(const DunyaUtterance('Français.', 'fr'));
-        await _speakOne(const DunyaUtterance('Baatɔnum.', 'bba'));
-    }
-  }
-
-  Future<void> _openModePicker() async {
-    final picked = await showModalBottomSheet<DunyaLanguageMode>(
-      context: context,
-      showDragHandle: true,
-      backgroundColor: _cream,
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('Langue de la conversation', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: _ink)),
-              const SizedBox(height: 4),
-              const Text('Chaque langue garde sa propre conversation.', style: TextStyle(fontSize: 13, color: Color(0xFF7D7566))),
-              const SizedBox(height: 12),
-              for (final m in DunyaLanguageMode.values)
-                _ModeTile(mode: m, selected: m == _mode, onTap: () => Navigator.of(sheetContext).pop(m)),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (picked != null) await _setMode(picked);
   }
 
   Future<void> _openSettings() async {
@@ -925,28 +869,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
 
   String get _phaseLabel => switch (_phase) {
         _Phase.preparing => _status ?? 'Préparation…',
-        _Phase.idle => !_useOnlineVoice && !_paths.canListen
-            ? 'Installez la voix DUNYA'
-            : _muted
-                ? 'Micro coupé'
-                : 'Touchez la sphère pour parler',
-        _Phase.listening => 'Je vous écoute…',
+        _Phase.idle => !_useOnlineVoice && !_paths.canListen ? 'Installez la voix DUNYA' : 'Appuyez pour parler',
+        _Phase.listening => 'Je vous écoute',
         _Phase.thinking => _status ?? 'Je réfléchis…',
-        _Phase.speaking => 'Touchez pour m’interrompre',
+        _Phase.speaking => 'Appuyez pour interrompre',
       };
 
-  String get _brainBadge => _useOnlineVoice
-      ? 'DUNYA en ligne'
-      : switch (_settings.intelligence) {
-        DunyaIntelligence.essential => 'Essentiel',
-        DunyaIntelligence.smart => switch (_brain.state) {
-            DunyaBrainState.ready => 'Cerveau actif',
-            DunyaBrainState.loading => 'Réveil du cerveau…',
-            DunyaBrainState.installed => 'Cerveau prêt',
-            DunyaBrainState.failed => 'Cerveau en panne',
-            DunyaBrainState.absent => 'Essentiel',
-          },
-      };
+  bool get _busy => _session || _phase == _Phase.listening || _phase == _Phase.thinking || _phase == _Phase.speaking;
 
   // ---------------------------------------------------------------------------
   // Build
@@ -954,8 +883,15 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: _ink,
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(0, -0.25),
+          radius: 1.1,
+          colors: [Color(0xFF2A2135), Color(0xFF15111C), Color(0xFF0E0B13)],
+          stops: [0, 0.55, 1],
+        ),
+      ),
       child: SafeArea(
         child: Column(
           children: [
@@ -970,70 +906,151 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   }
 
   Widget _topBar() => Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 6, 4),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
         child: Row(
           children: [
-            Material(
-              color: const Color(0xFF2A2433),
-              shape: const StadiumBorder(),
-              child: InkWell(
-                customBorder: const StadiumBorder(),
-                onTap: _openModePicker,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.translate_rounded, size: 17, color: _gold),
-                      const SizedBox(width: 7),
-                      Text(_mode.label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
-                      const Icon(Icons.expand_more_rounded, size: 18, color: Colors.white70),
-                    ],
-                  ),
-                ),
+            Flexible(child: _languageSelector()),
+            if (!_useOnlineVoice) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(color: const Color(0x26E0A03C), borderRadius: BorderRadius.circular(999)),
+                child: const Text('Hors ligne', style: TextStyle(color: Color(0xFFF0C979), fontSize: 11.5, fontWeight: FontWeight.w800)),
               ),
+            ],
+            const Spacer(),
+            _circleButton(
+              tooltip: _textView ? 'Voix' : 'Écrire',
+              icon: _textView ? Icons.mic_none_rounded : Icons.keyboard_rounded,
+              selected: _textView,
+              onTap: () => setState(() => _textView = !_textView),
             ),
             const SizedBox(width: 8),
-            Flexible(
+            PopupMenuButton<String>(
+              tooltip: 'Plus d’options',
+              color: const Color(0xFF221C2B),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              position: PopupMenuPosition.under,
+              onSelected: (value) {
+                if (value == 'new') unawaited(_newConversation());
+                if (value == 'settings') unawaited(_openSettings());
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'new', height: 52, child: _MenuRow(icon: Icons.restart_alt_rounded, label: 'Nouvelle conversation')),
+                PopupMenuItem(value: 'settings', height: 52, child: _MenuRow(icon: Icons.tune_rounded, label: 'Réglages')),
+              ],
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-                decoration: BoxDecoration(color: const Color(0x2252A47A), borderRadius: BorderRadius.circular(999)),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.cloud_off_rounded, size: 13, color: Color(0xFF8FD3A8)),
-                    const SizedBox(width: 5),
-                    Flexible(
-                      child: Text(
-                        _brainBadge,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Color(0xFF8FD3A8), fontSize: 11, fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                  ],
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: const Color(0x12FFFFFF),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0x1AFFFFFF)),
                 ),
+                child: const Icon(Icons.more_horiz_rounded, color: Colors.white),
               ),
             ),
-            const Spacer(),
-            IconButton(
-              style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Colors.white),
-              tooltip: _textView ? 'Mode voix' : 'Voir la conversation écrite',
-              onPressed: () => setState(() => _textView = !_textView),
-              icon: Icon(_textView ? Icons.graphic_eq_rounded : Icons.chat_bubble_outline_rounded, color: Colors.white),
-            ),
-            IconButton(
-              style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Colors.white),
-              tooltip: 'Réglages',
-              onPressed: _openSettings,
-              icon: const Icon(Icons.tune_rounded, color: Colors.white),
-            ),
           ],
+        ),
+      );
+
+  Widget _languageSelector() => Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: const Color(0x12FFFFFF),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: const Color(0x1AFFFFFF)),
+        ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final m in DunyaLanguageMode.values)
+                Semantics(
+                  selected: m == _mode,
+                  button: true,
+                  label: m.label,
+                  excludeSemantics: true,
+                  child: GestureDetector(
+                    onTap: () => _setMode(m),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      constraints: const BoxConstraints(minHeight: 38),
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: m == _mode ? _gold : Colors.transparent,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        switch (m) {
+                          DunyaLanguageMode.french => 'FR',
+                          DunyaLanguageMode.bariba => 'Baatɔnum',
+                          DunyaLanguageMode.bilingual => 'Les 2',
+                        },
+                        style: TextStyle(
+                          color: m == _mode ? _ink : Colors.white70,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+
+  Widget _circleButton({required String tooltip, required IconData icon, required VoidCallback onTap, bool selected = false}) =>
+      Tooltip(
+        message: tooltip,
+        child: Semantics(
+          button: true,
+          label: tooltip,
+          excludeSemantics: true,
+          child: Material(
+            color: selected ? Colors.white : const Color(0x12FFFFFF),
+            shape: const CircleBorder(side: BorderSide(color: Color(0x1AFFFFFF))),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onTap,
+              child: SizedBox(width: 46, height: 46, child: Icon(icon, color: selected ? _ink : Colors.white, size: 22)),
+            ),
+          ),
+        ),
+      );
+
+  Widget _pill({required String label, required IconData icon, required VoidCallback onTap, bool active = true, bool danger = false}) =>
+      Material(
+        color: danger ? const Color(0xFFC2483F) : active ? const Color(0x17FFFFFF) : Colors.transparent,
+        shape: StadiumBorder(side: BorderSide(color: danger ? const Color(0xFFC2483F) : const Color(0x26FFFFFF))),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 50),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 19, color: active || danger ? Colors.white : Colors.white54),
+                  const SizedBox(width: 8),
+                  Text(label, style: TextStyle(color: active || danger ? Colors.white : Colors.white54, fontSize: 15, fontWeight: FontWeight.w800)),
+                ],
+              ),
+            ),
+          ),
         ),
       );
 
   Widget _voiceView() {
     final users = _turns.where((t) => t.role == 'user');
     final lastUser = users.isEmpty ? '' : users.last.text;
+    final assistants = _turns.where((t) => t.role == 'assistant' && t.text.isNotEmpty);
+    final lastAssistant = assistants.isEmpty ? null : assistants.last;
     return Column(
       children: [
         const Spacer(),
@@ -1045,27 +1062,38 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
             child: AnimatedBuilder(
               animation: _orb,
               builder: (_, _) => CustomPaint(
-                size: const Size(250, 250),
+                size: const Size(240, 240),
                 painter: _OrbPainter(t: _orb.value, phase: _phase, level: _level),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 18),
-        Text(_phaseLabel, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 20),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            _phaseLabel,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w800, letterSpacing: -0.2),
+          ),
+        ),
+        if (lastAssistant != null && _phase != _Phase.listening) ...[
+          const SizedBox(height: 14),
+          _pill(label: 'Réécouter', icon: Icons.volume_up_rounded, onTap: () => _replay(lastAssistant)),
+        ],
         const Spacer(),
-        if (_settings.subtitles)
+        if (_settings.subtitles && (_caption.isNotEmpty || (_phase == _Phase.thinking && lastUser.isNotEmpty)))
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 14),
             child: Column(
               children: [
                 if (_phase == _Phase.thinking && lastUser.isNotEmpty)
                   Text(
                     '« $lastUser »',
                     textAlign: TextAlign.center,
-                    maxLines: 3,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white60, fontSize: 15, fontStyle: FontStyle.italic),
+                    style: const TextStyle(color: Colors.white60, fontSize: 16),
                   ),
                 if (_caption.isNotEmpty)
                   Text(
@@ -1073,16 +1101,16 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                     textAlign: TextAlign.center,
                     maxLines: 5,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 19, height: 1.35, fontWeight: FontWeight.w600),
+                    style: const TextStyle(color: Colors.white, fontSize: 21, height: 1.3, fontWeight: FontWeight.w600),
                   ),
                 if (_subCaption != null && _subCaption!.isNotEmpty) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Text(
                     _subCaption!,
                     textAlign: TextAlign.center,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white54, fontSize: 14),
+                    style: const TextStyle(color: Colors.white60, fontSize: 15),
                   ),
                 ],
               ],
@@ -1090,11 +1118,11 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
           ),
         if (_notice != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 10),
             child: Column(
               children: [
                 Text(_notice!, textAlign: TextAlign.center,
-                  style: const TextStyle(color: Color(0xFFE9C46A), fontSize: 12.5)),
+                    style: const TextStyle(color: Color(0xFFF0C979), fontSize: 14, fontWeight: FontWeight.w600)),
                 if (_phase == _Phase.idle &&
                     _notice == 'DUNYA vocal indisponible. Vérifiez la connexion puis réessayez.')
                   TextButton.icon(
@@ -1107,8 +1135,9 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                         unawaited(_onOrbTap());
                       }
                     },
+                    style: TextButton.styleFrom(foregroundColor: _gold),
                     icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('Réessayer'),
+                    label: const Text('Réessayer', style: TextStyle(fontWeight: FontWeight.w800)),
                   ),
               ],
             ),
@@ -1120,27 +1149,30 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
 
   Widget _suggestions() {
     final items = switch (_mode) {
-      DunyaLanguageMode.bariba => const ['gbereru', 'A kua'],
-      _ => const [
-          'Comment soigner une plaie légère ?',
-          'Explique-moi la rotation des cultures',
-          'Comment dit-on merci en baatɔnum ?',
-          'Rappelle-moi de traire les vaches à 17 h',
-        ],
+      DunyaLanguageMode.bariba => const ['A kua', 'gbereru'],
+      _ => const ['Rotation des cultures ?', 'Dire merci en baatɔnum'],
     };
-    return SizedBox(
-      height: 46,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: items.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (_, i) => ActionChip(
-          backgroundColor: const Color(0xFF2A2433),
-          side: BorderSide.none,
-          label: Text(items[i], style: const TextStyle(color: Colors.white, fontSize: 13)),
-          onPressed: () => _runTurn(items[i], spoken: false),
-        ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final s in items)
+            Material(
+              color: const Color(0x10FFFFFF),
+              shape: const StadiumBorder(side: BorderSide(color: Color(0x1AFFFFFF))),
+              child: InkWell(
+                customBorder: const StadiumBorder(),
+                onTap: () => _runTurn(s, spoken: false),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                  child: Text(s, style: const TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.w500)),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -1148,19 +1180,12 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   Widget _chatView() {
     if (_turns.isEmpty) {
       return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Text(
-            'Écrivez ou parlez à DUNYA. Tout reste sur votre téléphone.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white70, fontSize: 15),
-          ),
-        ),
+        child: Text('Écrivez votre message', style: TextStyle(color: Colors.white60, fontSize: 18, fontWeight: FontWeight.w600)),
       );
     }
     return ListView.builder(
       controller: _scroll,
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       itemCount: _turns.length,
       itemBuilder: (_, i) => _bubble(_turns[i]),
     );
@@ -1168,59 +1193,69 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
 
   Widget _bubble(_Turn t) {
     final user = t.role == 'user';
-    return Align(
-      alignment: user ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: EdgeInsets.only(top: 8, left: user ? 48 : 0, right: user ? 0 : 36),
-        padding: const EdgeInsets.all(13),
-        decoration: BoxDecoration(
-          color: user ? const Color(0xFF3A3146) : const Color(0xFF241E2D),
-          borderRadius: BorderRadius.circular(18),
+    if (user) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: Container(
+          margin: const EdgeInsets.only(top: 12, left: 52),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          decoration: const BoxDecoration(
+            color: _gold,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(22), topRight: Radius.circular(22),
+              bottomLeft: Radius.circular(22), bottomRight: Radius.circular(6),
+            ),
+          ),
+          child: SelectableText(t.text, style: const TextStyle(color: _ink, fontSize: 16, height: 1.4)),
         ),
+      );
+    }
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 12, right: 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SelectableText(
-              t.text.isEmpty ? '…' : t.text,
-              style: const TextStyle(color: Colors.white, fontSize: 15.5, height: 1.42),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0x12FFFFFF),
+                border: Border.all(color: const Color(0x1AFFFFFF)),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(22), topRight: Radius.circular(22),
+                  bottomLeft: Radius.circular(6), bottomRight: Radius.circular(22),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SelectableText(
+                    t.text.isEmpty ? '…' : t.text,
+                    style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.55),
+                  ),
+                  if (t.subtitle != null && _settings.frenchSubtitlesInBariba) ...[
+                    const Divider(color: Color(0x1AFFFFFF), height: 18),
+                    Text(t.subtitle!, style: const TextStyle(color: Colors.white60, fontSize: 14)),
+                  ],
+                ],
+              ),
             ),
-            if (!user && t.subtitle != null && _settings.frenchSubtitlesInBariba) ...[
-              const SizedBox(height: 6),
-              Text(t.subtitle!, style: const TextStyle(color: Colors.white54, fontSize: 13)),
-            ],
-            if (!user && t.text.isNotEmpty)
+            if (t.text.isNotEmpty)
               Wrap(
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: _gold),
-                    tooltip: 'Réécouter',
-                    onPressed: () => _replay(t),
-                    icon: const Icon(Icons.volume_up_rounded, size: 18, color: _gold),
-                  ),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Colors.white70),
-                    tooltip: 'Copier',
-                    onPressed: () => Clipboard.setData(ClipboardData(text: t.text)),
-                    icon: const Icon(Icons.copy_rounded, size: 17, color: Colors.white54),
-                  ),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Colors.white70),
-                    tooltip: 'Mémoriser',
-                    onPressed: () => _quietly(() => _store.saveMemory(t.text)),
-                    icon: const Icon(Icons.bookmark_add_outlined, size: 18, color: Colors.white54),
-                  ),
+                  _smallAction('Écouter', Icons.volume_up_rounded, () => _replay(t)),
+                  _smallAction('Copier', Icons.copy_rounded, () => Clipboard.setData(ClipboardData(text: t.text))),
+                  _smallAction('Garder', Icons.bookmark_add_outlined, () => _quietly(() => _store.saveMemory(t.text))),
                   for (final s in t.sources.take(2))
                     Padding(
                       padding: const EdgeInsets.only(right: 6),
                       child: ActionChip(
                         visualDensity: VisualDensity.compact,
-                        backgroundColor: const Color(0xFF332B3E),
+                        backgroundColor: const Color(0xFF2A2333),
                         side: BorderSide.none,
-                        label: Text(s.title, style: const TextStyle(color: _gold, fontSize: 10.5, fontWeight: FontWeight.w800)),
+                        label: Text(s.title, style: const TextStyle(color: _gold, fontSize: 12, fontWeight: FontWeight.w800)),
                         onPressed: () => _showSource(s),
                       ),
                     ),
@@ -1231,6 +1266,17 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       ),
     );
   }
+
+  Widget _smallAction(String label, IconData icon, VoidCallback onTap) => TextButton.icon(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.white70,
+          visualDensity: VisualDensity.compact,
+          textStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+        ),
+        icon: Icon(icon, size: 17),
+        label: Text(label),
+      );
 
   Future<void> _showSource(DunyaSource s) => showModalBottomSheet<void>(
         context: context,
@@ -1253,97 +1299,64 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       );
 
   Widget _composerBar() => Padding(
-        padding: EdgeInsets.fromLTRB(10, 6, 10, MediaQuery.viewPaddingOf(context).bottom + 8),
+        padding: EdgeInsets.fromLTRB(12, 6, 12, MediaQuery.viewPaddingOf(context).bottom + 10),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Expanded(
               child: TextField(
                 controller: _composer,
                 minLines: 1,
                 maxLines: 4,
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _sendText(),
                 decoration: InputDecoration(
-                  hintText: _mode == DunyaLanguageMode.bariba ? 'Baatɔnum…' : 'Écrire à DUNYA…',
+                  hintText: _mode == DunyaLanguageMode.bariba ? 'Écrire en baatɔnum…' : 'Écrire à DUNYA…',
                   hintStyle: const TextStyle(color: Colors.white38),
                   filled: true,
-                  fillColor: const Color(0xFF241E2D),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
+                  fillColor: const Color(0x14FFFFFF),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(26),
+                    borderSide: const BorderSide(color: Color(0x1AFFFFFF)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(26),
+                    borderSide: const BorderSide(color: _gold),
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 8),
             IconButton.filled(
-              style: IconButton.styleFrom(backgroundColor: _gold, foregroundColor: _ink, minimumSize: const Size(50, 50)),
+              tooltip: _phase == _Phase.thinking ? 'Arrêter' : 'Envoyer',
+              style: IconButton.styleFrom(backgroundColor: _gold, foregroundColor: _ink, minimumSize: const Size(52, 52)),
               onPressed: _phase == _Phase.thinking ? _interrupt : _sendText,
-              icon: Icon(_phase == _Phase.thinking ? Icons.stop_rounded : Icons.arrow_upward_rounded),
+              icon: Icon(_phase == _Phase.thinking ? Icons.stop_rounded : Icons.send_rounded),
             ),
           ],
         ),
       );
 
   Widget _controls() => Padding(
-        padding: EdgeInsets.fromLTRB(28, 6, 28, MediaQuery.viewPaddingOf(context).bottom + 14),
+        padding: EdgeInsets.fromLTRB(20, 4, 20, MediaQuery.viewPaddingOf(context).bottom + 16),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _roundButton(
-              icon: _muted ? Icons.mic_off_rounded : Icons.mic_none_rounded,
-              label: _muted ? 'Micro coupé' : 'Micro',
-              active: !_muted,
-              onTap: () async {
-                setState(() => _muted = !_muted);
-                if (_muted) {
-                  await _mic.cancel();
-                } else if (_session && _phase == _Phase.idle) {
-                  unawaited(_listenTurn());
-                }
-              },
-            ),
-            _roundButton(
-              icon: _settings.subtitles ? Icons.closed_caption_rounded : Icons.closed_caption_off_rounded,
+            _pill(
               label: 'Sous-titres',
+              icon: _settings.subtitles ? Icons.closed_caption_rounded : Icons.closed_caption_off_rounded,
               active: _settings.subtitles,
               onTap: () => _settings.update(subtitles: !_settings.subtitles),
             ),
-            _roundButton(
-              icon: Icons.close_rounded,
-              label: 'Terminer',
-              active: _session,
-              danger: true,
-              onTap: _endSession,
-            ),
+            if (_busy) ...[
+              const SizedBox(width: 12),
+              _pill(label: 'Arrêter', icon: Icons.close_rounded, danger: true, onTap: _endSession),
+            ],
           ],
         ),
       );
-
-  Widget _roundButton({
-    required IconData icon,
-    required String label,
-    required bool active,
-    required VoidCallback onTap,
-    bool danger = false,
-  }) {
-    final bg = danger && active ? const Color(0xFFB3413A) : const Color(0xFF2A2433);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Material(
-          color: bg,
-          shape: const CircleBorder(),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onTap,
-            child: SizedBox(width: 62, height: 62, child: Icon(icon, color: active ? Colors.white : Colors.white54, size: 27)),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11.5)),
-      ],
-    );
-  }
 
   Widget _confirmBar(DunyaPendingAction pending) => Container(
         margin: const EdgeInsets.fromLTRB(14, 0, 14, 8),
@@ -1392,33 +1405,77 @@ class _OrbPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
-    final base = size.shortestSide * 0.32;
-    final wave = math.sin(t * 2 * math.pi);
-    final (Color a, Color b, double amp) = switch (phase) {
-      _Phase.listening => (const Color(0xFFF2C14E), const Color(0xFFE07A2E), 0.10 + level * 0.35),
-      _Phase.thinking => (const Color(0xFF8E7CFF), const Color(0xFF4F3CC9), 0.06),
-      _Phase.speaking => (const Color(0xFF5FD1A0), const Color(0xFF2A8C78), 0.12 + 0.06 * math.sin(t * 40).abs()),
-      _Phase.preparing => (const Color(0xFF6B6478), const Color(0xFF3D3747), 0.02),
-      _Phase.idle => (const Color(0xFFD4A23A), const Color(0xFF8C5A1E), 0.03),
+    final (Color light, Color mid, Color deep) = switch (phase) {
+      _Phase.listening => (const Color(0xFFFFE9B8), const Color(0xFFF2A94A), const Color(0xFF9A4A14)),
+      _Phase.thinking => (const Color(0xFFD9D2FF), const Color(0xFF8E7CFF), const Color(0xFF3A2A9C)),
+      _Phase.speaking => (const Color(0xFFC9F5DF), const Color(0xFF4FC892), const Color(0xFF155E4A)),
+      _Phase.preparing => (const Color(0xFFB7B0C4), const Color(0xFF6B6478), const Color(0xFF2E2938)),
+      _Phase.idle => (const Color(0xFFFFE3A3), const Color(0xFFE3B04B), const Color(0xFF7A4A12)),
     };
-    for (var i = 3; i >= 1; i--) {
-      final r = base * (1 + amp * i * 0.9 + 0.02 * wave * i);
-      canvas.drawCircle(c, r, Paint()..color = a.withValues(alpha: 0.07 * (4 - i)));
-    }
-    final r = base * (1 + amp * 0.6 + 0.015 * wave);
-    final angle = t * 2 * math.pi;
-    final shader = SweepGradient(
-      colors: [a, b, a.withValues(alpha: 0.85), b, a],
-      transform: GradientRotation(phase == _Phase.thinking ? angle * 3 : angle),
-    ).createShader(Rect.fromCircle(center: c, radius: r));
-    canvas.drawCircle(c, r, Paint()..shader = shader);
-    final highlight = c.translate(-r * 0.28, -r * 0.32);
+    final breathe = 0.012 * math.sin(t * 2 * math.pi);
+    final scale = phase == _Phase.listening ? 1 + level.clamp(0.0, 1.0) * 0.25 : 1 + breathe;
+    final r = size.shortestSide * 0.33 * scale;
+
+    // Soft glow.
     canvas.drawCircle(
-      highlight,
-      r * 0.42,
+      c,
+      r * 1.6,
       Paint()
-        ..shader = RadialGradient(colors: [Colors.white.withValues(alpha: 0.35), Colors.transparent])
-            .createShader(Rect.fromCircle(center: highlight, radius: r * 0.42)),
+        ..shader = RadialGradient(colors: [mid.withValues(alpha: phase == _Phase.idle ? 0.28 : 0.42), Colors.transparent])
+            .createShader(Rect.fromCircle(center: c, radius: r * 1.6)),
+    );
+
+    // Expanding rings while listening or speaking.
+    if (phase == _Phase.listening || phase == _Phase.speaking) {
+      for (var i = 0; i < 2; i++) {
+        final p = (t * 3 + i * 0.5) % 1.0;
+        canvas.drawCircle(
+          c,
+          r * (1.05 + p * 0.45),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2
+            ..color = mid.withValues(alpha: 0.45 * (1 - p)),
+        );
+      }
+    }
+
+    // Rotating arc while thinking.
+    if (phase == _Phase.thinking) {
+      final arcRect = Rect.fromCircle(center: c, radius: r * 1.18);
+      canvas.drawArc(
+        arcRect,
+        t * 2 * math.pi * 4,
+        math.pi * 0.7,
+        false,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round
+          ..shader = SweepGradient(colors: [Colors.transparent, mid], transform: GradientRotation(t * 2 * math.pi * 4))
+              .createShader(arcRect),
+      );
+    }
+
+    // Sphere with light from the top left.
+    final sphere = Rect.fromCircle(center: c, radius: r);
+    canvas.drawCircle(
+      c,
+      r,
+      Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.36, -0.44),
+          radius: 1.05,
+          colors: [light, mid, deep],
+          stops: const [0, 0.42, 1],
+        ).createShader(sphere),
+    );
+    final highlight = c.translate(-r * 0.3, -r * 0.42);
+    canvas.drawOval(
+      Rect.fromCenter(center: highlight, width: r * 0.72, height: r * 0.48),
+      Paint()
+        ..shader = RadialGradient(colors: [Colors.white.withValues(alpha: 0.38), Colors.transparent])
+            .createShader(Rect.fromCenter(center: highlight, width: r * 0.72, height: r * 0.48)),
     );
   }
 
@@ -1427,125 +1484,19 @@ class _OrbPainter extends CustomPainter {
       oldDelegate.t != t || oldDelegate.phase != phase || oldDelegate.level != level;
 }
 
-// ---------------------------------------------------------------------------
-// Sheets
-// ---------------------------------------------------------------------------
+class _MenuRow extends StatelessWidget {
+  const _MenuRow({required this.icon, required this.label});
 
-class _ModeTile extends StatelessWidget {
-  const _ModeTile({required this.mode, required this.selected, required this.onTap});
-
-  final DunyaLanguageMode mode;
-  final bool selected;
-  final VoidCallback onTap;
-
-  String get _subtitle => switch (mode) {
-        DunyaLanguageMode.french => 'DUNYA écoute et répond uniquement en français.',
-        DunyaLanguageMode.bariba => 'DUNYA écoute et répond uniquement en baatɔnum.',
-        DunyaLanguageMode.bilingual => 'Parlez l’une ou l’autre langue : DUNYA répond dans la vôtre.',
-      };
-
-  IconData get _icon => switch (mode) {
-        DunyaLanguageMode.french => Icons.record_voice_over_rounded,
-        DunyaLanguageMode.bariba => Icons.forum_rounded,
-        DunyaLanguageMode.bilingual => Icons.swap_horiz_rounded,
-      };
+  final IconData icon;
+  final String label;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Material(
-          color: selected ? const Color(0xFF17131F) : Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(18),
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Icon(_icon, color: selected ? const Color(0xFFD4A23A) : const Color(0xFF9C6B1D), size: 28),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          mode.label,
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                            color: selected ? Colors.white : const Color(0xFF17131F),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _subtitle,
-                          style: TextStyle(fontSize: 12.5, color: selected ? Colors.white70 : const Color(0xFF7D7566)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (selected) const Icon(Icons.check_circle_rounded, color: Color(0xFFD4A23A)),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-}
-
-class _OnboardingSheet extends StatefulWidget {
-  const _OnboardingSheet({required this.onPreview});
-
-  final Future<void> Function(DunyaLanguageMode mode) onPreview;
-
-  @override
-  State<_OnboardingSheet> createState() => _OnboardingSheetState();
-}
-
-class _OnboardingSheetState extends State<_OnboardingSheet> {
-  DunyaLanguageMode? _selected;
-
-  @override
-  Widget build(BuildContext context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Bienvenue dans DUNYA',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF17131F)),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Choisissez la langue de vos conversations. Touchez une carte pour l’écouter.',
-                style: TextStyle(fontSize: 14, height: 1.4, color: Color(0xFF7D7566)),
-              ),
-              const SizedBox(height: 16),
-              for (final m in DunyaLanguageMode.values)
-                _ModeTile(
-                  mode: m,
-                  selected: m == _selected,
-                  onTap: () {
-                    setState(() => _selected = m);
-                    unawaited(widget.onPreview(m));
-                  },
-                ),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: _selected == null ? null : () => Navigator.of(context).pop(_selected),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(54),
-                  backgroundColor: const Color(0xFF17131F),
-                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                ),
-                child: const Text('Commencer'),
-              ),
-            ],
-          ),
-        ),
+  Widget build(BuildContext context) => Row(
+        children: [
+          Icon(icon, size: 20, color: const Color(0xFFE3B04B)),
+          const SizedBox(width: 12),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
+        ],
       );
 }
 
@@ -1668,10 +1619,10 @@ class _SettingsSheetState extends State<_SettingsSheet> {
           shrinkWrap: true,
           padding: const EdgeInsets.fromLTRB(18, 0, 18, 22),
           children: [
-            const Text('Personnaliser DUNYA', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF17131F))),
+            const Text('Réglages', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF17131F))),
             const SizedBox(height: 14),
             _section('Intelligence'),
-            const Text('Choisissez votre connexion',
+            const Text('Connexion',
                 style: TextStyle(fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             SegmentedButton<DunyaExecutionMode>(
@@ -1682,11 +1633,6 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               ],
               selected: {_settings.execution},
               onSelectionChanged: (v) => _settings.update(execution: v.first),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Auto utilise Internet quand il est disponible. Hors ligne fonctionne avec les options téléchargées.',
-              style: TextStyle(fontSize: 12, color: Color(0xFF7D7566)),
             ),
             const SizedBox(height: 12),
             SegmentedButton<DunyaIntelligence>(
@@ -1700,8 +1646,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             const SizedBox(height: 8),
             Text(
               _settings.intelligence == DunyaIntelligence.essential
-                  ? 'Traduction, mémoire, rappels et calculs. Rapide, pour tous les téléphones.'
-                  : 'Pour discuter sans Internet, téléchargez l’assistant sur votre téléphone.',
+                  ? 'Rapide, pour tous les téléphones.'
+                  : 'Discuter sans Internet (à télécharger).',
               style: const TextStyle(fontSize: 12.5, color: Color(0xFF7D7566)),
             ),
             if (_settings.intelligence == DunyaIntelligence.smart) ...[
@@ -1725,10 +1671,10 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             ],
             const SizedBox(height: 18),
             _section('Conversation'),
-            _switch('Écoute automatique', _settings.handsFree,
+            _switch('Mains libres', _settings.handsFree,
                 (v) => _settings.update(handsFree: v)),
-            _switch('Sous-titres en direct', _settings.subtitles, (v) => _settings.update(subtitles: v)),
-            _switch('Afficher aussi la traduction française', _settings.frenchSubtitlesInBariba,
+            _switch('Sous-titres', _settings.subtitles, (v) => _settings.update(subtitles: v)),
+            _switch('Traduction en français', _settings.frenchSubtitlesInBariba,
                 (v) => _settings.update(frenchSubtitlesInBariba: v)),
             Row(
               children: [
@@ -1759,7 +1705,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 },
                 subtitle: _packInstalled(source) ? 'Prêt à utiliser'
                     : source.id == dunyaTranslationPackId && !_byt5Published
-                        ? 'Pas encore disponible. Nous préparons une version fiable.'
+                        ? 'Bientôt disponible'
                         : 'Wi-Fi conseillé',
                 trailing: _packInstalled(source)
                     ? null
@@ -1773,11 +1719,6 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                         child: const Text('Télécharger'),
                       ),
               ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 6),
-              child: Text('Téléchargez une seule fois avec le Wi-Fi. Ensuite, utilisez les fonctions installées sans connexion.',
-                  style: TextStyle(fontSize: 11.5, color: Color(0xFF7D7566))),
-            ),
             OutlinedButton.icon(
               onPressed: () {
                 Navigator.of(context).pop();
@@ -1787,18 +1728,13 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               label: const Text('Installer un fichier téléchargé'),
             ),
             const SizedBox(height: 18),
-            _section('Confidentialité'),
-            const Text(
-              'En mode hors ligne, rien n’est envoyé au serveur. En mode Auto ou En ligne, les demandes sont traitées par les services FITILA.',
-              style: TextStyle(fontSize: 12.5, color: Color(0xFF7D7566)),
-            ),
             TextButton.icon(
               onPressed: () {
                 Navigator.of(context).pop();
                 unawaited(widget.onClear());
               },
               icon: const Icon(Icons.delete_sweep_outlined),
-              label: Text('Nouvelle conversation (${_settings.mode.label})'),
+              label: const Text('Nouvelle conversation'),
             ),
           ],
         ),
