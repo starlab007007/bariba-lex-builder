@@ -918,7 +918,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                 decoration: BoxDecoration(color: const Color(0x26E0A03C), borderRadius: BorderRadius.circular(999)),
-                child: const Text('Hors ligne', style: TextStyle(color: Color(0xFFF0C979), fontSize: 11.5, fontWeight: FontWeight.w800)),
+                child: const Text('Hors ligne', style: TextStyle(color: Color(0xFFF0C979), fontSize: 13, fontWeight: FontWeight.w800)),
               ),
             ],
             const Spacer(),
@@ -1077,7 +1077,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
           child: Text(
             _phaseLabel,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w800, letterSpacing: -0.2),
+            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.2),
           ),
         ),
         if (lastAssistant != null && _phase != _Phase.listening) ...[
@@ -1096,7 +1096,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white60, fontSize: 16),
+                    style: const TextStyle(color: Colors.white70, fontSize: 17),
                   ),
                 if (_caption.isNotEmpty)
                   Text(
@@ -1104,7 +1104,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                     textAlign: TextAlign.center,
                     maxLines: 5,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 21, height: 1.3, fontWeight: FontWeight.w600),
+                    style: const TextStyle(color: Colors.white, fontSize: 24, height: 1.3, fontWeight: FontWeight.w600),
                   ),
                 if (_subCaption != null && _subCaption!.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -1113,7 +1113,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                     textAlign: TextAlign.center,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white60, fontSize: 15),
+                    style: const TextStyle(color: Colors.white70, fontSize: 16),
                   ),
                 ],
               ],
@@ -1125,7 +1125,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
             child: Column(
               children: [
                 Text(_notice!, textAlign: TextAlign.center,
-                    style: const TextStyle(color: Color(0xFFF0C979), fontSize: 14, fontWeight: FontWeight.w600)),
+                    style: const TextStyle(color: Color(0xFFF0C979), fontSize: 16, fontWeight: FontWeight.w600)),
                 if (_phase == _Phase.idle &&
                     _notice == 'DUNYA vocal indisponible. Vérifiez la connexion puis réessayez.')
                   TextButton.icon(
@@ -1173,7 +1173,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                 onTap: () => _runTurn(s, spoken: false),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-                  child: Text(s, style: const TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.w500)),
+                  child: Text(s, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
                 ),
               ),
             ),
@@ -1185,7 +1185,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   Widget _chatView() {
     if (_turns.isEmpty) {
       return const Center(
-        child: Text('Écrivez votre message', style: TextStyle(color: Colors.white60, fontSize: 18, fontWeight: FontWeight.w600)),
+        child: Text('Écrivez votre message', style: TextStyle(color: Colors.white70, fontSize: 19, fontWeight: FontWeight.w600)),
       );
     }
     return ListView.builder(
@@ -1211,7 +1211,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
               bottomLeft: Radius.circular(22), bottomRight: Radius.circular(6),
             ),
           ),
-          child: SelectableText(t.text, style: const TextStyle(color: _ink, fontSize: 16, height: 1.4)),
+          child: SelectableText(t.text, style: const TextStyle(color: _ink, fontSize: 18, height: 1.4)),
         ),
       );
     }
@@ -1237,11 +1237,11 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                 children: [
                   SelectableText(
                     t.text.isEmpty ? '…' : t.text,
-                    style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.55),
+                    style: const TextStyle(color: Colors.white, fontSize: 18, height: 1.55),
                   ),
                   if (t.subtitle != null && _settings.frenchSubtitlesInBariba) ...[
                     const Divider(color: Color(0x1AFFFFFF), height: 18),
-                    Text(t.subtitle!, style: const TextStyle(color: Colors.white60, fontSize: 14)),
+                    Text(t.subtitle!, style: const TextStyle(color: Colors.white70, fontSize: 16)),
                   ],
                 ],
               ),
@@ -1260,7 +1260,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                         visualDensity: VisualDensity.compact,
                         backgroundColor: const Color(0xFF2A2333),
                         side: BorderSide.none,
-                        label: Text(s.title, style: const TextStyle(color: _gold, fontSize: 12, fontWeight: FontWeight.w800)),
+                        label: Text(s.title, style: const TextStyle(color: _gold, fontSize: 14, fontWeight: FontWeight.w800)),
                         onPressed: () => _showSource(s),
                       ),
                     ),
@@ -1275,11 +1275,11 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   Widget _smallAction(String label, IconData icon, VoidCallback onTap) => TextButton.icon(
         onPressed: onTap,
         style: TextButton.styleFrom(
-          foregroundColor: Colors.white70,
-          visualDensity: VisualDensity.compact,
-          textStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+          foregroundColor: Colors.white,
+          minimumSize: const Size(48, 48),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         ),
-        icon: Icon(icon, size: 17),
+        icon: Icon(icon, size: 20),
         label: Text(label),
       );
 
@@ -1313,7 +1313,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                 controller: _composer,
                 minLines: 1,
                 maxLines: 4,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
+                style: const TextStyle(color: Colors.white, fontSize: 17),
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _sendText(),
                 decoration: InputDecoration(
@@ -1336,7 +1336,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
             const SizedBox(width: 8),
             IconButton.filled(
               tooltip: _phase == _Phase.thinking ? 'Arrêter' : 'Envoyer',
-              style: IconButton.styleFrom(backgroundColor: _gold, foregroundColor: _ink, minimumSize: const Size(52, 52)),
+              style: IconButton.styleFrom(backgroundColor: _gold, foregroundColor: _ink, minimumSize: const Size(56, 56)),
               onPressed: _phase == _Phase.thinking ? _interrupt : _sendText,
               icon: Icon(_phase == _Phase.thinking ? Icons.stop_rounded : Icons.send_rounded),
             ),
@@ -1370,14 +1370,14 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(pending.summary, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800)),
+            Text(pending.summary, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
             const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _confirm(false),
-                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50), foregroundColor: Colors.white),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(56), foregroundColor: Colors.white),
                     child: const Text('Non'),
                   ),
                 ),
@@ -1385,7 +1385,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                 Expanded(
                   child: FilledButton(
                     onPressed: () => _confirm(true),
-                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50), backgroundColor: _sage),
+                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56), backgroundColor: _sage),
                     child: const Text('Oui'),
                   ),
                 ),
@@ -1500,7 +1500,7 @@ class _MenuRow extends StatelessWidget {
         children: [
           Icon(icon, size: 20, color: const Color(0xFFE3B04B)),
           const SizedBox(width: 12),
-          Text(label, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
         ],
       );
 }
