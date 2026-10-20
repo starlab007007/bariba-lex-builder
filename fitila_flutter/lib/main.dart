@@ -89,7 +89,9 @@ void _wireBaribaKeyboard() {
   }
   BaribaKeyboardServices.translator = (text, direction) async {
     final token = FitilaBackend.client.auth.currentSession?.accessToken;
-    if (!FitilaBackend.configured || !FitilaOffline.online.value) {
+    DunyaOfflineBeta.lastUsed = false;
+    final offlineModel = DunyaTranslator.offline != null;
+    if (!offlineModel && (!FitilaBackend.configured || !FitilaOffline.online.value)) {
       return null; // engine falls back to the embedded dictionary
     }
     return FitilaServices.translate(
@@ -99,6 +101,7 @@ void _wireBaribaKeyboard() {
           : TranslationDirection.baribaToFrench,
       accessToken: token,
       dictionaryLoader: () async => const <DictionaryEntry>[],
+      allowOfflineBeta: true,
     );
   };
   // DUNYA : mémoire de traduction validée (dictionnaire, Apprendre, scènes), exacte et hors ligne.
@@ -671,7 +674,9 @@ class FitilaServices {
     String? accessToken,
     http.Client? client,
     Future<List<DictionaryEntry>> Function()? dictionaryLoader,
+    bool allowOfflineBeta = false,
   }) async {
+    DunyaOfflineBeta.lastUsed = false;
     final trimmed = text.trim();
     if (trimmed.isEmpty) {
       return '';
@@ -752,6 +757,25 @@ class FitilaServices {
         if (client == null) {
           transport.close();
         }
+      }
+    }
+
+    // Hors-ligne : après la mémoire attestée, le modèle ByT5 du téléphone (bêta, à vérifier)
+    // s'il est installé ; sinon dictionnaire. Jamais mélangé avec un mot à mot.
+    final onDevice = DunyaTranslator.offline;
+    if (allowOfflineBeta && onDevice != null) {
+      try {
+        final toBariba = direction == TranslationDirection.frenchToBariba;
+        final out = (await onDevice(trimmed, toBariba).timeout(const Duration(seconds: 35)))?.trim();
+        if (out != null &&
+            out.isNotEmpty &&
+            out.toLowerCase() != trimmed.toLowerCase() &&
+            DunyaTranslator.quality.assess(source: trimmed, candidate: out, toBariba: toBariba).accepted) {
+          DunyaOfflineBeta.lastUsed = true;
+          return out;
+        }
+      } catch (_) {
+        /* modèle indisponible : dictionnaire ci-dessous */
       }
     }
 
@@ -7348,6 +7372,7 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
       text,
       _dir(toBariba),
       accessToken: widget.accessToken,
+      allowOfflineBeta: true,
     ),
     startVoice: _voiceMedia.startAudio,
     stopVoice: (sourceIsBariba) async {

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../core/offline.dart';
 import '../core/signature_theme.dart';
+import '../dunya/voice/dunya_translator.dart' show DunyaOfflineBeta;
 import '../keyboard/bariba_input.dart';
 
 /// Langue détectée dans une saisie.
@@ -75,6 +76,9 @@ class ChatMessage {
 
   /// Traduction produite sans réseau (dictionnaire embarqué).
   bool offline = false;
+
+  /// Produite par le modèle ByT5 du téléphone en bêta : à afficher « test (bêta) ».
+  bool beta = false;
 }
 
 String _errorText(Object e) {
@@ -186,6 +190,7 @@ class _TranslatorChatState extends State<TranslatorChat> {
         msg
           ..result = out.trim()
           ..offline = !FitilaOffline.online.value
+          ..beta = DunyaOfflineBeta.lastUsed
           ..pending = false;
         // Mode conversation sans détection : on répond dans l'autre sens.
         if (_conversation && !_auto) _toBariba = !msg.toBariba;
@@ -818,7 +823,12 @@ class _Turn extends StatelessWidget {
           const Icon(Icons.auto_awesome_rounded, size: 14, color: Color(0xFF6758C9)),
           const SizedBox(width: 5),
           Text(targetBariba ? '🇧🇯 Bàátɔ̀nú' : '🇫🇷 Français', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: SignatureTheme.muted)),
-          if (msg.offline) ...[
+          if (msg.beta) ...[
+            const SizedBox(width: 8),
+            const Icon(Icons.science_rounded, size: 12, color: SignatureTheme.goldDeep),
+            const SizedBox(width: 3),
+            const Text('hors ligne · ${DunyaOfflineBeta.label} · à vérifier', key: ValueKey('beta-label'), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: SignatureTheme.goldDeep)),
+          ] else if (msg.offline) ...[
             const SizedBox(width: 8),
             const Icon(Icons.cloud_off_rounded, size: 12, color: SignatureTheme.sage),
             const SizedBox(width: 3),

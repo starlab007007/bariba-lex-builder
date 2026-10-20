@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:fitila_native/dunya/voice/dunya_translator.dart';
 import 'package:fitila_native/keyboard/bariba_input.dart';
 import 'package:fitila_native/keyboard/bariba_keyboard_engine.dart';
 import 'package:fitila_native/keyboard/bariba_virtual_keyboard.dart';
@@ -170,6 +171,25 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('translation-apply')));
       await tester.pump();
       expect(c.text, 'traduit: na');
+    });
+    testWidgets('offline ByT5 beta result carries the "test (bêta)" mention', (tester) async {
+      final c = await pump(
+        tester,
+        translator: (text, dir) async {
+          DunyaOfflineBeta.lastUsed = true;
+          return 'modèle: $text';
+        },
+      );
+      await tester.tap(find.byKey(const ValueKey('translate-toggle')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('key-n')));
+      await tester.tap(find.byKey(const ValueKey('key-z')));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('modèle: nz'), findsOneWidget);
+      expect(find.byKey(const ValueKey('beta-label')), findsOneWidget);
+      DunyaOfflineBeta.lastUsed = false;
+      expect(c.text, 'nz');
     });
   });
 
