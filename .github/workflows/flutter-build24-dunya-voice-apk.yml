@@ -348,14 +348,41 @@ jobs:
 
       - name: Prepare fitila.bj APK folder
         if: ${{ steps.prod.outputs.ok == 'true' }}
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            set -e
-            mkdir -p /home/debian/bariba-lex-builder/dunya-packs/android/${{ steps.prod.outputs.dir }}
+        # ssh direct plutot qu'une action tierce : en cas d'echec le diagnostic
+        # du VPS (droits, espace disque) remonte en annotation, les journaux
+        # bruts n'etant pas toujours telechargeables.
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          TARGET_DIR: ${{ steps.prod.outputs.dir }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/fitila_publish
+          chmod 600 ~/.ssh/fitila_publish
+          ssh-keyscan -T 20 -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          status=0
+          ssh -i ~/.ssh/fitila_publish -o BatchMode=yes -o ConnectTimeout=20 \
+            "$VPS_USER@$VPS_HOST" "TARGET_DIR='$TARGET_DIR' bash -s" > /tmp/prepare.log 2>&1 <<'REMOTE' || status=$?
+          root=/home/debian/bariba-lex-builder/dunya-packs/android
+          if ! mkdir -p "$root/$TARGET_DIR" 2>/tmp/err; then
+            echo "mkdir refuse : $(cat /tmp/err)"
+            echo "droits du parent :"
+            ls -ld /home/debian/bariba-lex-builder /home/debian/bariba-lex-builder/dunya-packs "$root" 2>&1
+            echo "identite : $(id)"
+            echo "disque :"; df -h /home | tail -1
+            exit 1
+          fi
+          echo "dossier pret : $root/$TARGET_DIR"
+          ls -ld "$root/$TARGET_DIR"
+          df -h /home | tail -1
+          REMOTE
+          cat /tmp/prepare.log
+          if [ "$status" -ne 0 ]; then
+            detail=$(sed 's/%/%25/g; s/\r//g' /tmp/prepare.log | awk '{ printf "%s%%0A", $0 }')
+            echo "::error title=Preparation du dossier APK sur le VPS::${detail}"
+          fi
+          exit "$status"
 
       - name: Copy APKs to fitila.bj
         if: ${{ steps.prod.outputs.ok == 'true' }}
