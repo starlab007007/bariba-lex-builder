@@ -72,6 +72,16 @@ void main() {
       expect(e.translateOffline('zzz', KeyboardTranslationDirection.baribaToFrench), isNull);
     });
 
+    test('offline gloss never mixes languages', () {
+      final e = _engine();
+      // Every word known: a gloss is allowed.
+      expect(e.translateOffline('na bɔ̃', KeyboardTranslationDirection.baribaToFrench), 'venir chose');
+      // One unknown word: no partial result, so no French left inside Baatɔnum.
+      expect(e.translateOffline('na zzz', KeyboardTranslationDirection.baribaToFrench), isNull);
+      expect(e.translateOffline('venir demain', KeyboardTranslationDirection.frenchToBariba), isNull);
+      expect(e.translateOffline('venir chose demain matin', KeyboardTranslationDirection.frenchToBariba), isNull);
+    });
+
     test('bundled dictionary loads and predicts', () {
       final json = jsonDecode(
         File('assets/data/bariba_keyboard_dictionary.json').readAsStringSync(),

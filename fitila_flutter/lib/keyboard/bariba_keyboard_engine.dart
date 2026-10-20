@@ -339,7 +339,7 @@ class BaribaKeyboardEngine {
     if (single != null && single.isNotEmpty) {
       return single;
     }
-    // Word by word; unknown words are kept verbatim inside brackets-free text.
+    // Word by word, only when every word is known (see the return below).
     var known = 0;
     var words = 0;
     final out = StringBuffer();
@@ -360,7 +360,10 @@ class BaribaKeyboardEngine {
         out.write(token);
       }
     }
-    return known > 0 && known * 2 >= words ? out.toString() : null;
+    // Never mix languages: a partial gloss would copy untranslated French (or
+    // Baatɔnum) words verbatim into the other language. Only a gloss where
+    // every word was found in the dictionary is offered.
+    return words > 0 && known == words ? out.toString() : null;
   }
 
   // ── Tone / nasal composition ───────────────────────────────────────────
