@@ -18,6 +18,46 @@ import 'package:path_provider/path_provider.dart';
 const dunyaVoiceCorePackId = 'dunya-voice-core';
 const dunyaVoiceFrPackId = 'dunya-voice-fr';
 const dunyaTranslationPackId = 'dunya-translate-byt5';
+// Pin the reviewed, integrity-checked local beta artefact; NOT quality certification.
+const dunyaByt5BetaZipSha256 = '68dec40488464413032f97f21a5363cae73102c80eea2b33675aa4a3bcec7f91';
+const _betaFiles = <String, String>{
+  'byt5/config.json': '21d63e56b0ac894bd08f02d2835ae79c70d9d6c94fe82c0d31e6379fa6dd7138',
+  'byt5/decoder.onnx': '92a689a5554ef29ac5c7f4b55cbd8ec504b50a608a44edc3ab10bea3f5834fc3',
+  'byt5/encoder.onnx': '38d00b53d4c8239da620594dd1e25b8cc0ac58506644f87b4ad141300faeced0',
+};
+
+/// This authorizes precisely one private beta export, not arbitrary untested models.
+bool isApprovedDunyaByt5Beta(Map manifest) {
+  if (manifest['id'] != dunyaTranslationPackId ||
+      manifest['format'] != 'dunya-pack/1' ||
+      manifest['channel'] != 'beta' ||
+      manifest['tested'] != false ||
+      manifest['quality_certified'] != false ||
+      manifest['version'] != 'v1-both-matmul-matmul') {
+    return false;
+  }
+  final files = manifest['files'];
+  if (files is! List || files.length != _betaFiles.length) {
+    return false;
+  }
+  for (final item in files) {
+    if (item is! Map) {
+      return false;
+    }
+    final path = item['path'];
+    if (!_betaFiles.containsKey(path) ||
+        item['sha256'].toString().toLowerCase() != _betaFiles[path] ||
+        (item['size'] as num?) == null) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool isAuthorizedDunyaTranslationManifest(Map manifest) =>
+    manifest['id'] == dunyaTranslationPackId &&
+    manifest['format'] == 'dunya-pack/1' &&
+    (manifest['tested'] == true || isApprovedDunyaByt5Beta(manifest));
 
 /// Public mirror on fitila.bj (the GitHub repository is private, so its
 /// release assets are not downloadable by phones).
@@ -47,7 +87,7 @@ const dunyaVoicePackSources = <DunyaPackSource>[
   ),
   DunyaPackSource(
     id: dunyaTranslationPackId,
-    title: 'ByT5 Français ↔ Baatɔnum (traduction sans Internet)',
+    title: 'ByT5 V4 INT8 — Bêta (en test) · Français ↔ Baatɔnum',
     zipUrl: '$_releaseBase/dunya-translate-byt5-v1.zip',
     manifestUrl: '$_releaseBase/dunya-translate-byt5-v1.manifest.json',
   ),
@@ -163,7 +203,7 @@ class DunyaVoicePackManager {
       if (decoded is! Map) return null;
       // Publishing untested converted weights is insufficient. A public
       // offline translation pack requires a quality-reviewed manifest.
-      if (source.id == dunyaTranslationPackId && decoded['tested'] != true) return null;
+      if (source.id == dunyaTranslationPackId && !isAuthorizedDunyaTranslationManifest(decoded)) return null;
       return (decoded['total_bytes'] as num?)?.toInt();
     } catch (_) {
       return null;
@@ -174,6 +214,7 @@ class DunyaVoicePackManager {
   Future<Map<String, dynamic>> download(
     DunyaPackSource source, {
     void Function(DunyaPackProgress progress)? onProgress,
+    bool betaConsent = false,
   }) async {
     final root = await _root();
     final target = File('${root.path}/${source.id}.download.zip');
@@ -189,8 +230,11 @@ class DunyaVoicePackManager {
         }
         final dynamic parsed = jsonDecode(utf8.decode(meta.bodyBytes));
         if (parsed is! Map || parsed['id'] != dunyaTranslationPackId ||
-            parsed['format'] != 'dunya-pack/1' || parsed['tested'] != true) {
-          throw DunyaPackException('Le pack ByT5 n’a pas encore réussi les tests qualité.');
+            parsed['format'] != 'dunya-pack/1' || !isAuthorizedDunyaTranslationManifest(parsed)) {
+          throw DunyaPackException('Le pack ByT5 n’est ni certifié ni une bêta FITILA autorisée.');
+        }
+        if (isApprovedDunyaByt5Beta(parsed) && !betaConsent) {
+          throw DunyaPackException('Accord explicite requis pour le modèle expérimental ByT5 Bêta.');
         }
       }
       final response = await client.send(http.Request('GET', Uri.parse(source.zipUrl)));
@@ -225,7 +269,7 @@ class DunyaVoicePackManager {
       if (total != null && total > 0 && received != total) {
         throw DunyaPackException('Téléchargement incomplet (${_mb(received)} sur ${_mb(total)}). Réessayez en Wi-Fi.');
       }
-      return await installFromFile(target.path, onProgress: onProgress, deleteSource: true);
+      return await installFromFile(target.path, onProgress: onProgress, deleteSource: true, betaConsent: betaConsent);
     } on DunyaPackException {
       _deleteQuietly(target);
       rethrow;
@@ -251,6 +295,7 @@ class DunyaVoicePackManager {
     String zipPath, {
     void Function(DunyaPackProgress progress)? onProgress,
     bool deleteSource = false,
+    bool betaConsent = false,
   }) async {
     final root = await _root();
     onProgress?.call(const DunyaPackProgress('extract', null, 'Ouverture du pack…'));
@@ -261,7 +306,7 @@ class DunyaVoicePackManager {
       }
     });
     try {
-      final manifest = await _runInstall(zipPath, root.path, port.sendPort);
+      final manifest = await _runInstall(zipPath, root.path, port.sendPort, betaConsent);
       if (deleteSource) {
         try {
           File(zipPath).deleteSync();
@@ -286,8 +331,8 @@ class DunyaVoicePackManager {
   }
 }
 
-Future<Map<String, dynamic>> _runInstall(String zipPath, String rootPath, SendPort progress) =>
-    Isolate.run(() => _installPack(zipPath, rootPath, progress));
+Future<Map<String, dynamic>> _runInstall(String zipPath, String rootPath, SendPort progress, bool betaConsent) =>
+    Isolate.run(() => _installPack(zipPath, rootPath, progress, betaConsent));
 
 String _mb(int bytes) => '${(bytes / (1024 * 1024)).toStringAsFixed(0)} Mo';
 
@@ -305,7 +350,7 @@ class _ZipEntry {
   final int localHeaderOffset;
 }
 
-Future<Map<String, dynamic>> _installPack(String zipPath, String rootPath, SendPort progress) async {
+Future<Map<String, dynamic>> _installPack(String zipPath, String rootPath, SendPort progress, bool betaConsent) async {
   final file = File(zipPath);
   if (!file.existsSync()) throw DunyaPackException('Fichier introuvable.');
   final raf = file.openSync();
@@ -315,8 +360,21 @@ Future<Map<String, dynamic>> _installPack(String zipPath, String rootPath, SendP
     if (manifestEntry == null) throw DunyaPackException('Ce fichier n’est pas un pack DUNYA (manifest absent).');
     final manifest = jsonDecode(utf8.decode(_readEntry(raf, manifestEntry))) as Map<String, dynamic>;
     if (manifest['format'] != 'dunya-pack/1') throw DunyaPackException('Format de pack inconnu.');
-    if (manifest['id'] == dunyaTranslationPackId && manifest['tested'] != true) {
-      throw DunyaPackException('Pack ByT5 non certifié : tests bilingues et Android requis.');
+    if (manifest['id'] == dunyaTranslationPackId) {
+      if (!isAuthorizedDunyaTranslationManifest(manifest)) {
+        throw DunyaPackException('Pack ByT5 non certifié et bêta non approuvée.');
+      }
+      if (isApprovedDunyaByt5Beta(manifest)) {
+        if (!betaConsent) {
+          throw DunyaPackException('Le modèle ByT5 Bêta nécessite votre accord explicite.');
+        }
+        // Check the entire ZIP: prevents an untrusted file from impersonating
+        // the exact consented beta, including when imported from local storage.
+        final digest = await sha256.bind(File(zipPath).openRead()).first;
+        if (digest.toString().toLowerCase() != dunyaByt5BetaZipSha256) {
+          throw DunyaPackException('Archive bêta inconnue : SHA-256 différent de la version autorisée.');
+        }
+      }
     }
     final id = manifest['id'].toString();
     if (!RegExp(r'^[a-z0-9-]{3,64}$').hasMatch(id)) throw DunyaPackException('Identifiant de pack invalide.');
@@ -488,7 +546,12 @@ class _DigestSink implements Sink<Digest> {
 }
 
 /// Installs a pack synchronously in the current isolate (tests, tooling).
-Future<Map<String, dynamic>> installDunyaPackFile(String zipPath, String rootPath) {
+Future<Map<String, dynamic>> installDunyaPackFile(
+  String zipPath,
+  String rootPath, {
+  bool betaConsent = false,
+}) {
   final port = ReceivePort();
-  return _installPack(zipPath, rootPath, port.sendPort).whenComplete(port.close);
+  return _installPack(zipPath, rootPath, port.sendPort, betaConsent)
+      .whenComplete(port.close);
 }

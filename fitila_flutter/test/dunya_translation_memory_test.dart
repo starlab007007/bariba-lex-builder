@@ -88,4 +88,39 @@ void main() {
       expect(onlineCalls, 1);
     });
   });
+  group('shared offline output validation', () {
+    setUp(() {
+      DunyaTranslator.memory = null;
+      DunyaTranslator.online = null;
+      DunyaTranslator.offline = null;
+      DunyaTranslator.allowRemote = () => false;
+      DunyaTranslator.preferRemote = () => false;
+    });
+
+    test('local engine returns normalized text with no network', () async {
+      DunyaTranslator.offline = (text, toBariba) async =>
+          '  Aagu  wunɛ   ka weru.  ';
+      final result = await DunyaTranslator.translate('Bonjour', toBariba: true);
+      expect(result?.engine, 'offline');
+      expect(result?.text, 'Aagu wunɛ ka weru.');
+    });
+
+    test('rejects obvious repeating generations offline', () async {
+      DunyaTranslator.offline = (text, toBariba) async =>
+          'na na na na na na na na';
+      final result = await DunyaTranslator.translate('Bonjour', toBariba: true);
+      expect(result, isNull);
+    });
+
+    test('never calls backend if offline', () async {
+      var invoked = false;
+      DunyaTranslator.online = (text, toBariba) async {
+        invoked = true;
+        return 'server';
+      };
+      expect(await DunyaTranslator.translate('Bonjour', toBariba: true), isNull);
+      expect(invoked, isFalse);
+    });
+  });
+
 }

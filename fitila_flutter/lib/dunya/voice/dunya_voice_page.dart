@@ -769,12 +769,39 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     if (mounted) setState(() {});
   }
 
+  Future<bool> _confirmByt5Beta() async {
+    if (!mounted) return false;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Traduction hors ligne · Bêta'),
+        content: const Text(
+          'Téléchargez le pack (environ 290 Mo) pour traduire sans Internet. '
+          'Cette version est en test et peut comporter des erreurs. Continuer ?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Continuer'),
+          ),
+        ],
+      ),
+    );
+    return accepted == true;
+  }
+
   Future<void> _installVoiceFile() async {
     final picked = await FilePicker.platform.pickFiles(type: FileType.any);
     final path = picked?.files.single.path;
     if (path == null) return;
     final cache = await getTemporaryDirectory();
     final isCacheCopy = path.startsWith(cache.path) || path.contains('/cache/');
+    // Consent for file imports is requested explicitly; the installer itself
+    // enforces it again for the hash-pinned ByT5 beta.
     if (looksLikeBrainFile(path)) {
       await _runJob(
         'Installation du cerveau…',
@@ -782,16 +809,26 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       );
       return;
     }
+    final betaConsent = path.toLowerCase().contains('byt5')
+        ? await _confirmByt5Beta() : false;
+    if (path.toLowerCase().contains('byt5') && !betaConsent) return;
     await _runJob('Installation du pack…', (progress) async {
-      await _packs.installFromFile(path, deleteSource: isCacheCopy, onProgress: (p) => progress(p.fraction, p.detail));
+      await _packs.installFromFile(path, deleteSource: isCacheCopy, betaConsent: betaConsent, onProgress: (p) => progress(p.fraction, p.detail));
       await _startEngine();
     });
   }
 
-  Future<void> _downloadVoice(DunyaPackSource source) => _runJob('Téléchargement…', (progress) async {
-        await _packs.download(source, onProgress: (p) => progress(p.fraction, p.detail));
-        await _startEngine();
-      });
+  Future<void> _downloadVoice(DunyaPackSource source) async {
+    final betaConsent = source.id == dunyaTranslationPackId
+        ? await _confirmByt5Beta()
+        : false;
+    if (source.id == dunyaTranslationPackId && !betaConsent) return;
+    await _runJob('Téléchargement…', (progress) async {
+      await _packs.download(source, betaConsent: betaConsent,
+          onProgress: (p) => progress(p.fraction, p.detail));
+      await _startEngine();
+    });
+  }
 
   Future<void> _runJob(String title, Future<void> Function(void Function(double?, String) progress) job) async {
     if (!mounted) return;
@@ -908,7 +945,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                     children: [
                       const Icon(Icons.translate_rounded, size: 17, color: _gold),
                       const SizedBox(width: 7),
-                      Text(_mode.label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
+                      Text(_mode.label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
                       const Icon(Icons.expand_more_rounded, size: 18, color: Colors.white70),
                     ],
                   ),
@@ -923,13 +960,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.cloud_off_rounded, size: 13, color: Color(0xFF8FD3A8)),
+                    const Icon(Icons.cloud_off_rounded, size: 17, color: Color(0xFF8FD3A8)),
                     const SizedBox(width: 5),
                     Flexible(
                       child: Text(
                         _brainBadge,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Color(0xFF8FD3A8), fontSize: 11, fontWeight: FontWeight.w800),
+                        style: const TextStyle(color: Color(0xFF9FE4BC), fontSize: 12, fontWeight: FontWeight.w800),
                       ),
                     ),
                   ],
@@ -972,7 +1009,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
           ),
         ),
         const SizedBox(height: 18),
-        Text(_phaseLabel, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: Text(_phaseLabel,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontSize: 19,
+              fontWeight: FontWeight.w800, height: 1.35)),
+        ),
         const Spacer(),
         if (_settings.subtitles)
           Padding(
@@ -1072,21 +1115,22 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       alignment: user ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: EdgeInsets.only(top: 8, left: user ? 48 : 0, right: user ? 0 : 36),
-        padding: const EdgeInsets.all(13),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: user ? const Color(0xFF3A3146) : const Color(0xFF241E2D),
-          borderRadius: BorderRadius.circular(18),
+          color: user ? const Color(0xFF493622) : const Color(0xFF241F29),
+          border: Border.all(color: const Color(0xFF8D6A35), width: 0.7),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SelectableText(
               t.text.isEmpty ? '…' : t.text,
-              style: const TextStyle(color: Colors.white, fontSize: 15.5, height: 1.42),
+              style: const TextStyle(color: Colors.white, fontSize: 17, height: 1.5, fontWeight: FontWeight.w500),
             ),
             if (!user && t.subtitle != null && _settings.frenchSubtitlesInBariba) ...[
               const SizedBox(height: 6),
-              Text(t.subtitle!, style: const TextStyle(color: Colors.white54, fontSize: 13)),
+              Text(t.subtitle!, style: const TextStyle(color: Colors.white70, fontSize: 14)),
             ],
             if (!user && t.text.isNotEmpty)
               Wrap(
@@ -1102,22 +1146,22 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                     visualDensity: VisualDensity.compact,
                     tooltip: 'Copier',
                     onPressed: () => Clipboard.setData(ClipboardData(text: t.text)),
-                    icon: const Icon(Icons.copy_rounded, size: 17, color: Colors.white54),
+                    icon: const Icon(Icons.copy_rounded, size: 21, color: Colors.white),
                   ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     tooltip: 'Mémoriser',
                     onPressed: () => _quietly(() => _store.saveMemory(t.text)),
-                    icon: const Icon(Icons.bookmark_add_outlined, size: 18, color: Colors.white54),
+                    icon: const Icon(Icons.bookmark_add_outlined, size: 21, color: Colors.white),
                   ),
                   for (final s in t.sources.take(2))
                     Padding(
                       padding: const EdgeInsets.only(right: 6),
                       child: ActionChip(
                         visualDensity: VisualDensity.compact,
-                        backgroundColor: const Color(0xFF332B3E),
+                        backgroundColor: const Color(0xFF3D332D),
                         side: BorderSide.none,
-                        label: Text(s.title, style: const TextStyle(color: _gold, fontSize: 10.5, fontWeight: FontWeight.w800)),
+                        label: Text(s.title, style: const TextStyle(color: Color(0xFFFFD988), fontSize: 12, fontWeight: FontWeight.w700)),
                         onPressed: () => _showSource(s),
                       ),
                     ),
@@ -1163,11 +1207,12 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                 onSubmitted: (_) => _sendText(),
                 decoration: InputDecoration(
                   hintText: _mode == DunyaLanguageMode.bariba ? 'Baatɔnum…' : 'Écrire à DUNYA…',
-                  hintStyle: const TextStyle(color: Colors.white38),
+                  hintStyle: const TextStyle(color: Colors.white70, fontSize: 15),
                   filled: true,
-                  fillColor: const Color(0xFF241E2D),
+                  fillColor: const Color(0xFF292531),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: const BorderSide(color: Color(0xFFB18A48))),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: const BorderSide(color: Color(0xFFB18A48))),
                 ),
               ),
             ),
@@ -1229,15 +1274,15 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       children: [
         Material(
           color: bg,
-          shape: const CircleBorder(),
+          shape: CircleBorder(side: BorderSide(color: danger ? const Color(0xFFEF9E9A) : const Color(0xFFB88A3C), width: 1.2)),
           child: InkWell(
             customBorder: const CircleBorder(),
             onTap: onTap,
-            child: SizedBox(width: 62, height: 62, child: Icon(icon, color: active ? Colors.white : Colors.white54, size: 27)),
+            child: SizedBox(width: 68, height: 68, child: Icon(icon, color: Colors.white, size: 30)),
           ),
         ),
         const SizedBox(height: 6),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11.5)),
+        Text(label, style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w700)),
       ],
     );
   }
@@ -1466,11 +1511,9 @@ class _SettingsSheet extends StatefulWidget {
 class _SettingsSheetState extends State<_SettingsSheet> {
   final _settings = DunyaSettings.instance;
   final _brain = DunyaBrain.instance;
-  final _packs = DunyaVoicePackManager.instance;
   DunyaDeviceInfo? _device;
   bool _brainInstalled = false;
   bool _byt5Installed = false;
-  bool _byt5Published = false;
   double? _brainProgress;
   String? _brainLabel;
   bool _downloading = false;
@@ -1497,21 +1540,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
     _brainInstalled = await _brain.isInstalled();
     _byt5Installed = await DunyaByt5.instance.activateIfInstalled();
     if (mounted) setState(() {});
-    // Distinguish a published, downloadable ByT5 checkpoint from its
-    // unpopulated release URL. Never show a working Download button for 404.
-    if (_settings.execution != DunyaExecutionMode.offline &&
-        FitilaOffline.online.value) {
-      unawaited(() async {
-      try {
-        final source = dunyaVoicePackSources.firstWhere(
-            (p) => p.id == dunyaTranslationPackId);
-        final size = await _packs.remoteSize(source);
-        if (mounted) setState(() => _byt5Published = size != null && size > 0);
-      } catch (_) {
-        if (mounted) setState(() => _byt5Published = false);
-      }
-      }());
-    }
+
   }
 
   void _onBrainProgress(double? fraction, String label) {
@@ -1645,47 +1674,57 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               ],
             ),
             const SizedBox(height: 10),
-            _section('Voix et packs'),
-            for (final source in dunyaVoicePackSources)
-              _card(
-                icon: _packInstalled(source) ? Icons.check_circle_rounded : Icons.cloud_download_outlined,
-                iconColor: const Color(0xFF9C6B1D),
-                title: source.title,
-                subtitle: _packInstalled(source) ? 'Installé'
-                    : source.id == dunyaTranslationPackId && !_byt5Published
-                        ? 'Modèle affiné pas encore publié : installation depuis fichier possible.'
-                        : 'Wi-Fi conseillé',
-                trailing: _packInstalled(source)
-                    ? null
-                    : source.id == dunyaTranslationPackId && !_byt5Published
-                        ? const Text('À publier', style: TextStyle(fontSize: 11))
-                        : TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          unawaited(widget.onDownloadVoice(source));
-                        },
-                        child: const Text('Télécharger'),
-                      ),
-              ),
+            _section('Packs hors ligne'),
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 6),
-              child: Text('Meta Omnilingual ASR pour la reconnaissance et Meta MMS-TTS Baatɔnum '
-                  'pour la parole. Sans pack : services en ligne FITILA. '
-                  'Un pack hors ligne ne fonctionne qu’une fois publié, téléchargé et vérifié.',
-                  style: TextStyle(fontSize: 11.5, color: Color(0xFF7D7566))),
+              padding: EdgeInsets.only(bottom: 10),
+              child: Text('Téléchargez une fois, utilisez sans Internet.',
+                style: TextStyle(fontSize: 12.5, color: Color(0xFF625B54))),
             ),
+            for (final source in dunyaVoicePackSources)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _card(
+                  icon: _packInstalled(source)
+                      ? Icons.check_circle_rounded
+                      : source.id == dunyaTranslationPackId
+                          ? Icons.translate_rounded : Icons.download_rounded,
+                  iconColor: const Color(0xFF9C6B1D),
+                  title: source.id == dunyaTranslationPackId
+                      ? 'Traduction FR ↔ Baatɔnum'
+                      : source.id == dunyaVoiceCorePackId
+                          ? 'Voix DUNYA' : 'Voix française',
+                  subtitle: _packInstalled(source) ? 'Installé · Prêt hors ligne'
+                      : source.id == dunyaTranslationPackId
+                          ? 'Traduire hors ligne · Bêta en test'
+                          : source.id == dunyaVoiceCorePackId
+                              ? 'Parler et écouter hors ligne'
+                              : 'Voix de secours',
+                  trailing: _packInstalled(source)
+                      ? const Icon(Icons.check_circle, color: Color(0xFF428267), size: 26)
+                      : TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            unawaited(widget.onDownloadVoice(source));
+                          },
+                          child: const Text('Télécharger',
+                            style: TextStyle(fontWeight: FontWeight.w800,
+                              color: Color(0xFF825500))),
+                        ),
+                ),
+              ),
+            const SizedBox(height: 6),
             OutlinedButton.icon(
               onPressed: () {
                 Navigator.of(context).pop();
                 unawaited(widget.onInstallVoiceFile());
               },
-              icon: const Icon(Icons.sd_storage_outlined),
-              label: const Text('Installer depuis un fichier (pack ou cerveau)'),
+              icon: const Icon(Icons.folder_open_outlined),
+              label: const Text('Installer depuis un fichier'),
             ),
             const SizedBox(height: 18),
             _section('Confidentialité'),
             const Text(
-              'En mode hors ligne, rien n’est envoyé au serveur. En mode Auto ou En ligne, les demandes sont traitées par les services FITILA.',
+              'Hors ligne : rien n’est envoyé. En ligne : FITILA traite la demande.',
               style: TextStyle(fontSize: 12.5, color: Color(0xFF7D7566)),
             ),
             TextButton.icon(
@@ -1729,9 +1768,9 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       Card(
         elevation: 0,
         color: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFE7D8B7))),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+          padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
           child: Column(
             children: [
               Row(
@@ -1743,7 +1782,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF17131F))),
-                        Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF7D7566))),
+                        Text(subtitle, style: const TextStyle(fontSize: 12.5, height: 1.35, color: Color(0xFF625B54))),
                       ],
                     ),
                   ),

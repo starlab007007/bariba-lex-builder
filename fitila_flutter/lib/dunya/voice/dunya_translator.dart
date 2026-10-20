@@ -6,15 +6,20 @@
 /// the phone is online. Hooks are set at app start-up (see main.dart).
 library;
 
+import 'fitila_linguistic_refiner.dart';
+
 typedef DunyaTranslateFn = Future<String?> Function(String text, bool toBariba);
 
 class DunyaTranslation {
-  const DunyaTranslation(this.text, this.engine);
+  const DunyaTranslation(this.text, this.engine, {this.warnings = const [], this.refinementApplied = false, this.provenance});
 
   final String text;
 
   /// 'memory' | 'offline' | 'online'
   final String engine;
+  final List<String> warnings;
+  final bool refinementApplied;
+  final String? provenance;
 }
 
 class DunyaTranslator {
@@ -49,7 +54,20 @@ class DunyaTranslator {
       try {
         final out = (await fn(clean, toBariba).timeout(const Duration(seconds: 35)))?.trim();
         if (out != null && out.isNotEmpty && out.toLowerCase() != clean.toLowerCase()) {
-          return DunyaTranslation(out, engine);
+          final result = FitilaLinguisticRefiner.refine(
+            source: clean,
+            candidate: out,
+            toBariba: toBariba,
+            engine: engine,
+          );
+          if (!result.accepted) continue;
+          return DunyaTranslation(
+            result.translation,
+            engine,
+            warnings: result.warnings,
+            refinementApplied: result.refinementApplied,
+            provenance: result.provenance,
+          );
         }
       } catch (_) {
         // Try the next engine.

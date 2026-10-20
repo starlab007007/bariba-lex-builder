@@ -31,6 +31,7 @@ import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import bj.fitila.fitila_native.DunyaByt5Channel;
 
 import org.json.JSONArray;
 
@@ -1222,8 +1223,23 @@ public class BaribaInputMethodService extends InputMethodService {
                     @Override public void run() {
                         String result = null;
                         String error = null;
-                        try { result = client.translate(txt, direction); }
-                        catch (KeyboardTranslationClient.TranslationException e) { error = e.getMessage(); }
+                        try {
+                            // Inference is on the IME worker; never blocks the typing UI.
+                            result = DunyaByt5Channel.translateFromIme(
+                                    getApplicationContext(), txt, direction);
+                        } catch (Exception offlineError) {
+                            // Existing Supabase path is optional, never a prerequisite
+                            // for a previously downloaded local pack.
+                            try { result = client.translate(txt, direction); }
+                            catch (KeyboardTranslationClient.TranslationException e) {
+                                // Preserve the actionable first-run instruction when
+                                // neither an installed model nor remote config exists.
+                                error = e.getMessage().contains("Ouvrez l’application FITILA")
+                                        ? e.getMessage()
+                                        : "ByT5 local indisponible : " + offlineError.getMessage()
+                                            + " ; en ligne : " + e.getMessage();
+                            }
+                        }
                         final String translated = result;
                         final String failure = error;
                         handler.post(new Runnable() {

@@ -52,6 +52,7 @@ import 'keyboard/bariba_input.dart';
 import 'dictionary/dictionary_experience.dart';
 import 'dunya/voice/dunya_translation_memory.dart';
 import 'dunya/voice/dunya_translator.dart';
+import 'dunya/voice/dunya_byt5.dart';
 import 'dunya/voice/dunya_assistant.dart';
 import 'dunya/voice/dunya_settings.dart';
 import 'dunya/dunya_home.dart';
@@ -73,6 +74,9 @@ Future<void> main() async {
     FitilaOffline.start();
   }
   _wireBaribaKeyboard();
+  // Activate the installed on-device translator regardless of whether the
+  // user opens DUNYA; this also serves the in-app keyboard when offline.
+  await DunyaByt5.instance.activateIfInstalled();
   runApp(const FitilaApp());
 }
 
@@ -87,19 +91,15 @@ void _wireBaribaKeyboard() {
       ),
     );
   }
+  // One shared translation engine for the in-app keyboard and DUNYA.
+  // The validated memory and the downloaded ByT5 ONNX pack work without
+  // Supabase or Internet. Remote inference is allowed only when online.
   BaribaKeyboardServices.translator = (text, direction) async {
-    final token = FitilaBackend.client.auth.currentSession?.accessToken;
-    if (!FitilaBackend.configured || !FitilaOffline.online.value) {
-      return null; // engine falls back to the embedded dictionary
-    }
-    return FitilaServices.translate(
+    final result = await DunyaTranslator.translate(
       text,
-      direction == KeyboardTranslationDirection.frenchToBariba
-          ? TranslationDirection.frenchToBariba
-          : TranslationDirection.baribaToFrench,
-      accessToken: token,
-      dictionaryLoader: () async => const <DictionaryEntry>[],
+      toBariba: direction == KeyboardTranslationDirection.frenchToBariba,
     );
+    return result?.text;
   };
   // DUNYA : mémoire de traduction validée (dictionnaire, Apprendre, scènes), exacte et hors ligne.
   DunyaTranslator.memory = (text, toBariba) async =>
@@ -111,8 +111,8 @@ void _wireBaribaKeyboard() {
       DunyaSettings.instance.execution == DunyaExecutionMode.online;
   // DUNYA mode baatɔnum : chaîne de traduction FITILA en ligne (ByT5, ai-translate).
   DunyaTranslator.online = (text, toBariba) async {
-    final token = FitilaBackend.client.auth.currentSession?.accessToken;
     if (!FitilaBackend.configured || !FitilaOffline.online.value) return null;
+    final token = FitilaBackend.client.auth.currentSession?.accessToken;
     final out = await FitilaServices.translate(
       text,
       toBariba ? TranslationDirection.frenchToBariba : TranslationDirection.baribaToFrench,
@@ -7339,16 +7339,12 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
     super.dispose();
   }
 
-  TranslationDirection _dir(bool toBariba) => toBariba
-      ? TranslationDirection.frenchToBariba
-      : TranslationDirection.baribaToFrench;
-
   TranslatorPorts _livePorts() => TranslatorPorts(
-    translate: (text, toBariba) => FitilaServices.translate(
-      text,
-      _dir(toBariba),
-      accessToken: widget.accessToken,
-    ),
+    translate: (text, toBariba) async {
+      final result = await DunyaTranslator.translate(text, toBariba: toBariba);
+      if (result != null) return result.text;
+      throw StateError('Aucune traduction locale disponible. Installez le pack ByT5 Bêta dans DUNYA.');
+    },
     startVoice: _voiceMedia.startAudio,
     stopVoice: (sourceIsBariba) async {
       final asset = await _voiceMedia.stopAudio();
