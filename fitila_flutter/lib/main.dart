@@ -87,19 +87,15 @@ void _wireBaribaKeyboard() {
       ),
     );
   }
+  // One shared translation engine for the in-app keyboard and DUNYA.
+  // The validated memory and the downloaded ByT5 ONNX pack work without
+  // Supabase or Internet. Remote inference is allowed only when online.
   BaribaKeyboardServices.translator = (text, direction) async {
-    final token = FitilaBackend.client.auth.currentSession?.accessToken;
-    if (!FitilaBackend.configured || !FitilaOffline.online.value) {
-      return null; // engine falls back to the embedded dictionary
-    }
-    return FitilaServices.translate(
+    final result = await DunyaTranslator.translate(
       text,
-      direction == KeyboardTranslationDirection.frenchToBariba
-          ? TranslationDirection.frenchToBariba
-          : TranslationDirection.baribaToFrench,
-      accessToken: token,
-      dictionaryLoader: () async => const <DictionaryEntry>[],
+      toBariba: direction == KeyboardTranslationDirection.frenchToBariba,
     );
+    return result?.text;
   };
   // DUNYA : mémoire de traduction validée (dictionnaire, Apprendre, scènes), exacte et hors ligne.
   DunyaTranslator.memory = (text, toBariba) async =>
