@@ -1212,7 +1212,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                   fillColor: const Color(0xFF292531),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: const BorderSide(color: Color(0xFFB18A48))),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: const BorderSide(color: Color(0xFFB18A48))),,
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: const BorderSide(color: Color(0xFFB18A48))),
                 ),
               ),
             ),
