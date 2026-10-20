@@ -945,7 +945,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                     children: [
                       const Icon(Icons.translate_rounded, size: 17, color: _gold),
                       const SizedBox(width: 7),
-                      Text(_mode.label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
+                      Text(_mode.label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
                       const Icon(Icons.expand_more_rounded, size: 18, color: Colors.white70),
                     ],
                   ),
@@ -960,13 +960,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.cloud_off_rounded, size: 13, color: Color(0xFF8FD3A8)),
+                    const Icon(Icons.cloud_off_rounded, size: 17, color: Color(0xFF8FD3A8)),
                     const SizedBox(width: 5),
                     Flexible(
                       child: Text(
                         _brainBadge,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Color(0xFF8FD3A8), fontSize: 11, fontWeight: FontWeight.w800),
+                        style: const TextStyle(color: Color(0xFF9FE4BC), fontSize: 12, fontWeight: FontWeight.w800),
                       ),
                     ),
                   ],
@@ -1274,15 +1274,15 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       children: [
         Material(
           color: bg,
-          shape: const CircleBorder(),
+          shape: CircleBorder(side: BorderSide(color: danger ? const Color(0xFFEF9E9A) : const Color(0xFFB88A3C), width: 1.2)),
           child: InkWell(
             customBorder: const CircleBorder(),
             onTap: onTap,
-            child: SizedBox(width: 62, height: 62, child: Icon(icon, color: active ? Colors.white : Colors.white54, size: 27)),
+            child: SizedBox(width: 68, height: 68, child: Icon(icon, color: Colors.white, size: 30)),
           ),
         ),
         const SizedBox(height: 6),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11.5)),
+        Text(label, style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w700)),
       ],
     );
   }
