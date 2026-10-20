@@ -7,6 +7,9 @@ on:
   schedule:
     - cron: "*/30 * * * *"
   workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/hf-spaces-keep-alive.yml
 
 permissions:
   contents: read
