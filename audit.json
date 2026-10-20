@@ -1,0 +1,620 @@
+{
+ "A": [
+  {
+   "dir": "fr-ba",
+   "src": "Il est fatigué en arrivant ici.",
+   "ref": "U wasire u ka na mini.",
+   "hyp": "U wasire u ka na mini.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 500
+  },
+  {
+   "dir": "ba-fr",
+   "src": "U wasire u ka na mini.",
+   "ref": "Il est fatigué en arrivant ici.",
+   "hyp": "Il est fatigué en arrivant ici.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 322
+  },
+  {
+   "dir": "fr-ba",
+   "src": "Ceux qui se recherchaient se sont retrouvés.",
+   "ref": "Bè ba kasunamɔ mi, ba kamɛna.",
+   "hyp": "Bè ba kasunamɔ mi, ba kamɛna.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 390
+  },
+  {
+   "dir": "ba-fr",
+   "src": "Bè ba kasunamɔ mi, ba kamɛna.",
+   "ref": "Ceux qui se recherchaient se sont retrouvés.",
+   "hyp": "Ceux qui se recherchaient se sont retrouvés.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 324
+  },
+  {
+   "dir": "fr-ba",
+   "src": "Le liquide a bouilli contre mon gré.",
+   "ref": "Sere mù kukuri.",
+   "hyp": "Sere mù kukuri.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 308
+  },
+  {
+   "dir": "ba-fr",
+   "src": "Sere mù kukuri.",
+   "ref": "Le liquide a bouilli contre mon gré.",
+   "hyp": "Le liquide a bouilli contre mon gré.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 295
+  },
+  {
+   "dir": "fr-ba",
+   "src": "C'est pour le paradis qu'ils prient.",
+   "ref": "Yarusannan sɔ̃na ba ra gura tɔbiri.",
+   "hyp": "Yarusannan sɔ̃na ba ra gura tɔbiri.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 463
+  },
+  {
+   "dir": "ba-fr",
+   "src": "Yarusannan sɔ̃na ba ra gura tɔbiri.",
+   "ref": "C'est pour le paradis qu'ils prient.",
+   "hyp": "C'est pour le paradis qu'ils prient.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 304
+  },
+  {
+   "dir": "fr-ba",
+   "src": "Cet arbre m'a donné de mauvais fruits",
+   "ref": "Dãa te ta man bii kɔ̃sunu marùri",
+   "hyp": "Dãa te ta man bii kɔ̃sunu marùri",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 718
+  },
+  {
+   "dir": "ba-fr",
+   "src": "Dãa te ta man bii kɔ̃sunu marùri",
+   "ref": "Cet arbre m'a donné de mauvais fruits",
+   "hyp": "Cet arbre m'a donné de mauvais fruits",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 794
+  },
+  {
+   "dir": "fr-ba",
+   "src": "Les soldats exécutent une marche militaire.",
+   "ref": "Sooge ba gaa siisiru yaamɔ.",
+   "hyp": "Sooge ba gaa siisiru yaamɔ.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 1066
+  },
+  {
+   "dir": "ba-fr",
+   "src": "Sooge ba gaa siisiru yaamɔ.",
+   "ref": "Les soldats exécutent une marche militaire.",
+   "hyp": "Les soldats exécutent une marche militaire.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 290
+  },
+  {
+   "dir": "fr-ba",
+   "src": "Un mètre de tissu pour sa chemise ne va pas le suffire.",
+   "ref": "Diiku tian yabera kun nùn turi.",
+   "hyp": "Diiku tian yabera kun nùn turi.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 333
+  },
+  {
+   "dir": "ba-fr",
+   "src": "Diiku tian yabera kun nùn turi.",
+   "ref": "Un mètre de tissu pour sa chemise ne va pas le suffire.",
+   "hyp": "Un mètre de tissu pour sa chemise ne va pas suffire.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": false,
+   "ms": 328
+  },
+  {
+   "dir": "fr-ba",
+   "src": "Quand Chabi a sarclé son champ, il a eu mal aux articulations.",
+   "ref": "Yè Sabi u gberu wuka, yera win gbingbinka ya nùn wiririmɔ.",
+   "hyp": "Yè Sabi u gberu wuka, yera win gbingbinka ya nùn wiririmɔ.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 870
+  },
+  {
+   "dir": "ba-fr",
+   "src": "Yè Sabi u gberu wuka, yera win gbingbinka ya nùn wiririmɔ.",
+   "ref": "Quand Chabi a sarclé son champ, il a eu mal aux articulations.",
+   "hyp": "Quand Chabi a sarclé son champ, il a eu mal aux articulations.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 725
+  },
+  {
+   "dir": "fr-ba",
+   "src": "Ils nous ont enlevé notre infirmier si gentil.",
+   "ref": "Ba sun bɛsɛn dokotoro nuku tiagii wi swɛnyari.",
+   "hyp": "Ba sun bɛsɛn dokotoro nuku tiagii wi swɛnyari.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 318
+  },
+  {
+   "dir": "ba-fr",
+   "src": "Ba sun bɛsɛn dokotoro nuku tiagii wi swɛnyari.",
+   "ref": "Ils nous ont enlevé notre infirmier si gentil.",
+   "hyp": "Ils nous ont enlevé notre infirmier si gentil.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 652
+  },
+  {
+   "dir": "fr-ba",
+   "src": "Nous rentrons avec la mode, vraie mode",
+   "ref": "Sa ka yàaye wiɔ, ee yàaye",
+   "hyp": "Sa ka yàaye wiɔ, ee yàaye",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 352
+  },
+  {
+   "dir": "ba-fr",
+   "src": "Sa ka yàaye wiɔ, ee yàaye",
+   "ref": "Nous rentrons avec la mode, vraie mode",
+   "hyp": "Nous rentrons avec la mode, vraie mode",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 342
+  },
+  {
+   "dir": "fr-ba",
+   "src": "Même si tu me frappes, je te suivrai malgré tout.",
+   "ref": "Baa à n man so, ka mɛ, kon nun swĩi.",
+   "hyp": "Baa à n man so, ka mɛ, kon nun swĩi.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 332
+  },
+  {
+   "dir": "ba-fr",
+   "src": "Baa à n man so, ka mɛ, kon nun swĩi.",
+   "ref": "Même si tu me frappes, je te suivrai malgré tout.",
+   "hyp": "Même si tu me frappes, je te suivrai malgré tout.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 127
+  },
+  {
+   "dir": "fr-ba",
+   "src": "Ton igname pourra être apportée.",
+   "ref": "Wunɛn taa si su tamara.",
+   "hyp": "Wunɛn taa si su tamara.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 314
+  },
+  {
+   "dir": "ba-fr",
+   "src": "Wunɛn taa si su tamara.",
+   "ref": "Ton igname pourra être apportée.",
+   "hyp": "Ton igname pourra être apportée.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "exact": true,
+   "ms": 480
+  }
+ ],
+ "B": [
+  {
+   "dir": "fr-ba",
+   "src": "Quand il est allé saluer son oncle, on l'a laissé là-bas contre son gré. Ils tiennent une torche pour essayer de voir.",
+   "ref": "Yè u win dwaani tɔbiribu da, miya ba man sii bureri ni. Ba wĩi sɔnnu nɛni ba ka yam mɛɛrimɔ.",
+   "hyp": "Yè u win dwaani tɔbiribu da, miya ba man sii bureri ni. Ba wĩi sɔnnu nɛni ba ka yam mɛɛrimɔ.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "chrf": 1.0,
+   "ms": 323,
+   "attested_segments": 2
+  },
+  {
+   "dir": "ba-fr",
+   "src": "Yè u win dwaani tɔbiribu da, miya ba man sii bureri ni. Ba wĩi sɔnnu nɛni ba ka yam mɛɛrimɔ.",
+   "ref": "Quand il est allé saluer son oncle, on l'a laissé là-bas contre son gré. Ils tiennent une torche pour essayer de voir.",
+   "hyp": "Quand il est allé saluer son oncle, on l'a laissé là-bas contre son gré. Ils tiennent une torche pour essayer de voir.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "chrf": 1.0,
+   "ms": 333,
+   "attested_segments": 2
+  },
+  {
+   "dir": "fr-ba",
+   "src": "Celui qui a mal à la dent ne mange pas la viande. La taille de cet homme est vraiment grande.",
+   "ref": "Wì u dondu barɔ, u kura yaa tem. Durɔ win gunum mu banda.",
+   "hyp": "Wì u dondu barɔ, u kura yaa tem. Durɔ win gunum mu banda.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "chrf": 1.0,
+   "ms": 310,
+   "attested_segments": 2
+  },
+  {
+   "dir": "ba-fr",
+   "src": "Wì u dondu barɔ, u kura yaa tem. Durɔ win gunum mu banda.",
+   "ref": "Celui qui a mal à la dent ne mange pas la viande. La taille de cet homme est vraiment grande.",
+   "hyp": "Celui qui a mal à la dent ne mange pas la viande. La taille de cet homme est vraiment grande.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "chrf": 1.0,
+   "ms": 301,
+   "attested_segments": 2
+  },
+  {
+   "dir": "fr-ba",
+   "src": "On ne parle pas une fois pour se taire. L'enfant tient son poignet",
+   "ref": "Ba ku ra gari gere nɔn teeru bù mari. Bii u win nɔm wĩinu nɛnɛ",
+   "hyp": "Ba ku ra gari gere nɔn teeru bù mari. Bii u win nɔm wĩinu nɛnɛ",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "chrf": 1.0,
+   "ms": 414,
+   "attested_segments": 2
+  },
+  {
+   "dir": "ba-fr",
+   "src": "Ba ku ra gari gere nɔn teeru bù mari. Bii u win nɔm wĩinu nɛnɛ",
+   "ref": "On ne parle pas une fois pour se taire. L'enfant tient son poignet",
+   "hyp": "On ne parle pas une fois pour se taire. L'enfant tient son poignet",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "chrf": 1.0,
+   "ms": 284,
+   "attested_segments": 2
+  },
+  {
+   "dir": "fr-ba",
+   "src": "Quand le roi est entré dans le village, il a été honoré. N'enlève pas les écorces des arbres, il peut y avoir des scorpions à l'intérieur",
+   "ref": "Yè sunɔ u wuu dua, ba wii bɛ̀ɛrɛ wɛ̃. A ku dãa kokosu mɛndi, nia ya wãa mi",
+   "hyp": "Yè sunɔ u wuu dua, ba wii bɛ̀ɛrɛ wɛ̃. A ku dãa kokosu mɛndi, nia ya wãa mi",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "chrf": 1.0,
+   "ms": 289,
+   "attested_segments": 2
+  },
+  {
+   "dir": "ba-fr",
+   "src": "Yè sunɔ u wuu dua, ba wii bɛ̀ɛrɛ wɛ̃. A ku dãa kokosu mɛndi, nia ya wãa mi",
+   "ref": "Quand le roi est entré dans le village, il a été honoré. N'enlève pas les écorces des arbres, il peut y avoir des scorpions à l'intérieur",
+   "hyp": "Quand le roi est entré dans le village, il a été honoré. N'enlève pas les écorces des arbres, il peut y avoir des scorpions à l'intérieur",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "chrf": 1.0,
+   "ms": 312,
+   "attested_segments": 2
+  },
+  {
+   "dir": "fr-ba",
+   "src": "Ne te blottis pas contre le mur. Ce vieux s'éternise, il est dans sa quatre-vingt-dixième année.",
+   "ref": "A ku bake dii gãarɔ. Durɔ tɔkɔ te ta ka sun tondawa mi, ten wɔ̃ɔ wɛnɛ ka wɔkuruse sɔɔra ta wãa mi.",
+   "hyp": "A ku bake dii gãarɔ. Durɔ tɔkɔ te ta ka sun tondawa mi, ten wɔ̃ɔ wɛnɛ ka wɔkuruse sɔɔra ta wãa mi.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "chrf": 1.0,
+   "ms": 287,
+   "attested_segments": 2
+  },
+  {
+   "dir": "ba-fr",
+   "src": "A ku bake dii gãarɔ. Durɔ tɔkɔ te ta ka sun tondawa mi, ten wɔ̃ɔ wɛnɛ ka wɔkuruse sɔɔra ta wãa mi.",
+   "ref": "Ne te blottis pas contre le mur. Ce vieux s'éternise, il est dans sa quatre-vingt-dixième année.",
+   "hyp": "Ne te blottis pas contre le mur. Ce vieux s'éternise, il est dans sa quatre-vingt-dixième année.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "chrf": 1.0,
+   "ms": 393,
+   "attested_segments": 2
+  },
+  {
+   "dir": "fr-ba",
+   "src": "Ue graine de haricot a poussé derrière la case. Vous allez l'énerver davantage.",
+   "ref": "Swia ya kpia dii gãarɔ. Miya bɛɛ i kpam da i sii bɛsusi.",
+   "hyp": "Swia ya kpia dii gãarɔ. Miya bɛɛ i kpam da i sii bɛsusi.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "chrf": 1.0,
+   "ms": 312,
+   "attested_segments": 2
+  },
+  {
+   "dir": "ba-fr",
+   "src": "Swia ya kpia dii gãarɔ. Miya bɛɛ i kpam da i sii bɛsusi.",
+   "ref": "Ue graine de haricot a poussé derrière la case. Vous allez l'énerver davantage.",
+   "hyp": "Ue graine de haricot a poussé derrière la case. Vous allez l'énerver davantage.",
+   "status": 200,
+   "method": "translation-memory",
+   "confidence": 100,
+   "chrf": 1.0,
+   "ms": 305,
+   "attested_segments": 2
+  }
+ ],
+ "C": [
+  {
+   "fr": "Bonjour, comment va ta famille ?",
+   "ba": "Amɔna wunɛn mɛro u doona.",
+   "status": 200,
+   "method": "byt5-expert",
+   "confidence": 60,
+   "back": "Comment ta mère est partie.",
+   "roundtrip_chrf": 0.172,
+   "ms": 2991
+  },
+  {
+   "fr": "Je vais au marché acheter du maïs.",
+   "ba": "Kon yaburu dɔɔ yɛnuɔ.",
+   "status": 200,
+   "method": "byt5-expert",
+   "confidence": 60,
+   "back": "Je vais aller au marché.",
+   "roundtrip_chrf": 0.406,
+   "ms": 2801
+  },
+  {
+   "fr": "L'enfant a de la fièvre depuis hier soir.",
+   "ba": "Bii wi u wɔ̃ ɔ wa saa yoka.",
+   "status": 200,
+   "method": "byt5-expert",
+   "confidence": 60,
+   "back": "Cet enfant a vu le soir.",
+   "roundtrip_chrf": 0.233,
+   "ms": 2751
+  },
+  {
+   "fr": "Il faut semer avant la grande pluie.",
+   "ba": "A de a gura bɔ̃ ɔ bakaru sere yɛ̃.",
+   "status": 200,
+   "method": "byt5-expert",
+   "confidence": 60,
+   "back": "Fais regarder la viande jusqu'à ce que tu as fait.",
+   "roundtrip_chrf": 0.15,
+   "ms": 3429
+  },
+  {
+   "fr": "Où se trouve le centre de santé ?",
+   "ba": "N kun mɛ barɔ wa, mère u yɛ̃ ro.",
+   "status": 200,
+   "method": "byt5-expert",
+   "confidence": 60,
+   "back": "C'est un malade qu'il soit venu.",
+   "roundtrip_chrf": 0.091,
+   "ms": 3282
+  },
+  {
+   "fr": "Merci beaucoup pour ton aide.",
+   "ba": "A de a wunɛn sɔm kowo.",
+   "status": 200,
+   "method": "byt5-expert",
+   "confidence": 60,
+   "back": "Fais regarder ton serviteur.",
+   "roundtrip_chrf": 0.154,
+   "ms": 3148
+  },
+  {
+   "fr": "Nous allons manger ensemble ce soir.",
+   "ba": "Sa ko mɛnna yoka gisɔ.",
+   "status": 200,
+   "method": "byt5-expert",
+   "confidence": 60,
+   "back": "Nous allons regarder aujourd'hui.",
+   "roundtrip_chrf": 0.315,
+   "ms": 2614
+  },
+  {
+   "fr": "Le prix de l'igname a augmenté cette année.",
+   "ba": "Taa yen gobi yu gisɔ.",
+   "status": 200,
+   "method": "byt5-expert",
+   "confidence": 60,
+   "back": "L'argent de cette igname est aujourd'hui.",
+   "roundtrip_chrf": 0.234,
+   "ms": 3293
+  }
+ ],
+ "D": [
+  {
+   "question": "Comment protéger mes enfants du paludisme ?",
+   "chat_status": 200,
+   "chat_error": null,
+   "fr": "Faites dormir vos enfants sous une moustiquaire imprégnée chaque nuit. Éliminez les eaux stagnantes autour de votre maison pour éviter les moustiques. Consultez rapidement un médecin en cas de fièvre.",
+   "ba_server": "I bɛɛn bibu dorasio wɔ̃kuru baatere. I nim mɛ yɛ̃ kuo bɛɛn dirun wɔllɔ i ka sɔ̃ɔsi. I de i dokotoro bikio sɔɔ.",
+   "sentences": [
+    {
+     "fr": "Faites dormir vos enfants sous une moustiquaire imprégnée chaque nuit.",
+     "ba": "I bɛɛn bibu dorasio wɔ̃kuru baatere.",
+     "method": "byt5-expert",
+     "confidence": 58
+    },
+    {
+     "fr": "Éliminez les eaux stagnantes autour de votre maison pour éviter les moustiques.",
+     "ba": "I nim mɛ yɛ̃ kuo bɛɛn dirun wɔllɔ i ka sɔ̃ɔsi.",
+     "method": "byt5-expert",
+     "confidence": 60
+    },
+    {
+     "fr": "Consultez rapidement un médecin en cas de fièvre.",
+     "ba": "I de i dokotoro bikio sɔɔ.",
+     "method": "byt5-expert",
+     "confidence": 60
+    }
+   ],
+   "chat_ms": 41516
+  },
+  {
+   "question": "Quand faut-il semer le maïs dans le Borgou ?",
+   "chat_status": 200,
+   "chat_error": null,
+   "fr": "Dans le Borgou, il faut semer le maïs dès les premières pluies significatives. Cela se situe généralement entre la mi-mai et début juin. Attendez que le sol soit bien humide pour garantir une bonne levée.",
+   "ba_server": "Kɔnnɔ sɔɔ, ɑ de ɡuru win dirun yɛnu duure. Yen sɔ̃ ɔ wa, mɛro bii wɔndiabu ka sisiru. I seewo i tem mɛ sɔ̃ɔsimɔ kpɑ turuku yɛ̃.",
+   "sentences": [
+    {
+     "fr": "Dans le Borgou, il faut semer le maïs dès les premières pluies significatives.",
+     "ba": "Kɔnnɔ sɔɔ, ɑ de ɡuru win dirun yɛnu duure.",
+     "method": "byt5-expert",
+     "confidence": 60
+    },
+    {
+     "fr": "Cela se situe généralement entre la mi-mai et début juin.",
+     "ba": "Yen sɔ̃ ɔ wa, mɛro bii wɔndiabu ka sisiru.",
+     "method": "byt5-expert",
+     "confidence": 60
+    },
+    {
+     "fr": "Attendez que le sol soit bien humide pour garantir une bonne levée.",
+     "ba": "I seewo i tem mɛ sɔ̃ɔsimɔ kpɑ turuku yɛ̃.",
+     "method": "byt5-expert",
+     "confidence": 60
+    }
+   ],
+   "chat_ms": 25459
+  },
+  {
+   "question": "Donne-moi un conseil pour bien conserver les ignames.",
+   "chat_status": 200,
+   "chat_error": null,
+   "fr": "Conservez vos ignames dans un endroit frais, sec et bien aéré. Évitez surtout de les exposer directement au soleil ou à l'humidité. Vérifiez régulièrement qu'aucune igname ne pourrit pour protéger les autres.",
+   "ba_server": "I bɛɛn taa si sɔɔ yɛ̃ ro. I de i bè wa sɔ̃ ɔ n kun mɛ yɛ̃. I sɔ̃ ɔsio mɛɛru ta ku ra tɔn be yɛ̃.",
+   "sentences": [
+    {
+     "fr": "Conservez vos ignames dans un endroit frais, sec et bien aéré.",
+     "ba": "I bɛɛn taa si sɔɔ yɛ̃ ro.",
+     "method": "byt5-expert",
+     "confidence": 60
+    },
+    {
+     "fr": "Évitez surtout de les exposer directement au soleil ou à l'humidité.",
+     "ba": "I de i bè wa sɔ̃ ɔ n kun mɛ yɛ̃.",
+     "method": "byt5-expert",
+     "confidence": 60
+    },
+    {
+     "fr": "Vérifiez régulièrement qu'aucune igname ne pourrit pour protéger les autres.",
+     "ba": "I sɔ̃ ɔsio mɛɛru ta ku ra tɔn be yɛ̃.",
+     "method": "byt5-expert",
+     "confidence": 60
+    }
+   ],
+   "chat_ms": 22584
+  }
+ ],
+ "voice": {
+  "text": "U wasire u ka na mini.",
+  "tts_status": 200,
+  "tts_keys": [
+   "audio_url",
+   "duration",
+   "engine",
+   "model",
+   "refine",
+   "success",
+   "text_used"
+  ],
+  "audio_url": "https://dvswhjawiooprghzeyol.supabase.co/functions/v1/tts-audio?t=U%20wasire%20u%20ka%20na%20mini.&s=80fd6b233b7010734016975eef8c96b8",
+  "tts_ms": 2098,
+  "stt_status": 200,
+  "heard": "u wasire u ka na mini",
+  "stt_chrf": 0.813,
+  "stt_ms": 3935,
+  "stt_error": null
+ },
+ "summary": {
+  "A_exact_rate": 0.958,
+  "A_methods": [
+   "translation-memory"
+  ],
+  "B_chrf_fr_ba": 1.0,
+  "B_chrf_ba_fr": 1.0,
+  "B_methods": [
+   "translation-memory"
+  ],
+  "C_roundtrip_chrf": 0.219,
+  "D_chat_ok": 3,
+  "B_attested_segments": 24,
+  "C_confidence_max": 60,
+  "voice_tts_status": 200,
+  "voice_audio_downloaded": true,
+  "voice_stt_chrf": 0.813
+ }
+}
