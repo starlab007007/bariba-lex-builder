@@ -12,6 +12,22 @@ const reply = (status: number, code: string) => new Response(JSON.stringify({ co
 });
 const clean = (s: unknown) => typeof s === 'string' ? s.normalize('NFC').replace(/\s+/g, ' ').trim() : '';
 const systemPrompt = 'Tu es DUNYA, assistant vocal de FITILA. Réponds en français, en une à trois phrases courtes, sans markdown. Utilise uniquement les informations fiables disponibles. Si tu ne sais pas, dis-le. Ne corrige jamais une transcription en inventant une intention.';
+// A Baatɔnum answer is translated sentence by sentence by a CPU model (about 4 s each): keep it to one or two very short sentences.
+const systemPromptBba = 'Tu es DUNYA, assistant vocal de FITILA. Réponds en français, en une ou deux phrases très courtes (moins de 12 mots chacune), sans markdown, avec des mots simples. Utilise uniquement les informations fiables disponibles. Si tu ne sais pas, dis-le. Ne corrige jamais une transcription en inventant une intention.';
+const BBA_MAX_SENTENCES = 2, BBA_MAX_CHARS = 200;
+function shortAnswer(value: string): string {
+  const sentences = value.split(/(?<=[.!?…])\s+/u).map(s => s.trim()).filter(Boolean);
+  let out = '';
+  for (const sentence of sentences.slice(0, BBA_MAX_SENTENCES)) {
+    if (out && (out + ' ' + sentence).length > BBA_MAX_CHARS) break;
+    out = out ? out + ' ' + sentence : sentence;
+  }
+  if (out.length > BBA_MAX_CHARS) {
+    const cut = out.lastIndexOf(' ', BBA_MAX_CHARS);
+    out = out.slice(0, cut > 40 ? cut : BBA_MAX_CHARS).replace(/[,;:\s]+$/u, '') + '.';
+  }
+  return out || value;
+}
 
 // Custom authentication: signed-in users are checked with Auth; visitors receive only this
 // bounded voice capability, never a database identity or a VPS token. Both share durable quotas.
@@ -172,11 +188,13 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
         send({ type: 'stage', stage: 'thinking' });
         const question = body.speech_only === true ? '' : lang === 'bba' ? await translate(transcript, 'bba', 'fr') : transcript;
         const greeting = lang === 'fr' ? frenchGreeting(transcript) : null;
+        const shortBba = replyLang === 'bba' && body.speech_only !== true;
         const answer = body.speech_only === true ? { response_fr: transcript, model: '' }
           : greeting ? { response_fr: greeting, model: 'fitila-attested-greeting' }
-          : await fn('fitila-ia-chat', { message: question, history, systemPrompt, max_tokens: 160, temperature: 0.3, skip_translation: true });
-        const french = clean(answer.response_fr);
+          : await fn('fitila-ia-chat', { message: question, history, systemPrompt: shortBba ? systemPromptBba : systemPrompt, max_tokens: shortBba ? 90 : 160, temperature: 0.3, skip_translation: true });
+        let french = clean(answer.response_fr);
         if (!french) throw new Error('answer_unavailable');
+        if (shortBba) french = shortAnswer(french);
         let spoken = french;
         let spokenLang: 'fr' | 'bba' = replyLang;
         if (replyLang === 'bba' && body.speech_only !== true) {
