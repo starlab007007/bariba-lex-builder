@@ -1,21 +1,21 @@
 import type { VoiceEvent } from '../../../supabase/functions/_shared/dunya-voice-core.ts';
 const messages: Record<string, string> = {
-  rate_limited: 'Le service vocal est très sollicité. Réessayez dans une minute.',
-  busy: 'Le service vocal est occupé. Réessayez dans un instant.',
-  not_configured: 'Le service vocal est momentanément indisponible.',
-  quota_unavailable: 'Le service vocal est momentanément indisponible.',
-  auth_required: 'Votre session a expiré. Reconnectez-vous ou continuez comme visiteur.',
-  invalid_audio: 'Ce vocal ne peut pas être lu. Réenregistrez-le.',
-  transcription_unavailable: 'La reconnaissance vocale est indisponible. Votre enregistrement est conservé à l’écran ; réessayez ou écrivez votre message.',
+  rate_limited: 'Service très sollicité. Réessayez dans une minute.',
+  busy: 'Service occupé. Réessayez.',
+  not_configured: 'Service vocal indisponible.',
+  quota_unavailable: 'Service vocal indisponible.',
+  auth_required: 'Session expirée. Reconnectez-vous.',
+  invalid_audio: 'Vocal illisible. Réenregistrez.',
+  transcription_unavailable: 'Reconnaissance indisponible. Réessayez ou écrivez.',
   clarification_required: 'Je n’ai pas bien compris. Pouvez-vous répéter ?',
-  translation_unavailable: 'Je n’arrive pas à traduire votre demande. Reformulez ou essayez en français.',
-  translation_fallback: 'La traduction est indisponible : réponse en français.',
-  asr_fallback: 'Reconnaissance vocale de secours utilisée.',
-  tts_fallback: 'Voix de secours utilisée pour cette réponse.',
-  brain_rate_limited: 'Le service de réponse IA est temporairement limité. Réessayez dans un moment.',
-  brain_unavailable: 'La réponse conversationnelle est temporairement indisponible. Votre vocal a bien été compris ; réessayez plus tard.',
+  translation_unavailable: 'Traduction impossible. Reformulez.',
+  translation_fallback: 'Réponse en français (traduction indisponible).',
+  asr_fallback: 'Reconnaissance de secours.',
+  tts_fallback: 'Voix de secours.',
+  brain_rate_limited: 'IA limitée. Réessayez dans un moment.',
+  brain_unavailable: 'Vocal compris, réponse indisponible. Réessayez.',
 };
-export const voiceMessage = (code?: string): string => messages[code ?? ''] ?? 'Service vocal momentanément indisponible. Réessayez.';
+export const voiceMessage = (code?: string): string => messages[code ?? ''] ?? 'Service vocal indisponible. Réessayez.';
 
 /** Incremental NDJSON parser: handles UTF-8/network boundaries and rejects truncated responses. */
 export async function consumeVoiceStream(
