@@ -394,6 +394,9 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
           TARGET_DIR: ${{ steps.prod.outputs.dir }}
+        # Les etapes run: s'executent dans fitila_flutter/ (defaults.run) alors
+        # que les APK sont copies dans ../apk-publish a l'etape precedente.
+        working-directory: ${{ github.workspace }}
         run: |
           ls -l apk-publish/
           status=0
