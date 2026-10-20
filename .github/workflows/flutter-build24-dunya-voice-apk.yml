@@ -135,7 +135,14 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p build/ci-report
-          flutter analyze 2>&1 | tee build/ci-report/analyze.txt
+          status=0
+          flutter analyze 2>&1 | tee build/ci-report/analyze.txt || status=$?
+          # Surface each analyzer finding as a GitHub annotation (artifacts are not always readable).
+          grep -E ' (error|warning|info) • ' build/ci-report/analyze.txt | head -50 | while IFS= read -r line; do
+            loc=$(echo "$line" | awk -F' • ' '{print $3}'); file=${loc%%:*}; rest=${loc#*:}; ln=${rest%%:*}
+            echo "::error file=fitila_flutter/${file},line=${ln}::$(echo "$line" | awk -F' • ' '{print $2}')"
+          done
+          exit $status
 
       - name: Provide swap for native compilation and tests
         working-directory: .
