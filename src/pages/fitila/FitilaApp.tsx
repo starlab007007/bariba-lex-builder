@@ -361,7 +361,7 @@ function AppContent() {
   const location = useLocation();
   const reduceMotion = useReducedMotion();
   // Écrans « flux » (séance, révision, scènes, fondation, thème, souvenir) : leur bouton retour prend la place du menu.
-  const hideMenuButton = /^\/(learn\/(daily|review|scenes|foundations|themes|voice)|handunia\/memory)/.test(location.pathname);
+  const hideMenuButton = /^\/(dunya|learn\/(daily|review|scenes|foundations|themes|voice)|handunia\/memory)/.test(location.pathname);
 
   useHFPreWarm();
   useExtendedNotifications();

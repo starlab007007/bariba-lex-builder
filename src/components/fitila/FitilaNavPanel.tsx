@@ -14,7 +14,7 @@ const EXPLORER: Item[] = [
   { label: 'Dictionnaire', path: '/dictionary', icon: BookOpen },
   { label: 'Classe', path: '/classe', icon: ClipboardList },
   { label: 'IA', path: '/ia', icon: Sparkles },
-  { label: 'DUNYA IA', path: '/dunya', icon: BrainCircuit, desc: 'Intelligence locale · mémoire privée · hors Internet' },
+  { label: 'DUNYA IA', path: '/dunya', icon: BrainCircuit, desc: 'Assistant vocal FR · Baatɔnum' },
   { label: 'Traducteur', path: '/translator', icon: Languages },
   { label: 'Apprendre', path: '/learn', icon: GraduationCap },
   { label: 'Créateur', path: '/creator', icon: Clapperboard },

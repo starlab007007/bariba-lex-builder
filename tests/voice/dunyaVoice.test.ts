@@ -189,5 +189,5 @@ Deno.test('Mistral quota is distinct from a busy speech CPU and does not invent 
   let message = '';
   try { await consumeVoiceStream(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode(r.body)); c.close(); } }), () => {}); }
   catch (e) { message = e instanceof Error ? e.message : ''; }
-  assert(message.includes('service de réponse IA') && message.includes('limité'));
+  assert(message.includes('IA limitée') && !message.includes('occupé'));
 });

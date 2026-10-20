@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Captions, CaptionsOff, Check, ChevronDown, Copy, Languages, Menu, MessageSquare, Mic, MicOff, Send, Settings2, Square, Volume2, X, Paperclip, Pause, Play } from 'lucide-react';
+import { Captions, CaptionsOff, Copy, Keyboard, Menu, Mic, MoreHorizontal, Paperclip, Pause, Play, RotateCcw, Send, Settings2, Square, Volume2, X } from 'lucide-react';
 import { runServerVoice, voiceMessage, type VoiceEvent } from '@/lib/dunya/serverVoice';
 import TranscriptionReview from '@/components/voice/TranscriptionReview';
 import { replaceTranscriptDraft, type TranscriptRepair } from '@/lib/voice/transcriptionReview';
@@ -10,11 +10,10 @@ import { hasFrenchRecognition, loadHistory, loadPreference, looksFrench, MODE_LA
 
 type Phase = 'idle' | 'listening' | 'thinking' | 'speaking';
 type Props = { onOpenMenu?: () => void; offlineAnswer?: (question: string) => string };
-const MODE_HINT: Record<DunyaWebMode, string> = {
-  fr: 'DUNYA écoute et répond en français.', bba: 'DUNYA écoute et répond en baatɔnum.', both: 'DUNYA répond dans la langue de votre demande.',
-};
+const MODE_SHORT: Record<DunyaWebMode, string> = { fr: 'Français', bba: 'Baatɔnum', both: 'Les deux' };
+const MODE_TINY: Record<DunyaWebMode, string> = { fr: 'FR', bba: 'Baatɔnum', both: 'Les 2' };
 const SUGGESTIONS: Record<DunyaWebMode, string[]> = {
-  fr: ['Explique-moi la rotation des cultures', 'Comment dit-on merci en baatɔnum ?'], bba: ['A kua', 'Bɛɛ ka weru'], both: ['Comment dit-on merci en baatɔnum ?', 'A kua'],
+  fr: ['Rotation des cultures ?', 'Dire merci en baatɔnum'], bba: ['A kua', 'Bɛɛ ka weru'], both: ['Dire merci en baatɔnum', 'A kua'],
 };
 const uid = () => crypto.randomUUID();
 
@@ -27,13 +26,12 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
   const [status, setStatus] = useState<string | null>(null), [notice, setNotice] = useState<string | null>(null);
   const [textView, setTextView] = useState(false), [draft, setDraft] = useState('');
   const [transcriptionReview, setTranscriptionReview] = useState<TranscriptRepair | null>(null), [selectedTranscript, setSelectedTranscript] = useState('');
-  const [modePicker, setModePicker] = useState(false), [settingsOpen, setSettingsOpen] = useState(false);
-  const [onboarded, setOnboarded] = useState(() => loadPreference('onboarded', false));
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [handsFree, setHandsFree] = useState(() => loadPreference('handsFree', true));
   const [subtitles, setSubtitles] = useState(() => loadPreference('subtitles', true));
   const [frSubtitles, setFrSubtitles] = useState(() => loadPreference('frSubtitles', false));
   const [reviewStt, setReviewStt] = useState(() => loadPreference('reviewStt', false));
-  const [muted, setMuted] = useState(false), [paused, setPaused] = useState(false);
+  const [paused, setPaused] = useState(false), [moreOpen, setMoreOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [connected, setConnected] = useState(() => typeof navigator !== 'undefined' && navigator.onLine);
   const [diagnostic, setDiagnostic] = useState<{ request?: string; asr?: string; tts?: string; elapsed?: number }>({});
@@ -57,6 +55,12 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
     return () => { alive = false; data.subscription.unsubscribe(); };
   }, []);
   useEffect(() => saveHistory(mode, turns), [mode, turns]);
+  useEffect(() => {
+    if (!moreOpen && !settingsOpen) return;
+    const close = (e: KeyboardEvent) => { if (e.key === 'Escape') { setMoreOpen(false); setSettingsOpen(false); } };
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, [moreOpen, settingsOpen]);
   useEffect(() => {
     const sync = () => setConnected(navigator.onLine);
     window.addEventListener('online', sync);
@@ -89,7 +93,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
         audioCache.current.get(oldest)?.forEach(URL.revokeObjectURL); audioCache.current.delete(oldest);
       }
     };
-    setPhase('thinking'); setCaption(''); setSubCaption(null); setNotice(null); setStatus(input.audio ? 'Je vous comprends…' : 'Je prépare votre réponse…');
+    setPhase('thinking'); setCaption(''); setSubCaption(null); setNotice(null); setStatus(input.audio ? 'Je comprends…' : 'Je réfléchis…');
     setDiagnostic({});
     try {
       if (!navigator.onLine) {
@@ -97,7 +101,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
         const local = offlineAnswer?.(input.text ?? '') ?? 'Aucune ressource locale disponible.';
         setTurns(t => [...t, { id: uid(), role: 'user', text: input.text ?? '', lang: input.lang, createdAt: Date.now() },
           { id: assistantId, role: 'assistant', text: local, lang: 'fr', createdAt: Date.now() }]);
-        setNotice('Hors ligne : extrait des ressources locales FITILA.'); setCaption(local); setPhase('speaking'); await speakFrench(local); return;
+        setNotice('Hors ligne · ressources locales'); setCaption(local); setPhase('speaking'); await speakFrench(local); return;
       }
       await runServerVoice({
         text: input.text, audio: input.audio, lang: input.lang, replyLang: input.replayId ? input.lang : mode === 'both' ? input.lang : mode,
@@ -108,7 +112,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           if (!active()) return;
           setDiagnostic(d => ({ ...d, request: event.request_id, elapsed: event.elapsed_ms }));
           if (event.type === 'stage' && !audioReceived) {
-            const labels: Record<string, string> = { waiting: 'Un instant, je prépare la voix…', transcribing: 'Je vous comprends…', analyzing_transcript: 'Je compare les formulations FITILA…', thinking: 'Je prépare votre réponse…', synthesizing: 'Je prépare la voix…' };
+            const labels: Record<string, string> = { waiting: 'Un instant…', transcribing: 'Je comprends…', analyzing_transcript: 'Je vérifie…', thinking: 'Je réfléchis…', synthesizing: 'Je prépare la voix…' };
             setStatus(labels[event.stage ?? ''] ?? null);
           }
           if (event.type === 'notice') setNotice(voiceMessage(event.code));
@@ -116,7 +120,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
             setDiagnostic(d => ({ ...d, asr: event.engine }));
             if (input.replayId) return;
             if (input.audio && reviewStt) {
-              session.current = false; setDraft(event.text ?? ''); setTextView(true); setNotice('Vérifiez la transcription puis envoyez.');
+              session.current = false; setDraft(event.text ?? ''); setTextView(true); setNotice('Vérifiez puis envoyez.');
               setSelectedTranscript(event.text ?? ''); setTranscriptionReview(event.repair ?? null);
             } else setTurns(t => [...t, { id: uid(), role: 'user', text: event.text ?? '', lang: event.lang ?? input.lang, createdAt: Date.now() }]);
           }
@@ -161,7 +165,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
         setTurns(t => [...t, { id: uid(), role: 'user', text: input.text!, lang: input.lang, createdAt: Date.now() },
           { id: assistantId, role: 'assistant', text: excerpt, lang: 'fr', createdAt: Date.now() }]);
         setCaption(excerpt);
-        setNotice('Service injoignable : extrait du dictionnaire FITILA, sans modèle génératif local.');
+        setNotice('Service injoignable · extrait du dictionnaire');
       } else {
         setNotice(error instanceof Error ? error.message : 'Service vocal indisponible.');
       }
@@ -187,7 +191,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
     finally { if (!controller.signal.aborted) setPhase('idle'); }
   };
   const listenTurn = useCallback(async () => {
-    if (!session.current || muted) return;
+    if (!session.current) return;
     const controller = new AbortController(); abort.current = controller;
     const finish = new AbortController(); recordStop.current = finish;
     setPhase('listening'); setCaption(''); setSubCaption(null); setLevel(0); setNotice(null);
@@ -205,22 +209,21 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
       if (controller.signal.aborted || !session.current) return;
       if (!audio && !text.trim()) {
         if (++emptyListens.current < 2 && handsFree) void listenTurnRef.current();
-        else { session.current = false; setPhase('idle'); setNotice('Je n’ai pas entendu de voix. Touchez la sphère pour réessayer.'); }
+        else { session.current = false; setPhase('idle'); setNotice('Je n’ai rien entendu. Réessayez.'); }
         return;
       }
       emptyListens.current = 0;
       await performTurn({ text: audio ? undefined : text, audio: audio ?? undefined, lang, spoken: true });
     } catch (error) {
       if (controller.signal.aborted) return;
-      session.current = false; setPhase('idle'); setNotice(error instanceof DOMException && error.name === 'NotAllowedError' ? 'Autorisez le microphone dans votre navigateur pour parler à DUNYA.' : error instanceof Error ? error.message : 'Microphone indisponible.');
+      session.current = false; setPhase('idle'); setNotice(error instanceof DOMException && error.name === 'NotAllowedError' ? 'Autorisez le micro dans le navigateur.' : error instanceof Error ? error.message : 'Microphone indisponible.');
     }
-  }, [handsFree, mode, muted, performTurn]);
+  }, [handsFree, mode, performTurn]);
   listenTurnRef.current = listenTurn;
   const onOrb = async () => {
     if (phase === 'listening') { recordStop.current?.abort(); return; }
     if (phase === 'thinking') { endSession(); return; }
     if (phase === 'speaking') { interrupt(); session.current = true; void listenTurn(); return; }
-    if (muted) { setNotice('Réactivez le microphone pour parler.'); return; }
     session.current = true; emptyListens.current = 0; void listenTurn();
   };
   const sendText = async () => {
@@ -228,7 +231,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
     setDraft(''); setTranscriptionReview(null); session.current = false;
     await runTurn(text, mode === 'both' ? looksFrench(text, 0.9) ? 'fr' : 'bba' : mode, false);
   };
-  const changeMode = (next: DunyaWebMode) => { endSession(); setMode(next); savePreference('mode', next); setTurns(loadHistory(next)); setModePicker(false); };
+  const changeMode = (next: DunyaWebMode) => { endSession(); setMode(next); savePreference('mode', next); setTurns(loadHistory(next)); };
   const setPref = <T,>(key: string, value: T, setter: (v: T) => void) => { setter(value); savePreference(key, value); };
   const uploadVoice = async (file?: File) => {
     if (!file) return;
@@ -237,96 +240,106 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
   };
 
   const label =
-    phase === 'listening' ? 'Je vous écoute…'
+    phase === 'listening' ? 'Je vous écoute'
       : phase === 'thinking' ? status ?? 'Je réfléchis…'
-        : phase === 'speaking' ? 'Touchez pour m’interrompre'
-          : muted ? 'Micro coupé' : 'Touchez la sphère pour parler';
+        : phase === 'speaking' ? 'Appuyez pour interrompre'
+          : 'Appuyez pour parler';
 
   const lastAssistant = [...turns].reverse().find((t) => t.role === 'assistant');
   const lastUser = [...turns].reverse().find((t) => t.role === 'user')?.text ?? '';
+  const busy = phase !== 'idle';
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col overflow-hidden text-white" style={{ background: '#17131F' }}>
-      <header className="flex shrink-0 items-center gap-1 px-2 pb-2 pt-3 sm:gap-2 md:px-5">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden text-white"
+      style={{ background: 'radial-gradient(120% 70% at 50% 38%, #2A2135 0%, #15111C 55%, #0E0B13 100%)' }}>
+      <header className="flex shrink-0 items-center gap-2 px-3 pb-2 pt-3 md:px-6 md:pt-5">
         {onOpenMenu && (
-          <button onClick={onOpenMenu} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/10 md:hidden" aria-label="Menu">
-            <Menu className="h-5 w-5" />
-          </button>
+          <IconButton label="Menu" onClick={onOpenMenu} className="md:hidden"><Menu className="h-5 w-5" /></IconButton>
         )}
-        <button onClick={() => setModePicker(true)} className="flex min-h-11 min-w-0 max-w-[104px] items-center gap-1 rounded-full bg-[#2A2433] px-2 py-2 text-sm font-extrabold sm:max-w-none sm:gap-2 sm:px-4">
-          <Languages className="hidden h-4 w-4 shrink-0 text-[#D4A23A] sm:block" />
-          <span className="truncate">{MODE_LABEL[mode]}</span>
-          <ChevronDown className="h-4 w-4 opacity-70" />
-        </button>
-        <span role="status" aria-label={connected ? 'DUNYA en ligne' : 'DUNYA hors ligne, ressources locales'}
-          className={`shrink-0 rounded-full px-2 py-1.5 text-[11px] font-extrabold sm:px-3 ${connected ? 'bg-[#52A47A]/15 text-[#8FD3A8]' : 'bg-[#E0A03C]/15 text-[#E8C47E]'}`}>
-          <span className="sm:hidden" aria-hidden="true">{connected ? '●' : '○'}</span>
-          <span className="hidden sm:inline">{connected ? 'DUNYA · En ligne' : 'DUNYA · Ressources locales'}</span>
-        </span>
+        <div role="radiogroup" aria-label="Langue de DUNYA" className="flex min-w-0 rounded-full bg-white/[0.07] p-1 ring-1 ring-white/10">
+          {(Object.keys(MODE_SHORT) as DunyaWebMode[]).map((m) => (
+            <button key={m} role="radio" aria-checked={m === mode} onClick={() => m !== mode && changeMode(m)}
+              aria-label={MODE_SHORT[m]}
+              className={`min-h-9 whitespace-nowrap rounded-full px-2.5 text-[14px] font-bold transition-colors sm:px-4 ${m === mode ? 'bg-[#E3B04B] text-[#16121C]' : 'text-white/70 hover:text-white'}`}>
+              <span className="sm:hidden">{MODE_TINY[m]}</span><span className="hidden sm:inline">{MODE_SHORT[m]}</span>
+            </button>
+          ))}
+        </div>
+        {!connected && <span className="hidden rounded-full bg-[#E0A03C]/15 px-2.5 py-1 text-xs font-bold text-[#F0C979] sm:inline">Hors ligne</span>}
         <div className="flex-1" />
         <input ref={fileInput} type="file" accept="audio/*,.webm,.wav,.m4a,.mp3,.ogg" className="hidden" aria-label="Choisir un vocal" onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; void uploadVoice(file); }} />
-        <button onClick={() => fileInput.current?.click()} className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/10" aria-label="Joindre un vocal"><Paperclip className="h-5 w-5" /></button>
-        <button onClick={() => setTextView((v) => !v)} className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/10" aria-label="Conversation écrite">
-          <MessageSquare className="h-5 w-5" />
+        <button onClick={() => setTextView((v) => !v)} aria-label={textView ? 'Voix' : 'Écrire'} title={textView ? 'Voix' : 'Écrire'}
+          className={`flex h-11 shrink-0 items-center gap-2 rounded-full px-3 text-sm font-bold ring-1 ring-white/10 transition-colors ${textView ? 'bg-white text-[#16121C]' : 'bg-white/[0.07] text-white hover:bg-white/[0.12]'}`}>
+          {textView ? <Mic className="h-[18px] w-[18px]" /> : <Keyboard className="h-[18px] w-[18px]" />}
+          <span className="hidden sm:inline">{textView ? 'Voix' : 'Écrire'}</span>
         </button>
-        <button onClick={() => setSettingsOpen(true)} className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/10" aria-label="Réglages">
-          <Settings2 className="h-5 w-5" />
-        </button>
+        <div className="relative">
+          <IconButton label="Plus d’options" onClick={() => setMoreOpen((v) => !v)}><MoreHorizontal className="h-5 w-5" /></IconButton>
+          {moreOpen && (
+            <>
+              <div className="fixed inset-0 z-[120]" onClick={() => setMoreOpen(false)} />
+              <div role="menu" className="absolute right-0 top-12 z-[130] w-60 overflow-hidden rounded-2xl bg-[#221C2B] p-1.5 shadow-2xl ring-1 ring-white/10">
+                <MenuItem icon={<Paperclip className="h-4 w-4" />} label="Envoyer un vocal" onClick={() => { setMoreOpen(false); fileInput.current?.click(); }} />
+                <MenuItem icon={<RotateCcw className="h-4 w-4" />} label="Nouvelle conversation" onClick={() => { setMoreOpen(false); endSession(); setTurns([]); saveHistory(mode, []); }} />
+                <MenuItem icon={<Settings2 className="h-4 w-4" />} label="Réglages" onClick={() => { setMoreOpen(false); setSettingsOpen(true); }} />
+              </div>
+            </>
+          )}
+        </div>
       </header>
 
       {textView ? (
-        <div ref={scroller} className="mx-auto w-full max-w-3xl flex-1 space-y-2 overflow-y-auto px-3 pb-3">
-          {turns.length === 0 && <p className="mt-16 text-center text-white/70">Écrivez ou parlez à DUNYA.</p>}
-          {turns.map((t) => (
-            <article key={t.id} className={`rounded-2xl p-3.5 ${t.role === 'user' ? 'ml-12 bg-[#3A3146]' : 'mr-10 bg-[#241E2D]'}`}>
-              <p className="whitespace-pre-wrap text-[15.5px] leading-6">{t.text}</p>
-              {t.role === 'assistant' && t.subtitle && frSubtitles && <p className="mt-1.5 text-[13px] text-white/55">{t.subtitle}</p>}
-              {t.role === 'assistant' && (
-                <div className="mt-1.5 flex gap-1">
-                  <button
-                    className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10"
-                    aria-label="Réécouter"
-                    onClick={() => void replay(t)}
-                  >
-                    <Volume2 className="h-4 w-4 text-[#D4A23A]" />
-                  </button>
-                  <button className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10" aria-label="Copier" onClick={() => void navigator.clipboard?.writeText(t.text)}>
-                    <Copy className="h-4 w-4 text-white/55" />
-                  </button>
-                </div>
-              )}
+        <div ref={scroller} className="mx-auto w-full max-w-3xl flex-1 space-y-3 overflow-y-auto px-4 pb-3 pt-2">
+          {turns.length === 0 && <p className="mt-20 text-center text-lg font-semibold text-white/60">Écrivez votre message</p>}
+          {turns.map((t) => t.role === 'user' ? (
+            <article key={t.id} className="ml-auto max-w-[85%] rounded-[22px] rounded-br-md bg-[#E3B04B] px-4 py-2.5 text-[#16121C]">
+              <p className="whitespace-pre-wrap text-[16px] leading-6">{t.text}</p>
+            </article>
+          ) : (
+            <article key={t.id} className="mr-auto max-w-[90%]">
+              <div className="rounded-[22px] rounded-bl-md bg-white/[0.07] px-4 py-3 ring-1 ring-white/10">
+                <p className="whitespace-pre-wrap text-[16px] leading-[1.6]">{t.text}</p>
+                {t.subtitle && frSubtitles && <p className="mt-2 border-t border-white/10 pt-2 text-[14px] text-white/60">{t.subtitle}</p>}
+              </div>
+              <div className="mt-1 flex gap-1 pl-1">
+                <SmallAction label="Écouter" onClick={() => void replay(t)}><Volume2 className="h-4 w-4" /></SmallAction>
+                <SmallAction label="Copier" onClick={() => void navigator.clipboard?.writeText(t.text)}><Copy className="h-4 w-4" /></SmallAction>
+              </div>
             </article>
           ))}
           {transcriptionReview && <TranscriptionReview report={transcriptionReview} selected={selectedTranscript} onChoose={text => { const result = replaceTranscriptDraft(draft, selectedTranscript, text); if (result.replaced) { setDraft(result.text); setSelectedTranscript(text); } return result.replaced; }} />}
         </div>
       ) : (
-        <div className="flex flex-1 flex-col items-center px-4">
+        <div className="flex min-h-0 flex-1 flex-col items-center px-5">
           <div className="flex-1" />
-          <button onClick={() => void onOrb()} aria-label={label} className="relative grid place-items-center outline-none">
+          <button onClick={() => void onOrb()} aria-label={label} className="relative grid place-items-center rounded-full outline-none focus-visible:ring-4 focus-visible:ring-[#E3B04B]/50">
             <Orb phase={phase} level={level} />
           </button>
-          <p className="mt-5 text-base font-bold" role="status" aria-live="polite">{label}</p>
-          {lastAssistant && <div className="mt-3 flex gap-2">
-            <button onClick={() => void replay(lastAssistant)} className="flex min-h-11 items-center gap-2 rounded-full bg-white/10 px-4 text-sm"><Volume2 className="h-4 w-4" />Réécouter</button>
-            {phase === 'speaking' && <button onClick={() => { if (paused) resumeSpeaking(); else pauseSpeaking(); setPaused(!paused); }} className="flex min-h-11 items-center gap-2 rounded-full bg-white/10 px-4 text-sm">{paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}{paused ? 'Reprendre' : 'Pause'}</button>}
-          </div>}
-          <div className="flex-1" />
-          {subtitles && (
-            <div className="mx-auto mb-3 max-w-2xl text-center">
-              {phase === 'thinking' && lastUser && <p className="line-clamp-3 italic text-white/60">« {lastUser} »</p>}
-              {caption && <p className="line-clamp-5 text-[19px] font-semibold leading-snug">{caption}</p>}
-              {subCaption && <p className="mt-1.5 line-clamp-3 text-sm text-white/55">{subCaption}</p>}
+          <p className="mt-6 text-center text-xl font-bold tracking-tight" role="status" aria-live="polite">{label}</p>
+          {lastAssistant && phase !== 'listening' && (
+            <div className="mt-4 flex gap-2">
+              <Pill onClick={() => void replay(lastAssistant)}><Volume2 className="h-4 w-4" />Réécouter</Pill>
+              {phase === 'speaking' && (
+                <Pill onClick={() => { if (paused) resumeSpeaking(); else pauseSpeaking(); setPaused(!paused); }}>
+                  {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}{paused ? 'Reprendre' : 'Pause'}
+                </Pill>
+              )}
             </div>
           )}
-          {notice && <p role="status" aria-live="polite" className="mb-2 max-w-xl text-center text-[12.5px] text-[#E9C46A]">{notice}</p>}
+          <div className="flex-1" />
+          {subtitles && (caption || (phase === 'thinking' && lastUser)) && (
+            <div className="mx-auto mb-4 w-full max-w-2xl text-center">
+              {phase === 'thinking' && lastUser && <p className="line-clamp-2 text-base text-white/55">« {lastUser} »</p>}
+              {caption && <p className="line-clamp-5 text-[21px] font-semibold leading-snug md:text-2xl">{caption}</p>}
+              {subCaption && <p className="mt-2 line-clamp-3 text-[15px] text-white/60">{subCaption}</p>}
+            </div>
+          )}
           {turns.length === 0 && phase === 'idle' && (
-            <div className="mb-3 flex max-w-full gap-2 overflow-x-auto pb-1">
+            <div className="mb-4 flex max-w-xl flex-wrap justify-center gap-2">
               {SUGGESTIONS[mode].map((s) => (
-                <button
-                  key={s}
+                <button key={s}
                   onClick={() => void runTurn(s, mode === 'bba' ? 'bba' : looksFrench(s, 0.9) ? 'fr' : 'bba', false)}
-                  className="shrink-0 rounded-full bg-[#2A2433] px-4 py-2 text-[13px]"
-                >
+                  className="rounded-full bg-white/[0.06] px-4 py-2.5 text-[14px] font-medium text-white/85 ring-1 ring-white/10 hover:bg-white/[0.1]">
                   {s}
                 </button>
               ))}
@@ -335,116 +348,52 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
         </div>
       )}
 
-      {textView && notice && <p role="status" aria-live="polite" className="px-4 text-center text-sm text-[#E9C46A]">{notice}</p>}
+      {notice && <p role="status" aria-live="polite" className="mx-auto mb-2 max-w-xl px-4 text-center text-sm font-medium text-[#F0C979]">{notice}</p>}
       {textView ? (
-        <footer className="mx-auto flex w-full max-w-3xl items-end gap-2 px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-1.5">
+        <footer className="mx-auto flex w-full max-w-3xl items-end gap-2 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-1.5">
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                void sendText();
-              }
-            }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendText(); } }}
             rows={1}
-            placeholder={mode === 'bba' ? 'Baatɔnum…' : 'Écrire à DUNYA…'}
-            className="max-h-28 min-h-12 flex-1 resize-none rounded-3xl bg-[#241E2D] px-4 py-3 text-[16px] text-white outline-none placeholder:text-white/40"
+            placeholder={mode === 'bba' ? 'Écrire en baatɔnum…' : 'Écrire à DUNYA…'}
+            className="max-h-32 min-h-[52px] flex-1 resize-none rounded-[26px] bg-white/[0.08] px-5 py-3.5 text-[16px] text-white outline-none ring-1 ring-white/10 placeholder:text-white/40 focus:ring-[#E3B04B]/60"
           />
           <button
-            onClick={() => {
-              if (phase === 'thinking') {
-                turnCounter.current += 1;
-                interrupt();
-                setPhase('idle');
-              } else {
-                void sendText();
-              }
-            }}
-            className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#D4A23A] text-[#17131F]"
-            aria-label="Envoyer"
+            onClick={() => { if (phase === 'thinking') { turnCounter.current += 1; interrupt(); setPhase('idle'); } else void sendText(); }}
+            className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-[#E3B04B] text-[#16121C] disabled:opacity-40"
+            disabled={phase !== 'thinking' && !draft.trim()}
+            aria-label={phase === 'thinking' ? 'Arrêter' : 'Envoyer'}
           >
             {phase === 'thinking' ? <Square className="h-5 w-5" /> : <Send className="h-5 w-5" />}
           </button>
         </footer>
       ) : (
-        <footer className="mx-auto flex w-full max-w-md items-start justify-between px-8 pb-[max(14px,env(safe-area-inset-bottom))] pt-1">
-          <RoundButton
-            label={muted ? 'Micro coupé' : 'Micro'}
-            active={!muted}
-            onClick={() => {
-              const next = !muted;
-              setMuted(next);
-              if (next) endSession();
-            }}
-            icon={muted ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
-          />
-          <RoundButton
-            label="Sous-titres"
-            active={subtitles}
-            onClick={() => setPref('subtitles', !subtitles, setSubtitles)}
-            icon={subtitles ? <Captions className="h-6 w-6" /> : <CaptionsOff className="h-6 w-6" />}
-          />
-          <RoundButton label="Terminer" active={session.current} danger onClick={endSession} icon={<X className="h-6 w-6" />} />
+        <footer className="mx-auto flex w-full max-w-sm items-center justify-center gap-4 px-6 pb-[max(18px,env(safe-area-inset-bottom))] pt-1">
+          <Pill onClick={() => setPref('subtitles', !subtitles, setSubtitles)} active={subtitles} aria-pressed={subtitles}>
+            {subtitles ? <Captions className="h-4 w-4" /> : <CaptionsOff className="h-4 w-4" />}Sous-titres
+          </Pill>
+          {busy && <Pill onClick={endSession} danger><X className="h-4 w-4" />Arrêter</Pill>}
         </footer>
-      )}
-
-      {(modePicker || !onboarded) && (
-        <Sheet onClose={onboarded ? () => setModePicker(false) : undefined}>
-          <h2 className="text-xl font-black text-[#17131F]">{onboarded ? 'Langue de la conversation' : 'Bienvenue dans DUNYA'}</h2>
-          <p className="mt-1 text-sm text-[#7D7566]">Chaque langue garde sa propre conversation.</p>
-          <div className="mt-3 space-y-2">
-            {(Object.keys(MODE_LABEL) as DunyaWebMode[]).map((m) => (
-              <button
-                key={m}
-                onClick={() => {
-                  changeMode(m);
-                  if (!onboarded) {
-                    setOnboarded(true);
-                    savePreference('onboarded', true);
-                  }
-                }}
-                className={`flex w-full items-center gap-3 rounded-2xl p-4 text-left ${m === mode && onboarded ? 'bg-[#17131F] text-white' : 'bg-white text-[#17131F]'}`}
-              >
-                <div className="flex-1">
-                  <div className="text-base font-black">{MODE_LABEL[m]}</div>
-                  <div className={`text-[12.5px] ${m === mode && onboarded ? 'text-white/70' : 'text-[#7D7566]'}`}>{MODE_HINT[m]}</div>
-                </div>
-                {m === mode && onboarded && <Check className="h-5 w-5 text-[#D4A23A]" />}
-              </button>
-            ))}
-          </div>
-        </Sheet>
       )}
 
       {settingsOpen && (
         <Sheet onClose={() => setSettingsOpen(false)}>
-          <h2 className="text-xl font-black text-[#17131F]">Réglages DUNYA</h2>
-          <div className="mt-3 space-y-1 text-[#17131F]">
-            <Toggle label="Mains libres (DUNYA réécoute après chaque réponse)" value={handsFree} onChange={(v) => setPref('handsFree', v, setHandsFree)} />
-            <Toggle label="Sous-titres en direct" value={subtitles} onChange={(v) => setPref('subtitles', v, setSubtitles)} />
-            <Toggle label="Sous-titres français en mode Baatɔnum" value={frSubtitles} onChange={(v) => setPref('frSubtitles', v, setFrSubtitles)} />
-            <Toggle label="Vérifier la transcription Baatɔnum avant envoi" value={reviewStt} onChange={(v) => setPref('reviewStt', v, setReviewStt)} />
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-black text-[#16121C]">Réglages</h2>
+            <button onClick={() => setSettingsOpen(false)} aria-label="Fermer" className="grid h-10 w-10 place-items-center rounded-full hover:bg-black/5"><X className="h-5 w-5 text-[#16121C]" /></button>
           </div>
-          <p className="mt-3 text-sm text-[#7D7566]">Le traitement est automatique avec Internet : Omnilingual ASR (reconnaissance), ByT5 (traduction) et Meta MMS-TTS Baatɔnum (voix). Sans Internet : recherche textuelle dans les ressources locales déjà présentes ; pas de modèle vocal ni de LLM téléchargé automatiquement par le navigateur.</p>
-          {isAdmin && <div className="mt-3 rounded-xl bg-[#F4EFE0] p-3 text-[12px] text-[#4A4356]" aria-label="Diagnostic vocal réel">
-            <p><b>Dernier échange :</b> {diagnostic.request ?? 'aucun'}</p>
-            <p><b>Reconnaissance utilisée :</b> {diagnostic.asr ?? 'non exécutée'}</p>
-            <p><b>Synthèse utilisée :</b> {diagnostic.tts ?? 'non exécutée'}</p>
-            <p><b>Traitement serveur :</b> {diagnostic.elapsed == null ? '—' : `${(diagnostic.elapsed / 1000).toFixed(2)} s`}</p>
-            <p>MMS-TTS : licence CC BY-NC 4.0.</p>
+          <div className="mt-2 divide-y divide-[#E8E1CF] text-[#16121C]">
+            <Toggle label="Mains libres" value={handsFree} onChange={(v) => setPref('handsFree', v, setHandsFree)} />
+            <Toggle label="Sous-titres" value={subtitles} onChange={(v) => setPref('subtitles', v, setSubtitles)} />
+            <Toggle label="Traduction en français" value={frSubtitles} onChange={(v) => setPref('frSubtitles', v, setFrSubtitles)} />
+            <Toggle label="Relire avant envoi" value={reviewStt} onChange={(v) => setPref('reviewStt', v, setReviewStt)} />
+          </div>
+          {isAdmin && <div className="mt-4 rounded-2xl bg-[#EFE8D6] p-3 text-[12px] leading-5 text-[#4A4356]" aria-label="Diagnostic vocal réel">
+            <p><b>Échange :</b> {diagnostic.request ?? '—'}</p>
+            <p><b>Reconnaissance :</b> {diagnostic.asr ?? '—'} · <b>Voix :</b> {diagnostic.tts ?? '—'}</p>
+            <p><b>Serveur :</b> {diagnostic.elapsed == null ? '—' : `${(diagnostic.elapsed / 1000).toFixed(2)} s`} · MMS-TTS CC BY-NC 4.0</p>
           </div>}
-          <button
-            onClick={() => {
-              endSession();
-              setTurns([]);
-              saveHistory(mode, []);
-              setSettingsOpen(false);
-            }}
-            className="mt-3 rounded-full border border-[#E4DFCC] px-4 py-2 text-sm font-bold text-[#17131F]"
-          >
-            Nouvelle conversation ({MODE_LABEL[mode]})
-          </button>
         </Sheet>
       )}
     </div>
@@ -452,54 +401,81 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
 }
 
 function Orb({ phase, level }: { phase: Phase; level: number }) {
-  const palette: Record<Phase, [string, string]> = {
-    idle: ['#D4A23A', '#8C5A1E'],
-    listening: ['#F2C14E', '#E07A2E'],
-    thinking: ['#8E7CFF', '#4F3CC9'],
-    speaking: ['#5FD1A0', '#2A8C78'],
+  const palette: Record<Phase, [string, string, string]> = {
+    idle: ['#FFE3A3', '#E3B04B', '#7A4A12'],
+    listening: ['#FFE9B8', '#F2A94A', '#9A4A14'],
+    thinking: ['#D9D2FF', '#8E7CFF', '#3A2A9C'],
+    speaking: ['#C9F5DF', '#4FC892', '#155E4A'],
   };
-  const [a, b] = palette[phase];
-  const scale = phase === 'listening' ? 1 + level * 0.35 : 1;
+  const [light, mid, deep] = palette[phase];
+  const scale = phase === 'listening' ? 1 + Math.min(level, 1) * 0.28 : 1;
   return (
-    <div className="relative grid h-[250px] w-[250px] place-items-center">
-      <div
-        className={`absolute inset-0 rounded-full blur-2xl transition-all duration-150 ${phase === 'speaking' ? 'animate-pulse' : ''}`}
-        style={{ background: a, opacity: 0.22, transform: `scale(${0.85 + (scale - 1) * 1.4})` }}
-      />
-      <div
-        className={`h-40 w-40 rounded-full shadow-2xl transition-transform duration-100 ${phase === 'thinking' ? 'animate-spin' : ''}`}
+    <div className="relative grid h-[230px] w-[230px] place-items-center md:h-[270px] md:w-[270px]">
+      <div className="absolute inset-0 rounded-full blur-3xl transition-all duration-300"
+        style={{ background: mid, opacity: phase === 'idle' ? 0.18 : 0.32, transform: `scale(${0.8 + (scale - 1) * 1.6})` }} />
+      {(phase === 'listening' || phase === 'speaking') && (
+        <>
+          <span className="absolute h-44 w-44 animate-ping rounded-full md:h-52 md:w-52" style={{ border: `2px solid ${mid}`, opacity: 0.35, animationDuration: '2.2s' }} />
+          <span className="absolute h-44 w-44 animate-ping rounded-full md:h-52 md:w-52" style={{ border: `1px solid ${mid}`, opacity: 0.25, animationDuration: '2.2s', animationDelay: '1.1s' }} />
+        </>
+      )}
+      {phase === 'thinking' && (
+        <span className="absolute h-[196px] w-[196px] animate-spin rounded-full md:h-[226px] md:w-[226px]"
+          style={{ background: `conic-gradient(from 0deg, transparent 0deg, ${mid} 90deg, transparent 180deg)`, animationDuration: '1.6s',
+            WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))', mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))' }} />
+      )}
+      <div className="relative h-40 w-40 rounded-full transition-[transform,background] duration-200 md:h-48 md:w-48"
         style={{
           transform: `scale(${scale})`,
-          background: `conic-gradient(from 0deg, ${a}, ${b}, ${a}, ${b}, ${a})`,
-          animationDuration: phase === 'thinking' ? '2.5s' : undefined,
-          boxShadow: `0 0 60px ${a}55`,
-        }}
-      />
-      <div className="pointer-events-none absolute h-16 w-16 -translate-x-6 -translate-y-7 rounded-full bg-white/30 blur-md" />
+          background: `radial-gradient(circle at 32% 28%, ${light} 0%, ${mid} 38%, ${deep} 100%)`,
+          boxShadow: `0 24px 60px -12px ${mid}88, inset 0 -14px 30px ${deep}AA, inset 0 6px 18px #FFFFFF40`,
+        }}>
+        <div className="absolute left-[22%] top-[14%] h-[26%] w-[36%] rounded-full bg-white/35 blur-md" />
+      </div>
     </div>
   );
 }
 
-function RoundButton({ label, active, onClick, icon, danger }: { label: string; active: boolean; onClick: () => void; icon: ReactNode; danger?: boolean }) {
+function IconButton({ label, onClick, children, className = '' }: { label: string; onClick: () => void; children: ReactNode; className?: string }) {
   return (
-    <button onClick={onClick} className="flex flex-col items-center gap-1.5">
-      <span className={`grid h-16 w-16 place-items-center rounded-full ${danger && active ? 'bg-[#B3413A]' : 'bg-[#2A2433]'} ${active ? 'text-white' : 'text-white/50'}`}>
-        {icon}
-      </span>
-      <span className="text-[11.5px] text-white/70">{label}</span>
+    <button onClick={onClick} aria-label={label} title={label}
+      className={`grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/[0.07] ring-1 ring-white/10 hover:bg-white/[0.12] ${className}`}>
+      {children}
+    </button>
+  );
+}
+
+function Pill({ children, onClick, active = true, danger, ...rest }: { children: ReactNode; onClick: () => void; active?: boolean; danger?: boolean; 'aria-pressed'?: boolean }) {
+  return (
+    <button onClick={onClick} {...rest}
+      className={`flex min-h-12 items-center gap-2 rounded-full px-5 text-[15px] font-bold ring-1 transition-colors ${danger ? 'bg-[#C2483F] text-white ring-[#C2483F]' : active ? 'bg-white/[0.09] text-white ring-white/15 hover:bg-white/[0.14]' : 'bg-transparent text-white/55 ring-white/10'}`}>
+      {children}
+    </button>
+  );
+}
+
+function SmallAction({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
+  return (
+    <button onClick={onClick} className="flex min-h-9 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-semibold text-white/60 hover:bg-white/10 hover:text-white">
+      {children}{label}
+    </button>
+  );
+}
+
+function MenuItem({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button role="menuitem" onClick={onClick} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] font-semibold text-white hover:bg-white/10">
+      <span className="text-[#E3B04B]">{icon}</span>{label}
     </button>
   );
 }
 
 function Sheet({ children, onClose }: { children: ReactNode; onClose?: () => void }) {
   return (
-    <div className="fixed inset-0 z-[150] grid place-items-end bg-black/45 sm:place-items-center" onClick={onClose}>
-      <section
-        role="dialog"
-        aria-modal="true"
-        className="w-full max-w-lg rounded-t-[28px] bg-[#F7F3E8] p-5 pb-[max(20px,env(safe-area-inset-bottom))] sm:rounded-[28px]"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-[150] grid place-items-end bg-black/50 backdrop-blur-sm sm:place-items-center" onClick={onClose}>
+      <section role="dialog" aria-modal="true"
+        className="w-full max-w-md rounded-t-[28px] bg-[#F8F4EA] p-5 pb-[max(20px,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-[28px]"
+        onClick={(e) => e.stopPropagation()}>
         {children}
       </section>
     </div>
@@ -508,10 +484,13 @@ function Sheet({ children, onClose }: { children: ReactNode; onClose?: () => voi
 
 function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-3 py-2 text-[14px]">
+    <label className="flex min-h-14 cursor-pointer items-center justify-between gap-3 text-[16px] font-semibold">
       <span>{label}</span>
-      <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} className="h-5 w-5 accent-[#D4A23A]" />
+      <span className="relative inline-flex">
+        <input type="checkbox" role="switch" checked={value} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" />
+        <span className="h-7 w-12 rounded-full bg-[#D6CDB8] transition-colors peer-checked:bg-[#16121C] peer-focus-visible:ring-2 peer-focus-visible:ring-[#E3B04B]" />
+        <span className="absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+      </span>
     </label>
   );
 }
-
