@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - feat/dunya-byt5-beta-consent-20261020
       - feat/byt5-offline-onnx-validation-20261017
       - feat/build24-dunya-voice-offline
       - fix/flutter-keyboard-translator-20261016
