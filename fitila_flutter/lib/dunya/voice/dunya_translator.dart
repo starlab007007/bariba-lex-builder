@@ -8,6 +8,10 @@ library;
 
 import 'dunya_linguistic_quality.dart';
 
+/// The on-device ByT5 pack is shipped as a beta (manifest tested:false). It is active, but every
+/// result it produces is announced as a test result and must be double-checked.
+const dunyaOfflineTestNotice = 'Traduction hors ligne en test (bêta) : à vérifier.';
+
 typedef DunyaTranslateFn = Future<String?> Function(String text, bool toBariba);
 
 class DunyaTranslation {

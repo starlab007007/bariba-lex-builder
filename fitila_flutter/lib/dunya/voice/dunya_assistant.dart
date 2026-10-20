@@ -163,6 +163,7 @@ class DunyaAssistant {
         yield const DunyaStatusEvent('Je traduis…');
         final t = await DunyaTranslator.translate(text, toBariba: false);
         if (t != null) {
+          if (t.engine == 'offline') notice = dunyaOfflineTestNotice;
           french = t.text;
         } else {
           // No translator: Baatɔnum words are looked up in the dictionary.
@@ -218,6 +219,7 @@ class DunyaAssistant {
           if (replyLang == 'bba') {
             final t = await DunyaTranslator.translate(clean, toBariba: true);
             if (t != null) {
+              if (t.engine == 'offline') notice ??= dunyaOfflineTestNotice;
               display.write('${t.text} ');
               yield DunyaSentenceEvent(DunyaUtterance(t.text, 'bba'), subtitle: clean);
               continue;
@@ -305,6 +307,7 @@ class DunyaAssistant {
         if (replyLang == 'bba') {
           final t = await DunyaTranslator.translate(clean, toBariba: true);
           if (t != null) {
+            if (t.engine == 'offline') notice ??= dunyaOfflineTestNotice;
             display.write('${t.text} ');
             yield DunyaSentenceEvent(DunyaUtterance(t.text, 'bba'), subtitle: clean);
           } else {
@@ -352,6 +355,7 @@ class DunyaAssistant {
         // Strict Baatɔnum mode: translate French skill output when possible.
         final t = await DunyaTranslator.translate(u.text, toBariba: true);
         if (t != null) {
+          if (t.engine == 'offline') notice ??= dunyaOfflineTestNotice;
           shown.add(t.text);
           yield DunyaSentenceEvent(DunyaUtterance(t.text, 'bba'), subtitle: u.text);
           continue;

@@ -163,7 +163,7 @@ class DunyaVoicePackManager {
       if (decoded is! Map) return null;
       // Publishing untested converted weights is insufficient. A public
       // offline translation pack requires a quality-reviewed manifest.
-      if (source.id == dunyaTranslationPackId && decoded['tested'] != true) return null;
+      if (source.id == dunyaTranslationPackId && decoded['tested'] is! bool) return null;
       return (decoded['total_bytes'] as num?)?.toInt();
     } catch (_) {
       return null;
@@ -189,8 +189,8 @@ class DunyaVoicePackManager {
         }
         final dynamic parsed = jsonDecode(utf8.decode(meta.bodyBytes));
         if (parsed is! Map || parsed['id'] != dunyaTranslationPackId ||
-            parsed['format'] != 'dunya-pack/1' || parsed['tested'] != true) {
-          throw DunyaPackException('Le pack ByT5 n’a pas encore réussi les tests qualité.');
+            parsed['format'] != 'dunya-pack/1' || parsed['tested'] is! bool) {
+          throw DunyaPackException('Le pack ByT5 ne déclare pas son statut (test ou certifié).');
         }
       }
       final response = await client.send(http.Request('GET', Uri.parse(source.zipUrl)));
@@ -315,8 +315,8 @@ Future<Map<String, dynamic>> _installPack(String zipPath, String rootPath, SendP
     if (manifestEntry == null) throw DunyaPackException('Ce fichier n’est pas un pack DUNYA (manifest absent).');
     final manifest = jsonDecode(utf8.decode(_readEntry(raf, manifestEntry))) as Map<String, dynamic>;
     if (manifest['format'] != 'dunya-pack/1') throw DunyaPackException('Format de pack inconnu.');
-    if (manifest['id'] == dunyaTranslationPackId && manifest['tested'] != true) {
-      throw DunyaPackException('Pack ByT5 non certifié : tests bilingues et Android requis.');
+    if (manifest['id'] == dunyaTranslationPackId && manifest['tested'] is! bool) {
+      throw DunyaPackException('Pack ByT5 sans statut (test ou certifié) : refusé.');
     }
     final id = manifest['id'].toString();
     if (!RegExp(r'^[a-z0-9-]{3,64}$').hasMatch(id)) throw DunyaPackException('Identifiant de pack invalide.');

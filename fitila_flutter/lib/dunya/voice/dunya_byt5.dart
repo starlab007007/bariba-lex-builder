@@ -30,8 +30,9 @@ class DunyaByt5 {
     try {
       final base = await getApplicationSupportDirectory();
       final dir = '${base.path}/dunya_packs/$dunyaByt5PackId/byt5';
-      // Only activate a pack that passed release validation. The importer
-      // verifies file hashes, but hash integrity alone is not a quality gate.
+      // The pack is active in BETA ("tested": false = test mode, results are labelled and
+      // must be double-checked) or certified ("tested": true). A manifest that does not declare
+      // its status is refused. The importer verifies file hashes.
       final manifestFile = File('${base.path}/dunya_packs/$dunyaByt5PackId/manifest.json');
       if (!manifestFile.existsSync()) {
         DunyaTranslator.offline = null;
@@ -39,7 +40,7 @@ class DunyaByt5 {
       }
       final manifest = jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
       if (manifest['id'] != dunyaByt5PackId || manifest['format'] != 'dunya-pack/1' ||
-          manifest['tested'] != true) {
+          manifest['tested'] is! bool) {
         DunyaTranslator.offline = null;
         return false;
       }

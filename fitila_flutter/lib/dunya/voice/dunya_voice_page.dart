@@ -1700,10 +1700,10 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 title: switch (source.id) {
                   dunyaVoiceCorePackId => 'Parler et écouter sans Internet',
                   dunyaVoiceFrPackId => 'Voix française hors ligne',
-                  dunyaTranslationPackId => 'Traduire français ↔ Baatɔnum',
+                  dunyaTranslationPackId => 'Traduire français ↔ Baatɔnum (test)',
                   _ => source.title,
                 },
-                subtitle: _packInstalled(source) ? 'Prêt à utiliser'
+                subtitle: _packInstalled(source) ? (source.id == dunyaTranslationPackId ? 'Prêt · en test (bêta)' : 'Prêt à utiliser')
                     : source.id == dunyaTranslationPackId && !_byt5Published
                         ? 'Bientôt disponible'
                         : 'Wi-Fi conseillé',
