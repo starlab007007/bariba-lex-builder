@@ -5,7 +5,9 @@ import FitilaPageHeader from '@/components/fitila/FitilaPageHeader';
 import { Chip, ChipWrap, FeatureGrid, FitilaPage, MetricStrip, type Feature } from '@/components/fitila/FitilaUi';
 
 type AndroidRelease = { version: string; url: string; size: number; updated: string; armv7?: string };
-const RELEASE_API = 'https://api.github.com/repos/starlab007007/bariba-lex-builder/releases?per_page=30';
+// The GitHub repository is private: phones cannot read its releases. Production APKs
+// (signed with the persistent FITILA key only) are published on fitila.bj with this manifest.
+const RELEASE_MANIFEST = '/dunya-packs/android/releases.json';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -23,29 +25,21 @@ export default function InstallPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(RELEASE_API, { headers: { Accept: 'application/vnd.github+json' }, signal: controller.signal })
+    fetch(RELEASE_MANIFEST, { cache: 'no-store', signal: controller.signal })
       .then(async response => {
         if (!response.ok) throw new Error('No public production release');
         return response.json();
       })
-      .then(releases => {
-        if (!Array.isArray(releases)) throw new Error('Invalid release list');
-        const verified = releases
-          .filter(release => !release.draft && !release.prerelease &&
-            /^fitila-android-v\\d/.test(String(release.tag_name || '')))
-          .map(release => {
-            const assets = Array.isArray(release.assets) ? release.assets : [];
-            const valid = (a: any) => typeof a.browser_download_url === 'string' &&
-              a.browser_download_url.startsWith('https://github.com/starlab007007/bariba-lex-builder/releases/download/');
-            const arm64 = assets.find((a: any) => valid(a) && /^FITILA-Android-.*-arm64\\.apk$/i.test(String(a.name)));
-            if (!arm64) return null;
-            const armv7 = assets.find((a: any) => valid(a) && /^FITILA-Android-.*-armv7\\.apk$/i.test(String(a.name)));
-            return { version: String(release.tag_name), url: arm64.browser_download_url,
-              size: arm64.size || 0, updated: release.published_at || '',
-              armv7: armv7?.browser_download_url } as AndroidRelease;
-          })
-          .filter((release): release is AndroidRelease => release !== null);
-        verified.sort((a, b) => (b.updated || '').localeCompare(a.updated || ''));
+      .then(manifest => {
+        const list = Array.isArray(manifest?.releases) ? manifest.releases : [];
+        const safe = (u: unknown) => typeof u === 'string' && u.startsWith('/dunya-packs/android/') && /\.apk$/i.test(u);
+        const verified = list
+          .filter((r: any) => r && r.signing === 'production' && safe(r.arm64))
+          .map((r: any) => ({
+            version: String(r.version), url: String(r.arm64), size: Number(r.arm64_size) || 0,
+            updated: String(r.published_at || ''), armv7: safe(r.armv7) ? String(r.armv7) : undefined,
+          }) as AndroidRelease);
+        verified.sort((a: AndroidRelease, b: AndroidRelease) => (b.updated || '').localeCompare(a.updated || ''));
         setApk(verified[0] || null);
         setApkHistory(verified.slice(1));
         setApkStatus(verified.length ? 'ready' : 'unavailable');

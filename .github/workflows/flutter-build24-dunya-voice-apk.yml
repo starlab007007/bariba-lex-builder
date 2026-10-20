@@ -135,7 +135,24 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p build/ci-report
-          flutter analyze 2>&1 | tee build/ci-report/analyze.txt
+          status=0
+          flutter analyze 2>&1 | tee build/ci-report/analyze.txt || status=$?
+          # Surface analyzer findings as GitHub annotations (logs and artifacts are not always readable).
+          # Handles both "error • msg • file:l:c • code" and "error - msg - file:l:c - code" formats.
+          python3 - <<'PY'
+          import re
+          lines = open('build/ci-report/analyze.txt', encoding='utf-8', errors='replace').read().splitlines()
+          pat = re.compile(r'^\s*(error|warning|info)\s+[•-]\s+(.*?)\s+[•-]\s+([^\s:]+\.dart):(\d+):\d+')
+          hits = [m for m in map(pat.match, lines) if m]
+          for m in hits[:50]:
+              level = 'error' if m.group(1) == 'error' else 'warning'
+              print(f"::{level} file=fitila_flutter/{m.group(3)},line={m.group(4)}::{m.group(2)[:300]}")
+          if not hits:
+              for line in lines[-25:]:
+                  if line.strip():
+                      print(f"::error::analyze: {line.strip()[:300]}")
+          PY
+          exit $status
 
       - name: Provide swap for native compilation and tests
         working-directory: .
@@ -302,7 +319,10 @@ jobs:
         working-directory: fitila_flutter
         run: |
           set -euo pipefail
-          test "$(cat build/SIGNING_MODE.txt)" = "production"
+          if [ "$(cat build/SIGNING_MODE.txt)" != "production" ]; then
+            echo "::warning::APK non publié : les secrets de signature FITILA_KEYSTORE_* sont absents (signature ci-ephemeral). Lancer scripts/setup-signing-secrets.ps1 ou .sh."
+            exit 0
+          fi
           TAG="fitila-android-v1.8.22-build33-${GITHUB_RUN_NUMBER}"
           gh release create "$TAG" \
             build/final-apk/FITILA-Android-v1.8.22-build33-keyboard-translator-arm64.apk \
@@ -313,3 +333,72 @@ jobs:
             --target "${GITHUB_SHA}" \
             --title "FITILA Android v1.8.22 build33 (${GITHUB_RUN_NUMBER})" \
             --notes "APK de production signé ; modèles DUNYA/ByT5 téléchargeables séparément. La disponibilité du moteur ByT5 est limitée aux packs linguistiques certifiés."
+
+      # The repository is private: phones download APKs from fitila.bj, listed in
+      # /dunya-packs/android/releases.json (read by fitila.bj/install).
+      - name: Check production signing for fitila.bj
+        id: prod
+        if: ${{ github.ref == 'refs/heads/main' }}
+        working-directory: fitila_flutter
+        run: |
+          if [ "$(cat build/SIGNING_MODE.txt)" = "production" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "ok=false" >> "$GITHUB_OUTPUT"; fi
+          echo "dir=v1.8.22-build33-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          mkdir -p ../apk-publish && cp build/final-apk/*-arm64.apk build/final-apk/*-armv7.apk build/final-apk/SHA256SUMS.txt ../apk-publish/
+
+      - name: Prepare fitila.bj APK folder
+        if: ${{ steps.prod.outputs.ok == 'true' }}
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            mkdir -p /home/debian/bariba-lex-builder/dunya-packs/android/${{ steps.prod.outputs.dir }}
+
+      - name: Copy APKs to fitila.bj
+        if: ${{ steps.prod.outputs.ok == 'true' }}
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "apk-publish/*"
+          target: "/home/debian/bariba-lex-builder/dunya-packs/android/${{ steps.prod.outputs.dir }}"
+          strip_components: 1
+          timeout: 30m
+
+      - name: Verify APKs and update releases.json on fitila.bj
+        if: ${{ steps.prod.outputs.ok == 'true' }}
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            root=/home/debian/bariba-lex-builder/dunya-packs/android
+            cd $root/${{ steps.prod.outputs.dir }}
+            sha256sum -c --ignore-missing SHA256SUMS.txt
+            chmod 755 . $root && chmod 644 *
+            python3 - "$root" "${{ steps.prod.outputs.dir }}" <<'PY'
+            import json, os, sys, datetime
+            root, d = sys.argv[1], sys.argv[2]
+            files = os.listdir(os.path.join(root, d))
+            arm64 = next(f for f in files if f.endswith('-arm64.apk'))
+            armv7 = next((f for f in files if f.endswith('-armv7.apk')), None)
+            path = os.path.join(root, 'releases.json')
+            data = json.load(open(path)) if os.path.exists(path) else {'releases': []}
+            entry = {'version': d, 'signing': 'production',
+                     'published_at': datetime.datetime.utcnow().replace(microsecond=0).isoformat() + 'Z',
+                     'arm64': f'/dunya-packs/android/{d}/{arm64}',
+                     'arm64_size': os.path.getsize(os.path.join(root, d, arm64))}
+            if armv7:
+                entry['armv7'] = f'/dunya-packs/android/{d}/{armv7}'
+            data['releases'] = [r for r in data['releases'] if r.get('version') != d] + [entry]
+            tmp = path + '.tmp'
+            json.dump(data, open(tmp, 'w'), indent=1)
+            os.replace(tmp, path)
+            os.chmod(path, 0o644)
+            print('releases.json :', len(data['releases']), 'version(s)')
+            PY
