@@ -5,7 +5,7 @@ name: Keep FITILA Hugging Face Spaces awake
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: '17 */6 * * *'  # secours : pg_cron réveille les Spaces toutes les 10 min
   workflow_dispatch:
   push:
     paths:
