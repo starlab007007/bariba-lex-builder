@@ -774,12 +774,10 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     final accepted = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('ByT5 V4 INT8 — Bêta (en test)'),
+        title: const Text('Traduction hors ligne · Bêta'),
         content: const Text(
-          'Ce modèle expérimental traduit le français et le Baatɔnum sans Internet après installation. '
-          'Il n’est pas certifié : les traductions peuvent être inexactes. '
-          'Il nécessite environ 300 Mo de téléchargement et davantage d’espace pour son installation. '
-          'Acceptez-vous de l’installer pour vos essais ?',
+          'Téléchargez le pack (environ 290 Mo) pour traduire sans Internet. '
+          'Cette version est en test et peut comporter des erreurs. Continuer ?',
         ),
         actions: [
           TextButton(
@@ -788,7 +786,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('J’accepte la version bêta'),
+            child: const Text('Continuer'),
           ),
         ],
       ),
@@ -1507,7 +1505,6 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   DunyaDeviceInfo? _device;
   bool _brainInstalled = false;
   bool _byt5Installed = false;
-  bool _byt5Published = false;
   double? _brainProgress;
   String? _brainLabel;
   bool _downloading = false;
@@ -1534,21 +1531,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
     _brainInstalled = await _brain.isInstalled();
     _byt5Installed = await DunyaByt5.instance.activateIfInstalled();
     if (mounted) setState(() {});
-    // Distinguish a published, downloadable ByT5 checkpoint from its
-    // unpopulated release URL. Never show a working Download button for 404.
-    if (_settings.execution != DunyaExecutionMode.offline &&
-        FitilaOffline.online.value) {
-      unawaited(() async {
-      try {
-        final source = dunyaVoicePackSources.firstWhere(
-            (p) => p.id == dunyaTranslationPackId);
-        final size = await _packs.remoteSize(source);
-        if (mounted) setState(() => _byt5Published = size != null && size > 0);
-      } catch (_) {
-        if (mounted) setState(() => _byt5Published = false);
-      }
-      }());
-    }
+
   }
 
   void _onBrainProgress(double? fraction, String label) {
@@ -1682,47 +1665,57 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               ],
             ),
             const SizedBox(height: 10),
-            _section('Voix et packs'),
-            for (final source in dunyaVoicePackSources)
-              _card(
-                icon: _packInstalled(source) ? Icons.check_circle_rounded : Icons.cloud_download_outlined,
-                iconColor: const Color(0xFF9C6B1D),
-                title: source.title,
-                subtitle: _packInstalled(source) ? 'Installé'
-                    : source.id == dunyaTranslationPackId && !_byt5Published
-                        ? 'Modèle affiné pas encore publié : installation depuis fichier possible.'
-                        : 'Wi-Fi conseillé',
-                trailing: _packInstalled(source)
-                    ? null
-                    : source.id == dunyaTranslationPackId && !_byt5Published
-                        ? const Text('À publier', style: TextStyle(fontSize: 11))
-                        : TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          unawaited(widget.onDownloadVoice(source));
-                        },
-                        child: const Text('Télécharger'),
-                      ),
-              ),
+            _section('Packs hors ligne'),
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 6),
-              child: Text('Meta Omnilingual ASR pour la reconnaissance et Meta MMS-TTS Baatɔnum '
-                  'pour la parole. Sans pack : services en ligne FITILA. '
-                  'Un pack hors ligne ne fonctionne qu’une fois publié, téléchargé et vérifié.',
-                  style: TextStyle(fontSize: 11.5, color: Color(0xFF7D7566))),
+              padding: EdgeInsets.only(bottom: 10),
+              child: Text('Téléchargez une fois, utilisez sans Internet.',
+                style: TextStyle(fontSize: 12.5, color: Color(0xFF625B54))),
             ),
+            for (final source in dunyaVoicePackSources)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _card(
+                  icon: _packInstalled(source)
+                      ? Icons.check_circle_rounded
+                      : source.id == dunyaTranslationPackId
+                          ? Icons.translate_rounded : Icons.download_rounded,
+                  iconColor: const Color(0xFF9C6B1D),
+                  title: source.id == dunyaTranslationPackId
+                      ? 'Traduction FR ↔ Baatɔnum'
+                      : source.id == dunyaVoiceCorePackId
+                          ? 'Voix DUNYA' : 'Voix française',
+                  subtitle: _packInstalled(source) ? 'Installé · Prêt hors ligne'
+                      : source.id == dunyaTranslationPackId
+                          ? 'Traduire hors ligne · Bêta en test'
+                          : source.id == dunyaVoiceCorePackId
+                              ? 'Parler et écouter hors ligne'
+                              : 'Voix de secours',
+                  trailing: _packInstalled(source)
+                      ? const Icon(Icons.check_circle, color: Color(0xFF428267), size: 26)
+                      : TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            unawaited(widget.onDownloadVoice(source));
+                          },
+                          child: const Text('Télécharger',
+                            style: TextStyle(fontWeight: FontWeight.w800,
+                              color: Color(0xFF825500))),
+                        ),
+                ),
+              ),
+            const SizedBox(height: 6),
             OutlinedButton.icon(
               onPressed: () {
                 Navigator.of(context).pop();
                 unawaited(widget.onInstallVoiceFile());
               },
-              icon: const Icon(Icons.sd_storage_outlined),
-              label: const Text('Installer depuis un fichier (pack ou cerveau)'),
+              icon: const Icon(Icons.folder_open_outlined),
+              label: const Text('Installer depuis un fichier'),
             ),
             const SizedBox(height: 18),
             _section('Confidentialité'),
             const Text(
-              'En mode hors ligne, rien n’est envoyé au serveur. En mode Auto ou En ligne, les demandes sont traitées par les services FITILA.',
+              'Hors ligne : rien n’est envoyé. En ligne : FITILA traite la demande.',
               style: TextStyle(fontSize: 12.5, color: Color(0xFF7D7566)),
             ),
             TextButton.icon(
