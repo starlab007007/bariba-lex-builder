@@ -6,6 +6,7 @@ on:
       - .github/workflows/prod-quality-audit.yml
       - scripts/dunya_translate/prod_audit.py
   workflow_dispatch:
+  # rerun 20/10 après correctifs
 
 permissions:
   contents: write
