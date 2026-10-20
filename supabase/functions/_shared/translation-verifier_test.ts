@@ -1,6 +1,11 @@
-import { acceptRefinement, estimateConfidence, foldBa, foldFr, ensureMemory, lexicalCoverage, lexiconLookup, memoryLookup, similarity } from "./translation-verifier.ts";
+import { acceptRefinement, estimateConfidence, foldBa, foldFr, ensureMemory, lexicalCoverage, lexiconLookup, memoryLookup, setDictionaries, similarity } from "./translation-verifier.ts";
 
 await ensureMemory();
+// Hermetic: the dictionaries come from the repository copy of the public file, never from the network.
+{
+  const site = JSON.parse(await Deno.readTextFile(new URL("../../../public/data/translation-memory.json", import.meta.url)));
+  setDictionaries(site.fr2ba, site.ba2fr);
+}
 
 function assert(cond: boolean, msg: string) { if (!cond) throw new Error(msg); }
 

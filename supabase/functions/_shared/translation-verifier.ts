@@ -131,6 +131,14 @@ export function ensureMemory(): Promise<void> {
   return loadingPromise;
 }
 
+/** Inject the single-word dictionaries (tests, or a host that already holds them) and rebuild the indexes. */
+export function setDictionaries(fr2ba: Record<string, string>, ba2fr: Record<string, string>): void {
+  if (!loaded) loaded = { pairs: [], lexBa: "", lexFr: "" };
+  loaded.fr2ba = fr2ba;
+  loaded.ba2fr = ba2fr;
+  indexed = false;
+}
+
 function ensureIndexes(): void {
   if (indexed) return;
   const mem = loaded;

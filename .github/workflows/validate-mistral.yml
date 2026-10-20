@@ -17,7 +17,7 @@ jobs:
       - name: Check all AI provider integrations
         run: deno check --node-modules-dir=none $(rg -l 'aiFetch' supabase/functions/*/index.ts) supabase/functions/dunya-voice-turn/index.ts supabase/functions/byt5-bariba-translate/index.ts supabase/functions/ai-provider-settings/index.ts
       - name: Test transport, application contracts and voice pipeline
-        run: deno test --node-modules-dir=none --allow-env --allow-read=supabase/functions/_shared tests/ai/mistral.test.ts tests/ai/providers.test.ts tests/voice/dunyaVoice.test.ts tests/voice/metaVoiceCore.test.ts supabase/functions/_shared/translation-verifier_test.ts
+        run: deno test --node-modules-dir=none --allow-env --allow-read=supabase/functions/_shared,public/data tests/ai/mistral.test.ts tests/ai/providers.test.ts tests/voice/dunyaVoice.test.ts tests/voice/metaVoiceCore.test.ts supabase/functions/_shared/translation-verifier_test.ts
   browser:
     runs-on: ubuntu-latest
     steps:
