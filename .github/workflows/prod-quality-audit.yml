@@ -1,0 +1,34 @@
+name: FITILA production quality audit
+
+on:
+  push:
+    paths:
+      - .github/workflows/prod-quality-audit.yml
+      - scripts/dunya_translate/prod_audit.py
+  workflow_dispatch:
+  # rerun 20/10 après correctifs
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Real calls against production
+        run: |
+          cd scripts/dunya_translate
+          python prod_audit.py --out /tmp/audit
+      - name: Publish report
+        if: always()
+        run: |
+          cd /tmp/audit 2>/dev/null || { mkdir -p /tmp/audit && cd /tmp/audit && echo "audit failed" > audit.md; }
+          git init -q && git checkout -q -b ci-reports/quality
+          git config user.name github-actions && git config user.email actions@users.noreply.github.com
+          git add -A && git commit -q -m "audit ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-reports/quality

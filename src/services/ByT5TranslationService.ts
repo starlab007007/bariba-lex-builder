@@ -70,20 +70,8 @@ class ByT5TranslationService {
         fallback: false,
       };
     }
-    // Offline: word-by-word from the lexicon when most words are known.
-    const offlineResult = async (): Promise<ByT5TranslationResult | null> => {
-      const local = await memoryTranslate(text, direction, { allowWordByWord: true });
-      return local
-        ? {
-            translation: local.translation,
-            confidence: local.confidence,
-            duration: Date.now() - startTime,
-            method: local.method,
-            fallback: true,
-            notice: 'Hors connexion : traduction mot à mot depuis le lexique FITILA (approximative).',
-          }
-        : null;
-    };
+    // Do not present a reconstructed word list as grammatical translation.
+    const offlineResult = async (): Promise<ByT5TranslationResult | null> => null;
     if (isOffline()) {
       const local = await offlineResult();
       if (local) return local;
@@ -134,7 +122,7 @@ class ByT5TranslationService {
 
       return {
         translation: data.translation,
-        confidence: data.confidence || 85,
+        confidence: typeof data.confidence === 'number' ? data.confidence : 0,
         duration: data.duration || (Date.now() - startTime),
         method: data.method || 'byt5-expert',
         fallback: !!data.fallback,

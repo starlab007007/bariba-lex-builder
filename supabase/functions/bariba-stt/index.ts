@@ -5,6 +5,7 @@ import {
 
 import { repairRecognizedTranscript } from '../_shared/transcription-resources.ts';
 import { reconstructTranscript } from '../_shared/transcription-repair.ts';
+import { metaVoiceInfer } from '../_shared/meta-voice.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -394,8 +395,18 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // FITILA Meta ASR (Omnilingual, on fitila.bj) first; the Hugging Face Space is a fallback
+    // (it answered 404 on 20/10/2026).
+    let metaTranscript: string | null = null;
+    {
+      const t0 = Date.now();
+      const meta = await metaVoiceInfer({ engine: "meta-asr-300m", audio_base64: detectAudioFormat(audio).pureBase64 }, 90_000);
+      const text = typeof meta?.transcript === "string" ? normalizeBaribaText(meta.transcript) : "";
+      if (text && isValidTranscription(text)) metaTranscript = text;
+      console.log(JSON.stringify({ event: "bariba_stt_meta", ok: Boolean(metaTranscript), ms: Date.now() - t0 }));
+    }
     const HF_TOKEN = Deno.env.get("HUGGING_FACE_API_TOKEN");
-    if (!HF_TOKEN) {
+    if (!HF_TOKEN && !metaTranscript) {
       return new Response(
         JSON.stringify({
           error: "Configuration serveur manquante",
@@ -412,10 +423,10 @@ Deno.serve(async (req: Request) => {
       // Retry exponentiel : 2 tentatives avec délai 5s/15s
       // Gestion spéciale SPACE_SLEEPING : attente 30s
       const RETRY_DELAYS = [0, 5000];
-      let rawTranscription: string | null = null;
+      let rawTranscription: string | null = metaTranscript;
       let lastError: string = "";
 
-      for (let attempt = 0; attempt < RETRY_DELAYS.length; attempt++) {
+      for (let attempt = 0; attempt < RETRY_DELAYS.length && !rawTranscription; attempt++) {
         if (attempt > 0) {
           const delay = lastError.includes("SPACE_SLEEPING") ? 30000 : RETRY_DELAYS[attempt];
           console.log(`🔄 STT retry ${attempt}/${RETRY_DELAYS.length - 1} after ${delay}ms...`);
@@ -423,7 +434,7 @@ Deno.serve(async (req: Request) => {
         }
 
         try {
-          rawTranscription = await transcribeBariba(audio, robustMode, speakerType, HF_TOKEN);
+          rawTranscription = await transcribeBariba(audio, robustMode, speakerType, HF_TOKEN!);
           if (rawTranscription) break;
         } catch (retryErr: unknown) {
           lastError = retryErr instanceof Error ? retryErr.message : "Unknown error";

@@ -5,6 +5,7 @@ import {
   isInvalidUiLikeText,
   applyLocalBaribaCorrections,
 } from "../_shared/bariba-linguistic-rules.ts";
+import { metaVoiceInfer, signText } from "../_shared/meta-voice.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -710,7 +711,29 @@ serve(async (req: Request) => {
       }
     }
 
-    // 2) TTS HuggingFace Space
+    // 2) FITILA Meta voice (facebook/mms-tts-bba on fitila.bj): fast and always on.
+    //    The Hugging Face Space below is only a fallback (it was down on 20/10/2026).
+    const metaText = safeText.slice(0, 400);
+    const meta = await metaVoiceInfer({ engine: "meta-mms-tts-bba", text: metaText }, 30_000);
+    const supabaseBaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    if (supabaseBaseUrl && typeof meta?.audio_base64 === "string" && meta.audio_base64.length > 100) {
+      const audioUrl = `${supabaseBaseUrl}/functions/v1/tts-audio?t=${encodeURIComponent(metaText)}&s=${await signText(metaText)}`;
+      clearTimeout(globalTimer);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          audio_url: audioUrl,
+          engine: "meta-mms-tts-bba",
+          model: "facebook/mms-tts-bba",
+          text_used: metaText,
+          refine: refinementMeta,
+          duration: Date.now() - startedAt,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // 3) TTS HuggingFace Space (fallback)
     const tts = await synthesizeWithHuggingFaceSpace({
       text: safeText,
       noiseScale: typeof body.noiseScale === "number" ? body.noiseScale : undefined,

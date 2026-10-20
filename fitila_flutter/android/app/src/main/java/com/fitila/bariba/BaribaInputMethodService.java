@@ -69,6 +69,12 @@ public class BaribaInputMethodService extends InputMethodService {
     private static final int MAX_HISTORY = 50;
     private static final int MAX_SUGGESTIONS = 3;
     private static final int EDITOR_CONTEXT_CHARS = 96;
+    // On smaller displays Android 15 can reserve a second navigation-bar
+    // inset after it measures the IME. Make every action row reachable even
+    // when the IME is confined to roughly 225dp of usable vertical space.
+    private static final int COMPACT_DISPLAY_HEIGHT_DP = 780;
+    private static final int COMPACT_PREDICTION_HEIGHT_DP = 50;
+    private static final int REGULAR_PREDICTION_HEIGHT_DP = 58;
 
     private static final String COMBINING_GRAVE = "\u0300";
     private static final String COMBINING_ACUTE = "\u0301";
@@ -295,7 +301,9 @@ public class BaribaInputMethodService extends InputMethodService {
         // Suggestions bar (bilingual chips: Bariba on top, FR definition below)
         suggestionsBar = new LinearLayout(ctx);
         suggestionsBar.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, 58)));
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(ctx, compactImeRows() ? COMPACT_PREDICTION_HEIGHT_DP
+                        : REGULAR_PREDICTION_HEIGHT_DP)));
         suggestionsBar.setOrientation(LinearLayout.HORIZONTAL);
         suggestionsBar.setBackgroundColor(0xFF0F3460);
         suggestionsBar.setGravity(Gravity.CENTER_VERTICAL);
@@ -337,8 +345,18 @@ public class BaribaInputMethodService extends InputMethodService {
         }
     }
 
+    private boolean compactImeRows() {
+        return useCompactImeRows(getResources().getConfiguration().screenHeightDp);
+    }
+
+    static boolean useCompactImeRows(int screenHeightDp) {
+        return screenHeightDp > 0 && screenHeightDp < COMPACT_DISPLAY_HEIGHT_DP;
+    }
+
     private LinearLayout.LayoutParams rowParams(Context ctx, int heightDp) {
-        return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, translatorOpen ? Math.min(heightDp, compactTranslator() ? 32 : 40) : heightDp));
+        int height = translatorOpen ? Math.min(heightDp, compactTranslator() ? 32 : 40)
+                : (compactImeRows() ? (heightDp >= 44 ? 36 : 33) : heightDp);
+        return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(ctx, height));
     }
 
     private LinearLayout buildLetterRow(Context ctx, final List<String> letters, final boolean useShift) {
