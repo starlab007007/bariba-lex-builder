@@ -79,3 +79,20 @@ for (const mode of ['fr', 'bba', 'both'] as const) {
     expect(sent).toHaveLength(0);
   });
 }
+
+test('offline in mode both: an attested French sentence is answered in Baatɔnum from the memory', async ({ page, context }) => {
+  const sent = await openDunya(page, 'both');
+  await page.waitForTimeout(2500); // let the precached memory load before going offline
+  await context.setOffline(true);
+  await say(page, 'Quand es-tu venu?');
+  await expect(page.getByText('Domma a na?').first()).toBeVisible();
+  expect(sent).toHaveLength(0);
+});
+
+test('offline in mode bba: an unknown sentence gets no French excerpt', async ({ page, context }) => {
+  await openDunya(page, 'bba');
+  await context.setOffline(true);
+  await say(page, 'Que signifie nim ?');
+  await expect(page.getByRole('status').filter({ hasText: 'mémoire attestée' })).toBeVisible();
+  await expect(page.getByText('ressources locales FITILA')).toHaveCount(0);
+});

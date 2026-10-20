@@ -9,7 +9,24 @@ import { hasFrenchRecognition, loadHistory, loadPreference, looksFrench, MODE_LA
   type DunyaWebMode, type DunyaWebTurn } from '@/lib/dunya/voiceWeb';
 
 type Phase = 'idle' | 'listening' | 'thinking' | 'speaking';
+import { loadTranslationMemory, memoryTranslate } from '@/lib/translation/translationMemory';
+
 type Props = { onOpenMenu?: () => void; offlineAnswer?: (question: string) => string };
+
+/**
+ * Offline text turn without any language mixing. French mode keeps the sourced French excerpt.
+ * Baatɔnum and "Les deux" translate ONLY through the attested memory (7,762 sentences, precached):
+ * the answer is in the other language, or there is no answer at all, never a French excerpt.
+ */
+async function offlineTurn(text: string, lang: 'fr' | 'bba', mode: 'fr' | 'bba' | 'both', excerpt?: (q: string) => string):
+  Promise<{ text: string | null; lang: 'fr' | 'bba'; notice: string }> {
+  if (mode === 'fr') {
+    return { text: excerpt?.(text) ?? 'Aucune ressource locale disponible.', lang: 'fr', notice: 'Hors ligne · ressources locales' };
+  }
+  const hit = await memoryTranslate(text, lang === 'fr' ? 'fr-ba' : 'ba-fr').catch(() => null);
+  if (hit?.translation) return { text: hit.translation, lang: lang === 'fr' ? 'bba' : 'fr', notice: 'Hors ligne · traduction de la mémoire attestée' };
+  return { text: null, lang, notice: 'Hors ligne · cette phrase n’est pas dans la mémoire attestée. Reconnectez-vous pour la traduire.' };
+}
 const MODE_SHORT: Record<DunyaWebMode, string> = { fr: 'Français', bba: 'Baatɔnum', both: 'Les deux' };
 const MODE_TINY: Record<DunyaWebMode, string> = { fr: 'FR', bba: 'Baatɔnum', both: 'Les 2' };
 const SUGGESTIONS: Record<DunyaWebMode, string[]> = {
@@ -19,6 +36,8 @@ const uid = () => crypto.randomUUID();
 
 export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
   const [mode, setMode] = useState<DunyaWebMode>(() => loadPreference('mode', 'fr'));
+  // Warm the attested memory while online so the offline Baatɔnum / Les deux modes can answer.
+  useEffect(() => { void loadTranslationMemory(); }, []);
   const [turns, setTurns] = useState<DunyaWebTurn[]>(() => loadHistory(loadPreference('mode', 'fr')));
   const [phase, setPhase] = useState<Phase>('idle');
   const [level, setLevel] = useState(0), [caption, setCaption] = useState('');
@@ -98,10 +117,12 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
     try {
       if (!navigator.onLine) {
         if (input.audio) throw new Error('Internet est nécessaire pour comprendre ce vocal.');
-        const local = offlineAnswer?.(input.text ?? '') ?? 'Aucune ressource locale disponible.';
+        const off = await offlineTurn(input.text ?? '', input.lang, mode, offlineAnswer);
         setTurns(t => [...t, { id: uid(), role: 'user', text: input.text ?? '', lang: input.lang, createdAt: Date.now() },
-          { id: assistantId, role: 'assistant', text: local, lang: 'fr', createdAt: Date.now() }]);
-        setNotice('Hors ligne · ressources locales'); setCaption(local); setPhase('speaking'); await speakFrench(local); return;
+          ...(off.text ? [{ id: assistantId, role: 'assistant' as const, text: off.text, lang: off.lang, createdAt: Date.now() }] : [])]);
+        setNotice(off.notice);
+        if (off.text) { setCaption(off.text); if (off.lang === 'fr') { setPhase('speaking'); await speakFrench(off.text); } }
+        return;
       }
       await runServerVoice({
         text: input.text, audio: input.audio, lang: input.lang, replyLang: input.replayId ? input.lang : mode === 'both' ? input.lang : mode,
@@ -161,11 +182,11 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
       // screen. This is a sourced dictionary excerpt, NOT a local LLM answer.
       if (!input.audio && !input.replayId && !answer && offlineAnswer && input.text?.trim() &&
           (!navigator.onLine || error instanceof TypeError)) {
-        const excerpt = offlineAnswer(input.text);
+        const off = await offlineTurn(input.text, input.lang, mode, offlineAnswer);
         setTurns(t => [...t, { id: uid(), role: 'user', text: input.text!, lang: input.lang, createdAt: Date.now() },
-          { id: assistantId, role: 'assistant', text: excerpt, lang: 'fr', createdAt: Date.now() }]);
-        setCaption(excerpt);
-        setNotice('Service injoignable · extrait du dictionnaire');
+          ...(off.text ? [{ id: assistantId, role: 'assistant' as const, text: off.text, lang: off.lang, createdAt: Date.now() }] : [])]);
+        if (off.text) setCaption(off.text);
+        setNotice(mode === 'fr' ? 'Service injoignable · extrait du dictionnaire' : off.notice.replace('Hors ligne', 'Service injoignable'));
       } else {
         setNotice(error instanceof Error ? error.message : 'Service vocal indisponible.');
       }
