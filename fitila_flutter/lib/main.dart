@@ -52,6 +52,7 @@ import 'keyboard/bariba_input.dart';
 import 'dictionary/dictionary_experience.dart';
 import 'dunya/voice/dunya_translation_memory.dart';
 import 'dunya/voice/dunya_translator.dart';
+import 'dunya/voice/dunya_byt5.dart';
 import 'dunya/voice/dunya_assistant.dart';
 import 'dunya/voice/dunya_settings.dart';
 import 'dunya/dunya_home.dart';
@@ -73,6 +74,9 @@ Future<void> main() async {
     FitilaOffline.start();
   }
   _wireBaribaKeyboard();
+  // Activate the installed on-device translator regardless of whether the
+  // user opens DUNYA; this also serves the in-app keyboard when offline.
+  await DunyaByt5.instance.activateIfInstalled();
   runApp(const FitilaApp());
 }
 
@@ -107,8 +111,8 @@ void _wireBaribaKeyboard() {
       DunyaSettings.instance.execution == DunyaExecutionMode.online;
   // DUNYA mode baatɔnum : chaîne de traduction FITILA en ligne (ByT5, ai-translate).
   DunyaTranslator.online = (text, toBariba) async {
-    final token = FitilaBackend.client.auth.currentSession?.accessToken;
     if (!FitilaBackend.configured || !FitilaOffline.online.value) return null;
+    final token = FitilaBackend.client.auth.currentSession?.accessToken;
     final out = await FitilaServices.translate(
       text,
       toBariba ? TranslationDirection.frenchToBariba : TranslationDirection.baribaToFrench,
