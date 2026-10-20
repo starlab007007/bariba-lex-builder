@@ -135,9 +135,11 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
         if (!translated || needsClarification(translated)) throw new Error('translation_unavailable');
         return translated;
       };
+      let failureStage = 'initialization';
       try {
         let transcript = text;
         if (segments.length) {
+          failureStage = 'asr';
           send({ type: 'stage', stage: 'transcribing' });
           const parts: string[] = [];
           let engine = 'meta-asr-300m';
@@ -160,11 +162,13 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
           }
           transcript = parts.join(' ');
           send({ type: 'stage', stage: 'analyzing_transcript' });
+          failureStage = 'transcript_repair';
           const repair = await repairRecognizedTranscript(transcript, lang, abort.signal);
           transcript = repair.text;
           send({ type: 'transcript', text: transcript, raw_text: repair.raw, repair, lang, engine, model: engine === 'meta-asr-300m' ? 'omniASR_CTC_300M' : 'bariba-stt' });
         } else send({ type: 'transcript', text: transcript, lang, engine: 'text' });
         if (body.transcribe_only === true) { send({ type: 'done' }); return; }
+        failureStage = 'brain_or_translation';
         send({ type: 'stage', stage: 'thinking' });
         const question = body.speech_only === true ? '' : lang === 'bba' ? await translate(transcript, 'bba', 'fr') : transcript;
         const greeting = lang === 'fr' ? frenchGreeting(transcript) : null;
@@ -178,6 +182,7 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
         if (replyLang === 'bba' && body.speech_only !== true) {
           try {
             const translated: string[] = [];
+            failureStage = 'translation';
             for (const sentence of speechChunks(french)) translated.push(await translate(sentence, 'fr', 'bba'));
             spoken = translated.join(' ');
           } catch (error) {
@@ -188,6 +193,7 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
         if (spoken.length > MAX_VOICE_TEXT) throw new Error('answer_too_long');
         send({ type: 'answer', text: spoken, subtitle: spokenLang === 'bba' && body.speech_only !== true ? french : undefined, lang: spokenLang, model: clean(answer.model) });
         if (spokenLang === 'bba') {
+          failureStage = 'tts';
           send({ type: 'stage', stage: 'synthesizing' });
           for (const sentence of speechChunks(spoken)) {
             try {
@@ -206,10 +212,26 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
             }
           }
         }
+        failureStage = 'complete';
         send({ type: 'done' });
       } catch (error) {
         const code = error instanceof Error ? error.message : 'service_unavailable';
-        send({ type: 'error', code: ['clarification_required', 'transcription_unavailable', 'translation_unavailable', 'busy', 'brain_unavailable', 'brain_rate_limited'].includes(code) ? code : 'service_unavailable' });
+        // Only emit allowlisted technical codes: exceptions may include secrets,
+        // endpoints, user prompts, transcriptions, or upstream response bodies.
+        const allowed = ['clarification_required', 'transcription_unavailable',
+          'translation_unavailable', 'busy', 'brain_unavailable', 'brain_rate_limited',
+          'answer_unavailable', 'answer_too_long', 'invalid_speech',
+          'upstream_failed', 'service_unavailable'];
+        const safeCode = allowed.includes(code) ? code : 'service_unavailable';
+        console.warn(JSON.stringify({
+          event: 'dunya_voice_failure',
+          request_id: id,
+          stage: failureStage,
+          code: safeCode,
+          elapsed_ms: Date.now() - started,
+          cancelled: abort.signal.aborted,
+        }));
+        send({ type: 'error', code: safeCode });
       } finally {
         clearTimeout(timer); req.signal.removeEventListener('abort', cancel);
         console.log(JSON.stringify({ event: 'dunya_voice_turn', request_id: id, elapsed_ms: Date.now() - started, cancelled: abort.signal.aborted }));

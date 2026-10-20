@@ -38,6 +38,49 @@ void main() {
       expect(memory.lookup('une phrase inconnue du corpus', toBariba: true), isNull);
     });
 
+    test('conflicting French source is never automatically translated', () async {
+      final conflicting = DunyaTranslationMemory([
+        ['La mère allaite son enfant.', 'Bii mɛro u win bii bɔm kɛ̃mɔ.', 'A'],
+        ['La mère allaite son enfant.', 'Autre traduction', 'A'],
+      ]);
+      expect(conflicting.lookup('La mère allaite son enfant.', toBariba: true), isNull);
+      expect(await conflicting.translate('La mère allaite son enfant.', true), isNull);
+    });
+
+    test('conflicting Baatɔnum source is never automatically translated', () async {
+      final conflicting = DunyaTranslationMemory([
+        ['Une traduction', 'Bii mɛro u win bii bɔm kɛ̃mɔ.', 'A'],
+        ['Autre traduction', 'Bii mɛro u win bii bɔm kɛ̃mɔ.', 'A'],
+      ]);
+      expect(conflicting.lookup('Bii mɛro u win bii bɔm kɛ̃mɔ.', toBariba: false), isNull);
+      expect(await conflicting.translate('Bii mɛro u win bii bɔm kɛ̃mɔ.', false), isNull);
+    });
+
+    test('identical duplicates are accepted', () {
+      final duplicate = DunyaTranslationMemory([
+        ['La mère allaite son enfant.', 'Bii mɛro u win bii bɔm kɛ̃mɔ.', 'A'],
+        ['La mère allaite son enfant.', 'Bii mɛro u win bii bɔm kɛ̃mɔ.', 'A'],
+      ]);
+      expect(duplicate.lookup('La mère allaite son enfant.', toBariba: true)?.text,
+          'Bii mɛro u win bii bɔm kɛ̃mɔ.');
+    });
+
+    test('similar examples are advisory, not automatic translations', () async {
+      final candidates = memory.suggestSimilar(
+        'Si tu salues le forgeron, salue le forgeron demain.',
+        toBariba: true,
+      );
+      expect(candidates, isNotEmpty);
+      expect(candidates.first.source, contains('forgeron'));
+      expect(await memory.translate(
+        'Si tu salues le forgeron, salue le forgeron demain.', true), isNull);
+    });
+
+    test('similar examples require meaningful overlap', () {
+      expect(memory.suggestSimilar('xyz inconnu', toBariba: true), isEmpty);
+      expect(memory.suggestSimilar('salut', toBariba: true), isEmpty);
+    });
+
     test('edit distance helper stops early', () {
       expect(boundedEditDistance('abc', 'abd', 1), 1);
       expect(boundedEditDistance('abc', 'xyz', 1), greaterThan(1));

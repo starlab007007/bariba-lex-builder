@@ -124,8 +124,10 @@ class DunyaByt5Channel(messenger: BinaryMessenger) {
                             else -> ""
                         }
                         val normalized = normalizeText(source)
+                        val requestedWidth = call.argument<Int>("beamWidth") ?: if (direction == "fr-ba") 2 else 1
+                        val beamWidth = requestedWidth.coerceIn(1, 4)
                         val translated = approvedMemory[memoryKey(direction, normalized)]
-                            ?: checkedOutput(infer(prefix + normalized, maxOutput))
+                            ?: checkedOutput(infer(prefix + normalized, maxOutput, beamWidth))
                         ui.post { result.success(translated) }
                     } catch (t: Throwable) {
                         ui.post { result.error("byt5_infer", t.message, null) }
@@ -136,7 +138,9 @@ class DunyaByt5Channel(messenger: BinaryMessenger) {
         }
     }
 
-    private fun infer(source: String, maxOutput: Int): String {
+    private data class Beam(val ids: List<Long>, val logScore: Double, val finished: Boolean)
+
+    private fun infer(source: String, maxOutput: Int, beamWidth: Int): String {
         val enc = encoder ?: error("ByT5 non chargé")
         val dec = decoder ?: error("ByT5 non chargé")
         // Keep the same byte-level truncation as the FITILA ByT5 training pipeline.
@@ -149,28 +153,51 @@ class DunyaByt5Channel(messenger: BinaryMessenger) {
             OnnxTensor.createTensor(env, arrayOf(mask)).use { attention ->
                 enc.run(mapOf("input_ids" to ids, "attention_mask" to attention)).use { encodedResult ->
                     val states = encodedResult[0] as OnnxTensor
-                    val output = ByteArrayOutputStream()
-                    val generated = ArrayList<Long>().apply { add(0L) }
+                    var beams = listOf(Beam(listOf(0L), 0.0, false))
                     repeat(maxOutput) {
-                        val next = OnnxTensor.createTensor(env, arrayOf(generated.toLongArray()))
-                        next.use { decoderIds ->
-                            dec.run(mapOf(
-                                "decoder_input_ids" to decoderIds,
-                                "encoder_hidden_states" to states,
-                                "encoder_attention_mask" to attention
-                            )).use { decoded ->
-                                @Suppress("UNCHECKED_CAST")
-                                val logits = decoded[0].value as Array<Array<FloatArray>>
-                                val last = logits[0].last()
-                                var best = 0
-                                for (i in 1 until last.size) if (last[i] > last[best]) best = i
-                                if (best == 1) return output.toString("UTF-8").trim()
-                                if (best in 3..258) output.write(best - 3)
-                                generated.add(best.toLong())
+                        val candidates = ArrayList<Beam>()
+                        for (beam in beams) {
+                            if (beam.finished) {
+                                candidates.add(beam)
+                                continue
+                            }
+                            OnnxTensor.createTensor(env, arrayOf(beam.ids.toLongArray())).use { decoderIds ->
+                                dec.run(mapOf(
+                                    "decoder_input_ids" to decoderIds,
+                                    "encoder_hidden_states" to states,
+                                    "encoder_attention_mask" to attention
+                                )).use { decoded ->
+                                    @Suppress("UNCHECKED_CAST")
+                                    val logits = decoded[0].value as Array<Array<FloatArray>>
+                                    val last = logits[0].last()
+                                    val maxLogit = last.maxOrNull()?.toDouble() ?: error("Sortie ByT5 vide")
+                                    var sum = 0.0
+                                    for (value in last) sum += kotlin.math.exp(value.toDouble() - maxLogit)
+                                    val normalizer = maxLogit + kotlin.math.ln(sum)
+                                    val top = last.indices.sortedByDescending { last[it] }.take(beamWidth)
+                                    for (token in top) {
+                                        candidates.add(Beam(
+                                            beam.ids + token.toLong(),
+                                            beam.logScore + last[token].toDouble() - normalizer,
+                                            token == 1
+                                        ))
+                                    }
+                                }
                             }
                         }
+                        // Same length-normalized ranking as the standalone FP32 beam experiment.
+                        beams = candidates.sortedByDescending {
+                            it.logScore / java.lang.Math.pow((it.ids.size - 1).coerceAtLeast(1).toDouble(), 0.6)
+                        }.take(beamWidth)
+                        if (beams.all { it.finished }) {
+                            val bytes = ByteArrayOutputStream()
+                            for (token in beams.first().ids) if (token in 3L..258L) bytes.write((token - 3).toInt())
+                            return bytes.toString("UTF-8").trim()
+                        }
                     }
-                    return output.toString("UTF-8").trim()
+                    val bytes = ByteArrayOutputStream()
+                    for (token in beams.first().ids) if (token in 3L..258L) bytes.write((token - 3).toInt())
+                    return bytes.toString("UTF-8").trim()
                 }
             }
         }

@@ -2,8 +2,8 @@
 /// printed dictionary, Apprendre, the scenes and the exercise bank
 /// (`scripts/dunya_translate/export_memory.py` → `assets/data/dunya_memory.json`).
 ///
-/// A hit is a human-attested translation: it needs no model, no network and is
-/// instant. DunyaTranslator consults it before ByT5 so that known phrases are
+/// A hit is a corpus-derived translation candidate: it needs no model or network and is
+/// instant, but grade A does not establish independent human approval. DunyaTranslator consults it before ByT5 so that known phrases are
 /// always 100 % correct, offline included.
 library;
 
@@ -16,10 +16,10 @@ import 'dunya_voice_brain.dart' show foldBariba;
 class DunyaMemoryHit {
   const DunyaMemoryHit(this.text, this.grade, {required this.exact});
 
-  /// The attested translation.
+  /// The corpus translation; grade A is not proof of independent human approval.
   final String text;
 
-  /// 'A' attested in the dictionary/scenes, 'B' generated exercise bank.
+  /// Corpus quality grade, not an independent human-approval status.
   final String grade;
 
   /// False when the source only matched after a one-letter recogniser/typing error.
@@ -58,19 +58,49 @@ int boundedEditDistance(String a, String b, int limit) {
   return prev[b.length];
 }
 
+class DunyaSimilarExample {
+  const DunyaSimilarExample({required this.source, required this.translation, required this.grade, required this.commonWords});
+  final String source;
+  final String translation;
+  /// Corpus grade is not proof of independent human approval.
+  final String grade;
+  final int commonWords;
+}
+
 class DunyaTranslationMemory {
   /// [pairs] rows are `[french, bariba, grade]`.
   DunyaTranslationMemory(List<List<String>> pairs) {
+    final ambiguousFr = <String>{};
+    final ambiguousBa = <String>{};
     for (final p in pairs) {
       if (p.length < 3) continue;
       final fr = p[0], ba = p[1], grade = p[2];
-      _frToBa.putIfAbsent(foldFrench(fr), () => (ba, grade));
-      _baToFr.putIfAbsent(foldBariba(ba), () => (fr, grade));
+      final frKey = foldFrench(fr);
+      final baKey = foldBariba(ba);
+      if (frKey.isEmpty || baKey.isEmpty) continue;
+      _originalFrench.putIfAbsent(frKey, () => fr);
+      _originalBariba.putIfAbsent(baKey, () => ba);
+      final frPrevious = _frToBa[frKey];
+      if (frPrevious != null && foldBariba(frPrevious.$1) != baKey) {
+        ambiguousFr.add(frKey);
+      } else {
+        _frToBa.putIfAbsent(frKey, () => (ba, grade));
+      }
+      final baPrevious = _baToFr[baKey];
+      if (baPrevious != null && foldFrench(baPrevious.$1) != frKey) {
+        ambiguousBa.add(baKey);
+      } else {
+        _baToFr.putIfAbsent(baKey, () => (fr, grade));
+      }
     }
+    for (final key in ambiguousFr) { _frToBa.remove(key); }
+    for (final key in ambiguousBa) { _baToFr.remove(key); }
     _baKeys = _baToFr.keys.toList();
   }
 
   final Map<String, (String, String)> _frToBa = {};
+  final Map<String, String> _originalFrench = {};
+  final Map<String, String> _originalBariba = {};
   final Map<String, (String, String)> _baToFr = {};
   late final List<String> _baKeys;
 
@@ -108,7 +138,33 @@ class DunyaTranslationMemory {
     return null;
   }
 
-  /// Exact attested translation, or null. Never throws (asset missing, tests, first start):
+  /// Advisory retrieval only; never automatically substitutes fuzzy matches.
+  List<DunyaSimilarExample> suggestSimilar(String text,
+      {required bool toBariba, int limit = 3}) {
+    if (limit <= 0) return const [];
+    final key = toBariba ? foldFrench(text) : foldBariba(text);
+    final query = key.split(' ').where((w) => w.length >= 3).toSet();
+    if (query.length < 2) return const [];
+    final table = toBariba ? _frToBa : _baToFr;
+    final originals = toBariba ? _originalFrench : _originalBariba;
+    final examples = <DunyaSimilarExample>[];
+    for (final entry in table.entries) {
+      if (entry.key == key) continue;
+      final candidateWords = entry.key.split(' ').where((w) => w.length >= 3).toSet();
+      final intersection = query.intersection(candidateWords).length;
+      if (intersection < 2 || intersection / query.length < 0.5) continue;
+      examples.add(DunyaSimilarExample(
+        source: originals[entry.key] ?? entry.key,
+        translation: entry.value.$1,
+        grade: entry.value.$2,
+        commonWords: intersection,
+      ));
+    }
+    examples.sort((a, b) => b.commonWords.compareTo(a.commonWords));
+    return examples.take(limit).toList(growable: false);
+  }
+
+  /// Unambiguous corpus translation, or null. Never throws (asset missing, tests, first start):
   /// callers simply continue with the online chain or the offline dictionary.
   static Future<String?> tryExact(String text, {required bool toBariba}) async {
     try {

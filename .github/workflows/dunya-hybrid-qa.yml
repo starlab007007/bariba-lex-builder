@@ -1,0 +1,70 @@
+name: DUNYA hybrid QA (no false certification)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - fix/dunya-flutter-online-web-parity-20261018
+    paths:
+      - 'fitila_flutter/lib/dunya/voice/**'
+      - 'fitila_flutter/test/dunya_*'
+      - 'scripts/dunya_translate/**'
+      - 'fitila_flutter/assets/data/dunya_memory.json'
+      - '.github/workflows/dunya-hybrid-qa.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  linguistic-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Analyze packaged corpus coverage, ambiguity and label provenance
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from collections import defaultdict, Counter
+          import json, pathlib
+          p=pathlib.Path('fitila_flutter/assets/data/dunya_memory.json')
+          doc=json.loads(p.read_text(encoding='utf-8'))
+          pairs=doc['pairs']
+          assert isinstance(pairs,list) and len(pairs)>7000
+          conflicted={}
+          for direction in ('fr-ba','ba-fr'):
+              slots=defaultdict(set)
+              for row in pairs:
+                  if len(row)<3: continue
+                  src,dst=(row[0],row[1]) if direction=='fr-ba' else (row[1],row[0])
+                  slots[' '.join(src.casefold().split())].add(' '.join(dst.casefold().split()))
+              conflicted[direction]=sum(len(v)>1 for v in slots.values())
+          grades=Counter(row[2] for row in pairs if len(row)>=3)
+          report={'format':'dunya-hybrid-qa/1','packaged_pairs':len(pairs),'grades_not_human_approval':dict(grades),'conflicting_sources':conflicted,'independent_test_certified':False,'mobile_model_certified':False}
+          pathlib.Path('dunya-hybrid-qa-report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+          with open(__import__('os').environ['GITHUB_STEP_SUMMARY'],'a',encoding='utf-8') as f:
+              f.write('## DUNYA corpus audit (NOT certification)\n\n')
+              f.write(f"Packaged rows: {len(pairs)}; conflicting FR: {conflicted['fr-ba']}; BA: {conflicted['ba-fr']}.\n\n")
+              f.write('Corpus grades do not establish human linguistic approval; legacy test samples overlap with memory.\n')
+          print(json.dumps(report,ensure_ascii=False))
+          PY
+      - name: Validate independent data only when supplied
+        shell: bash
+        run: |
+          if [ -f data/translation/independent/evaluation_v1.csv ]; then
+            python3 scripts/dunya_translate/prepare_independent_eval.py \
+              --input data/translation/independent/evaluation_v1.csv \
+              --out independent-eval-audit.json
+          else
+            echo 'Independent reviewer-controlled evaluation not supplied; certification blocked.'
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dunya-hybrid-linguistic-audit
+          path: |
+            dunya-hybrid-qa-report.json
+            independent-eval-audit.json
+          if-no-files-found: error

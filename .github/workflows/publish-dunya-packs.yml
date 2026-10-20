@@ -43,6 +43,36 @@ jobs:
             gh release download "$RELEASE_TAG" -R "${{ github.repository }}" -D packs \
               -p 'dunya-translate-byt5-v1.zip' -p 'dunya-translate-byt5-v1.manifest.json'
           fi
+          # A ZIP existing in a release is not sufficient proof of quality.
+          # Reject any uncertified translation pack before copying it to the VPS.
+          if [ -f packs/dunya-translate-byt5-v1.zip ]; then
+            python3 - <<'PY'
+          import hashlib, json, pathlib, zipfile
+          root = pathlib.Path("packs")
+          manifest_path = root / "dunya-translate-byt5-v1.manifest.json"
+          archive_path = root / "dunya-translate-byt5-v1.zip"
+          assert manifest_path.is_file(), "Translation manifest missing"
+          manifest_bytes = manifest_path.read_bytes()
+          m = json.loads(manifest_bytes)
+          assert m.get("format") == "dunya-pack/1"
+          assert m.get("id") == "dunya-translate-byt5"
+          assert m.get("tested") is True, "ByT5 requires successful model-quality certification"
+          assert m.get("certification") == "fr-bba-bidirectional-android-v1", "Missing Android bidirectional certification"
+          assert m.get("evaluation_report_sha256"), "Missing immutable evaluation report hash"
+          files = m.get("files")
+          assert isinstance(files, list) and files
+          paths = {f["path"] for f in files}
+          assert {"byt5/encoder.onnx", "byt5/decoder.onnx", "byt5/config.json"} <= paths
+          with zipfile.ZipFile(archive_path) as z:
+              assert json.loads(z.read("manifest.json")) == m, "Embedded manifest mismatch"
+              for f in files:
+                  assert f["path"] in z.namelist()
+                  data = z.read(f["path"])
+                  assert len(data) == f["size"], f["path"]
+                  assert hashlib.sha256(data).hexdigest() == f["sha256"], f["path"]
+          print("Bidirectional certification and archive hashes verified")
+          PY
+          fi
           cd packs
           for z in *.zip; do unzip -tq "$z"; done
           sha256sum *.zip *.json > SHA256SUMS

@@ -26,6 +26,7 @@ import '../dunya_models.dart';
 import 'dunya_assistant.dart';
 import 'dunya_brain.dart';
 import 'dunya_cloud_voice.dart';
+import 'dunya_online_routing.dart';
 import 'dunya_byt5.dart';
 import 'dunya_mic_capture.dart';
 import 'dunya_settings.dart';
@@ -82,6 +83,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   DunyaVoicePaths _paths = const DunyaVoicePaths();
   var _phase = _Phase.preparing;
   var _session = false; // hands-free loop running
+  String? _bilingualVoiceLanguage; // explicit selection to avoid silent Baatonum default
   var _muted = false;
   var _textView = false;
   var _systemFrenchVoice = false;
@@ -94,6 +96,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   String? _subCaption;
   String? _status;
   String? _notice;
+  String? _failedCloudText;
   final _turns = <_Turn>[];
   DunyaPendingAction? _pending;
   Completer<void>? _bargeWatch;
@@ -157,8 +160,11 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   Future<void> _prepare() async {
     await _settings.load();
     await _prepareFrenchVoice();
-    await _startEngine();
-    await _brain.refreshState();
+    // Online startup must not wait for offline ASR/TTS model loading.
+    if (!_useOnlineVoice) {
+      await _startEngine();
+      await _brain.refreshState();
+    }
     await _loadHistory();
     if (!mounted) return;
     setState(() => _phase = _Phase.idle);
@@ -241,12 +247,43 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       _toast('Internet indisponible. Passez en mode Auto ou rétablissez la connexion.');
       return;
     }
+    if (!_useOnlineVoice && _engine == null) {
+      setState(() => _status = 'Chargement des voix hors ligne…');
+      await _startEngine();
+      if (!mounted) return;
+    }
     if (!_useOnlineVoice && (!_paths.canListen || _engine == null)) {
-      _toast('Sans Internet, installez le pack local Meta Omnilingual ASR.');
+      _toast('Pour parler sans Internet, téléchargez d’abord la reconnaissance vocale.');
       await _openSettings();
       return;
     }
-    if (!await _mic.hasPermission()) {
+    if (!mounted) return;
+    if (_useOnlineVoice && _mode == DunyaLanguageMode.bilingual) {
+      // Unlike the Web, native Flutter has no parallel French speech
+      // recognizer. Require a language choice instead of silently assuming bba.
+      final selected = await showModalBottomSheet<String>(
+        context: context,
+        showDragHandle: true,
+        builder: (context) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ListTile(title: Text('Langue du message vocal'),
+                subtitle: Text('Choisissez pour éviter une mauvaise traduction.')),
+              ListTile(title: const Text('Français'),
+                onTap: () => Navigator.of(context).pop('fr')),
+              ListTile(title: const Text('Baatɔnum'),
+                onTap: () => Navigator.of(context).pop('bba')),
+            ],
+          ),
+        ),
+      );
+      if (!mounted || selected == null) return;
+      _bilingualVoiceLanguage = selected;
+    }
+    final hasMic = await _mic.hasPermission();
+    if (!mounted) return;
+    if (!hasMic) {
       _toast('DUNYA a besoin du micro pour vous écouter.');
       return;
     }
@@ -257,6 +294,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
 
   Future<void> _endSession() async {
     _session = false;
+    _bilingualVoiceLanguage = null;
     await _interrupt();
     await _mic.cancel();
     if (mounted) setState(() => _phase = _Phase.idle);
@@ -308,27 +346,37 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   /// Online voice runs through the exact same server used on Web: Meta
   /// Omnilingual ASR -> FITILA answer/ByT5 -> Meta MMS-TTS Baatɔnum.
   /// No Gemma, ASR or voice package needs to be installed on the phone.
-  Future<void> _runCloudVoiceTurn(Float32List samples) async {
+  Future<void> _runCloudVoiceTurn(Float32List? samples, {String? text}) async {
     final mode = _mode;
     final turnId = ++_turnCounter;
-    final replyLang = mode == DunyaLanguageMode.french ? 'fr' : 'bba';
-    var input = '';
+    final detected = text != null && mode == DunyaLanguageMode.bilingual
+        ? _skills.detectLanguage(text) : null;
+    final replyLang = mode == DunyaLanguageMode.bilingual && samples != null
+        ? (_bilingualVoiceLanguage ?? 'bba')
+        : dunyaOnlineLanguage(mode, detected ?? 'bba');
+    var input = text ?? '';
     var answer = '';
     var language = replyLang;
     String? subtitle;
     var gotAudio = false;
+    var asrEngine = samples == null ? 'text' : 'unknown';
+    var ttsEngine = 'none';
+    var brainEngine = 'unknown';
+    var fallbackCode = '';
     var usedLocalFallback = false;
+    _failedCloudText = null;
     _stopSpeaking = false;
     if (mounted) setState(() => _phase = _Phase.thinking);
     try {
       await _cloudVoice.turn(
         samples: samples,
-        language: mode == DunyaLanguageMode.french ? 'fr' : 'bba',
+        text: text,
+        language: replyLang,
         replyLanguage: replyLang,
-        history: [
-          for (final t in _turns.reversed.take(8).toList().reversed)
+        history: dunyaFrenchReasoningHistory(mode, [
+          for (final t in _turns)
             {'role': t.role, 'content': t.text},
-        ],
+        ]),
         onEvent: (event) async {
           if (!mounted || turnId != _turnCounter) return;
           final type = event['type']?.toString() ?? '';
@@ -341,8 +389,10 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
             });
           } else if (type == 'transcript') {
             input = (event['text'] ?? '').toString();
+            asrEngine = (event['engine'] ?? asrEngine).toString();
           } else if (type == 'answer') {
             answer = (event['text'] ?? '').toString();
+            brainEngine = (event['model'] ?? brainEngine).toString();
             subtitle = event['subtitle']?.toString();
             language = event['lang']?.toString() ?? replyLang;
             setState(() {
@@ -352,6 +402,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
             });
           } else if (type == 'audio') {
             gotAudio = true;
+            ttsEngine = (event['engine'] ?? 'unknown').toString();
             final b64 = event['audio_base64']?.toString();
             if (b64 != null && b64.isNotEmpty) {
               // Play the actual MMS-TTS WAV supplied by the FITILA server.
@@ -367,7 +418,8 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
               }
             }
           } else if (type == 'notice') {
-            if (mounted) setState(() => _notice = 'Voix ou traduction de secours utilisée.');
+            fallbackCode = (event['code'] ?? 'fallback').toString();
+            if (mounted) setState(() => _notice = 'Service de secours : $fallbackCode');
           }
         },
       );
@@ -380,6 +432,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         _turns.add(_Turn(role: 'user', text: input.isNotEmpty ? input : 'Vocal'));
         _turns.add(_Turn(role: 'assistant', text: answer)..subtitle = subtitle);
         _status = null;
+        _notice = [
+          'DUNYA en ligne',
+          if (samples != null) 'ASR : $asrEngine',
+          'IA : $brainEngine',
+          if (gotAudio) 'Voix : $ttsEngine',
+          if (fallbackCode.isNotEmpty) 'Repli : $fallbackCode',
+        ].join(' · ');
       });
       await _quietly(() async {
         await _store.appendMessage(
@@ -393,17 +452,25 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       });
       await _store.audit('dunya_voice_turn', {
         'engine': 'cloud-meta-omnilingual-mms',
-        'input': 'voice', 'mode': mode.key,
+        'input': samples == null ? 'text' : 'voice', 'mode': mode.key,
+        'asr_engine': asrEngine, 'brain_engine': brainEngine,
+        'tts_engine': ttsEngine, 'fallback': fallbackCode,
       });
     } catch (error) {
-      if (mounted) setState(() => _notice = error.toString());
+      if (mounted) {
+        setState(() {
+          _failedCloudText = text;
+          _notice = 'DUNYA vocal indisponible. Vérifiez la connexion puis réessayez.';
+          _status = null;
+        });
+      }
       await _store.audit('dunya_voice_cloud_error',
           {'error': error.toString()}, severity: 'warning');
       // Automatic mode falls back to the already-installed Omnilingual
       // recognizer and local assistant. Online-only mode never silently
       // changes execution policy.
       if (_settings.execution == DunyaExecutionMode.automatic &&
-          _paths.canListen && _engine != null && mounted) {
+          samples != null && _paths.canListen && _engine != null && mounted) {
         try {
           final localTranscript = await _engine!.transcribe(samples);
           usedLocalFallback = true;
@@ -417,7 +484,11 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     } finally {
       if (!usedLocalFallback && mounted && turnId == _turnCounter) {
         _status = null;
-        if (_session && _settings.handsFree) {
+        // Never restart hands-free recording after a failed cloud turn.
+        if (_notice == 'DUNYA vocal indisponible. Vérifiez la connexion puis réessayez.') {
+          _session = false;
+          setState(() => _phase = _Phase.idle);
+        } else if (_session && _settings.handsFree) {
           unawaited(_listenTurn());
         } else {
           setState(() => _phase = _Phase.idle);
@@ -637,7 +708,11 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     if (text.isEmpty || _phase == _Phase.thinking) return;
     _composer.clear();
     await _interrupt();
-    await _runTurn(text, spoken: false);
+    if (_useOnlineVoice) {
+      await _runCloudVoiceTurn(null, text: text);
+    } else {
+      await _runTurn(text, spoken: false);
+    }
   }
 
   Future<void> _confirm(bool yes) async {
@@ -757,7 +832,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
-      backgroundColor: _cream,
+      backgroundColor: const Color(0xFFF9FCFA),
       builder: (_) => _SettingsSheet(
         paths: _paths,
         onInstallVoiceFile: _installVoiceFile,
@@ -811,9 +886,12 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       _toast('Installé et vérifié.');
     } catch (error) {
       navigator.pop();
-      _toast(error is DunyaPackException || error is DunyaBrainException
-          ? error.toString()
-          : 'Échec : réessayez, de préférence en Wi-Fi.');
+      // Never expose stack traces, HTTP status or model implementation details.
+      _toast(error is DunyaPackException
+          ? 'Téléchargement indisponible. Vérifiez votre connexion ou réessayez plus tard.'
+          : error is DunyaBrainException
+              ? 'Cette option ne peut pas être installée sur ce téléphone pour le moment.'
+              : 'Une difficulté est survenue. Réessayez avec le Wi-Fi.');
     } finally {
       status.dispose();
       await _brain.refreshState();
@@ -938,11 +1016,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
             ),
             const Spacer(),
             IconButton(
+              style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Colors.white),
               tooltip: _textView ? 'Mode voix' : 'Voir la conversation écrite',
               onPressed: () => setState(() => _textView = !_textView),
               icon: Icon(_textView ? Icons.graphic_eq_rounded : Icons.chat_bubble_outline_rounded, color: Colors.white),
             ),
             IconButton(
+              style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Colors.white),
               tooltip: 'Réglages',
               onPressed: _openSettings,
               icon: const Icon(Icons.tune_rounded, color: Colors.white),
@@ -1011,7 +1091,27 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         if (_notice != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-            child: Text(_notice!, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFFE9C46A), fontSize: 12.5)),
+            child: Column(
+              children: [
+                Text(_notice!, textAlign: TextAlign.center,
+                  style: const TextStyle(color: Color(0xFFE9C46A), fontSize: 12.5)),
+                if (_phase == _Phase.idle &&
+                    _notice == 'DUNYA vocal indisponible. Vérifiez la connexion puis réessayez.')
+                  TextButton.icon(
+                    onPressed: () {
+                      final lastText = _failedCloudText;
+                      setState(() => _notice = null);
+                      if (lastText != null && lastText.isNotEmpty) {
+                        unawaited(_runCloudVoiceTurn(null, text: lastText));
+                      } else {
+                        unawaited(_onOrbTap());
+                      }
+                    },
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Réessayer'),
+                  ),
+              ],
+            ),
           ),
         if (_turns.isEmpty && _phase == _Phase.idle) _suggestions(),
       ],
@@ -1094,18 +1194,21 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                 children: [
                   IconButton(
                     visualDensity: VisualDensity.compact,
+                    style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: _gold),
                     tooltip: 'Réécouter',
                     onPressed: () => _replay(t),
                     icon: const Icon(Icons.volume_up_rounded, size: 18, color: _gold),
                   ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
+                    style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Colors.white70),
                     tooltip: 'Copier',
                     onPressed: () => Clipboard.setData(ClipboardData(text: t.text)),
                     icon: const Icon(Icons.copy_rounded, size: 17, color: Colors.white54),
                   ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
+                    style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Colors.white70),
                     tooltip: 'Mémoriser',
                     onPressed: () => _quietly(() => _store.saveMemory(t.text)),
                     icon: const Icon(Icons.bookmark_add_outlined, size: 18, color: Colors.white54),
@@ -1565,10 +1668,10 @@ class _SettingsSheetState extends State<_SettingsSheet> {
           shrinkWrap: true,
           padding: const EdgeInsets.fromLTRB(18, 0, 18, 22),
           children: [
-            const Text('Réglages DUNYA', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF17131F))),
+            const Text('Personnaliser DUNYA', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF17131F))),
             const SizedBox(height: 14),
             _section('Intelligence'),
-            const Text('Exécution : Auto · En ligne · Hors ligne',
+            const Text('Choisissez votre connexion',
                 style: TextStyle(fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             SegmentedButton<DunyaExecutionMode>(
@@ -1582,9 +1685,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Auto : serveur FITILA connecté, modèles locaux en secours. '
-              'En ligne : aucun téléchargement nécessaire. '
-              'Hors ligne : aucun dialogue envoyé au serveur ; fonctionnalités selon les packs installés.',
+              'Auto utilise Internet quand il est disponible. Hors ligne fonctionne avec les options téléchargées.',
               style: TextStyle(fontSize: 12, color: Color(0xFF7D7566)),
             ),
             const SizedBox(height: 12),
@@ -1600,7 +1701,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             Text(
               _settings.intelligence == DunyaIntelligence.essential
                   ? 'Traduction, mémoire, rappels et calculs. Rapide, pour tous les téléphones.'
-                  : 'IA serveur disponible sans modèle ; Gemma local facultatif (2,6 Go) pour parler sans Internet.',
+                  : 'Pour discuter sans Internet, téléchargez l’assistant sur votre téléphone.',
               style: const TextStyle(fontSize: 12.5, color: Color(0xFF7D7566)),
             ),
             if (_settings.intelligence == DunyaIntelligence.smart) ...[
@@ -1608,26 +1709,26 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               _card(
                 icon: _brainInstalled ? Icons.check_circle_rounded : Icons.memory_rounded,
                 iconColor: _brainInstalled ? const Color(0xFF4F8A68) : const Color(0xFF9C6B1D),
-                title: _brainInstalled ? 'Cerveau installé' : 'Cerveau DUNYA (2,6 Go)',
+                title: _brainInstalled ? 'Cerveau installé' : 'Assistant hors ligne (2,6 Go)',
                 subtitle: !canRun
                     ? (device.supportedProcessor
                         ? 'Ce téléphone ($ram Mo de RAM) est trop juste : le mode Essentiel est conseillé.'
-                        : 'Le processeur de ce téléphone (32 bits) ne peut pas faire tourner le cerveau : mode Essentiel.')
+                        : 'Ce téléphone ne prend pas en charge cette option.')
                     : _brainLabel ?? (_brainInstalled ? 'Fonctionne sans Internet.' : 'À télécharger une fois, en Wi-Fi de préférence.'),
                 trailing: _brainInstalled
                     ? TextButton(onPressed: _removeBrain, child: const Text('Supprimer'))
                     : _downloading || !canRun
                         ? null
-                        : TextButton(onPressed: _downloadBrain, child: const Text('Télécharger')),
+                        : TextButton(onPressed: _downloadBrain, child: const Text('Télécharger', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF173E36)))),
                 progress: _downloading ? (_brainProgress ?? -1) : null,
               ),
             ],
             const SizedBox(height: 18),
             _section('Conversation'),
-            _switch('Mains libres (DUNYA réécoute après chaque réponse)', _settings.handsFree,
+            _switch('Écoute automatique', _settings.handsFree,
                 (v) => _settings.update(handsFree: v)),
             _switch('Sous-titres en direct', _settings.subtitles, (v) => _settings.update(subtitles: v)),
-            _switch('Sous-titres français en mode baatɔnum', _settings.frenchSubtitlesInBariba,
+            _switch('Afficher aussi la traduction française', _settings.frenchSubtitlesInBariba,
                 (v) => _settings.update(frenchSubtitlesInBariba: v)),
             Row(
               children: [
@@ -1645,20 +1746,25 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               ],
             ),
             const SizedBox(height: 10),
-            _section('Voix et packs'),
+            _section('À utiliser sans Internet'),
             for (final source in dunyaVoicePackSources)
               _card(
                 icon: _packInstalled(source) ? Icons.check_circle_rounded : Icons.cloud_download_outlined,
                 iconColor: const Color(0xFF9C6B1D),
-                title: source.title,
-                subtitle: _packInstalled(source) ? 'Installé'
+                title: switch (source.id) {
+                  dunyaVoiceCorePackId => 'Parler et écouter sans Internet',
+                  dunyaVoiceFrPackId => 'Voix française hors ligne',
+                  dunyaTranslationPackId => 'Traduire français ↔ Baatɔnum',
+                  _ => source.title,
+                },
+                subtitle: _packInstalled(source) ? 'Prêt à utiliser'
                     : source.id == dunyaTranslationPackId && !_byt5Published
-                        ? 'Modèle affiné pas encore publié : installation depuis fichier possible.'
+                        ? 'Pas encore disponible. Nous préparons une version fiable.'
                         : 'Wi-Fi conseillé',
                 trailing: _packInstalled(source)
                     ? null
                     : source.id == dunyaTranslationPackId && !_byt5Published
-                        ? const Text('À publier', style: TextStyle(fontSize: 11))
+                        ? const Text('Bientôt', style: TextStyle(fontSize: 11))
                         : TextButton(
                         onPressed: () {
                           Navigator.of(context).pop();
@@ -1669,9 +1775,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               ),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 6),
-              child: Text('Meta Omnilingual ASR pour la reconnaissance et Meta MMS-TTS Baatɔnum '
-                  'pour la parole. Sans pack : services en ligne FITILA. '
-                  'Un pack hors ligne ne fonctionne qu’une fois publié, téléchargé et vérifié.',
+              child: Text('Téléchargez une seule fois avec le Wi-Fi. Ensuite, utilisez les fonctions installées sans connexion.',
                   style: TextStyle(fontSize: 11.5, color: Color(0xFF7D7566))),
             ),
             OutlinedButton.icon(
@@ -1680,7 +1784,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 unawaited(widget.onInstallVoiceFile());
               },
               icon: const Icon(Icons.sd_storage_outlined),
-              label: const Text('Installer depuis un fichier (pack ou cerveau)'),
+              label: const Text('Installer un fichier téléchargé'),
             ),
             const SizedBox(height: 18),
             _section('Confidentialité'),
@@ -1729,9 +1833,12 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       Card(
         elevation: 0,
         color: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFFDCE8E2)),
+        ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+          padding: const EdgeInsets.fromLTRB(15, 14, 10, 14),
           child: Column(
             children: [
               Row(
@@ -1743,7 +1850,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF17131F))),
-                        Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF7D7566))),
+                        Text(subtitle, style: const TextStyle(fontSize: 13, color: Color(0xFF495C53))),
                       ],
                     ),
                   ),
