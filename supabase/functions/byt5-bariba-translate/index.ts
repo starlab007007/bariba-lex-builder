@@ -2,6 +2,7 @@ import {
   acceptRefinement,
   ensureMemory,
   estimateConfidence,
+  lexiconLookup,
   memoryLookup,
   splitSentences,
 } from "../_shared/translation-verifier.ts";
@@ -434,6 +435,23 @@ export async function handleByT5(req: Request): Promise<Response> {
         refinement: { applied: false },
         modelInfo: { name: "FITILA translation memory", version: "memory-v1", grade: attested.grade },
         provenance: { dataset: "fitila-translation-memory", origin: "generated-bundle", source_id: null, reviewer_id: null, reviewed_at: null, validation_evidence: "not-exported", memory_pack_manifest: "/functions/v1/fitila-memory-pack/manifest" },
+      });
+    }
+
+    // 1b) One isolated word: the attested dictionary beats the model, which is
+    //     unreliable on single words ("merci" came back as the verb "siara").
+    const lexicon = lexiconLookup(normalizedInput, direction);
+    if (lexicon) {
+      clearTimeout(timeoutId);
+      return json({
+        translation: lexicon.translation,
+        suggestions: null,
+        confidence: 90,
+        confidenceKind: "attested-lexicon",
+        duration: Date.now() - startTime,
+        method: "translation-lexicon",
+        refinement: { applied: false },
+        modelInfo: { name: "FITILA dictionary", version: "lexicon-v1", grade: "D" },
       });
     }
 
