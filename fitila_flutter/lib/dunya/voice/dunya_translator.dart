@@ -37,10 +37,10 @@ class DunyaTranslator {
   /// Flutter's in-app keyboard. Never invents or silently edits semantics.
   /// More ambitious grammar refinement requires a reviewed linguistic model.
   static String _safeLocalResult(String source, String output, String engine) {
-    final normalized = output.replaceAll(RegExp(r'\\s+'), ' ').trim();
+    final normalized = output.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (engine == 'memory') return normalized;
     // Ignore suspicious exact repetition loops; callers can request a review.
-    final words = normalized.split(RegExp(r'\\s+'));
+    final words = normalized.split(RegExp(r'\s+'));
     for (var n = 1; n <= 3; n++) {
       if (words.length < n * 4) continue;
       for (var start = 0; start <= words.length - n * 4; start++) {
