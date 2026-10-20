@@ -144,7 +144,10 @@ void main() {
     await tester.tap(find.text('Fil').first);
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
-    expect(find.text('Fil'), findsWidgets);
+    expect(find.text('Fil · bientôt'), findsOneWidget);
+    await tester.tap(find.text('OK'));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
 
     await tester.tap(find.text('Traduc.').first);
     await tester.pump(const Duration(milliseconds: 350));
