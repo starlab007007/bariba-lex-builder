@@ -380,4 +380,16 @@ public class KeyboardTranslatorInputTest {
         assertEquals(1, count.get());
     }
 
+    @Test public void adaptiveKeyboardHeightProtectsActionRowOnAndroid15() {
+        assertTrue(BaribaInputMethodService.useCompactImeRows(731));
+        assertTrue(BaribaInputMethodService.useCompactImeRows(779));
+        assertFalse(BaribaInputMethodService.useCompactImeRows(780));
+        assertFalse(BaribaInputMethodService.useCompactImeRows(851));
+        assertFalse(BaribaInputMethodService.useCompactImeRows(0));
+        // The utility row must remain part of the native hierarchy.
+        assertNotNull("⚡ must remain tappable", key(root, "⚡"));
+        assertNotNull("espace must remain tappable", key(root, "espace"));
+        assertNotNull("Enter must remain tappable", key(root, "↵"));
+    }
+
 }

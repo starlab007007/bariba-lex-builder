@@ -19,7 +19,7 @@ jobs:
     env:
       FITILA_SUPABASE_URL: https://dvswhjawiooprghzeyol.supabase.co
       FITILA_BENCHMARK_SERVICE_KEY: ${{ secrets.FITILA_BENCHMARK_SERVICE_KEY }}
-      HF_HOME: ${{ runner.temp }}/hf-research-models
+      HF_HOME: /tmp/hf-research-models
       TOKENIZERS_PARALLELISM: 'false'
     steps:
       - uses: actions/checkout@v4
