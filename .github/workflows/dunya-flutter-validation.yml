@@ -33,11 +33,33 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      # Le pont ONNX natif remplit le disque du runner (echec « No space left on
+      # device » le 19/10). On libere les SDK inutilises avant la compilation.
+      - name: Free runner disk space
+        working-directory: ${{ github.workspace }}
+        run: |
+          echo "Disque avant :"; df -h / | tail -1
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
+                      /usr/local/share/boost /usr/share/swift \
+                      /opt/hostedtoolcache/CodeQL || true
+          sudo docker image prune -af >/dev/null 2>&1 || true
+          echo "Disque apres :"; df -h / | tail -1
       - name: Resolve dependencies
         run: flutter pub get
       - name: Analyze linguistic modules
         run: dart analyze lib/dunya/voice/dunya_local_refiner.dart lib/dunya/voice/dunya_translator.dart lib/core/fitila_memory_store.dart
       - name: Run DUNYA tests
         run: flutter test test/dunya_local_refiner_test.dart test/dunya_memory_bidirectional_test.dart --reporter expanded
+      # Les journaux bruts ne sont pas toujours lisibles : en cas d'echec on
+      # remonte les lignes utiles en annotations GitHub.
       - name: Compile Android debug (includes native ONNX bridge)
-        run: flutter build apk --debug --target-platform android-arm64
+        run: |
+          status=0
+          flutter build apk --debug --target-platform android-arm64 > /tmp/dunya-build.log 2>&1 || status=$?
+          tail -80 /tmp/dunya-build.log
+          if [ "$status" -ne 0 ]; then
+            grep -iE 'error|no space left|What went wrong|Caused by|Execution failed|^FAILURE' /tmp/dunya-build.log \
+              | tail -12 | sed 's/^/::error::/'
+            echo "Disque au moment de l'echec :"; df -h / | tail -1
+          fi
+          exit "$status"
