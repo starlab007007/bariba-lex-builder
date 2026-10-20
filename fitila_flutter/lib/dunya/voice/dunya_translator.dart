@@ -33,6 +33,27 @@ class DunyaTranslator {
 
   static bool get hasAnyEngine => memory != null || offline != null || online != null;
 
+  /// Conservative post-inference guard shared by DUNYA, the translator and
+  /// Flutter's in-app keyboard. Never invents or silently edits semantics.
+  /// More ambitious grammar refinement requires a reviewed linguistic model.
+  static String _safeLocalResult(String source, String output, String engine) {
+    final normalized = output.replaceAll(RegExp(r'\\s+'), ' ').trim();
+    if (engine == 'memory') return normalized;
+    // Ignore suspicious exact repetition loops; callers can request a review.
+    final words = normalized.split(RegExp(r'\\s+'));
+    for (var n = 1; n <= 3; n++) {
+      if (words.length < n * 4) continue;
+      for (var start = 0; start <= words.length - n * 4; start++) {
+        final unit = words.sublist(start, start + n).join(' ');
+        if (List.generate(4, (i) => words.sublist(start + i * n, start + (i + 1) * n).join(' '))
+            .every((part) => part == unit)) {
+          throw StateError('Répétitions suspectes dans la traduction');
+        }
+      }
+    }
+    return normalized;
+  }
+
   static Future<DunyaTranslation?> translate(String text, {required bool toBariba}) async {
     final clean = text.trim();
     if (clean.isEmpty) return null;
@@ -49,7 +70,7 @@ class DunyaTranslator {
       try {
         final out = (await fn(clean, toBariba).timeout(const Duration(seconds: 35)))?.trim();
         if (out != null && out.isNotEmpty && out.toLowerCase() != clean.toLowerCase()) {
-          return DunyaTranslation(out, engine);
+          return DunyaTranslation(_safeLocalResult(clean, out, engine), engine);
         }
       } catch (_) {
         // Try the next engine.
