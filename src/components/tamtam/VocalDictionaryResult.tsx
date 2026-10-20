@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Volume2, Loader2, BookOpen, MessageCircle, ArrowRightLeft, X } from 'lucide-react';
 import { PhoneticEntry } from '@/hooks/usePhoneticSuggestions';
+import { BaribaAudioButton } from '@/components/fitila/BaribaAudioText';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
 import { VocalDictionaryFeedback } from '@/components/tamtam/VocalDictionaryFeedback';
 
@@ -71,7 +72,8 @@ export function VocalDictionaryResult({
             {/* Mot bariba */}
             <div className="flex items-center gap-3">
               <span className="text-3xl">🇧🇯</span>
-              <h2 className="text-2xl font-bold text-white">{entry.word}</h2>
+              <BaribaAudioButton text={entry.word} dark />
+              <h2 lang="bba" className="text-2xl font-bold text-white">{entry.word}</h2>
             </div>
             
             {/* Phonétique */}
@@ -116,11 +118,6 @@ export function VocalDictionaryResult({
                 <span className="text-sm text-gray-500 font-medium flex items-center gap-2">
                   <span>🇫🇷</span> Définition
                 </span>
-                <AudioButton 
-                  text={entry.definition} 
-                  fieldId="definition" 
-                  lang="fr"
-                />
               </div>
               <p className="text-gray-800 text-lg">{entry.definition}</p>
             </div>
@@ -135,10 +132,11 @@ export function VocalDictionaryResult({
                 <MessageCircle className="w-5 h-5 text-amber-600" />
               </div>
               <div className="flex-1">
-                <div className="mb-1">
+                <div className="mb-1 flex items-center justify-between gap-2">
                   <span className="text-sm text-amber-700 font-medium flex items-center gap-2">
                     <span>🇧🇯</span> Exemple en Baatɔnum
                   </span>
+                  <BaribaAudioButton text={entry.example_bariba} />
                 </div>
                 <p className="text-amber-900 text-lg italic">"{entry.example_bariba}"</p>
               </div>
@@ -158,11 +156,6 @@ export function VocalDictionaryResult({
                   <span className="text-sm text-blue-700 font-medium flex items-center gap-2">
                     <span>🇫🇷</span> Traduction de l'exemple
                   </span>
-                  <AudioButton 
-                    text={entry.example_francais} 
-                    fieldId="example-fr" 
-                    lang="fr"
-                  />
                 </div>
                 <p className="text-blue-900 text-lg italic">"{entry.example_francais}"</p>
               </div>
@@ -170,30 +163,6 @@ export function VocalDictionaryResult({
           </div>
         )}
 
-        {/* Bouton écouter tout */}
-        <button
-          onClick={async () => {
-            await speakText(entry.definition, 'all-def', 'fr');
-            if (entry.example_francais) {
-              await speakText(entry.example_francais, 'all-ex-fr', 'fr');
-            }
-          }}
-          disabled={isSpeaking}
-          className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-2xl font-semibold flex items-center justify-center gap-3 hover:opacity-90 transition-opacity disabled:opacity-50"
-        >
-          {isSpeaking ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Lecture en cours...
-            </>
-          ) : (
-            <>
-              <Volume2 className="w-5 h-5" />
-              Écouter tout
-            </>
-          )}
-        </button>
-        
         {/* Feedback button */}
         {showFeedback && (
           <div className="flex justify-center pt-2">

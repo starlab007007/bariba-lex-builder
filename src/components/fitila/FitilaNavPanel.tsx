@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import { Award, AudioLines, BookOpen, BrainCircuit, ClipboardCheck, ClipboardList, Clapperboard, Edit3, GraduationCap, Globe, Keyboard, Mic2, ShieldCheck, Vault, Languages, Layers, Settings, Sparkles, User } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { SIG } from './signatureTheme';
@@ -59,12 +60,13 @@ export default function FitilaNavPanel({ onNavigate, compact = false }: { onNavi
   ];
 
   const row = ({ label, path, icon: Icon, desc }: Item) => {
-    const active = isActive(pathname, path);
+    const soon = path === '/social';
+    const active = !soon && isActive(pathname, path);
     return (
       <button
         key={path}
         type="button"
-        onClick={() => go(path)}
+        onClick={() => (soon ? toast('Fil · bientôt', { description: 'Cette section arrive très prochainement.' }) : go(path))}
         aria-current={active ? 'page' : undefined}
         aria-label={label}
         title={compact ? label : undefined}
@@ -74,7 +76,7 @@ export default function FitilaNavPanel({ onNavigate, compact = false }: { onNavi
         <Icon className="h-[20px] w-[20px] shrink-0 transition-transform duration-200 group-hover:scale-110" style={{ color: SIG.goldDeep }} strokeWidth={active ? 2.4 : 2} />
         {!compact && (
           <span className="min-w-0">
-            <span className="block text-[14px]" style={{ color: SIG.ink, fontWeight: active ? 800 : 500 }}>{label}</span>
+            <span className="block text-[14px]" style={{ color: SIG.ink, fontWeight: active ? 800 : 500 }}>{label}{soon && <span className="ml-2 rounded-full px-2 py-0.5 text-[11px] font-extrabold" style={{ background: SIG.gold, color: '#2B2110' }}>Bientôt</span>}</span>
             {active && desc && <span className="block truncate text-[11px]" style={{ color: SIG.muted }}>{desc}</span>}
           </span>
         )}
