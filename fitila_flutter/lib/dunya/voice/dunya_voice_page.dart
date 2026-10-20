@@ -66,7 +66,6 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   final _store = DunyaLocalStore.instance;
   final _settings = DunyaSettings.instance;
   final _brain = DunyaBrain.instance;
-  final _packs = DunyaVoicePackManager.instance;
   final _mic = DunyaMicCapture();
   final _cloudVoice = DunyaCloudVoice();
   DunyaExecutionMode _previousExecution = DunyaSettings.instance.execution;
