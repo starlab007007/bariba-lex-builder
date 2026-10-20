@@ -19,9 +19,12 @@ jobs:
     env:
       FITILA_SUPABASE_URL: https://dvswhjawiooprghzeyol.supabase.co
       FITILA_BENCHMARK_SERVICE_KEY: ${{ secrets.FITILA_BENCHMARK_SERVICE_KEY }}
-      HF_HOME: ${{ runner.temp }}/hf-research-models
       TOKENIZERS_PARALLELISM: 'false'
     steps:
+      # Le contexte « runner » est interdit dans un env: de job (echec de
+      # demarrage du workflow a chaque push). On fixe HF_HOME dans une etape.
+      - name: Configure Hugging Face cache outside the workspace
+        run: echo "HF_HOME=$RUNNER_TEMP/hf-research-models" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
