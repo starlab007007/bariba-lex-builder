@@ -277,22 +277,22 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
         {onOpenMenu && (
           <IconButton label="Menu" onClick={onOpenMenu} className="md:hidden"><Menu className="h-5 w-5" /></IconButton>
         )}
-        <div role="radiogroup" aria-label="Langue de DUNYA" className="flex min-w-0 rounded-full bg-white/[0.07] p-1 ring-1 ring-white/10">
+        <div role="radiogroup" aria-label="Langue de DUNYA" className="flex min-w-0 rounded-full bg-white/[0.10] p-1 ring-1 ring-white/25">
           {(Object.keys(MODE_SHORT) as DunyaWebMode[]).map((m) => (
             <button key={m} role="radio" aria-checked={m === mode} onClick={() => m !== mode && changeMode(m)}
               aria-label={MODE_SHORT[m]}
-              className={`min-h-9 whitespace-nowrap rounded-full px-2.5 text-[14px] font-bold transition-colors sm:px-4 ${m === mode ? 'bg-[#E3B04B] text-[#16121C]' : 'text-white/70 hover:text-white'}`}>
+              className={`min-h-11 whitespace-nowrap rounded-full px-3 text-[15px] font-extrabold transition-colors sm:px-5 sm:text-[16px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F0BC55] ${m === mode ? 'bg-[#F0BC55] text-[#16121C] shadow-[0_2px_10px_rgba(240,188,85,0.35)]' : 'text-white/90 hover:bg-white/10'}`}>
               <span className="sm:hidden">{MODE_TINY[m]}</span><span className="hidden sm:inline">{MODE_SHORT[m]}</span>
             </button>
           ))}
         </div>
-        {!connected && <span className="hidden rounded-full bg-[#E0A03C]/15 px-2.5 py-1 text-xs font-bold text-[#F0C979] sm:inline">Hors ligne</span>}
+        {!connected && <span className="rounded-full bg-[#F0BC55]/20 px-3 py-1.5 text-[13px] font-extrabold text-[#FFD98A] ring-1 ring-[#F0BC55]/40">Hors ligne</span>}
         <div className="flex-1" />
         <input ref={fileInput} type="file" accept="audio/*,.webm,.wav,.m4a,.mp3,.ogg" className="hidden" aria-label="Choisir un vocal" onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; void uploadVoice(file); }} />
         <button onClick={() => setTextView((v) => !v)} aria-label={textView ? 'Voix' : 'Écrire'} title={textView ? 'Voix' : 'Écrire'}
-          className={`flex h-11 shrink-0 items-center gap-2 rounded-full px-3 text-sm font-bold ring-1 ring-white/10 transition-colors ${textView ? 'bg-white text-[#16121C]' : 'bg-white/[0.07] text-white hover:bg-white/[0.12]'}`}>
+          className={`hidden h-12 shrink-0 items-center gap-2 rounded-full px-4 text-[16px] font-extrabold ring-1 ring-white/25 transition-colors sm:flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F0BC55] ${textView ? 'bg-white text-[#16121C]' : 'bg-white/[0.12] text-white hover:bg-white/[0.18]'}`}>
           {textView ? <Mic className="h-[18px] w-[18px]" /> : <Keyboard className="h-[18px] w-[18px]" />}
-          <span className="hidden sm:inline">{textView ? 'Voix' : 'Écrire'}</span>
+          <span>{textView ? 'Voix' : 'Écrire'}</span>
         </button>
         <div className="relative">
           <IconButton label="Plus d’options" onClick={() => setMoreOpen((v) => !v)}><MoreHorizontal className="h-5 w-5" /></IconButton>
@@ -311,18 +311,18 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
 
       {textView ? (
         <div ref={scroller} className="mx-auto w-full max-w-3xl flex-1 space-y-3 overflow-y-auto px-4 pb-3 pt-2">
-          {turns.length === 0 && <p className="mt-20 text-center text-lg font-semibold text-white/60">Écrivez votre message</p>}
+          {turns.length === 0 && <div className="mt-16 text-center"><p className="text-2xl font-extrabold text-white">Écrivez votre message</p><p className="mx-auto mt-2 max-w-xs text-[17px] leading-7 text-white/80">{mode === 'bba' ? 'DUNYA répond en baatɔnum.' : mode === 'both' ? 'DUNYA répond dans la langue de votre message.' : 'DUNYA répond en français.'}</p></div>}
           {turns.map((t) => t.role === 'user' ? (
-            <article key={t.id} className="ml-auto max-w-[85%] rounded-[22px] rounded-br-md bg-[#E3B04B] px-4 py-2.5 text-[#16121C]">
-              <p className="whitespace-pre-wrap text-[16px] leading-6">{t.text}</p>
+            <article key={t.id} className="ml-auto max-w-[85%] rounded-[24px] rounded-br-md bg-[#F0BC55] px-5 py-3 text-[#16121C] shadow-[0_6px_18px_-8px_rgba(240,188,85,0.6)]">
+              <p className="whitespace-pre-wrap text-[17px] font-semibold leading-7">{t.text}</p>
             </article>
           ) : (
             <article key={t.id} className="mr-auto max-w-[90%]">
-              <div className="rounded-[22px] rounded-bl-md bg-white/[0.07] px-4 py-3 ring-1 ring-white/10">
-                <p className="whitespace-pre-wrap text-[16px] leading-[1.6]">{t.text}</p>
-                {t.subtitle && frSubtitles && <p className="mt-2 border-t border-white/10 pt-2 text-[14px] text-white/60">{t.subtitle}</p>}
+              <div className="rounded-[24px] rounded-bl-md bg-white/[0.12] px-5 py-3.5 ring-1 ring-white/25">
+                <p className="whitespace-pre-wrap text-[18px] leading-[1.65] text-white">{t.text}</p>
+                {t.subtitle && frSubtitles && <p className="mt-2.5 border-t border-white/20 pt-2.5 text-[16px] leading-6 text-white/80">{t.subtitle}</p>}
               </div>
-              <div className="mt-1 flex gap-1 pl-1">
+              <div className="mt-1.5 flex gap-2 pl-1">
                 <SmallAction label="Écouter" onClick={() => void replay(t)}><Volume2 className="h-4 w-4" /></SmallAction>
                 <SmallAction label="Copier" onClick={() => void navigator.clipboard?.writeText(t.text)}><Copy className="h-4 w-4" /></SmallAction>
               </div>
@@ -336,7 +336,8 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           <button onClick={() => void onOrb()} aria-label={label} className="relative grid place-items-center rounded-full outline-none focus-visible:ring-4 focus-visible:ring-[#E3B04B]/50">
             <Orb phase={phase} level={level} />
           </button>
-          <p className="mt-6 text-center text-xl font-bold tracking-tight" role="status" aria-live="polite">{label}</p>
+          <p className="mt-6 text-center text-[26px] font-extrabold leading-tight tracking-tight text-white" role="status" aria-live="polite">{label}</p>
+          {phase === 'idle' && <p className="mt-1.5 max-w-xs text-center text-[17px] leading-7 text-white/80">{mode === 'bba' ? 'Parlez en baatɔnum.' : mode === 'both' ? 'Parlez en français ou en baatɔnum.' : 'Parlez en français.'}</p>}
           {lastAssistant && phase !== 'listening' && (
             <div className="mt-4 flex gap-2">
               <Pill onClick={() => void replay(lastAssistant)}><Volume2 className="h-4 w-4" />Réécouter</Pill>
@@ -350,9 +351,9 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           <div className="flex-1" />
           {subtitles && (caption || (phase === 'thinking' && lastUser)) && (
             <div className="mx-auto mb-4 w-full max-w-2xl text-center">
-              {phase === 'thinking' && lastUser && <p className="line-clamp-2 text-base text-white/55">« {lastUser} »</p>}
-              {caption && <p className="line-clamp-5 text-[21px] font-semibold leading-snug md:text-2xl">{caption}</p>}
-              {subCaption && <p className="mt-2 line-clamp-3 text-[15px] text-white/60">{subCaption}</p>}
+              {phase === 'thinking' && lastUser && <p className="line-clamp-2 text-[17px] leading-7 text-white/80">« {lastUser} »</p>}
+              {caption && <p className="line-clamp-6 text-[24px] font-bold leading-[1.35] text-white md:text-[30px]">{caption}</p>}
+              {subCaption && <p className="mt-3 line-clamp-4 text-[18px] leading-7 text-white/80">{subCaption}</p>}
             </div>
           )}
           {turns.length === 0 && phase === 'idle' && (
@@ -360,7 +361,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
               {SUGGESTIONS[mode].map((s) => (
                 <button key={s}
                   onClick={() => void runTurn(s, mode === 'bba' ? 'bba' : looksFrench(s, 0.9) ? 'fr' : 'bba', false)}
-                  className="rounded-full bg-white/[0.06] px-4 py-2.5 text-[14px] font-medium text-white/85 ring-1 ring-white/10 hover:bg-white/[0.1]">
+                  className="min-h-12 rounded-full bg-white/[0.10] px-5 py-3 text-[16px] font-bold text-white ring-1 ring-white/25 hover:bg-white/[0.16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F0BC55]">
                   {s}
                 </button>
               ))}
@@ -369,28 +370,30 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
         </div>
       )}
 
-      {notice && <p role="status" aria-live="polite" className="mx-auto mb-2 max-w-xl px-4 text-center text-sm font-medium text-[#F0C979]">{notice}</p>}
+      {notice && <p role="status" aria-live="polite" className="mx-4 mb-2 rounded-2xl bg-[#F0BC55]/15 px-4 py-2.5 text-center text-[15px] font-bold leading-6 text-[#FFD98A] ring-1 ring-[#F0BC55]/35 sm:mx-auto sm:max-w-xl">{notice}</p>}
       {textView ? (
         <footer className="mx-auto flex w-full max-w-3xl items-end gap-2 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-1.5">
+          <button onClick={() => setTextView(false)} aria-label="Voix" title="Voix" className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-white text-[#16121C] ring-1 ring-white/25 sm:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F0BC55]"><Mic className="h-6 w-6" /></button>
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendText(); } }}
             rows={1}
             placeholder={mode === 'bba' ? 'Écrire en baatɔnum…' : 'Écrire à DUNYA…'}
-            className="max-h-32 min-h-[52px] flex-1 resize-none rounded-[26px] bg-white/[0.08] px-5 py-3.5 text-[16px] text-white outline-none ring-1 ring-white/10 placeholder:text-white/40 focus:ring-[#E3B04B]/60"
+            className="max-h-36 min-h-[56px] flex-1 resize-none rounded-[28px] bg-white/[0.12] px-5 py-4 text-[17px] leading-6 text-white outline-none ring-1 ring-white/25 placeholder:text-white/60 focus:ring-2 focus:ring-[#F0BC55]"
           />
           <button
             onClick={() => { if (phase === 'thinking') { turnCounter.current += 1; interrupt(); setPhase('idle'); } else void sendText(); }}
-            className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-[#E3B04B] text-[#16121C] disabled:opacity-40"
+            className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#F0BC55] text-[#16121C] shadow-[0_6px_18px_-6px_rgba(240,188,85,0.7)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F0BC55]"
             disabled={phase !== 'thinking' && !draft.trim()}
             aria-label={phase === 'thinking' ? 'Arrêter' : 'Envoyer'}
           >
-            {phase === 'thinking' ? <Square className="h-5 w-5" /> : <Send className="h-5 w-5" />}
+            {phase === 'thinking' ? <Square className="h-6 w-6" /> : <Send className="h-6 w-6" />}
           </button>
         </footer>
       ) : (
-        <footer className="mx-auto flex w-full max-w-sm items-center justify-center gap-4 px-6 pb-[max(18px,env(safe-area-inset-bottom))] pt-1">
+        <footer className="mx-auto flex w-full max-w-md flex-wrap items-center justify-center gap-3 px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-1">
+          <button onClick={() => setTextView(true)} aria-label="Écrire" className="flex min-h-12 items-center gap-2 rounded-full bg-[#F0BC55] px-6 text-[16px] font-extrabold text-[#16121C] shadow-[0_6px_18px_-6px_rgba(240,188,85,0.7)] sm:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F0BC55]"><Keyboard className="h-5 w-5" />Écrire</button>
           <Pill onClick={() => setPref('subtitles', !subtitles, setSubtitles)} active={subtitles} aria-pressed={subtitles}>
             {subtitles ? <Captions className="h-4 w-4" /> : <CaptionsOff className="h-4 w-4" />}Sous-titres
           </Pill>
@@ -436,12 +439,12 @@ function Orb({ phase, level }: { phase: Phase; level: number }) {
         style={{ background: mid, opacity: phase === 'idle' ? 0.18 : 0.32, transform: `scale(${0.8 + (scale - 1) * 1.6})` }} />
       {(phase === 'listening' || phase === 'speaking') && (
         <>
-          <span className="absolute h-44 w-44 animate-ping rounded-full md:h-52 md:w-52" style={{ border: `2px solid ${mid}`, opacity: 0.35, animationDuration: '2.2s' }} />
-          <span className="absolute h-44 w-44 animate-ping rounded-full md:h-52 md:w-52" style={{ border: `1px solid ${mid}`, opacity: 0.25, animationDuration: '2.2s', animationDelay: '1.1s' }} />
+          <span className="absolute h-44 w-44 animate-ping motion-reduce:animate-none rounded-full md:h-52 md:w-52" style={{ border: `2px solid ${mid}`, opacity: 0.35, animationDuration: '2.2s' }} />
+          <span className="absolute h-44 w-44 animate-ping motion-reduce:animate-none rounded-full md:h-52 md:w-52" style={{ border: `1px solid ${mid}`, opacity: 0.25, animationDuration: '2.2s', animationDelay: '1.1s' }} />
         </>
       )}
       {phase === 'thinking' && (
-        <span className="absolute h-[196px] w-[196px] animate-spin rounded-full md:h-[226px] md:w-[226px]"
+        <span className="absolute h-[196px] w-[196px] animate-spin motion-reduce:animate-none rounded-full md:h-[226px] md:w-[226px]"
           style={{ background: `conic-gradient(from 0deg, transparent 0deg, ${mid} 90deg, transparent 180deg)`, animationDuration: '1.6s',
             WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))', mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px))' }} />
       )}
@@ -452,6 +455,7 @@ function Orb({ phase, level }: { phase: Phase; level: number }) {
           boxShadow: `0 24px 60px -12px ${mid}88, inset 0 -14px 30px ${deep}AA, inset 0 6px 18px #FFFFFF40`,
         }}>
         <div className="absolute left-[22%] top-[14%] h-[26%] w-[36%] rounded-full bg-white/35 blur-md" />
+        {phase === 'idle' && <Mic aria-hidden className="absolute inset-0 m-auto h-14 w-14 text-[#16121C]/75" strokeWidth={2.2} />}
       </div>
     </div>
   );
@@ -460,7 +464,7 @@ function Orb({ phase, level }: { phase: Phase; level: number }) {
 function IconButton({ label, onClick, children, className = '' }: { label: string; onClick: () => void; children: ReactNode; className?: string }) {
   return (
     <button onClick={onClick} aria-label={label} title={label}
-      className={`grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/[0.07] ring-1 ring-white/10 hover:bg-white/[0.12] ${className}`}>
+      className={`grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/[0.12] ring-1 ring-white/25 hover:bg-white/[0.18] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F0BC55] ${className}`}>
       {children}
     </button>
   );
@@ -469,7 +473,7 @@ function IconButton({ label, onClick, children, className = '' }: { label: strin
 function Pill({ children, onClick, active = true, danger, ...rest }: { children: ReactNode; onClick: () => void; active?: boolean; danger?: boolean; 'aria-pressed'?: boolean }) {
   return (
     <button onClick={onClick} {...rest}
-      className={`flex min-h-12 items-center gap-2 rounded-full px-5 text-[15px] font-bold ring-1 transition-colors ${danger ? 'bg-[#C2483F] text-white ring-[#C2483F]' : active ? 'bg-white/[0.09] text-white ring-white/15 hover:bg-white/[0.14]' : 'bg-transparent text-white/55 ring-white/10'}`}>
+      className={`flex min-h-12 items-center gap-2 rounded-full px-5 text-[16px] font-extrabold ring-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F0BC55] ${danger ? 'bg-[#D4503F] text-white ring-[#D4503F]' : active ? 'bg-white/[0.14] text-white ring-white/30 hover:bg-white/[0.2]' : 'bg-transparent text-white/80 ring-white/25'}`}>
       {children}
     </button>
   );
@@ -477,7 +481,7 @@ function Pill({ children, onClick, active = true, danger, ...rest }: { children:
 
 function SmallAction({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
   return (
-    <button onClick={onClick} className="flex min-h-9 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-semibold text-white/60 hover:bg-white/10 hover:text-white">
+    <button onClick={onClick} className="flex min-h-11 items-center gap-2 rounded-full bg-white/[0.08] px-4 text-[15px] font-bold text-white/90 ring-1 ring-white/20 hover:bg-white/[0.16] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F0BC55]">
       {children}{label}
     </button>
   );
@@ -485,7 +489,7 @@ function SmallAction({ label, onClick, children }: { label: string; onClick: () 
 
 function MenuItem({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
   return (
-    <button role="menuitem" onClick={onClick} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] font-semibold text-white hover:bg-white/10">
+    <button role="menuitem" onClick={onClick} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[16px] font-bold text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F0BC55]">
       <span className="text-[#E3B04B]">{icon}</span>{label}
     </button>
   );
