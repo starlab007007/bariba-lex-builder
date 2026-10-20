@@ -378,55 +378,78 @@ jobs:
           df -h /home | tail -1
           REMOTE
           cat /tmp/prepare.log
+          detail=$(sed 's/%/%25/g; s/\r//g' /tmp/prepare.log | awk '{ printf "%s%%0A", $0 }')
           if [ "$status" -ne 0 ]; then
-            detail=$(sed 's/%/%25/g; s/\r//g' /tmp/prepare.log | awk '{ printf "%s%%0A", $0 }')
             echo "::error title=Preparation du dossier APK sur le VPS::${detail}"
+          else
+            echo "::notice title=Etat du VPS avant copie::${detail}"
           fi
           exit "$status"
 
+      # scp direct, pour la meme raison que l'etape precedente : l'action
+      # tierce echoue sans message exploitable alors que ssh/scp passent.
       - name: Copy APKs to fitila.bj
         if: ${{ steps.prod.outputs.ok == 'true' }}
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "apk-publish/*"
-          target: "/home/debian/bariba-lex-builder/dunya-packs/android/${{ steps.prod.outputs.dir }}"
-          strip_components: 1
-          timeout: 30m
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          TARGET_DIR: ${{ steps.prod.outputs.dir }}
+        run: |
+          ls -l apk-publish/
+          status=0
+          scp -i ~/.ssh/fitila_publish -o BatchMode=yes -o ConnectTimeout=20 \
+            apk-publish/* \
+            "$VPS_USER@$VPS_HOST:/home/debian/bariba-lex-builder/dunya-packs/android/$TARGET_DIR/" \
+            > /tmp/copy.log 2>&1 || status=$?
+          cat /tmp/copy.log
+          detail=$(sed 's/%/%25/g; s/\r//g' /tmp/copy.log | awk '{ printf "%s%%0A", $0 }')
+          if [ "$status" -ne 0 ]; then
+            echo "::error title=Copie des APK vers le VPS::${detail}"
+          fi
+          exit "$status"
 
       - name: Verify APKs and update releases.json on fitila.bj
         if: ${{ steps.prod.outputs.ok == 'true' }}
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            set -e
-            root=/home/debian/bariba-lex-builder/dunya-packs/android
-            cd $root/${{ steps.prod.outputs.dir }}
-            sha256sum -c --ignore-missing SHA256SUMS.txt
-            chmod 755 . $root && chmod 644 *
-            python3 - "$root" "${{ steps.prod.outputs.dir }}" <<'PY'
-            import json, os, sys, datetime
-            root, d = sys.argv[1], sys.argv[2]
-            files = os.listdir(os.path.join(root, d))
-            arm64 = next(f for f in files if f.endswith('-arm64.apk'))
-            armv7 = next((f for f in files if f.endswith('-armv7.apk')), None)
-            path = os.path.join(root, 'releases.json')
-            data = json.load(open(path)) if os.path.exists(path) else {'releases': []}
-            entry = {'version': d, 'signing': 'production',
-                     'published_at': datetime.datetime.utcnow().replace(microsecond=0).isoformat() + 'Z',
-                     'arm64': f'/dunya-packs/android/{d}/{arm64}',
-                     'arm64_size': os.path.getsize(os.path.join(root, d, arm64))}
-            if armv7:
-                entry['armv7'] = f'/dunya-packs/android/{d}/{armv7}'
-            data['releases'] = [r for r in data['releases'] if r.get('version') != d] + [entry]
-            tmp = path + '.tmp'
-            json.dump(data, open(tmp, 'w'), indent=1)
-            os.replace(tmp, path)
-            os.chmod(path, 0o644)
-            print('releases.json :', len(data['releases']), 'version(s)')
-            PY
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          TARGET_DIR: ${{ steps.prod.outputs.dir }}
+        run: |
+          status=0
+          ssh -i ~/.ssh/fitila_publish -o BatchMode=yes -o ConnectTimeout=20 \
+            "$VPS_USER@$VPS_HOST" "TARGET_DIR='$TARGET_DIR' bash -s" > /tmp/manifest.log 2>&1 <<'REMOTE' || status=$?
+          set -e
+          root=/home/debian/bariba-lex-builder/dunya-packs/android
+          cd "$root/$TARGET_DIR"
+          sha256sum -c --ignore-missing SHA256SUMS.txt
+          chmod 755 . "$root" && chmod 644 *
+          python3 - "$root" "$TARGET_DIR" <<'PY'
+          import json, os, sys, datetime
+          root, d = sys.argv[1], sys.argv[2]
+          files = os.listdir(os.path.join(root, d))
+          arm64 = next(f for f in files if f.endswith('-arm64.apk'))
+          armv7 = next((f for f in files if f.endswith('-armv7.apk')), None)
+          path = os.path.join(root, 'releases.json')
+          data = json.load(open(path)) if os.path.exists(path) else {'releases': []}
+          entry = {'version': d, 'signing': 'production',
+                   'published_at': datetime.datetime.utcnow().replace(microsecond=0).isoformat() + 'Z',
+                   'arm64': f'/dunya-packs/android/{d}/{arm64}',
+                   'arm64_size': os.path.getsize(os.path.join(root, d, arm64))}
+          if armv7:
+              entry['armv7'] = f'/dunya-packs/android/{d}/{armv7}'
+          data['releases'] = [r for r in data['releases'] if r.get('version') != d] + [entry]
+          tmp = path + '.tmp'
+          json.dump(data, open(tmp, 'w'), indent=1)
+          os.replace(tmp, path)
+          os.chmod(path, 0o644)
+          print('releases.json :', len(data['releases']), 'version(s)')
+          PY
+          REMOTE
+          cat /tmp/manifest.log
+          detail=$(sed 's/%/%25/g; s/\r//g' /tmp/manifest.log | awk '{ printf "%s%%0A", $0 }')
+          if [ "$status" -ne 0 ]; then
+            echo "::error title=Mise a jour de releases.json sur le VPS::${detail}"
+          else
+            echo "::notice title=releases.json mis a jour::${detail}"
+          fi
+          exit "$status"
