@@ -1232,8 +1232,12 @@ public class BaribaInputMethodService extends InputMethodService {
                             // for a previously downloaded local pack.
                             try { result = client.translate(txt, direction); }
                             catch (KeyboardTranslationClient.TranslationException e) {
-                                error = "ByT5 local indisponible : " + offlineError.getMessage()
-                                      + " ; en ligne : " + e.getMessage();
+                                // Preserve the actionable first-run instruction when
+                                // neither an installed model nor remote config exists.
+                                error = e.getMessage().contains("Ouvrez l’application FITILA")
+                                        ? e.getMessage()
+                                        : "ByT5 local indisponible : " + offlineError.getMessage()
+                                            + " ; en ligne : " + e.getMessage();
                             }
                         }
                         final String translated = result;
