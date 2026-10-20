@@ -802,7 +802,6 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     final isCacheCopy = path.startsWith(cache.path) || path.contains('/cache/');
     // Consent for file imports is requested explicitly; the installer itself
     // enforces it again for the hash-pinned ByT5 beta.
-    final betaConsent = await _confirmByt5Beta();
     if (looksLikeBrainFile(path)) {
       await _runJob(
         'Installation du cerveau…',
@@ -810,6 +809,9 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       );
       return;
     }
+    final betaConsent = path.toLowerCase().contains('byt5')
+        ? await _confirmByt5Beta() : false;
+    if (path.toLowerCase().contains('byt5') && !betaConsent) return;
     await _runJob('Installation du pack…', (progress) async {
       await _packs.installFromFile(path, deleteSource: isCacheCopy, betaConsent: betaConsent, onProgress: (p) => progress(p.fraction, p.detail));
       await _startEngine();
@@ -1137,13 +1139,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                     visualDensity: VisualDensity.compact,
                     tooltip: 'Copier',
                     onPressed: () => Clipboard.setData(ClipboardData(text: t.text)),
-                    icon: const Icon(Icons.copy_rounded, size: 17, color: Colors.white54),
+                    icon: const Icon(Icons.copy_rounded, size: 21, color: Colors.white),
                   ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     tooltip: 'Mémoriser',
                     onPressed: () => _quietly(() => _store.saveMemory(t.text)),
-                    icon: const Icon(Icons.bookmark_add_outlined, size: 18, color: Colors.white54),
+                    icon: const Icon(Icons.bookmark_add_outlined, size: 21, color: Colors.white),
                   ),
                   for (final s in t.sources.take(2))
                     Padding(
