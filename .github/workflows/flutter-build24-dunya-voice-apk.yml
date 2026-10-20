@@ -139,7 +139,7 @@ jobs:
           flutter analyze 2>&1 | tee build/ci-report/analyze.txt || status=$?
           # Surface analyzer findings as GitHub annotations (logs and artifacts are not always readable).
           # Handles both "error • msg • file:l:c • code" and "error - msg - file:l:c - code" formats.
-          python3 - <<'PY'
+          ANALYZE_STATUS=$status python3 - <<'PY'
           import re
           lines = open('build/ci-report/analyze.txt', encoding='utf-8', errors='replace').read().splitlines()
           pat = re.compile(r'^\s*(error|warning|info)\s+[•-]\s+(.*?)\s+[•-]\s+([^\s:]+\.dart):(\d+):\d+')
@@ -147,7 +147,8 @@ jobs:
           for m in hits[:50]:
               level = 'error' if m.group(1) == 'error' else 'warning'
               print(f"::{level} file=fitila_flutter/{m.group(3)},line={m.group(4)}::{m.group(2)[:300]}")
-          if not hits:
+          import os
+          if not hits and os.environ.get('ANALYZE_STATUS', '0') != '0':
               for line in lines[-25:]:
                   if line.strip():
                       print(f"::error::analyze: {line.strip()[:300]}")
