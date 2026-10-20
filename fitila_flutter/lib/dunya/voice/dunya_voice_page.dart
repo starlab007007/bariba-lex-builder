@@ -66,6 +66,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   final _store = DunyaLocalStore.instance;
   final _settings = DunyaSettings.instance;
   final _brain = DunyaBrain.instance;
+  final _packs = DunyaVoicePackManager.instance;
   final _mic = DunyaMicCapture();
   final _cloudVoice = DunyaCloudVoice();
   DunyaExecutionMode _previousExecution = DunyaSettings.instance.execution;
@@ -1502,7 +1503,6 @@ class _SettingsSheet extends StatefulWidget {
 class _SettingsSheetState extends State<_SettingsSheet> {
   final _settings = DunyaSettings.instance;
   final _brain = DunyaBrain.instance;
-  final _packs = DunyaVoicePackManager.instance;
   DunyaDeviceInfo? _device;
   bool _brainInstalled = false;
   bool _byt5Installed = false;
