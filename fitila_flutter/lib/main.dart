@@ -7344,11 +7344,11 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
       : TranslationDirection.baribaToFrench;
 
   TranslatorPorts _livePorts() => TranslatorPorts(
-    translate: (text, toBariba) => FitilaServices.translate(
-      text,
-      _dir(toBariba),
-      accessToken: widget.accessToken,
-    ),
+    translate: (text, toBariba) async {
+      final result = await DunyaTranslator.translate(text, toBariba: toBariba);
+      if (result != null) return result.text;
+      throw StateError('Aucune traduction locale disponible. Installez le pack ByT5 Bêta dans DUNYA.');
+    },
     startVoice: _voiceMedia.startAudio,
     stopVoice: (sourceIsBariba) async {
       final asset = await _voiceMedia.stopAudio();
