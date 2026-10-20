@@ -13,7 +13,20 @@ const SYSTEM_PROMPT = `Tu es Fitila, un assistant intelligent et bienveillant.
 Réponds TOUJOURS en français, de manière claire et concise.
 Maximum 3 phrases courtes (50 mots max).
 Ne mets jamais de markdown, JSON, ou formatage spécial.
-Si la question est en bariba, comprends-la et réponds en français simple.`;
+Si la question est en bariba, comprends-la et réponds en français simple.
+N'écris jamais toi-même en baatɔnum (bariba) : la traduction est faite ensuite par un traducteur spécialisé.`;
+
+/** The LLM sometimes appends invented Baatɔnum. Keep only French sentences; a separate translator handles Baatɔnum. */
+export function keepFrenchSentences(text: string): string {
+  const sentences = text.match(/[^.!?]+[.!?]*/g) ?? [text];
+  // A French sentence may quote a Baatɔnum word ("On dit « A kua »"); drop it only when most of it is not French.
+  const kept = sentences.filter((s) => {
+    const words = s.match(/[\p{L}\p{M}']+/gu) ?? [];
+    const foreign = words.filter((w) => /[ɔɛŋʋɲƆƐŊ]/u.test(w)).length;
+    return words.length === 0 || foreign / words.length < 0.3;
+  });
+  return normalizeText(kept.join(" ")) || normalizeText(text);
+}
 
 interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -140,7 +153,12 @@ export async function handleChat(req: Request): Promise<Response> {
     console.log('[fitila] Request received');
 
     // Use exactly the provider selected by an administrator.
-    const llmResult = await callActiveAI({ messages: chatMessages, temperature, maxTokens });
+    let llmResult = await callActiveAI({ messages: chatMessages, temperature, maxTokens }).catch((e) => ({ text: "", model: "", provider: "", error: e instanceof Error ? e.message : "llm_unavailable" } as Awaited<ReturnType<typeof callActiveAI>>));
+    // One more attempt on a transient upstream failure or timeout (observed intermittently with Gemini).
+    if (!llmResult.text && !["llm_not_configured", "llm_forbidden", "llm_rate_limited", "credits_exhausted"].includes(llmResult.error ?? "") && Date.now() - startedAt < 25_000) {
+      console.warn(`[fitila] LLM retry after: ${llmResult.error}`);
+      llmResult = await callActiveAI({ messages: chatMessages, temperature, maxTokens }).catch((e) => ({ text: "", model: "", provider: "", error: e instanceof Error ? e.message : "llm_unavailable" } as Awaited<ReturnType<typeof callActiveAI>>));
+    }
     if (!llmResult.text && (llmResult.error === "llm_not_configured" || llmResult.error === "llm_forbidden")) {
       clearTimeout(globalTimer);
       return new Response(
@@ -178,7 +196,7 @@ export async function handleChat(req: Request): Promise<Response> {
       throw new Error(llmResult.error || "LLM failed");
     }
 
-    const responseFr = llmResult.text;
+    const responseFr = keepFrenchSentences(llmResult.text);
 
     // Step 2: Translate French → Bariba via ByT5
     let responseBa: string | null = null;
