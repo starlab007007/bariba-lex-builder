@@ -54,6 +54,7 @@ import 'dunya/voice/dunya_translation_memory.dart';
 import 'dunya/voice/dunya_translator.dart';
 import 'dunya/voice/dunya_assistant.dart';
 import 'dunya/voice/dunya_settings.dart';
+import 'dunya/voice/offline_voice_banner.dart';
 import 'dunya/dunya_home.dart';
 import 'translator/translator_chat.dart';
 import 'ui/offline_banner.dart';
@@ -1631,6 +1632,7 @@ class _FitilaShellState extends State<FitilaShell>
                             onProfile: () => _navigate(FitilaPage.profile),
                           ),
                         const OfflineBanner(),
+                        const OfflineVoiceBanner(),
                         Expanded(
                           child: IndexedStack(
                             index: FitilaPage.values.indexOf(_page),
