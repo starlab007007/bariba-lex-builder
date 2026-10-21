@@ -1,5 +1,5 @@
 {
-  "sourceFiles": 809,
+  "sourceFiles": 810,
   "routes": [
     "/",
     "auth",
@@ -72,9 +72,9 @@
     "/admin/*",
     "*"
   ],
-  "strings": 14425,
+  "strings": 14435,
   "sourced": 7133,
-  "missing": 7292,
+  "missing": 7302,
   "ambiguous": 1219,
   "rejected": 0,
   "quarantined": 80,

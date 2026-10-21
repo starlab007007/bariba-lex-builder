@@ -14,7 +14,7 @@ interface NavItem {
   isCreate?: boolean;
 }
 
-const COMING_SOON_PATHS: string[] = [];
+const COMING_SOON_PATHS: string[] = ['/social', '/creator'];
 
 const leftItems: NavItem[] = [
   { id: 'home', icon: Home, labelFr: 'Fil', labelBa: 'Soo', path: '/social' },
@@ -46,7 +46,7 @@ export const KuaishouBottomNav: React.FC = memo(() => {
   const handleNavPress = (item: NavItem) => {
     triggerFeedback('click');
     if (COMING_SOON_PATHS.includes(item.path)) {
-      toast('🚧 Bientôt disponible !', { description: `La section "${item.labelFr}" arrive très prochainement.` });
+      toast(`${item.isCreate ? 'Création' : item.labelFr} · bientôt`, { description: 'Cette section arrive très prochainement.' });
       return;
     }
     navigate(item.path);
@@ -124,6 +124,9 @@ export const KuaishouBottomNav: React.FC = memo(() => {
         >
           {label}
         </span>
+        {COMING_SOON_PATHS.includes(item.path) && (
+          <span className="absolute top-0 right-0 rounded-full bg-[#C99530] px-1 text-[8px] font-extrabold leading-tight text-[#2B2110]">Bientôt</span>
+        )}
 
         {active && (
           <div

@@ -12,6 +12,7 @@ import React, { Suspense, lazy } from "react";
 import FitilaApp from "./pages/fitila/FitilaApp";
 import { FitilaLanguageProvider } from '@/contexts/FitilaLanguageContext';
 
+const FitilaComingSoon = lazy(() => import('./pages/fitila/FitilaComingSoon'));
 const FitilaSocialCanonical = lazy(() => import("./pages/fitila/FitilaCanonicalCommunity").then(m => ({ default: m.FitilaSocialCanonical })));
 const FitilaCreatorCanonical = lazy(() => import("./pages/fitila/FitilaCanonicalCommunity").then(m => ({ default: m.FitilaCreatorCanonical })));
 const HanduniaCanonicalPage = lazy(() => import("./pages/fitila/FitilaCanonicalCommunity").then(m => ({ default: m.HanduniaCanonicalPage })));
@@ -97,7 +98,7 @@ const App = () => (
                   <Route index element={<FitilaLearn />} />
                   <Route path="auth" element={<TamTamPhoneAuth />} />
 
-                  <Route path="social/*" element={<FitilaSocialCanonical />} />
+                  <Route path="social/*" element={<FitilaComingSoon name="Fil" />} />
                   <Route path="creator" element={<FitilaCreatorCanonical />} />
                   <Route path="creator/handunia" element={<HanduniaCanonicalPage />} />
                   <Route path="creator/sagesse-battle" element={<SagesseCanonicalPage />} />

@@ -6,6 +6,7 @@ import FitilaPageHeader from '@/components/fitila/FitilaPageHeader';
 import { SIG } from '@/components/fitila/signatureTheme';
 import { useNavigate } from 'react-router-dom';
 import { useTamTamLanguage } from '@/contexts/TamTamLanguageContext';
+import { BaribaAudioButton } from '@/components/fitila/BaribaAudioText';
 import { useUnifiedAudio } from '@/hooks/useUnifiedAudio';
 import { usePhoneticSuggestions, PhoneticEntry } from '@/hooks/usePhoneticSuggestions';
 import { BaribaKeyboardInput, SearchLanguage } from '@/components/tamtam/BaribaKeyboardInput';
@@ -275,18 +276,15 @@ export default function TamTamDictionary() {
             
             <div className="space-y-2">
               {searchHistory.map((entry, index) => (
-                <button
-                  key={`${entry.word}-${index}`}
-                  onClick={() => handleSelectWord(entry)}
-                  className="w-full flex items-center gap-3 p-3 bg-[#F7F5EC] rounded-[14px] hover:bg-[#F3E3B9]/50 transition-colors"
-                >
-                  <span className="text-lg">📖</span>
-                  <div className="flex-1 text-left">
-                    <p className="font-medium text-gray-800">{entry.word}</p>
-                    <p className="text-sm text-gray-500 line-clamp-1">{entry.definition}</p>
-                  </div>
-                  <Volume2 className="w-4 h-4 text-gray-400" />
-                </button>
+                <div key={`${entry.word}-${index}`} className="flex w-full items-center gap-2 p-2 bg-[#F7F5EC] rounded-[14px] hover:bg-[#F3E3B9]/50 transition-colors">
+                  <BaribaAudioButton text={entry.word} />
+                  <button type="button" onClick={() => handleSelectWord(entry)} className="flex min-h-11 flex-1 items-center gap-3 text-left">
+                    <div className="flex-1">
+                      <p lang="bba" className="text-[17px] font-bold text-gray-900">{entry.word}</p>
+                      <p className="text-[15px] text-gray-600 line-clamp-1">{entry.definition}</p>
+                    </div>
+                  </button>
+                </div>
               ))}
             </div>
           </motion.div>

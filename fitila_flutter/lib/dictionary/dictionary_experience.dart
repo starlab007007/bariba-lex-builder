@@ -567,6 +567,16 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
                   Text(secondary, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: SignatureTheme.muted, fontSize: 13, height: 1.3)),
                 ]),
               ),
+              if (widget.speak != null)
+                IconButton(
+                  tooltip: 'Écouter ${e.word}',
+                  constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                  style: IconButton.styleFrom(backgroundColor: SignatureTheme.goldTint),
+                  onPressed: () => _speak(e.word, true, 'row:${e.key}'),
+                  icon: _speakingKey == 'row:${e.key}'
+                      ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2, color: SignatureTheme.goldDeep))
+                      : const Icon(Icons.volume_up_rounded, color: SignatureTheme.goldDeep),
+                ),
               if (_favs.contains(e.key)) const Icon(Icons.star_rounded, color: SignatureTheme.gold, size: 20),
               const Icon(Icons.chevron_right_rounded, color: SignatureTheme.muted),
             ]),
@@ -666,7 +676,7 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
                 ],
                 if ((e.exampleFrench ?? '').isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  _block(icon: Icons.chat_bubble_outline_rounded, title: 'En français', text: e.exampleFrench!, onListen: widget.speak == null ? null : () => _speak(e.exampleFrench!, false, 'ef'), listening: _speakingKey == 'ef', listenTip: 'Écouter en français'),
+                  _block(icon: Icons.chat_bubble_outline_rounded, title: 'En français', text: e.exampleFrench!, onListen: null, listening: false),
                 ],
               ]),
             ),
