@@ -1,11 +1,9 @@
 import {
-  acceptRefinement,
   baSurfaceLexicon,
   ensureMemory,
   estimateConfidence,
   foldBa,
   foldFr,
-  lexicalCoverage,
   lexiconLookup,
   memoryLookup,
   splitSentences,
@@ -25,6 +23,7 @@ interface TranslationRequest {
   advanced?: boolean;
   healthCheck?: boolean;
   exploreApi?: boolean;
+  /** Accepted for compatibility: refinement is now always deterministic (rules), never a language model. */
   skipRefine?: boolean;
   /** Reply sentences written by DUNYA's own brain (never user text): their model output may be cached. */
   cache?: boolean;
@@ -314,75 +313,6 @@ async function callGradioTranslate(
   }
 }
 
-async function tryRefineTranslation(params: {
-  req: Request;
-  originalText: string;
-  translation: string;
-  direction: "fr-ba" | "ba-fr";
-  timeoutMs?: number;
-}): Promise<{ refined?: string; changes?: string[]; confidence?: number; error?: string; status?: string; reason?: string }> {
-  const { req, originalText, translation, direction, timeoutMs = 6000 } = params;
-  const supabaseUrl =
-    Deno.env.get("SUPABASE_URL") ||
-    req.headers.get("x-supabase-url") ||
-    "";
-  const supabaseAnon =
-    Deno.env.get("SUPABASE_ANON_KEY") ||
-    req.headers.get("apikey") ||
-    "";
-  if (!supabaseUrl || !supabaseAnon) {
-    return { error: "Refine unavailable (missing Supabase URL/key)" };
-  }
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const refineUrl = `${supabaseUrl}/functions/v1/refine-bariba`;
-    const payload = {
-      text: translation,
-      type: direction === "fr-ba" ? "translate" : "translation",
-      direction,
-      originalInput: originalText,
-    };
-    const resp = await fetch(refineUrl, {
-      method: "POST",
-      headers: {
-        Authorization: req.headers.get("Authorization") || `Bearer ${supabaseAnon}`,
-        apikey: req.headers.get("apikey") || supabaseAnon,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => "");
-      return { error: `Refine HTTP ${resp.status}: ${body.substring(0, 120)}` };
-    }
-    const data = await resp.json();
-    const status = typeof data.meta?.refinementStatus === "string" ? data.meta.refinementStatus : undefined;
-    const reason = typeof data.meta?.guard === "string" ? data.meta.guard : undefined;
-    if (data.error) return { status: status ?? "unavailable", error: String(data.error).slice(0, 80), reason };
-    if (status === "unavailable" || data.meta?.aiUsed === false && !data.meta?.attested && !data.meta?.local) return { status: "unavailable", reason };
-    if (status === "rejected" || data.meta?.accepted === false) return { status: "rejected", reason };
-    if (status === "unchanged") return { status: "unchanged" };
-    const refined = typeof data?.refined === "string" ? normalizeText(data.refined) : "";
-    if (!refined) {
-      return { error: "Refine returned empty text" };
-    }
-    return {
-      refined,
-      changes: Array.isArray(data?.changes) ? data.changes.map(String) : [],
-      confidence: typeof data?.confidence === "number" ? data.confidence : undefined,
-      status: status ?? (data.meta?.attested ? "attested" : "applied"), reason,
-    };
-  } catch (e: unknown) {
-    return {
-      error: e instanceof Error ? e.message : "Refine request failed",
-    };
-  } finally {
-    clearTimeout(t);
-  }
-}
-
 function json(body: unknown, status = 200): Response {
   const payload = body && typeof body === "object" ? { ...body, confidenceIsProbability: false, linguisticQualityCertified: false } : body;
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -407,7 +337,6 @@ export async function handleByT5(req: Request): Promise<Response> {
       targetLang,
       mode = "quality",
       advanced = true,
-      skipRefine = false,
       cache: cacheWanted = false,
     }: TranslationRequest = await req.json();
     const useCache = cacheAllowed(req, cacheWanted);
@@ -626,24 +555,7 @@ export async function handleByT5(req: Request): Promise<Response> {
     const rawModel = normalizeText(translation);
     const rules = rulesRefine(normalizedInput, rawModel, direction);
     let finalTranslation = rules.text;
-    let refineMeta: { applied: boolean; status: string; stage?: string; confidence?: number; changes?: string[]; error?: string; reason?: string } = { applied: rules.changes.length > 0, status: rules.changes.length ? "applied" : skipRefine ? "skipped" : "unavailable", stage: "rules", changes: rules.changes.map((c) => `${c.rule}: ${c.from} → ${c.to}`) };
-
-    // LLM refinement only when it can help: skip if every word is already attested (nothing to repair) or for fast voice calls.
-    const needsLlm = direction !== "fr-ba" || lexicalCoverage(finalTranslation, "ba") < 1;
-    if (!skipRefine && needsLlm) {
-      const refine = await tryRefineTranslation({ req, originalText: normalizedInput, translation: finalTranslation, direction, timeoutMs: 6000 });
-      if (refine.refined && refine.refined.length > 0) {
-        const verdict = acceptRefinement(finalTranslation, refine.refined, direction === "fr-ba" ? "ba" : "fr");
-        if (verdict.accepted) {
-          finalTranslation = refine.refined;
-          refineMeta = { applied: finalTranslation !== rawModel, status: finalTranslation !== rawModel ? "applied" : "unchanged", stage: "llm", confidence: refine.confidence, changes: refine.changes || [] };
-        } else {
-          refineMeta = { applied: false, status: "rejected", reason: verdict.reason };
-        }
-      } else {
-        refineMeta = { applied: false, status: refine.status ?? "unavailable", ...(refine.reason ? { reason: refine.reason } : {}), ...(refine.error ? { error: refine.error } : {}) };
-      }
-    }
+    let refineMeta: { applied: boolean; status: string; stage?: string; confidence?: number; changes?: string[]; error?: string; reason?: string } = { applied: rules.changes.length > 0, status: rules.changes.length ? "applied" : "unchanged", stage: "rules", changes: rules.changes.map((c) => `${c.rule}: ${c.from} → ${c.to}`) };
 
     const { confidence, kind: confidenceKind } = estimateConfidence(finalTranslation, direction === "fr-ba" ? "ba" : "fr", refineMeta.applied);
 
@@ -663,7 +575,7 @@ export async function handleByT5(req: Request): Promise<Response> {
         version: "zimesongbian/modele_byt5_bariba_expert_api_v03_improve",
         mode: gradioMode,
         advanced,
-        postRefine: !skipRefine,
+        postRefine: "rules",
         cached: !!singleCached,
       },
     });
