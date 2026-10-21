@@ -1,7 +1,7 @@
-import { aiFetch, AI_CHAT_URL, getActiveAIKey } from "../_shared/ai-provider.ts";
+import { refineDeterministic } from '../_shared/deterministic-refine.ts';
 import { repairRecognizedTranscript } from '../_shared/transcription-resources.ts';
-import { normalizeBaribaText, isInvalidUiLikeText, applyHardCorrections, detectRefinementChanges, buildRefineSystemPrompt } from '../_shared/bariba-linguistic-rules.ts';
-import { acceptRefinement, ensureMemory, estimateConfidence, foldBa, lexicalCoverage, memoryLookup } from '../_shared/translation-verifier.ts';
+import { normalizeBaribaText, isInvalidUiLikeText, applyHardCorrections, detectRefinementChanges } from '../_shared/bariba-linguistic-rules.ts';
+import { acceptRefinement, baSurfaceLexicon, ensureMemory, estimateConfidence, foldBa, lexicalCoverage, memoryLookup } from '../_shared/translation-verifier.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -67,37 +67,11 @@ export async function handleRefine(req: Request): Promise<Response> {
     // A known source/target pair takes precedence over an unconstrained rewrite.
     const attested = originalInput && !transcription ? memoryLookup(originalInput, direction) : null;
     if (attested) return result(attested.translation, { fallback: false, aiUsed: false, attested: true, grade: attested.grade });
-    if (!(await getActiveAIKey()).trim()) return result(fallback, { fallback: true, aiUsed: false }, 'llm_not_configured');
-    const style = ['simplify', 'natural', 'formal'].includes(body.style) ? body.style : 'correct';
-    const instructions: Record<string, string> = {
-      correct: 'Corrige seulement les erreurs certaines.',
-      simplify: 'Simplifie uniquement si tu peux conserver exactement toutes les informations.',
-      natural: 'Améliore la fluidité uniquement avec des formulations attestées, sans inventer de mot.',
-      formal: 'Ajuste le registre sans modifier les faits ni le sens.',
-    };
-    // `translate` is the legacy ByT5 alias for post-editing an existing draft.
-    // French output must never be subjected to Bariba word substitutions.
-    const basePrompt = target === 'fr'
-      ? 'Tu révises une traduction française existante. Retourne uniquement du français. Ne retraduis pas le brouillon en bariba. Préserve les noms propres, nombres, négations et le sens. En cas de doute, recopie le brouillon.'
-      : buildRefineSystemPrompt(transcription ? 'transcription' : 'translation', direction);
-    const response = await aiFetch(AI_CHAT_URL, {
-      body: JSON.stringify({ model: 'mistral-small-latest', max_tokens: 700, temperature: 0.1, messages: [
-        { role: 'system', content: `${basePrompt}\n${instructions[style]}\nAucune information ajoutée. Préserve les nombres, noms et négations. Une correction non certaine doit être abandonnée. Retourne uniquement le texte final.` },
-        { role: 'user', content: JSON.stringify({ source: originalInput || undefined, draft: text }) },
-      ] }),
-      signal: AbortSignal.any([req.signal, AbortSignal.timeout(12_000)]),
-    });
-    if (!response.ok) {
-      const failure = await response.json().catch(() => ({}));
-      console.warn(JSON.stringify({ event: 'refine_ai_unavailable', status: response.status }));
-      return result(fallback, { fallback: true, aiUsed: false, status: response.status }, failure.error?.code || 'llm_unavailable');
-    }
-    const data = await response.json();
-    const candidate = normalizeTarget(String(data?.choices?.[0]?.message?.content || ''));
-    const verdict = candidate && !isInvalidUiLikeText(candidate) ? controlledEdit(text, candidate, target) : { accepted: false, reason: 'invalid_response' };
-    const refined = verdict.accepted ? candidate : fallback;
-    console.log(JSON.stringify({ event: 'refine_completed', accepted: verdict.accepted, duration: Date.now() - started }));
-    return result(refined, { fallback: !verdict.accepted, aiUsed: true, model: data.model || response.headers.get('X-Fitila-AI-Model') || '', provider: response.headers.get('X-Fitila-AI-Provider'), accepted: verdict.accepted, guard: verdict.reason, style });
+    // Refinement is deterministic (rules + attested lexicon): no language model, so it is identical online and
+    // offline, instant, and never rewrites the meaning. See _shared/deterministic-refine.ts.
+    const polished = refineDeterministic(originalInput, fallback, target === 'ba', target === 'ba' ? { surface: baSurfaceLexicon(), fold: foldBa } : undefined);
+    console.log(JSON.stringify({ event: 'refine_completed', rules: polished.changes.length, duration: Date.now() - started }));
+    return result(polished.text, { fallback: false, aiUsed: false, accepted: true, guard: 'rules', stage: 'rules', changes_rules: polished.changes, style: 'correct' });
   } catch (error) {
     // Preserve the draft on provider/network timeout. Never invent a corrected text.
     console.warn(JSON.stringify({ event: 'refine_unavailable', timeout: error instanceof Error && /abort|timeout/i.test(error.message) }));

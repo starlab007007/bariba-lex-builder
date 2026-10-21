@@ -169,28 +169,26 @@ Deno.test('retired typed and target reference review cannot search, rewrite or c
     }
   });
 });
-Deno.test('French post-editing preserves its direction and reports an unverified heuristic', async () => {
-  await mocked(async (_url, init) => {
-    const body = JSON.parse(String(init?.body)); assert(body.messages[0].content.includes('Retourne uniquement du français'));
-    return json({ model: 'mistral-tested', choices: [{ message: { content: 'La mère est ici.' } }] });
-  }, async () => {
-    const data = await (await handleRefine(req({ originalInput: 'phrase bariba hors mémoire', text: 'La mère est ici', direction: 'ba-fr', type: 'translation' }))).json();
-    assert(data.refined === 'La mère est ici.' && data.meta.accepted && data.confidenceKind === 'heuristic-unverified' && data.meta.requiresHumanValidation && data.confidence <= 65);
+Deno.test('translation refinement is deterministic: no language model is called, the meaning is untouched', async () => {
+  await mocked(async (url) => { throw new Error('refinement must not call any AI provider: ' + String(url)); }, async () => {
+    const data = await (await handleRefine(req({ originalInput: 'Phrase bariba hors mémoire.', text: 'La mère est ici', direction: 'ba-fr', type: 'translation' }))).json();
+    assert(data.refined === 'La mère est ici.' && data.meta.accepted && !data.meta.aiUsed && data.meta.guard === 'rules');
+    assert(data.confidenceKind === 'heuristic-unverified' && data.meta.requiresHumanValidation && data.confidence <= 65);
+    const spaced = await (await handleRefine(req({ originalInput: 'Où es-tu ?', text: 'Wuu  ga  wa  ?', direction: 'fr-ba', type: 'translate' }))).json();
+    assert(spaced.refined === 'Wuu ga wa?' && !spaced.meta.aiUsed);
   });
 });
-Deno.test('ByT5 keeps its original draft and reports no applied revision when Mistral is limited', async () => {
-  await mocked(async (url, init) => {
+Deno.test('ByT5 applies the deterministic rules and never calls refine-bariba or an AI provider', async () => {
+  await mocked(async (url) => {
     const target = String(url);
     if (target.endsWith('/queue/join')) return json({ event_id: 'fake' });
-    if (target.includes('/queue/data')) return new Response('data: ' + JSON.stringify({ msg: 'process_completed', success: true, output: { data: ['La mère est ici.', null] } }) + '\n');
-    if (target.endsWith('/refine-bariba')) return await handleRefine(req(JSON.parse(String(init?.body))));
-    if (target === MISTRAL_CHAT_URL) return json({}, 429, { 'Retry-After': '60' });
-    throw new Error('Unexpected provider call: ' + target);
+    if (target.includes('/queue/data')) return new Response('data: ' + JSON.stringify({ msg: 'process_completed', success: true, output: { data: ['La  mère est ici .', null] } }) + '\n');
+    throw new Error('Unexpected call: ' + target);
   }, async () => {
     Deno.env.set('HUGGING_FACE_API_TOKEN', 'test-hf-key');
     Deno.env.set('SUPABASE_URL', 'https://edge.test'); Deno.env.set('SUPABASE_ANON_KEY', 'test-public-key');
-    const data = await (await handleByT5(req({ text: 'phrase bariba hors mémoire', sourceLang: 'bariba', targetLang: 'french' }))).json();
-    assert(data.translation === 'La mère est ici.' && data.refinement.applied === false && data.refinement.error === 'llm_rate_limited');
+    const data = await (await handleByT5(req({ text: 'phrase bariba hors mémoire.', sourceLang: 'bariba', targetLang: 'french' }))).json();
+    assert(data.translation === 'La mère est ici.' && data.refinement.stage === 'rules' && data.refinement.applied === true);
     assert(data.modelInfo.weightsRevision === null && data.modelInfo.weightsRevisionVerified === false);
   });
 });
