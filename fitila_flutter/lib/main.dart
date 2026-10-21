@@ -152,6 +152,9 @@ void _wireBaribaKeyboard() {
               'systemPrompt': system,
               'temperature': 0.4,
               'max_tokens': 200,
+              // DUNYA traduit lui-même (mémoire attestée puis ByT5) : sans cet indicateur le serveur
+              // traduit toute la réponse en baatɔnum (~40 s) puis l'application l'ignore.
+              'skip_translation': true,
             }),
           )
           .timeout(const Duration(seconds: 25));

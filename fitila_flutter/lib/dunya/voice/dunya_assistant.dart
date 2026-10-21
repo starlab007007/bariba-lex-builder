@@ -210,7 +210,10 @@ class DunyaAssistant {
       final sources = await sourcesFuture;
       if (answer != null && answer.trim().isNotEmpty && !_cancelled) {
         final splitter = DunyaSentenceSplitter();
-        final sentences = [...splitter.add(answer), ?splitter.flush()];
+        var sentences = [...splitter.add(answer), ?splitter.flush()];
+        // Même règle que le web : en baatɔnum, au plus deux phrases courtes (chaque phrase est
+        // traduite l'une après l'autre ; une réponse longue ferait attendre plus de 30 s).
+        if (replyLang == 'bba') sentences = dunyaShortBariba(sentences);
         final display = StringBuffer();
         for (final sentence in sentences) {
           if (_cancelled) break;
@@ -411,7 +414,7 @@ class DunyaAssistant {
       ..writeln('Utilise les informations FITILA fournies quand elles sont utiles.')
       ..writeln('Date du jour : ${now.day}/${now.month}/${now.year}.');
     if (replyLang == 'bba' || mode == DunyaLanguageMode.bariba) {
-      base.writeln('Ta réponse sera traduite en baatɔnum : phrases très courtes, mots simples, sans expressions idiomatiques françaises.');
+      base.writeln('Ta réponse sera traduite en baatɔnum : deux phrases très courtes au maximum, mots simples, sans expressions idiomatiques françaises.');
     }
     return base.toString();
   }
@@ -421,6 +424,21 @@ class DunyaAssistant {
     final context = sources.map((s) => '- ${s.text.replaceAll(RegExp(r'\s+'), ' ').trim()}').take(3).join('\n');
     return 'Informations FITILA (à utiliser seulement si utiles) :\n$context\n\nQuestion : $question';
   }
+}
+
+/// Baatɔnum replies stay short: at most [maxSentences] sentences and [maxChars] characters.
+List<String> dunyaShortBariba(List<String> sentences, {int maxSentences = 2, int maxChars = 200}) {
+  final out = <String>[];
+  var total = 0;
+  for (final s in sentences) {
+    final clean = s.trim();
+    if (clean.isEmpty) continue;
+    if (out.length >= maxSentences) break;
+    if (out.isNotEmpty && total + clean.length > maxChars) break;
+    out.add(clean);
+    total += clean.length;
+  }
+  return out;
 }
 
 /// Cuts a token stream into speakable sentences.
