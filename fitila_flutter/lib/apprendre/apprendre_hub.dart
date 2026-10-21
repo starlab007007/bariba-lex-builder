@@ -34,6 +34,7 @@ class ApprendreHubScreen extends StatefulWidget {
     this.links = const [],
     this.contentLoader,
     this.storeLoader,
+    this.ensureSignedIn,
   });
 
   final List<ApLegacyLink> links;
@@ -41,6 +42,10 @@ class ApprendreHubScreen extends StatefulWidget {
   /// Injectables pour les tests.
   final Future<ApprendreContent> Function()? contentLoader;
   final Future<ApprendreStore> Function()? storeLoader;
+
+  /// Demande une connexion avant de commencer une leçon (fondation, thème,
+  /// séance du jour, révision) ; `null` laisse l'étape entièrement ouverte.
+  final Future<bool> Function(BuildContext context, {required String reason})? ensureSignedIn;
 
   @override
   State<ApprendreHubScreen> createState() => _ApprendreHubScreenState();
@@ -229,7 +234,24 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
     }
   }
 
+  /// Demande une connexion avant de commencer une étape (fondation, thème,
+  /// séance du jour, révision). Un visiteur qui annule reste sur l'accueil
+  /// Apprendre, libre de continuer à parcourir sans compte.
+  Future<bool> _requireSession(String reason) async {
+    final gate = widget.ensureSignedIn;
+    if (gate == null) return true;
+    return gate(context, reason: reason);
+  }
+
+  Future<void> _openLesson(Widget screen) async {
+    if (!await _requireSession('Connectez-vous pour commencer cette leçon.')) return;
+    if (!mounted) return;
+    await _open(screen);
+  }
+
   Future<void> _startReview() async {
+    if (!await _requireSession('Connectez-vous pour commencer cette révision.')) return;
+    if (!mounted) return;
     final content = _content!;
     final store = _store!;
     final tasks = ApTaskFactory(content).reviewSession(store.progress, now: DateTime.now());
@@ -249,6 +271,8 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
   }
 
   Future<void> _startDaily() async {
+    if (!await _requireSession('Connectez-vous pour commencer la séance du jour.')) return;
+    if (!mounted) return;
     final content = _content!;
     final store = _store!;
     final tasks = ApSessionPlanner(content).dailySession(store.progress, now: DateTime.now());
@@ -378,7 +402,7 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
                 ? 'Commencer'
                 : (due.isEmpty ? 'Séance du jour' : 'Réviser mes mots'),
             onTap: next != null
-                ? () => _open(ApFoundationScreen(content: content, unit: next, store: store))
+                ? () => _openLesson(ApFoundationScreen(content: content, unit: next, store: store))
                 : (due.isEmpty ? _startDaily : _startReview),
           ),
           const SizedBox(height: 12),
@@ -457,7 +481,7 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
                   unit: unit,
                   done: progress.foundationDone(unit.id),
                   current: next?.id == unit.id,
-                  onTap: () => _open(ApFoundationScreen(content: content, unit: unit, store: store)),
+                  onTap: () => _openLesson(ApFoundationScreen(content: content, unit: unit, store: store)),
                 );
               },
             ),
@@ -478,7 +502,7 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
               return _ThemeTile(
                 theme: theme,
                 learned: progress.learnedIn(theme),
-                onTap: () => _open(ApThemeScreen(content: content, theme: theme, store: store)),
+                onTap: () => _openLesson(ApThemeScreen(content: content, theme: theme, store: store)),
               );
             },
           ),

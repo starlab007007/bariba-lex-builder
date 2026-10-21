@@ -30,6 +30,7 @@ import 'dunya_online_routing.dart';
 import 'dunya_byt5.dart';
 import 'dunya_mic_capture.dart';
 import 'dunya_settings.dart';
+import 'dunya_shared_speech.dart';
 import 'dunya_speech_engine.dart';
 import 'dunya_voice_brain.dart';
 import 'dunya_voice_pack.dart';
@@ -124,7 +125,9 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     unawaited(_mic.dispose());
     unawaited(_tts.stop());
     unawaited(_player.dispose());
-    _engine?.dispose();
+    // L'engine est partagé avec le reste de l'app (DunyaSharedSpeech) : on ne
+    // le détruit pas en quittant cet écran, d'autres écrans peuvent en avoir
+    // besoin (lecture hors-ligne du Dictionnaire, du Traducteur…).
     _cloudVoice.cancel();
     _orb.dispose();
     _composer.dispose();
@@ -192,14 +195,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   }
 
   Future<void> _startEngine() async {
-    _engine?.dispose();
-    _engine = null;
-    _paths = await _packs.resolvePaths();
+    // Moteur partagé avec le reste de l'app : un seul chargement des modèles
+    // ASR/TTS en mémoire, qu'on soit sur cet écran ou sur le Dictionnaire.
+    _paths = await DunyaSharedSpeech.instance.refresh();
     await DunyaByt5.instance.activateIfInstalled();
-    if (!_paths.canListen && !_paths.canSpeakBariba && !_paths.canSpeakFrenchOffline) return;
+    _engine = DunyaSharedSpeech.instance.engineOrNull;
+    if (_engine == null) return;
     try {
-      final temp = await getTemporaryDirectory();
-      _engine = await DunyaSpeechEngine.start(_paths, tempDir: temp.path);
       if (_paths.canListen) {
         if (mounted) setState(() => _status = 'Préparation de l’écoute…');
         await _engine!.warmUp();

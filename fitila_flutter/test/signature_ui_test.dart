@@ -44,7 +44,11 @@ void main() {
         accessToken: '',
       ),
     ),
-    'settings': SettingsScreen(onSignedOut: () {}),
+    'settings': SettingsScreen(
+      onSignedOut: () {},
+      session: FitilaSession.guest(),
+      ensureSignedIn: (context, {required reason}) async => true,
+    ),
   };
 
   for (final entry in screens.entries) {

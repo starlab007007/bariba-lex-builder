@@ -11,12 +11,17 @@ import 'auth_scenes.dart';
 ///
 /// Les erreurs affichables sont levées en [StateError] par les callbacks ; toute autre erreur donne un message générique.
 class AuthFlow extends StatefulWidget {
-  const AuthFlow({super.key, required this.onSignIn, required this.onSignUp, this.prefill = false, this.autoPlay = true});
+  const AuthFlow({super.key, required this.onSignIn, required this.onSignUp, this.prefill = false, this.autoPlay = true, this.reason});
 
   final Future<void> Function(String phone, String pin) onSignIn;
   final Future<void> Function(String name, String phone, String pin) onSignUp;
   final bool prefill;
   final bool autoPlay;
+
+  /// Message contextuel facultatif ("Connectez-vous pour commencer cette
+  /// leçon.") affiché au-dessus du formulaire quand la connexion est
+  /// demandée à un moment précis plutôt qu'au lancement de l'app.
+  final String? reason;
 
   @override
   State<AuthFlow> createState() => _AuthFlowState();
@@ -234,6 +239,18 @@ class _AuthFlowState extends State<AuthFlow> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (widget.reason != null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(color: SignatureTheme.goldTint, borderRadius: BorderRadius.circular(14)),
+              child: Row(children: [
+                const Icon(Icons.lock_rounded, size: 18, color: SignatureTheme.goldDeep),
+                const SizedBox(width: 8),
+                Expanded(child: Text(widget.reason!, style: const TextStyle(color: SignatureTheme.goldDeep, fontSize: 12.5, fontWeight: FontWeight.w700))),
+              ]),
+            ),
+            const SizedBox(height: 14),
+          ],
           PremiumSegmented(
             labels: const ['Connexion', 'Inscription'],
             selected: _signup ? 'Inscription' : 'Connexion',

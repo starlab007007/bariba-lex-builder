@@ -100,6 +100,11 @@ class DunyaVoicePackManager {
 
   static final instance = DunyaVoicePackManager._();
 
+  /// Téléchargements en cours par pack : deux écrans peuvent proposer le
+  /// même pack (le bandeau d'accueil et la page DUNYA) ; un second appel
+  /// rejoint le premier au lieu d'écrire en parallèle dans le même fichier.
+  final Map<String, Future<Map<String, dynamic>>> _inFlight = {};
+
   Future<Directory> _root() async {
     final base = await getApplicationSupportDirectory();
     final dir = Directory('${base.path}/dunya_packs');
@@ -171,7 +176,31 @@ class DunyaVoicePackManager {
   }
 
   /// Occasional Wi-Fi download, then the same offline install as a file.
+  ///
+  /// Reprenable : une coupure réseau laisse le fichier partiel sur
+  /// l'appareil (`<id>.download.zip`) au lieu de le supprimer. Le prochain
+  /// appel redemande seulement la suite au serveur (en-tête `Range`), ce qui
+  /// évite de tout retélécharger sur un réseau instable — essentiel pour un
+  /// pack de plusieurs dizaines de Mo.
+  ///
+  /// Un même pack peut être proposé par deux écrans à la fois (le bandeau
+  /// d'accueil et la page DUNYA) : un second appel pendant que le premier
+  /// tourne encore rejoint silencieusement son résultat au lieu d'écrire en
+  /// parallèle dans le même fichier (ses propres [onProgress] ne reçoivent
+  /// alors que l'étape finale, pas la progression détaillée du premier).
   Future<Map<String, dynamic>> download(
+    DunyaPackSource source, {
+    void Function(DunyaPackProgress progress)? onProgress,
+  }) {
+    final existing = _inFlight[source.id];
+    if (existing != null) return existing;
+    final future = _downloadImpl(source, onProgress: onProgress);
+    _inFlight[source.id] = future;
+    future.whenComplete(() => _inFlight.remove(source.id));
+    return future;
+  }
+
+  Future<Map<String, dynamic>> _downloadImpl(
     DunyaPackSource source, {
     void Function(DunyaPackProgress progress)? onProgress,
   }) async {
@@ -193,23 +222,39 @@ class DunyaVoicePackManager {
           throw DunyaPackException('Le pack ByT5 ne déclare pas son statut (test ou certifié).');
         }
       }
-      final response = await client.send(http.Request('GET', Uri.parse(source.zipUrl)));
+      var existing = await target.exists() ? await target.length() : 0;
+      final request = http.Request('GET', Uri.parse(source.zipUrl));
+      if (existing > 0) {
+        request.headers['Range'] = 'bytes=$existing-';
+      }
+      final response = await client.send(request);
       if (response.statusCode == 404) {
         throw DunyaPackException(
           'Ce pack n’est pas encore disponible sur fitila.bj. Réessayez plus tard ou installez-le depuis un fichier.',
         );
       }
-      if (response.statusCode != 200) {
+      if (existing > 0 && response.statusCode == 416) {
+        // Fichier partiel déjà complet (ou incohérent) : on repart de zéro.
+        _deleteQuietly(target);
+        throw DunyaPackException('Reprise impossible : relancez, le téléchargement repartira de zéro.');
+      }
+      final resumed = existing > 0 && response.statusCode == 206;
+      if (existing > 0 && response.statusCode == 200) {
+        // Le serveur ne gère pas les requêtes partielles : on repart de zéro
+        // plutôt que de corrompre le fichier déjà sur l'appareil.
+        existing = 0;
+      } else if (response.statusCode != 200 && response.statusCode != 206) {
         throw DunyaPackException('Téléchargement impossible (code ${response.statusCode}).');
       }
       final type = response.headers['content-type'] ?? '';
       if (type.contains('text/html')) {
         throw DunyaPackException('Le serveur a renvoyé une page au lieu du pack. Réessayez plus tard.');
       }
-      final total = response.contentLength;
-      final sink = target.openWrite();
-      var received = 0;
-      var lastReport = 0;
+      final remaining = response.contentLength;
+      final total = remaining == null ? null : existing + remaining;
+      final sink = target.openWrite(mode: resumed ? FileMode.append : FileMode.write);
+      var received = existing;
+      var lastReport = existing;
       try {
         await for (final chunk in response.stream) {
           sink.add(chunk);
@@ -223,18 +268,17 @@ class DunyaVoicePackManager {
         await sink.close();
       }
       if (total != null && total > 0 && received != total) {
-        throw DunyaPackException('Téléchargement incomplet (${_mb(received)} sur ${_mb(total)}). Réessayez en Wi-Fi.');
+        // Coupure en cours de flux : le fichier partiel reste sur l'appareil
+        // (voir `existing` ci-dessus), relancer reprend où l'on s'est arrêté.
+        throw DunyaPackException('Téléchargement incomplet (${_mb(received)} sur ${_mb(total)}). Relancez : il reprendra où il s’est arrêté, de préférence en Wi-Fi.');
       }
       return await installFromFile(target.path, onProgress: onProgress, deleteSource: true);
     } on DunyaPackException {
-      _deleteQuietly(target);
       rethrow;
     } on SocketException {
-      _deleteQuietly(target);
-      throw DunyaPackException('Pas de connexion. Copiez le fichier du pack sur le téléphone et touchez « Installer depuis un fichier du téléphone ».');
+      throw DunyaPackException('Connexion coupée. Relancez quand le réseau revient : le téléchargement reprendra où il s’est arrêté, de préférence en Wi-Fi.');
     } catch (error) {
-      _deleteQuietly(target);
-      throw DunyaPackException('Téléchargement interrompu ($error). Réessayez en Wi-Fi.');
+      throw DunyaPackException('Téléchargement interrompu ($error). Relancez : il reprendra où il s’est arrêté.');
     } finally {
       client.close();
     }
@@ -272,6 +316,14 @@ class DunyaVoicePackManager {
     } on DunyaPackException {
       rethrow;
     } catch (error) {
+      // Fichier corrompu (ex. checksum invalide) : un fichier géré par
+      // `download` est supprimé pour repartir d'un téléchargement complet au
+      // prochain essai ; un fichier fourni par l'utilisateur est conservé.
+      if (deleteSource) {
+        try {
+          File(zipPath).deleteSync();
+        } catch (_) {}
+      }
       throw DunyaPackException('Pack illisible : $error');
     } finally {
       await sub.cancel();
