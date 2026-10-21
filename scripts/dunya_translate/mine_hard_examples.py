@@ -19,6 +19,7 @@ import torch
 from byt_common import decode, encode, load_model, read_jsonl, MAX_IN
 from dunya_text import fold_ba, fold_fr, tokens
 from reward import reward
+from v004_prompt import source_of
 
 
 def main() -> None:
@@ -38,16 +39,17 @@ def main() -> None:
     records = read_jsonl(data / "parallel.jsonl")
     vocab_ba = {fold_ba(t) for r in records for t in tokens(r["ba"])}
     vocab_fr = {fold_fr(t) for r in records for t in tokens(r["fr"])}
-    model = load_model(args.model, args.tiny).eval()
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = load_model(args.model, args.tiny).to(device).eval()
 
     hard, prefs = [], []
     for row in train:
         to_ba = row["direction"] == "fr-ba"
-        ids = torch.tensor([encode(row["input"], MAX_IN)])
+        ids = torch.tensor([encode(row["input"], MAX_IN)], device=device)
         with torch.no_grad():
             out = model.generate(ids, do_sample=True, top_k=40, temperature=0.9, num_return_sequences=args.samples, max_new_tokens=128)
         scored = []
-        src = row["input"].split(": ", 1)[-1].split(" || ")[0]
+        src = source_of(row["input"])
         for seq in out:
             hyp = decode(seq.tolist())
             scored.append((reward(src, hyp, row["target"], vocab_ba if to_ba else vocab_fr, to_ba), hyp))

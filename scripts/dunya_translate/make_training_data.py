@@ -21,6 +21,7 @@ from pathlib import Path
 from dunya_text import build_input
 from retrieval import Memory
 from build_corpus import split_of
+from v004_prompt import to_v004
 
 
 def ctx_text(ctx: dict | None) -> str | None:
@@ -59,6 +60,8 @@ def main() -> None:
     ap.add_argument("--data", default=str(Path(__file__).resolve().parents[2] / "data/translation"))
     ap.add_argument("--out", default=None)
     ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--prefix-style", choices=["plain", "v004"], default="plain",
+                    help="v004: prompt prefix of zimesongbian/byt5-small-fr-bariba-v004 (fine-tuning v05 from it)")
     args = ap.parse_args()
     data = Path(args.data)
     out = Path(args.out or data / "training")
@@ -82,6 +85,10 @@ def main() -> None:
             if task["task"] != "quiz":
                 files["train"].append({"input": task["input"], "target": task["target"], "task": task["task"],
                                        "direction": task["task"], "id": task.get("ref"), "grade": "A", "hints": "none"})
+    if args.prefix_style == "v004":
+        for rows in files.values():
+            for row in rows:
+                row["input"] = to_v004(row["input"])
     rng.shuffle(files["train"])
     for split, rows in files.items():
         with (out / f"{split}.jsonl").open("w", encoding="utf-8") as fh:

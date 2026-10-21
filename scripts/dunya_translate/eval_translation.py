@@ -22,6 +22,7 @@ from pathlib import Path
 
 from dunya_text import build_input, fold_ba, fold_fr, tokens
 from retrieval import Memory
+from v004_prompt import to_v004
 from reward import chrf, format_score, lexical_validity, reward
 
 
@@ -65,11 +66,12 @@ class SpaceBackend:
 
 
 class HfBackend:
-    def __init__(self, path: str, memory: Memory, rag: bool, beams: int) -> None:
+    def __init__(self, path: str, memory: Memory, rag: bool, beams: int, prefix_style: str = "plain") -> None:
         import torch
         from transformers import AutoModelForSeq2SeqLM
-        self.torch, self.memory, self.rag, self.beams = torch, memory, rag, beams
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(path).eval()
+        self.torch, self.memory, self.rag, self.beams, self.prefix_style = torch, memory, rag, beams, prefix_style
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(path).to(self.device).eval()
         self.name = f"hf:{Path(path).name}{'+rag' if rag else ''}"
 
     def __call__(self, direction: str, text: str) -> str:
@@ -79,9 +81,13 @@ class HfBackend:
             mem = [((m["fr"], m["ba"]) if direction == "fr-ba" else (m["ba"], m["fr"])) for m, _ in found] or None
             dic = self.memory.dic_hints(direction, text) or None
         prompt = build_input(direction, text, mem, dic)
-        ids = [b + 3 for b in prompt.encode("utf-8")] + [1]
+        if self.prefix_style == "v004":
+            prompt = to_v004(prompt)
+        ids = [b + 3 for b in prompt.encode("utf-8")][:511] + [1]
         with self.torch.no_grad():
-            out = self.model.generate(self.torch.tensor([ids]), max_new_tokens=256, num_beams=self.beams)
+            out = self.model.generate(self.torch.tensor([ids], device=self.device), max_new_tokens=256, num_beams=self.beams,
+                                      no_repeat_ngram_size=3 if self.prefix_style == "v004" else 0,
+                                      repetition_penalty=1.10 if self.prefix_style == "v004" else 1.0)
         data = bytes(i - 3 for i in out[0].tolist() if 3 <= i < 259)
         return data.decode("utf-8", errors="ignore")
 
@@ -109,6 +115,7 @@ def main() -> None:
     ap.add_argument("--model", default=None)
     ap.add_argument("--rag", action="store_true")
     ap.add_argument("--beams", type=int, default=4)
+    ap.add_argument("--prefix-style", choices=["plain", "v004"], default="plain")
     ap.add_argument("--predictions", default=None)
     ap.add_argument("--gold", default=None, help="gold jsonl (default: gold_candidates.jsonl)")
     ap.add_argument("--limit", type=int, default=0)
@@ -129,7 +136,7 @@ def main() -> None:
     elif args.backend == "space":
         backend = SpaceBackend(args.space_url, args.space_mode, not args.no_autocorrect)
     elif args.backend == "hf":
-        backend = HfBackend(args.model, memory, args.rag, args.beams)
+        backend = HfBackend(args.model, memory, args.rag, args.beams, args.prefix_style)
     else:
         preds = {(p["id"], p["direction"]): p["hyp"] for p in load_jsonl(Path(args.predictions))}
         backend = lambda d, t, _p=preds: ""  # noqa: E731

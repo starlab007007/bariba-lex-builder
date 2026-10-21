@@ -18,6 +18,7 @@ from pathlib import Path
 import torch
 import torch.nn.functional as F
 
+from v004_prompt import to_v004
 from byt_common import MAX_IN, MAX_OUT, collate, encode, load_model, read_jsonl, seed_all, seq_logp
 
 
@@ -38,6 +39,7 @@ def main() -> None:
     ap.add_argument("--batch", type=int, default=8)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--tiny", action="store_true")
+    ap.add_argument("--prefix-style", choices=["plain", "v004"], default="plain")
     args = ap.parse_args()
     seed_all(7)
 
@@ -45,6 +47,9 @@ def main() -> None:
     extra = Path(args.data) / "training/preference_self.jsonl"
     if extra.exists():
         rows += read_jsonl(extra)
+    if args.prefix_style == "v004":
+        for r in rows:
+            r["prompt"] = to_v004(r["prompt"])
     if args.limit:
         rows = rows[: args.limit]
     device = "cuda" if torch.cuda.is_available() else "cpu"
