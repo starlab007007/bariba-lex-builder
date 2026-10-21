@@ -145,11 +145,21 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
         }
         throw new Error('busy');
       };
-      const translate = async (value: string, source: 'fr' | 'bba', target: 'fr' | 'bba') => {
-        const result = await fn('byt5-bariba-translate', { text: value, sourceLang: source === 'fr' ? 'french' : 'bariba', targetLang: target === 'fr' ? 'french' : 'bariba' });
+      const translate = async (value: string, source: 'fr' | 'bba', target: 'fr' | 'bba', fast = false) => {
+        const result = await fn('byt5-bariba-translate', { text: value, sourceLang: source === 'fr' ? 'french' : 'bariba', targetLang: target === 'fr' ? 'french' : 'bariba', ...(fast ? { skipRefine: true, cache: true } : { skipRefine: true }) });
         const translated = clean(result.translation);
         if (!translated || needsClarification(translated)) throw new Error('translation_unavailable');
         return translated;
+      };
+      type Speech = { sentence: string; audio_base64?: string; error?: unknown };
+      // One synthesis = one lease on the VPS CPU; they are chained so they never compete with each other.
+      const synth = async (sentence: string): Promise<Speech> => {
+        try {
+          const result = await infer({ engine: 'meta-mms-tts-bba', text: sentence });
+          const encoded = clean(result.audio_base64);
+          if (!encoded || atob(encoded).slice(0, 4) !== 'RIFF') throw new Error('invalid_speech');
+          return { sentence, audio_base64: encoded };
+        } catch (error) { return { sentence, error }; }
       };
       let failureStage = 'initialization';
       try {
@@ -197,14 +207,30 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
         if (shortBba) french = shortAnswer(french);
         let spoken = french;
         let spokenLang: 'fr' | 'bba' = replyLang;
+        // Speech jobs start as soon as their sentence is translated: voice synthesis (VPS) overlaps with the
+        // translation of the next sentences (ByT5 Space) instead of waiting for the whole answer.
+        const speechJobs: Promise<Speech>[] = [];
+        let chain: Promise<unknown> = Promise.resolve();
+        let discard = false;
+        const queueSpeech = (sentence: string) => {
+          const job = chain.then(() => discard || abort.signal.aborted ? ({ sentence, error: new Error('discarded') } as Speech) : synth(sentence));
+          chain = job;
+          speechJobs.push(job);
+        };
         if (replyLang === 'bba' && body.speech_only !== true) {
           try {
             const translated: string[] = [];
             failureStage = 'translation';
-            for (const sentence of speechChunks(french)) translated.push(await translate(sentence, 'fr', 'bba'));
+            for (const sentence of speechChunks(french)) {
+              const piece = await translate(sentence, 'fr', 'bba', true);
+              translated.push(piece);
+              for (const part of speechChunks(piece)) queueSpeech(part);
+            }
             spoken = translated.join(' ');
           } catch (error) {
+            discard = true;
             if (abort.signal.aborted) throw error;
+            speechJobs.length = 0;
             spokenLang = 'fr'; send({ type: 'notice', code: 'translation_fallback', lang: 'fr' });
           }
         }
@@ -213,21 +239,21 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
         if (spokenLang === 'bba') {
           failureStage = 'tts';
           send({ type: 'stage', stage: 'synthesizing' });
-          for (const sentence of speechChunks(spoken)) {
-            try {
-              const result = await infer({ engine: 'meta-mms-tts-bba', text: sentence });
-              const encoded = clean(result.audio_base64);
-              if (!encoded || atob(encoded).slice(0, 4) !== 'RIFF') throw new Error('invalid_speech');
-              send({ type: 'audio', text: sentence, audio_base64: encoded, engine: 'meta-mms-tts-bba', model: 'facebook/mms-tts-bba' });
-            } catch (error) {
-              if (abort.signal.aborted) throw error;
-              if (error instanceof Error && error.message === 'busy') throw error;
-              send({ type: 'notice', code: 'tts_fallback', engine: 'bariba-tts' });
-              const fallback = await fn('bariba-tts', { text: sentence, skipRefine: true });
-              const audioUrl = new URL(String(fallback.audio_url ?? ''));
-              if (audioUrl.protocol !== 'https:') throw new Error('invalid_speech');
-              send({ type: 'audio', text: sentence, audio_url: audioUrl.href, engine: 'bariba-tts' });
+          // speech_only (listening to a long answer) has no translation step: synthesize its chunks now.
+          if (!speechJobs.length) for (const part of speechChunks(spoken)) queueSpeech(part);
+          for (const job of speechJobs) {
+            const speech = await job;
+            if (!speech.error && speech.audio_base64) {
+              send({ type: 'audio', text: speech.sentence, audio_base64: speech.audio_base64, engine: 'meta-mms-tts-bba', model: 'facebook/mms-tts-bba' });
+              continue;
             }
+            if (abort.signal.aborted) throw speech.error;
+            if (speech.error instanceof Error && speech.error.message === 'busy') throw speech.error;
+            send({ type: 'notice', code: 'tts_fallback', engine: 'bariba-tts' });
+            const fallback = await fn('bariba-tts', { text: speech.sentence, skipRefine: true });
+            const audioUrl = new URL(String(fallback.audio_url ?? ''));
+            if (audioUrl.protocol !== 'https:') throw new Error('invalid_speech');
+            send({ type: 'audio', text: speech.sentence, audio_url: audioUrl.href, engine: 'bariba-tts' });
           }
         }
         failureStage = 'complete';

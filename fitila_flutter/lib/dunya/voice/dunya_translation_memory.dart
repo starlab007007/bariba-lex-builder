@@ -11,6 +11,7 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart' show rootBundle;
 
+import 'dunya_refine.dart';
 import 'dunya_voice_brain.dart' show foldBariba;
 
 class DunyaMemoryHit {
@@ -105,6 +106,12 @@ class DunyaTranslationMemory {
   late final List<String> _baKeys;
 
   int get size => _baToFr.length;
+
+  DunyaRefineLexicon? _refineLexicon;
+
+  /// Attested Baatɔnum vocabulary (from every memory sentence) used by the offline spelling repair.
+  DunyaRefineLexicon refineLexicon() =>
+      _refineLexicon ??= DunyaRefineLexicon.fromTexts(_originalBariba.values, foldBariba);
 
   static DunyaTranslationMemory? _shared;
 

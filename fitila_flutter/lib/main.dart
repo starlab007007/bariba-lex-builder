@@ -110,6 +110,10 @@ void _wireBaribaKeyboard() {
   // DUNYA : mémoire de traduction validée (dictionnaire, Apprendre, scènes), exacte et hors ligne.
   DunyaTranslator.memory = (text, toBariba) async =>
       (await DunyaTranslationMemory.shared()).translate(text, toBariba);
+  // Vocabulaire attesté pour l'affinage hors ligne (réparation d'orthographe), chargé en tâche de fond.
+  unawaited(DunyaTranslationMemory.shared()
+      .then((m) => DunyaTranslator.refineLexicon = m.refineLexicon())
+      .catchError((_) {}));
   DunyaTranslator.allowRemote = () =>
       DunyaSettings.instance.execution != DunyaExecutionMode.offline &&
       FitilaOffline.online.value;
@@ -786,7 +790,7 @@ class FitilaServices {
             out.toLowerCase() != trimmed.toLowerCase() &&
             DunyaTranslator.quality.assess(source: trimmed, candidate: out, toBariba: toBariba).accepted) {
           DunyaOfflineBeta.lastUsed = true;
-          return out;
+          return DunyaTranslator.refineOffline(trimmed, out, toBariba);
         }
       } catch (_) {
         /* modèle indisponible : dictionnaire ci-dessous */
