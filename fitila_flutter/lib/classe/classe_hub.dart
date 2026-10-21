@@ -312,6 +312,7 @@ class _ClasseHubState extends State<ClasseHub> {
           ),
           for (final l in g.value)
             Padding(
+              key: ValueKey('classe-lesson-${l.id}'),
               padding: const EdgeInsets.only(bottom: 8),
               child: Material(
                 color: SignatureTheme.surface,

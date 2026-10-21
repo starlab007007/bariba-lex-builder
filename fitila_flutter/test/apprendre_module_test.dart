@@ -7,6 +7,7 @@ import 'package:fitila_native/apprendre/apprendre_daily.dart';
 import 'package:fitila_native/apprendre/apprendre_hub.dart';
 import 'package:fitila_native/apprendre/apprendre_models.dart';
 import 'package:fitila_native/apprendre/apprendre_review.dart';
+import 'package:fitila_native/apprendre/apprendre_session.dart';
 import 'package:fitila_native/apprendre/apprendre_scenes.dart';
 import 'package:fitila_native/apprendre/apprendre_scenes_ui.dart';
 import 'package:fitila_native/apprendre/apprendre_store.dart';
@@ -235,6 +236,72 @@ void main() {
     expect(find.text('SÉANCE DU JOUR'), findsOneWidget);
     expect(find.text('Lancer la séance'), findsOneWidget);
     expect(find.text('Révision'), findsWidgets);
+  });
+
+  testWidgets('un visiteur qui refuse de se connecter reste sur l’accueil Apprendre', (tester) async {
+    tester.view.physicalSize = const Size(390, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({
+      ApprendreStore.storageKey: jsonEncode({'profile': 'fr', 'direction': 'fr_to_ba'}),
+    });
+    final content = _loadContent();
+
+    var calls = 0;
+    String? lastReason;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ApprendreHubScreen(
+          contentLoader: () async => content,
+          ensureSignedIn: (context, {required reason}) async {
+            calls++;
+            lastReason = reason;
+            return false;
+          },
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.ensureVisible(find.text('Lancer la séance'));
+    await tester.tap(find.text('Lancer la séance'));
+    await tester.pumpAndSettle();
+
+    expect(calls, 1, reason: 'ensureSignedIn doit être appelé une seule fois');
+    expect(lastReason, isNotNull);
+    // Refusé : pas de navigation vers la séance, toujours sur l'accueil.
+    expect(find.byType(ApSessionScreen), findsNothing);
+    expect(find.text('Lancer la séance'), findsOneWidget);
+  });
+
+  testWidgets('la séance du jour démarre quand ensureSignedIn accepte', (tester) async {
+    tester.view.physicalSize = const Size(390, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({
+      ApprendreStore.storageKey: jsonEncode({'profile': 'fr', 'direction': 'fr_to_ba'}),
+    });
+    final content = _loadContent();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ApprendreHubScreen(
+          contentLoader: () async => content,
+          ensureSignedIn: (context, {required reason}) async => true,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.ensureVisible(find.text('Lancer la séance'));
+    await tester.tap(find.text('Lancer la séance'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ApSessionScreen), findsOneWidget);
   });
 
   testWidgets('le module Révision s’affiche pour un nouvel apprenant', (tester) async {
