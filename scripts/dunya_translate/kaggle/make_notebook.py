@@ -1,0 +1,132 @@
+import json
+cells = []
+def md(s): cells.append({"cell_type":"markdown","metadata":{},"source":s})
+def code(s): cells.append({"cell_type":"code","metadata":{},"execution_count":None,"outputs":[],"source":s})
+md("""# FITILA — ByT5 Baatɔnum v05 (entraînement guidé par la mémoire attestée)
+
+**Avant de lancer :**
+1. *Add data* → ajoute le jeu de données Kaggle créé avec `fitila-v05-bundle.zip`.
+2. *Settings* → **Accelerator : GPU T4 x1** (ou P100), **Internet : On**.
+3. *Add-ons → Secrets* → ajoute `HF_TOKEN` (jeton Hugging Face avec droit d'écriture) et coche-le pour ce carnet.
+4. *Run All*. Durée estimée : 3 à 6 h.
+
+Ce que fait le carnet :
+- part de **v004** (le modèle de la Space) ;
+- l'entraîne à lire les **phrases attestées proches** et les **mots du dictionnaire** placés après la phrase (`|| mem: … || dic: …`), en gardant exactement le préfixe de v004 : sans indices, l'entrée est identique à celle d'aujourd'hui ;
+- renforce par **DPO** avec les mauvaises réponses humaines des exercices ;
+- compare **v004 et v05** sur les phrases de test jamais vues à l'entraînement de v05 ;
+- publie v05 sur Hugging Face **seulement si v05 est meilleur**, et produit `v05_report.md`.
+""")
+code("""# ---- Réglages -------------------------------------------------------------
+BASE_MODEL = "zimesongbian/byt5-small-fr-bariba-v004"   # modèle actuel de la Space
+OUT_REPO   = "zimesongbian/byt5-small-fr-bariba-v005"   # dépôt privé créé si absent
+EPOCHS     = 3        # SFT (continuation depuis v004)
+LR         = 1e-4
+BATCH, ACCUM = 8, 4   # lot effectif 32
+MINE_LIMIT = 3000     # exemples analysés pour trouver les erreurs du modèle (DPO)
+EVAL_LIMIT = 300      # phrases de test (x2 sens)
+BEAMS      = 4
+MIN_GAIN   = 0.5      # gain chrF++ minimal (moyenne des 2 sens, sans indices) pour publier
+""")
+code("""import os, glob, shutil, subprocess, json, sys, time
+src = [p for p in glob.glob('/kaggle/input/**/scripts/dunya_translate/train_byt5.py', recursive=True)]
+assert src, "Jeu de données FITILA introuvable : ajoute le zip fitila-v05-bundle dans 'Add data'."
+bundle = src[0].split('/scripts/')[0]
+W = '/kaggle/working/fitila'
+if not os.path.isdir(W): shutil.copytree(bundle, W)   # reprise : on garde les fichiers déjà produits
+S, D = f'{W}/scripts/dunya_translate', f'{W}/data/translation'
+subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', 'sacrebleu', 'huggingface_hub>=0.24'], check=True)
+from kaggle_secrets import UserSecretsClient
+_client = UserSecretsClient()
+for _label in ('HF_TOKEN', 'HUGGING_FACE_API_TOKEN', 'HUGGINGFACE_TOKEN', 'HF_WRITE_TOKEN'):
+    try:
+        os.environ['HF_TOKEN'] = _client.get_secret(_label); print('Jeton Hugging Face :', _label); break
+    except Exception:
+        pass
+else:
+    raise SystemExit("Aucun jeton Hugging Face attaché : Add-ons → Secrets → coche HF_TOKEN.")
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+from huggingface_hub import login, snapshot_download
+login(token=os.environ['HF_TOKEN'])
+import torch; print('GPU:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'AUCUN — active le GPU !')
+BASE = snapshot_download(BASE_MODEL, token=os.environ['HF_TOKEN'], local_dir='/kaggle/working/v004')
+def run(*args):
+    t = time.time(); print('$', ' '.join(args), flush=True)
+    subprocess.run([sys.executable, *args], cwd=S, check=True)
+    print(f'  ({(time.time()-t)/60:.1f} min)', flush=True)
+""")
+code("""# Données d'entraînement : phrases attestées + dictionnaire + exercices, avec et sans indices, préfixe v004.
+if not os.path.exists(f'{D}/training/.v004-ready'):
+    run('make_training_data.py', '--data', D, '--out', f'{D}/training', '--prefix-style', 'v004')
+    open(f'{D}/training/.v004-ready', 'w').write('ok')
+print(open(f'{D}/training/train.jsonl').readline())
+""")
+code("""# Mesure de départ : v004 tel qu'il est utilisé aujourd'hui (sans indices).
+def evaluate(model, tag, rag):
+    out = f'/kaggle/working/eval_{tag}.json'
+    run('eval_translation.py', '--data', D, '--backend', 'hf', '--model', model, '--prefix-style', 'v004',
+        '--beams', str(BEAMS), '--limit', str(EVAL_LIMIT), '--out', out, *(['--rag'] if rag else []))
+    r = json.load(open(out))['report']['by_direction']
+    return {d: {'chrf++': r[d].get('sacrebleu_chrf++'), 'exact': r[d]['exact'], 'loop': r[d]['loop']} for d in r}
+RESULTS = '/kaggle/working/v05_results.json'
+results = json.load(open(RESULTS)) if os.path.exists(RESULTS) else {}
+def stage(name, model, tag, rag):
+    # Reprise : une évaluation déjà faite n'est pas refaite.
+    if name not in results:
+        results[name] = evaluate(model, tag, rag)
+        json.dump(results, open(RESULTS, 'w'), indent=1)
+    return results[name]
+stage('v004', BASE, 'v004', False); stage('v004+indices', BASE, 'v004_rag', True)
+results
+""")
+code("""# Étape 1 — SFT : v004 apprend à utiliser les phrases attestées proches et le dictionnaire.
+if not os.path.exists('/kaggle/working/v05-sft/config.json'):
+    run('train_byt5.py', '--model', BASE, '--data', f'{D}/training', '--out', '/kaggle/working/v05-sft',
+        '--epochs', str(EPOCHS), '--lr', str(LR), '--batch', str(BATCH), '--accum', str(ACCUM))
+    for d in glob.glob('/kaggle/working/v05-sft/checkpoint-*'): shutil.rmtree(d)
+stage('v05-sft', '/kaggle/working/v05-sft', 'v05_sft', False)
+stage('v05-sft+indices', '/kaggle/working/v05-sft', 'v05_sft_rag', True)
+results
+""")
+code("""# Étape 2 — DPO : préférer la traduction attestée aux mauvaises réponses (humaines + erreurs du modèle).
+if not os.path.exists(f'{D}/training/preference_self.jsonl'):
+    run('mine_hard_examples.py', '--model', '/kaggle/working/v05-sft', '--data', D, '--samples', '6', '--limit', str(MINE_LIMIT))
+if not os.path.exists('/kaggle/working/v05-dpo/config.json'):
+    run('dpo.py', '--model', '/kaggle/working/v05-sft', '--data', D, '--prefix-style', 'v004', '--out', '/kaggle/working/v05-dpo',
+        '--batch', '2', '--accum', '4')   # tient dans un T4 16 Go
+stage('v05-dpo', '/kaggle/working/v05-dpo', 'v05_dpo', False)
+stage('v05-dpo+indices', '/kaggle/working/v05-dpo', 'v05_dpo_rag', True)
+results
+""")
+code("""# Choix et rapport. On choisit sur le mode SANS indices (celui de la Space aujourd'hui) ; le gain AVEC indices
+# est ce qu'apportera la Space une fois qu'elle enverra les phrases attestées proches.
+mean = lambda r: (r['fr-ba']['chrf++'] + r['ba-fr']['chrf++']) / 2
+best = max(['v05-sft', 'v05-dpo'], key=lambda k: mean(results[k]))
+gain = mean(results[best]) - mean(results['v004'])
+lines = ['# Rapport FITILA ByT5 v05', '', f'Base : `{BASE_MODEL}` — test : {EVAL_LIMIT} phrases × 2 sens (phrases jamais vues par l’entraînement v05).', '',
+         '| Modèle | chrF++ fr→ba | chrF++ ba→fr | exact fr→ba | exact ba→fr | boucles |', '|---|---|---|---|---|---|']
+for k, r in results.items():
+    lines.append(f"| {k} | {r['fr-ba']['chrf++']} | {r['ba-fr']['chrf++']} | {r['fr-ba']['exact']:.1%} | {r['ba-fr']['exact']:.1%} | {(r['fr-ba']['loop']+r['ba-fr']['loop'])/2:.1%} |")
+lines += ['', f'Meilleur : **{best}** — gain chrF++ moyen sans indices : **{gain:+.2f}**.',
+          'Note : si v004 a vu ces phrases de test pendant son propre entraînement, ses scores sont optimistes ; la comparaison reste à conditions égales.']
+report = '\\n'.join(lines); print(report)
+open('/kaggle/working/v05_report.md', 'w').write(report)
+json.dump(results, open('/kaggle/working/v05_results.json', 'w'), indent=1)
+""")
+code("""# Publication (dépôt privé) seulement si v05 est meilleur que v004.
+from huggingface_hub import HfApi
+if gain >= MIN_GAIN:
+    path = f'/kaggle/working/{best}'
+    for f in ('tokenizer_config.json', 'special_tokens_map.json', 'added_tokens.json'):
+        if os.path.exists(f'{BASE}/{f}') and not os.path.exists(f'{path}/{f}'): shutil.copy(f'{BASE}/{f}', path)
+    shutil.copy('/kaggle/working/v05_report.md', f'{path}/README.md')
+    api = HfApi(token=os.environ['HF_TOKEN'])
+    api.create_repo(OUT_REPO, private=True, exist_ok=True)
+    api.upload_folder(folder_path=path, repo_id=OUT_REPO, commit_message=f'v05 ({best}) gain {gain:+.2f} chrF++')
+    print('Publié :', OUT_REPO, '— pour l’utiliser : variable MODEL_ID de la Space =', OUT_REPO)
+else:
+    print(f'v05 n’est pas assez meilleur ({gain:+.2f} < {MIN_GAIN}) : rien n’est publié. Envoie v05_report.md à Claude.')
+""")
+nb = {"cells":cells,"metadata":{"kernelspec":{"display_name":"Python 3","language":"python","name":"python3"},"language_info":{"name":"python"}},"nbformat":4,"nbformat_minor":5}
+json.dump(nb, open('scripts/dunya_translate/kaggle/fitila_byt5_v05.ipynb','w'), ensure_ascii=False, indent=1)
+print("ok")
