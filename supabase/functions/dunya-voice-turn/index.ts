@@ -101,6 +101,10 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let closed = false;
+      // Privacy-safe engine diagnostics: never log audio, prompts, transcripts or tokens.
+      let asrEngine = 'not_invoked', ttsEngine = 'not_invoked';
+      let translationUsed = false, memoryReferenceCount: number | null = null;
+      let fallbackUsed = false, terminalStatus = 'incomplete';
       const send = (event: Omit<VoiceEvent, 'request_id'>) => {
         if (closed || abort.signal.aborted) return;
         controller.enqueue(encoder.encode(JSON.stringify({ ...event, request_id: id, elapsed_ms: Date.now() - started }) + '\n'));
@@ -146,6 +150,7 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
         throw new Error('busy');
       };
       const translate = async (value: string, source: 'fr' | 'bba', target: 'fr' | 'bba', fast = false) => {
+        translationUsed = true;
         const result = await fn('byt5-bariba-translate', { text: value, sourceLang: source === 'fr' ? 'french' : 'bariba', targetLang: target === 'fr' ? 'french' : 'bariba', ...(fast ? { skipRefine: true, cache: true } : { skipRefine: true }) });
         const translated = clean(result.translation);
         if (!translated || needsClarification(translated)) throw new Error('translation_unavailable');
@@ -179,6 +184,7 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
               // A French recording must never be sent to a Bariba-only fallback.
               if (lang === 'fr') throw new Error('transcription_unavailable');
               engine = 'bariba-stt';
+              fallbackUsed = true;
               send({ type: 'notice', code: 'asr_fallback', engine });
               const fallback = await fn('bariba-stt', { audio: `data:audio/wav;base64,${encoded}`, robustMode: true, skipRepair: true });
               part = clean(fallback.raw_transcription ?? fallback.transcription ?? fallback.text);
@@ -186,14 +192,16 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
             if (!part || needsClarification(part)) throw new Error('clarification_required');
             parts.push(part);
           }
+          asrEngine = engine;
           transcript = parts.join(' ');
           send({ type: 'stage', stage: 'analyzing_transcript' });
           failureStage = 'transcript_repair';
           const repair = await repairRecognizedTranscript(transcript, lang, abort.signal);
           transcript = repair.text;
+          memoryReferenceCount = repair.source_count;
           send({ type: 'transcript', text: transcript, raw_text: repair.raw, repair, lang, engine, model: engine === 'meta-asr-300m' ? 'omniASR_CTC_300M' : 'bariba-stt' });
         } else send({ type: 'transcript', text: transcript, lang, engine: 'text' });
-        if (body.transcribe_only === true) { send({ type: 'done' }); return; }
+        if (body.transcribe_only === true) { terminalStatus = 'done'; send({ type: 'done' }); return; }
         failureStage = 'brain_or_translation';
         send({ type: 'stage', stage: 'thinking' });
         const question = body.speech_only === true ? '' : lang === 'bba' ? await translate(transcript, 'bba', 'fr') : transcript;
@@ -231,7 +239,7 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
             discard = true;
             if (abort.signal.aborted) throw error;
             speechJobs.length = 0;
-            spokenLang = 'fr'; send({ type: 'notice', code: 'translation_fallback', lang: 'fr' });
+            spokenLang = 'fr'; fallbackUsed = true; send({ type: 'notice', code: 'translation_fallback', lang: 'fr' });
           }
         }
         if (spoken.length > MAX_VOICE_TEXT) throw new Error('answer_too_long');
@@ -244,19 +252,23 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
           for (const job of speechJobs) {
             const speech = await job;
             if (!speech.error && speech.audio_base64) {
+              ttsEngine = 'meta-mms-tts-bba';
               send({ type: 'audio', text: speech.sentence, audio_base64: speech.audio_base64, engine: 'meta-mms-tts-bba', model: 'facebook/mms-tts-bba' });
               continue;
             }
             if (abort.signal.aborted) throw speech.error;
             if (speech.error instanceof Error && speech.error.message === 'busy') throw speech.error;
+            fallbackUsed = true;
             send({ type: 'notice', code: 'tts_fallback', engine: 'bariba-tts' });
             const fallback = await fn('bariba-tts', { text: speech.sentence, skipRefine: true });
             const audioUrl = new URL(String(fallback.audio_url ?? ''));
             if (audioUrl.protocol !== 'https:') throw new Error('invalid_speech');
+            ttsEngine = 'bariba-tts';
             send({ type: 'audio', text: speech.sentence, audio_url: audioUrl.href, engine: 'bariba-tts' });
           }
         }
         failureStage = 'complete';
+        terminalStatus = 'done';
         send({ type: 'done' });
       } catch (error) {
         const code = error instanceof Error ? error.message : 'service_unavailable';
@@ -267,6 +279,7 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
           'answer_unavailable', 'answer_too_long', 'invalid_speech',
           'upstream_failed', 'service_unavailable'];
         const safeCode = allowed.includes(code) ? code : 'service_unavailable';
+        terminalStatus = 'error';
         console.warn(JSON.stringify({
           event: 'dunya_voice_failure',
           request_id: id,
@@ -278,7 +291,14 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
         send({ type: 'error', code: safeCode });
       } finally {
         clearTimeout(timer); req.signal.removeEventListener('abort', cancel);
-        console.log(JSON.stringify({ event: 'dunya_voice_turn', request_id: id, elapsed_ms: Date.now() - started, cancelled: abort.signal.aborted }));
+        console.log(JSON.stringify({
+          event: 'dunya_voice_turn', request_id: id, elapsed_ms: Date.now() - started,
+          cancelled: abort.signal.aborted, terminal_status: terminalStatus,
+          failure_stage: terminalStatus === 'error' ? failureStage : undefined,
+          asr_engine: asrEngine, tts_engine: ttsEngine,
+          translation_used: translationUsed, memory_reference_count: memoryReferenceCount,
+          fallback_used: fallbackUsed,
+        }));
         closed = true;
         try { controller.close(); } catch { /* browser disconnected */ }
       }
