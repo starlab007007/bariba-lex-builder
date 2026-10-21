@@ -114,6 +114,10 @@ class ApAudioService {
   /// Change à chaque mise à jour du manifeste : les boutons se reconstruisent.
   final ValueNotifier<int> revision = ValueNotifier<int>(0);
 
+  /// Voix de secours (Meta MMS puis voix FITILA) quand aucun enregistrement
+  /// humain n'est publié pour ce texte. Branchée par l'application.
+  static Future<void> Function(String text)? fallbackSpeak;
+
   final Map<String, List<ApAudioEntry>> _byKey = <String, List<ApAudioEntry>>{};
   ApCompareSettings compareSettings = const ApCompareSettings();
   String preferredVoice = 'auto';
@@ -497,28 +501,16 @@ class ApAudioButton extends StatelessWidget {
       valueListenable: service.revision,
       builder: (context, _, _) {
         final entry = service.entryFor(text);
-        if (entry == null) {
-          if (!placeholder) {
-            return const SizedBox.shrink();
-          }
-          return Tooltip(
-            message: 'Voix de référence en préparation',
-            child: SizedBox(
-              width: size,
-              height: size,
-              child: Icon(
-                Icons.volume_off_rounded,
-                size: size * .5,
-                color: dark ? ApColors.nightText : ApColors.lineStrong,
-              ),
-            ),
-          );
+        if (entry == null && ApAudioService.fallbackSpeak == null && !placeholder) {
+          return const SizedBox.shrink();
         }
-        final speaker = entry.speakerName;
+        final speaker = entry?.speakerName;
         return Tooltip(
-          message: speaker == null
-              ? 'Écouter · appui long : ralenti'
-              : 'Voix de $speaker · appui long : ralenti',
+          message: entry == null
+              ? 'Écouter · voix synthétique Meta MMS'
+              : speaker == null
+                  ? 'Écouter · appui long : ralenti'
+                  : 'Voix de $speaker · appui long : ralenti',
           child: Material(
             color: dark ? Colors.white.withValues(alpha: .12) : ApColors.goldTint,
             shape: const CircleBorder(),
@@ -545,9 +537,14 @@ class ApAudioButton extends StatelessWidget {
   Future<void> _play(BuildContext context, double rate) async {
     final messenger = ScaffoldMessenger.maybeOf(context);
     final ok = await ApAudioService.instance.play(text, rate: rate);
-    if (!ok) {
+    if (ok) return;
+    final fallback = ApAudioService.fallbackSpeak;
+    try {
+      if (fallback == null) throw StateError('no fallback');
+      await fallback(text);
+    } catch (_) {
       messenger?.showSnackBar(
-        const SnackBar(content: Text('Voix indisponible hors connexion : télécharge-la d’abord.')),
+        const SnackBar(content: Text('Voix indisponible hors connexion : télécharge-la d’abord (Apprendre › Voix hors-ligne).')),
       );
     }
   }
