@@ -36,7 +36,8 @@ def main() -> None:
     ap.add_argument("--beta", type=float, default=0.1)
     ap.add_argument("--lr", type=float, default=2e-6)
     ap.add_argument("--epochs", type=int, default=1)
-    ap.add_argument("--batch", type=int, default=8)
+    ap.add_argument("--batch", type=int, default=2)
+    ap.add_argument("--accum", type=int, default=4, help="gradient accumulation (effective batch = batch x accum)")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--tiny", action="store_true")
     ap.add_argument("--prefix-style", choices=["plain", "v004"], default="plain")
@@ -54,6 +55,8 @@ def main() -> None:
         rows = rows[: args.limit]
     device = "cuda" if torch.cuda.is_available() else "cpu"
     policy = load_model(args.model, args.tiny).to(device).train()
+    if hasattr(policy, "gradient_checkpointing_enable") and not args.tiny:
+        policy.gradient_checkpointing_enable()  # fits a T4 (16 GB): policy + frozen reference + optimiser
     reference = copy.deepcopy(policy).eval()
     for p in reference.parameters():
         p.requires_grad_(False)
@@ -71,10 +74,12 @@ def main() -> None:
                 rr = seq_logp(reference, bad["input_ids"], bad["attention_mask"], bad["labels"])
             margin = args.beta * ((pc - pr) - (rc - rr))
             loss = -F.logsigmoid(margin).mean()
-            optimiser.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(policy.parameters(), 1.0)
-            optimiser.step()
+            (loss / args.accum).backward()
+            step = i // args.batch
+            if (step + 1) % args.accum == 0 or i + args.batch >= len(rows):
+                torch.nn.utils.clip_grad_norm_(policy.parameters(), 1.0)
+                optimiser.step()
+                optimiser.zero_grad()
             if (i // args.batch) % 20 == 0:
                 print(f"epoch {epoch} step {i // args.batch} loss {loss.item():.4f} margin {margin.mean().item():.3f}")
     policy.save_pretrained(args.out)
