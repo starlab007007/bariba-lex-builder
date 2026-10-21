@@ -110,7 +110,10 @@ void main() {
     await tester.tap(creationButton);
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
-    expect(find.byType(ContentCreatorScreen), findsOneWidget);
+    expect(find.text('Création · bientôt'), findsOneWidget);
+    expect(find.byType(ContentCreatorScreen), findsNothing);
+    await tester.tap(find.text('OK'));
+    await tester.pump(const Duration(milliseconds: 350));
     expect(tester.takeException(), isNull);
   });
 
