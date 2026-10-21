@@ -111,9 +111,13 @@ void _wireBaribaKeyboard() {
   DunyaTranslator.memory = (text, toBariba) async =>
       (await DunyaTranslationMemory.shared()).translate(text, toBariba);
   // Vocabulaire attesté pour l'affinage hors ligne (réparation d'orthographe), chargé en tâche de fond.
-  unawaited(DunyaTranslationMemory.shared()
-      .then((m) => DunyaTranslator.refineLexicon = m.refineLexicon())
-      .catchError((_) {}));
+  unawaited(() async {
+    try {
+      DunyaTranslator.refineLexicon = (await DunyaTranslationMemory.shared()).refineLexicon();
+    } catch (_) {
+      // Pas de mémoire (tests, premier lancement) : l'affinage s'applique sans lexique.
+    }
+  }());
   DunyaTranslator.allowRemote = () =>
       DunyaSettings.instance.execution != DunyaExecutionMode.offline &&
       FitilaOffline.online.value;
