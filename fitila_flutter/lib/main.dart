@@ -283,6 +283,13 @@ class FitilaApp extends StatelessWidget {
   }
 }
 
+/// Demande une connexion ponctuelle avant une action précise qui l'exige
+/// (commencer une leçon Apprendre, suivre un niveau de Classe…). Répond tout
+/// de suite si une session existe déjà ; sinon ouvre l'écran de connexion
+/// par-dessus l'écran courant et ne renvoie `true` qu'en cas de succès —
+/// l'utilisateur peut toujours annuler (retour) et continuer en visiteur.
+typedef EnsureSignedIn = Future<bool> Function(BuildContext context, {required String reason});
+
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key, this.demoMode = false});
 
@@ -334,17 +341,50 @@ class _AuthGateState extends State<AuthGate> {
     }
   }
 
+  /// Hors mode démo : connexion ponctuelle demandée seulement au moment
+  /// d'une action qui l'exige. Déjà connecté → répond immédiatement.
+  /// Sinon, ouvre l'écran de connexion ; un retour (annulation) laisse
+  /// l'utilisateur continuer en visiteur, sans jamais bloquer le reste
+  /// de l'application.
+  Future<bool> _ensureSignedIn(BuildContext context, {required String reason}) async {
+    if (_session != null) {
+      return true;
+    }
+    final result = await Navigator.of(context).push<FitilaSession>(
+      MaterialPageRoute<FitilaSession>(
+        builder: (routeContext) => AuthScreen(
+          demoMode: widget.demoMode,
+          reason: reason,
+          onSignedIn: (session) => Navigator.of(routeContext).pop(session),
+        ),
+      ),
+    );
+    if (result == null) {
+      return false;
+    }
+    if (mounted) {
+      setState(() => _session = result);
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    return _session == null
-        ? AuthScreen(
-            demoMode: widget.demoMode,
-            onSignedIn: (session) => setState(() => _session = session),
-          )
-        : FitilaShell(session: _session!, onSignedOut: _signOut);
+    if (_session == null && widget.demoMode) {
+      // Les tests widget pilotent l'écran de connexion directement en mode démo.
+      return AuthScreen(
+        demoMode: widget.demoMode,
+        onSignedIn: (session) => setState(() => _session = session),
+      );
+    }
+    return FitilaShell(
+      session: _session ?? FitilaSession.guest(),
+      onSignedOut: _signOut,
+      onRequireAuth: _ensureSignedIn,
+    );
   }
 }
 
@@ -364,6 +404,18 @@ class FitilaSession {
   final String role;
   final String accessToken;
   final String username;
+
+  /// Visiteur : parcourt l'app sans compte. La connexion n'est demandée
+  /// qu'au moment précis où elle est requise (voir [EnsureSignedIn]).
+  bool get isGuest => accessToken.isEmpty;
+
+  factory FitilaSession.guest() => const FitilaSession(
+    userId: '',
+    phone: '',
+    displayName: 'Invité',
+    role: 'Visiteur',
+    accessToken: '',
+  );
 
   factory FitilaSession.fromBackend(FitilaBackendSession session) {
     return FitilaSession(
@@ -1117,10 +1169,15 @@ class AuthScreen extends StatelessWidget {
     super.key,
     required this.onSignedIn,
     this.demoMode = false,
+    this.reason,
   });
 
   final ValueChanged<FitilaSession> onSignedIn;
   final bool demoMode;
+
+  /// Message contextuel affiché quand la connexion est demandée pour une
+  /// action précise (voir [EnsureSignedIn]) plutôt qu'au lancement de l'app.
+  final String? reason;
 
   Future<void> _signIn(String phone, String pin) async {
     if (demoMode) {
@@ -1192,6 +1249,7 @@ class AuthScreen extends StatelessWidget {
       autoPlay: !demoMode,
       onSignIn: _signIn,
       onSignUp: _signUp,
+      reason: reason,
     );
   }
 }
@@ -1201,10 +1259,15 @@ class FitilaShell extends StatefulWidget {
     super.key,
     required this.session,
     required this.onSignedOut,
+    required this.onRequireAuth,
   });
 
   final FitilaSession session;
   final VoidCallback onSignedOut;
+
+  /// Connexion ponctuelle requise avant de commencer une leçon Apprendre ou
+  /// de suivre un niveau de Classe (voir [EnsureSignedIn]).
+  final EnsureSignedIn onRequireAuth;
 
   @override
   State<FitilaShell> createState() => _FitilaShellState();
@@ -1220,6 +1283,17 @@ class _FitilaShellState extends State<FitilaShell>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant FitilaShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Un visiteur qui vient de se connecter (gate Apprendre/Classe) récupère
+    // aussitôt le fil et les actions liées à son compte.
+    if (oldWidget.session.accessToken.isEmpty && widget.session.accessToken.isNotEmpty) {
+      _posts.clear();
+      _loadFeed();
+    }
   }
 
   @override
@@ -1475,6 +1549,7 @@ class _FitilaShellState extends State<FitilaShell>
       FitilaPage.dunya => const DunyaOfflinePage(),
       FitilaPage.temIa => const TemIaScreen(),
       FitilaPage.learn => ApprendreHubScreen(
+  ensureSignedIn: widget.onRequireAuth,
   links: [
     ApLegacyLink(
       label: 'Badges',
@@ -1498,13 +1573,13 @@ class _FitilaShellState extends State<FitilaShell>
     ),
   ],
 ),
-      FitilaPage.classe => const ClasseScreen(),
+      FitilaPage.classe => ClasseScreen(ensureSignedIn: widget.onRequireAuth),
       FitilaPage.espace => const EspaceScreen(),
       FitilaPage.keyboard => const KeyboardScreen(),
       FitilaPage.voiceLab => const VoiceLabScreen(),
       FitilaPage.teacher => const TeacherScreen(),
-      FitilaPage.profile => ProfileScreen(session: widget.session),
-      FitilaPage.settings => SettingsScreen(onSignedOut: widget.onSignedOut),
+      FitilaPage.profile => ProfileScreen(session: widget.session, ensureSignedIn: widget.onRequireAuth),
+      FitilaPage.settings => SettingsScreen(onSignedOut: widget.onSignedOut, session: widget.session, ensureSignedIn: widget.onRequireAuth),
     };
   }
 
@@ -10785,10 +10860,15 @@ class _LearnerProfileScreenState extends State<LearnerProfileScreen> {
 }
 
 class ClasseScreen extends StatefulWidget {
-  const ClasseScreen({super.key, this.initialLessons, this.session});
+  const ClasseScreen({super.key, this.initialLessons, this.session, this.ensureSignedIn});
 
   final List<WebClasseLesson>? initialLessons;
   final ClasseSession? session;
+
+  /// Demande une connexion avant de commencer à suivre un niveau (voir
+  /// [EnsureSignedIn]) ; `null` laisse la Classe entièrement ouverte (tests,
+  /// session déjà fournie par l'appelant).
+  final EnsureSignedIn? ensureSignedIn;
 
   @override
   State<ClasseScreen> createState() => _ClasseScreenState();
@@ -10821,6 +10901,7 @@ class _ClasseScreenState extends State<ClasseScreen> {
         session: _session,
         initialLessons: widget.initialLessons,
         onLevelChanged: (l) => setState(() => _level = l),
+        ensureSignedIn: widget.ensureSignedIn,
       ),
     );
   }
@@ -14292,9 +14373,13 @@ class _TeacherStatsTabState extends State<_TeacherStatsTab> {
 }
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key, required this.session});
+  const ProfileScreen({super.key, required this.session, this.ensureSignedIn});
 
   final FitilaSession session;
+
+  /// Transmis à Apprendre (raccourci « Continuer ») pour demander une
+  /// connexion au moment de commencer une leçon (voir [EnsureSignedIn]).
+  final Future<bool> Function(BuildContext context, {required String reason})? ensureSignedIn;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -14477,7 +14562,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         description: 'Parcours',
         action: 'Continuer',
         icon: Icons.menu_book_rounded,
-        onTap: () => _open(const ApprendreHubScreen()),
+        onTap: () => _open(ApprendreHubScreen(ensureSignedIn: widget.ensureSignedIn)),
       ),
     );
     return list;
@@ -14775,9 +14860,11 @@ class _CapabilityCard extends StatelessWidget {
 }
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.onSignedOut});
+  const SettingsScreen({super.key, required this.onSignedOut, required this.session, required this.ensureSignedIn});
 
   final VoidCallback onSignedOut;
+  final FitilaSession session;
+  final EnsureSignedIn ensureSignedIn;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -15136,11 +15223,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             index: 5,
             child: SizedBox(
               height: 52,
-              child: OutlinedButton.icon(
-                onPressed: widget.onSignedOut,
-                icon: const Icon(Icons.logout_rounded),
-                label: const Text('Se déconnecter'),
-              ),
+              child: widget.session.isGuest
+                  ? FilledButton.icon(
+                      onPressed: () => widget.ensureSignedIn(context, reason: 'Connectez-vous pour profiter de votre compte FITILA.'),
+                      icon: const Icon(Icons.login_rounded),
+                      label: const Text('Se connecter'),
+                    )
+                  : OutlinedButton.icon(
+                      onPressed: widget.onSignedOut,
+                      icon: const Icon(Icons.logout_rounded),
+                      label: const Text('Se déconnecter'),
+                    ),
             ),
           ),
           const SizedBox(height: 8),

@@ -14,12 +14,16 @@ typedef _Section = ({String id, String emoji, String title, String subtitle});
 /// Accueil et navigation de la Classe : niveau N1/N2, sections, leçons, détail de leçon.
 /// Toutes les réponses écrites passent par le clavier Bàátɔ̀nú intelligent (voir [ClasseAnswerCard]).
 class ClasseHub extends StatefulWidget {
-  const ClasseHub({super.key, required this.session, this.initialLessons, this.contentLoader, this.onLevelChanged});
+  const ClasseHub({super.key, required this.session, this.initialLessons, this.contentLoader, this.onLevelChanged, this.ensureSignedIn});
 
   final ClasseSession session;
   final List<WebClasseLesson>? initialLessons;
   final Future<ClasseContent> Function()? contentLoader;
   final ValueChanged<String>? onLevelChanged;
+
+  /// Demande une connexion avant de commencer à suivre une leçon (ouverture
+  /// du détail) ; `null` laisse la Classe entièrement ouverte.
+  final Future<bool> Function(BuildContext context, {required String reason})? ensureSignedIn;
 
   @override
   State<ClasseHub> createState() => _ClasseHubState();
@@ -67,6 +71,21 @@ class _ClasseHubState extends State<ClasseHub> {
 
   void _go(String section) => setState(() => _section = section);
   void _home() => setState(() => _section = 'home');
+
+  /// Ouvre une leçon (début du suivi d'un niveau) : demande une connexion
+  /// d'abord si l'appelant l'exige. Un visiteur qui annule reste sur la
+  /// liste des leçons, libre de continuer à parcourir sans compte.
+  Future<void> _openLesson(int lessonId) async {
+    final gate = widget.ensureSignedIn;
+    if (gate != null) {
+      final ok = await gate(context, reason: 'Connectez-vous pour commencer à suivre cette leçon.');
+      if (!ok || !mounted) return;
+    }
+    setState(() {
+      _lessonId = lessonId;
+      _section = 'detail';
+    });
+  }
 
   List<_Section> _sections(int lessonCount) {
     final n2 = _level == 'N2';
@@ -120,7 +139,7 @@ class _ClasseHubState extends State<ClasseHub> {
           lesson: l,
           lessons: lessons,
           onBack: () => _go('lessons'),
-          onOpen: (n) => setState(() => _lessonId = n.id),
+          onOpen: (n) => _openLesson(n.id),
         );
       case 'alphabet':
         return ClasseAlphabetScreen(session: s, content: data.content, onBack: _home);
@@ -191,10 +210,7 @@ class _ClasseHubState extends State<ClasseHub> {
                   if (last != null) ...[
                     const SizedBox(height: 10),
                     FilledButton.icon(
-                      onPressed: () => setState(() {
-                        _lessonId = last.id;
-                        _section = 'detail';
-                      }),
+                      onPressed: () => _openLesson(last.id),
                       style: FilledButton.styleFrom(backgroundColor: levelColor(_level)),
                       icon: const Icon(Icons.play_arrow_rounded),
                       label: Text('Reprendre · ${last.title}', overflow: TextOverflow.ellipsis),
@@ -302,10 +318,7 @@ class _ClasseHubState extends State<ClasseHub> {
                 borderRadius: BorderRadius.circular(SignatureTheme.radiusMedium),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(SignatureTheme.radiusMedium),
-                  onTap: () => setState(() {
-                    _lessonId = l.id;
-                    _section = 'detail';
-                  }),
+                  onTap: () => _openLesson(l.id),
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(borderRadius: BorderRadius.circular(SignatureTheme.radiusMedium), border: Border.all(color: SignatureTheme.hairline)),
