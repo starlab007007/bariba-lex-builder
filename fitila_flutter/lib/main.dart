@@ -63,6 +63,7 @@ import 'keyboard/keyboard_bridge.dart';
 import 'keyboard/keyboard_onboarding.dart';
 import 'keyboard/keyboard_prompt.dart';
 import 'ui/reference_creation_ui.dart';
+import 'apprendre/apprendre_audio.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -73,6 +74,8 @@ Future<void> main() async {
     FitilaOffline.start();
   }
   _wireBaribaKeyboard();
+  final fallbackPlayer = audio.AudioPlayer();
+  ApAudioService.fallbackSpeak = (text) => _speakAnywhere(fallbackPlayer, text, bariba: true);
   runApp(const FitilaApp());
 }
 
@@ -165,6 +168,14 @@ void _wireBaribaKeyboard() {
 
 /// Lit un texte : voix FITILA en ligne, sinon voix locale (téléphone / voix Apprendre déjà téléchargées).
 Future<void> _speakAnywhere(audio.AudioPlayer player, String text, {required bool bariba}) async {
+  // Baatɔnum : voix humaine publiée d'abord (comme le web), puis Meta MMS.
+  if (bariba) {
+    try {
+      final ap = ApAudioService.instance;
+      await ap.ensureLoaded(refresh: false);
+      if (ap.has(text.trim()) && await ap.play(text.trim())) return;
+    } catch (_) {}
+  }
   Future<void> offlineSpeak() async {
     if (await LocalSpeech.speak(text, bariba: bariba)) return;
     throw StateError(
@@ -1210,6 +1221,10 @@ class _FitilaShellState extends State<FitilaShell>
 
   void _navigate(FitilaPage page) {
     if (page == _page) {
+      return;
+    }
+    if (page == FitilaPage.feed) {
+      unawaited(showFitilaComingSoon(context, 'Fil'));
       return;
     }
     setState(() {
@@ -15329,13 +15344,13 @@ class _PremiumBottomNav extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: _PremiumBottomItem(
+              child: FitilaSoonBadge(child: _PremiumBottomItem(
                 icon: Icons.dynamic_feed_outlined,
                 activeIcon: Icons.dynamic_feed_rounded,
                 label: 'Fil',
-                active: selectedIndex == 0,
-                onTap: () => onSelected(0),
-              ),
+                active: false,
+                onTap: () => showFitilaComingSoon(context, 'Fil'),
+              )),
             ),
             Expanded(
               child: _PremiumBottomItem(
@@ -15363,7 +15378,7 @@ class _PremiumBottomNav extends StatelessWidget {
                   label: 'Création',
                   child: InkWell(
                     customBorder: const CircleBorder(),
-                    onTap: onCreate,
+                    onTap: () => showFitilaComingSoon(context, 'Création'),
                     child: Container(
                       width: 52,
                       height: 52,

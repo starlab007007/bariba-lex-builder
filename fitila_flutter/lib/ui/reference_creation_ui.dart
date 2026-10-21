@@ -166,13 +166,13 @@ class FitilaPremiumBottomNav extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: _FitilaPremiumBottomItem(
+              child: FitilaSoonBadge(child: _FitilaPremiumBottomItem(
                 icon: Icons.dynamic_feed_outlined,
                 activeIcon: Icons.dynamic_feed_rounded,
                 label: 'Fil',
-                active: selectedIndex == 0,
-                onTap: () => onSelected(0),
-              ),
+                active: false,
+                onTap: () => showFitilaComingSoon(context, 'Fil'),
+              )),
             ),
             Expanded(
               child: _FitilaPremiumBottomItem(
@@ -200,7 +200,7 @@ class FitilaPremiumBottomNav extends StatelessWidget {
                   label: 'Création',
                   child: InkWell(
                     customBorder: const CircleBorder(),
-                    onTap: onCreate,
+                    onTap: () => showFitilaComingSoon(context, 'Création'),
                     child: Container(
                       width: 52,
                       height: 52,
@@ -1851,4 +1851,67 @@ class _TentSilhouetteClipper extends CustomClipper<Path> {
 
   @override
   bool shouldReclip(covariant _TentSilhouetteClipper oldClipper) => false;
+}
+
+/// Fil et création de publication : pas encore ouverts. Message clair, plein
+/// écran lisible, sans afficher le contenu du fil.
+Future<void> showFitilaComingSoon(BuildContext context, String name) {
+  return showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: Row(
+        children: [
+          const Icon(Icons.hourglass_top_rounded, color: Color(0xFF9C6B1D), size: 28),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '$name · bientôt',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF17131F)),
+            ),
+          ),
+        ],
+      ),
+      content: const Text(
+        'Cette section arrive très prochainement. En attendant, apprenez, cherchez dans le dictionnaire ou traduisez.',
+        style: TextStyle(fontSize: 17, height: 1.45, color: Color(0xFF2E2A36)),
+      ),
+      actions: [
+        FilledButton(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(120, 52),
+            backgroundColor: const Color(0xFFC99530),
+            foregroundColor: const Color(0xFF2B2110),
+          ),
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('OK', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Pastille « Bientôt » posée sur un onglet de la barre du bas.
+class FitilaSoonBadge extends StatelessWidget {
+  const FitilaSoonBadge({super.key, required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          child,
+          Positioned(
+            top: -2,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(color: const Color(0xFF9C6B1D), borderRadius: BorderRadius.circular(8)),
+                child: const Text('Bientôt', style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w900)),
+              ),
+            ),
+          ),
+        ],
+      );
 }
