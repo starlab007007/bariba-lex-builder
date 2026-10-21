@@ -1,11 +1,16 @@
 import {
   acceptRefinement,
+  baSurfaceLexicon,
   ensureMemory,
   estimateConfidence,
+  foldBa,
+  foldFr,
+  lexicalCoverage,
   lexiconLookup,
   memoryLookup,
   splitSentences,
 } from "../_shared/translation-verifier.ts";
+import { refineDeterministic, type RefineLexicon } from "../_shared/deterministic-refine.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,6 +26,8 @@ interface TranslationRequest {
   healthCheck?: boolean;
   exploreApi?: boolean;
   skipRefine?: boolean;
+  /** Reply sentences written by DUNYA's own brain (never user text): their model output may be cached. */
+  cache?: boolean;
 }
 
 const SPACE_URL = (
@@ -51,6 +58,56 @@ function normalizeText(input: string): string {
     .replace(/\u0251/g, "a").replace(/\u0261/g, "g")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+
+// ---- Deterministic refinement (rules, no language model): applied to EVERY model output. -----
+let refineLexiconCache: RefineLexicon | null = null;
+function refineLexicon(): RefineLexicon {
+  if (!refineLexiconCache || refineLexiconCache.surface.size === 0) refineLexiconCache = { surface: baSurfaceLexicon(), fold: foldBa };
+  return refineLexiconCache;
+}
+function rulesRefine(source: string, translation: string, direction: "fr-ba" | "ba-fr") {
+  return refineDeterministic(source, translation, direction === "fr-ba", direction === "fr-ba" ? refineLexicon() : undefined);
+}
+
+// ---- Cache of model outputs for DUNYA's own reply sentences (service-role callers only). ------
+// Stores the RAW model output (never user text); rules are re-applied on every read.
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+function cacheAllowed(req: Request, wanted: boolean | undefined): boolean {
+  return wanted === true && !!SERVICE_KEY && req.headers.get("Authorization") === `Bearer ${SERVICE_KEY}`;
+}
+async function cacheKey(direction: string, text: string): Promise<string> {
+  const folded = direction === "fr-ba" ? foldFr(text) : foldBa(text);
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${direction}|${folded}`));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function cacheGet(key: string): Promise<string | null> {
+  const base = Deno.env.get("SUPABASE_URL");
+  if (!base || !SERVICE_KEY) return null;
+  try {
+    const r = await fetch(`${base}/rest/v1/translation_cache?key=eq.${key}&select=translation&limit=1`, {
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+      signal: AbortSignal.timeout(1500),
+    });
+    if (!r.ok) return null;
+    const rows = await r.json();
+    return Array.isArray(rows) && typeof rows[0]?.translation === "string" ? rows[0].translation : null;
+  } catch {
+    return null;
+  }
+}
+function cachePut(key: string, direction: string, source: string, translation: string): void {
+  const base = Deno.env.get("SUPABASE_URL");
+  if (!base || !SERVICE_KEY || /(\b\S+(?:\s+\S+){0,2})(?:\s+\1){2,}/u.test(translation)) return;
+  const task = fetch(`${base}/rest/v1/translation_cache`, {
+    method: "POST",
+    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json", Prefer: "resolution=ignore-duplicates,return=minimal" },
+    body: JSON.stringify({ key, direction, source: source.slice(0, 400), translation: translation.slice(0, 800) }),
+    signal: AbortSignal.timeout(3000),
+  }).catch(() => undefined);
+  const rt = globalThis as typeof globalThis & { EdgeRuntime?: { waitUntil: (t: Promise<unknown>) => void } };
+  rt.EdgeRuntime?.waitUntil(task);
 }
 
 function isValidTranslation(result: unknown): result is string {
@@ -351,7 +408,9 @@ export async function handleByT5(req: Request): Promise<Response> {
       mode = "quality",
       advanced = true,
       skipRefine = false,
+      cache: cacheWanted = false,
     }: TranslationRequest = await req.json();
+    const useCache = cacheAllowed(req, cacheWanted);
 
     await ensureMemory();
     const HF_TOKEN = Deno.env.get("HUGGING_FACE_API_TOKEN");
@@ -464,6 +523,8 @@ export async function handleByT5(req: Request): Promise<Response> {
       const confidences: number[] = [];
       let modelUsed = false;
       let failed = false;
+      let cacheHits = 0;
+      const ruleChanges: string[] = [];
       for (let i = 0; i < segments.length; i++) {
         const hit = hits[i];
         if (hit) {
@@ -475,16 +536,24 @@ export async function handleByT5(req: Request): Promise<Response> {
           failed = true;
           break;
         }
-        const r = await callGradioTranslate(SPACE_URL, apiPrefix, segments[i], direction, gradioMode, advanced, HF_TOKEN, abortController.signal, true);
-        const t = r.success ? (Array.isArray(r.data?.data) ? r.data.data[0] : Array.isArray(r.data) ? r.data[0] : null) : null;
+        const key = useCache ? await cacheKey(direction, segments[i]) : "";
+        const cached = useCache ? await cacheGet(key) : null;
+        let t: string | null = cached;
+        if (!t) {
+          const r = await callGradioTranslate(SPACE_URL, apiPrefix, segments[i], direction, gradioMode, advanced, HF_TOKEN, abortController.signal, true);
+          t = r.success ? (Array.isArray(r.data?.data) ? r.data.data[0] : Array.isArray(r.data) ? r.data[0] : null) : null;
+          if (isValidTranslation(t) && useCache) cachePut(key, direction, segments[i], normalizeText(t));
+        } else cacheHits++;
         if (!isValidTranslation(t)) {
           failed = true;
           break;
         }
         modelUsed = true;
-        const clean = normalizeText(t);
+        const polished = rulesRefine(segments[i], normalizeText(t), direction);
+        if (polished.changes.length) ruleChanges.push(...polished.changes.map((c) => `${c.rule}: ${c.from} → ${c.to}`));
+        const clean = polished.text;
         out.push(clean);
-        confidences.push(estimateConfidence(clean, direction === "fr-ba" ? "ba" : "fr", false).confidence);
+        confidences.push(estimateConfidence(clean, direction === "fr-ba" ? "ba" : "fr", polished.changes.length > 0).confidence);
       }
       if (!failed) {
         clearTimeout(timeoutId);
@@ -498,7 +567,8 @@ export async function handleByT5(req: Request): Promise<Response> {
           method: modelUsed ? (attestedCount ? "translation-memory+byt5" : "byt5-per-sentence") : "translation-memory",
           segments: segments.length,
           attestedSegments: attestedCount,
-          refinement: { applied: false },
+          cacheHits,
+          refinement: modelUsed ? { applied: ruleChanges.length > 0, status: ruleChanges.length ? "applied" : "unchanged", stage: "rules", changes: ruleChanges } : { applied: false },
           modelInfo: {
             name: modelUsed ? "ByT5 Expert (Improved)" : "FITILA translation memory",
             version: modelUsed ? "zimesongbian/modele_byt5_bariba_expert_api_v03_improve" : "memory-v1",
@@ -516,7 +586,10 @@ export async function handleByT5(req: Request): Promise<Response> {
 
     const RETRY_DELAYS = [0, 3000, 8000];
     let result: { success: boolean; data?: any; error?: string; fatal?: boolean } = { success: false, error: "No attempt made" };
-    for (let attempt = 0; attempt < RETRY_DELAYS.length; attempt++) {
+    const singleKey = useCache ? await cacheKey(direction, normalizedInput) : "";
+    const singleCached = useCache ? await cacheGet(singleKey) : null;
+    if (singleCached) result = { success: true, data: { data: [singleCached, null] } };
+    else for (let attempt = 0; attempt < RETRY_DELAYS.length; attempt++) {
       if (attempt > 0) await sleep(RETRY_DELAYS[attempt]);
       result = await callGradioTranslate(SPACE_URL, apiPrefix, normalizedInput, direction, gradioMode, advanced, HF_TOKEN, abortController.signal, true);
       if (result.success) break;
@@ -549,16 +622,21 @@ export async function handleByT5(req: Request): Promise<Response> {
       return fb ? fallbackResponse(fb, reason, Date.now() - startTime) : unavailableResponse(reason, Date.now() - startTime);
     }
 
-    let finalTranslation = normalizeText(translation);
-    let refineMeta: { applied: boolean; status: string; confidence?: number; changes?: string[]; error?: string; reason?: string } = { applied: false, status: skipRefine ? "skipped" : "unavailable" };
+    if (useCache && !singleCached) cachePut(singleKey, direction, normalizedInput, normalizeText(translation));
+    const rawModel = normalizeText(translation);
+    const rules = rulesRefine(normalizedInput, rawModel, direction);
+    let finalTranslation = rules.text;
+    let refineMeta: { applied: boolean; status: string; stage?: string; confidence?: number; changes?: string[]; error?: string; reason?: string } = { applied: rules.changes.length > 0, status: rules.changes.length ? "applied" : skipRefine ? "skipped" : "unavailable", stage: "rules", changes: rules.changes.map((c) => `${c.rule}: ${c.from} → ${c.to}`) };
 
-    if (!skipRefine) {
+    // LLM refinement only when it can help: skip if every word is already attested (nothing to repair) or for fast voice calls.
+    const needsLlm = direction !== "fr-ba" || lexicalCoverage(finalTranslation, "ba") < 1;
+    if (!skipRefine && needsLlm) {
       const refine = await tryRefineTranslation({ req, originalText: normalizedInput, translation: finalTranslation, direction, timeoutMs: 6000 });
       if (refine.refined && refine.refined.length > 0) {
         const verdict = acceptRefinement(finalTranslation, refine.refined, direction === "fr-ba" ? "ba" : "fr");
         if (verdict.accepted) {
           finalTranslation = refine.refined;
-          refineMeta = { applied: finalTranslation !== normalizeText(translation), status: finalTranslation !== normalizeText(translation) ? "applied" : "unchanged", confidence: refine.confidence, changes: refine.changes || [] };
+          refineMeta = { applied: finalTranslation !== rawModel, status: finalTranslation !== rawModel ? "applied" : "unchanged", stage: "llm", confidence: refine.confidence, changes: refine.changes || [] };
         } else {
           refineMeta = { applied: false, status: "rejected", reason: verdict.reason };
         }
@@ -586,6 +664,7 @@ export async function handleByT5(req: Request): Promise<Response> {
         mode: gradioMode,
         advanced,
         postRefine: !skipRefine,
+        cached: !!singleCached,
       },
     });
   } catch (error: unknown) {

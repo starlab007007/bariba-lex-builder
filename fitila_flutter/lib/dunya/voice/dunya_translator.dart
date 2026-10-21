@@ -7,6 +7,7 @@
 library;
 
 import 'dunya_linguistic_quality.dart';
+import 'dunya_refine.dart';
 
 /// The on-device ByT5 pack is shipped as a beta (manifest tested:false). It is active, but every
 /// result it produces is announced as a test result and must be double-checked.
@@ -22,7 +23,7 @@ abstract final class DunyaOfflineBeta {
 typedef DunyaTranslateFn = Future<String?> Function(String text, bool toBariba);
 
 class DunyaTranslation {
-  const DunyaTranslation(this.text, this.engine, {this.reviewFlags = const []});
+  const DunyaTranslation(this.text, this.engine, {this.reviewFlags = const [], this.refined = false});
 
   final String text;
 
@@ -31,6 +32,9 @@ class DunyaTranslation {
 
   /// Nonblocking caution indicators, e.g. grammar requiring human review.
   final List<String> reviewFlags;
+
+  /// True when the deterministic refinement (see dunya_refine.dart) changed the engine output.
+  final bool refined;
 }
 
 class DunyaTranslator {
@@ -42,6 +46,13 @@ class DunyaTranslator {
 
   /// On-device engine (FITILA ByT5 pack). Null until installed.
   static DunyaTranslateFn? offline;
+
+  /// Attested Baatɔnum vocabulary for the offline spelling repair (set once the memory has loaded).
+  static DunyaRefineLexicon? refineLexicon;
+
+  /// Deterministic refinement of an on-device (beta) result. Online results are refined by the server.
+  static String refineOffline(String source, String output, bool toBariba) =>
+      dunyaRefine(source, output, toBariba, lexicon: refineLexicon).text;
 
   /// FITILA cloud chain; returns null when offline or signed out.
   static DunyaTranslateFn? online;
@@ -81,7 +92,10 @@ class DunyaTranslator {
               ? quality.assess(source: clean, candidate: out, toBariba: toBariba)
               : const DunyaQualityAssessment(accepted: true, flags: []);
           if (!assessment.accepted) continue;
-          final result = DunyaTranslation(out, engine, reviewFlags: assessment.flags);
+          // Offline (and only offline): deterministic refinement of the beta model output.
+          final polished = engine == 'offline' ? refineOffline(clean, out, toBariba) : out;
+          final result = DunyaTranslation(polished, engine,
+              reviewFlags: assessment.flags, refined: polished != out);
           if (_cache.length >= _maxCacheEntries) _cache.remove(_cache.keys.first);
           _cache[cacheKey] = result;
           return result;

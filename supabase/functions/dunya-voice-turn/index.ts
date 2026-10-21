@@ -145,8 +145,8 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
         }
         throw new Error('busy');
       };
-      const translate = async (value: string, source: 'fr' | 'bba', target: 'fr' | 'bba') => {
-        const result = await fn('byt5-bariba-translate', { text: value, sourceLang: source === 'fr' ? 'french' : 'bariba', targetLang: target === 'fr' ? 'french' : 'bariba' });
+      const translate = async (value: string, source: 'fr' | 'bba', target: 'fr' | 'bba', fast = false) => {
+        const result = await fn('byt5-bariba-translate', { text: value, sourceLang: source === 'fr' ? 'french' : 'bariba', targetLang: target === 'fr' ? 'french' : 'bariba', ...(fast ? { skipRefine: true, cache: true } : { skipRefine: true }) });
         const translated = clean(result.translation);
         if (!translated || needsClarification(translated)) throw new Error('translation_unavailable');
         return translated;

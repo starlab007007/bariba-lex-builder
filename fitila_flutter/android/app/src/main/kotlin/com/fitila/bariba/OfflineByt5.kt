@@ -97,6 +97,7 @@ object OfflineByt5 {
                 ensureLoaded(context)
                 memory[direction + "\u0000" + source]
                     ?: checked(source, infer((if (direction == "fr-ba") prefixFrBa else prefixBaFr) + source, 192, if (direction == "fr-ba") 2 else 1))
+                        ?.let { OfflineRefine.apply(source, it) }
             } catch (_: Throwable) {
                 null
             }

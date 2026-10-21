@@ -293,3 +293,20 @@ export function estimateConfidence(
   return { confidence: value, kind: "model-unverified" };
 }
 
+
+/** Attested Baatɔnum vocabulary for deterministic spelling repair: folded word -> surface form (tones kept). */
+export function baSurfaceLexicon(): Map<string, string> {
+  ensureIndexes();
+  const surface = new Map<string, string>();
+  const add = (text: string) => {
+    for (const raw of (text || "").split(/\s+/)) {
+      const w = raw.replace(EDGE, "");
+      const k = foldBa(w);
+      if (k && !/\d/.test(k) && !surface.has(k)) surface.set(k, w);
+    }
+  };
+  for (const [, ba] of loaded?.pairs ?? []) add(ba);
+  for (const k of Object.keys(loaded?.ba2fr ?? {})) add(k);
+  for (const v of Object.values(loaded?.fr2ba ?? {})) add(String(v));
+  return surface;
+}

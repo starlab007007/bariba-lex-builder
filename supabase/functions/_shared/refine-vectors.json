@@ -1,0 +1,18 @@
+{
+  "lexicon": ["bɔkuɔ", "Nɛn", "mɛro", "yaburu", "dĩanu", "yoka", "baayere", "tomati", "sĩimɔ", "bibu", "Wuu", "ga", "wa", "Domma", "a", "na", "ee", "de", "ka"],
+  "cases": [
+    {"name": "spacing and final punctuation", "source": "Où es-tu ?", "candidate": "Wuu  ga  wa  ?", "toBariba": true, "expected": "Wuu ga wa?"},
+    {"name": "question mark replaces a full stop", "source": "Quand es-tu venu ?", "candidate": "Domma a na.", "toBariba": true, "expected": "Domma a na?"},
+    {"name": "adds the missing final point", "source": "Le village est calme.", "candidate": "Wuu ga wa", "toBariba": true, "expected": "Wuu ga wa."},
+    {"name": "capital letter follows the source", "source": "Bonjour tout le monde", "candidate": "nɛn mɛro", "toBariba": true, "expected": "Nɛn mɛro"},
+    {"name": "loops collapse to one occurrence", "source": "Le feu brûle", "candidate": "yoka yoka yoka yoka", "toBariba": true, "expected": "Yoka"},
+    {"name": "two repetitions are kept", "source": "Oui oui", "candidate": "ee ee", "toBariba": true, "expected": "Ee ee"},
+    {"name": "greek epsilon becomes open e", "source": "Ma mère", "candidate": "Nεn mεro", "toBariba": true, "expected": "Nɛn mɛro"},
+    {"name": "unattested word repaired to the single attested neighbour", "source": "Il faut arroser", "candidate": "A de baayeree", "toBariba": true, "expected": "A de baayere"},
+    {"name": "unattested word kept when no unique neighbour", "source": "Il faut arroser", "candidate": "A de zzzzzz", "toBariba": true, "expected": "A de zzzzzz"},
+    {"name": "word copied from the source is never repaired", "source": "Tomatii", "candidate": "tomatii", "toBariba": true, "expected": "Tomatii"},
+    {"name": "proper name inside the sentence is kept", "source": "Salut Koffi", "candidate": "Wuu Koffe", "toBariba": true, "expected": "Wuu Koffe"},
+    {"name": "french target only gets surface rules", "source": "Wuu ga wa.", "candidate": "le village est calme", "toBariba": false, "expected": "Le village est calme."},
+    {"name": "already clean text is unchanged", "source": "Où es-tu ?", "candidate": "Wuu ga wa?", "toBariba": true, "expected": "Wuu ga wa?"}
+  ]
+}
