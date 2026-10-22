@@ -1258,7 +1258,14 @@ public class BaribaInputMethodService extends InputMethodService {
                         boolean networkUp = isNetworkAvailable();
                         if (networkUp || !client.isConfigured()) {
                             try { result = client.translate(txt, direction); }
-                            catch (KeyboardTranslationClient.TranslationException e) { error = e.getMessage(); networkIssue = e.connectivity; }
+                            catch (KeyboardTranslationClient.TranslationException e) {
+                                error = e.getMessage();
+                                // Non configuré (FITILA jamais ouvert / config pas encore synchronisée)
+                                // n'est pas marqué "connectivity" par le client, mais mérite le même
+                                // repli hors ligne que l'absence de réseau : le dictionnaire et le
+                                // modèle ByT5 embarqués restent utilisables sans serveur distant.
+                                networkIssue = e.connectivity || !client.isConfigured();
+                            }
                         } else {
                             networkIssue = true;
                         }
