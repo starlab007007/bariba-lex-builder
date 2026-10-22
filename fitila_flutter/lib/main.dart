@@ -50,6 +50,7 @@ import 'classe/classe_widgets.dart' show ClasseStoragePlayer;
 import 'espace/espace_home.dart';
 import 'keyboard/bariba_input.dart';
 import 'dictionary/dictionary_experience.dart';
+import 'dunya/voice/dunya_byt5.dart';
 import 'dunya/voice/dunya_translation_memory.dart';
 import 'dunya/voice/dunya_translator.dart';
 import 'dunya/voice/dunya_assistant.dart';
@@ -83,6 +84,14 @@ Future<void> main() async {
 /// Shares config with the native keyboards and plugs the online translator
 /// used by the keyboard's "Saisir et Traduire" mode.
 void _wireBaribaKeyboard() {
+  // Active le modèle ByT5 hors-ligne dès le démarrage s'il est déjà installé
+  // sur l'appareil (pack téléchargé lors d'une session précédente) : sans
+  // cela, DunyaTranslator.offline restait `null` tant que la personne
+  // n'avait pas rouvert les réglages DUNYA dans la session en cours, et la
+  // traduction hors-ligne d'une phrase nouvelle échouait (repli dictionnaire
+  // seul) même si le modèle était bien présent sur le disque. Local, pas de
+  // réseau ; échoue en silence (pack absent, test) sans bloquer le démarrage.
+  unawaited(DunyaByt5.instance.activateIfInstalled());
   if (FitilaBackend.configured) {
     unawaited(
       KeyboardBridge.instance.syncConfig(

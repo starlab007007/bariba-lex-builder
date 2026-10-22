@@ -1258,7 +1258,10 @@ public class BaribaInputMethodService extends InputMethodService {
                         boolean networkUp = isNetworkAvailable();
                         if (networkUp || !client.isConfigured()) {
                             try { result = client.translate(txt, direction); }
-                            catch (KeyboardTranslationClient.TranslationException e) { error = e.getMessage(); networkIssue = e.connectivity; }
+                            catch (KeyboardTranslationClient.TranslationException e) {
+                                error = e.getMessage();
+                                networkIssue = e.connectivity;
+                            }
                         } else {
                             networkIssue = true;
                         }

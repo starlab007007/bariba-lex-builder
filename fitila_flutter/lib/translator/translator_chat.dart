@@ -375,25 +375,31 @@ class _TranslatorChatState extends State<TranslatorChat> {
 
   Widget _langPill(bool bariba, {bool detected = false}) => AnimatedContainer(
     duration: const Duration(milliseconds: 200),
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     decoration: BoxDecoration(
       color: bariba ? SignatureTheme.goldTint : SignatureTheme.surface,
       borderRadius: BorderRadius.circular(99),
-      border: Border.all(color: detected ? SignatureTheme.sage : (bariba ? const Color(0xFFE7D29B) : SignatureTheme.hairline), width: detected ? 2 : 1),
+      border: Border.all(color: detected ? SignatureTheme.sage : (bariba ? const Color(0xFFE7D29B) : SignatureTheme.hairline), width: detected ? 1.5 : 1),
     ),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Text(bariba ? '🇧🇯' : '🇫🇷', style: const TextStyle(fontSize: 13)),
-      const SizedBox(width: 5),
-      Text(bariba ? 'Bàátɔ̀nú' : 'Français', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: bariba ? SignatureTheme.goldDeep : SignatureTheme.ink)),
-      if (detected) const Padding(padding: EdgeInsets.only(left: 4), child: Icon(Icons.auto_awesome_rounded, size: 12, color: SignatureTheme.sage)),
+      Text(bariba ? '🇧🇯' : '🇫🇷', style: const TextStyle(fontSize: 11.5)),
+      const SizedBox(width: 4),
+      Text(bariba ? 'Bàátɔ̀nú' : 'Français', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: bariba ? SignatureTheme.goldDeep : SignatureTheme.ink)),
+      if (detected) const Padding(padding: EdgeInsets.only(left: 3), child: Icon(Icons.auto_awesome_rounded, size: 11, color: SignatureTheme.sage)),
     ]),
   );
 
+  // Bande fine, sans carte ni bordure propre : directement sous le titre de
+  // la page, pour une fenêtre de chat dégagée (voir _compactLangBar pour la
+  // variante encore plus réduite affichée quand le clavier est ouvert).
   Widget _topBar() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
-      decoration: BoxDecoration(color: SignatureTheme.surface, borderRadius: BorderRadius.circular(22), border: Border.all(color: SignatureTheme.hairline)),
+      padding: const EdgeInsets.only(bottom: 6),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: SignatureTheme.hairline)),
+      ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(children: [
             Expanded(
@@ -402,14 +408,42 @@ class _TranslatorChatState extends State<TranslatorChat> {
                 fit: BoxFit.scaleDown,
                 child: Row(children: [
                   _langPill(!_toBariba, detected: _detected != null && (_detected == ChatLang.bariba) == !_toBariba),
-                  IconButton(key: const ValueKey('swap'), tooltip: 'Inverser les langues', visualDensity: VisualDensity.compact, onPressed: _swap, icon: const Icon(Icons.swap_horiz_rounded, color: SignatureTheme.goldDeep)),
+                  IconButton(
+                    key: const ValueKey('swap'),
+                    tooltip: 'Inverser les langues',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                    iconSize: 18,
+                    onPressed: _swap,
+                    icon: const Icon(Icons.swap_horiz_rounded, color: SignatureTheme.goldDeep),
+                  ),
                   _langPill(_toBariba),
                 ]),
               ),
             ),
-            if (_messages.isNotEmpty) IconButton(tooltip: 'Effacer la conversation', visualDensity: VisualDensity.compact, onPressed: _clear, icon: const Icon(Icons.delete_outline_rounded, color: SignatureTheme.muted)),
-            if (_p.openHistory != null) IconButton(tooltip: 'Historique et favoris', visualDensity: VisualDensity.compact, onPressed: _p.openHistory, icon: const Icon(Icons.history_rounded)),
+            if (_messages.isNotEmpty)
+              IconButton(
+                tooltip: 'Effacer la conversation',
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                iconSize: 18,
+                onPressed: _clear,
+                icon: const Icon(Icons.delete_outline_rounded, color: SignatureTheme.muted),
+              ),
+            if (_p.openHistory != null)
+              IconButton(
+                tooltip: 'Historique et favoris',
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                iconSize: 18,
+                onPressed: _p.openHistory,
+                icon: const Icon(Icons.history_rounded, size: 18),
+              ),
           ]),
+          const SizedBox(height: 2),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(children: [
@@ -417,7 +451,7 @@ class _TranslatorChatState extends State<TranslatorChat> {
                 _auto = v;
                 if (!v) _detected = null;
               })),
-              const SizedBox(width: 6),
+              const SizedBox(width: 5),
               _toggle(Icons.forum_outlined, 'Mode conversation', _conversation, (v) => setState(() => _conversation = v)),
             ]),
           ),
@@ -435,16 +469,16 @@ class _TranslatorChatState extends State<TranslatorChat> {
       onTap: () => onChanged(!on),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
           color: on ? SignatureTheme.sageTint : Colors.transparent,
           borderRadius: BorderRadius.circular(99),
           border: Border.all(color: on ? SignatureTheme.sage.withValues(alpha: .5) : SignatureTheme.hairline),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 14, color: on ? SignatureTheme.sage : SignatureTheme.muted),
-          const SizedBox(width: 5),
-          Text(label, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: on ? SignatureTheme.sage : SignatureTheme.muted)),
+          Icon(icon, size: 12, color: on ? SignatureTheme.sage : SignatureTheme.muted),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: on ? SignatureTheme.sage : SignatureTheme.muted)),
         ]),
       ),
     ),
