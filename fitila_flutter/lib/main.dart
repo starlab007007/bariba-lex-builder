@@ -29,6 +29,7 @@ import 'core/foncier_rag.dart';
 import 'core/tem_ia_voice_page.dart';
 import 'core/signature_theme.dart';
 import 'core/web_parity_models.dart';
+import 'admin/platform_audit_screen.dart';
 import 'apprendre/apprendre_hub.dart';
 import 'apprendre/apprendre_voice_studio.dart';
 import 'apprendre/apprendre_voice_ui.dart';
@@ -1826,6 +1827,34 @@ class _NavigationPanel extends StatelessWidget {
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Material(
+                        color: _fitilaSurfaceAlt,
+                        borderRadius: BorderRadius.circular(14),
+                        child: InkWell(
+                          key: const ValueKey('nav-admin-audit'),
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(builder: (_) => const PlatformAuditScreen()),
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.all(13),
+                            child: Row(children: [
+                              Expanded(
+                                child: Text(
+                                  'Journal d’activité',
+                                  style: TextStyle(
+                                    color: _fitilaInk,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              Icon(Icons.chevron_right_rounded, size: 18, color: _fitilaInk),
+                            ]),
                           ),
                         ),
                       ),

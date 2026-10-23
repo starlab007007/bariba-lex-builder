@@ -161,13 +161,16 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
 
   Future<void> _prepare() async {
     await _settings.load();
-    await _prepareFrenchVoice();
-    // Online startup must not wait for offline ASR/TTS model loading.
-    if (!_useOnlineVoice) {
-      await _startEngine();
-      await _brain.refreshState();
-    }
-    await _loadHistory();
+    // These three are independent of each other (the French system-voice
+    // check, the offline ASR/TTS models, and reloading the past
+    // conversation): running them together means the screen is ready as
+    // soon as the SLOWEST one finishes, not after their sum.
+    await Future.wait([
+      _prepareFrenchVoice(),
+      _loadHistory(),
+      // Online startup must not wait for offline ASR/TTS model loading.
+      if (!_useOnlineVoice) _prepareOfflineEngine(),
+    ]);
     if (!mounted) return;
     setState(() => _phase = _Phase.idle);
     if (!_settings.onboarded) {
@@ -192,6 +195,11 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     } catch (_) {
       _systemFrenchVoice = false;
     }
+  }
+
+  Future<void> _prepareOfflineEngine() async {
+    await _startEngine();
+    await _brain.refreshState();
   }
 
   Future<void> _startEngine() async {
@@ -654,29 +662,76 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   // Speaking
   // ---------------------------------------------------------------------------
 
+  /// Plays sentences as they arrive, while the NEXT sentence's offline voice
+  /// is already being synthesized in the background isolate — so by the time
+  /// one sentence finishes playing, the next is normally already to hand
+  /// instead of leaving dead air for its synthesis. (The online cloud voice
+  /// already overlaps translation/synthesis server-side; this mirrors that
+  /// for the fully offline voice.)
   Future<void> _speakQueue(Stream<DunyaSentenceEvent> sentences) async {
-    await for (final s in sentences) {
-      if (_stopSpeaking || !mounted) continue;
+    DunyaSentenceEvent? queued;
+    Future<String?>? queuedAudio;
+
+    Future<void> playQueued() async {
+      final s = queued!;
+      final prepared = await queuedAudio;
+      if (_stopSpeaking || !mounted) return;
       setState(() {
         _phase = _Phase.speaking;
         _caption = s.utterance.text;
         _subCaption = _settings.frenchSubtitlesInBariba ? s.subtitle : null;
       });
-      await _speakOne(s.utterance);
+      await _speakOne(s.utterance, prepared: prepared);
     }
+
+    await for (final s in sentences) {
+      if (_stopSpeaking || !mounted) continue;
+      // Start this sentence's synthesis now, so it overlaps with whatever is
+      // still playing from the previous one.
+      final audioFuture = _synthesizeAhead(s.utterance);
+      if (queued != null) await playQueued();
+      queued = s;
+      queuedAudio = audioFuture;
+    }
+    if (queued != null) await playQueued();
   }
 
-  Future<void> _speakOne(DunyaUtterance u) async {
+  /// Kicks off offline synthesis for [u] without playing it. Returns null for
+  /// the phone's own French voice (which synthesizes and speaks in one step,
+  /// nothing to prefetch) or when offline speech is unavailable.
+  Future<String?> _synthesizeAhead(DunyaUtterance u) async {
     try {
       if (u.lang == 'bba') {
         if (_paths.canSpeakBariba && _engine != null) {
-          await _playFile(await _engine!.synthesize(u.text, 'bba', speed: 0.85 * _settings.voiceSpeed));
+          return await _engine!.synthesize(u.text, 'bba', speed: 0.85 * _settings.voiceSpeed);
+        }
+      } else if (!_systemFrenchVoice && _paths.canSpeakFrenchOffline && _engine != null) {
+        return await _engine!.synthesize(u.text, 'fra', speed: _settings.voiceSpeed);
+      }
+    } catch (error) {
+      await _store.audit('dunya_voice_speak_error', {'error': error.toString()}, severity: 'warning');
+    }
+    return null;
+  }
+
+  /// [prepared] is the already-resolved result of [_synthesizeAhead] (the
+  /// caller awaits it to know when to flip to the "speaking" phase, so by the
+  /// time this runs it is a plain value, not a Future); omitting it
+  /// synthesizes inline, as replay/confirm do, with nothing to prefetch
+  /// against.
+  Future<void> _speakOne(DunyaUtterance u, {String? prepared}) async {
+    try {
+      if (u.lang == 'bba') {
+        if (_paths.canSpeakBariba && _engine != null) {
+          final path = prepared ?? await _engine!.synthesize(u.text, 'bba', speed: 0.85 * _settings.voiceSpeed);
+          await _playFile(path);
         }
       } else if (_systemFrenchVoice) {
         await _tts.setSpeechRate(0.47 * _settings.voiceSpeed);
         await _tts.speak(u.text);
       } else if (_paths.canSpeakFrenchOffline && _engine != null) {
-        await _playFile(await _engine!.synthesize(u.text, 'fra', speed: _settings.voiceSpeed));
+        final path = prepared ?? await _engine!.synthesize(u.text, 'fra', speed: _settings.voiceSpeed);
+        await _playFile(path);
       }
     } catch (error) {
       await _store.audit('dunya_voice_speak_error', {'error': error.toString()}, severity: 'warning');

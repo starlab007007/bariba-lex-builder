@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'offline.dart';
+import 'platform_audit.dart';
 
 class FitilaBackendSession {
   const FitilaBackendSession({
@@ -118,20 +120,30 @@ class FitilaBackend {
 
     final profile = await findProfileByPhone(localPhone);
     if (profile == null) {
+      unawaited(PlatformAudit.log('auth', 'login_failed', details: {'reason': 'unknown_phone'}, severity: 'warning'));
       throw const AuthException(
         'Aucun compte FITILA ne correspond à ce numéro.',
       );
     }
 
-    final response = await client.auth.signInWithPassword(
-      email: emailFromPhone(localPhone),
-      password: pin,
-    );
-    final session = response.session;
+    Session? session;
+    try {
+      final response = await client.auth.signInWithPassword(
+        email: emailFromPhone(localPhone),
+        password: pin,
+      );
+      session = response.session;
+    } catch (_) {
+      unawaited(PlatformAudit.log('auth', 'login_failed', details: {'reason': 'bad_credentials'}, severity: 'warning'));
+      rethrow;
+    }
     if (session == null) {
+      unawaited(PlatformAudit.log('auth', 'login_failed', details: {'reason': 'no_session'}, severity: 'warning'));
       throw const AuthException('La session FITILA n’a pas pu être créée.');
     }
-    return sessionFromSupabase(session, profile: profile);
+    final built = await sessionFromSupabase(session, profile: profile);
+    unawaited(PlatformAudit.log('auth', 'login'));
+    return built;
   }
 
   /// Création de compte : même schéma que le web (e-mail dérivé du numéro, PIN = mot de passe).
@@ -185,7 +197,9 @@ class FitilaBackend {
     } catch (_) {
       /* non bloquant : le profil pourra être complété depuis « Modifier mon profil » */
     }
-    return sessionFromSupabase(session);
+    final built = await sessionFromSupabase(session);
+    unawaited(PlatformAudit.log('auth', 'signup'));
+    return built;
   }
 
   static Future<FitilaBackendSession> sessionFromSupabase(
@@ -275,6 +289,11 @@ class FitilaBackend {
 
   static Future<void> signOut() async {
     if (configured) {
+      // Avant la déconnexion : après, `currentUser` est nul et l'écriture
+      // (qui exige actor = auth.uid()) retomberait sur la policy anonyme.
+      // Non attendu : la déconnexion (notamment hors ligne) ne doit jamais
+      // être retardée par cette écriture best-effort.
+      unawaited(PlatformAudit.log('auth', 'logout'));
       try {
         await client.auth.signOut();
       } catch (_) {
@@ -3450,6 +3469,38 @@ class FitilaBackend {
               })
               .toList(growable: false);
         });
+  }
+
+  // ---------------------------------------------------------------------
+  // Administration — journal d'activité plateforme (platform_audit_log)
+  // ---------------------------------------------------------------------
+
+  /// Lecture réservée aux admins côté RLS (`has_role(auth.uid(), 'admin')`) :
+  /// un appelant non-admin reçoit une liste vide plutôt qu'une erreur réseau.
+  static Future<List<Map<String, dynamic>>> fetchPlatformAuditLog({
+    String? module,
+    String? severity,
+    String? search,
+    int limit = 40,
+    int offset = 0,
+  }) async {
+    var query = client.from('platform_audit_log').select();
+    if (module != null && module.isNotEmpty) {
+      query = query.eq('module', module);
+    }
+    if (severity != null && severity.isNotEmpty) {
+      query = query.eq('severity', severity);
+    }
+    final term = search?.trim();
+    if (term != null && term.isNotEmpty) {
+      query = query.or(
+        'event_type.ilike.%$term%,actor_label.ilike.%$term%,module.ilike.%$term%',
+      );
+    }
+    final data = await query
+        .order('created_at', ascending: false)
+        .range(offset, offset + limit - 1);
+    return List<Map<String, dynamic>>.from(data as List);
   }
 }
 
