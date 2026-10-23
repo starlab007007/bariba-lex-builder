@@ -11,7 +11,18 @@ ou un bucket par cette intégration.
   et chaque traduction de l’historique.
 - `/ia` et `/tem-ia` : la recherche locale sur les documents demeure locale.
   Chaque réponse, y compris dans l’historique, possède un lecteur Baatɔnum.
+  Un bouton « Mode vocal » ouvre en plus une discussion vocale directe et
+  continue (même principe que DUNYA IA — écoute, réponse, écoute mains
+  libres), toujours répondue par la recherche locale embarquée du Code
+  Foncier (`answerFromCorpus`), jamais par le moteur d’IA générale ni ByT5.
+  Entrée vocale : reconnaissance du navigateur en français, ou transcription
+  seule (`dunya-voice-turn`, `transcribe_only`) en baatɔnum. Sortie vocale :
+  lecture seule (`speech_only`), comme le lecteur de chaque réponse.
 - L’ancien écran `FitilaIA` utilise également ces composants s’il est réintégré.
+- L’application Flutter offre la même discussion vocale continue pour son
+  module Fitila IA (Tem IA), avec `bariba-stt`/`transcribe-audio` pour
+  l’écoute et `bariba-tts` pour la lecture — la réponse reste celle du
+  Code Foncier local (`FoncierRag.answer`).
 
 La lecture Baatɔnum utilise Meta MMS via le backend public borné
 `dunya-voice-turn`, en mode `speech_only`. Ce mode ne rappelle ni le moteur IA

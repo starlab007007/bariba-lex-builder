@@ -26,6 +26,7 @@ import 'core/local_speech.dart';
 import 'core/offline.dart';
 import 'core/fitila_translation_audio.dart';
 import 'core/foncier_rag.dart';
+import 'core/tem_ia_voice_page.dart';
 import 'core/signature_theme.dart';
 import 'core/web_parity_models.dart';
 import 'apprendre/apprendre_hub.dart';
@@ -8746,6 +8747,13 @@ class _TemIaScreenState extends State<TemIaScreen> {
     return _PageFrame(
       title: 'Fitila Tem IA',
       subtitle: 'Tem bausu sariaba sɔ̃ɔsiru · 100% local',
+      action: IconButton(
+        tooltip: 'Mode vocal',
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const TemIaVoicePage()),
+        ),
+        icon: const Icon(Icons.graphic_eq_rounded),
+      ),
       child: Column(
         children: [
           Container(

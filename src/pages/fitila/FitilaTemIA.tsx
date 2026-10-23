@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import FoncierSourcesModal, { type FoncierSource } from '@/components/fitila/FoncierSourcesModal';
 import BaribaSmartTextarea from '@/components/classe/BaribaSmartTextarea';
 import { answerFromCorpus } from '@/lib/foncierRAG';
+import FitilaTemIAVoice from '@/components/fitila/FitilaTemIAVoice';
 
 interface ChatMessage {
   id: string;
@@ -42,6 +43,7 @@ export default function FitilaTemIA() {
 
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [voiceLang, setVoiceLang] = useState<SpeechLanguage>('bba');
+  const [voiceMode, setVoiceMode] = useState(false);
 
   useEffect(() => {
     try {
@@ -58,8 +60,13 @@ export default function FitilaTemIA() {
 
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
 
-  const sendMessage = (text: string) => {
-    if (!text.trim() || isProcessing) return;
+  /**
+   * Recherche locale (RAG, aucun réseau) et renvoie le texte de la réponse,
+   * pour que le mode vocal puisse la lire sans dupliquer cette logique.
+   * Retourne null si rien n'a été envoyé (saisie vide ou une recherche déjà en cours).
+   */
+  const sendMessage = (text: string): string | null => {
+    if (!text.trim() || isProcessing) return null;
 
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
@@ -86,9 +93,11 @@ export default function FitilaTemIA() {
           sources: sources as FoncierSource[],
         };
         setMessages(prev => [...prev, assistantMsg]);
+        return formatted;
       } catch (err) {
         console.error('[FitilaTemIA] Local search error:', err);
         toast.error('Erreur de recherche locale');
+        return null;
     } finally {
       setIsProcessing(false);
     }
@@ -101,6 +110,10 @@ export default function FitilaTemIA() {
 
   const isBusy = isProcessing || voiceBusy;
 
+  if (voiceMode) {
+    return <FitilaTemIAVoice onExit={() => setVoiceMode(false)} onAsk={sendMessage} />;
+  }
+
   return (
     <div className="mx-auto flex h-full min-h-0 w-full max-w-[960px] flex-col overflow-hidden bg-[#F7F5EC] text-[#241F2E]">
       {/* Header */}
@@ -111,6 +124,16 @@ export default function FitilaTemIA() {
             <p className="text-[#8C8571] text-[11px] leading-tight">Écrivez, dictez, écoutez</p>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setVoiceMode(true)}
+          aria-label="Mode vocal"
+          title="Discussion vocale directe et continue"
+          className="flex flex-shrink-0 items-center gap-1.5 rounded-full bg-[#DCEAE0] border border-[#3F6E52]/30 px-3 py-2 text-[11px] font-extrabold text-[#3F6E52] transition-colors hover:bg-[#CFE2D5]"
+        >
+          <Headphones className="w-3.5 h-3.5" />
+          Mode vocal
+        </button>
       </div>
 
       {/* Specialization badge */}
