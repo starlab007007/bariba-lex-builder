@@ -714,22 +714,24 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     return null;
   }
 
-  /// [prepared] is an already-started (possibly already finished) synthesis
-  /// for [u], from [_synthesizeAhead]; passing none synthesizes inline, as
-  /// used by replay/confirm where there is nothing to prefetch against.
-  Future<void> _speakOne(DunyaUtterance u, {Future<String?>? prepared}) async {
+  /// [prepared] is the already-resolved result of [_synthesizeAhead] (the
+  /// caller awaits it to know when to flip to the "speaking" phase, so by the
+  /// time this runs it is a plain value, not a Future); omitting it
+  /// synthesizes inline, as replay/confirm do, with nothing to prefetch
+  /// against.
+  Future<void> _speakOne(DunyaUtterance u, {String? prepared}) async {
     try {
       if (u.lang == 'bba') {
         if (_paths.canSpeakBariba && _engine != null) {
-          final path = await (prepared ?? _engine!.synthesize(u.text, 'bba', speed: 0.85 * _settings.voiceSpeed));
-          if (path != null) await _playFile(path);
+          final path = prepared ?? await _engine!.synthesize(u.text, 'bba', speed: 0.85 * _settings.voiceSpeed);
+          await _playFile(path);
         }
       } else if (_systemFrenchVoice) {
         await _tts.setSpeechRate(0.47 * _settings.voiceSpeed);
         await _tts.speak(u.text);
       } else if (_paths.canSpeakFrenchOffline && _engine != null) {
-        final path = await (prepared ?? _engine!.synthesize(u.text, 'fra', speed: _settings.voiceSpeed));
-        if (path != null) await _playFile(path);
+        final path = prepared ?? await _engine!.synthesize(u.text, 'fra', speed: _settings.voiceSpeed);
+        await _playFile(path);
       }
     } catch (error) {
       await _store.audit('dunya_voice_speak_error', {'error': error.toString()}, severity: 'warning');
