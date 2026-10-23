@@ -175,7 +175,40 @@ jobs:
         if: steps.prevalidated.outputs.skip != 'true'
         run: |
           set -o pipefail
-          flutter test --dart-define-from-file=.ci-dart-defines.json --reporter expanded 2>&1 | tee build/ci-report/test.txt
+          mkdir -p build/ci-report
+          status=0
+          flutter test --dart-define-from-file=.ci-dart-defines.json --reporter expanded 2>&1 | tee build/ci-report/test.txt || status=$?
+          # Same reasoning as the Static analysis step above: logs and artifacts are
+          # not always readable afterwards, so failing test names/messages are
+          # surfaced as GitHub annotations directly from this step's own output.
+          TEST_STATUS=$status python3 - <<'PY'
+          import os, re
+          lines = open('build/ci-report/test.txt', encoding='utf-8', errors='replace').read().splitlines()
+          # "expanded" reporter: "NN:NN +P -F: <test name> [E]" starts a failure, followed
+          # by indented detail lines until the next timestamped line.
+          start = re.compile(r'^\d+:\d+ \+\d+(?: -\d+)?: (.*?)(?: \[E\])?$')
+          failures = []
+          current = None
+          for line in lines:
+              m = start.match(line)
+              if m:
+                  if current:
+                      failures.append(current)
+                  current = {'name': m.group(1), 'detail': []} if line.rstrip().endswith('[E]') else None
+                  continue
+              if current is not None and line.strip():
+                  current['detail'].append(line.strip())
+          if current:
+              failures.append(current)
+          for f in failures[:25]:
+              detail = ' | '.join(f['detail'][:6])[:400]
+              print(f"::error::flutter test FAILED: {f['name']}: {detail}")
+          if not failures and os.environ.get('TEST_STATUS', '0') != '0':
+              for line in lines[-25:]:
+                  if line.strip():
+                      print(f"::error::flutter test: {line.strip()[:300]}")
+          PY
+          exit $status
 
       - name: Build emulator APK
         run: flutter build apk --debug --target-platform android-x64 --dart-define-from-file=.ci-dart-defines.json
