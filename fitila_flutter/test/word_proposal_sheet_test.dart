@@ -35,6 +35,18 @@ Future<void> _tapSend(WidgetTester tester) async {
   await tester.tap(find.text('Envoyer la proposition'));
 }
 
+/// Même mécanique que [_tapSend], mais pour revenir en haut : une fois
+/// scrollé vers le bouton, les champs mot/définition (tout en haut) peuvent
+/// sortir à leur tour de la zone construite par le sliver — nécessaire
+/// avant de vérifier leurs messages d'erreur après l'envoi.
+Future<void> _scrollToTop(WidgetTester tester) async {
+  final list = find.byKey(const ValueKey('proposal-form-list'));
+  for (var i = 0; i < 10; i++) {
+    await tester.drag(list, const Offset(0, 300));
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+}
+
 Future<void> _open(
   WidgetTester tester, {
   required WordProposalSubmit onSubmit,
@@ -70,6 +82,7 @@ void main() {
     expect(find.text('Proposer un mot'), findsOneWidget);
     await _tapSend(tester);
     await tester.pump();
+    await _scrollToTop(tester);
     expect(find.text('Entrez au moins 2 caractères.'), findsOneWidget);
     expect(find.text('La définition est obligatoire.'), findsOneWidget);
     expect(calls, 0);
