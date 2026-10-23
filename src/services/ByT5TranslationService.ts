@@ -180,9 +180,9 @@ class ByT5TranslationService {
 
   getModelInfo() {
     return {
-      name: 'ByT5 Expert',
-      version: 'zimesongbian/modele_byt5_bariba_expert_api_v03_improve',
-      description: 'Modèle ByT5 fine-tuné pour la traduction Français-Bariba',
+      name: 'ByT5 Expert v05',
+      version: 'zimesongbian/byt5-small-fr-bariba-v005',
+      description: 'Modèle ByT5 fine-tuné (SFT + DPO) pour la traduction Français-Bariba',
       isAvailable: this.isHealthy
     };
   }

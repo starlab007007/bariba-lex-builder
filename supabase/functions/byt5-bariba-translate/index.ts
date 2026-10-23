@@ -499,8 +499,8 @@ export async function handleByT5(req: Request): Promise<Response> {
           cacheHits,
           refinement: modelUsed ? { applied: ruleChanges.length > 0, status: ruleChanges.length ? "applied" : "unchanged", stage: "rules", changes: ruleChanges } : { applied: false },
           modelInfo: {
-            name: modelUsed ? "ByT5 Expert (Improved)" : "FITILA translation memory",
-            version: modelUsed ? "zimesongbian/modele_byt5_bariba_expert_api_v03_improve" : "memory-v1",
+            name: modelUsed ? "ByT5 Expert v05" : "FITILA translation memory",
+            version: modelUsed ? "zimesongbian/byt5-small-fr-bariba-v005" : "memory-v1",
           },
         });
       }
@@ -568,11 +568,11 @@ export async function handleByT5(req: Request): Promise<Response> {
       method: "byt5-expert",
       refinement: refineMeta,
       modelInfo: {
-        name: "ByT5 Expert (Improved)",
+        name: "ByT5 Expert v05",
         weightsRevision: null,
         weightsRevisionVerified: false,
         spaceUrl: SPACE_URL,
-        version: "zimesongbian/modele_byt5_bariba_expert_api_v03_improve",
+        version: "zimesongbian/byt5-small-fr-bariba-v005",
         mode: gradioMode,
         advanced,
         postRefine: "rules",
