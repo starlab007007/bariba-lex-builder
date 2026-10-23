@@ -217,6 +217,20 @@ export function memoryLookup(
   return hit ? { translation: hit[0], grade: hit[1] } : null;
 }
 
+/**
+ * Single-word dictionary translation, used to fix a word the model copied verbatim
+ * from the source instead of translating it (see fixLeakedFrenchWords in
+ * byt5-bariba-translate). Unlike lexiconLookup, this does not require the WHOLE
+ * input to be a dictionary entry — just the one word being checked.
+ */
+export function wordLookup(word: string, direction: "fr-ba" | "ba-fr"): string | null {
+  ensureIndexes();
+  const index = direction === "fr-ba" ? wordFrToBa : wordBaToFr;
+  const key = direction === "fr-ba" ? foldFr(word) : foldBa(word);
+  if (!index || !key || key.includes(" ")) return null;
+  return index.get(key) ?? null;
+}
+
 /** Share of words (not numbers) found in the lexicon, 0..1. */
 export function lexicalCoverage(text: string, lang: "ba" | "fr"): number {
   ensureIndexes();

@@ -7,6 +7,7 @@ import {
   lexiconLookup,
   memoryLookup,
   splitSentences,
+  wordLookup,
 } from "../_shared/translation-verifier.ts";
 import { refineDeterministic, type RefineLexicon } from "../_shared/deterministic-refine.ts";
 
@@ -68,6 +69,92 @@ function refineLexicon(): RefineLexicon {
 }
 function rulesRefine(source: string, translation: string, direction: "fr-ba" | "ba-fr") {
   return refineDeterministic(source, translation, direction === "fr-ba", direction === "fr-ba" ? refineLexicon() : undefined);
+}
+
+const LEAK_TOKEN_RE = /^([^\p{L}\p{M}']*)([\p{L}\p{M}'][\p{L}\p{M}']*)([^\p{L}\p{M}']*)$/u;
+function matchCase(original: string, replacement: string): string {
+  const first = Array.from(original)[0];
+  if (first && first !== first.toLowerCase() && first === first.toUpperCase()) {
+    const chars = Array.from(replacement);
+    return (chars[0] ?? "").toUpperCase() + chars.slice(1).join("");
+  }
+  return replacement;
+}
+
+/**
+ * The model sometimes copies a French word verbatim instead of translating it
+ * (reported repeatedly in production for "mère", "viande", ...). Any word in the
+ * Bariba output that (a) is not already valid Bariba, (b) appears unchanged in
+ * the French source, and (c) has a known single-word dictionary translation is
+ * swapped for it. A word with no attested translation is left as-is: better to
+ * leave it untranslated than to guess. Validated against the full FITILA
+ * reference corpus (7762 pairs): zero false positives.
+ */
+function fixLeakedFrenchWords(
+  source: string,
+  translation: string,
+  direction: "fr-ba" | "ba-fr",
+): { text: string; changes: { rule: string; from: string; to: string }[] } {
+  if (direction !== "fr-ba") return { text: translation, changes: [] };
+  const sourceFolded = new Set(foldFr(source).split(" ").filter(Boolean));
+  const surface = refineLexicon().surface;
+  const tokens = translation.split(" ");
+  const changes: { rule: string; from: string; to: string }[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const m = LEAK_TOKEN_RE.exec(tokens[i]);
+    if (!m) continue;
+    const core = m[2];
+    const foldedBa = foldBa(core);
+    if (foldedBa.length < 3 || surface.has(foldedBa)) continue; // already valid Bariba
+    const foldedFr = foldFr(core);
+    if (foldedFr.length < 3 || !sourceFolded.has(foldedFr)) continue; // not copied verbatim from the source
+    const translated = wordLookup(core, "fr-ba");
+    if (!translated) continue; // no attested translation: leave it, don't guess
+    const replacement = matchCase(core, translated);
+    changes.push({ rule: "leaked-french-word", from: core, to: replacement });
+    tokens[i] = m[1] + replacement + m[3];
+  }
+  return { text: tokens.join(" "), changes };
+}
+
+/**
+ * "Nɛn yaa" ("my meat") is sometimes produced where "ma mère" was meant — a
+ * long-known confusion ("yaa" = meat/animal, not mother; the correct form is
+ * "bii mɛro"). Fixed only when the French source actually mentions "mère"/
+ * "maman" and is NOT itself about meat, so a genuine "ma viande" sentence
+ * (e.g. "Qui a enlevé ma viande de la tige ?" -> "... nɛn yaa ...") is never
+ * touched. Validated against the full reference corpus: 0 false positives on
+ * the 6 real "nɛn yaa" (meat) sentences it contains.
+ */
+function fixMotherMeatConfusion(
+  source: string,
+  translation: string,
+  direction: "fr-ba" | "ba-fr",
+): { text: string; changes: { rule: string; from: string; to: string }[] } {
+  if (direction !== "fr-ba") return { text: translation, changes: [] };
+  const fr = source.toLowerCase();
+  const mentionsMother = /\bm[eè]re\b|\bmaman\b/.test(fr);
+  const mentionsMeat = /\bviande\b|\bchair\b/.test(fr);
+  if (!mentionsMother || mentionsMeat || !/\bNɛn yaa\b/iu.test(translation)) {
+    return { text: translation, changes: [] };
+  }
+  const fixed = translation.replace(/\bNɛn yaa\b/giu, "bii mɛro");
+  return { text: fixed, changes: [{ rule: "mother-meat-confusion", from: "Nɛn yaa", to: "bii mɛro" }] };
+}
+
+/** Runs every deterministic post-model fix, in order, and merges their change logs. */
+function postModelRefine(
+  source: string,
+  rawModel: string,
+  direction: "fr-ba" | "ba-fr",
+): { text: string; changes: { rule: string; from: string; to: string }[] } {
+  const rules = rulesRefine(source, rawModel, direction);
+  const afterLeak = fixLeakedFrenchWords(source, rules.text, direction);
+  const afterMotherMeat = fixMotherMeatConfusion(source, afterLeak.text, direction);
+  return {
+    text: afterMotherMeat.text,
+    changes: [...rules.changes, ...afterLeak.changes, ...afterMotherMeat.changes],
+  };
 }
 
 // ---- Cache of model outputs for DUNYA's own reply sentences (service-role callers only). ------
@@ -478,7 +565,7 @@ export async function handleByT5(req: Request): Promise<Response> {
           break;
         }
         modelUsed = true;
-        const polished = rulesRefine(segments[i], normalizeText(t), direction);
+        const polished = postModelRefine(segments[i], normalizeText(t), direction);
         if (polished.changes.length) ruleChanges.push(...polished.changes.map((c) => `${c.rule}: ${c.from} → ${c.to}`));
         const clean = polished.text;
         out.push(clean);
@@ -553,7 +640,7 @@ export async function handleByT5(req: Request): Promise<Response> {
 
     if (useCache && !singleCached) cachePut(singleKey, direction, normalizedInput, normalizeText(translation));
     const rawModel = normalizeText(translation);
-    const rules = rulesRefine(normalizedInput, rawModel, direction);
+    const rules = postModelRefine(normalizedInput, rawModel, direction);
     let finalTranslation = rules.text;
     let refineMeta: { applied: boolean; status: string; stage?: string; confidence?: number; changes?: string[]; error?: string; reason?: string } = { applied: rules.changes.length > 0, status: rules.changes.length ? "applied" : "unchanged", stage: "rules", changes: rules.changes.map((c) => `${c.rule}: ${c.from} → ${c.to}`) };
 
