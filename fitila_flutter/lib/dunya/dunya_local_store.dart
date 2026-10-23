@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
 import 'package:sqflite/sqflite.dart';
 
+import '../core/platform_audit.dart';
 import 'dunya_models.dart';
 
 class DunyaLocalStore {
@@ -674,6 +676,11 @@ class DunyaLocalStore {
         'created_at': now.toIso8601String(),
       });
     } catch (_) {}
+    // Miroir best-effort vers le journal d'activité plateforme (consultable
+    // par les admins) : local-first ci-dessus reste la garantie (marche
+    // hors ligne, jamais perdu), ce miroir est une simple tentative en plus,
+    // silencieusement ignorée hors ligne / non connecté / en échec.
+    unawaited(PlatformAudit.log('dunya_voice', eventType, details: detail, severity: severity));
   }
 
   static int _seq = 0;
