@@ -5,7 +5,11 @@ name: Keep FITILA Hugging Face Spaces awake
 
 on:
   schedule:
-    - cron: '17 */6 * * *'  # secours : pg_cron réveille les Spaces toutes les 10 min
+    # Secours : pg_cron réveille les Spaces toutes les 10 min, mais ce job pg_cron
+    # est tombé une fois (18/09/2026) sans que personne ne le remarque avant un
+    # mois (Space vocal trouvé endormi le 20/10/2026) — 6h était bien trop
+    # espacé pour servir de vrai filet de sécurité ; 15 min en fait un.
+    - cron: '*/15 * * * *'
   workflow_dispatch:
   push:
     paths:
@@ -28,4 +32,16 @@ jobs:
             -H "Authorization: Bearer $ANON" -H "apikey: $ANON" -H "Content-Type: application/json" \
             https://dvswhjawiooprghzeyol.supabase.co/functions/v1/hf-keep-alive -d '{}' | tee result.json
           echo
-          python3 -c "import json;d=json.load(open('result.json'));print({k:v['status'] for k,v in d['spaces'].items()})"
+          # Fail the run (visible as a red check, not just a silent ping) when a Space
+          # isn't actually awake — exactly the kind of outage that went unnoticed for a
+          # month last time because nothing here ever reported failure.
+          python3 - <<'PY'
+          import json, sys
+          d = json.load(open('result.json'))
+          statuses = {k: v['status'] for k, v in d['spaces'].items()}
+          print(statuses)
+          down = {k: v for k, v in statuses.items() if v != 'awake'}
+          if down:
+              print(f"::error::Hugging Face Space(s) not awake: {down}")
+              sys.exit(1)
+          PY

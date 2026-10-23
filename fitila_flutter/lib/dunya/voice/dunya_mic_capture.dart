@@ -11,7 +11,11 @@ import 'package:record/record.dart';
 class DunyaUtteranceDetector {
   DunyaUtteranceDetector({
     this.sampleRate = 16000,
-    this.silenceToStop = const Duration(milliseconds: 1300),
+    // 1300ms ajoutait un temps mort fixe, identique, à chaque tour (avant même
+    // le début de la transcription/réponse) : réduit à 700ms, une valeur
+    // courante pour la détection de fin de phrase, qui reste largement
+    // au-dessus d'une pause naturelle entre deux mots.
+    this.silenceToStop = const Duration(milliseconds: 700),
     this.maxDuration = const Duration(seconds: 20),
     this.noSpeechTimeout = const Duration(seconds: 7),
     this.minThreshold = 0.012,
