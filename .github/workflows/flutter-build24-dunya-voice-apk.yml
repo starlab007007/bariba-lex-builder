@@ -184,8 +184,11 @@ jobs:
           TEST_STATUS=$status python3 - <<'PY'
           import os, re
           lines = open('build/ci-report/test.txt', encoding='utf-8', errors='replace').read().splitlines()
-          # "expanded" reporter marks a failure with a line ending in "[E]". Take
-          # everything between one "[E]" line and the next as that failure's detail.
+          # "expanded" reporter marks a failure with a line ending in "[E]". Every line
+          # (failing or not) that starts "NN:NN +P[ -F]: <name>" would otherwise look like
+          # a new block boundary, which previously truncated the real detail — instead,
+          # just take everything between one "[E]" line and the next as that failure's
+          # detail, however it is formatted.
           fail_idx = [i for i, l in enumerate(lines) if l.rstrip().endswith('[E]')]
           seen = set()
           for n, i in enumerate(fail_idx):

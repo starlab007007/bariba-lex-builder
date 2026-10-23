@@ -265,6 +265,9 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
     final results = _selected == null && q.isNotEmpty ? searchDict(widget.entries, q, baToFr: _baToFr) : const <DictEntry>[];
     return ListView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      // Toujours « élastique » (même quand le contenu tient sur l'écran) pour
+      // un défilement fluide et perceptible du haut vers le bas de la page.
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       padding: const EdgeInsets.only(bottom: 28),
       children: [
         _searchBar(),
@@ -281,20 +284,49 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
           _letterList(_letter!)
         else
           _home(),
-        const SizedBox(height: 16),
-        if (widget.onPropose != null)
-          SizedBox(
-            height: 52,
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(backgroundColor: SignatureTheme.sage, foregroundColor: Colors.white),
-              onPressed: widget.onPropose,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Proposer un mot'),
-            ),
-          ),
+        const SizedBox(height: 18),
+        if (widget.onPropose != null) _proposeCta(),
       ],
     );
   }
+
+  /// Carte d'appel à l'action « Proposer un mot » : toujours visible en bas
+  /// de la page (jamais seulement dans un sous-état), dégradé premium,
+  /// grande cible tactile. Le libellé reste « Proposer un mot » à l'identique
+  /// (contrat testé par `experience_test.dart` / `web_parity_test.dart`).
+  Widget _proposeCta() => Material(
+    color: Colors.transparent,
+    borderRadius: BorderRadius.circular(22),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: widget.onPropose,
+      child: Ink(
+        padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [SignatureTheme.sage, Color(0xFF2C5540)]),
+          boxShadow: [BoxShadow(color: SignatureTheme.sage.withValues(alpha: .35), blurRadius: 22, offset: const Offset(0, 12), spreadRadius: -10)],
+        ),
+        child: Row(children: [
+          Container(
+            width: 42,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: .18), borderRadius: BorderRadius.circular(14)),
+            child: const Icon(Icons.add_rounded, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Proposer un mot', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+              Text('Enrichissez le dictionnaire Bàátɔ̀nú', style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 12)),
+            ]),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: Colors.white),
+        ]),
+      ),
+    ),
+  );
 
   Widget _searchBar() {
     return Container(
@@ -455,17 +487,29 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
         ],
         if (letters.isNotEmpty) ...[
           const SectionLabel('Parcourir par lettre'),
-          Wrap(spacing: 6, runSpacing: 6, children: [
+          Wrap(spacing: 8, runSpacing: 8, children: [
             for (final l in letters)
-              InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () => setState(() => _letter = l),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(color: SignatureTheme.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: SignatureTheme.hairline)),
-                  child: Text(l.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, color: SignatureTheme.goldDeep)),
+              Material(
+                color: SignatureTheme.surface,
+                borderRadius: BorderRadius.circular(13),
+                elevation: 0,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(13),
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _letter = l);
+                  },
+                  child: Container(
+                    width: 42,
+                    height: 42,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(13),
+                      border: Border.all(color: SignatureTheme.hairline),
+                      boxShadow: [BoxShadow(color: SignatureTheme.ink.withValues(alpha: .04), blurRadius: 8, offset: const Offset(0, 3))],
+                    ),
+                    child: Text(l.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: SignatureTheme.goldDeep)),
+                  ),
                 ),
               ),
           ]),
@@ -535,7 +579,13 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
           Text('Aucun résultat pour « $q »', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
           const Text('Essayez sans accents, avec le sens inverse, ou proposez ce mot à la communauté.', textAlign: TextAlign.center, style: TextStyle(color: SignatureTheme.muted, height: 1.4)),
-          if (widget.onPropose != null) TextButton.icon(onPressed: widget.onPropose, icon: const Icon(Icons.add_rounded), label: const Text('Proposer ce mot')),
+          if (widget.onPropose != null)
+            TextButton.icon(
+              style: TextButton.styleFrom(foregroundColor: SignatureTheme.sage, textStyle: const TextStyle(fontWeight: FontWeight.w900)),
+              onPressed: widget.onPropose,
+              icon: const Icon(Icons.add_circle_rounded),
+              label: const Text('Proposer ce mot'),
+            ),
         ]),
       );
     }

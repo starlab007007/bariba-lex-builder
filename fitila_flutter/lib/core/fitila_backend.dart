@@ -1340,6 +1340,50 @@ class FitilaBackend {
   }
 
   // ---------------------------------------------------------------------
+  // Dictionnaire communautaire — proposition de nouveaux mots
+  // ---------------------------------------------------------------------
+
+  /// Envoie une proposition de mot dans `word_submissions`, en file de
+  /// relecture (`status = 'pending'`) comme le fait déjà le web
+  /// (`useVocalFeedback.ts`). Un trigger serveur attribue des points de
+  /// contribution dès l'insertion ; la validation définitive reste faite
+  /// par un modérateur (`dictionary_entries` n'est pas modifiable par un
+  /// compte standard).
+  static Future<void> proposeWord({
+    required String word,
+    required String definition,
+    String? phonetic,
+    String partOfSpeech = 'n',
+    String? exampleBariba,
+    String? exampleFrancais,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Connexion requise pour proposer un mot.');
+    }
+    final w = word.trim();
+    final d = definition.trim();
+    if (w.isEmpty || d.isEmpty) {
+      throw ArgumentError('Le mot et la définition sont obligatoires.');
+    }
+    String? clean(String? v) {
+      final t = v?.trim();
+      return (t == null || t.isEmpty) ? null : t;
+    }
+
+    await client.from('word_submissions').insert(<String, dynamic>{
+      'user_id': user.id,
+      'word': w,
+      'phonetic': clean(phonetic),
+      'definition': d,
+      'part_of_speech': partOfSpeech,
+      'example_bariba': clean(exampleBariba),
+      'example_francais': clean(exampleFrancais),
+      'status': 'pending',
+    });
+  }
+
+  // ---------------------------------------------------------------------
   // Assistant intelligent partagé — Agriculture / Finance / Santé
   // ---------------------------------------------------------------------
 
