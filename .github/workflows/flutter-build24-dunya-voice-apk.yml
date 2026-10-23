@@ -184,26 +184,24 @@ jobs:
           TEST_STATUS=$status python3 - <<'PY'
           import os, re
           lines = open('build/ci-report/test.txt', encoding='utf-8', errors='replace').read().splitlines()
-          # "expanded" reporter: "NN:NN +P -F: <test name> [E]" starts a failure, followed
-          # by indented detail lines until the next timestamped line.
-          start = re.compile(r'^\d+:\d+ \+\d+(?: -\d+)?: (.*?)(?: \[E\])?$')
-          failures = []
-          current = None
-          for line in lines:
-              m = start.match(line)
-              if m:
-                  if current:
-                      failures.append(current)
-                  current = {'name': m.group(1), 'detail': []} if line.rstrip().endswith('[E]') else None
+          # "expanded" reporter marks a failure with a line ending in "[E]". Every line
+          # (failing or not) that starts "NN:NN +P[ -F]: <name>" would otherwise look like
+          # a new block boundary, which previously truncated the real detail — instead,
+          # just take everything between one "[E]" line and the next as that failure's
+          # detail, however it is formatted.
+          fail_idx = [i for i, l in enumerate(lines) if l.rstrip().endswith('[E]')]
+          seen = set()
+          for n, i in enumerate(fail_idx):
+              m = re.match(r'^\s*\d+:\d+ \+\d+(?: -\d+)?: (.*?)\s*\[E\]\s*$', lines[i])
+              name = (m.group(1) if m else lines[i]).strip()
+              if name in seen:
                   continue
-              if current is not None and line.strip():
-                  current['detail'].append(line.strip())
-          if current:
-              failures.append(current)
-          for f in failures[:25]:
-              detail = ' | '.join(f['detail'][:6])[:400]
-              print(f"::error::flutter test FAILED: {f['name']}: {detail}")
-          if not failures and os.environ.get('TEST_STATUS', '0') != '0':
+              seen.add(name)
+              end = min(i + 60, fail_idx[n + 1] if n + 1 < len(fail_idx) else len(lines))
+              detail_lines = [l.strip() for l in lines[i + 1:end] if l.strip()]
+              detail = ' | '.join(detail_lines[:20])[:800]
+              print(f"::error::flutter test FAILED: {name}: {detail}")
+          if not fail_idx and os.environ.get('TEST_STATUS', '0') != '0':
               for line in lines[-25:]:
                   if line.strip():
                       print(f"::error::flutter test: {line.strip()[:300]}")
