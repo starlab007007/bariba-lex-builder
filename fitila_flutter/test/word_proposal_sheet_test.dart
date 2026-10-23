@@ -13,6 +13,16 @@ const _entries = [
 /// `matchRoot: true` fait marcher la recherche dans les deux cas.
 Finder _field(String key) => find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(TextField), matchRoot: true);
 
+/// Le bouton d'envoi est en bas d'un `ListView` dans la feuille : tant qu'il
+/// n'a pas été scrollé dans la zone visible (+ cache), le sliver ne construit
+/// même pas son élément, donc `find.text` le trouve à zéro widget et `tap()`
+/// échoue — indépendamment du texte affiché. `scrollUntilVisible` fait défiler
+/// la liste par petits pas jusqu'à ce qu'il apparaisse, puis on peut taper.
+Future<void> _tapSend(WidgetTester tester) async {
+  await tester.scrollUntilVisible(find.text('Envoyer la proposition'), -300);
+  await tester.tap(find.text('Envoyer la proposition'));
+}
+
 Future<void> _open(
   WidgetTester tester, {
   required WordProposalSubmit onSubmit,
@@ -46,7 +56,7 @@ void main() {
     });
 
     expect(find.text('Proposer un mot'), findsOneWidget);
-    await tester.tap(find.text('Envoyer la proposition'));
+    await _tapSend(tester);
     await tester.pump();
     expect(find.text('Entrez au moins 2 caractères.'), findsOneWidget);
     expect(find.text('La définition est obligatoire.'), findsOneWidget);
@@ -70,7 +80,7 @@ void main() {
 
     await tester.enterText(_field('proposal-word'), 'kpɛrɛ');
     await tester.enterText(_field('proposal-definition'), 'Nouveau mot proposé.');
-    await tester.tap(find.text('Envoyer la proposition'));
+    await _tapSend(tester);
     await tester.pump(const Duration(milliseconds: 50));
     expect(sent.single, {'word': 'kpɛrɛ', 'definition': 'Nouveau mot proposé.', 'partOfSpeech': 'n'});
     expect(find.text('Mot envoyé !'), findsOneWidget);
@@ -86,7 +96,7 @@ void main() {
     });
     await tester.enterText(_field('proposal-word'), 'kpɛrɛ');
     await tester.enterText(_field('proposal-definition'), 'Nouveau mot proposé.');
-    await tester.tap(find.text('Envoyer la proposition'));
+    await _tapSend(tester);
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.text('Envoi impossible. Vérifiez votre connexion et réessayez.'), findsOneWidget);
     expect(tester.takeException(), isNull);
