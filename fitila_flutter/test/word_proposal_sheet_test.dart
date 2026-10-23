@@ -35,18 +35,6 @@ Future<void> _tapSend(WidgetTester tester) async {
   await tester.tap(find.text('Envoyer la proposition'));
 }
 
-/// Même mécanique que [_tapSend], mais pour revenir en haut : une fois
-/// scrollé vers le bouton, les champs mot/définition (tout en haut) peuvent
-/// sortir à leur tour de la zone construite par le sliver — nécessaire
-/// avant de vérifier leurs messages d'erreur après l'envoi.
-Future<void> _scrollToTop(WidgetTester tester) async {
-  final list = find.byKey(const ValueKey('proposal-form-list'));
-  for (var i = 0; i < 10; i++) {
-    await tester.drag(list, const Offset(0, 300));
-    await tester.pump(const Duration(milliseconds: 50));
-  }
-}
-
 Future<void> _open(
   WidgetTester tester, {
   required WordProposalSubmit onSubmit,
@@ -75,14 +63,23 @@ Future<void> _open(
 void main() {
   testWidgets('shows validation errors and keeps submit disabled until word+definition are filled', (tester) async {
     var calls = 0;
-    await _open(tester, onSubmit: ({required word, required definition, phonetic, required partOfSpeech, exampleBariba, exampleFrancais}) async {
-      calls++;
-    });
+    // Fenêtre volontairement très haute : tout le formulaire (champs +
+    // bouton) reste alors dans la zone construite par le sliver dès le
+    // départ, donc ni le tap sur le bouton, ni la vérification des erreurs
+    // des champs mot/définition qui suit, ne dépendent d'un défilement —
+    // on vérifie ainsi l'état logique du formulaire, pas la mécanique de
+    // scroll (déjà couverte par `_tapSend` dans les autres tests).
+    await _open(
+      tester,
+      onSubmit: ({required word, required definition, phonetic, required partOfSpeech, exampleBariba, exampleFrancais}) async {
+        calls++;
+      },
+      height: 3000,
+    );
 
     expect(find.text('Proposer un mot'), findsOneWidget);
     await _tapSend(tester);
     await tester.pump();
-    await _scrollToTop(tester);
     expect(find.text('Entrez au moins 2 caractères.'), findsOneWidget);
     expect(find.text('La définition est obligatoire.'), findsOneWidget);
     expect(calls, 0);
