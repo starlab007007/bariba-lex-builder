@@ -51,6 +51,7 @@ import 'classe/classe_widgets.dart' show ClasseStoragePlayer;
 import 'espace/espace_home.dart';
 import 'keyboard/bariba_input.dart';
 import 'dictionary/dictionary_experience.dart';
+import 'dictionary/word_proposal_sheet.dart';
 import 'dunya/voice/dunya_byt5.dart';
 import 'dunya/voice/dunya_translation_memory.dart';
 import 'dunya/voice/dunya_translator.dart';
@@ -7445,7 +7446,26 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
             speak: _speak,
             startVoice: _voiceMedia.startAudio,
             stopVoice: _stopVoice,
-            onPropose: () => _showContribution(context),
+            onPropose: () => showWordProposalSheet(
+              context,
+              entries: snapshot.data!,
+              onSubmit: ({
+                required word,
+                required definition,
+                phonetic,
+                required partOfSpeech,
+                exampleBariba,
+                exampleFrancais,
+              }) =>
+                  FitilaBackend.proposeWord(
+                word: word,
+                definition: definition,
+                phonetic: phonetic,
+                partOfSpeech: partOfSpeech,
+                exampleBariba: exampleBariba,
+                exampleFrancais: exampleFrancais,
+              ),
+            ),
           );
         },
       ),
@@ -17362,33 +17382,6 @@ class _EmptyState extends StatelessWidget {
       ),
     );
   }
-}
-
-void _showContribution(BuildContext context) {
-  showDialog<void>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Proposer une contribution'),
-      content: const Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(decoration: InputDecoration(labelText: 'Mot Bariba')),
-          SizedBox(height: 10),
-          TextField(decoration: InputDecoration(labelText: 'Définition')),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Annuler'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Envoyer'),
-        ),
-      ],
-    ),
-  );
 }
 
 void _showKeyboard(BuildContext context, TextEditingController controller) {
