@@ -18,8 +18,16 @@ Finder _field(String key) => find.descendant(of: find.byKey(ValueKey(key)), matc
 /// même pas son élément, donc `find.text` le trouve à zéro widget et `tap()`
 /// échoue — indépendamment du texte affiché. `scrollUntilVisible` fait défiler
 /// la liste par petits pas jusqu'à ce qu'il apparaisse, puis on peut taper.
+/// `scrollable:` doit être précisé : par défaut `find.byType(Scrollable)`
+/// matche aussi le `Scrollable` interne de chaque `TextField`
+/// (`EditableText`), ce qui le rend ambigu dès qu'il y a plus d'un champ —
+/// `find.byType(ListView)` cible sans ambiguïté la liste du formulaire.
 Future<void> _tapSend(WidgetTester tester) async {
-  await tester.scrollUntilVisible(find.text('Envoyer la proposition'), -300);
+  await tester.scrollUntilVisible(
+    find.text('Envoyer la proposition'),
+    -300,
+    scrollable: find.byType(ListView),
+  );
   await tester.tap(find.text('Envoyer la proposition'));
 }
 
