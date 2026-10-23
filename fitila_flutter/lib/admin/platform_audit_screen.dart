@@ -258,6 +258,7 @@ class _PlatformAuditScreenState extends State<PlatformAuditScreen> {
     return RefreshIndicator(
       onRefresh: _reload,
       child: ListView.separated(
+        key: const ValueKey('audit-list'),
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
         itemCount: _entries.length + 1,
         separatorBuilder: (_, _) => const SizedBox(height: 8),

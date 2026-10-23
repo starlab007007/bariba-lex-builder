@@ -38,6 +38,18 @@ Future<void> _pump(WidgetTester tester, Widget child) async {
   await tester.pumpAndSettle();
 }
 
+/// Avec une page pleine (40 lignes), le bouton « Charger plus » est tout en
+/// bas d'un `ListView` long : tant qu'il n'a pas été défilé dans la zone
+/// construite par le sliver (+ cache), `find.text` le trouve à zéro widget
+/// — même principe que `_tapSend` dans `word_proposal_sheet_test.dart`.
+Future<void> _scrollToLoadMore(WidgetTester tester) async {
+  final list = find.byKey(const ValueKey('audit-list'));
+  for (var i = 0; i < 20 && find.text('Charger plus').evaluate().isEmpty; i++) {
+    await tester.drag(list, const Offset(0, -300));
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+}
+
 void main() {
   testWidgets('shows the fetched entries once loaded', (tester) async {
     await _pump(
@@ -140,6 +152,7 @@ void main() {
       ),
     );
 
+    await _scrollToLoadMore(tester);
     expect(find.text('Charger plus'), findsOneWidget);
     await tester.tap(find.text('Charger plus'));
     await tester.pumpAndSettle();
