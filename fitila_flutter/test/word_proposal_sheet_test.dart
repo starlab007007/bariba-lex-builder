@@ -16,18 +16,22 @@ Finder _field(String key) => find.descendant(of: find.byKey(ValueKey(key)), matc
 /// Le bouton d'envoi est en bas d'un `ListView` dans la feuille : tant qu'il
 /// n'a pas été scrollé dans la zone visible (+ cache), le sliver ne construit
 /// même pas son élément, donc `find.text` le trouve à zéro widget et `tap()`
-/// échoue — indépendamment du texte affiché. `scrollUntilVisible` fait défiler
-/// la liste par petits pas jusqu'à ce qu'il apparaisse, puis on peut taper.
-/// `scrollable:` doit être précisé : par défaut `find.byType(Scrollable)`
-/// matche aussi le `Scrollable` interne de chaque `TextField`
-/// (`EditableText`), ce qui le rend ambigu dès qu'il y a plus d'un champ —
-/// `find.byType(ListView)` cible sans ambiguïté la liste du formulaire.
+/// échoue — indépendamment du texte affiché. On défile donc par petits pas
+/// jusqu'à ce qu'il apparaisse, puis on tape.
+///
+/// `scrollUntilVisible` aurait été plus direct, mais son argument
+/// `scrollable:` doit résolument être un `Scrollable` (il le caste tel
+/// quel) : `find.byType(Scrollable)` matche aussi le `Scrollable` interne de
+/// chaque `TextField` (`EditableText`) et devient ambigu, et
+/// `find.byType(ListView)` échoue le cast. On pilote donc le défilement à
+/// la main sur le `ListView` du formulaire (clé dédiée), qui n'a pas besoin
+/// d'être du type exact `Scrollable` pour qu'on puisse le faire glisser.
 Future<void> _tapSend(WidgetTester tester) async {
-  await tester.scrollUntilVisible(
-    find.text('Envoyer la proposition'),
-    -300,
-    scrollable: find.byType(ListView),
-  );
+  final list = find.byKey(const ValueKey('proposal-form-list'));
+  for (var i = 0; i < 10 && find.text('Envoyer la proposition').evaluate().isEmpty; i++) {
+    await tester.drag(list, const Offset(0, -300));
+    await tester.pump(const Duration(milliseconds: 50));
+  }
   await tester.tap(find.text('Envoyer la proposition'));
 }
 

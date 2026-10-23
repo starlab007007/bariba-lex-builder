@@ -214,6 +214,7 @@ class _WordProposalSheetState extends State<_WordProposalSheet> {
         ),
         Expanded(
           child: ListView(
+            key: const ValueKey('proposal-form-list'),
             controller: scrollController,
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
             children: [
