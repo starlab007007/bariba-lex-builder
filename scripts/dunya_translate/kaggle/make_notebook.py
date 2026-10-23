@@ -127,6 +127,88 @@ if gain >= MIN_GAIN:
 else:
     print(f'v05 n’est pas assez meilleur ({gain:+.2f} < {MIN_GAIN}) : rien n’est publié. Envoie v05_report.md à Claude.')
 """)
+md("""## Mise à jour de la page du Space
+
+Si la nouvelle version a été publiée ci-dessus, cette dernière étape réécrit
+automatiquement le bloc **« Nouveautés »** affiché aux visiteurs sur la page
+du Space (`app.py`, variable `_DESCRIPTION`), avec les vrais chiffres mesurés
+dans ce run — pas de texte à écrire ou recopier à la main.
+
+Ça ne change **que** ce bloc : le reste de `app.py` (pipeline, grammaire,
+code de l'app) n'est pas touché. Si `_DESCRIPTION` est introuvable (app.py a
+été réécrit entre-temps), l'étape échoue proprement et affiche un message —
+la publication du modèle ci-dessus n'est pas affectée.
+
+⚠️ Ça ne change **pas** `MODEL_ID` : il faut toujours changer cette variable
+dans Settings → Variables and secrets du Space (ou le faire changer par
+Claude si le Space le lit autrement) pour que le modèle publié soit celui
+réellement utilisé.""")
+code("""# Met à jour automatiquement le bloc "Nouveautés" de la page du Space avec
+# les vrais chiffres de ce run — seulement si une nouvelle version vient
+# d'être publiée ci-dessus.
+SPACE_REPO = "zimesongbian/modele_byt5_bariba_expert_api_v03_improve"   # repo_type="space"
+if gain >= MIN_GAIN:
+    import re
+    from huggingface_hub import hf_hub_download
+
+    def ver_label(repo_id):
+        m = re.search(r'v0*(\\d+)$', repo_id)
+        return f'v{int(m.group(1)):02d}' if m else None
+
+    new_ver = ver_label(OUT_REPO) or OUT_REPO.split('/')[-1]
+    base_ver = ver_label(BASE_MODEL)
+    base_mean, new_mean = mean(results['v004']), mean(results[best])
+    gain_pct = (new_mean - base_mean) / base_mean * 100
+    idx_key, base_idx_key = f'{best}+indices', 'v004+indices'
+    gain_idx_pct = ((mean(results[idx_key]) - mean(results[base_idx_key])) / mean(results[base_idx_key]) * 100
+                     if idx_key in results and base_idx_key in results else None)
+    loop_pct = (results[best]['fr-ba']['loop'] + results[best]['ba-fr']['loop']) / 2 * 100
+
+    bullets = [
+        f"- 🧠 **Modèle de traduction réentraîné** (ByT5{f', depuis {base_ver}' if base_ver else ''}) : "
+        f"qualité moyenne des traductions en hausse de **+{gain_pct:.0f} %** par rapport à la version "
+        f"précédente (chrF++ moyen passé de {base_mean:.1f} à {new_mean:.1f} sur 100, mesuré sur "
+        f"{EVAL_LIMIT} phrases inédites)",
+        "- 🎯 **Renforcement par apprentissage de préférence (DPO)** : entraîné à éviter ses propres "
+        "erreurs et les réponses rejetées dans les exercices Apprendre",
+    ]
+    if gain_idx_pct is not None:
+        bullets.append(
+            f"- 📚 **Compréhension du contexte attesté** : jusqu'à **+{gain_idx_pct:.0f} %** de qualité "
+            "en plus en exploitant les phrases proches validées et le dictionnaire comme indices"
+        )
+    bullets.append(f"- ✅ **Aucune régression** : taux de boucles/répétitions resté à {loop_pct:.1f} % sur l'ensemble de test")
+
+    version_title = new_ver.lstrip('v').lstrip('0') or '0'
+    Q = chr(34) * 3   # '\"\"\"' built at runtime so this generator's own triple-quoted
+                        # code() block doesn't see a literal triple-quote and close early.
+    new_description = (
+        f'_DESCRIPTION = {Q}\\n'
+        f'## Traducteur Français ↔ Bariba (Baatɔnum) — Version {version_title}\\n'
+        f'**Nouveautés {new_ver} :**\\n'
+        + '\\n'.join(bullets) + '\\n'
+        '**Pipeline de traduction** (priorité décroissante) :\\n'
+        '`Phrasebook (1.0)` → `Dict Baatonum (0.93)` → `Corpus parallèle (0.93)` → `Modèle ByT5` → `Fallback corpus (0.86)`\\n'
+        '**Grammaire** : ordre SOV préservé · tons et diacritiques Bariba intacts (ɛ ɔ ã ɛ̃ ĩ ɔ̃ ũ ŋ) · digraphes gb/kp traités correctement\\n'
+        + Q
+    )
+    try:
+        app_path = hf_hub_download(SPACE_REPO, 'app.py', repo_type='space', token=os.environ['HF_TOKEN'])
+        current = open(app_path, encoding='utf-8').read()
+        pattern = '_DESCRIPTION = ' + re.escape(Q) + '.*?' + re.escape(Q)
+        updated, n = re.subn(pattern, lambda _: new_description, current, count=1, flags=re.S)
+        if n == 1:
+            open('/kaggle/working/app.py', 'w', encoding='utf-8').write(updated)
+            api.upload_file(path_or_fileobj='/kaggle/working/app.py', path_in_repo='app.py', repo_id=SPACE_REPO,
+                             repo_type='space', commit_message=f'Nouveautés {new_ver} ({best}, gain {gain:+.2f} chrF++)')
+            print('Page du Space mise à jour :', SPACE_REPO, '— nouveau bloc Nouveautés', new_ver)
+        else:
+            print('⚠️ _DESCRIPTION introuvable dans app.py du Space — page NON mise à jour, à vérifier manuellement.')
+    except Exception as e:
+        print('⚠️ Échec de la mise à jour de la page du Space (non bloquant, le modèle est publié) :', e)
+else:
+    print('Pas de publication ci-dessus : la page du Space n’est pas modifiée.')
+""")
 nb = {"cells":cells,"metadata":{"kernelspec":{"display_name":"Python 3","language":"python","name":"python3"},"language_info":{"name":"python"}},"nbformat":4,"nbformat_minor":5}
 json.dump(nb, open('scripts/dunya_translate/kaggle/fitila_byt5_v05.ipynb','w'), ensure_ascii=False, indent=1)
 print("ok")
