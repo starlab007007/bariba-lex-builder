@@ -75,16 +75,18 @@ const _pageSize = 40;
 /// toutes les actions marquantes de la plateforme (connexions, propositions
 /// de mots, sessions vocales DUNYA…), lecture réservée aux admins côté RLS.
 class PlatformAuditScreen extends StatefulWidget {
-  const PlatformAuditScreen({super.key, PlatformAuditFetch? fetch}) : _fetch = fetch;
+  /// [fetch] est injectable pour les tests ; par défaut, lit la vraie table
+  /// via [FitilaBackend.fetchPlatformAuditLog].
+  const PlatformAuditScreen({super.key, this.fetch});
 
-  final PlatformAuditFetch? _fetch;
+  final PlatformAuditFetch? fetch;
 
   @override
   State<PlatformAuditScreen> createState() => _PlatformAuditScreenState();
 }
 
 class _PlatformAuditScreenState extends State<PlatformAuditScreen> {
-  late final PlatformAuditFetch _fetch = widget._fetch ?? FitilaBackend.fetchPlatformAuditLog;
+  late final PlatformAuditFetch _fetch = widget.fetch ?? FitilaBackend.fetchPlatformAuditLog;
   final _search = TextEditingController();
 
   String _module = '';
