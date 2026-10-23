@@ -97,9 +97,15 @@ void main() {
     expect(sent.single, {'word': 'kpɛrɛ', 'definition': 'Nouveau mot proposé.', 'partOfSpeech': 'n'});
     expect(find.text('Mot envoyé !'), findsOneWidget);
     expect(tester.takeException(), isNull);
-    // Draine le délai avant la fermeture automatique et l'animation de
-    // fermeture de la feuille (sinon : timer/ticker encore actifs en fin de test).
-    await tester.pumpAndSettle(const Duration(milliseconds: 100));
+    // `pumpAndSettle(100ms)` ne suffit pas : tant que rien ne redemande de
+    // frame (ce qui est le cas pendant toute l'attente), il considère que
+    // c'est déjà « réglé » après un seul pas et s'arrête — sans jamais
+    // atteindre les 1300ms du délai, dont le minuteur resterait actif à la
+    // fin du test. On avance donc d'abord explicitement au-delà du délai
+    // (ce qui déclenche la fermeture), puis on laisse `pumpAndSettle()`
+    // terminer l'animation de fermeture de la feuille qui s'ensuit.
+    await tester.pump(const Duration(milliseconds: 1350));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('shows a dedicated message when sending fails', (tester) async {
