@@ -38,7 +38,7 @@ export default function DictionaryExporter() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `dictionnaire-baatonu-${new Date().toISOString().split('T')[0]}.json`;
+      link.download = `dictionnaire-baatonum-${new Date().toISOString().split('T')[0]}.json`;
       link.click();
       URL.revokeObjectURL(url);
 
@@ -111,7 +111,7 @@ export default function DictionaryExporter() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `dictionnaire-baatonu-${new Date().toISOString().split('T')[0]}.csv`;
+      link.download = `dictionnaire-baatonum-${new Date().toISOString().split('T')[0]}.csv`;
       link.click();
       URL.revokeObjectURL(url);
 
@@ -186,7 +186,7 @@ export default function DictionaryExporter() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `dictionnaire-baatonu-${new Date().toISOString().split('T')[0]}.xls`;
+      link.download = `dictionnaire-baatonum-${new Date().toISOString().split('T')[0]}.xls`;
       link.click();
       URL.revokeObjectURL(url);
 

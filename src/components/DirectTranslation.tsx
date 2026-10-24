@@ -16,7 +16,7 @@ export const DirectTranslation = ({ searchQuery, searchDirection, entry }: Direc
       return {
         from: entry.word,
         to: entry.definition,
-        fromLang: "Bààtɔ̀nú",
+        fromLang: "Baatɔnum",
         toLang: "Français",
         icon: <ArrowRight className="h-4 w-4" />
       };
@@ -29,7 +29,7 @@ export const DirectTranslation = ({ searchQuery, searchDirection, entry }: Direc
         from: matchingKeyword || searchQuery,
         to: entry.word,
         fromLang: "Français",
-        toLang: "Bààtɔ̀nú",
+        toLang: "Baatɔnum",
         icon: <ArrowLeft className="h-4 w-4" />
       };
     }

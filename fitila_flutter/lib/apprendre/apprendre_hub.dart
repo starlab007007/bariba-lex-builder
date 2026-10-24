@@ -313,7 +313,7 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
     if (now.hour < 12) {
       return '« As-tu bien dormi ? » — le salut du matin';
     }
-    return 'Apprendre le bàátɔ̀nú et le français';
+    return 'Apprendre le baatɔnum et le français';
   }
 
   @override
@@ -340,7 +340,7 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
           children: [
             ApTopBar(
               title: 'Apprendre',
-              subtitle: 'Mɛɛribu · bàátɔ̀nú ⇄ français',
+              subtitle: 'Mɛɛribu · baatɔnum ⇄ français',
               trailing: store == null
                   ? null
                   : ApRoundIconButton(

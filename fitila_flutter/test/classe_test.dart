@@ -32,7 +32,7 @@ Future<void> pumpCard(WidgetTester tester, Widget child, {double width = 390}) a
 
 void main() {
   test('normalizeAnswer/matchAnswer ignore case, tones and punctuation but keep ɛ ɔ ŋ', () {
-    expect(normalizeAnswer('Bàátɔ̀nú!'), normalizeAnswer('baatɔnu'));
+    expect(normalizeAnswer('Baatɔnum!'), normalizeAnswer('baatɔnum'));
     expect(normalizeAnswer('ɛ'), isNot(normalizeAnswer('e')));
     expect(normalizeAnswer('ə'), isNotEmpty);
     expect(normalizeAnswer('mə'), isNot(normalizeAnswer('m')));

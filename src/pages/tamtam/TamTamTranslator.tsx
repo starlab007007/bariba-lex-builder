@@ -248,7 +248,7 @@ export default function TamTamTranslator() {
         : 'bg-white text-[#241F2E] border border-[#E4DFCC]'
     } ${detected ? 'ring-2 ring-[#3F6E52]/40 ring-offset-1 ring-offset-transparent' : ''}`}>
       <span>{lang === 'bariba' ? '🇧🇯' : '🇫🇷'}</span>
-      <span>{lang === 'bariba' ? 'Bàátɔ̀nú' : 'Français'}</span>
+      <span>{lang === 'bariba' ? 'Baatɔnum' : 'Français'}</span>
       {detected && <Sparkles className="w-3 h-3 text-[#3F6E52]" />}
     </span>
   );
@@ -667,7 +667,7 @@ export default function TamTamTranslator() {
                       const vv = window.visualViewport;
                       if (!vv || window.innerHeight - vv.height - vv.offsetTop < 120) setKeyboardOpen(false);
                     }, 120)}
-                    placeholder={translator.sourceLanguage === 'bariba' ? 'Écrivez en Bàátɔ̀nú…' : 'Écrivez en français…'}
+                    placeholder={translator.sourceLanguage === 'bariba' ? 'Écrivez en Baatɔnum…' : 'Écrivez en français…'}
                     className="flex-1 min-h-[52px] max-h-[104px] text-[16px] rounded-[18px] border-2 border-[#C99530] bg-white text-[#241F2E] placeholder:text-[#9A927F] focus:border-[#A87317] focus:ring-2 focus:ring-[#C99530]/15 resize-none shadow-sm"
                     rows={keyboardOpen ? 2 : 1}
                   />

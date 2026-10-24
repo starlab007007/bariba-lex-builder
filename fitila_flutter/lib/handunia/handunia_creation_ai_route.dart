@@ -1068,7 +1068,7 @@ class _HanduniaAiCreationRouteState extends State<HanduniaAiCreationRoute> {
         Center(
           child: SegmentedButton<String>(
             segments: const [
-              ButtonSegment<String>(value: 'ba', label: Text('Bàátɔ̀nú')),
+              ButtonSegment<String>(value: 'ba', label: Text('Baatɔnum')),
               ButtonSegment<String>(value: 'fr', label: Text('Français')),
             ],
             selected: <String>{_languageCode},

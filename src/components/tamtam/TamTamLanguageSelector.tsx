@@ -5,7 +5,7 @@ import { useTamTamLanguage, TamTamLang } from '@/contexts/TamTamLanguageContext'
 
 const languages: { code: TamTamLang; name: string; flag: string; nativeName: string }[] = [
   { code: 'fr', name: 'Français', flag: '🇫🇷', nativeName: 'Français' },
-  { code: 'ba', name: 'Bàátɔ̀nú', flag: '🇧🇯', nativeName: 'Bàátɔ̀nú' },
+  { code: 'ba', name: 'Baatɔnum', flag: '🇧🇯', nativeName: 'Baatɔnum' },
 ];
 
 export const TamTamLanguageSelector: React.FC = () => {

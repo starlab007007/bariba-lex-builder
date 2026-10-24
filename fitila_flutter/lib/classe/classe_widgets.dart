@@ -393,7 +393,7 @@ class ClasseGradePanel extends StatelessWidget {
 
 String _fmtGrade(double g) => g == g.roundToDouble() ? g.toInt().toString() : g.toStringAsFixed(1);
 
-/// Carte de réponse d'un apprenant : saisie avec clavier Bàátɔ̀nú intelligent, réponse vocale,
+/// Carte de réponse d'un apprenant : saisie avec clavier Baatɔnum intelligent, réponse vocale,
 /// enregistrement en base, vérification par le corrigé, note et corrections de l'enseignant.
 class ClasseAnswerCard extends StatefulWidget {
   const ClasseAnswerCard({

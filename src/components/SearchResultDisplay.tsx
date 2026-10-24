@@ -123,7 +123,7 @@ export const SearchResultDisplay = ({ entry, query, index, relevanceScore }: Sea
         {/* Détails étendus */}
         {isExpanded && (
           <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
-            {/* Exemples en Bààtɔ̀nú */}
+            {/* Exemples en Baatɔnum */}
             {entry.example_bariba && entry.example_bariba.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold text-primary flex items-center gap-2">

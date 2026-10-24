@@ -369,7 +369,7 @@ const _foldMap = {
   'ʋ': 'u', 'ɩ': 'i', 'ɪ': 'i', 'ʊ': 'u', 'ə': 'e', 'ɑ': 'a', 'ɐ': 'a', 'ɡ': 'g',
 };
 
-/// Letters only, tones and nasal marks removed: "Bààtɔ̀nú" -> "baatɔnu".
+/// Letters only, tones and nasal marks removed: "Baatɔnum" -> "baatɔnum".
 String foldBariba(String input) {
   final buf = StringBuffer();
   for (final rune in input.toLowerCase().runes) {

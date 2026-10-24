@@ -32,7 +32,7 @@ class EspaceRepository {
     }
     final key = BaribaKeyboardEngine.foldKey(query ?? '');
     if (key.isNotEmpty) {
-      // `search_text` est plié côté serveur : « baatonu » retrouve « Bàátɔ̀nú ».
+      // `search_text` est plié côté serveur : « baatonum » retrouve « Baatɔnum ».
       q = q.ilike('search_text', '%${key.replaceAll(RegExp(r'[%_\\]'), '')}%');
     }
     final rows = await q.order('updated_at', ascending: false).limit(300);

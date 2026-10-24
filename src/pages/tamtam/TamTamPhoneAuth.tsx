@@ -83,7 +83,7 @@ function Hero({ compact }: { compact: boolean }) {
           La langue vivante,<br />augmentée par l’IA.
         </h2>
         <p className="mt-2 max-w-[460px] leading-relaxed" style={{ color: SIG.inkSoft, fontSize: compact ? 12.5 : 15 }}>
-          {compact ? 'Traduire, apprendre et transmettre le Bàátɔ̀nú, simplement.' : 'Traduire, apprendre, partager et préserver le Bàátɔ̀nú dans une expérience élégante et accessible sur tous vos écrans.'}
+          {compact ? 'Traduire, apprendre et transmettre le Baatɔnum, simplement.' : 'Traduire, apprendre, partager et préserver le Baatɔnum dans une expérience élégante et accessible sur tous vos écrans.'}
         </p>
         <div className={`flex flex-wrap gap-2 ${compact ? 'mt-3' : 'mt-7'}`}>
           {([[Languages, 'Traduction', SIG.goldTint, SIG.goldDeep], [Sparkles, 'IA culturelle', SIG.clayTint, SIG.clay], [GraduationCap, 'Apprentissage', SIG.sageTint, SIG.sage]] as const).map(([Icon, label, bg, ink]) => (
@@ -92,7 +92,7 @@ function Hero({ compact }: { compact: boolean }) {
         </div>
         {!compact && (
           <div className="mt-9 grid grid-cols-3 gap-2.5">
-            {([[BookOpen, 'Dictionnaire', 'Bàátɔ̀nú ↔ Français'], [Mic2, 'Voix', 'Écouter & prononcer'], [Users, 'Communauté', 'Partager & transmettre']] as const).map(([Icon, title, sub]) => (
+            {([[BookOpen, 'Dictionnaire', 'Baatɔnum ↔ Français'], [Mic2, 'Voix', 'Écouter & prononcer'], [Users, 'Communauté', 'Partager & transmettre']] as const).map(([Icon, title, sub]) => (
               <div key={title} className="rounded-[16px] border p-3.5" style={{ background: 'rgba(255,255,255,.78)', borderColor: SIG.hairline }}>
                 <Icon className="h-5 w-5" style={{ color: SIG.goldDeep }} />
                 <div className="mt-2.5 text-[12.5px] font-extrabold">{title}</div>
@@ -438,7 +438,7 @@ export default function TamTamPhoneAuth() {
                     </PrimaryButton>
                     <button type="submit" hidden />
                     <div className="mt-4 flex flex-wrap justify-center gap-2">
-                      {([[ShieldCheck, 'Sécurisé'], [WifiOff, 'Offline-ready'], [Keyboard, 'Clavier Bàátɔ̀nú']] as const).map(([Icon, label]) => (
+                      {([[ShieldCheck, 'Sécurisé'], [WifiOff, 'Offline-ready'], [Keyboard, 'Clavier Baatɔnum']] as const).map(([Icon, label]) => (
                         <span key={label} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: SIG.surfaceAlt, color: SIG.inkSoft }}><Icon className="h-3.5 w-3.5" style={{ color: SIG.goldDeep }} /> {label}</span>
                       ))}
                     </div>

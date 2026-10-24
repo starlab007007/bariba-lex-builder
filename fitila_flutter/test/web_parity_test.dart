@@ -58,7 +58,7 @@ void main() {
 
     expect(find.text('Habitude.'), findsOneWidget);
     expect(find.textContaining('Définition'), findsOneWidget);
-    expect(find.textContaining('Exemple en Bàátɔ̀nú'), findsOneWidget);
+    expect(find.textContaining('Exemple en Baatɔnum'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -89,8 +89,8 @@ void main() {
       find.text('Yaa sɔ̃ɔ wírú Bariba mɛ̀, ǹ nɛ́ɛ̀ daa gɔ!'),
       findsOneWidget,
     );
-    expect(find.text('Posez vos questions en Bàátɔ̀nú'), findsOneWidget);
-    expect(find.byTooltip('Clavier Bàátɔ̀nú'), findsOneWidget);
+    expect(find.text('Posez vos questions en Baatɔnum'), findsOneWidget);
+    expect(find.byTooltip('Clavier Baatɔnum'), findsOneWidget);
     expect(find.byTooltip('Envoyer'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

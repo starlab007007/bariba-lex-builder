@@ -59,7 +59,7 @@ class CalculExercise {
   };
 
   String get prompt => type == 'count'
-      ? 'Écris ${_fmt(expected)} en Bàátɔ̀nú'
+      ? 'Écris ${_fmt(expected)} en Baatɔnum'
       : operands.map(_fmt).join(' $symbol ');
 
   factory CalculExercise.fromJson(Map<String, dynamic> j) => CalculExercise(

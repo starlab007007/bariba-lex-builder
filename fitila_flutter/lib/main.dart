@@ -205,7 +205,7 @@ Future<void> _speakAnywhere(audio.AudioPlayer player, String text, {required boo
     if (await LocalSpeech.speak(text, bariba: bariba)) return;
     throw StateError(
       bariba
-          ? 'Hors connexion : cette voix Bàátɔ̀nú n’est pas encore téléchargée (Apprendre › Voix hors-ligne).'
+          ? 'Hors connexion : cette voix Baatɔnum n’est pas encore téléchargée (Apprendre › Voix hors-ligne).'
           : 'Voix indisponible hors connexion sur cet appareil.',
     );
   }
@@ -1130,7 +1130,7 @@ extension FitilaPageMeta on FitilaPage {
       FitilaPage.temIa => 'Assistant foncier avec sources citees',
       FitilaPage.learn => 'Cours guidés et parcours culture',
       FitilaPage.classe => 'Niveaux, exercices, notes et corrections',
-      FitilaPage.espace => 'Coffre-fort, éditeur et scan OCR Bàátɔ̀nú',
+      FitilaPage.espace => 'Coffre-fort, éditeur et scan OCR Baatɔnum',
       FitilaPage.keyboard => 'Clavier natif Bariba intégré',
       FitilaPage.voiceLab => 'TTS, STT et corpus vocal',
       FitilaPage.teacher => 'Suivi enseignant et correction',
@@ -1398,7 +1398,7 @@ class _FitilaShellState extends State<FitilaShell>
       author: 'Radio Village',
       kind: 'audio',
       content:
-          'Capsule du matin: saluer, remercier et demander son chemin en Bàátɔ̀nú.',
+          'Capsule du matin: saluer, remercier et demander son chemin en Baatɔnum.',
       accent: _fitilaPrimary,
       visibility: 'Public',
       tags: const ['salutation', 'audio', 'village'],
@@ -1768,7 +1768,7 @@ class _NavigationPanel extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     const Text(
-                      'Bàátɔ̀nú · Langue, Culture & IA',
+                      'Baatɔnum · Langue, Culture & IA',
                       style: TextStyle(color: _fitilaMuted, fontSize: 11.5),
                     ),
                     const SizedBox(height: 18),
@@ -4530,7 +4530,7 @@ class _WebParityModuleScreenState extends State<WebParityModuleScreen> {
         _WebParityAction(
           icon: Icons.menu_book_rounded,
           title: 'Dictionnaire',
-          subtitle: 'Recherche Bàátɔ̀nú ↔ Français.',
+          subtitle: 'Recherche Baatɔnum ↔ Français.',
           target: FitilaPage.dictionary,
         ),
         _WebParityAction(
@@ -7942,7 +7942,7 @@ class _AiScreenState extends State<AiScreen> {
             content: Text(
               error is StateError
                   ? error.message
-                  : 'Dictée Bàátɔ̀nú indisponible.',
+                  : 'Dictée Baatɔnum indisponible.',
             ),
           ),
         );
@@ -8076,7 +8076,7 @@ class _AiScreenState extends State<AiScreen> {
             ),
             const SizedBox(height: 7),
             const Text(
-              'Posez vos questions en Bàátɔ̀nú',
+              'Posez vos questions en Baatɔnum',
               textAlign: TextAlign.center,
               style: TextStyle(color: _fitilaMuted, fontSize: 12.5),
             ),
@@ -8088,15 +8088,15 @@ class _AiScreenState extends State<AiScreen> {
               children: [
                 ActionChip(
                   label: const Text('Comment saluer ?'),
-                  onPressed: () => _send('Comment saluer en Bàátɔ̀nú ?'),
+                  onPressed: () => _send('Comment saluer en Baatɔnum ?'),
                 ),
                 ActionChip(
                   label: const Text('Explique une coutume'),
-                  onPressed: () => _send('Explique une coutume Bàátɔ̀nú'),
+                  onPressed: () => _send('Explique une coutume Baatɔnum'),
                 ),
                 ActionChip(
                   label: const Text('Aide-moi en classe'),
-                  onPressed: () => _send('Aide-moi à apprendre le Bàátɔ̀nú'),
+                  onPressed: () => _send('Aide-moi à apprendre le Baatɔnum'),
                 ),
               ],
             ),
@@ -8246,7 +8246,7 @@ class _AiScreenState extends State<AiScreen> {
     final suggestions = _suggestions;
     return _PageFrame(
       title: 'Fitila IA',
-      subtitle: 'Assistant intelligent en Bàátɔ̀nú',
+      subtitle: 'Assistant intelligent en Baatɔnum',
       action: IconButton(
         tooltip: 'Mode vocal',
         onPressed: () => Navigator.of(context).push(
@@ -8324,7 +8324,7 @@ class _AiScreenState extends State<AiScreen> {
             child: Row(
               children: [
                 IconButton(
-                  tooltip: 'Clavier Bàátɔ̀nú',
+                  tooltip: 'Clavier Baatɔnum',
                   onPressed: () =>
                       setState(() => _showKeyboard = !_showKeyboard),
                   icon: const Icon(Icons.keyboard_alt_rounded),
@@ -8528,7 +8528,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
             content: Text(
               error is StateError
                   ? error.message
-                  : 'Dictée Bàátɔ̀nú indisponible.',
+                  : 'Dictée Baatɔnum indisponible.',
             ),
           ),
         );
@@ -8690,7 +8690,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
             ),
             const SizedBox(height: 9),
             const Text(
-              'Posez votre question directement en Bàátɔ̀nú',
+              'Posez votre question directement en Baatɔnum',
               textAlign: TextAlign.center,
               style: TextStyle(color: _fitilaMuted, fontSize: 13),
             ),
@@ -8884,7 +8884,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     IconButton(
-                      tooltip: 'Clavier Bàátɔ̀nú',
+                      tooltip: 'Clavier Baatɔnum',
                       onPressed: () => _showKeyboard(context, _query),
                       icon: const Icon(Icons.keyboard_alt_rounded),
                     ),
@@ -8939,7 +8939,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
                     SizedBox(width: 5),
                     Flexible(
                       child: Text(
-                        'Posez votre question en Bàátɔ̀nú — recherche 100% locale, sans Internet',
+                        'Posez votre question en Baatɔnum — recherche 100% locale, sans Internet',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: _fitilaSage, fontSize: 9.8),
                       ),
@@ -9212,7 +9212,7 @@ class _LearnScreenState extends State<LearnScreen> {
     final bank = _bank;
     return _PageFrame(
       title: 'Apprendre',
-      subtitle: 'Parcours bidirectionnel Français ⇄ Bàátɔ̀nú, IA et badges',
+      subtitle: 'Parcours bidirectionnel Français ⇄ Baatɔnum, IA et badges',
       action: IconButton(
         tooltip: 'Profil apprenant',
         onPressed: () => Navigator.of(context).push(
@@ -9883,7 +9883,7 @@ class _LearningExerciseScreenState extends State<LearningExerciseScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _frToBariba ? 'Traduis en Bàátɔ̀nú' : 'Traduis en français',
+                _frToBariba ? 'Traduis en Baatɔnum' : 'Traduis en français',
                 style: const TextStyle(
                   color: _fitilaMuted,
                   fontSize: 11.5,
@@ -10972,7 +10972,7 @@ class _ClasseScreenState extends State<ClasseScreen> {
   Widget build(BuildContext context) {
     return _PageFrame(
       title: 'Classe',
-      subtitle: _level == 'N1' ? '🔥 N1 — Bàátɔ̀nú' : '🚀 N2 — Bàátɔ̀nú',
+      subtitle: _level == 'N1' ? '🔥 N1 — Baatɔnum' : '🚀 N2 — Baatɔnum',
       child: ClasseHub(
         session: _session,
         initialLessons: widget.initialLessons,
@@ -15207,7 +15207,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _group(0, 'Langue et affichage', [
             PremiumSwitchRow(
               icon: Icons.language_rounded,
-              title: 'Bàátɔ̀nú en premier',
+              title: 'Baatɔnum en premier',
               subtitle: 'Affiche le Bariba avant le français partout où c’est possible.',
               value: _baribaFirst,
               onChanged: (v) => _setPref('bariba_first', v, (x) => _baribaFirst = x),
@@ -15230,7 +15230,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             PremiumActionRow(
               icon: Icons.keyboard_alt_rounded,
-              title: 'Clavier Bàátɔ̀nú',
+              title: 'Clavier Baatɔnum',
               subtitle: 'Activer le clavier natif dans toutes vos applications.',
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(builder: (_) => const KeyboardScreen()),
@@ -15314,7 +15314,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           const Center(
-            child: Text('FITILA · Bàátɔ̀nú', style: TextStyle(fontSize: 11, color: _fitilaMuted)),
+            child: Text('FITILA · Baatɔnum', style: TextStyle(fontSize: 11, color: _fitilaMuted)),
           ),
         ],
       ),
@@ -16786,7 +16786,7 @@ class _BaribaKeyboard extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.fromLTRB(6, 0, 6, 8),
             child: Text(
-              'Clavier Bàátɔ̀nú natif',
+              'Clavier Baatɔnum natif',
               style: TextStyle(
                 color: _fitilaGoldDeep,
                 fontSize: 11,
@@ -18811,7 +18811,7 @@ class _EchoSonScreenState extends State<EchoSonScreen> {
               ),
               const SizedBox(height: 14),
               ReferenceDarkLangToggle(
-                first: 'Bàátɔ̀nú',
+                first: 'Baatɔnum',
                 second: 'Français',
                 firstSelected: baSelected,
                 onFirst: () => setState(
@@ -21898,7 +21898,7 @@ class _SagesseUserChallengeCreateScreenState
             minLines: 2,
             maxLines: 4,
             decoration: const InputDecoration(
-              labelText: 'Défi en Bàátɔ̀nú',
+              labelText: 'Défi en Baatɔnum',
               hintText: 'Écrivez le proverbe ou la question…',
             ),
           ),
@@ -22835,7 +22835,7 @@ class _AburuFimScreenState extends State<AburuFimScreen> {
   String get _productLanguages {
     final hasBariba =
         (_selectedProduct?['title_ba']?.toString().trim().isNotEmpty) == true;
-    return hasBariba ? 'FR + Bàátɔ̀nú' : 'FR';
+    return hasBariba ? 'FR + Baatɔnum' : 'FR';
   }
 
   String get _productStockLabel {
@@ -23876,7 +23876,7 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const ReferenceTinyPill(label: 'Bàátɔ̀nú'),
+                    const ReferenceTinyPill(label: 'Baatɔnum'),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       child: Text(
@@ -23989,7 +23989,7 @@ class _SasaraIaScreenState extends State<SasaraIaScreen> {
   Widget _buildSasaraTranscriptReference() {
     final targetLabel =
         _direction == TranslationDirection.frenchToBariba
-            ? 'Bàátɔ̀nú (assistée par IA)'
+            ? 'Baatɔnum (assistée par IA)'
             : 'Français (assisté par IA)';
     return ReferenceCreationShell(
       dark: false,
@@ -25889,8 +25889,8 @@ class _HanduniaWasaScreenState extends State<HanduniaWasaScreen> {
       return 'Aucun texte à traduire pour cette voix.';
     }
     return FitilaBackend.askFitilaIa(
-      'Traduis fidèlement le texte suivant entre français et Bàátɔ̀nú : '
-      'si le texte est principalement en français, traduis-le en Bàátɔ̀nú ; '
+      'Traduis fidèlement le texte suivant entre français et Baatɔnum : '
+      'si le texte est principalement en français, traduis-le en Baatɔnum ; '
       'sinon traduis-le en français. Garde les noms propres et le sens culturel. '
       'Retourne uniquement la traduction, sans explication. Texte: "$text".',
     );

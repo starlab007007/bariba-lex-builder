@@ -16,14 +16,14 @@ typedef _Dir = KeyboardTranslationDirection;
 ///  * suggestions + traduction du mot en cours pendant la frappe
 ///  * traduction en direct du paragraphe (dictionnaire puis moteur IA)
 ///  * sélection d'un mot/phrase -> carte de traduction, équivalents à choisir
-///  * clavier Bàátɔ̀nú intégré quand le clavier système n'est pas activé
+///  * clavier Baatɔnum intégré quand le clavier système n'est pas activé
 class EspaceSmartEditor extends StatefulWidget {
   const EspaceSmartEditor({
     super.key,
     required this.controller,
     this.engine,
     this.readOnly = false,
-    this.hint = 'Écrivez en Bàátɔ̀nú…',
+    this.hint = 'Écrivez en Baatɔnum…',
   });
 
   final TextEditingController controller;
@@ -373,7 +373,7 @@ class _EspaceSmartEditorState extends State<EspaceSmartEditor> with WidgetsBindi
                 if (!_systemReady)
                   IconButton(
                     key: const ValueKey('espace-keys-toggle'),
-                    tooltip: _keys ? 'Masquer le clavier Bàátɔ̀nú' : 'Clavier Bàátɔ̀nú',
+                    tooltip: _keys ? 'Masquer le clavier Baatɔnum' : 'Clavier Baatɔnum',
                     onPressed: () {
                       setState(() => _keys = !_keys);
                       if (_keys) {

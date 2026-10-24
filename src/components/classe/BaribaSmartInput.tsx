@@ -95,10 +95,10 @@ export default function BaribaSmartInput({ value, onChange, placeholder, classNa
       if (error) throw error;
       const candidates = (data?.candidates || []).slice(0, 5);
       setHwCandidates(candidates);
-      if (candidates.length === 0) setHwError('Aucun caractère reconnu. Utilisez le clavier Bàátɔ̀nú ci-dessous.');
+      if (candidates.length === 0) setHwError('Aucun caractère reconnu. Utilisez le clavier Baatɔnum ci-dessous.');
     } catch (err) {
       console.error('HW recognition failed', err);
-      setHwError('Reconnaissance IA indisponible. Le clavier Bàátɔ̀nú reste utilisable.');
+      setHwError('Reconnaissance IA indisponible. Le clavier Baatɔnum reste utilisable.');
     } finally {
       setHwLoading(false);
     }
@@ -193,7 +193,7 @@ export default function BaribaSmartInput({ value, onChange, placeholder, classNa
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  aria-label={keyboardUppercase ? 'Minuscules Bàátɔ̀nú' : 'Majuscules Bàátɔ̀nú'}
+                  aria-label={keyboardUppercase ? 'Minuscules Baatɔnum' : 'Majuscules Baatɔnum'}
                   title={keyboardUppercase ? 'Minuscules' : 'Majuscules'}
                   onClick={() => setKeyboardUppercase(v => !v)}
                   className={`px-2 h-7 rounded-md border text-xs font-black transition-colors ${keyboardUppercase ? 'bg-amber-500 border-amber-500 text-white' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-amber-50'}`}

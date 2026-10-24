@@ -230,7 +230,7 @@ export function VoiceLangPanel({
     retry: uiLang === 'ba' ? '🔄 Gbìyànjú mọ̀' : '🔄 Réessayer',
     youWillSpeak:
       uiLang === 'ba'
-        ? `Ìwọ yóò sọ ní ${lang === 'ba' ? 'Bàátɔ̀nú' : 'Fàránsé'}`
+        ? `Ìwọ yóò sọ ní ${lang === 'ba' ? 'Baatɔnum' : 'Fàránsé'}`
         : `Vous parlerez en ${lang === 'ba' ? 'Bariba' : 'Français'}`,
   };
 

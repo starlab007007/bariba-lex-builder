@@ -177,13 +177,13 @@ class _AuthFlowState extends State<AuthFlow> {
                 LandingSlide(
                   dark: false,
                   title: 'Parlez sans frontières',
-                  subtitle: 'Traduisez le français et le Bàátɔ̀nú à la voix, à l’écrit ou en photo.',
+                  subtitle: 'Traduisez le français et le Baatɔnum à la voix, à l’écrit ou en photo.',
                   scene: AnimatedScene(builder: (t) => TranslateScenePainter(t), semanticLabel: 'Deux amis discutent : Bonjour et Yɛ́ɛ̀ bɛ̀ɛ'),
                 ),
                 LandingSlide(
                   dark: true,
                   title: 'Apprenez, transmettez',
-                  subtitle: 'Leçons, dictionnaire et clavier Bàátɔ̀nú pour faire vivre la langue.',
+                  subtitle: 'Leçons, dictionnaire et clavier Baatɔnum pour faire vivre la langue.',
                   scene: AnimatedScene(builder: (t) => LearnScenePainter(t), semanticLabel: 'La flamme FITILA veille sur un livre ouvert'),
                 ),
               ],
@@ -352,7 +352,7 @@ class _AuthFlowState extends State<AuthFlow> {
           const SizedBox(height: 12),
           Center(
             child: Text(
-              _signup ? 'Votre numéro et votre code PIN suffisent.' : 'Bàátɔ̀nú · Culture · IA — sécurisé',
+              _signup ? 'Votre numéro et votre code PIN suffisent.' : 'Baatɔnum · Culture · IA — sécurisé',
               style: const TextStyle(fontSize: 11.5, color: SignatureTheme.muted),
             ),
           ),

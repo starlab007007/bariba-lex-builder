@@ -78,7 +78,7 @@ void main() {
     expect(answer, contains('préfère ne pas inventer'));
   });
 
-  test('DUNYA detects Bàátɔ̀nú text locally', () async {
+  test('DUNYA detects Baatɔnum text locally', () async {
     final router = DunyaIntelligenceRouter(
       knowledge: _FakeKnowledge(const []),
       fallbackEngine: DunyaFallbackInferenceEngine(),

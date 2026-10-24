@@ -14,7 +14,7 @@ class KeyboardEntry {
   final int freq;
 }
 
-/// Pure-Dart prediction + offline translation engine for Bàátɔ̀nú.
+/// Pure-Dart prediction + offline translation engine for Baatɔnum.
 ///
 /// Uses the same `bariba_dictionary.json` (entries / phrases / bigrams) as the
 /// Android IME and the iOS keyboard extension so every surface predicts alike.
@@ -202,7 +202,7 @@ class BaribaKeyboardEngine {
     'ŋ': 'n', 'ñ': 'n', 'ǹ': 'n', 'ç': 'c', 'œ': 'o', 'æ': 'a',
   };
 
-  /// Lower-cases and removes tones/nasal marks/accents, mapping the Bàátɔ̀nú
+  /// Lower-cases and removes tones/nasal marks/accents, mapping the Baatɔnum
   /// letters ɛ→e, ɔ→o, ŋ→n so that a user typing on a plain layout still
   /// matches the accented dictionary spelling.
   static String foldKey(String input) {

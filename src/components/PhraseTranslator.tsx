@@ -335,7 +335,7 @@ export const PhraseTranslator = () => {
             }}
           >
             <Languages className="h-3 w-3 mr-1" />
-            {detectedLang === 'french' ? 'Français détecté' : 'Bààtɔ̀nú détecté'}
+            {detectedLang === 'french' ? 'Français détecté' : 'Baatɔnum détecté'}
             {((detectedLang === 'french' && direction !== 'french-to-bariba') ||
               (detectedLang === 'bariba' && direction !== 'bariba-to-french')) && 
               ' — cliquer pour corriger'}
@@ -371,7 +371,7 @@ export const PhraseTranslator = () => {
           <Textarea
             value={sourceText}
             onChange={(e) => setSourceText(e.target.value)}
-            placeholder={direction === "french-to-bariba" ? "Entrez le texte en français..." : "Entrez le texte en Bààtɔ̀nú..."}
+            placeholder={direction === "french-to-bariba" ? "Entrez le texte en français..." : "Entrez le texte en Baatɔnum..."}
             className={`min-h-32 ${direction === "bariba-to-french" ? "bariba-text" : ""}`}
             disabled={isCurrentlyTranslating}
           />

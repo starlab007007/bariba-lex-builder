@@ -206,7 +206,7 @@ class _WordProposalSheetState extends State<_WordProposalSheet> {
             const Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Proposer un mot', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: SignatureTheme.ink)),
-                Text('Enrichissez le dictionnaire Bàátɔ̀nú', style: TextStyle(fontSize: 12, color: SignatureTheme.muted)),
+                Text('Enrichissez le dictionnaire Baatɔnum', style: TextStyle(fontSize: 12, color: SignatureTheme.muted)),
               ]),
             ),
             IconButton(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.close_rounded, color: SignatureTheme.muted)),
@@ -218,7 +218,7 @@ class _WordProposalSheetState extends State<_WordProposalSheet> {
             controller: scrollController,
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
             children: [
-              _label('Mot en Bàátɔ̀nú', required: true),
+              _label('Mot en Baatɔnum', required: true),
               BaribaTextField(
                 key: const ValueKey('proposal-word'),
                 controller: _word,
@@ -248,7 +248,7 @@ class _WordProposalSheetState extends State<_WordProposalSheet> {
                 decoration: _fieldDecoration('Sens du mot en français', error: _touched && !_definitionValid ? 'La définition est obligatoire.' : null),
               ),
               const SizedBox(height: 14),
-              _label('Exemple en Bàátɔ̀nú (optionnel)'),
+              _label('Exemple en Baatɔnum (optionnel)'),
               BaribaTextField(key: const ValueKey('proposal-example-bba'), controller: _exampleBariba, maxLines: 2, decoration: _fieldDecoration('Une phrase d’exemple')),
               const SizedBox(height: 14),
               _label('Exemple en français (optionnel)'),

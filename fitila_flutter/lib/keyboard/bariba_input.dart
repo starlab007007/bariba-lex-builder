@@ -173,7 +173,7 @@ class _BaribaTextFieldState extends State<BaribaTextField>
     final base = widget.decoration ?? const InputDecoration();
     final toggle = IconButton(
       key: const ValueKey('bariba-keyboard-toggle'),
-      tooltip: _useVirtual ? 'Clavier Bàátɔ̀nú' : 'Clavier système',
+      tooltip: _useVirtual ? 'Clavier Baatɔnum' : 'Clavier système',
       icon: Icon(
         _useVirtual && _virtualOpen
             ? Icons.keyboard_hide_rounded
@@ -214,7 +214,7 @@ class _BaribaTextFieldState extends State<BaribaTextField>
           },
           decoration: base.copyWith(
             // Android uses the native/system IME only. The embedded keyboard remains
-            // an explicit fallback for platforms where the native Bàátɔ̀nú keyboard
+            // an explicit fallback for platforms where the native Baatɔnum keyboard
             // is unavailable.
             suffixIcon: base.suffixIcon ?? (_androidNative ? null : toggle),
           ),

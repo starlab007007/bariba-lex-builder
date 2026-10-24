@@ -87,8 +87,8 @@ export function analyzeEntryQuality(entry: DictionaryEntry): EntryQuality {
 
   // Vérifier les exemples
   if (entry.example_bariba.length === 0) {
-    issues.push("Aucun exemple en Bààtɔ̀nú");
-    suggestions.push("Ajouter au moins un exemple d'utilisation en Bààtɔ̀nú");
+    issues.push("Aucun exemple en Baatɔnum");
+    suggestions.push("Ajouter au moins un exemple d'utilisation en Baatɔnum");
     score -= 15;
   }
 
@@ -121,8 +121,8 @@ export function analyzeEntryQuality(entry: DictionaryEntry): EntryQuality {
 
   // Vérifier la cohérence exemples bariba/français
   if (entry.example_bariba.length !== entry.example_francais.length) {
-    issues.push("Incohérence entre exemples Bààtɔ̀nú et français");
-    suggestions.push("Assurer que chaque exemple Bààtɔ̀nú a sa traduction française");
+    issues.push("Incohérence entre exemples Baatɔnum et français");
+    suggestions.push("Assurer que chaque exemple Baatɔnum a sa traduction française");
     score -= 15;
   }
 

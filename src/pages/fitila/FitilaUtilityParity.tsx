@@ -191,7 +191,7 @@ function SettingsScreen() {
           <>
             <div className="border-t" style={{ borderColor: SIG.hairline }}>{PREFS.map((p) => <Pref key={p.key} p={p} />)}</div>
             <FeatureGrid items={[
-              f(Languages, 'Langues', 'Français, Bàátɔ̀nú, affichage prioritaire et clavier.'),
+              f(Languages, 'Langues', 'Français, Baatɔnum, affichage prioritaire et clavier.'),
               f(Database, 'Cache offline', 'Dictionnaire, leçons, brouillons, posts et file de sync.'),
               f(ShieldCheck, 'Sécurité', 'Session, PIN, contrôle visuel, confidentialité et consentement.'),
               f(Cog, 'Backend', 'Endpoints Supabase, realtime, storage, fonctions IA et logs.'),

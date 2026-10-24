@@ -68,7 +68,7 @@ class FitilaTranslationAudio {
       );
       final data = response.data;
       if (data is! Map) {
-        throw StateError('Réponse STT Bàátɔ̀nú invalide.');
+        throw StateError('Réponse STT Baatɔnum invalide.');
       }
       final transcript =
           (data['transcript'] ?? data['transcription'] ?? data['text'])
@@ -79,7 +79,7 @@ class FitilaTranslationAudio {
         throw StateError(
           data['message']?.toString() ??
               data['error']?.toString() ??
-              'Aucune transcription Bàátɔ̀nú produite.',
+              'Aucune transcription Baatɔnum produite.',
         );
       }
       return transcript;
@@ -135,14 +135,14 @@ class FitilaTranslationAudio {
       );
       final data = response.data;
       if (data is! Map) {
-        throw StateError('Réponse TTS Bàátɔ̀nú invalide.');
+        throw StateError('Réponse TTS Baatɔnum invalide.');
       }
       final url = (data['audio_url'] ?? data['audioUrl'])?.toString().trim();
       if (url == null || url.isEmpty) {
         throw StateError(
           data['message']?.toString() ??
               data['error']?.toString() ??
-              'Voix Bàátɔ̀nú momentanément indisponible.',
+              'Voix Baatɔnum momentanément indisponible.',
         );
       }
       return FitilaGeneratedAudio(url: url, mimeType: 'audio/wav');

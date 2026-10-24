@@ -45,7 +45,7 @@ Future<bool> maybeOfferBaribaKeyboard(BuildContext context) async {
           const Icon(Icons.keyboard_alt_rounded, size: 34, color: SignatureTheme.goldDeep),
           const SizedBox(height: 10),
           const Text(
-            'Écrivez en Bàátɔ̀nú partout',
+            'Écrivez en Baatɔnum partout',
             style: TextStyle(
               fontFamily: 'Fraunces',
               fontSize: 20,

@@ -21,7 +21,7 @@ type Props = {
 
 const WORD_TAIL = /[\p{L}\p{M}'’]+$/u;
 
-/** Palette des caractères Bàátɔ̀nú + tons (réutilisée par l'éditeur et l'écran de numérisation). */
+/** Palette des caractères Baatɔnum + tons (réutilisée par l'éditeur et l'écran de numérisation). */
 export function BaribaCharPalette({ onInsert, className = '' }: { onInsert: (s: string) => void; className?: string }) {
   return (
     <div className={`flex flex-wrap items-center gap-1.5 ${className}`} role="group" aria-label="Caractères Baatɔnum">
@@ -52,11 +52,11 @@ function ToolBtn({ label, onClick, active, children }: { label: string; onClick:
 }
 
 /**
- * Éditeur riche Bàátɔ̀nú : mise en forme WYSIWYG, palette de caractères/tons, autocomplétion et prédiction
+ * Éditeur riche Baatɔnum : mise en forme WYSIWYG, palette de caractères/tons, autocomplétion et prédiction
  * (dictionnaire FITILA, comme le clavier natif), panneau de vérification orthographique.
  */
 const BaribaRichEditor = forwardRef<BaribaEditorHandle, Props>(function BaribaRichEditor(
-  { initialHtml, lexicon, readOnly = false, onChange, placeholder = 'Écrivez en Bàátɔ̀nú… (Tab accepte la 1re suggestion)' },
+  { initialHtml, lexicon, readOnly = false, onChange, placeholder = 'Écrivez en Baatɔnum… (Tab accepte la 1re suggestion)' },
   ref,
 ) {
   const el = useRef<HTMLDivElement>(null);
@@ -388,7 +388,7 @@ const BaribaRichEditor = forwardRef<BaribaEditorHandle, Props>(function BaribaRi
                 ))}
               </ul>
             )}
-            <p className="mt-3 text-[11px] leading-relaxed" style={{ color: SIG.muted }}>Les mots absents du dictionnaire (noms propres, mots récents) peuvent être ignorés. « {foldText('Bàátɔ̀nú')} » ≈ « Baatɔnum » : les suggestions rétablissent tons et caractères spéciaux.</p>
+            <p className="mt-3 text-[11px] leading-relaxed" style={{ color: SIG.muted }}>Les mots absents du dictionnaire (noms propres, mots récents) peuvent être ignorés. « {foldText('Baatɔnum')} » ≈ « Baatɔnum » : les suggestions rétablissent tons et caractères spéciaux.</p>
           </aside>
         )}
       </div>

@@ -8,7 +8,7 @@ const _entries = [
   DictEntry(word: 'dèmi', definition: 'Habitude.', partOfSpeech: 'n'),
 ];
 
-/// Les champs mot/exemple-bariba intègrent leur propre clavier Bàátɔ̀nú (donc
+/// Les champs mot/exemple-bariba intègrent leur propre clavier Baatɔnum (donc
 /// la clé posée n'est pas toujours directement sur le `TextField` interne) ;
 /// `matchRoot: true` fait marcher la recherche dans les deux cas.
 Finder _field(String key) => find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(TextField), matchRoot: true);

@@ -323,7 +323,7 @@ export default function TamTamProfile() {
     } else if (id === 'language') {
       const next = currentLang === 'ba' ? 'fr' : 'ba';
       try { setLanguage(next); } catch {}
-      toast({ title: next === 'ba' ? 'Bààtɔ̀nú' : 'Français' });
+      toast({ title: next === 'ba' ? 'Baatɔnum' : 'Français' });
     } else if (id === 'help') {
       navigate('/');
     }

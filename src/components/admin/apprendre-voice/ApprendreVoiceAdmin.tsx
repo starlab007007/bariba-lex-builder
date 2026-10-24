@@ -23,7 +23,7 @@ const db = supabase as unknown as SupabaseClient;
 const BUCKET = 'apprendre-audio';
 
 const KIND_LABELS: Record<string, string> = {
-  lecon: 'Phrases / leçons', proverbe: 'Proverbes / expressions', scene: 'Scènes de vie', mot: 'Mots', exemple: 'Exemples en bàátɔ̀nú', forme: 'Formes / vocabulaire',
+  lecon: 'Phrases / leçons', proverbe: 'Proverbes / expressions', scene: 'Scènes de vie', mot: 'Mots', exemple: 'Exemples en baatɔnum', forme: 'Formes / vocabulaire',
 };
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon', submitted: 'À valider', approved: 'Approuvée', rejected: 'Rejetée', needs_fix: 'À corriger', withdrawn: 'Retirée',

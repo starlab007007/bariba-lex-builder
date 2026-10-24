@@ -69,7 +69,7 @@ export async function listDocuments(opts: { archived?: boolean; folderId?: strin
   if (opts.tag) query = query.contains('tags', [opts.tag]);
   if (opts.category) query = query.eq('category', opts.category);
   const key = opts.q ? searchKey(opts.q) : '';
-  // La colonne `search_text` est pliée côté serveur : « Baatonu » retrouve « Bàátɔ̀nú ».
+  // La colonne `search_text` est pliée côté serveur : « Baatonum » retrouve « Baatɔnum ».
   if (key) query = query.ilike('search_text', `%${key.replace(/[%_\\]/g, (c) => `\\${c}`)}%`);
   const { data, error } = await query;
   fail(error);

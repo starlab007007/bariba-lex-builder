@@ -10,7 +10,7 @@ import 'espace_models.dart';
 import 'espace_repository.dart';
 import 'espace_scan_screen.dart';
 
-/// Tableau de bord de l'Espace : coffre-fort GED Bàátɔ̀nú (même modèle que le web).
+/// Tableau de bord de l'Espace : coffre-fort GED Baatɔnum (même modèle que le web).
 class EspaceHome extends StatefulWidget {
   const EspaceHome({super.key, this.repository});
 
@@ -202,7 +202,7 @@ class _EspaceHomeState extends State<EspaceHome> {
                 onChanged: _onSearch,
                 textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
-                  hintText: 'Rechercher — « baatonu » trouve « Bàátɔ̀nú »',
+                  hintText: 'Rechercher — « baatonum » trouve « Baatɔnum »',
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: _search.text.isEmpty ? null : IconButton(icon: const Icon(Icons.close_rounded), onPressed: () { _search.clear(); _load(); }),
                 ),
@@ -257,7 +257,7 @@ class _EspaceHomeState extends State<EspaceHome> {
           const Text('Espace', style: TextStyle(fontFamily: 'Fraunces', fontSize: 32, fontWeight: FontWeight.w600, color: SignatureTheme.ink)),
           const SizedBox(height: 4),
           const Text(
-            'Écrivez, numérisez et archivez vos documents en Bàátɔ̀nú, avec traduction et prédiction pendant la saisie.',
+            'Écrivez, numérisez et archivez vos documents en Baatɔnum, avec traduction et prédiction pendant la saisie.',
             style: TextStyle(fontSize: 13, height: 1.45, color: SignatureTheme.inkSoft),
           ),
           const SizedBox(height: 14),
@@ -308,7 +308,7 @@ class _EspaceHomeState extends State<EspaceHome> {
           const SizedBox(height: 10),
           Text(searching ? 'Aucun résultat' : _archived ? 'Aucun document archivé' : 'Votre Espace est vide', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
           const SizedBox(height: 4),
-          Text(searching ? 'Essayez sans accents ni tons : « baatonu » retrouve « Bàátɔ̀nú ».' : 'Créez un document ou numérisez un manuscrit pour en extraire le texte.', textAlign: TextAlign.center, style: const TextStyle(color: SignatureTheme.muted, fontSize: 12.5)),
+          Text(searching ? 'Essayez sans accents ni tons : « baatonum » retrouve « Baatɔnum ».' : 'Créez un document ou numérisez un manuscrit pour en extraire le texte.', textAlign: TextAlign.center, style: const TextStyle(color: SignatureTheme.muted, fontSize: 12.5)),
         ],
       ),
     );

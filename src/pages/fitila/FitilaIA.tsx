@@ -222,9 +222,9 @@ export default function FitilaIA() {
             </p>
             <div className="flex flex-col items-center gap-3 mt-1">
               {[
-                ['Comment saluer ?', 'Comment saluer en Bàátɔ̀nú ?'],
-                ['Explique une coutume', 'Explique une coutume Bàátɔ̀nú'],
-                ['Aide-moi en classe', 'Aide-moi à apprendre le Bàátɔ̀nú'],
+                ['Comment saluer ?', 'Comment saluer en Baatɔnum ?'],
+                ['Explique une coutume', 'Explique une coutume Baatɔnum'],
+                ['Aide-moi en classe', 'Aide-moi à apprendre le Baatɔnum'],
               ].map(([label, prompt]) => (
                 <button
                   key={label}

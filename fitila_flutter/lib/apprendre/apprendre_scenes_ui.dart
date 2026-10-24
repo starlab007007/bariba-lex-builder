@@ -872,7 +872,7 @@ class _ApSceneDetailScreenState extends State<ApSceneDetailScreen> {
         children: [
           if (_learnerTurn) ...[
             Text(
-              'À toi, ${_scene.roleName(_learner)} : dis en bàátɔ̀nú',
+              'À toi, ${_scene.roleName(_learner)} : dis en baatɔnum',
               style: ApText.label.copyWith(color: ApColors.goldDeep),
             ),
             const SizedBox(height: 4),

@@ -1490,7 +1490,7 @@ class ReferencePortalStage extends StatefulWidget {
     required this.onEnter,
     this.title = 'Handunia Wasa',
     this.subtitle =
-        'Le monde vivant Bàátɔ̀nú, tissé par chaque voix, chaque souvenir, chaque récit.',
+        'Le monde vivant Baatɔnum, tissé par chaque voix, chaque souvenir, chaque récit.',
     this.architecture,
   });
 

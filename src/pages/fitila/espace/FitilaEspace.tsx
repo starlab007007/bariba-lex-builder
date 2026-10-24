@@ -304,7 +304,7 @@ export default function FitilaEspace() {
                 </ul>
               </section>
             )}
-            <p className="mt-8 flex items-center gap-2 text-[11.5px]" style={{ color: SIG.muted }}><ShieldCheck className="h-4 w-4" /> Espace privé : vos documents ne sont visibles que de vous et des personnes avec qui vous les partagez. Recherche insensible aux diacritiques ({foldText('Bàátɔ̀nú')}).</p>
+            <p className="mt-8 flex items-center gap-2 text-[11.5px]" style={{ color: SIG.muted }}><ShieldCheck className="h-4 w-4" /> Espace privé : vos documents ne sont visibles que de vous et des personnes avec qui vous les partagez. Recherche insensible aux diacritiques ({foldText('Baatɔnum')}).</p>
           </div>
         </div>
       </div>
@@ -367,7 +367,7 @@ function Empty({ searching, archived, onNew, onScan }: { searching: boolean; arc
     <div className="fitila-rise rounded-[24px] border border-dashed bg-white/70 p-10 text-center" style={{ borderColor: SIG.hairlineStrong }}>
       <FileText className="mx-auto h-9 w-9" style={{ color: SIG.goldDeep }} />
       <h3 className="mt-3 text-[16px] font-extrabold">{searching ? 'Aucun résultat' : archived ? 'Aucun document archivé' : 'Votre Espace est vide'}</h3>
-      <p className="mx-auto mt-1 max-w-[360px] text-[13px]" style={{ color: SIG.muted }}>{searching ? 'Essayez sans accents ni tons : « baatonu » retrouve « Bàátɔ̀nú ».' : archived ? 'Les documents archivés apparaissent ici.' : 'Créez votre premier document ou numérisez un manuscrit pour en extraire le texte.'}</p>
+      <p className="mx-auto mt-1 max-w-[360px] text-[13px]" style={{ color: SIG.muted }}>{searching ? 'Essayez sans accents ni tons : « baatonum » retrouve « Baatɔnum ».' : archived ? 'Les documents archivés apparaissent ici.' : 'Créez votre premier document ou numérisez un manuscrit pour en extraire le texte.'}</p>
       {!searching && !archived && (
         <div className="mt-5 flex justify-center gap-2.5">
           <button type="button" onClick={onNew} className="h-10 rounded-full px-5 text-[13px] font-extrabold" style={{ background: SIG.gold, color: '#2B2110' }}>Nouveau document</button>

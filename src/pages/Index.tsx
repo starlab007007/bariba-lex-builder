@@ -230,8 +230,8 @@ const Index = () => {
                       </h2>
                       {searchQuery && (
                         <p className="text-xs lg:text-sm text-muted-foreground mt-1 font-sans">
-                          Direction: {searchDirection === "bariba-to-french" && "Bààtɔ̀nú → Français"}
-                          {searchDirection === "french-to-bariba" && "Français → Bààtɔ̀nú"}
+                          Direction: {searchDirection === "bariba-to-french" && "Baatɔnum → Français"}
+                          {searchDirection === "french-to-bariba" && "Français → Baatɔnum"}
                           {searchDirection === "all" && "Bidirectionnelle"}
                           {!showFullResults && wordSuggestions.length > 0 && " • Recherche intelligente"}
                         </p>

@@ -238,7 +238,7 @@ class _ClasseCalculScreenState extends State<ClasseCalculScreen> {
                 child: Row(children: [
                   const Text('🔤', style: TextStyle(fontSize: 20)),
                   const SizedBox(width: 8),
-                  const Expanded(child: Text('Les nombres en Bàátɔ̀nú', style: TextStyle(fontWeight: FontWeight.w800))),
+                  const Expanded(child: Text('Les nombres en Baatɔnum', style: TextStyle(fontWeight: FontWeight.w800))),
                   Icon(_showNumbers ? Icons.expand_less_rounded : Icons.expand_more_rounded),
                 ]),
               ),
@@ -418,7 +418,7 @@ class _CalculExerciseTileState extends State<CalculExerciseTile> {
           Text(ex.prompt, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
           const SizedBox(height: 10),
           if (word)
-            BaribaTextField(controller: _c, decoration: const InputDecoration(hintText: 'Écris en Bàátɔ̀nú…'))
+            BaribaTextField(controller: _c, decoration: const InputDecoration(hintText: 'Écris en Baatɔnum…'))
           else
             TextField(controller: _c, keyboardType: const TextInputType.numberWithOptions(decimal: true), onSubmitted: (_) => _check(), decoration: const InputDecoration(hintText: 'Résultat')),
           const SizedBox(height: 8),
