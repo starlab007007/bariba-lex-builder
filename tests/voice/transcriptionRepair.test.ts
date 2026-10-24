@@ -8,6 +8,12 @@ Deno.test('search folds tonal/orthographic near-matches but preserves nasal dist
   assert(asrSearchKey('kùn') === 'kun'); assert(asrSearchKey('hã') !== asrSearchKey('ha'));
   assert(normalizeTranscript('  Nimmu\nbo  yiba. ') === 'Nimmu bo yiba.');
 });
+Deno.test('normalizeTranscript strips stray typographic symbols an ASR model should never produce', () => {
+  assert(normalizeTranscript('mɛr©') === 'mɛr', 'copyright sign must not masquerade as a dropped letter');
+  assert(normalizeTranscript('Bii mɛro®™') === 'Bii mɛro');
+  assert(normalizeTranscript('a�b') === 'ab', 'the Unicode replacement character must be dropped, not kept visible');
+  assert(normalizeTranscript('Nimmu bo yiba.') === 'Nimmu bo yiba.', 'ordinary punctuation must be untouched');
+});
 Deno.test('Baatonum reconstruction proposes an existing lesson sentence without overwriting raw speech', () => {
   const raw = 'Agede ye ya do';
   const result = reconstructTranscript(raw, 'bba', [[reference('Agɛdɛ ye ya do.')]]);

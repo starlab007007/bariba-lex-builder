@@ -27,6 +27,7 @@ import 'core/offline.dart';
 import 'core/fitila_translation_audio.dart';
 import 'core/foncier_rag.dart';
 import 'core/tem_ia_voice_page.dart';
+import 'core/fitila_ia_voice_page.dart';
 import 'core/signature_theme.dart';
 import 'core/web_parity_models.dart';
 import 'admin/platform_audit_screen.dart';
@@ -8246,6 +8247,13 @@ class _AiScreenState extends State<AiScreen> {
     return _PageFrame(
       title: 'Fitila IA',
       subtitle: 'Assistant intelligent en Baatɔnum',
+      action: IconButton(
+        tooltip: 'Mode vocal',
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const FitilaIaVoicePage()),
+        ),
+        icon: const Icon(Icons.graphic_eq_rounded),
+      ),
       child: Column(
         children: [
           Expanded(
