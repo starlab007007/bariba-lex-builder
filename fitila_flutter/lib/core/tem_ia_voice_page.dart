@@ -20,6 +20,7 @@ import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart' as audio;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../dunya/voice/dunya_cloud_voice.dart';
 import '../dunya/voice/dunya_mic_capture.dart';
@@ -28,6 +29,15 @@ import 'fitila_translation_audio.dart';
 import 'foncier_rag.dart';
 
 enum _Phase { idle, listening, thinking, speaking }
+
+/// Vitesses de lecture proposées (mêmes valeurs que les autres écrans
+/// vocaux, web et Flutter).
+const List<double> _speechRates = [0.75, 1.0, 1.25, 1.5];
+
+String _formatSpeechRate(double rate) {
+  final text = rate == rate.roundToDouble() ? rate.toStringAsFixed(0) : rate.toStringAsFixed(2);
+  return '${text.replaceAll('.', ',')}×';
+}
 
 class TemIaVoicePage extends StatefulWidget {
   const TemIaVoicePage({super.key});
@@ -53,6 +63,54 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
   String _caption = '';
   String? _lastAnswer;
   String? _notice;
+  List<String> _words = const [];
+  int _activeWord = -1;
+  StreamSubscription<Duration>? _posSub;
+  StreamSubscription<Duration>? _durSub;
+  Duration _audioDuration = Duration.zero;
+  bool _subtitles = true;
+  double _speechRate = 1.0;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadPrefs());
+  }
+
+  Future<void> _loadPrefs() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final subtitles = p.getBool('temia_voice_subtitles');
+      final rate = p.getDouble('temia_voice_speechRate');
+      if (!mounted) return;
+      setState(() {
+        if (subtitles != null) _subtitles = subtitles;
+        if (rate != null && _speechRates.contains(rate)) _speechRate = rate;
+      });
+    } catch (_) {
+      // Préférences indisponibles (stockage restreint) : on garde les valeurs par défaut.
+    }
+  }
+
+  void _toggleSubtitles() {
+    final next = !_subtitles;
+    setState(() => _subtitles = next);
+    unawaited(_savePref(() async => (await SharedPreferences.getInstance()).setBool('temia_voice_subtitles', next)));
+  }
+
+  void _cycleSpeed() {
+    final next = _speechRates[(_speechRates.indexOf(_speechRate) + 1) % _speechRates.length];
+    setState(() => _speechRate = next);
+    unawaited(_savePref(() async => (await SharedPreferences.getInstance()).setDouble('temia_voice_speechRate', next)));
+  }
+
+  Future<void> _savePref(Future<void> Function() write) async {
+    try {
+      await write();
+    } catch (_) {
+      // Préférences indisponibles : la valeur reste en mémoire pour cette session.
+    }
+  }
 
   @override
   void dispose() {
@@ -60,6 +118,8 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     _turn++;
     unawaited(_mic.dispose());
     unawaited(_player.dispose());
+    unawaited(_posSub?.cancel());
+    unawaited(_durSub?.cancel());
     super.dispose();
   }
 
@@ -111,6 +171,8 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     setState(() {
       _phase = _Phase.listening;
       _caption = '';
+      _words = const [];
+      _activeWord = -1;
       _level = 0;
       _notice = null;
     });
@@ -208,6 +270,8 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
       setState(() {
         _phase = _Phase.speaking;
         _caption = answer;
+        _words = answer.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList(growable: false);
+        _activeWord = -1;
       });
       await _speak(answer, turn);
     } catch (_) {
@@ -221,6 +285,9 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
   }
 
   Future<void> _speak(String text, int turn) async {
+    unawaited(_posSub?.cancel());
+    unawaited(_durSub?.cancel());
+    _audioDuration = Duration.zero;
     try {
       final generated = await FitilaTranslationAudio.synthesize(
         text: text,
@@ -228,7 +295,21 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
       );
       if (!mounted || turn != _turn) return;
       final url = generated.url;
+      _durSub = _player.onDurationChanged.listen((d) {
+        if (turn == _turn) _audioDuration = d;
+      });
+      // Avance le surlignage mot par mot proportionnellement à la position de
+      // lecture (pas d'alignement phonétique exact disponible côté TTS).
+      _posSub = _player.onPositionChanged.listen((pos) {
+        if (!mounted || turn != _turn) return;
+        final total = _audioDuration.inMilliseconds;
+        if (total <= 0 || _words.isEmpty) return;
+        final fraction = (pos.inMilliseconds / total).clamp(0.0, 1.0);
+        final idx = (fraction * _words.length).floor().clamp(0, _words.length - 1);
+        if (idx != _activeWord) setState(() => _activeWord = idx);
+      });
       final finished = _player.onPlayerComplete.first;
+      await _player.setPlaybackRate(_speechRate);
       if (url != null && url.isNotEmpty) {
         await _player.play(audio.UrlSource(url));
       } else {
@@ -244,8 +325,13 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
             error is StateError ? error.message : 'Lecture indisponible.',
       );
     } finally {
+      unawaited(_posSub?.cancel());
+      unawaited(_durSub?.cancel());
       if (mounted && turn == _turn) {
-        setState(() => _phase = _Phase.idle);
+        setState(() {
+          _phase = _Phase.idle;
+          _activeWord = _words.length;
+        });
         if (_session && _handsFree) unawaited(_listenTurn());
       }
     }
@@ -259,6 +345,8 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     setState(() {
       _phase = _Phase.speaking;
       _caption = answer;
+      _words = answer.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList(growable: false);
+      _activeWord = -1;
       _notice = null;
     });
     await _speak(answer, turn);
@@ -456,24 +544,56 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
             ),
           ],
           const Spacer(),
-          if (_caption.isNotEmpty)
+          if (_subtitles && _caption.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 18),
-              child: Text(
-                _caption,
-                textAlign: TextAlign.center,
-                maxLines: 6,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w700,
-                  height: 1.35,
-                ),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: KeyedSubtree(key: ValueKey(_phase), child: _captionWidget()),
               ),
             ),
         ],
       ),
+    );
+  }
+
+  /// Le texte de la réponse : surligné mot par mot au fil de la lecture
+  /// audio pendant `speaking` (effet « karaoké »), texte simple sinon.
+  Widget _captionWidget() {
+    if (_phase != _Phase.speaking || _words.isEmpty) {
+      return Text(
+        _caption,
+        textAlign: TextAlign.center,
+        maxLines: 6,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 19,
+          fontWeight: FontWeight.w700,
+          height: 1.35,
+        ),
+      );
+    }
+    return Wrap(
+      alignment: WrapAlignment.center,
+      runSpacing: 4,
+      children: [
+        for (var i = 0; i < _words.length; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+              style: TextStyle(
+                color: i <= _activeWord ? Colors.white : Colors.white.withValues(alpha: .32),
+                fontSize: 19,
+                fontWeight: FontWeight.w700,
+                height: 1.35,
+              ),
+              child: Text(_words[i]),
+            ),
+          ),
+      ],
     );
   }
 
@@ -494,6 +614,27 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
                 'Mains libres ${_handsFree ? 'activées' : 'désactivées'}',
                 style: const TextStyle(color: Colors.white),
               ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0x40FFFFFF)),
+                shape: const StadiumBorder(),
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: _toggleSubtitles,
+              icon: Icon(
+                _subtitles ? Icons.closed_caption_rounded : Icons.closed_caption_off_rounded,
+                color: Colors.white,
+              ),
+              label: const Text('Sous-titres', style: TextStyle(color: Colors.white)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0x40FFFFFF)),
+                shape: const StadiumBorder(),
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: _cycleSpeed,
+              icon: const Icon(Icons.speed_rounded, color: Colors.white),
+              label: Text('Vitesse ${_formatSpeechRate(_speechRate)}', style: const TextStyle(color: Colors.white)),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Color(0x40FFFFFF)),
                 shape: const StadiumBorder(),
