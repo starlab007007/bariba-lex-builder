@@ -1,0 +1,111 @@
+name: Déployer la passerelle vocale bariba (production)
+
+# Construit l'image voice-gateway/, la publie sur GHCR, puis la déploie sur
+# le VPS fitila.bj avec health-check réel et rollback automatique — pour que
+# le TTS/STT bariba ne dépende plus des Spaces Hugging Face gratuits.
+# Voir voice-gateway/README.md pour le contexte complet.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'voice-gateway/**'
+      - '.github/workflows/voice-gateway-deploy.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: voice-gateway-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Connexion GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Référence de l'image
+        id: meta
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}-voice-gateway" >> "$GITHUB_OUTPUT"
+      - name: Build et push (tag latest + SHA)
+        uses: docker/build-push-action@v6
+        with:
+          context: voice-gateway
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}:latest
+            ${{ steps.meta.outputs.image }}:${{ github.sha }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Synchroniser docker-composer.yml sur le VPS
+        # Ne pas supposer que deploy.yml (déclenché séparément) l'a déjà fait :
+        # ce workflow doit rester correct même s'il tourne seul (dispatch
+        # manuel, ou avant que deploy.yml n'ait fini sa propre copie).
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-composer.yml"
+          target: "/home/debian/bariba-lex-builder"
+          overwrite: true
+      - name: Déploiement + health-check + rollback automatique sur le VPS
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE: ${{ needs.build-and-push.outputs.image }}
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 30m
+          envs: IMAGE,GHCR_READ_TOKEN
+          script: |
+            set -euo pipefail
+            cd /home/debian/bariba-lex-builder
+
+            if [ -n "${GHCR_READ_TOKEN:-}" ]; then
+              echo "$GHCR_READ_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            fi
+
+            previous_id="$(docker inspect bariba-voice-gateway --format '{{.Image}}' 2>/dev/null || true)"
+
+            docker pull "$IMAGE:latest"
+            docker compose -f docker-composer.yml up -d --no-build bariba-voice-gateway
+
+            echo "⏳ Attente du démarrage (chargement des modèles, jusqu'à 3 min)..."
+            ok=""
+            for i in $(seq 1 36); do
+              if curl -fsS --max-time 5 http://127.0.0.1:8090/health 2>/dev/null | grep -q '"status":"ok"'; then
+                ok="1"; break
+              fi
+              sleep 5
+            done
+
+            if [ -z "$ok" ]; then
+              echo "❌ bariba-voice-gateway pas sain après 3 min — rollback"
+              docker logs --tail 50 bariba-voice-gateway || true
+              if [ -n "$previous_id" ]; then
+                docker tag "$previous_id" "$IMAGE:latest" 2>/dev/null || true
+                docker compose -f docker-composer.yml up -d --no-build bariba-voice-gateway || true
+              fi
+              exit 1
+            fi
+
+            echo "✅ bariba-voice-gateway sain (modèles chargés)."
+            docker image prune -f || true

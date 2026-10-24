@@ -31,3 +31,4 @@ scripts/dunya_translate/__pycache__/
 # Supabase CLI scratch space (local only)
 supabase/.temp/
 public/ort/
+voice-gateway/__pycache__/

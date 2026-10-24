@@ -1,6 +1,18 @@
 # Comparaison contrôlée des voix Baatɔnum — FITILA
 
-**Statut : implémentation expérimentale isolée, pas activation automatique dans le produit.**
+**Statut : outil de recherche/benchmark isolé — pas une route de production.**
+
+**Mise à jour (2026-10-24) :** les deux mêmes modèles Meta décrits ici
+(`omniASR-CTC-300M` pour l'ASR, `mms-tts-bba` pour le TTS) sont désormais
+aussi servis en **production**, auto-hébergés et surveillés, par
+[`voice-gateway/`](../../voice-gateway/) — ce dossier-ci reste uniquement
+pour la comparaison à quatre moteurs et les bancs d'essai qualité décrits
+plus bas. Le `service.py` de ce dossier n'est plus appelé par
+`meta-voice-gateway` ; voir `voice-gateway/README.md` pour le contexte
+complet, y compris pourquoi l'ancienne affirmation « pas activation
+automatique dans le produit » s'est révélée vraie en pratique (route jamais
+exposée publiquement, aucun pipeline de déploiement) et comment c'est
+corrigé.
 
 ## Modèles
 

@@ -1,0 +1,46 @@
+name: Vérifications voice-gateway (passerelle vocale bariba)
+
+on:
+  pull_request:
+    paths:
+      - 'voice-gateway/**'
+      - 'docker-composer.yml'
+      - '.github/workflows/voice-gateway-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'voice-gateway/**'
+      - 'docker-composer.yml'
+      - '.github/workflows/voice-gateway-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compilation Python (détecte les erreurs de syntaxe)
+        run: python -m compileall -q voice-gateway
+      - name: Lint rapide des imports (sans télécharger les poids)
+        run: |
+          python - <<'PY'
+          import ast, sys
+          src = open("voice-gateway/app.py").read()
+          tree = ast.parse(src)
+          names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+          required = {"FastAPI", "HTTPException", "BaseModel", "VitsModel"}
+          missing = required - names
+          if missing:
+              print(f"::error::Symboles attendus absents de app.py : {missing}")
+              sys.exit(1)
+          PY
+      - name: Valider docker-composer.yml (config Compose)
+        run: |
+          docker compose -f docker-composer.yml config --quiet
+        env:
+          FITILA_MODEL_API_TOKEN: ci-test-value

@@ -1,0 +1,41 @@
+# Surveillance continue de la passerelle vocale bariba auto-hébergée
+# (voice-gateway/), pour que la panne « silencieuse » qu'a connue le pg_cron
+# hf-keep-alive (arrêté le 18/09/2026, repéré seulement le 20/10/2026) ne se
+# reproduise pas ici : on échoue bruyamment (check rouge) plutôt que de
+# laisser une panne passer inaperçue.
+name: Surveiller la passerelle vocale bariba (voice-gateway)
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/voice-gateway-watchdog.yml
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: GET https://voice.fitila.bj/health
+        run: |
+          code="$(curl -sS --max-time 15 -o body.json -w '%{http_code}' https://voice.fitila.bj/health || echo 000)"
+          echo "HTTP $code"
+          cat body.json 2>/dev/null || true
+          echo
+          if [ "$code" != "200" ]; then
+            echo "::error::voice.fitila.bj/health a répondu $code (service injoignable ou DNS/TLS pas encore configuré)"
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json, sys
+          d = json.load(open('body.json'))
+          if d.get('status') != 'ok':
+              print(f"::error::bariba-voice-gateway dégradé : {d}")
+              sys.exit(1)
+          print(f"OK : {d}")
+          PY

@@ -1,0 +1,8 @@
+torch
+transformers>=4.46,<5
+numpy
+omnilingual-asr
+soundfile
+fastapi
+uvicorn[standard]
+pydantic

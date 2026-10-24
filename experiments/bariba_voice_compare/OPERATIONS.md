@@ -1,6 +1,17 @@
-# FITILA Meta voice — exploitation
+# FITILA Meta voice — exploitation (historique)
 
-Chaîne : App web → `meta-voice-gateway` (Supabase canonique dvswhjawiooprghzeyol, JWT utilisateur requis)
+**Mise à jour (2026-10-24) :** ce document décrit le service expérimental
+`service.py` de ce dossier, qui tournait (quand il tournait) en
+`127.0.0.1:8090` **sans aucune exposition publique** (pas de reverse proxy
+configuré dans l'infra versionnée) et sans pipeline de déploiement — donc
+très probablement jamais réellement atteint par `bariba-tts`/`bariba-stt`
+en production, malgré le code appelant `metaVoiceInfer()` en priorité. La
+route de production réelle est désormais [`voice-gateway/`](../../voice-gateway/),
+exposée sur `voice.fitila.bj` via Traefik, déployée automatiquement et
+surveillée en continu. Le contenu ci-dessous reste valable pour qui veut
+faire tourner ce service expérimental en local pour des comparaisons.
+
+Chaîne (historique) : App web → `meta-voice-gateway` (Supabase canonique dvswhjawiooprghzeyol, JWT utilisateur requis)
 → service CPU `service.py` sur le VPS (`/infer`, jeton `FITILA_MODEL_API_TOKEN`) → modèles
 `facebook/mms-tts-bba` et Omnilingual ASR CTC 300M.
 
