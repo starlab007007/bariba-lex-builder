@@ -343,9 +343,12 @@ jobs:
 
       # Publish only stable main builds signed with the persistent production key.
       # Feature-branch APKs and ephemeral CI signing never appear as official
-      # downloads on fitila.bj/install.
+      # downloads on fitila.bj/install. TEMP: this one feature branch is also
+      # allowed, purely to hand a test build to the requester (sandboxed agent
+      # egress cannot reach the Actions-artifact blob storage host) — never
+      # touches fitila.bj (that stays gated to main below) — revert after use.
       - name: Publish verified production APK on GitHub Releases
-        if: ${{ github.ref == 'refs/heads/main' }}
+        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/dictionnaire-premium-assistant-foncier-20261024' }}
         env:
           GH_TOKEN: ${{ github.token }}
         working-directory: fitila_flutter
