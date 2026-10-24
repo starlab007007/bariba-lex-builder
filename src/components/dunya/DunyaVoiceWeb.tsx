@@ -6,7 +6,7 @@ import TranscriptionReview from '@/components/voice/TranscriptionReview';
 import { replaceTranscriptDraft, type TranscriptRepair } from '@/lib/voice/transcriptionReview';
 import { hasFrenchRecognition, loadHistory, loadPreference, looksFrench, MODE_LABEL, recognizeFrench,
   recordUtterance, saveHistory, savePreference, speakFrench, stopSpeaking, playUrl, pauseSpeaking, resumeSpeaking,
-  type DunyaWebMode, type DunyaWebTurn } from '@/lib/dunya/voiceWeb';
+  wordIndexAtChar, wordSpans, type DunyaWebMode, type DunyaWebTurn } from '@/lib/dunya/voiceWeb';
 
 type Phase = 'idle' | 'listening' | 'thinking' | 'speaking';
 import { loadTranslationMemory, memoryTranslate } from '@/lib/translation/translationMemory';
@@ -41,6 +41,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
   const [turns, setTurns] = useState<DunyaWebTurn[]>(() => loadHistory(loadPreference('mode', 'fr')));
   const [phase, setPhase] = useState<Phase>('idle');
   const [level, setLevel] = useState(0), [caption, setCaption] = useState('');
+  const [activeWord, setActiveWord] = useState(-1);
   const [subCaption, setSubCaption] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null), [notice, setNotice] = useState<string | null>(null);
   const [textView, setTextView] = useState(false), [draft, setDraft] = useState('');
@@ -112,7 +113,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
         audioCache.current.get(oldest)?.forEach(URL.revokeObjectURL); audioCache.current.delete(oldest);
       }
     };
-    setPhase('thinking'); setCaption(''); setSubCaption(null); setNotice(null); setStatus(input.audio ? 'Je comprends…' : 'Je réfléchis…');
+    setPhase('thinking'); setCaption(''); setActiveWord(-1); setSubCaption(null); setNotice(null); setStatus(input.audio ? 'Je comprends…' : 'Je réfléchis…');
     setDiagnostic({});
     try {
       if (!navigator.onLine) {
@@ -121,7 +122,14 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
         setTurns(t => [...t, { id: uid(), role: 'user', text: input.text ?? '', lang: input.lang, createdAt: Date.now() },
           ...(off.text ? [{ id: assistantId, role: 'assistant' as const, text: off.text, lang: off.lang, createdAt: Date.now() }] : [])]);
         setNotice(off.notice);
-        if (off.text) { setCaption(off.text); if (off.lang === 'fr') { setPhase('speaking'); await speakFrench(off.text); } }
+        if (off.text) {
+          setCaption(off.text); setActiveWord(-1);
+          if (off.lang === 'fr') {
+            setPhase('speaking');
+            const spans = wordSpans(off.text);
+            await speakFrench(off.text, 1, (charIndex) => setActiveWord(wordIndexAtChar(spans, charIndex)));
+          }
+        }
         return;
       }
       await runServerVoice({
@@ -158,9 +166,12 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
             cached.push(audioUrl);
             playback = playback.then(async () => {
               if (!active() || playbackError) return;
-              setPhase('speaking'); setStatus(null); setCaption(event.text ?? ''); setSubCaption(frSubtitles ? answer?.subtitle ?? null : null);
+              const chunkText = event.text ?? '';
+              const spans = wordSpans(chunkText);
+              setPhase('speaking'); setStatus(null); setCaption(chunkText); setActiveWord(-1);
+              setSubCaption(frSubtitles ? answer?.subtitle ?? null : null);
               setDiagnostic(d => ({ ...d, tts: event.engine }));
-              await playUrl(audioUrl, controller.signal);
+              await playUrl(audioUrl, controller.signal, (fraction) => setActiveWord(wordIndexAtChar(spans, Math.round(fraction * chunkText.length))));
             }).catch(error => { if (active()) playbackError = error instanceof Error ? error.message : 'Touchez Réécouter.'; });
           }
         },
@@ -171,7 +182,9 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
       await playback;
       if (!active()) return;
       if (answer?.lang === 'fr' && !audioReceived) {
-        setPhase('speaking'); setStatus(null); setCaption(answer.text); setDiagnostic(d => ({ ...d, tts: 'navigateur-fr' })); await speakFrench(answer.text);
+        const spans = wordSpans(answer.text);
+        setPhase('speaking'); setStatus(null); setCaption(answer.text); setActiveWord(-1); setDiagnostic(d => ({ ...d, tts: 'navigateur-fr' }));
+        await speakFrench(answer.text, 1, (charIndex) => setActiveWord(wordIndexAtChar(spans, charIndex)));
       }
       if (playbackError) { session.current = false; setNotice(playbackError); }
     } catch (error) {
@@ -215,7 +228,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
     if (!session.current) return;
     const controller = new AbortController(); abort.current = controller;
     const finish = new AbortController(); recordStop.current = finish;
-    setPhase('listening'); setCaption(''); setSubCaption(null); setLevel(0); setNotice(null);
+    setPhase('listening'); setCaption(''); setActiveWord(-1); setSubCaption(null); setLevel(0); setNotice(null);
     try {
       let text = '', audio: Blob | null = null, lang: 'fr' | 'bba' = mode === 'fr' ? 'fr' : 'bba';
       if (mode === 'fr' && hasFrenchRecognition()) {
@@ -336,7 +349,11 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           <button onClick={() => void onOrb()} aria-label={label} className="relative grid place-items-center rounded-full outline-none focus-visible:ring-4 focus-visible:ring-[#E3B04B]/50">
             <Orb phase={phase} level={level} />
           </button>
-          <p className="mt-6 text-center text-[26px] font-extrabold leading-tight tracking-tight text-white" role="status" aria-live="polite">{label}</p>
+          <div className="mt-6 flex items-center gap-2">
+            <p className="text-center text-[26px] font-extrabold leading-tight tracking-tight text-white" role="status" aria-live="polite">{label}</p>
+            {phase === 'listening' && <LiveBadge />}
+          </div>
+          {phase === 'listening' && <Waveform />}
           {phase === 'idle' && <p className="mt-1.5 max-w-xs text-center text-[17px] leading-7 text-white/80">{mode === 'bba' ? 'Parlez en baatɔnum.' : mode === 'both' ? 'Parlez en français ou en baatɔnum.' : 'Parlez en français.'}</p>}
           {lastAssistant && phase !== 'listening' && (
             <div className="mt-4 flex gap-2">
@@ -352,7 +369,10 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           {subtitles && (caption || (phase === 'thinking' && lastUser)) && (
             <div className="mx-auto mb-4 w-full max-w-2xl text-center">
               {phase === 'thinking' && lastUser && <p className="line-clamp-2 text-[17px] leading-7 text-white/80">« {lastUser} »</p>}
-              {caption && <p className="line-clamp-6 text-[24px] font-bold leading-[1.35] text-white md:text-[30px]">{caption}</p>}
+              {caption && (
+                <KaraokeText text={caption} activeWord={activeWord}
+                  mode={phase === 'speaking' ? 'karaoke' : phase === 'listening' && mode !== 'bba' ? 'live' : 'plain'} />
+              )}
               {subCaption && <p className="mt-3 line-clamp-4 text-[18px] leading-7 text-white/80">{subCaption}</p>}
             </div>
           )}
@@ -458,6 +478,58 @@ function Orb({ phase, level }: { phase: Phase; level: number }) {
         {phase === 'idle' && <Mic aria-hidden className="absolute inset-0 m-auto h-14 w-14 text-[#16121C]/75" strokeWidth={2.2} />}
       </div>
     </div>
+  );
+}
+
+function LiveBadge() {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FF5C78]/15 px-2.5 py-1 ring-1 ring-[#FF6E82]/40">
+      <span className="h-1.5 w-1.5 rounded-full bg-[#FF5C78] motion-safe:animate-pulse" aria-hidden="true" />
+      <span className="text-[11px] font-extrabold tracking-wide text-[#FFC2CF]">DIRECT</span>
+    </span>
+  );
+}
+
+/** Décoratif : donne une impression d'écoute vivante pendant la capture micro. */
+function Waveform() {
+  const heights = [10, 18, 24, 14, 22, 12, 19];
+  return (
+    <div className="mt-2 flex items-end gap-1" style={{ height: 26 }} aria-hidden="true">
+      {heights.map((h, i) => (
+        <span key={i} className="w-1 rounded-full bg-[#F2A94A] motion-safe:animate-bounce"
+          style={{ height: h, animationDelay: `${i * 0.12}s`, animationDuration: '1s' }} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Affiche un texte mot par mot : surlignage karaoké en synchronisation avec la lecture
+ * (`karaoke`), derniers mots atténués pendant qu'ils se forment en reconnaissance vocale
+ * live (`live`), ou texte simple (`plain`).
+ */
+function KaraokeText({ text, activeWord, mode }: { text: string; activeWord: number; mode: 'karaoke' | 'live' | 'plain' }) {
+  if (mode === 'plain') {
+    return <p className="line-clamp-6 text-[24px] font-bold leading-[1.35] text-white md:text-[30px]">{text}</p>;
+  }
+  const words = text.split(/\s+/).filter(Boolean);
+  return (
+    <p className="line-clamp-6 text-[24px] font-bold leading-[1.35] md:text-[30px]">
+      {words.map((word, i) => {
+        const className =
+          mode === 'karaoke'
+            ? i === activeWord ? 'rounded-md bg-[#4FC892] px-1.5 py-0.5 font-extrabold text-[#0E1813]'
+              : i > activeWord ? 'text-white/45' : 'text-white'
+            : i >= words.length - 2 ? 'text-white/45' : 'text-white';
+        return (
+          <span key={i}>
+            <span className={className}>{word}</span>
+            {i < words.length - 1 ? ' ' : ''}
+          </span>
+        );
+      })}
+      {mode === 'live' && <span className="ml-0.5 inline-block h-5 w-[2px] translate-y-[3px] bg-white/45 motion-safe:animate-pulse" aria-hidden="true" />}
+    </p>
   );
 }
 

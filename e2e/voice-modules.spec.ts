@@ -8,6 +8,9 @@ function wav() {
 }
 async function setup(page: Page, opts: { voiceFailure?: boolean; delayed?: boolean; repair?: boolean } = {}) {
   const requests: any[] = [], translations: any[] = [], retiredReviews: any[] = [];
+  // Tem IA now opens in voice mode by default; these specs exercise the text-chat
+  // flow directly, so force the written mode here rather than changing that default.
+  await page.addInitScript(() => { localStorage.setItem('dunya-web-temia-defaultMode', JSON.stringify('text')); });
   await page.addInitScript(() => {
     const state = { media: [] as any[], finish() { const active = this.media.findLast((m: any) => !m.stopped); active?.onended?.(); if (active) active.stopped = true; } };
     (window as any).__voiceTest = state;

@@ -10,6 +10,7 @@ import FoncierSourcesModal, { type FoncierSource } from '@/components/fitila/Fon
 import BaribaSmartTextarea from '@/components/classe/BaribaSmartTextarea';
 import { answerFromCorpus } from '@/lib/foncierRAG';
 import FitilaTemIAVoice from '@/components/fitila/FitilaTemIAVoice';
+import { loadPreference, savePreference } from '@/lib/dunya/voiceWeb';
 
 interface ChatMessage {
   id: string;
@@ -43,7 +44,10 @@ export default function FitilaTemIA() {
 
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [voiceLang, setVoiceLang] = useState<SpeechLanguage>('bba');
-  const [voiceMode, setVoiceMode] = useState(false);
+  // Le mode vocal mains-libres est le mode d'ouverture par défaut (comme DUNYA IA) ; le
+  // choix de l'utilisateur (Vocal ou Écrit) est ensuite mémorisé pour les prochaines visites.
+  const [voiceMode, setVoiceModeState] = useState(() => loadPreference('temia-defaultMode', 'voice') !== 'text');
+  const setVoiceMode = (next: boolean) => { setVoiceModeState(next); savePreference('temia-defaultMode', next ? 'voice' : 'text'); };
 
   useEffect(() => {
     try {

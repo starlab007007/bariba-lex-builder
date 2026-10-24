@@ -189,7 +189,7 @@ function pickFrenchVoice(): SpeechSynthesisVoice | undefined {
     ?? voices.find((v) => v.lang?.toLowerCase().startsWith('fr'));
 }
 
-export function speakFrench(text: string, rate = 1): Promise<void> {
+export function speakFrench(text: string, rate = 1, onBoundary?: (charIndex: number) => void): Promise<void> {
   return new Promise((resolve) => {
     if (!('speechSynthesis' in window) || !text.trim()) return resolve();
     const u = new SpeechSynthesisUtterance(text);
@@ -201,18 +201,21 @@ export function speakFrench(text: string, rate = 1): Promise<void> {
     finishCurrentSpeech = finish;
     u.onend = finish;
     u.onerror = finish;
+    // Word-boundary events (Chrome/Edge); not all browsers fire them — the karaoke
+    // highlight simply stays on the last known word when they don't.
+    if (onBoundary) u.onboundary = (e) => onBoundary(e.charIndex ?? 0);
     window.speechSynthesis.speak(u);
   });
 }
 
-export async function speakBariba(text: string): Promise<boolean> {
+export async function speakBariba(text: string, onProgress?: (fraction: number) => void): Promise<boolean> {
   if (!text.trim()) return false;
   // Optional Meta MMS-TTS (flag); falls back to the existing bariba-tts.
   if (metaFlags().tts) {
     try {
       const url = await metaTts(text);
       lastVoiceEngine = { ...lastVoiceEngine, tts: 'meta' };
-      await playUrl(url);
+      await playUrl(url, undefined, onProgress);
       return true;
     } catch (e) {
       console.warn('[dunya] Meta TTS indisponible, repli bariba-tts:', e instanceof Error ? e.message : e);
@@ -221,18 +224,23 @@ export async function speakBariba(text: string): Promise<boolean> {
   const data = await invoke<{ success?: boolean; audio_url?: string }>('bariba-tts', { text, skipRefine: true });
   if (!data.audio_url) return false;
   lastVoiceEngine = { ...lastVoiceEngine, tts: 'fitila' };
-  await playUrl(data.audio_url);
+  await playUrl(data.audio_url, undefined, onProgress);
   return true;
 }
 
-export function playUrl(url: string, signal?: AbortSignal): Promise<void> {
+export function playUrl(url: string, signal?: AbortSignal, onProgress?: (fraction: number) => void): Promise<void> {
   signal?.throwIfAborted();
   return new Promise((resolve, reject) => {
     stopSpeaking();
     const audio = new Audio(url);
     currentAudio = audio;
+    const onTimeUpdate = () => {
+      if (onProgress && audio.duration && Number.isFinite(audio.duration)) onProgress(Math.min(1, audio.currentTime / audio.duration));
+    };
+    if (onProgress) audio.addEventListener('timeupdate', onTimeUpdate);
     const finish = (error?: unknown) => {
       signal?.removeEventListener('abort', onAbort);
+      if (onProgress) audio.removeEventListener('timeupdate', onTimeUpdate);
       audio.onended = null; audio.onerror = null;
       if (currentAudio === audio) currentAudio = null;
       if (finishCurrentSpeech === stop) finishCurrentSpeech = null;
@@ -243,10 +251,32 @@ export function playUrl(url: string, signal?: AbortSignal): Promise<void> {
     const onAbort = () => finish(new DOMException('Lecture annulée', 'AbortError'));
     finishCurrentSpeech = stop;
     signal?.addEventListener('abort', onAbort, { once: true });
-    audio.onended = () => finish();
+    audio.onended = () => { onProgress?.(1); finish(); };
     audio.onerror = () => finish(new Error('Lecture impossible. Touchez Réécouter.'));
     audio.play().catch(() => finish(new Error('Touchez Réécouter pour lancer la lecture.')));
   });
+}
+
+// ---------------------------------------------------------------------------
+// Karaoke-style word sync (reading highlight)
+// ---------------------------------------------------------------------------
+
+export type WordSpan = { word: string; start: number; end: number };
+
+/** Splits text into words, keeping each word's character range in the original string. */
+export function wordSpans(text: string): WordSpan[] {
+  const out: WordSpan[] = [];
+  const re = /\S+/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) out.push({ word: m[0], start: m.index, end: m.index + m[0].length });
+  return out;
+}
+
+/** Index (in `spans`) of the word whose range contains or precedes `charIndex`. -1 if none yet. */
+export function wordIndexAtChar(spans: WordSpan[], charIndex: number): number {
+  let idx = -1;
+  for (let i = 0; i < spans.length; i++) { if (spans[i].start <= charIndex) idx = i; else break; }
+  return idx;
 }
 
 // ---------------------------------------------------------------------------

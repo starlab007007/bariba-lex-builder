@@ -17,10 +17,10 @@ import { Bot, Headphones, Mic, Pause, Play, Square, X } from 'lucide-react';
 import { runServerVoice } from '@/lib/dunya/serverVoice';
 import {
   hasFrenchRecognition, loadPreference, playUrl, recognizeFrench, recordUtterance,
-  savePreference, stopSpeaking, pauseSpeaking, resumeSpeaking,
+  savePreference, stopSpeaking, pauseSpeaking, resumeSpeaking, wordIndexAtChar, wordSpans,
 } from '@/lib/dunya/voiceWeb';
 import { loadReplyAudio } from '@/lib/voice/replySpeech';
-import { replySpeechChunks } from '@/lib/voice/speechTextCore';
+import { readableSpeech, replySpeechChunks } from '@/lib/voice/speechTextCore';
 
 type Phase = 'idle' | 'listening' | 'thinking' | 'speaking';
 type InputLang = 'bba' | 'fr';
@@ -31,24 +31,32 @@ type Props = {
   onAsk: (text: string) => Promise<string | null>;
 };
 
-/** Lit un texte baatɔnum en le découpant comme le lecteur par réponse (mêmes voix, même cache). */
-async function speakBariba(text: string, signal: AbortSignal): Promise<void> {
+/**
+ * Lit un texte baatɔnum en le découpant comme le lecteur par réponse (mêmes voix, même cache).
+ * `onCharIndex` reçoit la position (dans `text`) atteinte par la lecture, pour le surlignage karaoké.
+ */
+async function speakBariba(text: string, signal: AbortSignal, onCharIndex?: (charIndex: number) => void): Promise<void> {
+  let consumed = 0;
   for (const chunk of replySpeechChunks(text)) {
     signal.throwIfAborted();
     const { blob } = await loadReplyAudio(chunk, signal);
     const url = URL.createObjectURL(blob);
+    const chunkStart = consumed;
     try {
-      await playUrl(url, signal);
+      await playUrl(url, signal, onCharIndex ? (fraction) => onCharIndex(chunkStart + Math.round(fraction * chunk.length)) : undefined);
     } finally {
       URL.revokeObjectURL(url);
     }
+    consumed += chunk.length + 1;
   }
+  onCharIndex?.(text.length);
 }
 
 export default function FitilaIAVoice({ onExit, onAsk }: Props) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [level, setLevel] = useState(0);
   const [caption, setCaption] = useState('');
+  const [activeWord, setActiveWord] = useState(-1);
   const [lastAnswer, setLastAnswer] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
@@ -99,10 +107,13 @@ export default function FitilaIAVoice({ onExit, onAsk }: Props) {
         if (session.current && handsFree) void listenTurnRef.current();
         return;
       }
-      setLastAnswer(answer);
+      const spoken = readableSpeech(answer);
+      const spans = wordSpans(spoken);
+      setLastAnswer(spoken);
       setPhase('speaking');
-      setCaption(answer);
-      await speakBariba(answer, controller.signal);
+      setCaption(spoken);
+      setActiveWord(-1);
+      await speakBariba(spoken, controller.signal, (charIndex) => setActiveWord(wordIndexAtChar(spans, charIndex)));
     } catch (error) {
       if (controller.signal.aborted) return;
       setNotice(error instanceof Error ? error.message : 'Lecture indisponible. Touchez Réécouter.');
@@ -122,6 +133,7 @@ export default function FitilaIAVoice({ onExit, onAsk }: Props) {
     recordStop.current = finish;
     setPhase('listening');
     setCaption('');
+    setActiveWord(-1);
     setLevel(0);
     setNotice(null);
     try {
@@ -184,10 +196,12 @@ export default function FitilaIAVoice({ onExit, onAsk }: Props) {
     interrupt();
     const controller = new AbortController();
     abort.current = controller;
+    const spans = wordSpans(lastAnswer);
     setPhase('speaking');
     setCaption(lastAnswer);
+    setActiveWord(-1);
     setNotice(null);
-    void speakBariba(lastAnswer, controller.signal)
+    void speakBariba(lastAnswer, controller.signal, (charIndex) => setActiveWord(wordIndexAtChar(spans, charIndex)))
       .catch(error => { if (!controller.signal.aborted) setNotice(error instanceof Error ? error.message : 'Lecture indisponible.'); })
       .finally(() => { if (!controller.signal.aborted) setPhase('idle'); });
   };
@@ -223,12 +237,28 @@ export default function FitilaIAVoice({ onExit, onAsk }: Props) {
         </div>
       </header>
 
+      <div className="shrink-0 px-5 pb-1 pt-1">
+        <div role="tablist" aria-label="Choisir le mode d'échange" className="flex gap-1.5 rounded-full bg-white/[0.08] p-1 ring-1 ring-white/[0.18]">
+          <span role="tab" aria-selected="true" className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#9D8DF0] px-2 py-2.5 text-[13px] font-extrabold text-[#1C1733]">
+            <Mic className="h-[15px] w-[15px]" aria-hidden="true" />Vocal
+          </span>
+          <button type="button" role="tab" aria-selected="false" onClick={onExit}
+            className="flex-1 rounded-full px-2 py-2.5 text-[13px] font-bold text-white/75 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9D8DF0]">
+            Écrit
+          </button>
+        </div>
+      </div>
+
       <div className="flex min-h-0 flex-1 flex-col items-center px-5">
         <div className="flex-1" />
         <button onClick={onOrb} aria-label={label} className="relative grid place-items-center rounded-full outline-none focus-visible:ring-4 focus-visible:ring-[#9D8DF0]/50">
           <Orb phase={phase} level={level} />
         </button>
-        <p className="mt-6 text-center text-[26px] font-extrabold leading-tight tracking-tight text-white" role="status" aria-live="polite">{label}</p>
+        <div className="mt-6 flex items-center gap-2">
+          <p className="text-center text-[26px] font-extrabold leading-tight tracking-tight text-white" role="status" aria-live="polite">{label}</p>
+          {phase === 'listening' && <LiveBadge />}
+        </div>
+        {phase === 'listening' && <Waveform />}
         {phase === 'idle' && (
           <p className="mt-1.5 max-w-xs text-center text-[17px] leading-7 text-white/80">
             {inputLang === 'fr' ? 'Posez votre question en français.' : 'Yaa sɔ̃ɔ tem bausu gari Baribarum.'}
@@ -249,7 +279,8 @@ export default function FitilaIAVoice({ onExit, onAsk }: Props) {
         <div className="flex-1" />
         {caption && (
           <div className="mx-auto mb-4 w-full max-w-2xl text-center">
-            <p className="line-clamp-6 text-[22px] font-bold leading-[1.35] text-white md:text-[28px]">{caption}</p>
+            <KaraokeText text={caption} activeWord={activeWord}
+              mode={phase === 'speaking' ? 'karaoke' : phase === 'listening' && inputLang === 'fr' ? 'live' : 'plain'} />
           </div>
         )}
       </div>
@@ -304,6 +335,58 @@ function Orb({ phase, level }: { phase: Phase; level: number }) {
         {phase === 'idle' && <Mic aria-hidden className="absolute inset-0 m-auto h-14 w-14 text-[#1C1733]/75" strokeWidth={2.2} />}
       </div>
     </div>
+  );
+}
+
+function LiveBadge() {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FF5C78]/15 px-2.5 py-1 ring-1 ring-[#FF6E82]/40">
+      <span className="h-1.5 w-1.5 rounded-full bg-[#FF5C78] motion-safe:animate-pulse" aria-hidden="true" />
+      <span className="text-[11px] font-extrabold tracking-wide text-[#FFC2CF]">DIRECT</span>
+    </span>
+  );
+}
+
+/** Décoratif : donne une impression d'écoute vivante pendant la capture micro. */
+function Waveform() {
+  const heights = [10, 18, 24, 14, 22, 12, 19];
+  return (
+    <div className="mt-2 flex items-end gap-1" style={{ height: 26 }} aria-hidden="true">
+      {heights.map((h, i) => (
+        <span key={i} className="w-1 rounded-full bg-[#B7ABFF] motion-safe:animate-bounce"
+          style={{ height: h, animationDelay: `${i * 0.12}s`, animationDuration: '1s' }} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Affiche un texte mot par mot : surlignage karaoké en synchronisation avec la lecture
+ * (`karaoke`), derniers mots atténués pendant qu'ils se forment en reconnaissance vocale
+ * live (`live`), ou texte simple (`plain`).
+ */
+function KaraokeText({ text, activeWord, mode }: { text: string; activeWord: number; mode: 'karaoke' | 'live' | 'plain' }) {
+  if (mode === 'plain') {
+    return <p className="line-clamp-6 text-[22px] font-bold leading-[1.35] text-white md:text-[28px]">{text}</p>;
+  }
+  const words = text.split(/\s+/).filter(Boolean);
+  return (
+    <p className="line-clamp-6 text-[22px] font-bold leading-[1.35] md:text-[28px]">
+      {words.map((word, i) => {
+        const className =
+          mode === 'karaoke'
+            ? i === activeWord ? 'rounded-md bg-[#F2A94A] px-1.5 py-0.5 font-extrabold text-[#1C1733]'
+              : i > activeWord ? 'text-[#ADA6D6]' : 'text-white'
+            : i >= words.length - 2 ? 'text-[#ADA6D6]' : 'text-white';
+        return (
+          <span key={i}>
+            <span className={className}>{word}</span>
+            {i < words.length - 1 ? ' ' : ''}
+          </span>
+        );
+      })}
+      {mode === 'live' && <span className="ml-0.5 inline-block h-5 w-[2px] translate-y-[3px] bg-[#ADA6D6] motion-safe:animate-pulse" aria-hidden="true" />}
+    </p>
   );
 }
 
