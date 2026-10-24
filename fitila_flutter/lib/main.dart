@@ -7846,6 +7846,11 @@ class _AiScreenState extends State<AiScreen> {
   bool _voiceRecording = false;
   String _voiceLang = 'bba'; // 'bba' | 'fr' — langue de la dictée vocale.
   String? _speakingKey;
+  // Comme sur le web (`FitilaIA.tsx` : `if (voiceMode) return <FitilaIAVoice
+  // onExit={...} onAsk={sendMessage} />`) : le mode vocal s'affiche en place,
+  // sur le même écran, avec le même fil de conversation (`_messages`) — pas
+  // une page séparée avec son propre historique.
+  bool _voiceMode = false;
 
   @override
   void initState() {
@@ -8007,23 +8012,30 @@ class _AiScreenState extends State<AiScreen> {
     }
   }
 
-  Future<void> _send([String? preset]) async {
-    final text = (preset ?? _message.text).trim();
-    if (text.isEmpty || _busy) {
-      return;
+  /// Envoie un message au véritable assistant IA général (`fitila-ia-chat`)
+  /// et renvoie le texte de la réponse, pour que le mode vocal (`onAsk`) et
+  /// le composeur texte (`_send`) partagent exactement la même logique et le
+  /// même fil de conversation (`_messages`) — comme `sendMessage` sur le web
+  /// (`FitilaIA.tsx`), partagé entre le texte et `FitilaIAVoice`. Renvoie
+  /// `null` si rien n'a été envoyé (saisie vide, envoi déjà en cours, ou
+  /// erreur).
+  Future<String?> _ask(String text) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty || _busy) {
+      return null;
     }
     setState(() {
       _busy = true;
-      _messages.add(_AiChatMessage(role: 'user', text: text));
+      _messages.add(_AiChatMessage(role: 'user', text: trimmed));
       _message.clear();
       _showKeyboard = false;
     });
     _scrollToEnd();
 
     try {
-      final result = await FitilaBackend.askFitilaIaDetailed(text);
+      final result = await FitilaBackend.askFitilaIaDetailed(trimmed);
       if (!mounted) {
-        return;
+        return null;
       }
       setState(() {
         _messages.add(_AiChatMessage(
@@ -8033,21 +8045,25 @@ class _AiScreenState extends State<AiScreen> {
         ));
       });
       _scrollToEnd();
+      return result.text;
     } catch (error) {
       if (!mounted) {
-        return;
+        return null;
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(error.toString().replaceFirst('Bad state: ', '')),
         ),
       );
+      return null;
     } finally {
       if (mounted) {
         setState(() => _busy = false);
       }
     }
   }
+
+  Future<void> _send([String? preset]) => _ask(preset ?? _message.text);
 
   Future<void> _translateToFrench(int index) async {
     if (index < 0 || index >= _messages.length) {
@@ -8350,15 +8366,22 @@ class _AiScreenState extends State<AiScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Comme sur le web : le mode vocal s'affiche en place, sur ce même écran,
+    // avec `onAsk: _ask` partageant le fil de conversation (`_messages`)
+    // plutôt qu'une navigation vers une page séparée à historique propre.
+    if (_voiceMode) {
+      return FitilaIaVoicePage(
+        onExit: () => setState(() => _voiceMode = false),
+        onAsk: _ask,
+      );
+    }
     final suggestions = _suggestions;
     return _PageFrame(
       title: 'Fitila IA',
       subtitle: 'Assistant intelligent en Baatɔnum',
       action: IconButton(
         tooltip: 'Mode vocal',
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const FitilaIaVoicePage()),
-        ),
+        onPressed: () => setState(() => _voiceMode = true),
         icon: const Icon(Icons.graphic_eq_rounded),
       ),
       child: Column(
