@@ -26,6 +26,7 @@ import 'core/local_speech.dart';
 import 'core/offline.dart';
 import 'core/fitila_translation_audio.dart';
 import 'core/foncier_rag.dart';
+import 'core/tem_ia_assistant.dart';
 import 'core/tem_ia_voice_page.dart';
 import 'core/fitila_ia_voice_page.dart';
 import 'core/signature_theme.dart';
@@ -8745,6 +8746,41 @@ class _TemIaScreenState extends State<TemIaScreen> {
     });
 
     try {
+      // Simple salutation en tout début de conversation : accueil
+      // chaleureux immédiat, sans recherche ni appel réseau.
+      if (_messages.length == 1 && isTemIaGreetingOnly(text)) {
+        if (!mounted) return;
+        setState(() {
+          _messages.add((
+            role: 'assistant',
+            text: temIaGreetingFr,
+            sources: const [],
+          ));
+        });
+        return;
+      }
+
+      // En ligne : un vrai raisonnement conversationnel, strictement
+      // borné aux articles du Code foncier retrouvés par le serveur.
+      final history = [
+        for (final message in _messages.take(_messages.length - 1))
+          (role: message.role, text: message.text),
+      ];
+      final online = await tryTemIaOnline(text, history: history);
+      if (online != null) {
+        if (!mounted) return;
+        setState(() {
+          _messages.add((
+            role: 'assistant',
+            text: online.text.replaceAll(RegExp(r'\.\s+'), '.\n\n').trim(),
+            sources: online.sources,
+          ));
+        });
+        return;
+      }
+
+      // Hors ligne (pas de réseau, serveur indisponible) : la recherche
+      // locale embarquée inchangée, juste mieux présentée.
       final result = await FoncierRag.answer(text);
       if (!mounted) {
         return;
@@ -8752,7 +8788,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
       setState(() {
         _messages.add((
           role: 'assistant',
-          text: result.answer.replaceAll(RegExp(r'\.\s+'), '.\n\n').trim(),
+          text: formatOfflineAnswerForText(result),
           sources: result.sources,
         ));
       });
