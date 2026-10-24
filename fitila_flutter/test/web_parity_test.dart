@@ -81,21 +81,37 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Fitila IA reproduces Bariba chat landing', (tester) async {
-    await pumpPhone(tester, const AiScreen());
+  testWidgets(
+    'Fitila IA opens in voice mode by default and switches to the chat landing',
+    (tester) async {
+      await pumpPhone(tester, const AiScreen());
 
-    expect(find.text('Fitila IA'), findsOneWidget);
-    expect(
-      // Comme la référence web (src/pages/fitila/FitilaIA.tsx) : « Baatɔnum »,
-      // pas « Bariba ».
-      find.text('Yaa sɔ̃ɔ wírú Baatɔnum mɛ̀, ǹ nɛ́ɛ̀ daa gɔ!'),
-      findsOneWidget,
-    );
-    expect(find.text('Posez vos questions en Baatɔnum'), findsOneWidget);
-    expect(find.byTooltip('Clavier Baatɔnum'), findsOneWidget);
-    expect(find.byTooltip('Envoyer'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      // Comme sur le web (FitilaIA.tsx : loadPreference('fitilaia-defaultMode',
+      // 'voice') !== 'text'), le mode vocal est le mode d'ouverture par défaut.
+      expect(find.text('Fitila IA · Vocal'), findsOneWidget);
+      expect(find.text('Vocal'), findsOneWidget);
+      expect(find.text('Écrit'), findsOneWidget);
+
+      // Bascule explicite vers le mode texte, comme le role="tablist"
+      // Vocal/Écrit de la référence web FitilaIAVoice.tsx.
+      await tester.tap(find.text('Écrit'));
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 120));
+      }
+
+      expect(find.text('Fitila IA'), findsOneWidget);
+      expect(
+        // Comme la référence web (src/pages/fitila/FitilaIA.tsx) : « Baatɔnum »,
+        // pas « Bariba ».
+        find.text('Yaa sɔ̃ɔ wírú Baatɔnum mɛ̀, ǹ nɛ́ɛ̀ daa gɔ!'),
+        findsOneWidget,
+      );
+      expect(find.text('Posez vos questions en Baatɔnum'), findsOneWidget);
+      expect(find.byTooltip('Clavier Baatɔnum'), findsOneWidget);
+      expect(find.byTooltip('Envoyer'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('Tem IA reproduces local land-code assistant landing', (
     tester,
