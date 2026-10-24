@@ -233,6 +233,17 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
     }
   }
 
+  /// Taille du mot-vedette adaptée à sa longueur : certaines entrées du
+  /// dictionnaire sont des locutions entières (« aime rendre visite… ») et
+  /// explosaient l'en-tête à une taille fixe de 30-32px.
+  static double _headwordSize(String text, {double base = 30}) {
+    final len = text.length;
+    if (len <= 14) return base;
+    if (len <= 24) return base - 8;
+    if (len <= 40) return base - 13;
+    return base - 16;
+  }
+
   DictEntry? _wordOfTheDay() {
     final pool = widget.entries.where((e) => (e.exampleBariba ?? '').isNotEmpty && e.definition.length < 80).toList();
     final list = pool.isNotEmpty ? pool : widget.entries;
@@ -528,32 +539,34 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF2F2940), Color(0xFF1F1B29)],
+          colors: [Color(0xFFFFF9EC), Color(0xFFF7E3B8)],
         ),
-        boxShadow: [BoxShadow(color: SignatureTheme.ink.withValues(alpha: .25), blurRadius: 26, offset: const Offset(0, 14), spreadRadius: -12)],
+        border: Border.all(color: SignatureTheme.hairlineStrong),
+        boxShadow: [BoxShadow(color: SignatureTheme.goldDeep.withValues(alpha: .18), blurRadius: 24, offset: const Offset(0, 14), spreadRadius: -14)],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Icon(Icons.auto_awesome_rounded, size: 16, color: SignatureTheme.gold),
+          const Icon(Icons.auto_awesome_rounded, size: 16, color: SignatureTheme.goldDeep),
           const SizedBox(width: 6),
-          const Text('MOT DU JOUR', style: TextStyle(color: SignatureTheme.gold, fontSize: 11, letterSpacing: 1, fontWeight: FontWeight.w900)),
+          const Text('MOT DU JOUR', style: TextStyle(color: SignatureTheme.goldDeep, fontSize: 11, letterSpacing: 1, fontWeight: FontWeight.w900)),
           const Spacer(),
           if (widget.speak != null)
             IconButton(
               tooltip: 'Écouter',
               visualDensity: VisualDensity.compact,
+              style: IconButton.styleFrom(backgroundColor: SignatureTheme.goldTint),
               onPressed: () => _speak(e.word, true, 'wod'),
-              icon: _speakingKey == 'wod' ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.volume_up_rounded, color: Colors.white),
+              icon: _speakingKey == 'wod' ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2, color: SignatureTheme.goldDeep)) : const Icon(Icons.volume_up_rounded, color: SignatureTheme.goldDeep),
             ),
         ]),
         const SizedBox(height: 8),
-        Text(e.word, style: const TextStyle(color: Colors.white, fontFamily: 'serif', fontSize: 30, fontWeight: FontWeight.w700)),
-        if ((e.phonetic ?? '').isNotEmpty) Text('[${e.phonetic}]', style: const TextStyle(color: Color(0xCCFFFFFF), fontSize: 15)),
+        Text(e.word, maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(color: SignatureTheme.ink, fontFamily: 'serif', fontSize: _headwordSize(e.word), fontWeight: FontWeight.w700)),
+        if ((e.phonetic ?? '').isNotEmpty) Text('[${e.phonetic}]', style: const TextStyle(color: SignatureTheme.muted, fontSize: 15)),
         const SizedBox(height: 8),
-        Text(e.definition, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 15.5, height: 1.4)),
+        Text(e.definition, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: SignatureTheme.inkSoft, fontSize: 15.5, height: 1.4)),
         if ((e.exampleBariba ?? '').isNotEmpty) ...[
           const SizedBox(height: 10),
-          Text('« ${e.exampleBariba} »', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xB3FFFFFF), fontStyle: FontStyle.italic, height: 1.35)),
+          Text('« ${e.exampleBariba} »', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: SignatureTheme.muted, fontStyle: FontStyle.italic, height: 1.35)),
         ],
       ]),
     ),
@@ -687,25 +700,25 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
           child: Column(children: [
             Container(
               padding: const EdgeInsets.fromLTRB(20, 20, 10, 18),
-              decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [SignatureTheme.gold, SignatureTheme.clay])),
+              decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFF3DC), Color(0xFFF7E3B8)])),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(e.word, style: const TextStyle(color: Colors.white, fontFamily: 'serif', fontSize: 32, fontWeight: FontWeight.w700)),
-                    if ((e.phonetic ?? '').isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Text('[${e.phonetic}]', style: const TextStyle(color: Color(0xE6FFFFFF), fontSize: 17))),
+                    Text(e.word, maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(color: SignatureTheme.ink, fontFamily: 'serif', fontSize: _headwordSize(e.word, base: 32), fontWeight: FontWeight.w700)),
+                    if ((e.phonetic ?? '').isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Text('[${e.phonetic}]', style: const TextStyle(color: SignatureTheme.muted, fontSize: 17))),
                     if (part.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
-                        child: Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: Colors.white.withValues(alpha: .22), borderRadius: BorderRadius.circular(99)), child: Text(part, style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w800))),
+                        child: Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: SignatureTheme.surface, border: Border.all(color: SignatureTheme.hairlineStrong), borderRadius: BorderRadius.circular(99)), child: Text(part, style: const TextStyle(color: SignatureTheme.goldDeep, fontSize: 11.5, fontWeight: FontWeight.w800))),
                       ),
                   ]),
                 ),
                 Column(children: [
-                  IconButton(tooltip: fav ? 'Retirer des favoris' : 'Ajouter aux favoris', onPressed: () => _toggleFav(e), icon: Icon(fav ? Icons.star_rounded : Icons.star_border_rounded, color: Colors.white)),
+                  IconButton(tooltip: fav ? 'Retirer des favoris' : 'Ajouter aux favoris', onPressed: () => _toggleFav(e), icon: Icon(fav ? Icons.star_rounded : Icons.star_border_rounded, color: SignatureTheme.goldDeep)),
                   IconButton(tooltip: 'Copier', onPressed: () {
                     Clipboard.setData(ClipboardData(text: '${e.word} — ${e.definition}'));
                     _toast('Copié');
-                  }, icon: const Icon(Icons.copy_rounded, color: Colors.white)),
+                  }, icon: const Icon(Icons.copy_rounded, color: SignatureTheme.goldDeep)),
                 ]),
               ]),
             ),
