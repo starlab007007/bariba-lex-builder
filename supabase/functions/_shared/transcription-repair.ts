@@ -8,7 +8,13 @@ export type TranscriptRepair = {
   proposals: TranscriptProposal[]; source_count: number; matched_segments: number; analyzed_segments: number; total_segments: number;
   requires_confirmation: true; linguistic_quality_certified: false; score_is_probability: false;
 };
-export const normalizeTranscript = (text: string) => text.normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ').trim();
+// Durcissement d\u00E9fensif : certains mod\u00E8les ASR externes (Hugging Face) substituent
+// occasionnellement une lettre bariba/fran\u00E7aise par un symbole typographique parasite
+// (ex. "m\u025Bro" \u2192 "m\u025Br\u00A9") lorsqu'ils h\u00E9sitent sur un caract\u00E8re rare \u2014 jamais du contenu
+// r\u00E9ellement prononc\u00E9. M\u00EAme liste que bariba-linguistic-rules.ts (fichiers ind\u00E9pendants,
+// gard\u00E9s en phase intentionnellement).
+const STRAY_SYMBOLS_RE = /[\u00A9\u00AE\u2122\u00A7\u00B6\u00A4\u2030\u2020\u2021\u2022\u25E6\u2666\u266A\u266B\u2606\u2605\uFFFD\uE000-\uF8FF]/gu;
+export const normalizeTranscript = (text: string) => text.normalize('NFC').replace(STRAY_SYMBOLS_RE, '').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ').trim();
 const words = (text: string) => (text.normalize('NFC').match(/[\p{L}\p{M}\p{N}]+(?:['’][\p{L}\p{M}]+)*/gu) ?? []);
 export function asrSearchKey(text: string): string {
   return normalizeTranscript(text).toLowerCase().replace(/’/g, "'").normalize('NFD')

@@ -127,8 +127,21 @@ ATTENTION AUX ERREURS COURANTES (INTERDITES) :
 `.trim(),
 };
 
+// Durcissement défensif : certains modèles ASR/TTS externes (Hugging Face)
+// substituent occasionnellement une lettre bariba/française par un symbole
+// typographique parasite (ex. "mɛro" → "mɛr©") lorsqu'ils hésitent sur un
+// caractère rare — jamais du contenu réellement prononcé ni jamais utilisé
+// légitimement dans le corpus (vérifié : aucune occurrence dans l'app).
+// On les retire systématiquement avant toute normalisation de texte bariba.
+const STRAY_SYMBOLS_RE =
+  /[©®™§¶¤‰†‡•◦♦♪♫☆★�-]/gu;
+
 export function normalizeBaribaText(input: string): string {
-  return (input || "").normalize("NFC").replace(/\s+/g, " ").trim();
+  return (input || "")
+    .normalize("NFC")
+    .replace(STRAY_SYMBOLS_RE, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function normalizeText(input: string): string {

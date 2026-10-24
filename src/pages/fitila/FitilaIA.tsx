@@ -1,13 +1,14 @@
 import { replaceTranscriptDraft } from '@/lib/voice/transcriptionReview';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Loader2, Bot, User, Languages, Keyboard } from 'lucide-react';
+import { Send, Loader2, Bot, User, Languages, Keyboard, Headphones } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import VoiceInput from '@/components/voice/VoiceInput';
 import ReplyAudioPlayer from '@/components/voice/ReplyAudioPlayer';
 import type { SpeechLanguage } from '@/lib/voice/replySpeech';
 import { usePhoneticSuggestions } from '@/hooks/usePhoneticSuggestions';
 import { toast } from 'sonner';
+import FitilaIAVoice from '@/components/fitila/FitilaIAVoice';
 
 interface ChatMessage {
   id: string;
@@ -41,6 +42,7 @@ export default function FitilaIA() {
   // Hooks
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [voiceLang, setVoiceLang] = useState<SpeechLanguage>('bba');
+  const [voiceMode, setVoiceMode] = useState(false);
   const { getSuggestions } = usePhoneticSuggestions();
 
   // Word suggestions
@@ -55,8 +57,14 @@ export default function FitilaIA() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  const sendMessage = async (text: string) => {
-    if (!text.trim() || isProcessing) return;
+  /**
+   * Envoie un message au véritable assistant IA général (`fitila-ia-chat`)
+   * et renvoie le texte de la réponse, pour que le mode vocal puisse la lire
+   * sans dupliquer cette logique. Retourne null si rien n'a été envoyé
+   * (saisie vide, recherche déjà en cours, ou erreur).
+   */
+  const sendMessage = async (text: string): Promise<string | null> => {
+    if (!text.trim() || isProcessing) return null;
 
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
@@ -87,15 +95,14 @@ export default function FitilaIA() {
       if (data?.error === 'credits_exhausted') {
         toast.error('⚠️ Crédits IA épuisés. Veuillez recharger votre compte.');
         setMessages(prev => prev.filter(m => m.id !== loadingMsg.id));
-        setIsProcessing(false);
-        return;
+        return null;
       }
       if (data?.error) throw new Error(data.error);
 
       const isFallback = data?.fallback === true;
       const responseBa = data?.response_ba;
       const responseFr = data?.response_fr;
-      
+
       // If fallback (translation failed), show French with pre-filled translation
       // Otherwise show Bariba response
       const displayText = (responseBa && !isFallback) ? responseBa : (responseFr || 'Gɔɔ tɔɔrɛ...');
@@ -104,10 +111,10 @@ export default function FitilaIA() {
       setMessages(prev =>
         prev.map(m =>
           m.id === loadingMsg.id
-            ? { 
-                ...m, 
-                content: formatted, 
-                isLoading: false, 
+            ? {
+                ...m,
+                content: formatted,
+                isLoading: false,
                 isTyping: false,
                 // If fallback, pre-fill French translation since response is already in French
                 ...(isFallback ? { translationFr: responseFr, isFallbackFr: true } : {}),
@@ -115,10 +122,12 @@ export default function FitilaIA() {
             : m
         )
       );
+      return formatted;
     } catch (err: any) {
       console.error('[FitilaIA] Error:', err);
       toast.error('Erreur de connexion');
       setMessages(prev => prev.filter(m => m.id !== loadingMsg.id));
+      return null;
     } finally {
       setIsProcessing(false);
     }
@@ -172,6 +181,10 @@ export default function FitilaIA() {
 
   const isBusy = isProcessing || voiceBusy;
 
+  if (voiceMode) {
+    return <FitilaIAVoice onExit={() => setVoiceMode(false)} onAsk={sendMessage} />;
+  }
+
   return (
     <div className="mx-auto flex h-full min-h-0 w-full max-w-[960px] flex-col overflow-hidden bg-[#F7F5EC] text-[#241F2E]">
       {/* Header */}
@@ -182,6 +195,16 @@ export default function FitilaIA() {
             <p className="text-[#8C8571] text-[11px] leading-tight">Assistant intelligent en Baatɔnum</p>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setVoiceMode(true)}
+          aria-label="Mode vocal"
+          title="Discussion vocale directe et continue"
+          className="flex flex-shrink-0 items-center gap-1.5 rounded-full bg-[#ECE8FA] border border-[#6758C9]/30 px-3 py-2 text-[11px] font-extrabold text-[#6758C9] transition-colors hover:bg-[#DCD6F5]"
+        >
+          <Headphones className="w-3.5 h-3.5" />
+          Mode vocal
+        </button>
       </div>
 
       {/* Messages */}
