@@ -306,8 +306,8 @@ class FitilaBackend {
     await FitilaOffline.clearUserData();
   }
 
-  static Future<String> askFitilaIa(String message) async =>
-      (await askFitilaIaDetailed(message)).text;
+  static Future<String> askFitilaIa(String message, {String? systemPrompt}) async =>
+      (await askFitilaIaDetailed(message, systemPrompt: systemPrompt)).text;
 
   /// Comme [askFitilaIa], mais expose aussi si la réponse est un repli en
   /// français (traduction Baatɔnum indisponible côté serveur) — nécessaire
@@ -315,11 +315,15 @@ class FitilaBackend {
   /// masque le bouton « Traduire en français » que la référence web
   /// (`FitilaIA.tsx`), au lieu de traiter toute réponse comme du Baatɔnum.
   static Future<({String text, bool isFallbackFr})> askFitilaIaDetailed(
-    String message,
-  ) async {
+    String message, {
+    String? systemPrompt,
+  }) async {
     final response = await client.functions.invoke(
       'fitila-ia-chat',
-      body: {'message': message.trim()},
+      body: {
+        'message': message.trim(),
+        if (systemPrompt != null && systemPrompt.trim().isNotEmpty) 'systemPrompt': systemPrompt.trim(),
+      },
     );
     final data = response.data;
     if (data is! Map) {

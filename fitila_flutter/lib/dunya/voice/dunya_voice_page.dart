@@ -94,6 +94,11 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   int? _bargeTurn;
   String _caption = '';
   String? _subCaption;
+  List<String> _words = const [];
+  int _activeWord = -1;
+  StreamSubscription<Duration>? _posSub;
+  StreamSubscription<Duration>? _durSub;
+  Duration _audioDuration = Duration.zero;
   String? _status;
   String? _notice;
   String? _failedCloudText;
@@ -121,6 +126,8 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     _settings.removeListener(_onSettings);
     _session = false;
     _stopSpeaking = true;
+    unawaited(_posSub?.cancel());
+    unawaited(_durSub?.cancel());
     unawaited(_assistant.interrupt());
     unawaited(_mic.dispose());
     unawaited(_tts.stop());
@@ -144,6 +151,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       // recording, and require a fresh local session from the user.
       _session = false;
       _cloudVoice.cancel();
+      _stopWordTracking();
       unawaited(_assistant.interrupt());
       unawaited(_mic.cancel());
       unawaited(_player.stop());
@@ -316,6 +324,8 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       _level = 0;
       _caption = '';
       _subCaption = null;
+      _words = const [];
+      _activeWord = -1;
     });
     try {
       final samples = await _mic.listen(onLevel: _onLevel);
@@ -405,6 +415,8 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
             language = event['lang']?.toString() ?? replyLang;
             setState(() {
               _caption = answer;
+              _words = _splitWords(answer);
+              _activeWord = -1;
               _subCaption = _settings.frenchSubtitlesInBariba ? subtitle : null;
               _phase = _Phase.speaking;
             });
@@ -414,15 +426,21 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
             final b64 = event['audio_base64']?.toString();
             if (b64 != null && b64.isNotEmpty) {
               // Play the actual MMS-TTS WAV supplied by the FITILA server.
+              _startWordTracking();
+              await _player.setPlaybackRate(_settings.voiceSpeed);
               final finished = _player.onPlayerComplete.first;
               await _player.play(audio.BytesSource(base64Decode(b64)));
               await finished.timeout(const Duration(seconds: 60));
+              _stopWordTracking(complete: true);
             } else {
               final url = event['audio_url']?.toString() ?? '';
               if (Uri.tryParse(url)?.scheme == 'https') {
+                _startWordTracking();
+                await _player.setPlaybackRate(_settings.voiceSpeed);
                 final finished = _player.onPlayerComplete.first;
                 await _player.play(audio.UrlSource(url));
                 await finished.timeout(const Duration(seconds: 60));
+                _stopWordTracking(complete: true);
               }
             }
           } else if (type == 'notice') {
@@ -530,6 +548,8 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       _turns.add(answer);
       _phase = _Phase.thinking;
       _caption = '';
+      _words = const [];
+      _activeWord = -1;
       _notice = null;
     });
     _scrollToEnd();
@@ -648,6 +668,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
 
   Future<void> _interrupt({bool keepListening = false}) async {
     _stopSpeaking = true;
+    _stopWordTracking();
     _cloudVoice.cancel();
     await _assistant.interrupt();
     await _tts.stop();
@@ -661,6 +682,39 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   // ---------------------------------------------------------------------------
   // Speaking
   // ---------------------------------------------------------------------------
+
+  /// Découpe [text] en mots pour le surlignage karaoké ; à appeler avec
+  /// l'affectation de `_caption` dans le même `setState`.
+  List<String> _splitWords(String text) =>
+      text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList(growable: false);
+
+  /// Démarre le suivi de la position de lecture pour avancer `_activeWord`
+  /// proportionnellement à la position dans l'audio (pas d'alignement
+  /// phonétique exact disponible côté TTS, comme pour Fitila IA).
+  void _startWordTracking() {
+    unawaited(_posSub?.cancel());
+    unawaited(_durSub?.cancel());
+    _audioDuration = Duration.zero;
+    _durSub = _player.onDurationChanged.listen((d) => _audioDuration = d);
+    _posSub = _player.onPositionChanged.listen((pos) {
+      if (!mounted) return;
+      final total = _audioDuration.inMilliseconds;
+      if (total <= 0 || _words.isEmpty) return;
+      final fraction = (pos.inMilliseconds / total).clamp(0.0, 1.0);
+      final idx = (fraction * _words.length).floor().clamp(0, _words.length - 1);
+      if (idx != _activeWord) setState(() => _activeWord = idx);
+    });
+  }
+
+  void _stopWordTracking({bool complete = false}) {
+    unawaited(_posSub?.cancel());
+    unawaited(_durSub?.cancel());
+    _posSub = null;
+    _durSub = null;
+    if (complete && mounted && _words.isNotEmpty) {
+      setState(() => _activeWord = _words.length);
+    }
+  }
 
   /// Plays sentences as they arrive, while the NEXT sentence's offline voice
   /// is already being synthesized in the background isolate — so by the time
@@ -679,6 +733,8 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       setState(() {
         _phase = _Phase.speaking;
         _caption = s.utterance.text;
+        _words = _splitWords(s.utterance.text);
+        _activeWord = -1;
         _subCaption = _settings.frenchSubtitlesInBariba ? s.subtitle : null;
       });
       await _speakOne(s.utterance, prepared: prepared);
@@ -728,7 +784,11 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         }
       } else if (_systemFrenchVoice) {
         await _tts.setSpeechRate(0.47 * _settings.voiceSpeed);
+        // La voix système ne fournit pas d'événement de position : pas de
+        // surlignage progressif possible ici, mais on marque le texte comme
+        // lu une fois la lecture terminée plutôt que de le laisser estompé.
         await _tts.speak(u.text);
+        if (mounted && _words.isNotEmpty) setState(() => _activeWord = _words.length);
       } else if (_paths.canSpeakFrenchOffline && _engine != null) {
         final path = prepared ?? await _engine!.synthesize(u.text, 'fra', speed: _settings.voiceSpeed);
         await _playFile(path);
@@ -740,15 +800,26 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
 
   Future<void> _playFile(String path) async {
     if (_stopSpeaking) return;
+    // La vitesse est déjà appliquée à la synthèse elle-même (speed:
+    // 0.85 * voiceSpeed / voiceSpeed plus haut) pour ce chemin hors ligne ;
+    // on ne la réapplique pas ici sur le lecteur pour ne pas la cumuler.
+    _startWordTracking();
     final done = _player.onPlayerComplete.first;
     await _player.play(audio.DeviceFileSource(path));
     await done.timeout(const Duration(seconds: 90), onTimeout: () {});
+    _stopWordTracking(complete: true);
   }
 
   Future<void> _replay(_Turn turn) async {
     if (_phase != _Phase.idle) return;
     _stopSpeaking = false;
-    setState(() => _phase = _Phase.speaking);
+    setState(() {
+      _phase = _Phase.speaking;
+      _caption = turn.text;
+      _words = _splitWords(turn.text);
+      _activeWord = -1;
+      _subCaption = _settings.frenchSubtitlesInBariba ? turn.subtitle : null;
+    });
     await _speakOne(DunyaUtterance(turn.text, _mode == DunyaLanguageMode.bariba ? 'bba' : 'fr'));
     if (mounted) setState(() => _phase = _Phase.idle);
   }
@@ -797,6 +868,8 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     setState(() {
       _turns.clear();
       _caption = '';
+      _words = const [];
+      _activeWord = -1;
       _notice = null;
     });
   }
@@ -1106,6 +1179,41 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         ),
       );
 
+  /// Le texte de la réponse : surligné mot par mot au fil de la lecture
+  /// audio pendant `speaking` (effet « karaoké »), texte simple sinon.
+  Widget _captionWidget() {
+    if (_phase != _Phase.speaking || _words.isEmpty) {
+      return Text(
+        _caption,
+        textAlign: TextAlign.center,
+        maxLines: 5,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(color: Colors.white, fontSize: 24, height: 1.3, fontWeight: FontWeight.w600),
+      );
+    }
+    return Wrap(
+      alignment: WrapAlignment.center,
+      runSpacing: 4,
+      children: [
+        for (var i = 0; i < _words.length; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+              style: TextStyle(
+                color: i <= _activeWord ? Colors.white : Colors.white.withValues(alpha: .32),
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                height: 1.3,
+              ),
+              child: Text(_words[i]),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _voiceView() {
     final users = _turns.where((t) => t.role == 'user');
     final lastUser = users.isEmpty ? '' : users.last.text;
@@ -1156,12 +1264,9 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                     style: const TextStyle(color: Colors.white70, fontSize: 17),
                   ),
                 if (_caption.isNotEmpty)
-                  Text(
-                    _caption,
-                    textAlign: TextAlign.center,
-                    maxLines: 5,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 24, height: 1.3, fontWeight: FontWeight.w600),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    child: KeyedSubtree(key: ValueKey(_phase), child: _captionWidget()),
                   ),
                 if (_subCaption != null && _subCaption!.isNotEmpty) ...[
                   const SizedBox(height: 8),
