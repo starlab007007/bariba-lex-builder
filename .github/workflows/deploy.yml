@@ -124,14 +124,14 @@ jobs:
               if [ -d dist.previous ]; then
                 rm -rf dist
                 mv dist.previous dist
-                docker compose -f docker-composer.yml up -d --force-recreate --remove-orphans --no-build || true
+                docker compose -f docker-composer.yml up -d --force-recreate --remove-orphans --no-build react-app-bariba || true
               fi
             }
             trap rollback ERR
 
             echo "🚀 Redémarrage Nginx sans build Docker..."
             docker compose -f docker-composer.yml pull react-app-bariba || true
-            docker compose -f docker-composer.yml up -d --force-recreate --remove-orphans --no-build
+            docker compose -f docker-composer.yml up -d --force-recreate --remove-orphans --no-build react-app-bariba
 
             echo "🧪 Smoke tests FITILA / Classe / administration..."
             sleep 2
@@ -144,6 +144,18 @@ jobs:
 
             trap - ERR
             echo "✅ FITILA web actif depuis le bundle GitHub ${{ github.sha }}"
+
+            # bariba-voice-gateway a son propre pipeline + rollback dédié
+            # (voice-gateway-deploy.yml) : ici on profite juste du passage
+            # pour le rafraîchir si une image existe déjà sur GHCR, sans
+            # jamais faire échouer ni annuler le déploiement web ci-dessus.
+            echo "🎙️ Rafraîchissement bariba-voice-gateway (best-effort)..."
+            if docker compose -f docker-composer.yml pull bariba-voice-gateway 2>/dev/null; then
+              docker compose -f docker-composer.yml up -d --no-build bariba-voice-gateway || \
+                echo "⚠️ bariba-voice-gateway : démarrage échoué, voir voice-gateway-deploy.yml"
+            else
+              echo "ℹ️ Aucune image bariba-voice-gateway sur GHCR encore (normal avant le premier déploiement dédié)"
+            fi
 
             echo "🧹 Nettoyage léger..."
             rm -rf dist.previous

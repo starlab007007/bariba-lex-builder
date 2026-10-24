@@ -19,6 +19,31 @@ services:
     networks:
       - web
 
+  bariba-voice-gateway:
+    image: ghcr.io/starlab007007/bariba-lex-builder-voice-gateway:latest
+    container_name: bariba-voice-gateway
+    restart: always
+    environment:
+      FITILA_MODEL_API_TOKEN: ${FITILA_MODEL_API_TOKEN:?}
+    volumes:
+      - voice-gateway-cache:/srv/.cache
+    ports:
+      # Loopback uniquement : sert au health-check local (déploiement,
+      # watchdog) ; l'accès public passe par Traefik (voir labels), jamais
+      # par ce port directement.
+      - "127.0.0.1:8090:8090"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bariba-voice-gateway.rule=Host(`voice.fitila.bj`)"
+      - "traefik.http.routers.bariba-voice-gateway.entrypoints=websecure"
+      - "traefik.http.routers.bariba-voice-gateway.tls.certresolver=myresolver"
+      - "traefik.http.services.bariba-voice-gateway.loadbalancer.server.port=8090"
+    networks:
+      - web
+
 networks:
   web:
     external: true
+
+volumes:
+  voice-gateway-cache:
