@@ -13,10 +13,10 @@
  * chaque réponse en mode texte.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Bot, Headphones, Mic, Pause, Play, Square, X } from 'lucide-react';
+import { Bot, Captions, CaptionsOff, Gauge, Headphones, Mic, Pause, Play, Square, X } from 'lucide-react';
 import { runServerVoice } from '@/lib/dunya/serverVoice';
 import {
-  hasFrenchRecognition, loadPreference, playUrl, recognizeFrench, recordUtterance,
+  formatSpeechRate, hasFrenchRecognition, loadPreference, nextSpeechRate, playUrl, recognizeFrench, recordUtterance,
   savePreference, stopSpeaking, pauseSpeaking, resumeSpeaking, wordIndexAtChar, wordSpans,
 } from '@/lib/dunya/voiceWeb';
 import { loadReplyAudio } from '@/lib/voice/replySpeech';
@@ -34,8 +34,9 @@ type Props = {
 /**
  * Lit un texte baatɔnum en le découpant comme le lecteur par réponse (mêmes voix, même cache).
  * `onCharIndex` reçoit la position (dans `text`) atteinte par la lecture, pour le surlignage karaoké.
+ * `rate` règle la vitesse de lecture (1 = normale), choisie par la personne.
  */
-async function speakBariba(text: string, signal: AbortSignal, onCharIndex?: (charIndex: number) => void): Promise<void> {
+async function speakBariba(text: string, signal: AbortSignal, rate: number, onCharIndex?: (charIndex: number) => void): Promise<void> {
   let consumed = 0;
   for (const chunk of replySpeechChunks(text)) {
     signal.throwIfAborted();
@@ -43,7 +44,7 @@ async function speakBariba(text: string, signal: AbortSignal, onCharIndex?: (cha
     const url = URL.createObjectURL(blob);
     const chunkStart = consumed;
     try {
-      await playUrl(url, signal, onCharIndex ? (fraction) => onCharIndex(chunkStart + Math.round(fraction * chunk.length)) : undefined);
+      await playUrl(url, signal, onCharIndex ? (fraction) => onCharIndex(chunkStart + Math.round(fraction * chunk.length)) : undefined, rate);
     } finally {
       URL.revokeObjectURL(url);
     }
@@ -62,6 +63,8 @@ export default function FitilaIAVoice({ onExit, onAsk }: Props) {
   const [paused, setPaused] = useState(false);
   const [handsFree, setHandsFree] = useState(() => loadPreference('fitilaia-voice-handsFree', true));
   const [inputLang, setInputLang] = useState<InputLang>(() => loadPreference('fitilaia-voice-lang', 'bba'));
+  const [subtitles, setSubtitles] = useState(() => loadPreference('fitilaia-voice-subtitles', true));
+  const [speechRate, setSpeechRate] = useState(() => loadPreference('fitilaia-voice-speechRate', 1));
 
   const session = useRef(false);
   const turnCounter = useRef(0);
@@ -113,7 +116,7 @@ export default function FitilaIAVoice({ onExit, onAsk }: Props) {
       setPhase('speaking');
       setCaption(spoken);
       setActiveWord(-1);
-      await speakBariba(spoken, controller.signal, (charIndex) => setActiveWord(wordIndexAtChar(spans, charIndex)));
+      await speakBariba(spoken, controller.signal, speechRate, (charIndex) => setActiveWord(wordIndexAtChar(spans, charIndex)));
     } catch (error) {
       if (controller.signal.aborted) return;
       setNotice(error instanceof Error ? error.message : 'Lecture indisponible. Touchez Réécouter.');
@@ -123,7 +126,7 @@ export default function FitilaIAVoice({ onExit, onAsk }: Props) {
         if (session.current && handsFree) void listenTurnRef.current();
       }
     }
-  }, [handsFree, onAsk]);
+  }, [handsFree, onAsk, speechRate]);
 
   const listenTurn = useCallback(async () => {
     if (!session.current) return;
@@ -201,13 +204,15 @@ export default function FitilaIAVoice({ onExit, onAsk }: Props) {
     setCaption(lastAnswer);
     setActiveWord(-1);
     setNotice(null);
-    void speakBariba(lastAnswer, controller.signal, (charIndex) => setActiveWord(wordIndexAtChar(spans, charIndex)))
+    void speakBariba(lastAnswer, controller.signal, speechRate, (charIndex) => setActiveWord(wordIndexAtChar(spans, charIndex)))
       .catch(error => { if (!controller.signal.aborted) setNotice(error instanceof Error ? error.message : 'Lecture indisponible.'); })
       .finally(() => { if (!controller.signal.aborted) setPhase('idle'); });
   };
 
   const setLang = (lang: InputLang) => { endSession(); setInputLang(lang); savePreference('fitilaia-voice-lang', lang); };
   const toggleHandsFree = () => { const next = !handsFree; setHandsFree(next); savePreference('fitilaia-voice-handsFree', next); };
+  const toggleSubtitles = () => { const next = !subtitles; setSubtitles(next); savePreference('fitilaia-voice-subtitles', next); };
+  const cycleSpeed = () => { const next = nextSpeechRate(speechRate); setSpeechRate(next); savePreference('fitilaia-voice-speechRate', next); };
 
   const label =
     phase === 'listening' ? 'Je vous écoute'
@@ -277,8 +282,8 @@ export default function FitilaIAVoice({ onExit, onAsk }: Props) {
           </div>
         )}
         <div className="flex-1" />
-        {caption && (
-          <div className="mx-auto mb-4 w-full max-w-2xl text-center">
+        {subtitles && caption && (
+          <div key={phase} className="mx-auto mb-4 w-full max-w-2xl animate-in fade-in slide-in-from-bottom-1 text-center duration-300">
             <KaraokeText text={caption} activeWord={activeWord}
               mode={phase === 'speaking' ? 'karaoke' : phase === 'listening' && inputLang === 'fr' ? 'live' : 'plain'} />
           </div>
@@ -294,6 +299,12 @@ export default function FitilaIAVoice({ onExit, onAsk }: Props) {
       <footer className="mx-auto flex w-full max-w-md flex-wrap items-center justify-center gap-3 px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-1">
         <Pill onClick={toggleHandsFree} active={handsFree} aria-pressed={handsFree}>
           <Headphones className="h-4 w-4" />Mains libres {handsFree ? 'activées' : 'désactivées'}
+        </Pill>
+        <Pill onClick={toggleSubtitles} active={subtitles} aria-pressed={subtitles}>
+          {subtitles ? <Captions className="h-4 w-4" /> : <CaptionsOff className="h-4 w-4" />}Sous-titres
+        </Pill>
+        <Pill onClick={cycleSpeed}>
+          <Gauge className="h-4 w-4" />Vitesse {formatSpeechRate(speechRate)}
         </Pill>
         {phase !== 'idle' && <Pill onClick={endSession} danger><Square className="h-4 w-4" />Arrêter</Pill>}
       </footer>
@@ -374,10 +385,11 @@ function KaraokeText({ text, activeWord, mode }: { text: string; activeWord: num
     <p className="line-clamp-6 text-[22px] font-bold leading-[1.35] md:text-[28px]">
       {words.map((word, i) => {
         const className =
-          mode === 'karaoke'
-            ? i === activeWord ? 'rounded-md bg-[#F2A94A] px-1.5 py-0.5 font-extrabold text-[#1C1733]'
-              : i > activeWord ? 'text-[#ADA6D6]' : 'text-white'
-            : i >= words.length - 2 ? 'text-[#ADA6D6]' : 'text-white';
+          'transition-colors duration-300 ease-out ' + (
+            mode === 'karaoke'
+              ? i === activeWord ? 'rounded-md bg-[#F2A94A] px-1.5 py-0.5 font-extrabold text-[#1C1733]'
+                : i > activeWord ? 'text-[#ADA6D6]' : 'text-white'
+              : i >= words.length - 2 ? 'text-[#ADA6D6]' : 'text-white');
         return (
           <span key={i}>
             <span className={className}>{word}</span>

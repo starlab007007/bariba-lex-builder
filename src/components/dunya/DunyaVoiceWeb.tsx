@@ -50,6 +50,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
   const [handsFree, setHandsFree] = useState(() => loadPreference('handsFree', true));
   const [subtitles, setSubtitles] = useState(() => loadPreference('subtitles', true));
   const [frSubtitles, setFrSubtitles] = useState(() => loadPreference('frSubtitles', false));
+  const [speechRate, setSpeechRate] = useState(() => loadPreference('speechRate', 1));
   const [reviewStt, setReviewStt] = useState(() => loadPreference('reviewStt', false));
   const [paused, setPaused] = useState(false), [moreOpen, setMoreOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -127,7 +128,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           if (off.lang === 'fr') {
             setPhase('speaking');
             const spans = wordSpans(off.text);
-            await speakFrench(off.text, 1, (charIndex) => setActiveWord(wordIndexAtChar(spans, charIndex)));
+            await speakFrench(off.text, speechRate, (charIndex) => setActiveWord(wordIndexAtChar(spans, charIndex)));
           }
         }
         return;
@@ -171,7 +172,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
               setPhase('speaking'); setStatus(null); setCaption(chunkText); setActiveWord(-1);
               setSubCaption(frSubtitles ? answer?.subtitle ?? null : null);
               setDiagnostic(d => ({ ...d, tts: event.engine }));
-              await playUrl(audioUrl, controller.signal, (fraction) => setActiveWord(wordIndexAtChar(spans, Math.round(fraction * chunkText.length))));
+              await playUrl(audioUrl, controller.signal, (fraction) => setActiveWord(wordIndexAtChar(spans, Math.round(fraction * chunkText.length))), speechRate);
             }).catch(error => { if (active()) playbackError = error instanceof Error ? error.message : 'Touchez Réécouter.'; });
           }
         },
@@ -184,7 +185,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
       if (answer?.lang === 'fr' && !audioReceived) {
         const spans = wordSpans(answer.text);
         setPhase('speaking'); setStatus(null); setCaption(answer.text); setActiveWord(-1); setDiagnostic(d => ({ ...d, tts: 'navigateur-fr' }));
-        await speakFrench(answer.text, 1, (charIndex) => setActiveWord(wordIndexAtChar(spans, charIndex)));
+        await speakFrench(answer.text, speechRate, (charIndex) => setActiveWord(wordIndexAtChar(spans, charIndex)));
       }
       if (playbackError) { session.current = false; setNotice(playbackError); }
     } catch (error) {
@@ -211,7 +212,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
         if (session.current && handsFree && input.spoken) void listenTurnRef.current();
       }
     }
-  }, [frSubtitles, handsFree, interrupt, mode, offlineAnswer, reviewStt]);
+  }, [frSubtitles, handsFree, interrupt, mode, offlineAnswer, reviewStt, speechRate]);
   const runTurn = (text: string, lang: 'fr' | 'bba', spoken: boolean) => performTurn({ text, lang, spoken });
 
   const replay = async (turn: DunyaWebTurn) => {
@@ -220,7 +221,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
     if (!urls?.length) { await performTurn({ text: turn.text, lang: turn.lang, spoken: false, replayId: turn.id }); return; }
     const controller = new AbortController(); abort.current = controller;
     setPhase('speaking'); setCaption(turn.text); setNotice(null);
-    try { for (const url of urls) { controller.signal.throwIfAborted(); await playUrl(url, controller.signal); } }
+    try { for (const url of urls) { controller.signal.throwIfAborted(); await playUrl(url, controller.signal, undefined, speechRate); } }
     catch (error) { if (!controller.signal.aborted) setNotice(error instanceof Error ? error.message : 'Lecture indisponible.'); }
     finally { if (!controller.signal.aborted) setPhase('idle'); }
   };
@@ -367,7 +368,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           )}
           <div className="flex-1" />
           {subtitles && (caption || (phase === 'thinking' && lastUser)) && (
-            <div className="mx-auto mb-4 w-full max-w-2xl text-center">
+            <div key={phase} className="mx-auto mb-4 w-full max-w-2xl animate-in fade-in slide-in-from-bottom-1 text-center duration-300">
               {phase === 'thinking' && lastUser && <p className="line-clamp-2 text-[17px] leading-7 text-white/80">« {lastUser} »</p>}
               {caption && (
                 <KaraokeText text={caption} activeWord={activeWord}
@@ -432,6 +433,15 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
             <Toggle label="Sous-titres" value={subtitles} onChange={(v) => setPref('subtitles', v, setSubtitles)} />
             <Toggle label="Traduction en français" value={frSubtitles} onChange={(v) => setPref('frSubtitles', v, setFrSubtitles)} />
             <Toggle label="Relire avant envoi" value={reviewStt} onChange={(v) => setPref('reviewStt', v, setReviewStt)} />
+            <div className="flex min-h-14 items-center justify-between gap-2 py-2">
+              <span className="shrink-0 text-[16px] font-semibold">Vitesse</span>
+              <div className="flex min-w-0 items-center gap-2">
+                <input type="range" min={0.7} max={1.3} step={0.1} value={speechRate} aria-label="Vitesse de la voix"
+                  onChange={(e) => setPref('speechRate', Number(e.target.value), setSpeechRate)}
+                  className="h-2 w-20 min-w-0 accent-[#E3B04B]" />
+                <span className="w-10 shrink-0 text-right text-[14px] font-bold tabular-nums">{Math.round(speechRate * 100)}%</span>
+              </div>
+            </div>
           </div>
           {isAdmin && <div className="mt-4 rounded-2xl bg-[#EFE8D6] p-3 text-[12px] leading-5 text-[#4A4356]" aria-label="Diagnostic vocal réel">
             <p><b>Échange :</b> {diagnostic.request ?? '—'}</p>
@@ -517,10 +527,11 @@ function KaraokeText({ text, activeWord, mode }: { text: string; activeWord: num
     <p className="line-clamp-6 text-[24px] font-bold leading-[1.35] md:text-[30px]">
       {words.map((word, i) => {
         const className =
-          mode === 'karaoke'
-            ? i === activeWord ? 'rounded-md bg-[#4FC892] px-1.5 py-0.5 font-extrabold text-[#0E1813]'
-              : i > activeWord ? 'text-white/45' : 'text-white'
-            : i >= words.length - 2 ? 'text-white/45' : 'text-white';
+          'transition-colors duration-300 ease-out ' + (
+            mode === 'karaoke'
+              ? i === activeWord ? 'rounded-md bg-[#4FC892] px-1.5 py-0.5 font-extrabold text-[#0E1813]'
+                : i > activeWord ? 'text-white/45' : 'text-white'
+              : i >= words.length - 2 ? 'text-white/45' : 'text-white');
         return (
           <span key={i}>
             <span className={className}>{word}</span>

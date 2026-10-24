@@ -228,11 +228,12 @@ export async function speakBariba(text: string, onProgress?: (fraction: number) 
   return true;
 }
 
-export function playUrl(url: string, signal?: AbortSignal, onProgress?: (fraction: number) => void): Promise<void> {
+export function playUrl(url: string, signal?: AbortSignal, onProgress?: (fraction: number) => void, rate?: number): Promise<void> {
   signal?.throwIfAborted();
   return new Promise((resolve, reject) => {
     stopSpeaking();
     const audio = new Audio(url);
+    if (rate && Number.isFinite(rate) && rate > 0) audio.playbackRate = rate;
     currentAudio = audio;
     const onTimeUpdate = () => {
       if (onProgress && audio.duration && Number.isFinite(audio.duration)) onProgress(Math.min(1, audio.currentTime / audio.duration));
@@ -255,6 +256,23 @@ export function playUrl(url: string, signal?: AbortSignal, onProgress?: (fractio
     audio.onerror = () => finish(new Error('Lecture impossible. Touchez Réécouter.'));
     audio.play().catch(() => finish(new Error('Touchez Réécouter pour lancer la lecture.')));
   });
+}
+
+// ---------------------------------------------------------------------------
+// Reading speed (shared by DUNYA, Fitila IA and Tem IA voice screens)
+// ---------------------------------------------------------------------------
+
+/** Cycle of selectable reading speeds, shown as "0,75×" etc. */
+export const SPEECH_RATES = [0.75, 1, 1.25, 1.5] as const;
+
+/** Next speed in the cycle, wrapping back to the first after the last. */
+export function nextSpeechRate(current: number): number {
+  const i = SPEECH_RATES.indexOf(current as (typeof SPEECH_RATES)[number]);
+  return SPEECH_RATES[(i + 1) % SPEECH_RATES.length] ?? SPEECH_RATES[0];
+}
+
+export function formatSpeechRate(rate: number): string {
+  return `${rate.toFixed(2).replace(/\.?0+$/, '').replace('.', ',')}×`;
 }
 
 // ---------------------------------------------------------------------------
