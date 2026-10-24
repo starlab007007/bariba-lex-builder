@@ -9,7 +9,7 @@ permissions:
   contents: read
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
@@ -19,7 +19,7 @@ jobs:
       - name: Test transport, application contracts and voice pipeline
         run: deno test --node-modules-dir=none --allow-env --allow-read=supabase/functions/_shared,public/data tests/ai/mistral.test.ts tests/ai/providers.test.ts tests/voice/dunyaVoice.test.ts tests/voice/metaVoiceCore.test.ts supabase/functions/_shared/translation-verifier_test.ts supabase/functions/_shared/deterministic-refine_test.ts
   browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
