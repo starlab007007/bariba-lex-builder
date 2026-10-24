@@ -254,7 +254,7 @@ export function NewWordSubmission({ onClose, initialWord = '' }: NewWordSubmissi
                     {/* Word input */}
                     <div>
                       <label className="text-sm font-medium text-gray-500 mb-2 block">
-                        {currentLang === 'ba' ? 'Ɔ̀rɔ̀ Bàátɔ̀nú *' : 'Mot bariba *'}
+                        {currentLang === 'ba' ? 'Ɔ̀rɔ̀ Baatɔnum *' : 'Mot bariba *'}
                       </label>
                       <div className="flex gap-2">
                         <input

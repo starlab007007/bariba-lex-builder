@@ -461,7 +461,7 @@ export const SmartVoiceRecorder = ({
             <p className="text-sm text-muted-foreground">Traitement audio...</p>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Appuyez pour parler en {language === 'bariba' ? 'Bààtɔ̀nú' : 'Français'}
+              Appuyez pour parler en {language === 'bariba' ? 'Baatɔnum' : 'Français'}
             </p>
           )
         )}

@@ -43,7 +43,7 @@ export function similarityScore(str1: string, str2: string): number {
   return 1.0 - distance / maxLen;
 }
 
-// Normalisation phonétique simple pour Bààtɔ̀nú
+// Normalisation phonétique simple pour Baatɔnum
 export function normalizePhonetic(text: string): string {
   return text
     .toLowerCase()

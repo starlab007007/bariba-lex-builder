@@ -288,7 +288,7 @@ class _EspaceScanScreenState extends State<EspaceScanScreen> {
           style: const TextStyle(fontSize: 16, height: 1.6),
           decoration: InputDecoration(
             hintText: 'Texte extrait…',
-            suffixIcon: IconButton(tooltip: 'Clavier Bàátɔ̀nú', icon: const Icon(Icons.keyboard_alt_rounded, color: SignatureTheme.goldDeep), onPressed: () => showBaribaKeyboardSheet(context, _text)),
+            suffixIcon: IconButton(tooltip: 'Clavier Baatɔnum', icon: const Icon(Icons.keyboard_alt_rounded, color: SignatureTheme.goldDeep), onPressed: () => showBaribaKeyboardSheet(context, _text)),
           ),
         ),
         const SizedBox(height: 14),

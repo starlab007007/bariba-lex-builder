@@ -21,7 +21,7 @@ List<LessonTab> lessonTabs(WebClasseLesson l) => [
 ];
 
 /// Écran d'une leçon : texte + illustration + audio, questions avec réponses enregistrées
-/// (clavier Bàátɔ̀nú intelligent, vocal, corrigé, notes), phonétique et exercices d'écriture.
+/// (clavier Baatɔnum intelligent, vocal, corrigé, notes), phonétique et exercices d'écriture.
 class ClasseLessonView extends StatefulWidget {
   const ClasseLessonView({super.key, required this.session, required this.lesson, required this.lessons, required this.onBack, required this.onOpen, this.onFinished});
 
@@ -467,7 +467,7 @@ class _ClasseLessonViewState extends State<ClasseLessonView> {
             children: [
               const Text('✍️ Exercices d’écriture', style: TextStyle(fontWeight: FontWeight.w900, color: SignatureTheme.ink)),
               const SizedBox(height: 4),
-              const Text('Recopie chaque mot avec le clavier Bàátɔ̀nú (icône clavier du champ).', style: TextStyle(fontSize: 12, color: SignatureTheme.muted)),
+              const Text('Recopie chaque mot avec le clavier Baatɔnum (icône clavier du champ).', style: TextStyle(fontSize: 12, color: SignatureTheme.muted)),
               const SizedBox(height: 10),
               for (var i = 0; i < _l.writing.length; i++) _writingRow(i),
               const SizedBox(height: 4),

@@ -87,7 +87,7 @@ String _errorText(Object e) {
   return 'Traduction indisponible. Vérifiez votre connexion puis réessayez.';
 }
 
-/// Traducteur en fenêtre de chat : bulles source/traduction, saisie clavier Bàátɔ̀nú, voix, photo, document, presse-papiers.
+/// Traducteur en fenêtre de chat : bulles source/traduction, saisie clavier Baatɔnum, voix, photo, document, presse-papiers.
 class TranslatorChat extends StatefulWidget {
   const TranslatorChat({super.key, required this.ports});
 
@@ -384,7 +384,7 @@ class _TranslatorChatState extends State<TranslatorChat> {
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       Text(bariba ? '🇧🇯' : '🇫🇷', style: const TextStyle(fontSize: 11.5)),
       const SizedBox(width: 4),
-      Text(bariba ? 'Bàátɔ̀nú' : 'Français', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: bariba ? SignatureTheme.goldDeep : SignatureTheme.ink)),
+      Text(bariba ? 'Baatɔnum' : 'Français', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: bariba ? SignatureTheme.goldDeep : SignatureTheme.ink)),
       if (detected) const Padding(padding: EdgeInsets.only(left: 3), child: Icon(Icons.auto_awesome_rounded, size: 11, color: SignatureTheme.sage)),
     ]),
   );
@@ -447,7 +447,7 @@ class _TranslatorChatState extends State<TranslatorChat> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(children: [
-              _toggle(Icons.auto_awesome_rounded, _detected == null ? 'Détection auto' : 'Détecté : ${_detected == ChatLang.bariba ? 'Bàátɔ̀nú' : 'Français'}', _auto, (v) => setState(() {
+              _toggle(Icons.auto_awesome_rounded, _detected == null ? 'Détection auto' : 'Détecté : ${_detected == ChatLang.bariba ? 'Baatɔnum' : 'Français'}', _auto, (v) => setState(() {
                 _auto = v;
                 if (!v) _detected = null;
               })),
@@ -659,7 +659,7 @@ class _TranslatorChatState extends State<TranslatorChat> {
             maxLines: compact ? 3 : 4,
             onSubmitted: (_) => _send(),
             decoration: InputDecoration(
-              hintText: _toBariba ? 'Écrivez en français…' : 'Écrivez en Bàátɔ̀nú…',
+              hintText: _toBariba ? 'Écrivez en français…' : 'Écrivez en Baatɔnum…',
               filled: true,
               fillColor: SignatureTheme.surface,
               contentPadding: EdgeInsets.symmetric(horizontal: 15, vertical: compact ? 10 : 11),
@@ -707,7 +707,7 @@ class _TranslatorChatState extends State<TranslatorChat> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(_recording ? 'Je vous écoute…' : _busy ? 'Transcription…' : 'Appuyez pour parler', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5, color: SignatureTheme.ink)),
             if (!compact)
-              Text(_recording ? 'Appuyez pour terminer et traduire.' : 'Parlez en ${_toBariba ? 'français' : 'Bàátɔ̀nú'}, je transcris puis je traduis.', style: const TextStyle(fontSize: 11.5, color: SignatureTheme.muted, height: 1.3)),
+              Text(_recording ? 'Appuyez pour terminer et traduire.' : 'Parlez en ${_toBariba ? 'français' : 'Baatɔnum'}, je transcris puis je traduis.', style: const TextStyle(fontSize: 11.5, color: SignatureTheme.muted, height: 1.3)),
           ]),
         ),
       ]),
@@ -791,7 +791,7 @@ class _Turn extends StatelessWidget {
                       border: Border.all(color: srcBariba ? const Color(0xFFF0D9A8) : SignatureTheme.hairline),
                     ),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('${srcBariba ? '🇧🇯 Bàátɔ̀nú' : '🇫🇷 Français'}${msg.mode == 'Texte' ? '' : ' · ${msg.mode}'}', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: SignatureTheme.muted)),
+                      Text('${srcBariba ? '🇧🇯 Baatɔnum' : '🇫🇷 Français'}${msg.mode == 'Texte' ? '' : ' · ${msg.mode}'}', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: SignatureTheme.muted)),
                       const SizedBox(height: 3),
                       Text(msg.source, style: const TextStyle(fontSize: 15.5, height: 1.4, color: SignatureTheme.ink)),
                       Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.end, children: [
@@ -856,7 +856,7 @@ class _Turn extends StatelessWidget {
         Row(children: [
           const Icon(Icons.auto_awesome_rounded, size: 14, color: Color(0xFF6758C9)),
           const SizedBox(width: 5),
-          Text(targetBariba ? '🇧🇯 Bàátɔ̀nú' : '🇫🇷 Français', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: SignatureTheme.muted)),
+          Text(targetBariba ? '🇧🇯 Baatɔnum' : '🇫🇷 Français', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: SignatureTheme.muted)),
           if (msg.beta) ...[
             const SizedBox(width: 8),
             const Icon(Icons.science_rounded, size: 12, color: SignatureTheme.goldDeep),

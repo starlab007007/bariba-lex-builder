@@ -312,7 +312,7 @@ export function AudioServicesAdminDashboard() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Langue</span>
                       <Badge variant="secondary">
-                        {service.language === 'bariba' ? 'Bààtɔ̀nú' : 'Français'}
+                        {service.language === 'bariba' ? 'Baatɔnum' : 'Français'}
                       </Badge>
                     </div>
                     

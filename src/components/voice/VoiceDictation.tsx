@@ -264,7 +264,7 @@ export const VoiceDictation = ({ onTranslate }: VoiceDictationProps) => {
             <span className="font-medium">Transcription</span>
           </div>
           <Badge variant="secondary">
-            {language === 'bariba' ? 'Bààtɔ̀nú' : 'Français'}
+            {language === 'bariba' ? 'Baatɔnum' : 'Français'}
           </Badge>
         </div>
 

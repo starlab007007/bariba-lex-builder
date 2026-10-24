@@ -114,8 +114,8 @@ export default function ApOnboardingScreen({ profiles, initialProfile, initialDi
 
         <p className="mb-2 mt-[22px] text-[11.5px] font-bold tracking-[0.08em]" style={{ color: AP_COLORS.muted }}>SENS D’APPRENTISSAGE</p>
         <div className="flex gap-1 rounded-[18px] p-1" style={{ background: AP_COLORS.surfaceAlt }}>
-          {segment('fr_to_ba', 'Français → Bàátɔ̀nú')}
-          {segment('ba_to_fr', 'Bàátɔ̀nú → Français')}
+          {segment('fr_to_ba', 'Français → Baatɔnum')}
+          {segment('ba_to_fr', 'Baatɔnum → Français')}
         </div>
       </div>
 

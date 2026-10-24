@@ -116,7 +116,7 @@ void _character(Canvas c, Offset base, double s, Color skin, Color robe, double 
   }
 }
 
-/// Scène 1 : deux amis échangent, les bulles alternent Français ↔ Bàátɔ̀nú.
+/// Scène 1 : deux amis échangent, les bulles alternent Français ↔ Baatɔnum.
 class TranslateScenePainter extends CustomPainter {
   TranslateScenePainter(this.t);
   final double t;
@@ -197,7 +197,7 @@ class TranslateScenePainter extends CustomPainter {
   bool shouldRepaint(covariant TranslateScenePainter old) => old.t != t;
 }
 
-/// Scène 2 : la flamme FITILA veille sur un livre ouvert, les lettres du Bàátɔ̀nú s'envolent.
+/// Scène 2 : la flamme FITILA veille sur un livre ouvert, les lettres du Baatɔnum s'envolent.
 class LearnScenePainter extends CustomPainter {
   LearnScenePainter(this.t);
   final double t;

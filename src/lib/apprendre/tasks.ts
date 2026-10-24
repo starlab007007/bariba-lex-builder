@@ -249,7 +249,7 @@ export class ApTaskFactory {
     const distractors = distinctValues(pool.filter((c) => c.id !== card.id).map((c) => c.ba), card.ba);
     return baseTask({
       kind: 'choice',
-      instruction: 'Comment dit-on en bàátɔ̀nú ?',
+      instruction: 'Comment dit-on en baatɔnum ?',
       prompt: card.fr,
       options: shuffled([card.ba, ...distractors.slice(0, 3)]),
       optionsAreBariba: true,

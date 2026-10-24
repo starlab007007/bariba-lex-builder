@@ -1,8 +1,8 @@
 /**
- * Pipeline OCR Bàátɔ̀nú (côté navigateur) :
+ * Pipeline OCR Baatɔnum (côté navigateur) :
  *   1. Chargement  : image ou PDF (pdf.js) -> pages raster ; texte natif du PDF réutilisé s'il existe
  *   2. Prétraitement : niveaux de gris, étirement de contraste, redressement (deskew), redimensionnement
- *   3. Inférence   : edge function `espace-ocr` (modèle vision, prompt à alphabet Bàátɔ̀nú)
+ *   3. Inférence   : edge function `espace-ocr` (modèle vision, prompt à alphabet Baatɔnum)
  *   4. Correction  : dictionnaire Bariba (rétablit ɛ ɔ ŋ, tons, nasales)
  */
 import { correctWithLexicon, loadLexicon } from './baribaText';

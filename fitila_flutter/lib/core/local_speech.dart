@@ -6,7 +6,7 @@ import '../dunya/voice/dunya_shared_speech.dart';
 
 /// Lecture vocale sans Internet, pour tout l'app (Dictionnaire, Traducteur,
 /// Classe, Apprendre…) :
-///  - Bàátɔ̀nú : d'abord la voix humaine de référence déjà téléchargée
+///  - Baatɔnum : d'abord la voix humaine de référence déjà téléchargée
 ///    (Apprendre), sinon la voix générée sur l'appareil (pack DUNYA installé,
 ///    MMS-TTS Baatɔnum via sherpa-onnx) — couvre n'importe quel texte, y
 ///    compris les 8900+ mots du Dictionnaire qui n'ont pas d'enregistrement ;

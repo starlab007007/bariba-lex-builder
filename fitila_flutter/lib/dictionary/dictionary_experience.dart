@@ -31,7 +31,7 @@ class DictEntry {
   };
 }
 
-/// Retire ton, accents et casse pour comparer « Baatonu » à « Bàátɔ̀nú » (ɛ ɔ ŋ restent distincts).
+/// Retire ton, accents et casse pour comparer « Baatonum » à « Baatɔnum » (ɛ ɔ ŋ restent distincts).
 String foldDict(String input) {
   const map = {
     'à': 'a', 'á': 'a', 'â': 'a', 'ä': 'a', 'ã': 'a', 'è': 'e', 'é': 'e', 'ê': 'e', 'ë': 'e', 'ẽ': 'e',
@@ -319,7 +319,7 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
           const Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Proposer un mot', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
-              Text('Enrichissez le dictionnaire Bàátɔ̀nú', style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 12)),
+              Text('Enrichissez le dictionnaire Baatɔnum', style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 12)),
             ]),
           ),
           const Icon(Icons.chevron_right_rounded, color: Colors.white),
@@ -354,7 +354,7 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
             },
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: SignatureTheme.ink),
             decoration: InputDecoration(
-              hintText: _baToFr ? 'Rechercher en Bàátɔ̀nú…' : 'Rechercher en français…',
+              hintText: _baToFr ? 'Rechercher en Baatɔnum…' : 'Rechercher en français…',
               hintStyle: const TextStyle(color: SignatureTheme.muted, fontSize: 16),
               prefixIcon: const Icon(Icons.search_rounded, color: SignatureTheme.goldDeep, size: 23),
               suffixIcon: Row(
@@ -436,7 +436,7 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
         borderRadius: BorderRadius.circular(99),
         border: Border.all(color: active ? SignatureTheme.gold : SignatureTheme.hairline),
       ),
-      child: Text(bariba ? '🇧🇯 Bàátɔ̀nú' : '🇫🇷 Français', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: active ? SignatureTheme.goldDeep : SignatureTheme.inkSoft)),
+      child: Text(bariba ? '🇧🇯 Baatɔnum' : '🇫🇷 Français', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: active ? SignatureTheme.goldDeep : SignatureTheme.inkSoft)),
     );
   }
 
@@ -454,7 +454,7 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
         const SizedBox(height: 10),
         const Text('Recherche vocale', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: SignatureTheme.ink)),
         const SizedBox(height: 4),
-        Text(_recording ? 'Je vous écoute… appuyez pour terminer.' : 'Prononcez un mot en ${_baToFr ? 'Bàátɔ̀nú' : 'français'}.', textAlign: TextAlign.center, style: const TextStyle(color: SignatureTheme.muted)),
+        Text(_recording ? 'Je vous écoute… appuyez pour terminer.' : 'Prononcez un mot en ${_baToFr ? 'Baatɔnum' : 'français'}.', textAlign: TextAlign.center, style: const TextStyle(color: SignatureTheme.muted)),
         const SizedBox(height: 12),
         FilledButton.icon(
           onPressed: _voiceBusy ? null : _toggleVoice,
@@ -722,7 +722,7 @@ class _DictionaryExperienceState extends State<DictionaryExperience> {
                 ),
                 if ((e.exampleBariba ?? '').isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  _block(icon: Icons.format_quote_rounded, title: 'Exemple en Bàátɔ̀nú', text: e.exampleBariba!, onListen: widget.speak == null ? null : () => _speak(e.exampleBariba!, true, 'eb'), listening: _speakingKey == 'eb', listenTip: 'Écouter l’exemple', tint: SignatureTheme.goldTint),
+                  _block(icon: Icons.format_quote_rounded, title: 'Exemple en Baatɔnum', text: e.exampleBariba!, onListen: widget.speak == null ? null : () => _speak(e.exampleBariba!, true, 'eb'), listening: _speakingKey == 'eb', listenTip: 'Écouter l’exemple', tint: SignatureTheme.goldTint),
                 ],
                 if ((e.exampleFrench ?? '').isNotEmpty) ...[
                   const SizedBox(height: 10),

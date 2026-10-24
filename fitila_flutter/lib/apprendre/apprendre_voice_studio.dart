@@ -518,7 +518,7 @@ class _ApVoiceStudioScreenState extends State<ApVoiceStudioScreen> {
             ApTopBar(
               title: 'Studio Voix',
               subtitle: _consent == null
-                  ? 'Voix de référence du bàátɔ̀nú'
+                  ? 'Voix de référence du baatɔnum'
                   : '${_consent!['display_name'] ?? 'Locuteur'} · voix ${_consent!['voice']} · ${_consent!['variant']}',
               trailing: _loading
                   ? null

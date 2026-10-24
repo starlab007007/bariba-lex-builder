@@ -39,7 +39,7 @@ abstract final class ApText {
     letterSpacing: -.2,
   );
 
-  /// Texte bàátɔ̀nú : Inter couvre ɔ, ɛ et les diacritiques de ton.
+  /// Texte baatɔnum : Inter couvre ɔ, ɛ et les diacritiques de ton.
   static const bariba = TextStyle(
     fontFamily: 'Inter',
     fontWeight: FontWeight.w700,
@@ -627,7 +627,7 @@ class _GuidePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Texte bàátɔ̀nú avec, selon le profil, sa transcription tonale.
+/// Texte baatɔnum avec, selon le profil, sa transcription tonale.
 class ApBaribaText extends StatelessWidget {
   const ApBaribaText(
     this.text, {

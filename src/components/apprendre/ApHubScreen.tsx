@@ -211,7 +211,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
 
   const hour = new Date(now).getHours();
   const greeting = hour < 12 ? 'A kpuna n do ?' : 'Mɛɛribu';
-  const greetingSub = hour < 12 ? '« As-tu bien dormi ? » — le salut du matin' : 'Apprendre le bàátɔ̀nú et le français';
+  const greetingSub = hour < 12 ? '« As-tu bien dormi ? » — le salut du matin' : 'Apprendre le baatɔnum et le français';
 
   const proverbs = content.raw.proverbs;
   const proverb = proverbs.length > 0 ? proverbs[new Date(now).getDate() % proverbs.length] : undefined;

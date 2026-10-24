@@ -181,7 +181,7 @@ export const VoiceTranslator = () => {
         <Card className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <Badge variant="outline">
-              {isSourceBariba ? 'Bààtɔ̀nú' : 'Français'}
+              {isSourceBariba ? 'Baatɔnum' : 'Français'}
             </Badge>
             <span className="text-xs text-muted-foreground">Source</span>
           </div>
@@ -198,7 +198,7 @@ export const VoiceTranslator = () => {
         <Card className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <Badge variant="secondary">
-              {isSourceBariba ? 'Français' : 'Bààtɔ̀nú'}
+              {isSourceBariba ? 'Français' : 'Baatɔnum'}
             </Badge>
             <span className="text-xs text-muted-foreground">Traduction</span>
           </div>

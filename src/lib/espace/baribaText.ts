@@ -1,11 +1,11 @@
 import dictionaryUrl from '@/assets/bariba_dictionary.json?url';
 
 /**
- * Moteur de texte Bàátɔ̀nú de l'Espace : pliage typographique, prédiction, vérification orthographique.
+ * Moteur de texte Baatɔnum de l'Espace : pliage typographique, prédiction, vérification orthographique.
  * Même dictionnaire et mêmes règles que le clavier Flutter/Android/iOS (`bariba_dictionary.json`).
  */
 
-/** Caractères propres au Bàátɔ̀nú (palette de l'éditeur). */
+/** Caractères propres au Baatɔnum (palette de l'éditeur). */
 export const BARIBA_LETTERS = ['ɔ', 'ɛ', 'ŋ', 'ã', 'ĩ', 'ũ', 'õ', 'ẽ', 'ɛ̃', 'ɔ̃'] as const;
 /** Tons et marques combinantes : grave, aigu, tilde, macron. */
 export const BARIBA_TONES = [
@@ -17,7 +17,7 @@ export const BARIBA_TONES = [
 
 const EXTRA_FOLD: Record<string, string> = { ɛ: 'e', ɔ: 'o', ŋ: 'n', æ: 'a', œ: 'o', η: 'n' };
 
-/** « Bàátɔ̀nú » -> « baatonu » (miroir SQL `espace_fold`). */
+/** « Baatɔnum » -> « baatonum » (miroir SQL `espace_fold`). */
 export function foldText(input: string): string {
   const base = (input ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   let out = '';
@@ -297,7 +297,7 @@ export function correctWithLexicon(text: string, lex: BaribaLexicon): { text: st
   return { text: fixed, corrections };
 }
 
-/** Clé de recherche : « Bàátɔ̀nú » et « baatonu » donnent la même clé. */
+/** Clé de recherche : « Baatɔnum » et « baatonum » donnent la même clé. */
 export function searchKey(q: string): string {
   return foldText(q).replace(/\s+/g, ' ').trim();
 }

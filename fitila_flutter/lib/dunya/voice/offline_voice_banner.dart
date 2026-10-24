@@ -7,7 +7,7 @@ import 'dunya_shared_speech.dart';
 import 'dunya_voice_pack.dart';
 
 /// Bandeau visible dès l'accueil (pas enfoui dans les réglages Apprendre)
-/// proposant d'installer la voix Bàátɔ̀nú hors-ligne (pack DUNYA) qui fait
+/// proposant d'installer la voix Baatɔnum hors-ligne (pack DUNYA) qui fait
 /// marcher la lecture vocale partout — dictionnaire, traducteur, Classe,
 /// Apprendre — sans connexion. Invisible dès que le pack est installé, ou
 /// après que la personne l'a explicitement écarté.
@@ -93,7 +93,7 @@ class _OfflineVoiceBannerState extends State<OfflineVoiceBanner> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Activer la voix hors-ligne'),
         content: Text(
-          'Télécharger la voix Bàátɔ̀nú$_sizeLabel pour que la lecture vocale '
+          'Télécharger la voix Baatɔnum$_sizeLabel pour que la lecture vocale '
           'fonctionne partout sans connexion (dictionnaire, traducteur, Classe, '
           'Apprendre). Conseillé en Wi-Fi. Si la connexion coupe, relancer '
           'reprend là où ça s’est arrêté.',
@@ -160,7 +160,7 @@ class _OfflineVoiceBannerState extends State<OfflineVoiceBanner> {
         _BannerStage.checking || _BannerStage.hidden => const SizedBox(width: double.infinity),
         _BannerStage.offer => _card(
           icon: Icons.record_voice_over_rounded,
-          text: 'Activez la voix Bàátɔ̀nú hors-ligne$_sizeLabel pour l’avoir partout sans connexion.',
+          text: 'Activez la voix Baatɔnum hors-ligne$_sizeLabel pour l’avoir partout sans connexion.',
           action: ('Télécharger', _confirmAndDownload),
           onDismiss: _dismiss,
         ),

@@ -221,9 +221,9 @@ class _DirectionToggle extends StatelessWidget {
       ),
       child: Row(
         children: [
-          segment('fr_to_ba', 'Français → Bàátɔ̀nú'),
+          segment('fr_to_ba', 'Français → Baatɔnum'),
           const SizedBox(width: 4),
-          segment('ba_to_fr', 'Bàátɔ̀nú → Français'),
+          segment('ba_to_fr', 'Baatɔnum → Français'),
         ],
       ),
     );

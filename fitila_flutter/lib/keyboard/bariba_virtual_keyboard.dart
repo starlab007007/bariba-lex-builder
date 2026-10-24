@@ -12,7 +12,7 @@ import 'bariba_keyboard_engine.dart';
 typedef KeyboardTranslator =
     Future<String?> Function(String text, KeyboardTranslationDirection direction);
 
-/// In-app Bàátɔ̀nú keyboard bound to a [TextEditingController]: prediction bar,
+/// In-app Baatɔnum keyboard bound to a [TextEditingController]: prediction bar,
 /// "Saisir et Traduire" mode, nasal vowels and tone marks.
 class BaribaVirtualKeyboard extends StatefulWidget {
   const BaribaVirtualKeyboard({
@@ -327,7 +327,7 @@ class _BaribaVirtualKeyboardState extends State<BaribaVirtualKeyboard> {
                 ? const Padding(
                     padding: EdgeInsets.only(left: 8),
                     child: Text(
-                      'Bàátɔ̀nú',
+                      'Baatɔnum',
                       style: TextStyle(
                         color: SignatureTheme.muted,
                         fontSize: 12,

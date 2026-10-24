@@ -166,7 +166,7 @@ export const VoiceRecorder = ({
           <p className="text-sm text-muted-foreground">📤 Envoi en cours...</p>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Appuyez pour parler en {language === 'bariba' ? 'Bààtɔ̀nú' : 'Français'}
+            Appuyez pour parler en {language === 'bariba' ? 'Baatɔnum' : 'Français'}
           </p>
         )}
       </div>

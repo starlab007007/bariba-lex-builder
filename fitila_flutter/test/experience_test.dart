@@ -24,7 +24,7 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   test('foldDict ignores tones and case but keeps open vowels distinct', () {
-    expect(foldDict('Bàátɔ̀nú'), 'baatɔnu');
+    expect(foldDict('Baatɔnum'), 'baatɔnum');
     expect(foldDict('ɛ'), isNot(foldDict('e')));
   });
 
@@ -48,7 +48,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('Habitude.'), findsOneWidget);
     expect(find.textContaining('Définition'), findsOneWidget);
-    expect(find.textContaining('Exemple en Bàátɔ̀nú'), findsOneWidget);
+    expect(find.textContaining('Exemple en Baatɔnum'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Ajouter aux favoris'));
     await tester.pump();

@@ -163,7 +163,7 @@ void main() {
     test('headwords and folding', () {
       expect(cleanHeadword('tem3'), 'tem');
       expect(cleanHeadword('gbaaru (2)'), 'gbaaru');
-      expect(foldBariba('Bààtɔ̀nú'), 'baatɔnu');
+      expect(foldBariba('Baatɔnum'), 'baatɔnum');
     });
   });
 

@@ -117,7 +117,7 @@ export const SelectedEntryDisplay = ({ entry, searchDirection }: SelectedEntryDi
           Détails complets
         </h3>
 
-        {/* Exemples en Bààtɔ̀nú */}
+        {/* Exemples en Baatɔnum */}
         {entry.example_bariba && entry.example_bariba.length > 0 && (
           <div className="space-y-3">
             <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">

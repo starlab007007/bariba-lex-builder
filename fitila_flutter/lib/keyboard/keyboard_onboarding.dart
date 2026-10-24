@@ -215,10 +215,10 @@ class _StatusHero extends StatelessWidget {
         ? 'Ajouté, pas encore sélectionné'
         : 'Non activé';
     final body = ready
-        ? 'Votre clavier Bàátɔ̀nú fonctionne dans toutes vos applications.'
+        ? 'Votre clavier Baatɔnum fonctionne dans toutes vos applications.'
         : !supported
         ? 'Le clavier système est disponible sur Android et iPhone. Ici, utilisez le clavier intégré de FITILA ci-dessous.'
-        : 'Suivez les étapes : trois minutes suffisent pour écrire en Bàátɔ̀nú partout.';
+        : 'Suivez les étapes : trois minutes suffisent pour écrire en Baatɔnum partout.';
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
@@ -369,7 +369,7 @@ class _NoNative extends StatelessWidget {
       done: false,
       number: 'i',
       title: 'Clavier intégré à l’application',
-      body: 'Sur ce terminal, touchez l’icône clavier d’un champ de saisie pour ouvrir le clavier Bàátɔ̀nú de FITILA avec prédiction et traduction.',
+      body: 'Sur ce terminal, touchez l’icône clavier d’un champ de saisie pour ouvrir le clavier Baatɔnum de FITILA avec prédiction et traduction.',
       hideCheck: true,
     );
   }
@@ -408,7 +408,7 @@ class _TestCard extends StatelessWidget {
             minLines: 2,
             maxLines: 4,
             decoration: InputDecoration(
-              hintText: 'Écrivez en Bàátɔ̀nú…',
+              hintText: 'Écrivez en Baatɔnum…',
               filled: true,
               fillColor: SignatureTheme.appBackground,
               border: OutlineInputBorder(

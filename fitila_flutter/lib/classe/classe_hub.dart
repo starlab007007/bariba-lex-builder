@@ -12,7 +12,7 @@ import 'classe_widgets.dart';
 typedef _Section = ({String id, String emoji, String title, String subtitle});
 
 /// Accueil et navigation de la Classe : niveau N1/N2, sections, leçons, détail de leçon.
-/// Toutes les réponses écrites passent par le clavier Bàátɔ̀nú intelligent (voir [ClasseAnswerCard]).
+/// Toutes les réponses écrites passent par le clavier Baatɔnum intelligent (voir [ClasseAnswerCard]).
 class ClasseHub extends StatefulWidget {
   const ClasseHub({super.key, required this.session, this.initialLessons, this.contentLoader, this.onLevelChanged, this.ensureSignedIn});
 

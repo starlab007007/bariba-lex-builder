@@ -286,7 +286,7 @@ class ApTaskFactory {
     );
     return ApTask(
       kind: ApTaskKind.choice,
-      instruction: 'Comment dit-on en bàátɔ̀nú ?',
+      instruction: 'Comment dit-on en baatɔnum ?',
       prompt: card.fr,
       options: _shuffled([card.ba, ...distractors.take(3)]),
       optionsAreBariba: true,

@@ -258,7 +258,7 @@ class _ApThemeScreenState extends State<ApThemeScreen> {
                   TextField(
                     onChanged: (value) => setState(() => _query = value),
                     decoration: InputDecoration(
-                      hintText: 'Chercher un mot (bàátɔ̀nú ou français)',
+                      hintText: 'Chercher un mot (baatɔnum ou français)',
                       prefixIcon: const Icon(Icons.search_rounded),
                       filled: true,
                       fillColor: ApColors.surface,
