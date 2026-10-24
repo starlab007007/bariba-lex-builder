@@ -4,9 +4,13 @@
 /// DUNYA Voix / Tem IA Vocal : parlez, la question est transcrite puis la
 /// réponse est lue à voix haute ; en mode mains libres, l'écoute reprend
 /// automatiquement à la fin de la lecture. La réponse vient du véritable
-/// assistant IA général de la plateforme (edge function `fitila-ia-chat`) —
-/// pas d'une recherche locale hors-ligne comme pour Tem IA, et sans aucun
-/// recadrage de sujet, exactement comme sur le web.
+/// assistant IA général de la plateforme (edge function `fitila-ia-chat`),
+/// sans aucun recadrage de sujet, exactement comme sur le web — ou, hors
+/// connexion, du cerveau DUNYA local (Gemma) quand il est installé : voir
+/// `_ask` dans `AiScreen` (`main.dart`), partagé via `onAsk`. Sans ce
+/// cerveau installé, pas d'alternative hors ligne, contrairement à Tem IA.
+/// La lecture à voix haute reste en ligne (`bariba-tts`) avec un repli sur
+/// la voix de l'appareil (`LocalSpeech`) quand elle échoue hors connexion.
 ///
 /// Intégré en place dans l'écran texte Fitila IA (`AiScreen`, `main.dart`) via
 /// `onExit`/`onAsk`, pour que le texte et le vocal partagent le même fil de
@@ -33,6 +37,8 @@ import '../dunya/voice/dunya_cloud_voice.dart';
 import '../dunya/voice/dunya_mic_capture.dart';
 import 'fitila_backend.dart';
 import 'fitila_translation_audio.dart';
+import 'local_speech.dart';
+import 'offline.dart';
 
 enum _Phase { idle, listening, thinking, speaking }
 
@@ -351,6 +357,16 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
       await finished.timeout(const Duration(seconds: 60), onTimeout: () {});
     } catch (error) {
       if (turn != _turn) return;
+      // Hors connexion : pas de voix FITILA (bariba-tts). On lit le texte
+      // avec la voix de l'appareil — toujours en français ici, puisqu'une
+      // réponse hors ligne de Fitila IA vient du cerveau local, qui raisonne
+      // en français (voir `_askOfflineBrain` dans `AiScreen`).
+      if (FitilaOffline.isNetworkError(error)) {
+        FitilaOffline.reportFailure(error);
+        // La remise à l'écoute (mains libres) et l'état `idle` sont déjà
+        // posés par le `finally` ci-dessous, qu'on parle ou pas.
+        if (await LocalSpeech.speak(text, bariba: false)) return;
+      }
       setState(
         () => _notice =
             error is StateError ? error.message : 'Lecture indisponible.',

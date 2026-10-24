@@ -6,6 +6,7 @@
  */
 
 import { isOffline, memoryTranslate } from '@/lib/translation/translationMemory';
+import { ensureByt5PackCached, translateOfflineByt5 } from '@/lib/translation/offlineByt5';
 import { supabase } from "@/integrations/supabase/client";
 
 export interface ByT5TranslationResult {
@@ -70,12 +71,26 @@ class ByT5TranslationService {
         fallback: false,
       };
     }
-    // Do not present a reconstructed word list as grammatical translation.
-    const offlineResult = async (): Promise<ByT5TranslationResult | null> => null;
+    // Repli hors ligne : ByT5 embarqué (ONNX Runtime Web), BÊTA — seulement si
+    // le paquet a déjà été mis en cache pendant une session en ligne (voir
+    // `ensureByt5PackCached` ci-dessous). Jamais une liste de mots reconstruite
+    // présentée comme une traduction grammaticale : null si indisponible.
+    const offlineResult = async (): Promise<ByT5TranslationResult | null> => {
+      const translation = await translateOfflineByt5(text, direction);
+      if (!translation) return null;
+      return {
+        translation,
+        confidence: 0.4,
+        duration: Date.now() - startTime,
+        method: 'offline-byt5-ba',
+        fallback: false,
+        notice: 'Traduction hors connexion (bêta) : vérifiez le sens avant de l’utiliser.',
+      };
+    };
     if (isOffline()) {
       const local = await offlineResult();
       if (local) return local;
-      throw new Error('Hors connexion : cette phrase n’est pas dans la mémoire FITILA. Reconnectez-vous pour la traduire.');
+      throw new Error('Hors connexion : cette phrase n’est pas dans la mémoire FITILA. Reconnectez-vous pour la traduire, ou installez la traduction hors ligne (elle se met en cache automatiquement la prochaine fois que vous traduisez en ligne).');
     }
 
     try {
@@ -117,6 +132,10 @@ class ByT5TranslationService {
 
       this.isHealthy = true;
       this.lastHealthCheck = Date.now();
+
+      // Connexion confirmée bonne : profite de l'occasion pour mettre en
+      // cache le paquet de traduction hors ligne (silencieux, sans attendre).
+      void ensureByt5PackCached();
 
       console.log(`✅ ByT5 translation received in ${data.duration || (Date.now() - startTime)}ms`);
 

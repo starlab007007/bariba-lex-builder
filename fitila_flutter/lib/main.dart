@@ -55,6 +55,7 @@ import 'espace/espace_home.dart';
 import 'keyboard/bariba_input.dart';
 import 'dictionary/dictionary_experience.dart';
 import 'dictionary/word_proposal_sheet.dart';
+import 'dunya/voice/dunya_brain.dart';
 import 'dunya/voice/dunya_byt5.dart';
 import 'dunya/voice/dunya_translation_memory.dart';
 import 'dunya/voice/dunya_translator.dart';
@@ -8048,6 +8049,13 @@ class _AiScreenState extends State<AiScreen> {
   /// (`FitilaIA.tsx`), partagé entre le texte et `FitilaIAVoice`. Renvoie
   /// `null` si rien n'a été envoyé (saisie vide, envoi déjà en cours, ou
   /// erreur).
+  ///
+  /// Hors connexion (ou panne réseau en cours de route) : repli sur le
+  /// cerveau DUNYA (Gemma, sur le téléphone, [DunyaBrain]) quand il est
+  /// installé — même principe que Tem IA qui retombe sur sa recherche
+  /// locale ([FoncierRag]). Sans cerveau installé, Fitila IA n'a aucune
+  /// alternative hors ligne : on l'indique clairement plutôt que d'échouer
+  /// en silence.
   Future<String?> _ask(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _busy) {
@@ -8062,19 +8070,53 @@ class _AiScreenState extends State<AiScreen> {
     _scrollToEnd();
 
     try {
-      final result = await FitilaBackend.askFitilaIaDetailed(trimmed);
-      if (!mounted) {
-        return null;
+      final canUseServer = FitilaBackend.configured && FitilaOffline.online.value;
+      if (canUseServer) {
+        try {
+          final result = await FitilaBackend.askFitilaIaDetailed(trimmed);
+          if (!mounted) return null;
+          setState(() {
+            _messages.add(_AiChatMessage(
+              role: 'assistant',
+              text: result.text,
+              isFallbackFr: result.isFallbackFr,
+            ));
+          });
+          _scrollToEnd();
+          return result.text;
+        } catch (error) {
+          if (!FitilaOffline.isNetworkError(error)) rethrow;
+          FitilaOffline.reportFailure(error);
+          // Panne réseau en cours de route : on retombe hors ligne ci-dessous,
+          // exactement comme Tem IA retombe sur sa recherche locale.
+        }
       }
-      setState(() {
-        _messages.add(_AiChatMessage(
-          role: 'assistant',
-          text: result.text,
-          isFallbackFr: result.isFallbackFr,
-        ));
-      });
-      _scrollToEnd();
-      return result.text;
+
+      // --- Hors ligne : cerveau DUNYA (Gemma) sur le téléphone, si installé ---
+      final offlineAnswer = await _askOfflineBrain(trimmed);
+      if (!mounted) return null;
+      if (offlineAnswer != null) {
+        setState(() {
+          _messages.add(_AiChatMessage(
+            role: 'assistant',
+            text: offlineAnswer,
+            // Le cerveau local raisonne en français uniquement (comme DUNYA
+            // hors ligne) : même affichage que le repli français du serveur.
+            isFallbackFr: true,
+          ));
+        });
+        _scrollToEnd();
+        return offlineAnswer;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Fitila IA a besoin d’internet. Pour discuter hors connexion, installez '
+            'le cerveau local (DUNYA › Réglages › Cerveau) une seule fois.',
+          ),
+        ),
+      );
+      return null;
     } catch (error) {
       if (!mounted) {
         return null;
@@ -8090,6 +8132,57 @@ class _AiScreenState extends State<AiScreen> {
         setState(() => _busy = false);
       }
     }
+  }
+
+  /// Système Fitila IA pour le cerveau local (persona distincte de DUNYA,
+  /// même moteur Gemma — [DunyaBrain.instance] est un singleton partagé,
+  /// reconfiguré à chaque conversation via sa `key`).
+  String _fitilaIaOfflineSystemPrompt() {
+    final buffer = StringBuffer()
+      ..writeln('Tu es Fitila IA, l’assistant général de la plateforme FITILA.')
+      ..writeln('Tu fonctionnes entièrement sur le téléphone, sans connexion internet : '
+          'dis-le simplement si c’est utile à la réponse (actualité, météo, prix, ou '
+          'toute information qui peut avoir changé).')
+      ..writeln('Tu parles avec des personnes du Nord-Bénin, souvent en milieu rural.')
+      ..writeln('Réponds en français simple et naturel, de façon utile et directe, '
+          'sans liste ni markdown.')
+      ..writeln('Pour la santé, donne des conseils prudents et oriente vers un agent '
+          'de santé ; ne pose jamais de diagnostic.');
+    return buffer.toString();
+  }
+
+  List<({String role, String text})> _brainHistory() {
+    final recent = _messages.length > 12 ? _messages.sublist(_messages.length - 12) : _messages;
+    return [
+      for (final m in recent)
+        if (m.text.trim().isNotEmpty) (role: m.role == 'user' ? 'user' : 'model', text: m.text),
+    ];
+  }
+
+  /// Répond hors ligne avec le cerveau DUNYA (Gemma, sur le téléphone) quand
+  /// il est installé et activé (réglage « Malin ») — sinon `null`. Conversation
+  /// générale uniquement, sans recadrage ni grounding FITILA (contrairement à
+  /// DUNYA), exactement comme le mode en ligne de Fitila IA.
+  Future<String?> _askOfflineBrain(String text) async {
+    if (DunyaSettings.instance.intelligence != DunyaIntelligence.smart) return null;
+    final brain = DunyaBrain.instance;
+    try {
+      await brain.refreshState();
+    } catch (_) {
+      return null;
+    }
+    if (brain.state == DunyaBrainState.absent || brain.state == DunyaBrainState.failed) {
+      return null;
+    }
+    await brain.prepareConversation(
+      key: 'fitila-ia-offline',
+      system: _fitilaIaOfflineSystemPrompt(),
+      history: _brainHistory(),
+    );
+    final buffer = StringBuffer();
+    await brain.generate(text).forEach(buffer.write);
+    final answer = buffer.toString().trim();
+    return answer.isEmpty ? null : answer;
   }
 
   Future<void> _send([String? preset]) => _ask(preset ?? _message.text);
