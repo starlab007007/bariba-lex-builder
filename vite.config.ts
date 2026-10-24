@@ -48,6 +48,29 @@ export default defineConfig(({ mode }) => ({
             urlPattern: /^https:\/\/.*\.hf\.space\/.*/i,
             handler: 'NetworkOnly',
           },
+          {
+            // Moteur ONNX Runtime (traduction ByT5 hors ligne) : gros fichier
+            // (~11 Mo), mis en cache après le premier chargement plutôt que
+            // précaché d'office (hors du budget `maximumFileSizeToCacheInBytes`).
+            urlPattern: /\/ort\/.*\.(wasm|mjs)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'onnxruntime-wasm',
+              expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // Pack hors ligne ByT5 FR↔Baatɔnum (modèle + dictionnaire), téléchargé
+            // une fois en ligne (voir `ensureByt5PackCached`) puis servi du cache.
+            urlPattern: /^https:\/\/fitila\.bj\/dunya-packs\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'dunya-packs',
+              expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
         ],
       },
       manifest: {
