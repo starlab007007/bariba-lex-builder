@@ -411,6 +411,7 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
         child: Column(
           children: [
             _topBar(context),
+            _modeTabs(context),
             Expanded(child: _voiceView()),
             if (_notice != null)
               Padding(
@@ -480,6 +481,67 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
               ),
             ),
           ],
+        ),
+      );
+
+  /// Bascule Vocal / Écrit (comme le `role="tablist"` de la référence web
+  /// `FitilaIAVoice.tsx`) : en plus du bouton Fermer, un choix explicite et
+  /// visible en permanence pour revenir au texte, sans quitter l'écran.
+  Widget _modeTabs(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+        child: Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: const Color(0x14FFFFFF),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0x2EFFFFFF)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: _light,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.mic_rounded, size: 15, color: _deep),
+                      SizedBox(width: 6),
+                      Text(
+                        'Vocal',
+                        style: TextStyle(
+                          color: _deep,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(999),
+                  onTap: widget.onExit ?? () => Navigator.of(context).maybePop(),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Text(
+                      'Écrit',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: .78),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       );
 

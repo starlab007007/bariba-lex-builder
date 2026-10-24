@@ -7849,12 +7849,16 @@ class _AiScreenState extends State<AiScreen> {
   // Comme sur le web (`FitilaIA.tsx` : `if (voiceMode) return <FitilaIAVoice
   // onExit={...} onAsk={sendMessage} />`) : le mode vocal s'affiche en place,
   // sur le même écran, avec le même fil de conversation (`_messages`) — pas
-  // une page séparée avec son propre historique.
-  bool _voiceMode = false;
+  // une page séparée avec son propre historique. Comme sur le web
+  // (`loadPreference('fitilaia-defaultMode', 'voice') !== 'text'`), le mode
+  // vocal est le mode d'ouverture par défaut ; le choix de la personne
+  // (Vocal ou Écrit) est ensuite mémorisé pour les prochaines visites.
+  bool _voiceMode = true;
 
   @override
   void initState() {
     super.initState();
+    unawaited(_loadVoiceModePref());
     FitilaServices.loadDictionary()
         .then((value) {
           if (mounted) {
@@ -7876,6 +7880,30 @@ class _AiScreenState extends State<AiScreen> {
     _player.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadVoiceModePref() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final mode = prefs.getString('fitilaia_defaultMode');
+      if (mounted && mode == 'text') {
+        setState(() => _voiceMode = false);
+      }
+    } catch (_) {
+      // Préférences indisponibles : on garde le mode vocal par défaut.
+    }
+  }
+
+  void _setVoiceMode(bool voice) {
+    setState(() => _voiceMode = voice);
+    unawaited(() async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('fitilaia_defaultMode', voice ? 'voice' : 'text');
+      } catch (_) {
+        // Préférences indisponibles : le choix reste valable pour cette session.
+      }
+    }());
   }
 
   void _scrollToEnd() {
@@ -8371,7 +8399,7 @@ class _AiScreenState extends State<AiScreen> {
     // plutôt qu'une navigation vers une page séparée à historique propre.
     if (_voiceMode) {
       return FitilaIaVoicePage(
-        onExit: () => setState(() => _voiceMode = false),
+        onExit: () => _setVoiceMode(false),
         onAsk: _ask,
       );
     }
@@ -8381,7 +8409,7 @@ class _AiScreenState extends State<AiScreen> {
       subtitle: 'Assistant intelligent en Baatɔnum',
       action: IconButton(
         tooltip: 'Mode vocal',
-        onPressed: () => setState(() => _voiceMode = true),
+        onPressed: () => _setVoiceMode(true),
         icon: const Icon(Icons.graphic_eq_rounded),
       ),
       child: Column(
