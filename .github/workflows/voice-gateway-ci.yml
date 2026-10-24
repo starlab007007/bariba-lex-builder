@@ -44,9 +44,16 @@ jobs:
           docker compose -f docker-composer.yml config --quiet
         env:
           FITILA_MODEL_API_TOKEN: ci-test-value
+      - uses: docker/setup-buildx-action@v3
       - name: Build réel de l'image (sans push) — attrape les échecs de pip install avant la fusion
         # Un `docker compose config` ne construit rien : la vraie régression qui a
         # cassé le premier déploiement (setuptools absent, pip install en échec)
-        # n'était détectable qu'avec un vrai `docker build`. On l'exécute donc
-        # ici aussi, pas seulement dans voice-gateway-deploy.yml après fusion.
-        run: docker build -t voice-gateway-ci-check voice-gateway
+        # n'était détectable qu'avec un vrai build. On utilise la même action
+        # que voice-gateway-deploy.yml (annotations d'erreur détaillées en cas
+        # d'échec, cache de build) plutôt qu'un `docker build` nu.
+        uses: docker/build-push-action@v6
+        with:
+          context: voice-gateway
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
