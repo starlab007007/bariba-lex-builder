@@ -306,10 +306,13 @@ class FitilaBackend {
     await FitilaOffline.clearUserData();
   }
 
-  static Future<String> askFitilaIa(String message) async {
+  static Future<String> askFitilaIa(String message, {String? systemPrompt}) async {
     final response = await client.functions.invoke(
       'fitila-ia-chat',
-      body: {'message': message.trim()},
+      body: {
+        'message': message.trim(),
+        if (systemPrompt != null && systemPrompt.trim().isNotEmpty) 'systemPrompt': systemPrompt.trim(),
+      },
     );
     final data = response.data;
     if (data is! Map) {

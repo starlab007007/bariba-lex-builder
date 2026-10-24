@@ -36,12 +36,38 @@ class FitilaIaVoicePage extends StatefulWidget {
   State<FitilaIaVoicePage> createState() => _FitilaIaVoicePageState();
 }
 
-class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> {
+class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTickerProviderStateMixin {
   static const _light = Color(0xFFE3DEFB);
   static const _deep = Color(0xFF3A2E8C);
 
+  /// Recadre Fitila IA sur le Code foncier bariba pour cet écran précis
+  /// uniquement (passé via `systemPrompt`, en plus de l'invite générale de
+  /// l'edge function `fitila-ia-chat` — jamais à sa place) : l'assistant
+  /// général utilisé ailleurs dans l'app n'est pas touché. Tem IA
+  /// (`foncier_rag.dart`) reste la source RAG dédiée au Code foncier ; ici
+  /// on garde le vrai assistant conversationnel mais on borne son sujet.
+  static const _foncierSystemPrompt =
+      "Tu es « Fitila IA », dans son mode Assistant du Code foncier bariba. "
+      "Salue la personne une seule fois, brièvement, au tout début de la conversation. "
+      "Ensuite, base TOUTES tes réponses suivantes uniquement sur le Code foncier et "
+      "domanial en vigueur au Bénin (titre foncier, bornage, enregistrement, litiges, "
+      "succession foncière, démarches auprès de la mairie ou du juge). "
+      "Si une question sort de ce sujet, dis poliment que tu ne traites que les "
+      "questions de titre foncier et invite la personne à reformuler.";
+
+  /// Questions de démarrage affichées à l'ouverture, en bariba. Traduites via
+  /// le traducteur ByT5 déjà utilisé par l'app (confiance 60 %, non
+  /// certifiées linguistiquement) : à faire relire par une personne
+  /// bariba-phone avant diffusion large.
+  static const _starters = <_Starter>[
+    _Starter(bariba: 'Wunɛn gari yi sɔɔ?', french: 'Tu as un problème de terrain ?'),
+    _Starter(bariba: 'Wunɛn siri kowon wuswaawɔ?', french: 'Tu as un dossier devant le juge pour ton domaine ?'),
+    _Starter(bariba: 'A kĩ a tireru ko wunɛn sina kpaaru?', french: 'Tu veux faire des papiers pour ton domaine ?'),
+  ];
+
   final DunyaMicCapture _mic = DunyaMicCapture();
   final audio.AudioPlayer _player = audio.AudioPlayer();
+  late final AnimationController _dots;
 
   _Phase _phase = _Phase.idle;
   bool _session = false;
@@ -53,6 +79,17 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> {
   String _caption = '';
   String? _lastAnswer;
   String? _notice;
+  List<String> _words = const [];
+  int _activeWord = -1;
+  StreamSubscription<Duration>? _posSub;
+  StreamSubscription<Duration>? _durSub;
+  Duration _audioDuration = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _dots = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..repeat();
+  }
 
   @override
   void dispose() {
@@ -60,6 +97,11 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> {
     _turn++;
     unawaited(_mic.dispose());
     unawaited(_player.dispose());
+    final posSub = _posSub;
+    if (posSub != null) unawaited(posSub.cancel());
+    final durSub = _durSub;
+    if (durSub != null) unawaited(durSub.cancel());
+    _dots.dispose();
     super.dispose();
   }
 
@@ -111,6 +153,8 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> {
     setState(() {
       _phase = _Phase.listening;
       _caption = '';
+      _words = const [];
+      _activeWord = -1;
       _level = 0;
       _notice = null;
     });
@@ -197,7 +241,7 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> {
   Future<void> _answerTurn(String question, int turn) async {
     setState(() => _caption = question);
     try {
-      final answer = (await FitilaBackend.askFitilaIa(question)).trim();
+      final answer = (await FitilaBackend.askFitilaIa(question, systemPrompt: _foncierSystemPrompt)).trim();
       if (!mounted || turn != _turn || !_session) return;
       if (answer.isEmpty) {
         setState(() => _phase = _Phase.idle);
@@ -208,6 +252,8 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> {
       setState(() {
         _phase = _Phase.speaking;
         _caption = answer;
+        _words = answer.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList(growable: false);
+        _activeWord = -1;
       });
       await _speak(answer, turn);
     } catch (error) {
@@ -222,7 +268,25 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> {
     }
   }
 
+  /// Lance une question de démarrage (boutons bariba affichés à l'ouverture)
+  /// exactement comme si elle avait été dictée au micro.
+  Future<void> _askStarter(String bariba) async {
+    if (_phase != _Phase.idle) return;
+    unawaited(HapticFeedback.lightImpact());
+    _session = true;
+    _emptyListens = 0;
+    final turn = ++_turn;
+    setState(() {
+      _phase = _Phase.thinking;
+      _notice = null;
+    });
+    await _answerTurn(bariba, turn);
+  }
+
   Future<void> _speak(String text, int turn) async {
+    unawaited(_posSub?.cancel());
+    unawaited(_durSub?.cancel());
+    _audioDuration = Duration.zero;
     try {
       final generated = await FitilaTranslationAudio.synthesize(
         text: text,
@@ -230,6 +294,19 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> {
       );
       if (!mounted || turn != _turn) return;
       final url = generated.url;
+      _durSub = _player.onDurationChanged.listen((d) {
+        if (turn == _turn) _audioDuration = d;
+      });
+      // Avance le surlignage mot par mot proportionnellement à la position de
+      // lecture (pas d'alignement phonétique exact disponible côté TTS).
+      _posSub = _player.onPositionChanged.listen((pos) {
+        if (!mounted || turn != _turn) return;
+        final total = _audioDuration.inMilliseconds;
+        if (total <= 0 || _words.isEmpty) return;
+        final fraction = (pos.inMilliseconds / total).clamp(0.0, 1.0);
+        final idx = (fraction * _words.length).floor().clamp(0, _words.length - 1);
+        if (idx != _activeWord) setState(() => _activeWord = idx);
+      });
       final finished = _player.onPlayerComplete.first;
       if (url != null && url.isNotEmpty) {
         await _player.play(audio.UrlSource(url));
@@ -246,8 +323,13 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> {
             error is StateError ? error.message : 'Lecture indisponible.',
       );
     } finally {
+      unawaited(_posSub?.cancel());
+      unawaited(_durSub?.cancel());
       if (mounted && turn == _turn) {
-        setState(() => _phase = _Phase.idle);
+        setState(() {
+          _phase = _Phase.idle;
+          _activeWord = _words.length;
+        });
         if (_session && _handsFree) unawaited(_listenTurn());
       }
     }
@@ -261,6 +343,8 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> {
     setState(() {
       _phase = _Phase.speaking;
       _caption = answer;
+      _words = answer.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList(growable: false);
+      _activeWord = -1;
       _notice = null;
     });
     await _speak(answer, turn);
@@ -423,15 +507,7 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> {
             child: _Orb(phase: _phase, level: _level),
           ),
           const SizedBox(height: 24),
-          Text(
-            _label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
+          _labelRow(),
           if (_phase == _Phase.idle) ...[
             const SizedBox(height: 6),
             Text(
@@ -457,25 +533,112 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> {
               ),
             ),
           ],
+          if (_phase == _Phase.idle && _lastAnswer == null) ...[
+            const SizedBox(height: 22),
+            _starterButtons(),
+          ],
           const Spacer(),
           if (_caption.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 18),
-              child: Text(
-                _caption,
-                textAlign: TextAlign.center,
-                maxLines: 6,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w700,
-                  height: 1.35,
-                ),
-              ),
+              child: _captionWidget(),
             ),
         ],
       ),
+    );
+  }
+
+  /// Le libellé d'état, avec les trois points animés façon ChatGPT pendant
+  /// que Fitila IA réfléchit (appel réseau en cours).
+  Widget _labelRow() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Flexible(
+          child: Text(
+            _label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        if (_phase == _Phase.thinking) ...[
+          const SizedBox(width: 8),
+          _ThinkingDots(controller: _dots),
+        ],
+      ],
+    );
+  }
+
+  /// Boutons de démarrage en bariba, affichés seulement à l'accueil tant
+  /// qu'aucune question n'a encore été posée.
+  Widget _starterButtons() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Pour commencer',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: .55),
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: .4,
+          ),
+        ),
+        const SizedBox(height: 9),
+        for (final starter in _starters) ...[
+          _StarterButton(
+            text: starter.bariba,
+            onTap: () => unawaited(_askStarter(starter.bariba)),
+          ),
+          const SizedBox(height: 9),
+        ],
+      ],
+    );
+  }
+
+  /// Le texte de la réponse : surligné mot par mot au fil de la lecture
+  /// audio pendant `speaking` (effet « karaoké »), texte simple sinon.
+  Widget _captionWidget() {
+    if (_phase != _Phase.speaking || _words.isEmpty) {
+      return Text(
+        _caption,
+        textAlign: TextAlign.center,
+        maxLines: 6,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 19,
+          fontWeight: FontWeight.w700,
+          height: 1.35,
+        ),
+      );
+    }
+    return Wrap(
+      alignment: WrapAlignment.center,
+      runSpacing: 4,
+      children: [
+        for (var i = 0; i < _words.length; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Text(
+              _words[i],
+              style: TextStyle(
+                color: i <= _activeWord
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: .32),
+                fontSize: 19,
+                fontWeight: FontWeight.w700,
+                height: 1.35,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -515,6 +678,80 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> {
           ],
         ),
       );
+}
+
+class _Starter {
+  const _Starter({required this.bariba, required this.french});
+  final String bariba;
+  final String french;
+}
+
+class _StarterButton extends StatelessWidget {
+  const _StarterButton({required this.text, required this.onTap});
+  final String text;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: .07),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: .14)),
+          ),
+          child: Text(
+            text,
+            textAlign: TextAlign.left,
+            style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Trois petits points qui pulsent pendant la réflexion de Fitila IA,
+/// façon ChatGPT — anime un indicateur visible pendant l'appel au backend.
+class _ThinkingDots extends StatelessWidget {
+  const _ThinkingDots({required this.controller});
+  final AnimationController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (i) {
+            final t = (controller.value + i * 0.2) % 1.0;
+            final lift = (t < 0.5 ? t * 2 : (1 - t) * 2) * 6;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Transform.translate(
+                offset: Offset(0, -lift),
+                child: Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: .4 + lift / 10),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
 }
 
 class _Orb extends StatelessWidget {
