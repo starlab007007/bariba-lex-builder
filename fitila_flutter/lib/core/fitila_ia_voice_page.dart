@@ -1,11 +1,17 @@
 /// Discussion vocale directe et continue pour Fitila IA (assistant général).
 ///
-/// Même principe d'échange que DUNYA Voix et que Tem IA Vocal : parlez, la
-/// question est transcrite puis la réponse est lue à voix haute ; en mode
-/// mains libres, l'écoute reprend automatiquement à la fin de la lecture.
-/// Ici, la réponse vient du véritable assistant IA général de la plateforme
-/// (`FitilaBackend.askFitilaIa`, edge function `fitila-ia-chat`) — pas d'une
-/// recherche locale hors-ligne comme pour Tem IA.
+/// Même principe d'échange que la référence web (`FitilaIAVoice.tsx`) et que
+/// DUNYA Voix / Tem IA Vocal : parlez, la question est transcrite puis la
+/// réponse est lue à voix haute ; en mode mains libres, l'écoute reprend
+/// automatiquement à la fin de la lecture. La réponse vient du véritable
+/// assistant IA général de la plateforme (edge function `fitila-ia-chat`) —
+/// pas d'une recherche locale hors-ligne comme pour Tem IA, et sans aucun
+/// recadrage de sujet, exactement comme sur le web.
+///
+/// Intégré en place dans l'écran texte Fitila IA (`AiScreen`, `main.dart`) via
+/// `onExit`/`onAsk`, pour que le texte et le vocal partagent le même fil de
+/// conversation — comme le web, où `FitilaIA.tsx` bascule simplement
+/// `voiceMode` et passe sa propre fonction `sendMessage` en `onAsk`.
 ///
 /// Entrée vocale : `bariba-stt` (Omnilingual) ou `transcribe-audio` (français),
 /// avec détection de silence (`DunyaMicCapture`, partagée avec DUNYA). Sortie
@@ -39,7 +45,18 @@ String _formatSpeechRate(double rate) {
 }
 
 class FitilaIaVoicePage extends StatefulWidget {
-  const FitilaIaVoicePage({super.key});
+  /// `onExit`/`onAsk` permettent d'intégrer cet écran en place dans un autre
+  /// (comme `AiScreen`), pour partager son fil de conversation — exactement
+  /// le `onExit`/`onAsk` de la référence web `FitilaIAVoice.tsx`. Sans eux
+  /// (usage autonome), on retombe sur `Navigator.pop` et sur l'assistant
+  /// général direct, toujours sans recadrage de sujet.
+  const FitilaIaVoicePage({super.key, this.onExit, this.onAsk});
+
+  final VoidCallback? onExit;
+
+  /// Envoie la question au même assistant général que le mode texte et
+  /// renvoie le texte de la réponse (ou `null` si rien n'a été envoyé).
+  final Future<String?> Function(String text)? onAsk;
 
   @override
   State<FitilaIaVoicePage> createState() => _FitilaIaVoicePageState();
@@ -48,31 +65,6 @@ class FitilaIaVoicePage extends StatefulWidget {
 class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTickerProviderStateMixin {
   static const _light = Color(0xFFE3DEFB);
   static const _deep = Color(0xFF3A2E8C);
-
-  /// Recadre Fitila IA sur le Code foncier bariba pour cet écran précis
-  /// uniquement (passé via `systemPrompt`, en plus de l'invite générale de
-  /// l'edge function `fitila-ia-chat` — jamais à sa place) : l'assistant
-  /// général utilisé ailleurs dans l'app n'est pas touché. Tem IA
-  /// (`foncier_rag.dart`) reste la source RAG dédiée au Code foncier ; ici
-  /// on garde le vrai assistant conversationnel mais on borne son sujet.
-  static const _foncierSystemPrompt =
-      "Tu es « Fitila IA », dans son mode Assistant du Code foncier bariba. "
-      "Salue la personne une seule fois, brièvement, au tout début de la conversation. "
-      "Ensuite, base TOUTES tes réponses suivantes uniquement sur le Code foncier et "
-      "domanial en vigueur au Bénin (titre foncier, bornage, enregistrement, litiges, "
-      "succession foncière, démarches auprès de la mairie ou du juge). "
-      "Si une question sort de ce sujet, dis poliment que tu ne traites que les "
-      "questions de titre foncier et invite la personne à reformuler.";
-
-  /// Questions de démarrage affichées à l'ouverture, en bariba. Traduites via
-  /// le traducteur ByT5 déjà utilisé par l'app (confiance 60 %, non
-  /// certifiées linguistiquement) : à faire relire par une personne
-  /// bariba-phone avant diffusion large.
-  static const _starters = <_Starter>[
-    _Starter(bariba: 'Wunɛn gari yi sɔɔ?', french: 'Tu as un problème de terrain ?'),
-    _Starter(bariba: 'Wunɛn siri kowon wuswaawɔ?', french: 'Tu as un dossier devant le juge pour ton domaine ?'),
-    _Starter(bariba: 'A kĩ a tireru ko wunɛn sina kpaaru?', french: 'Tu veux faire des papiers pour ton domaine ?'),
-  ];
 
   final DunyaMicCapture _mic = DunyaMicCapture();
   final audio.AudioPlayer _player = audio.AudioPlayer();
@@ -283,12 +275,20 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
         '';
   }
 
-  /// Vrai assistant IA général de la plateforme (edge function
-  /// `fitila-ia-chat`) — jamais une recherche locale hors-ligne.
+  /// Pose la question au même assistant que le mode texte : via `widget.onAsk`
+  /// quand cet écran est intégré en place (fil de conversation partagé, comme
+  /// la référence web), sinon directement sur l'assistant général — jamais
+  /// une recherche locale hors-ligne ni un recadrage de sujet.
+  Future<String?> _ask(String text) {
+    final onAsk = widget.onAsk;
+    if (onAsk != null) return onAsk(text);
+    return FitilaBackend.askFitilaIa(text);
+  }
+
   Future<void> _answerTurn(String question, int turn) async {
     setState(() => _caption = question);
     try {
-      final answer = (await FitilaBackend.askFitilaIa(question, systemPrompt: _foncierSystemPrompt)).trim();
+      final answer = (await _ask(question))?.trim() ?? '';
       if (!mounted || turn != _turn || !_session) return;
       if (answer.isEmpty) {
         setState(() => _phase = _Phase.idle);
@@ -313,21 +313,6 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
       });
       if (_session && _handsFree) unawaited(_listenTurn());
     }
-  }
-
-  /// Lance une question de démarrage (boutons bariba affichés à l'ouverture)
-  /// exactement comme si elle avait été dictée au micro.
-  Future<void> _askStarter(String bariba) async {
-    if (_phase != _Phase.idle) return;
-    unawaited(HapticFeedback.lightImpact());
-    _session = true;
-    _emptyListens = 0;
-    final turn = ++_turn;
-    setState(() {
-      _phase = _Phase.thinking;
-      _notice = null;
-    });
-    await _answerTurn(bariba, turn);
   }
 
   Future<void> _speak(String text, int turn) async {
@@ -464,7 +449,7 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
             _circleButton(
               tooltip: 'Quitter le mode vocal',
               icon: Icons.close_rounded,
-              onTap: () => Navigator.of(context).maybePop(),
+              onTap: widget.onExit ?? () => Navigator.of(context).maybePop(),
             ),
             const SizedBox(width: 10),
             const Icon(Icons.smart_toy_rounded, color: _light, size: 20),
@@ -581,10 +566,6 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
               ),
             ),
           ],
-          if (_phase == _Phase.idle && _lastAnswer == null) ...[
-            const SizedBox(height: 22),
-            _starterButtons(),
-          ],
           const Spacer(),
           if (_subtitles && _caption.isNotEmpty)
             Padding(
@@ -620,34 +601,6 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
         if (_phase == _Phase.thinking) ...[
           const SizedBox(width: 8),
           _ThinkingDots(controller: _dots),
-        ],
-      ],
-    );
-  }
-
-  /// Boutons de démarrage en bariba, affichés seulement à l'accueil tant
-  /// qu'aucune question n'a encore été posée.
-  Widget _starterButtons() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'Pour commencer',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: .55),
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            letterSpacing: .4,
-          ),
-        ),
-        const SizedBox(height: 9),
-        for (final starter in _starters) ...[
-          _StarterButton(
-            text: starter.bariba,
-            onTap: () => unawaited(_askStarter(starter.bariba)),
-          ),
-          const SizedBox(height: 9),
         ],
       ],
     );
@@ -752,43 +705,6 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
           ],
         ),
       );
-}
-
-class _Starter {
-  const _Starter({required this.bariba, required this.french});
-  final String bariba;
-  final String french;
-}
-
-class _StarterButton extends StatelessWidget {
-  const _StarterButton({required this.text, required this.onTap});
-  final String text;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: .07),
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: .14)),
-          ),
-          child: Text(
-            text,
-            textAlign: TextAlign.left,
-            style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w600),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// Trois petits points qui pulsent pendant la réflexion de Fitila IA,
