@@ -11,6 +11,7 @@ import BaribaSmartTextarea from '@/components/classe/BaribaSmartTextarea';
 import { answerFromCorpus } from '@/lib/foncierRAG';
 import FitilaTemIAVoice from '@/components/fitila/FitilaTemIAVoice';
 import { loadPreference, savePreference } from '@/lib/dunya/voiceWeb';
+import { formatOfflineAnswerForText, isTemIaGreetingOnly, TEM_IA_OFFLINE_GREETING, tryTemIaOnline } from '@/lib/temIaAssistant';
 
 interface ChatMessage {
   id: string;
@@ -65,17 +66,28 @@ export default function FitilaTemIA() {
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
 
   /**
-   * Recherche locale (RAG, aucun réseau) et renvoie le texte de la réponse,
-   * pour que le mode vocal puisse la lire sans dupliquer cette logique.
-   * Retourne null si rien n'a été envoyé (saisie vide ou une recherche déjà en cours).
+   * En ligne : raisonnement conversationnel strictement borné aux articles
+   * du Code foncier retrouvés par le serveur (accueil, compréhension,
+   * citation des articles, relance). Hors ligne (pas de réseau, serveur
+   * indisponible) : retombe automatiquement sur la recherche locale
+   * embarquée inchangée (`answerFromCorpus`).
+   *
+   * Renvoie le texte EFFECTIVEMENT PARLÉ (toujours dans une seule langue),
+   * pour que le mode vocal puisse le lire sans dupliquer cette logique —
+   * la bulle affichée en mode texte peut, elle, être encadrée en français
+   * (`formatOfflineAnswerForText`) sans que cela n'affecte la synthèse
+   * vocale. Retourne null si rien n'a été envoyé (saisie vide ou une
+   * recherche déjà en cours).
    */
-  const sendMessage = (text: string): string | null => {
+  const sendMessage = async (text: string): Promise<string | null> => {
     if (!text.trim() || isProcessing) return null;
+    const trimmed = text.trim();
+    const isFirstMessage = messages.length === 0;
 
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
       role: 'user',
-      content: text.trim(),
+      content: trimmed,
       timestamp: Date.now(),
     };
 
@@ -84,24 +96,61 @@ export default function FitilaTemIA() {
     setIsProcessing(true);
 
     try {
-        const { answer, sources, isFallback } = answerFromCorpus(text.trim());
-        const formatted = answer.replace(/\.\s+/g, '.\n\n').trim();
+      const history = messages
+        .filter(m => !m.isLoading)
+        .slice(-8)
+        .map(m => ({ role: m.role, content: m.content }));
 
-        const assistantMsg: ChatMessage = {
+      const online = await tryTemIaOnline(trimmed, history);
+      if (online) {
+        const spoken = online.text.trim();
+        const displayed = spoken.replace(/\.\s+/g, '.\n\n').trim();
+        setMessages(prev => [...prev, {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: formatted,
+          content: displayed,
           timestamp: Date.now(),
-          isTyping: false,
-          isFallback,
-          sources: sources as FoncierSource[],
-        };
-        setMessages(prev => [...prev, assistantMsg]);
-        return formatted;
-      } catch (err) {
-        console.error('[FitilaTemIA] Local search error:', err);
-        toast.error('Erreur de recherche locale');
-        return null;
+          isFallback: false,
+          sources: online.sources,
+        }]);
+        return spoken;
+      }
+
+      // Hors ligne : simple salutation en tout début de conversation —
+      // accueil immédiat, sans faire tourner la recherche locale.
+      if (isFirstMessage && isTemIaGreetingOnly(trimmed)) {
+        setMessages(prev => [...prev, {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: TEM_IA_OFFLINE_GREETING,
+          timestamp: Date.now(),
+          isFallback: false,
+          sources: [],
+        }]);
+        return TEM_IA_OFFLINE_GREETING;
+      }
+
+      // Hors ligne : recherche locale embarquée inchangée, juste mieux
+      // présentée à l'écran (le mode vocal continue de lire le texte brut).
+      const { answer, sources, isFallback } = answerFromCorpus(trimmed);
+      const spoken = answer.replace(/\.\s+/g, '.\n\n').trim();
+      const displayed = formatOfflineAnswerForText(answer, sources as FoncierSource[], isFallback);
+
+      const assistantMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: displayed,
+        timestamp: Date.now(),
+        isTyping: false,
+        isFallback,
+        sources: sources as FoncierSource[],
+      };
+      setMessages(prev => [...prev, assistantMsg]);
+      return spoken;
+    } catch (err) {
+      console.error('[FitilaTemIA] Local search error:', err);
+      toast.error('Erreur de recherche locale');
+      return null;
     } finally {
       setIsProcessing(false);
     }
@@ -109,7 +158,7 @@ export default function FitilaTemIA() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    sendMessage(input);
+    void sendMessage(input);
   };
 
   const isBusy = isProcessing || voiceBusy;
@@ -171,7 +220,7 @@ export default function FitilaTemIA() {
               ].map((q) => (
                 <button
                   key={q}
-                  onClick={() => sendMessage(q)}
+                  onClick={() => void sendMessage(q)}
                   className="text-[12px] font-bold px-4 py-2 rounded-full bg-white border border-[#E4DFCC] text-[#241F2E] hover:bg-[#F3E3B9]/50 transition-colors"
                 >
                   {q}

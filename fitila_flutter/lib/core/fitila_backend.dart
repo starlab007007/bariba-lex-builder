@@ -349,6 +349,49 @@ class FitilaBackend {
     );
   }
 
+  /// Mode EN LIGNE de Tem IA (assistant du Code Foncier Baatɔnum) :
+  /// raisonnement conversationnel strictement borné aux articles du Code
+  /// foncier retrouvés par le serveur (RAG, zéro connaissance générale).
+  /// Lance une [StateError] sur tout échec (réseau, serveur, IA non
+  /// configurée) — à l'appelant de retomber alors sur la recherche locale
+  /// hors ligne ([FoncierRag.answer] / `foncier_rag.dart`, logique de
+  /// correspondance inchangée) ; voir `tem_ia_assistant.dart`.
+  static Future<({String text, bool bariba, List<Map<String, dynamic>> sources})> askTemIaOnline(
+    String message, {
+    List<({String role, String text})> history = const [],
+  }) async {
+    final response = await client.functions.invoke(
+      'fitila-tem-ia-chat',
+      body: {
+        'message': message.trim(),
+        if (history.isNotEmpty)
+          'history': [for (final turn in history) {'role': turn.role, 'content': turn.text}],
+      },
+    );
+    final data = response.data;
+    if (data is! Map) {
+      throw StateError('Réponse Tem IA invalide.');
+    }
+    if (data['error'] != null) {
+      throw StateError(data['error'].toString());
+    }
+    final fallback = data['fallback'] == true;
+    final bariba = data['response_ba']?.toString().trim() ?? '';
+    final french = data['response_fr']?.toString().trim() ?? '';
+    final useBariba = bariba.isNotEmpty && !fallback;
+    final answer = useBariba ? bariba : french;
+    if (answer.isEmpty) {
+      throw StateError('Tem IA n’a retourné aucun texte.');
+    }
+    final sourcesRaw = data['sources'];
+    final sources = <Map<String, dynamic>>[
+      if (sourcesRaw is List)
+        for (final entry in sourcesRaw)
+          if (entry is Map) Map<String, dynamic>.from(entry),
+    ];
+    return (text: answer, bariba: useBariba, sources: sources);
+  }
+
   /// Fil public : dernière version lue gardée sur l'appareil pour la lecture hors-ligne.
   static Future<List<Map<String, dynamic>>> fetchPublicFeed({int limit = 40}) {
     return offlineFirst<List<Map<String, dynamic>>>(() async {

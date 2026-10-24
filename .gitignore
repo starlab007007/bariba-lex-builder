@@ -27,3 +27,6 @@ dist-ssr
 data/translation/training/
 data/translation/eval_*.json
 scripts/dunya_translate/__pycache__/
+
+# Supabase CLI scratch space (local only)
+supabase/.temp/

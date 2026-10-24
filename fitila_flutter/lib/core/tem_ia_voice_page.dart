@@ -2,9 +2,13 @@
 ///
 /// Même principe d'échange que DUNYA Voix : parlez, la question est transcrite
 /// puis la réponse est lue à voix haute ; en mode mains libres, l'écoute
-/// reprend automatiquement à la fin de la lecture. La réponse elle-même reste
-/// celle de la recherche locale embarquée du Code Foncier Baatɔnum
-/// (`FoncierRag.answer`, 100% hors-ligne) — jamais un modèle d'IA générale.
+/// reprend automatiquement à la fin de la lecture. En ligne, la réponse vient
+/// d'un raisonnement conversationnel strictement borné aux articles du Code
+/// foncier retrouvés par le serveur (jamais de connaissance générale). Hors
+/// ligne (pas de réseau, serveur indisponible), elle retombe automatiquement
+/// sur la recherche locale embarquée inchangée (`FoncierRag.answer`,
+/// 100% hors-ligne) — voir `tem_ia_assistant.dart` pour la logique partagée
+/// avec l'écran texte.
 ///
 /// Entrée vocale : `bariba-stt` (Omnilingual) ou `transcribe-audio` (français),
 /// avec détection de silence (`DunyaMicCapture`, partagée avec DUNYA). Sortie
@@ -27,6 +31,7 @@ import '../dunya/voice/dunya_mic_capture.dart';
 import 'fitila_backend.dart';
 import 'fitila_translation_audio.dart';
 import 'foncier_rag.dart';
+import 'tem_ia_assistant.dart';
 
 enum _Phase { idle, listening, thinking, speaking }
 
@@ -62,6 +67,9 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
   int _turn = 0;
   String _caption = '';
   String? _lastAnswer;
+  // Langue de [_lastAnswer], pour que « Réécouter » utilise la même voix
+  // (Baatɔnum ou français) que la lecture d'origine.
+  bool _lastAnswerBariba = true;
   String? _notice;
   List<String> _words = const [];
   int _activeWord = -1;
@@ -254,10 +262,44 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
         '';
   }
 
-  /// Recherche locale (RAG, 100% hors-ligne) dans le Code Foncier Baatɔnum.
+  /// En ligne : raisonnement conversationnel borné aux articles du Code
+  /// Foncier retrouvés par le serveur (accueil, compréhension, citation
+  /// des articles, relance). Hors ligne (pas de réseau, serveur
+  /// indisponible) : retombe automatiquement sur la recherche locale
+  /// embarquée inchangée ([FoncierRag.answer]).
   Future<void> _answerTurn(String question, int turn) async {
     setState(() => _caption = question);
     try {
+      if (turn == 1 && isTemIaGreetingOnly(question)) {
+        if (!mounted || turn != _turn || !_session) return;
+        _lastAnswer = temIaGreetingFr;
+        _lastAnswerBariba = false;
+        setState(() {
+          _phase = _Phase.speaking;
+          _caption = temIaGreetingFr;
+          _words = temIaGreetingFr.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList(growable: false);
+          _activeWord = -1;
+        });
+        await _speak(temIaGreetingFr, turn, bariba: false);
+        return;
+      }
+
+      final online = await tryTemIaOnline(question);
+      if (!mounted || turn != _turn || !_session) return;
+      if (online != null && online.text.trim().isNotEmpty) {
+        final answer = online.text.trim();
+        _lastAnswer = answer;
+        _lastAnswerBariba = online.bariba;
+        setState(() {
+          _phase = _Phase.speaking;
+          _caption = answer;
+          _words = answer.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList(growable: false);
+          _activeWord = -1;
+        });
+        await _speak(answer, turn, bariba: online.bariba);
+        return;
+      }
+
       final result = await FoncierRag.answer(question);
       if (!mounted || turn != _turn || !_session) return;
       final answer = result.answer.trim();
@@ -267,6 +309,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
         return;
       }
       _lastAnswer = answer;
+      _lastAnswerBariba = true;
       setState(() {
         _phase = _Phase.speaking;
         _caption = answer;
@@ -284,14 +327,14 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     }
   }
 
-  Future<void> _speak(String text, int turn) async {
+  Future<void> _speak(String text, int turn, {bool bariba = true}) async {
     unawaited(_posSub?.cancel());
     unawaited(_durSub?.cancel());
     _audioDuration = Duration.zero;
     try {
       final generated = await FitilaTranslationAudio.synthesize(
         text: text,
-        bariba: true,
+        bariba: bariba,
       );
       if (!mounted || turn != _turn) return;
       final url = generated.url;
@@ -349,7 +392,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
       _activeWord = -1;
       _notice = null;
     });
-    await _speak(answer, turn);
+    await _speak(answer, turn, bariba: _lastAnswerBariba);
   }
 
   void _setLang(String lang) {

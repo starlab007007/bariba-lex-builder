@@ -1,9 +1,16 @@
-import { aiFetch, AI_CHAT_URL, getActiveAIKey } from "../_shared/ai-provider.ts";
-// ⚠️ DEPRECATED — Cette edge function n'est plus appelée par le client.
-// Fitila Tem IA fonctionne désormais 100% en local côté navigateur via :
-//   - src/lib/foncierRAG.ts (moteur BM25 + extraction de phrases)
-//   - src/data/foncierBaribaCorpus.ts (corpus 207 articles)
-// Conservée pour l'historique git et un éventuel rollback.
+import { aiFetch, AI_CHAT_URL, aiFailure } from "../_shared/ai-provider.ts";
+
+// Mode EN LIGNE de Fitila Tem IA (assistant conversationnel du Code foncier
+// bariba). Le mode HORS LIGNE (toujours actif, même sans réseau) reste la
+// recherche locale 100% embarquée :
+//   - src/lib/foncierRAG.ts (web) / fitila_flutter/lib/core/foncier_rag.dart
+//   - src/data/foncier_bariba_corpus.json — même corpus, 207 articles
+// Cette fonction est appelée UNIQUEMENT quand une connexion est disponible,
+// pour obtenir une réponse qui comprend, raisonne et reformule naturellement
+// — tout en restant strictement bornée aux articles retrouvés localement
+// (retrieval-augmented generation : jamais de connaissance générale, jamais
+// d'invention). Si l'appel échoue (pas de réseau, erreur serveur), le client
+// retombe automatiquement sur le moteur local hors ligne.
 
 import corpus from "../_shared/foncier_bariba_corpus.json" with { type: "json" };
 
@@ -13,26 +20,50 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const LLM_TIMEOUT_MS = 25_000;
+const GLOBAL_TIMEOUT_MS = 60_000;
 const BYT5_TIMEOUT_MS = 25_000;
 const TOP_K = 8;
 const MIN_RELEVANCE_SCORE = 1; // au moins 1 mot-clé matché
 
-const PRIMARY_MODEL = "mistral-small-latest";
-const FALLBACK_MODEL = "mistral-small-latest";
+interface ChatMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
 
-const NO_INFO_FR = "Désolé, je ne trouve pas cette information dans le document foncier Bariba fourni.";
-const NO_INFO_BA = "Min kun yɛ̃ gari yi tem bausu sariaba tire sɔɔ.";
+function normalizeText(input: string): string {
+  return (input || "").normalize("NFC").replace(/\s+/g, " ").trim();
+}
 
-const SYSTEM_PROMPT = `Tu es 'Fitila Tem IA', un assistant virtuel expertisé. Ta SEULE ET UNIQUE source de connaissances est le document fourni en contexte (Code foncier en langue Bariba — Loi 2013-01 du Bénin). Tu ne dois utiliser AUCUNE de tes connaissances générales pré-entraînées.
+/** Garde le contexte des tours précédents pour que l'IA comprenne les
+ * questions de suivi ("et pour un champ agricole ?") sans tout répéter. */
+function sanitizeHistory(input: unknown): ChatMessage[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .filter((m: any) => m?.content && ["user", "assistant"].includes(m?.role))
+    .map((m: any) => ({ role: m.role, content: normalizeText(String(m.content)) }))
+    .filter((m) => m.content.length > 0)
+    .slice(-8);
+}
+
+const NO_INFO_FR = "Désolé, je ne trouve pas cette information dans le Code foncier bariba. Pouvez-vous reformuler ou préciser votre préoccupation ?";
+const NO_INFO_BA = "Min kun yɛ̃ gari yi tem bausu sariaba tire sɔɔ. A ko reformule ko na kon preoccupation yiru ɔ̃ɔ sa?";
+
+const SYSTEM_PROMPT = `Tu es « Tem IA », l'assistant conversationnel du Code foncier bariba (Loi 2013-01 du Bénin). Ta SEULE ET UNIQUE source de connaissances est le contexte fourni (des extraits du Code foncier retrouvés localement). Tu ne dois utiliser AUCUNE connaissance générale pré-entraînée sur le droit foncier.
 
 RÈGLES STRICTES :
-1. Lorsqu'un utilisateur pose une question, cherche la réponse EXCLUSIVEMENT dans le texte du document fourni en contexte.
-2. Formule ta réponse en français, claire et concise (max 4 phrases), en utilisant UNIQUEMENT les informations extraites de ce document.
-3. Cite systématiquement les numéros d'articles (Saria) sur lesquels tu t'appuies.
-4. Si la question porte sur un sujet qui n'est PAS explicitement mentionné dans le document, tu DOIS répondre EXACTEMENT : "${NO_INFO_FR}"
-5. Ne tente JAMAIS d'inventer, de déduire ou d'utiliser des connaissances externes.
-6. Pas de markdown, pas de JSON, juste du texte clair.`;
+1. Comprends d'abord la préoccupation réelle de la personne avant de répondre. Si sa question est ambiguë ou peut recouvrir plusieurs situations différentes, pose UNE question de clarification brève plutôt que de deviner.
+2. Cherche la réponse EXCLUSIVEMENT dans le contexte fourni, en raisonnant sur son contenu pour reformuler une explication claire et naturelle — ne te contente pas de recopier l'extrait brut.
+3. Cite systématiquement le ou les numéros d'articles (Saria) sur lesquels tu t'appuies (ex : « Selon l'article Saria 14se, ... »).
+4. Réponds en français, de façon chaleureuse et naturelle, en 2 à 5 phrases courtes.
+5. Termine ta réponse par une question du type « Avez-vous une autre préoccupation concernant votre terrain ou vos papiers fonciers ? », pour continuer à assister la personne jusqu'à satisfaction complète — SAUF quand tu réponds par le message d'absence d'information ci-dessous.
+6. Si le contexte fourni ne permet PAS de répondre à la question, réponds EXACTEMENT : "${NO_INFO_FR}"
+7. Ne tente JAMAIS d'inventer, de déduire au-delà du texte fourni, ou d'utiliser des connaissances externes.
+8. Pas de markdown, pas de JSON, juste du texte clair.`;
+
+// Salutation seule, sans question de fond : on répond par un accueil chaleureux
+// sans faire tourner la recherche ni le modèle — rapide, gratuit, sans risque.
+const GREETING_ONLY = /^(bonjour|bonsoir|salut|coucou|hello|slt|cc|bonne\s+(soir[ée]e?|journ[ée]e?|nuit)|merci(\s+beaucoup)?|au\s+revoir|bye)[\s!.,?]*$/i;
+const GREETING_WELCOME_FR = "Bonjour, je suis Tem IA, l'assistant du Code foncier bariba. Je peux vous aider pour toute question sur le titre foncier, le bornage, l'enregistrement, les litiges ou la succession foncière. Quelle est votre préoccupation ?";
 
 interface Article {
   id: number;
@@ -102,33 +133,24 @@ function scoreArticles(query: string): { article: Article; score: number }[] {
   return scored.slice(0, TOP_K);
 }
 
-async function callLLM(messages: { role: string; content: string }[], model: string, apiKey: string, record?: (model: string, provider: string) => void): Promise<string> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
-  try {
-    const resp = await aiFetch(AI_CHAT_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature: 0.2,
-        max_tokens: 400,
-      }),
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-    if (!resp.ok) {
-      if (resp.status === 402) throw new Error("credits_exhausted");
-      if (resp.status === 429) throw new Error("rate_limited");
-      throw new Error(`LLM HTTP ${resp.status}`);
-    }
-    const data = await resp.json();
-    record?.(data.model || resp.headers.get('X-Fitila-AI-Model') || '', resp.headers.get('X-Fitila-AI-Provider') || '');
-    return String(data?.choices?.[0]?.message?.content || "").trim();
-  } finally {
-    clearTimeout(timer);
+/** Même convention que fitila-ia-chat : aiFetch choisit lui-même le
+ * fournisseur/modèle actif (réglages admin) et l'authentification — on ne
+ * fixe ni modèle ni clé ici. */
+async function callActiveAI(messages: { role: string; content: string }[]): Promise<{ text: string; model: string; provider: string; error?: string; retryAfter?: number }> {
+  const response = await aiFetch(AI_CHAT_URL, {
+    body: JSON.stringify({ messages, temperature: 0.2, max_tokens: 400 }),
+    signal: AbortSignal.timeout(20_000),
+  });
+  const provider = response.headers.get("X-Fitila-AI-Provider") || "";
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return { text: "", model: "", provider, error: data.error?.code || "llm_unavailable", retryAfter: Number(data.retry_after) || undefined };
   }
+  return {
+    text: String(data?.choices?.[0]?.message?.content || "").trim(),
+    model: data.model || response.headers.get("X-Fitila-AI-Model") || "",
+    provider,
+  };
 }
 
 async function translateFrToBa(text: string, supabaseUrl: string, serviceKey: string): Promise<string | null> {
@@ -154,37 +176,57 @@ async function translateFrToBa(text: string, supabaseUrl: string, serviceKey: st
   }
 }
 
-Deno.serve(async (req: Request) => {
+export async function handleChat(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const startedAt = Date.now();
+  const globalTimer = setTimeout(() => {}, GLOBAL_TIMEOUT_MS);
 
   try {
     const body = await req.json().catch(() => ({}));
-    const message = String(body?.message || "").trim();
+    const message = normalizeText(typeof body?.message === "string" ? body.message : "");
+    const history = sanitizeHistory(body?.history ?? body?.conversationHistory);
 
     if (!message) {
-      return new Response(JSON.stringify({ error: "Message vide" }), {
+      clearTimeout(globalTimer);
+      return new Response(JSON.stringify({ error: "Message vide", duration: Date.now() - startedAt }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const ACTIVE_AI_KEY = await getActiveAIKey();
-    if (!ACTIVE_AI_KEY) throw new Error("La clé du fournisseur IA actif est absente.");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY");
 
     console.log(`[fitila-tem-ia] Q: "${message.slice(0, 100)}"`);
 
-    // 1) Retrieval
+    // 0) Salutation pure : accueil chaleureux immédiat, sans recherche ni LLM
+    // (uniquement en tout début de conversation — un "merci" après plusieurs
+    // échanges ne doit pas réinitialiser l'accueil).
+    if (history.length === 0 && GREETING_ONLY.test(message)) {
+      let ba: string | null = null;
+      if (supabaseUrl && serviceKey) ba = await translateFrToBa(GREETING_WELCOME_FR, supabaseUrl, serviceKey);
+      clearTimeout(globalTimer);
+      return new Response(
+        JSON.stringify({
+          response_ba: ba,
+          response_fr: GREETING_WELCOME_FR,
+          fallback: !ba,
+          sources: [],
+          duration: Date.now() - startedAt,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // 1) Retrieval (même moteur, même corpus que le mode hors ligne)
     const ranked = scoreArticles(message);
     const relevant = ranked.filter((r) => r.score >= MIN_RELEVANCE_SCORE);
 
-    let usedModel = '', usedProvider = '';
-    const recordAI = (model: string, provider: string) => { usedModel = model; usedProvider = provider; };
     let responseFr: string;
     let sources: { id: number; number: string; page: number; content: string }[] = [];
+    let modelUsed = "";
+    let providerUsed = "";
 
     if (relevant.length === 0) {
       responseFr = NO_INFO_FR;
@@ -203,48 +245,58 @@ Deno.serve(async (req: Request) => {
         content: article.content,
       }));
 
-      const userPrompt = `[CONTEXTE — Articles du Code Foncier Bariba]\n${contextText}\n\n[QUESTION]\n${message}\n\n[RÉPONSE — uniquement basée sur le contexte ci-dessus, en français, citant les Saria pertinentes]`;
+      const userPrompt = `[CONTEXTE — Articles du Code foncier bariba retrouvés localement]\n${contextText}\n\n[QUESTION DE LA PERSONNE]\n${message}\n\n[RÉPONSE — uniquement basée sur le contexte ci-dessus, en français, citant les Saria pertinentes, en terminant par une question de suivi]`;
 
-      // 3) LLM with fallback
-      try {
-        responseFr = await callLLM(
-          [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: userPrompt },
-          ],
-          PRIMARY_MODEL,
-          ACTIVE_AI_KEY,
-          recordAI,
+      const messages: ChatMessage[] = [
+        { role: "system", content: SYSTEM_PROMPT },
+        ...history,
+        { role: "user", content: userPrompt },
+      ];
+
+      let llmResult = await callActiveAI(messages).catch((e) => ({ text: "", model: "", provider: "", error: e instanceof Error ? e.message : "llm_unavailable" }));
+      if (!llmResult.text && !["llm_not_configured", "llm_forbidden", "llm_rate_limited", "credits_exhausted"].includes(llmResult.error ?? "") && Date.now() - startedAt < 25_000) {
+        console.warn(`[fitila-tem-ia] LLM retry after: ${llmResult.error}`);
+        llmResult = await callActiveAI(messages).catch((e) => ({ text: "", model: "", provider: "", error: e instanceof Error ? e.message : "llm_unavailable" }));
+      }
+
+      if (llmResult.error === "credits_exhausted") {
+        clearTimeout(globalTimer);
+        return new Response(
+          JSON.stringify({ error: "credits_exhausted", message: "Les crédits IA sont épuisés. Veuillez recharger votre compte.", duration: Date.now() - startedAt }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "";
-        if (msg === "credits_exhausted") {
-          return new Response(
-            JSON.stringify({ error: "credits_exhausted", message: "Crédits IA épuisés." }),
-            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-          );
-        }
-        console.warn(`[fitila-tem-ia] Primary failed (${msg}), trying fallback`);
-        responseFr = await callLLM(
-          [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: userPrompt },
-          ],
-          FALLBACK_MODEL,
-          ACTIVE_AI_KEY,
-          recordAI,
+      }
+      if (llmResult.error === "llm_rate_limited") {
+        clearTimeout(globalTimer);
+        const retryAfter = llmResult.retryAfter || 30;
+        return new Response(
+          JSON.stringify({ error: "llm_rate_limited", message: aiFailure(429, retryAfter).message, retry_after: retryAfter, duration: Date.now() - startedAt }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(retryAfter) } },
+        );
+      }
+      if (llmResult.error === "llm_not_configured" || llmResult.error === "llm_forbidden") {
+        clearTimeout(globalTimer);
+        return new Response(
+          JSON.stringify({
+            error: "llm_not_configured",
+            message: "Le cerveau en ligne de Tem IA n'est pas configuré (clé du modèle de langage absente ou sans droit).",
+            duration: Date.now() - startedAt,
+          }),
+          { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
 
-      if (!responseFr) responseFr = NO_INFO_FR;
+      modelUsed = llmResult.model;
+      providerUsed = llmResult.provider;
+      responseFr = normalizeText(llmResult.text) || NO_INFO_FR;
 
-      // Si le LLM a répondu "no info", on vide les sources
+      // Si le modèle a quand même répondu "pas d'info", on vide les sources.
       if (responseFr.includes(NO_INFO_FR)) {
         sources = [];
       }
     }
 
-    // 4) Traduction FR → BA (best-effort)
+    // 3) Traduction FR → BA (best-effort)
     let responseBa: string | null = null;
     let isFallback = true;
     if (supabaseUrl && serviceKey && responseFr !== NO_INFO_FR) {
@@ -258,25 +310,29 @@ Deno.serve(async (req: Request) => {
       isFallback = false;
     }
 
+    clearTimeout(globalTimer);
     return new Response(
       JSON.stringify({
         response_ba: responseBa,
         response_fr: responseFr,
         fallback: isFallback,
-        model: usedModel,
-        provider: usedProvider,
+        model: modelUsed,
+        provider: providerUsed,
         sources,
         duration: Date.now() - startedAt,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
+    clearTimeout(globalTimer);
     const msg = e instanceof Error ? e.message : "Unknown error";
-    console.error("[fitila-tem-ia] Error:", msg);
+    const isTimeout = /aborted|timeout/i.test(msg);
+    console.error("[fitila-tem-ia] Error:", e);
     return new Response(
-      JSON.stringify({ error: msg, duration: Date.now() - startedAt }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({ error: isTimeout ? "Temps de réponse dépassé" : msg, duration: Date.now() - startedAt }),
+      { status: isTimeout ? 504 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
-});
+}
 
+if (Deno.env.get("FITILA_AI_TEST") !== "1") Deno.serve(handleChat);

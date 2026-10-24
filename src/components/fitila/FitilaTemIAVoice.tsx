@@ -2,9 +2,12 @@
  * Discussion vocale directe et continue pour Fitila IA (Tem IA / Code Foncier).
  *
  * Même principe d'échange que DUNYA IA (écoute -> réponse -> écoute, mains libres) : parlez, la
- * question est transcrite puis cherchée dans le Code Foncier Baatɔnum embarqué (RAG 100% local,
- * `onAsk` = `answerFromCorpus`, aucun appel à un modèle d'IA générale ni à ByT5), et la réponse est
- * lue à voix haute. Le mode mains libres relance l'écoute dès la fin de la lecture.
+ * question est transcrite puis traitée par `onAsk` (partagé avec le mode texte, `FitilaTemIA.tsx`) :
+ * en ligne, un raisonnement conversationnel strictement borné aux articles du Code foncier
+ * retrouvés par le serveur ; hors ligne, la recherche locale embarquée inchangée
+ * (`answerFromCorpus`). `onAsk` renvoie toujours un texte dans une seule langue (Baatɔnum dans
+ * l'immense majorité des cas), lu à voix haute. Le mode mains libres relance l'écoute dès la fin
+ * de la lecture.
  *
  * STT : reconnaissance du navigateur en français (hors ligne, sans réseau) ou enregistrement avec
  * détection de silence puis transcription seule (`dunya-voice-turn`, transcribe_only) en baatɔnum —
@@ -26,8 +29,8 @@ type InputLang = 'bba' | 'fr';
 
 type Props = {
   onExit: () => void;
-  /** Recherche locale (RAG) + historique partagé avec la vue texte ; renvoie le texte de la réponse, ou null si rien n'a été envoyé. */
-  onAsk: (text: string) => string | null;
+  /** Hybride en ligne/hors ligne partagé avec la vue texte ; renvoie le texte de la réponse (une seule langue, pour la synthèse vocale), ou null si rien n'a été envoyé. */
+  onAsk: (text: string) => Promise<string | null>;
 };
 
 /**
@@ -102,7 +105,7 @@ export default function FitilaTemIAVoice({ onExit, onAsk }: Props) {
     setCaption(question);
     setNotice(null);
     try {
-      const answer = onAsk(question);
+      const answer = await onAsk(question);
       if (!active()) return;
       if (!answer) {
         setNotice('Je n’ai rien reçu. Réessayez.');
