@@ -1,3 +1,4 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { aiFetch, AI_CHAT_URL, aiFailure } from "../_shared/ai-provider.ts";
 
 // Mode EN LIGNE de Fitila Tem IA (assistant conversationnel du Code foncier
@@ -11,8 +12,15 @@ import { aiFetch, AI_CHAT_URL, aiFailure } from "../_shared/ai-provider.ts";
 // (retrieval-augmented generation : jamais de connaissance générale, jamais
 // d'invention). Si l'appel échoue (pas de réseau, erreur serveur), le client
 // retombe automatiquement sur le moteur local hors ligne.
-
-import corpus from "../_shared/foncier_bariba_corpus.json" with { type: "json" };
+//
+// Le corpus (207 articles) est chargé à l'exécution depuis la table Postgres
+// `public.foncier_bariba_corpus` plutôt qu'importé statiquement depuis un
+// fichier JSON : un fichier d'environ 89 Ko ne peut pas être intégré de façon
+// fiable dans un seul déploiement de fonction edge (le contenu se tronque
+// silencieusement), alors que la table se remplit en plusieurs petites
+// requêtes, indépendamment du déploiement du code. Même contenu que le
+// fichier hors ligne (src/data/foncier_bariba_corpus.json), chargé une seule
+// fois par instance et mis en cache en mémoire (corpus statique, 207 lignes).
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,7 +83,7 @@ interface Article {
   page: number;
 }
 
-const ARTICLES: Article[] = corpus as Article[];
+let ARTICLES: Article[] = [];
 
 // Stop-words FR + BA courants à ignorer
 const STOPWORDS = new Set<string>([
@@ -99,12 +107,53 @@ function tokenize(s: string): string[] {
     .filter((w) => w.length >= 2 && !STOPWORDS.has(w));
 }
 
-// Pré-tokenize le corpus une seule fois (au cold-start)
-const ARTICLE_TOKENS: { id: number; tokens: Set<string>; tokenList: string[] }[] = ARTICLES.map((a) => {
-  const text = `${a.number} ${a.content} ${a.bonu} ${a.gariWiru}`;
-  const list = tokenize(text);
-  return { id: a.id, tokens: new Set(list), tokenList: list };
-});
+// Pré-tokenisé une fois le corpus chargé depuis la base (voir ensureCorpusLoaded).
+let ARTICLE_TOKENS: { id: number; tokens: Set<string>; tokenList: string[] }[] = [];
+
+let corpusLoadPromise: Promise<void> | null = null;
+
+/**
+ * Charge le corpus des 207 articles depuis la table `public.foncier_bariba_corpus`
+ * et le met en cache en mémoire pour la durée de vie de l'instance (cold start).
+ * Le corpus est petit (207 lignes) et statique, donc un chargement unique par
+ * instance suffit — pas besoin de le refaire à chaque requête.
+ */
+async function ensureCorpusLoaded(): Promise<void> {
+  if (ARTICLES.length > 0) return;
+  if (!corpusLoadPromise) {
+    corpusLoadPromise = (async () => {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY");
+      if (!supabaseUrl || !serviceKey) {
+        throw new Error("Configuration Supabase manquante pour charger le corpus du Code foncier.");
+      }
+      const supabase = createClient(supabaseUrl, serviceKey);
+      const { data, error } = await supabase
+        .from("foncier_bariba_corpus")
+        .select("id, number, content, bonu, baeru, gari_wiru, page")
+        .order("id", { ascending: true });
+      if (error) throw new Error(`Chargement du corpus impossible : ${error.message}`);
+
+      const articles: Article[] = (data ?? []).map((row: any) => ({
+        id: row.id,
+        number: row.number,
+        content: row.content,
+        bonu: row.bonu,
+        baeru: row.baeru,
+        gariWiru: row.gari_wiru,
+        page: row.page,
+      }));
+
+      ARTICLES = articles;
+      ARTICLE_TOKENS = articles.map((a) => {
+        const text = `${a.number} ${a.content} ${a.bonu} ${a.gariWiru}`;
+        const list = tokenize(text);
+        return { id: a.id, tokens: new Set(list), tokenList: list };
+      });
+    })();
+  }
+  return corpusLoadPromise;
+}
 
 function scoreArticles(query: string): { article: Article; score: number }[] {
   const queryTokens = tokenize(query);
@@ -220,6 +269,7 @@ export async function handleChat(req: Request): Promise<Response> {
     }
 
     // 1) Retrieval (même moteur, même corpus que le mode hors ligne)
+    await ensureCorpusLoaded();
     const ranked = scoreArticles(message);
     const relevant = ranked.filter((r) => r.score >= MIN_RELEVANCE_SCORE);
 
