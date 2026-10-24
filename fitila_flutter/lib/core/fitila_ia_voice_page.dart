@@ -449,8 +449,7 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
             _circleButton(
               tooltip: 'Quitter le mode vocal',
               icon: Icons.close_rounded,
-              onTap: () =>
-                  widget.onExit?.call() ?? Navigator.of(context).maybePop(),
+              onTap: widget.onExit ?? () => Navigator.of(context).maybePop(),
             ),
             const SizedBox(width: 10),
             const Icon(Icons.smart_toy_rounded, color: _light, size: 20),
