@@ -306,7 +306,17 @@ class FitilaBackend {
     await FitilaOffline.clearUserData();
   }
 
-  static Future<String> askFitilaIa(String message) async {
+  static Future<String> askFitilaIa(String message) async =>
+      (await askFitilaIaDetailed(message)).text;
+
+  /// Comme [askFitilaIa], mais expose aussi si la réponse est un repli en
+  /// français (traduction Baatɔnum indisponible côté serveur) — nécessaire
+  /// pour que l'écran de discussion affiche le même avertissement et
+  /// masque le bouton « Traduire en français » que la référence web
+  /// (`FitilaIA.tsx`), au lieu de traiter toute réponse comme du Baatɔnum.
+  static Future<({String text, bool isFallbackFr})> askFitilaIaDetailed(
+    String message,
+  ) async {
     final response = await client.functions.invoke(
       'fitila-ia-chat',
       body: {'message': message.trim()},
@@ -324,11 +334,15 @@ class FitilaBackend {
     final fallback = data['fallback'] == true;
     final bariba = data['response_ba']?.toString().trim() ?? '';
     final french = data['response_fr']?.toString().trim() ?? '';
+    final isFallbackFr = fallback || bariba.isEmpty;
     final answer = bariba.isNotEmpty && !fallback ? bariba : french;
     if (answer.isEmpty) {
       throw StateError('Fitila IA n’a retourné aucun texte.');
     }
-    return answer.replaceAll(RegExp(r'\.\s+'), '.\n\n').trim();
+    return (
+      text: answer.replaceAll(RegExp(r'\.\s+'), '.\n\n').trim(),
+      isFallbackFr: isFallbackFr,
+    );
   }
 
   /// Fil public : dernière version lue gardée sur l'appareil pour la lecture hors-ligne.

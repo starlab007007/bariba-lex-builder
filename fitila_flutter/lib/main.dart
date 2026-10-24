@@ -7822,10 +7822,14 @@ class AiScreen extends StatefulWidget {
 }
 
 class _AiChatMessage {
-  _AiChatMessage({required this.role, required this.text});
+  _AiChatMessage({required this.role, required this.text, this.isFallbackFr = false});
 
   final String role;
   final String text;
+  // Réponse de repli en français (la traduction Baatɔnum a échoué côté
+  // serveur) : comme sur le web, on n'offre alors ni traduction ni
+  // lecture en Baatɔnum, et on affiche l'avertissement au lieu.
+  final bool isFallbackFr;
   String? translationFr;
   bool translating = false;
 }
@@ -7834,10 +7838,14 @@ class _AiScreenState extends State<AiScreen> {
   final _message = TextEditingController();
   final List<_AiChatMessage> _messages = [];
   final _voiceMedia = FitilaMediaController();
+  final _player = audio.AudioPlayer();
+  final _scroll = ScrollController();
   List<DictionaryEntry> _dictionary = const [];
   bool _busy = false;
   bool _showKeyboard = false;
   bool _voiceRecording = false;
+  String _voiceLang = 'bba'; // 'bba' | 'fr' — langue de la dictée vocale.
+  String? _speakingKey;
 
   @override
   void initState() {
@@ -7860,7 +7868,39 @@ class _AiScreenState extends State<AiScreen> {
   void dispose() {
     _message.dispose();
     _voiceMedia.dispose();
+    _player.dispose();
+    _scroll.dispose();
     super.dispose();
+  }
+
+  void _scrollToEnd() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scroll.hasClients) return;
+      _scroll.animateTo(
+        _scroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  Future<void> _listen(String text, bool bariba, String key) async {
+    if (_speakingKey != null) return;
+    setState(() => _speakingKey = key);
+    try {
+      await _speakAnywhere(_player, text, bariba: bariba);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e is StateError ? e.message : 'Lecture audio indisponible.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _speakingKey = null);
+    }
   }
 
   List<DictionaryEntry> get _suggestions {
@@ -7930,11 +7970,18 @@ class _AiScreenState extends State<AiScreen> {
         if (asset == null) return;
         final transcript = await FitilaTranslationAudio.transcribe(
           asset: asset,
-          sourceIsBariba: true,
+          sourceIsBariba: _voiceLang == 'bba',
         );
-        if (!mounted) return;
-        setState(() => _message.text = transcript);
-        await _send(transcript);
+        if (!mounted || transcript.trim().isEmpty) return;
+        // Comme sur le web : la dictée complète le champ pour relecture, elle
+        // n'envoie pas le message automatiquement.
+        final merged = [_message.text.trim(), transcript.trim()]
+            .where((s) => s.isNotEmpty)
+            .join(' ');
+        setState(() {
+          _message.text = merged;
+          _message.selection = TextSelection.collapsed(offset: merged.length);
+        });
       } catch (error) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -7971,15 +8018,21 @@ class _AiScreenState extends State<AiScreen> {
       _message.clear();
       _showKeyboard = false;
     });
+    _scrollToEnd();
 
     try {
-      final answer = await FitilaBackend.askFitilaIa(text);
+      final result = await FitilaBackend.askFitilaIaDetailed(text);
       if (!mounted) {
         return;
       }
       setState(() {
-        _messages.add(_AiChatMessage(role: 'assistant', text: answer));
+        _messages.add(_AiChatMessage(
+          role: 'assistant',
+          text: result.text,
+          isFallbackFr: result.isFallbackFr,
+        ));
       });
+      _scrollToEnd();
     } catch (error) {
       if (!mounted) {
         return;
@@ -8066,7 +8119,7 @@ class _AiScreenState extends State<AiScreen> {
             ),
             const SizedBox(height: 18),
             const Text(
-              'Yaa sɔ̃ɔ wírú Bariba mɛ̀, ǹ nɛ́ɛ̀ daa gɔ!',
+              'Yaa sɔ̃ɔ wírú Baatɔnum mɛ̀, ǹ nɛ́ɛ̀ daa gɔ!',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: _fitilaInk,
@@ -8159,7 +8212,37 @@ class _AiScreenState extends State<AiScreen> {
                   ),
                   if (!mine) ...[
                     const SizedBox(height: 4),
-                    if (message.translationFr == null)
+                    // Écouter la réponse à voix haute (comme ReplyAudioPlayer
+                    // sur le web) : Baatɔnum normalement, français en repli.
+                    TextButton.icon(
+                      onPressed: _speakingKey != null
+                          ? null
+                          : () => _listen(
+                              message.text,
+                              !message.isFallbackFr,
+                              'listen:$index',
+                            ),
+                      icon: _speakingKey == 'listen:$index'
+                          ? const SizedBox.square(
+                              dimension: 13,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.volume_up_rounded, size: 15),
+                      label: const Text('Écouter la réponse'),
+                    ),
+                    if (message.isFallbackFr)
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4, top: 1),
+                        child: Text(
+                          '⚠ Réponse en français (traduction Baatɔnum indisponible)',
+                          style: TextStyle(
+                            color: Color(0xFFB08900),
+                            fontSize: 10,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      )
+                    else if (message.translationFr == null)
                       TextButton.icon(
                         onPressed: message.translating
                             ? null
@@ -8206,6 +8289,30 @@ class _AiScreenState extends State<AiScreen> {
                                 color: _fitilaInkSoft,
                                 fontSize: 12.5,
                                 height: 1.4,
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: _speakingKey != null
+                                  ? null
+                                  : () => _listen(
+                                      message.translationFr!,
+                                      false,
+                                      'listen-fr:$index',
+                                    ),
+                              icon: _speakingKey == 'listen-fr:$index'
+                                  ? const SizedBox.square(
+                                      dimension: 12,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.volume_up_rounded, size: 13),
+                              label: const Text(
+                                'Écouter en français',
+                                style: TextStyle(fontSize: 11.5),
+                              ),
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                minimumSize: const Size(0, 28),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
                             ),
                           ],
@@ -8260,6 +8367,7 @@ class _AiScreenState extends State<AiScreen> {
             child: _messages.isEmpty
                 ? _emptyState()
                 : ListView.separated(
+                    controller: _scroll,
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: _messages.length + (_busy ? 1 : 0),
                     separatorBuilder: (_, _) => const SizedBox(height: 12),
@@ -8316,6 +8424,33 @@ class _AiScreenState extends State<AiScreen> {
               padding: const EdgeInsets.only(bottom: 7),
               child: _BaribaKeyboard(onInsert: _insertCharacter),
             ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                const Text(
+                  'Langue du vocal',
+                  style: TextStyle(color: _fitilaMuted, fontSize: 11),
+                ),
+                const SizedBox(width: 6),
+                DropdownButton<String>(
+                  value: _voiceLang,
+                  underline: const SizedBox.shrink(),
+                  isDense: true,
+                  items: const [
+                    DropdownMenuItem(value: 'bba', child: Text('Baatɔnum')),
+                    DropdownMenuItem(value: 'fr', child: Text('Français')),
+                  ],
+                  onChanged: _busy || _voiceRecording
+                      ? null
+                      : (value) {
+                          if (value != null) setState(() => _voiceLang = value);
+                        },
+                ),
+              ],
+            ),
+          ),
           Container(
             padding: const EdgeInsets.only(top: 9),
             decoration: const BoxDecoration(
