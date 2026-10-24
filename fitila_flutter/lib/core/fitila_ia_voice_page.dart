@@ -21,6 +21,7 @@ import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart' as audio;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../dunya/voice/dunya_cloud_voice.dart';
 import '../dunya/voice/dunya_mic_capture.dart';
@@ -28,6 +29,14 @@ import 'fitila_backend.dart';
 import 'fitila_translation_audio.dart';
 
 enum _Phase { idle, listening, thinking, speaking }
+
+/// Vitesses de lecture proposées (mêmes valeurs que les écrans vocaux web).
+const List<double> _speechRates = [0.75, 1.0, 1.25, 1.5];
+
+String _formatSpeechRate(double rate) {
+  final text = rate == rate.roundToDouble() ? rate.toStringAsFixed(0) : rate.toStringAsFixed(2);
+  return '${text.replaceAll('.', ',')}×';
+}
 
 class FitilaIaVoicePage extends StatefulWidget {
   const FitilaIaVoicePage({super.key});
@@ -84,11 +93,49 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
   StreamSubscription<Duration>? _posSub;
   StreamSubscription<Duration>? _durSub;
   Duration _audioDuration = Duration.zero;
+  bool _subtitles = true;
+  double _speechRate = 1.0;
 
   @override
   void initState() {
     super.initState();
     _dots = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..repeat();
+    unawaited(_loadPrefs());
+  }
+
+  Future<void> _loadPrefs() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final subtitles = p.getBool('fitilaia_voice_subtitles');
+      final rate = p.getDouble('fitilaia_voice_speechRate');
+      if (!mounted) return;
+      setState(() {
+        if (subtitles != null) _subtitles = subtitles;
+        if (rate != null && _speechRates.contains(rate)) _speechRate = rate;
+      });
+    } catch (_) {
+      // Préférences indisponibles (stockage restreint) : on garde les valeurs par défaut.
+    }
+  }
+
+  void _toggleSubtitles() {
+    final next = !_subtitles;
+    setState(() => _subtitles = next);
+    unawaited(_savePref(() async => (await SharedPreferences.getInstance()).setBool('fitilaia_voice_subtitles', next)));
+  }
+
+  void _cycleSpeed() {
+    final next = _speechRates[(_speechRates.indexOf(_speechRate) + 1) % _speechRates.length];
+    setState(() => _speechRate = next);
+    unawaited(_savePref(() async => (await SharedPreferences.getInstance()).setDouble('fitilaia_voice_speechRate', next)));
+  }
+
+  Future<void> _savePref(Future<void> Function() write) async {
+    try {
+      await write();
+    } catch (_) {
+      // Préférences indisponibles : la valeur reste en mémoire pour cette session.
+    }
   }
 
   @override
@@ -308,6 +355,7 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
         if (idx != _activeWord) setState(() => _activeWord = idx);
       });
       final finished = _player.onPlayerComplete.first;
+      await _player.setPlaybackRate(_speechRate);
       if (url != null && url.isNotEmpty) {
         await _player.play(audio.UrlSource(url));
       } else {
@@ -538,10 +586,13 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
             _starterButtons(),
           ],
           const Spacer(),
-          if (_caption.isNotEmpty)
+          if (_subtitles && _caption.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 18),
-              child: _captionWidget(),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: KeyedSubtree(key: ValueKey(_phase), child: _captionWidget()),
+              ),
             ),
         ],
       ),
@@ -626,8 +677,9 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
         for (var i = 0; i < _words.length; i++)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 3),
-            child: Text(
-              _words[i],
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
               style: TextStyle(
                 color: i <= _activeWord
                     ? Colors.white
@@ -636,6 +688,7 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
                 fontWeight: FontWeight.w700,
                 height: 1.35,
               ),
+              child: Text(_words[i]),
             ),
           ),
       ],
@@ -659,6 +712,27 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
                 'Mains libres ${_handsFree ? 'activées' : 'désactivées'}',
                 style: const TextStyle(color: Colors.white),
               ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0x40FFFFFF)),
+                shape: const StadiumBorder(),
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: _toggleSubtitles,
+              icon: Icon(
+                _subtitles ? Icons.closed_caption_rounded : Icons.closed_caption_off_rounded,
+                color: Colors.white,
+              ),
+              label: const Text('Sous-titres', style: TextStyle(color: Colors.white)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0x40FFFFFF)),
+                shape: const StadiumBorder(),
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: _cycleSpeed,
+              icon: const Icon(Icons.speed_rounded, color: Colors.white),
+              label: Text('Vitesse ${_formatSpeechRate(_speechRate)}', style: const TextStyle(color: Colors.white)),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Color(0x40FFFFFF)),
                 shape: const StadiumBorder(),
