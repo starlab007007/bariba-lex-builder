@@ -86,7 +86,9 @@ void main() {
 
     expect(find.text('Fitila IA'), findsOneWidget);
     expect(
-      find.text('Yaa sɔ̃ɔ wírú Bariba mɛ̀, ǹ nɛ́ɛ̀ daa gɔ!'),
+      // Comme la référence web (src/pages/fitila/FitilaIA.tsx) : « Baatɔnum »,
+      // pas « Bariba ».
+      find.text('Yaa sɔ̃ɔ wírú Baatɔnum mɛ̀, ǹ nɛ́ɛ̀ daa gɔ!'),
       findsOneWidget,
     );
     expect(find.text('Posez vos questions en Baatɔnum'), findsOneWidget);
