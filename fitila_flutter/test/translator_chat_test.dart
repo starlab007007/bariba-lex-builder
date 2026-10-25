@@ -27,8 +27,11 @@ void main() {
     for (final l in ['Voix', 'Texte', 'Photo', 'Coller', 'Doc']) {
       expect(find.text(l), findsOneWidget);
     }
-    expect(find.text('Mode conversation'), findsOneWidget);
-    expect(find.textContaining('Détection'), findsOneWidget);
+    // Détection auto et Mode conversation sont désormais des bascules
+    // icône-seule fusionnées dans la rangée du haut (pour dégager de
+    // l'espace vertical) ; leur étiquette reste accessible via l'infobulle.
+    expect(find.byTooltip('Mode conversation'), findsOneWidget);
+    expect(find.byTooltip('Détection auto'), findsOneWidget);
     expect(find.text('Traduisez simplement'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -53,7 +56,7 @@ void main() {
     );
     await tester.enterText(find.byType(TextField).first, 'Bonjour, comment allez-vous ?');
     await tester.pump();
-    expect(find.textContaining('Détecté : Français'), findsOneWidget);
+    expect(find.byTooltip('Détecté : Français'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('send')));
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.text('Bonjour, comment allez-vous ?'), findsOneWidget);
