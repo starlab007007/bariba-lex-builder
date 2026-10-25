@@ -1,14 +1,23 @@
 name: Debug voice-gateway health (temporaire, 7)
 
 # Workflow de diagnostic jetable : voir debug-voice-gateway-health4.yml /
-# health5.yml / health6.yml (supprimés) pour le contexte. health6.yml a été
-# recréé ici sous un nouveau nom car l'API GitHub refusait systématiquement
-# le dispatch de health6.yml avec "Workflow does not have 'workflow_dispatch'
-# trigger" malgré un YAML confirmé byte-identique et valide (son entrée dans
-# `actions/workflows` affichait le CHEMIN comme `name`, signe d'un bug
-# d'enregistrement côté GitHub plutôt qu'une erreur réelle de syntaxe) —
-# recréer sous un nom neuf a déjà résolu ce même symptôme plus tôt dans ce
-# diagnostic.
+# health5.yml / health6.yml (supprimés) pour le contexte.
+#
+# health6.yml refusait systématiquement le dispatch API ("Workflow does not
+# have 'workflow_dispatch' trigger", 422) malgré un YAML byte-identique et
+# en apparence valide. Cause réelle, isolée par bisection sur un workflow
+# minimal séparé : les 4 étapes "traceback omnilingual_asr (partie N)"
+# utilisaient `run: echo "::notice::live2a: ..."` en scalaire YAML SUR UNE
+# SEULE LIGNE (sans `|`). Un tel scalaire "plain" contient alors la séquence
+# `: ` (deux-points + espace, ex. "live2a: ") — interdite par la grammaire
+# YAML dans un scalaire non cité en contexte bloc. Le parseur de GitHub
+# n'affiche pas d'erreur de syntaxe claire pour autant : il enregistre le
+# workflow en mode dégradé (son `name` dans `GET .../actions/workflows`
+# devient le CHEMIN du fichier au lieu du champ `name:` du YAML — signe
+# fiable du problème), et `workflow_dispatch` n'est alors plus reconnu.
+# Fix : passer ces 4 étapes en bloc `run: |` (le contenu devient littéral,
+# le `: ` n'y a plus de sens spécial). Renommer en health7.yml a aussi été
+# fait en cours de route pour forcer un ré-enregistrement propre.
 # À supprimer une fois le diagnostic terminé.
 
 on:
@@ -52,19 +61,23 @@ jobs:
         continue-on-error: true
 
       - name: traceback omnilingual_asr (partie 1)
-        run: echo "::notice::live2a: $(cut -c1-900 /tmp/live2.txt | tr '\n' '|')"
+        run: |
+          echo "::notice::live2a: $(cut -c1-900 /tmp/live2.txt | tr '\n' '|')"
         continue-on-error: true
 
       - name: traceback omnilingual_asr (partie 2)
-        run: echo "::notice::live2b: $(cut -c901-1800 /tmp/live2.txt 2>/dev/null | tr '\n' '|')"
+        run: |
+          echo "::notice::live2b: $(cut -c901-1800 /tmp/live2.txt 2>/dev/null | tr '\n' '|')"
         continue-on-error: true
 
       - name: traceback omnilingual_asr (partie 3)
-        run: echo "::notice::live2c: $(cut -c1801-2700 /tmp/live2.txt 2>/dev/null | tr '\n' '|')"
+        run: |
+          echo "::notice::live2c: $(cut -c1801-2700 /tmp/live2.txt 2>/dev/null | tr '\n' '|')"
         continue-on-error: true
 
       - name: traceback omnilingual_asr (partie 4, fin)
-        run: echo "::notice::live2d: $(tail -c 900 /tmp/live2.txt 2>/dev/null | tr '\n' '|')"
+        run: |
+          echo "::notice::live2d: $(tail -c 900 /tmp/live2.txt 2>/dev/null | tr '\n' '|')"
         continue-on-error: true
 
       - name: curl -v health local (depuis le VPS)
