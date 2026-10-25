@@ -35,18 +35,14 @@ jobs:
             "docker images --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.CreatedSince}}' | grep voice-gateway" \
             | while IFS= read -r l; do echo "::notice::IMG: $l"; done
 
-      - name: Version torch dans l'image NEUVE (dangling, la plus récente)
+      - name: Version torch dans l'image actuellement taguée :latest
         run: |
           ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
-            'img=$(docker images --filter "dangling=true" --filter "reference=*voice-gateway*" --format "{{.ID}}" | head -1); \
-             if [ -z "$img" ]; then echo "AUCUNE IMAGE DANGLING TROUVEE"; else \
-             docker run --rm --entrypoint python "$img" -c "import torch,sys; print(\"torch_version\",torch.__version__); print(\"cuda_available\",torch.cuda.is_available())" 2>&1; fi' \
+            'docker run --rm --entrypoint python ghcr.io/starlab007007/bariba-lex-builder-voice-gateway:latest -c "import torch,sys; print(\"torch_version\",torch.__version__); print(\"cuda_available\",torch.cuda.is_available())" 2>&1' \
             | while IFS= read -r l; do echo "::notice::TORCHCHK: $l"; done
 
-      - name: Forcer un chargement ASR direct dans cette image (révèle l'erreur exacte)
+      - name: pip show torch (confirme l'index utilisé, CPU vs CUDA)
         run: |
           ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
-            'img=$(docker images --filter "dangling=true" --filter "reference=*voice-gateway*" --format "{{.ID}}" | head -1); \
-             if [ -z "$img" ]; then echo "AUCUNE IMAGE DANGLING TROUVEE"; else \
-             docker run --rm --entrypoint python "$img" -c "from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline; ASRInferencePipeline(model_card=\"omniASR_CTC_300M\")" 2>&1 | tail -9; fi' \
-            | while IFS= read -r l; do echo "::notice::ASRCHK: $l"; done
+            'docker run --rm --entrypoint pip ghcr.io/starlab007007/bariba-lex-builder-voice-gateway:latest show torch 2>&1' \
+            | while IFS= read -r l; do echo "::notice::PIPSHOW: $l"; done
