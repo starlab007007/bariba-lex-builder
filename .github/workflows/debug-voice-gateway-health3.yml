@@ -1,0 +1,57 @@
+name: DEBUG - état bariba-voice-gateway après correctif torch CPU
+
+# Temporaire. Lecture seule, ssh natif, une commande courte par étape (la
+# limite de 10 annotations ::notice:: par étape — pas par job — a été
+# découverte lors d'un diagnostic précédent). À supprimer une fois le
+# diagnostic obtenu.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+    steps:
+      - name: Clé ssh
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          install -m 600 /dev/null /tmp/vps_key
+          printf '%s\n' "$SSH_KEY" > /tmp/vps_key
+
+      - name: Statut + santé du conteneur
+        run: |
+          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
+            "docker inspect bariba-voice-gateway --format 'Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} StartedAt={{.State.StartedAt}} RestartCount={{.RestartCount}}' 2>&1" \
+            | while IFS= read -r l; do echo "::notice::STATE: $l"; done
+
+      - name: Curl health one-shot
+        run: |
+          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
+            "curl -sS --max-time 5 http://127.0.0.1:8090/health 2>&1" \
+            | while IFS= read -r l; do echo "::notice::CURL: $l"; done
+
+      - name: Logs récents (10 dernières lignes)
+        run: |
+          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
+            "docker logs --tail 10 bariba-voice-gateway 2>&1" \
+            | while IFS= read -r l; do echo "::notice::LOGS: $l"; done
+
+      - name: Logs plus anciens (chargement des modèles)
+        run: |
+          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
+            "docker logs bariba-voice-gateway 2>&1 | grep -iE 'error|chargement|loaded|exception|traceback' | tail -9" \
+            | while IFS= read -r l; do echo "::notice::ERRLOGS: $l"; done
+
+      - name: Image actuellement active
+        run: |
+          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
+            "docker inspect bariba-voice-gateway --format '{{.Image}}' && docker images --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.CreatedSince}}' | grep voice-gateway" \
+            | while IFS= read -r l; do echo "::notice::IMG: $l"; done
