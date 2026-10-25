@@ -61,6 +61,9 @@ import 'dunya/voice/dunya_translation_memory.dart';
 import 'dunya/voice/dunya_translator.dart';
 import 'dunya/voice/dunya_assistant.dart';
 import 'dunya/voice/dunya_settings.dart';
+import 'dunya/voice/dunya_voice_brain.dart';
+import 'dunya/voice/dunya_voice_phrases.dart';
+import 'dunya/dunya_core.dart' show DunyaAssetKnowledgeRepository;
 import 'dunya/voice/offline_voice_banner.dart';
 import 'dunya/dunya_home.dart';
 import 'translator/translator_chat.dart';
@@ -7803,6 +7806,9 @@ class _AiChatMessage {
 }
 
 class _AiScreenState extends State<AiScreen> {
+  // Outils essentiels DUNYA (dictionnaire, traduction, heure, calcul…) : réponse de secours de
+  // Fitila IA quand Gemma n'est pas installé — fonctionne avec ou sans Internet.
+  final _skills = DunyaVoiceBrain(knowledge: DunyaAssetKnowledgeRepository());
   final _message = TextEditingController();
   final List<_AiChatMessage> _messages = [];
   final _voiceMedia = FitilaMediaController();
@@ -8037,9 +8043,39 @@ class _AiScreenState extends State<AiScreen> {
 
     try {
       // Politique FITILA : pas de cerveau serveur payant ; Gemma local + traducteur FITILA.
-      // --- Hors ligne : cerveau DUNYA (Gemma) sur le téléphone, si installé ---
-      final offlineAnswer = await _askOfflineBrain(trimmed);
+      // --- Compréhension : une question en Baatɔnum est d'abord ramenée en français ---
+      var french = trimmed;
+      var understoodBariba = false;
+      if (_skills.detectLanguage(trimmed) == 'bba') {
+        final t = await DunyaTranslator.translate(trimmed, toBariba: false);
+        if (t != null) {
+          french = t.text;
+          understoodBariba = true;
+        }
+      }
       if (!mounted) return null;
+      // --- Cerveau DUNYA (Gemma) sur le téléphone, si installé : en ligne comme hors ligne ---
+      final offlineAnswer = await _askOfflineBrain(french);
+      if (!mounted) return null;
+      if (offlineAnswer == null) {
+        // Sans Gemma : outils essentiels DUNYA (dictionnaire, heure, calcul, traduction…).
+        try {
+          final reply = await _skills.respond(
+            understoodBariba ? french : trimmed,
+            DunyaReplyLanguage.french,
+          );
+          final display = reply.display.trim();
+          if (display.isNotEmpty && mounted) {
+            setState(() {
+              _messages.add(_AiChatMessage(role: 'assistant', text: display, isFallbackFr: true));
+            });
+            _scrollToEnd();
+            return display;
+          }
+        } catch (_) {
+          // Aucun outil disponible : message d'installation ci-dessous.
+        }
+      }
       if (offlineAnswer != null) {
         // Gemma raisonne en français : traduction FR → Baatɔnum par le traducteur FITILA
         // (mémoire, ByT5 local, ByT5 serveur, raffinement déterministe), sinon français.
