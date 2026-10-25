@@ -70,19 +70,20 @@ jobs:
         # v0.1.10, pas v1.x : c'est la version déjà prouvée par deploy.yml,
         # mirror-dunya-brain.yml et publish-dunya-packs.yml dans ce même
         # repo. v1.0.3 échouait silencieusement en ~2s sans jamais exécuter
-        # le script (aucune de mes annotations ::notice:: n'apparaissait),
-        # signe que l'action elle-même ne s'initialisait pas correctement.
+        # le script. Mais même avec v0.1.10, l'utilisation de `env:`/`envs:`
+        # pour transmettre IMAGE/GHCR_READ_TOKEN/FITILA_MODEL_API_TOKEN a
+        # reproduit exactement le même échec silencieux en 2s (alors que
+        # deploy.yml, qui fonctionne, n'utilise ni `env:` ni `envs:` sur son
+        # étape ssh-action) : le vrai problème était ce mécanisme de
+        # transmission d'env, pas la version de l'action. Les valeurs sont
+        # donc désormais interpolées directement dans `script` via `${{ }}`,
+        # exactement comme le fait deploy.yml.
         uses: appleboy/ssh-action@v0.1.10
-        env:
-          IMAGE: ${{ needs.build-and-push.outputs.image }}
-          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
-          FITILA_MODEL_API_TOKEN: ${{ secrets.FITILA_MODEL_API_TOKEN }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           command_timeout: 30m
-          envs: IMAGE,GHCR_READ_TOKEN,FITILA_MODEL_API_TOKEN
           script: |
             set -uo pipefail
             # ::error:: devient une annotation lisible via l'API GitHub même
@@ -91,6 +92,10 @@ jobs:
             # je dispose de diagnostiquer un échec ici sans deviner.
             trap 'echo "::error::deploy script a échoué : commande [$BASH_COMMAND], code $?"' ERR
             set -e
+
+            IMAGE="${{ needs.build-and-push.outputs.image }}"
+            GHCR_READ_TOKEN="${{ secrets.GHCR_READ_TOKEN }}"
+            FITILA_MODEL_API_TOKEN="${{ secrets.FITILA_MODEL_API_TOKEN }}"
 
             echo "::notice::1/6 cd"
             cd /home/debian/bariba-lex-builder
