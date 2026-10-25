@@ -68,13 +68,23 @@ jobs:
           set +e
           install -m 600 /dev/null /tmp/vps_key
           printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/vps_key
-          out="$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 -i /tmp/vps_key \
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 -i /tmp/vps_key \
             "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
-            "docker pull '$IMAGE:latest' 2>&1; echo EXITCODE=\$?" 2>&1)"
-          rc=$?
-          echo "::notice::DEBUG G ssh rc=$rc"
-          echo "::notice::DEBUG G sortie docker pull : $(echo "$out" | tr '\n' ' ' | cut -c1-900)"
-          rm -f /tmp/vps_key
+            "echo MARK_START; which docker; docker --version; echo MARK_PULL; docker pull '$IMAGE:latest'; echo MARK_EXIT=\$?" \
+            > /tmp/ssh_out.txt 2>/tmp/ssh_err.txt
+          echo "::notice::DEBUG H local-ssh-rc=$?"
+          echo "::notice::DEBUG H stdout-bytes=$(wc -c < /tmp/ssh_out.txt) stderr-bytes=$(wc -c < /tmp/ssh_err.txt)"
+          i=1
+          while IFS= read -r line; do
+            echo "::notice::DEBUG H-OUT-$i: $line"
+            i=$((i+1))
+          done < /tmp/ssh_out.txt
+          i=1
+          while IFS= read -r line; do
+            echo "::notice::DEBUG H-ERR-$i: $line"
+            i=$((i+1))
+          done < /tmp/ssh_err.txt
+          rm -f /tmp/vps_key /tmp/ssh_out.txt /tmp/ssh_err.txt
       - name: Synchroniser docker-composer.yml sur le VPS
         # Ne pas supposer que deploy.yml (déclenché séparément) l'a déjà fait :
         # ce workflow doit rester correct même s'il tourne seul (dispatch
