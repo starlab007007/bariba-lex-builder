@@ -21,7 +21,7 @@ appelaient en priorité un service Meta hébergé sur ce même VPS
 
 Autrement dit : le « filet de sécurité » annoncé n'a probablement jamais
 réellement intercepté le trafic de production. Ce service corrige les
-trois points : une route publique (`voice.fitila.bj`), un déploiement
+trois points : une route publique (`fitila.bj/voice-api`), un déploiement
 automatique à chaque changement de code (`.github/workflows/
 voice-gateway-deploy.yml`), un health-check réel et une surveillance
 continue (`.github/workflows/voice-gateway-watchdog.yml`).
@@ -68,12 +68,13 @@ modification : même contrat qu'avant.
 2. Le service est déclaré dans `docker-composer.yml` (racine du repo), donc
    il est aussi redémarré/rafraîchi par le déploiement web normal
    (`deploy.yml`) via `docker compose up -d`.
-3. **Étapes manuelles ponctuelles (hors de ce que je peux faire depuis
-   GitHub Actions) :**
-   - Créer un enregistrement DNS `voice.fitila.bj` → IP du VPS (même IP que
-     `fitila.bj`).
-   - Confirmer que le VPS a assez de RAM libre pour ce service en plus de
-     l'app web (prévoir ~3-4 Go : torch + deux modèles chargés en mémoire).
+3. Exposé sur **`fitila.bj/voice-api`** (chemin, pas sous-domaine) via Traefik
+   — aucun enregistrement DNS supplémentaire n'est nécessaire, le domaine et
+   le certificat TLS de `fitila.bj` existent déjà.
+4. **Étape manuelle ponctuelle restante (hors de ce que je peux faire depuis
+   GitHub Actions)** : confirmer que le VPS a assez de RAM libre pour ce
+   service en plus de l'app web (prévoir ~3-4 Go : torch + deux modèles
+   chargés en mémoire).
 
 ## Ce qui reste dans `experiments/bariba_voice_compare/`
 

@@ -67,7 +67,12 @@ jobs:
           target: "/home/debian/bariba-lex-builder"
           overwrite: true
       - name: Déploiement + health-check + rollback automatique sur le VPS
-        uses: appleboy/ssh-action@v1.0.3
+        # v0.1.10, pas v1.x : c'est la version déjà prouvée par deploy.yml,
+        # mirror-dunya-brain.yml et publish-dunya-packs.yml dans ce même
+        # repo. v1.0.3 échouait silencieusement en ~2s sans jamais exécuter
+        # le script (aucune de mes annotations ::notice:: n'apparaissait),
+        # signe que l'action elle-même ne s'initialisait pas correctement.
+        uses: appleboy/ssh-action@v0.1.10
         env:
           IMAGE: ${{ needs.build-and-push.outputs.image }}
           GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}

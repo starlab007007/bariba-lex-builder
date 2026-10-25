@@ -7,7 +7,7 @@ configuré dans l'infra versionnée) et sans pipeline de déploiement — donc
 très probablement jamais réellement atteint par `bariba-tts`/`bariba-stt`
 en production, malgré le code appelant `metaVoiceInfer()` en priorité. La
 route de production réelle est désormais [`voice-gateway/`](../../voice-gateway/),
-exposée sur `voice.fitila.bj` via Traefik, déployée automatiquement et
+exposée sur `fitila.bj/voice-api` via Traefik, déployée automatiquement et
 surveillée en continu. Le contenu ci-dessous reste valable pour qui veut
 faire tourner ce service expérimental en local pour des comparaisons.
 
