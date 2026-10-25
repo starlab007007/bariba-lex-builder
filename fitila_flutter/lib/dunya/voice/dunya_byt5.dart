@@ -78,7 +78,9 @@ class DunyaByt5 {
 
   Future<String?> _translate(String encoder, String decoder, String text, bool toBariba) async {
     if (!mayUseByt5Manifest(_manifest,
-        experimentalConsent: DunyaSettings.instance.experimentalTranslation)) return null;
+        experimentalConsent: DunyaSettings.instance.experimentalTranslation)) {
+      return null;
+    }
     await (_loading ??= _load(encoder, decoder));
     if (!_loaded) return null;
     final prefix = (toBariba ? _config['prefix_fr_ba'] : _config['prefix_ba_fr'])?.toString()

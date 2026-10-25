@@ -1,11 +1,14 @@
 name: Deploy FITILA voice & translation functions
 
-# Manual: needs a valid SUPABASE_ACCESS_TOKEN secret (the current one returns 401).
+# Deploy only after blocking checks and a project-scoped credential preflight.
 on:
+  push:
+    branches: [main]
+    paths: ['supabase/functions/**', '.github/workflows/deploy-voice-translate-functions.yml']
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   deploy:
@@ -20,17 +23,28 @@ jobs:
         with:
           deno-version: v2.x
       - name: Type-check and test before deploying
-        continue-on-error: true
         run: |
+          set -euo pipefail
           mkdir -p /tmp/rep
           exec > >(tee /tmp/rep/typecheck.txt) 2>&1
-          for f in byt5-bariba-translate bariba-tts tts-audio fitila-ia-chat meta-voice-gateway dunya-voice-turn transcribe-audio ai-translate fitila-tem-ia-chat; do
+          for f in byt5-bariba-translate bariba-stt bariba-tts tts-audio fitila-ia-chat meta-voice-gateway dunya-voice-turn transcribe-audio ai-translate fitila-tem-ia-chat; do
             deno check supabase/functions/$f/index.ts
           done
           deno test --no-check --allow-read --allow-env --allow-net supabase/functions/_shared/translation-verifier_test.ts
       - uses: supabase/setup-cli@v1
         with:
           version: latest
+      - name: Verify Supabase deployment credential
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN" || { echo "::error::SUPABASE_ACCESS_TOKEN is missing from GitHub production secrets."; exit 1; }
+          code=$(curl -sS --max-time 15 -o /tmp/supabase-auth-check.json -w '%{http_code}' \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/functions")
+          if [ "$code" != 200 ]; then
+            echo "::error::Supabase deployment credential rejected (HTTP $code). Replace the production SUPABASE_ACCESS_TOKEN secret with a valid token scoped to FITILA and Edge Functions write access. No functions were deployed."
+            exit 1
+          fi
       - name: Deploy
         run: |
           set -o pipefail
@@ -38,17 +52,16 @@ jobs:
           { test -n "$SUPABASE_ACCESS_TOKEN" && echo "token: present" || echo "token: MISSING"; } | tee /tmp/rep/deploy.txt
           supabase --version | tee -a /tmp/rep/deploy.txt
           rc=0
-          for f in tts-audio bariba-tts byt5-bariba-translate fitila-ia-chat meta-voice-gateway dunya-voice-turn transcribe-audio ai-translate fitila-tem-ia-chat; do
+          for f in tts-audio bariba-stt bariba-tts byt5-bariba-translate fitila-ia-chat meta-voice-gateway dunya-voice-turn transcribe-audio ai-translate fitila-tem-ia-chat; do
             echo "== $f" | tee -a /tmp/rep/deploy.txt
             supabase functions deploy "$f" --project-ref "$SUPABASE_PROJECT_ID" --use-api 2>&1 | tee -a /tmp/rep/deploy.txt || rc=1
           done
           exit $rc
-      - name: Publish deploy log
+      - name: Publish deployment diagnostics
         if: always()
-        run: |
-          cd /tmp/rep 2>/dev/null || exit 0
-          git init -q && git checkout -q -b ci-reports/deploy
-          git config user.name github-actions && git config user.email actions@users.noreply.github.com
-          git add -A && git commit -q -m "deploy ${GITHUB_SHA}"
-          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-reports/deploy
-
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitila-edge-deployment-${{ github.sha }}
+          path: /tmp/rep/
+          if-no-files-found: ignore
+          retention-days: 14

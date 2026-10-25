@@ -74,7 +74,9 @@ class DunyaTranslator {
     final cacheKey = '${toBariba ? 'fr-bba' : 'bba-fr'}|${remoteFirst ? 'remote' : 'local'}|${clean.toLowerCase()}';
     final cached = _cache[cacheKey];
     if (cached != null && (cached.engine != 'online' || remoteOk) &&
-        (cached.engine != 'offline' || offline != null)) return cached;
+        (cached.engine != 'offline' || offline != null)) {
+      return cached;
+    }
     final engines = [
       ('memory', memory),
       if (remoteFirst) ('online', online),
