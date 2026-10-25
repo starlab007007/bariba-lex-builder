@@ -16,40 +16,52 @@ jobs:
       - name: pip upgrade
         run: pip install --no-cache-dir --upgrade pip setuptools wheel
       - uses: actions/checkout@v4
-      - name: install + swap CPU + vérif (tout dans une seule étape)
+      - name: install (numpy non pinné, comme avant) + swap CPU + force numpy>=2 + vérif
         run: |
           set +e
           pip install --no-cache-dir -r voice-gateway/requirements.txt > /tmp/out.txt 2>&1
           RC1=$?
-          echo "::notice::rc1=${RC1} lignes=$(wc -l < /tmp/out.txt) octets=$(wc -c < /tmp/out.txt)"
-          tail -n 25 /tmp/out.txt > /tmp/tail1.txt
-          echo "::notice::tail1a: $(cut -c1-900 /tmp/tail1.txt | tr '\n' '|')"
-          echo "::notice::tail1b: $(tail -c 900 /tmp/tail1.txt | tr '\n' '|')"
+          echo "::notice::rc1=${RC1} $(tail -c 900 /tmp/out.txt | tr '\n' '|')"
+          if [ "$RC1" -ne 0 ]; then echo "::error::pip install a échoué"; exit 1; fi
 
-          if [ "$RC1" -ne 0 ]; then
-            echo "::error::pip install a échoué (rc=${RC1}), arrêt."
-            exit 1
-          fi
+          echo "::notice::numpy_avant=$(pip show numpy 2>/dev/null | grep -i '^Version:')"
 
           TORCH_VER="$(pip show torch 2>/dev/null | grep -i '^Version:' | awk '{print $2}' | cut -d'+' -f1)"
-          echo "::notice::torch_ver=${TORCH_VER}"
           pip install --no-cache-dir --force-reinstall --no-deps \
             "torch==${TORCH_VER}" "torchaudio==${TORCH_VER}" \
             --index-url https://download.pytorch.org/whl/cpu > /tmp/out2.txt 2>&1
           RC2=$?
-          echo "::notice::rc2=${RC2} $(tail -c 900 /tmp/out2.txt | tr '\n' '|')"
+          echo "::notice::rc2=${RC2} torch_ver=${TORCH_VER}"
 
           FAIRSEQ2N_VER="$(pip show fairseq2n 2>/dev/null | grep -i '^Version:' | awk '{print $2}' | cut -d'+' -f1)"
-          echo "::notice::fairseq2n_ver=${FAIRSEQ2N_VER}"
           pip install --no-cache-dir --force-reinstall --no-deps \
             "fairseq2n==${FAIRSEQ2N_VER}" "fairseq2==${FAIRSEQ2N_VER}" \
             --index-url "https://fair.pkg.atmeta.com/fairseq2/whl/pt${TORCH_VER}/cpu" > /tmp/out3.txt 2>&1
           RC3=$?
-          echo "::notice::rc3=${RC3} $(tail -c 900 /tmp/out3.txt | tr '\n' '|')"
+          echo "::notice::rc3=${RC3} fairseq2n_ver=${FAIRSEQ2N_VER}"
 
-          echo "::notice::versions: $(pip show numpy pyarrow torch torchaudio fairseq2n 2>&1 | grep -E '^(Name|Version)' | tr '\n' ' ')"
-
-          python -c "from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline; print('omnilingual_asr import OK')" > /tmp/out4.txt 2>&1
+          # Force numpy>=2.0 APRÈS le swap, en --no-deps (même logique que
+          # torch/fairseq2n) : fairseq2 0.5.2/0.6 déclare numpy~=1.23 dans
+          # ses métadonnées pip, strictement incompatible avec pyarrow qui
+          # exige numpy>=2.0 À L'EXÉCUTION (sans le déclarer dans pip). Un
+          # pin numpy>=2.0 dès `pip install -r requirements.txt` casse donc
+          # la résolution complète (ResolutionImpossible, confirmé). Forcer
+          # APRÈS coup, sans vérifier les deps, contourne ce conflit déclaré
+          # mais non réel en pratique (fairseq2n fonctionne avec numpy 2.x).
+          pip install --no-cache-dir --force-reinstall --no-deps "numpy>=2.0,<2.6" > /tmp/out4.txt 2>&1
           RC4=$?
-          echo "::notice::rc4=${RC4} $(cut -c1-900 /tmp/out4.txt | tr '\n' '|')"
-          exit $RC4
+          echo "::notice::rc4=${RC4} numpy_apres=$(pip show numpy 2>/dev/null | grep -i '^Version:') $(tail -c 500 /tmp/out4.txt | tr '\n' '|')"
+
+          python -c "\
+import torch; print('torch', torch.__version__, torch.cuda.is_available()); \
+import torchaudio; print('torchaudio', torchaudio.__version__); \
+import fairseq2n, fairseq2; print('fairseq2 ok'); \
+import numpy; print('numpy', numpy.__version__); \
+import pyarrow; print('pyarrow', pyarrow.__version__)" > /tmp/out5.txt 2>&1
+          RC5=$?
+          echo "::notice::rc5=${RC5} $(cut -c1-900 /tmp/out5.txt | tr '\n' '|')"
+
+          python -c "from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline; print('omnilingual_asr import OK')" > /tmp/out6.txt 2>&1
+          RC6=$?
+          echo "::notice::rc6=${RC6} $(cut -c1-900 /tmp/out6.txt | tr '\n' '|')"
+          exit $RC6
