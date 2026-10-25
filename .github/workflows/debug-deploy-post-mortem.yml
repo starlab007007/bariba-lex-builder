@@ -53,3 +53,46 @@ jobs:
         run: |
           OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker pull ghcr.io/starlab007007/bariba-lex-builder-voice-gateway:497064e007761e584ac25bbee7cde303bd3f4d9f 2>&1 | tail -5 && docker run --rm --entrypoint python ghcr.io/starlab007007/bariba-lex-builder-voice-gateway:497064e007761e584ac25bbee7cde303bd3f4d9f -c \"from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline; print('ASR import OK dans image neuve')\"" 2>&1 | tr '\n' '|' | cut -c1-900)"
           echo "::notice::newimg: ${OUT}"
+
+      - name: lancer l'app complete de l'image neuve sur un port de test
+        run: |
+          ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker rm -f test-new-asr 2>/dev/null; docker run -d --name test-new-asr -p 18090:8090 ghcr.io/starlab007007/bariba-lex-builder-voice-gateway:497064e007761e584ac25bbee7cde303bd3f4d9f" 2>&1 | tr '\n' '|'
+          echo "::notice::launched"
+
+      - name: attendre et sonder /health toutes les 20s (jusqu'a 5 min)
+        run: |
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+            OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "curl -sS --max-time 4 http://127.0.0.1:18090/health 2>&1" 2>&1 | tr '\n' '|' | cut -c1-300)"
+            echo "::notice::probe${i}: ${OUT}"
+            if echo "$OUT" | grep -q '"status":"ok"'; then
+              echo "::notice::SUCCES a la sonde ${i}"
+              break
+            fi
+            sleep 20
+          done
+
+      - name: logs complets du conteneur de test
+        run: |
+          ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker logs test-new-asr" > /tmp/testlogs.txt 2>&1
+          echo "longueur: $(wc -c < /tmp/testlogs.txt)"
+        continue-on-error: true
+
+      - name: logs test (partie 1)
+        run: |
+          echo "::notice::tlog1: $(cut -c1-900 /tmp/testlogs.txt 2>/dev/null | tr '\n' '|')"
+        continue-on-error: true
+
+      - name: logs test (partie 2)
+        run: |
+          echo "::notice::tlog2: $(cut -c901-1800 /tmp/testlogs.txt 2>/dev/null | tr '\n' '|')"
+        continue-on-error: true
+
+      - name: logs test (partie 3, fin)
+        run: |
+          echo "::notice::tlog3: $(tail -c 900 /tmp/testlogs.txt 2>/dev/null | tr '\n' '|')"
+        continue-on-error: true
+
+      - name: nettoyage conteneur de test
+        run: |
+          ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker rm -f test-new-asr" 2>&1 | tr '\n' '|'
+        continue-on-error: true
