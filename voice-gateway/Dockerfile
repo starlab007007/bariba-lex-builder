@@ -24,19 +24,31 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 # au chargement du pipeline ASR (omnilingual-asr/fairseq2) et échoue avec
 # "libcudart.so.13: cannot open shared object file" — le service démarre
 # quand même (TTS fonctionne) mais reste "degraded" (ASR indisponible)
-# indéfiniment. Installer torch CPU en amont ne suffit PAS : la commande
-# suivante (`pip install -r requirements.txt`, qui tire omnilingual-asr)
-# réévalue tout le graphe de dépendances depuis l'index PyPI par défaut et
-# réinstalle silencieusement la variante CUDA pour satisfaire la
-# contrainte de torch d'omnilingual-asr/fairseq2 — confirmé empiriquement
-# (`pip show torch` donnait encore 2.8.0+cu128 après ce premier essai).
-# Un fichier de contraintes épingle la version CPU exacte déjà installée,
-# pour que la commande suivante la considère satisfaite sans jamais
-# consulter l'index par défaut pour torch.
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
-    && pip freeze | grep -i '^torch==' > /tmp/torch-constraint.txt \
-    && cat /tmp/torch-constraint.txt
-RUN pip install --no-cache-dir -r requirements.txt -c /tmp/torch-constraint.txt
+# indéfiniment.
+#
+# Deux essais précédents ont échoué :
+#  1) Installer torch CPU AVANT requirements.txt ne suffit pas : la
+#     commande suivante réévalue tout le graphe depuis PyPI et réinstalle
+#     silencieusement la variante CUDA pour satisfaire la contrainte de
+#     torch d'omnilingual-asr/fairseq2 (confirmé : pip show torch donnait
+#     2.8.0+cu128).
+#  2) Épingler la version CPU installée (via un fichier de contraintes)
+#     échoue aussi : sans numéro de version précisé, l'index CPU installe
+#     la plus récente disponible (2.14.1+cpu), alors que fairseq2n exige
+#     torch==2.8.0 pile (extension compilée, ABI figée) — conflit
+#     "ResolutionImpossible" au lieu d'un remplacement silencieux.
+#
+# Solution robuste : laisser pip résoudre requirements.txt normalement
+# (il choisit lui-même la version exacte de torch dont fairseq2n a
+# besoin, build CUDA par défaut), puis remplacer SEULEMENT le paquet
+# torch par le build CPU de cette MÊME version exacte (--no-deps : les
+# autres paquets déjà résolus, dont fairseq2n, ne sont pas retouchés).
+# S'adapte automatiquement si la version exigée change dans le futur.
+RUN pip install --no-cache-dir -r requirements.txt
+RUN TORCH_VER="$(python -c "import torch; print(torch.__version__.split('+')[0])")" \
+    && echo "torch résolu par requirements.txt : ${TORCH_VER} — remplacement par le build CPU" \
+    && pip install --no-cache-dir --force-reinstall --no-deps "torch==${TORCH_VER}" --index-url https://download.pytorch.org/whl/cpu \
+    && python -c "import torch; print('torch CPU final :', torch.__version__, '| cuda dispo :', torch.cuda.is_available())"
 
 COPY app.py /srv/app.py
 
