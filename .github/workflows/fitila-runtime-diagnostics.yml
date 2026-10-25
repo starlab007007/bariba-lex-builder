@@ -1,0 +1,25 @@
+name: FITILA runtime diagnostics
+on:
+  push:
+    paths: ['.github/workflows/fitila-runtime-diagnostics.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 3m
+          script: |
+            free -m
+            df -h /home | tail -1
+            docker ps -a --filter name=bariba-voice-gateway --filter name=fitila-dunya-brain --format '{{.Names}} {{.Status}}'
+            docker stats --no-stream --format '{{.Name}} {{.MemUsage}} {{.CPUPerc}}' bariba-voice-gateway fitila-dunya-brain 2>/dev/null || true
+            curl -sS --max-time 5 http://127.0.0.1:8090/health || true
+            docker logs --tail 20 fitila-dunya-brain 2>&1 || true
+            docker logs --tail 12 bariba-voice-gateway 2>&1 || true
