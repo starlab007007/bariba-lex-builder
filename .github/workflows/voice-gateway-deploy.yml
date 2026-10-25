@@ -71,12 +71,13 @@ jobs:
         env:
           IMAGE: ${{ needs.build-and-push.outputs.image }}
           GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          FITILA_MODEL_API_TOKEN: ${{ secrets.FITILA_MODEL_API_TOKEN }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           command_timeout: 30m
-          envs: IMAGE,GHCR_READ_TOKEN
+          envs: IMAGE,GHCR_READ_TOKEN,FITILA_MODEL_API_TOKEN
           script: |
             set -euo pipefail
             cd /home/debian/bariba-lex-builder
@@ -84,6 +85,19 @@ jobs:
             if [ -n "${GHCR_READ_TOKEN:-}" ]; then
               echo "$GHCR_READ_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             fi
+
+            # docker-composer.yml exige FITILA_MODEL_API_TOKEN (interpolation
+            # Compose, ${VAR:?}) ; ce n'était jusqu'ici jamais défini ici de
+            # façon automatique (uniquement via `export` manuel documenté dans
+            # experiments/bariba_voice_compare/OPERATIONS.md), ce qui faisait
+            # échouer `docker compose up` en quelques secondes. Le secret
+            # GitHub FITILA_MODEL_API_TOKEN devient la source de vérité ; ce
+            # fichier .env (chargé automatiquement par Compose, même dossier)
+            # est réécrit à chaque déploiement pour rester synchronisé —
+            # la même valeur doit aussi être le secret Supabase du même nom.
+            : "${FITILA_MODEL_API_TOKEN:?Secret GitHub FITILA_MODEL_API_TOKEN manquant}"
+            printf 'FITILA_MODEL_API_TOKEN=%s\n' "$FITILA_MODEL_API_TOKEN" > .env
+            chmod 600 .env
 
             previous_id="$(docker inspect bariba-voice-gateway --format '{{.Image}}' 2>/dev/null || true)"
 
