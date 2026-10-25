@@ -54,9 +54,18 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 # pointer vers un runtime CUDA qui n'est plus installé. Il faut donc
 # remplacer torch ET torchaudio ensemble, dans le même appel pip (pour
 # que pip choisisse des wheels CPU mutuellement compatibles).
+#
+# Un essai suivant (torch+torchaudio, mais version lue via `import
+# torchaudio`) a aussi échoué : `import torchaudio` échoue DÉJÀ avec
+# libcudart.so.13 au moment même de lire sa version (son extension
+# native CUDA se charge dès l'import), donc TORCHAUDIO_VER finissait
+# vide (erreur avalée par `2>/dev/null || true`) et le force-reinstall
+# sautait silencieusement torchaudio — laissant le build CUDA cassé en
+# place. `pip show` lit les métadonnées du paquet sans jamais importer
+# son extension native, donc il fonctionne même quand l'import échoue.
 RUN pip install --no-cache-dir -r requirements.txt
-RUN TORCH_VER="$(python -c "import torch; print(torch.__version__.split('+')[0])")" \
-    && TORCHAUDIO_VER="$(python -c "import torchaudio; print(torchaudio.__version__.split('+')[0])" 2>/dev/null || true)" \
+RUN TORCH_VER="$(pip show torch | grep -i '^Version:' | awk '{print $2}' | cut -d'+' -f1)" \
+    && TORCHAUDIO_VER="$(pip show torchaudio | grep -i '^Version:' | awk '{print $2}' | cut -d'+' -f1)" \
     && echo "résolu par requirements.txt : torch=${TORCH_VER} torchaudio=${TORCHAUDIO_VER:-absent} — remplacement par les builds CPU" \
     && pip install --no-cache-dir --force-reinstall --no-deps \
          "torch==${TORCH_VER}" ${TORCHAUDIO_VER:+"torchaudio==${TORCHAUDIO_VER}"} \
