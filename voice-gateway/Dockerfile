@@ -40,15 +40,30 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 #
 # Solution robuste : laisser pip résoudre requirements.txt normalement
 # (il choisit lui-même la version exacte de torch dont fairseq2n a
-# besoin, build CUDA par défaut), puis remplacer SEULEMENT le paquet
+# besoin, build CUDA par défaut), puis remplacer SEULEMENT les paquets
 # torch par le build CPU de cette MÊME version exacte (--no-deps : les
 # autres paquets déjà résolus, dont fairseq2n, ne sont pas retouchés).
 # S'adapte automatiquement si la version exigée change dans le futur.
+#
+# Un essai précédent (torch seul) a démarré le service mais l'ASR
+# échouait encore avec la même erreur libcudart.so.13 — cette fois dans
+# l'extension compilée de `torchaudio` (import de omnilingual_asr), pas
+# dans torch lui-même : torchaudio a sa PROPRE extension C (_torchaudio)
+# liée au runtime CUDA au moment de son build, indépendante de torch.
+# Remplacer torch sans remplacer torchaudio laisse cette extension
+# pointer vers un runtime CUDA qui n'est plus installé. Il faut donc
+# remplacer torch ET torchaudio ensemble, dans le même appel pip (pour
+# que pip choisisse des wheels CPU mutuellement compatibles).
 RUN pip install --no-cache-dir -r requirements.txt
 RUN TORCH_VER="$(python -c "import torch; print(torch.__version__.split('+')[0])")" \
-    && echo "torch résolu par requirements.txt : ${TORCH_VER} — remplacement par le build CPU" \
-    && pip install --no-cache-dir --force-reinstall --no-deps "torch==${TORCH_VER}" --index-url https://download.pytorch.org/whl/cpu \
-    && python -c "import torch; print('torch CPU final :', torch.__version__, '| cuda dispo :', torch.cuda.is_available())"
+    && TORCHAUDIO_VER="$(python -c "import torchaudio; print(torchaudio.__version__.split('+')[0])" 2>/dev/null || true)" \
+    && echo "résolu par requirements.txt : torch=${TORCH_VER} torchaudio=${TORCHAUDIO_VER:-absent} — remplacement par les builds CPU" \
+    && pip install --no-cache-dir --force-reinstall --no-deps \
+         "torch==${TORCH_VER}" ${TORCHAUDIO_VER:+"torchaudio==${TORCHAUDIO_VER}"} \
+         --index-url https://download.pytorch.org/whl/cpu \
+    && python -c "\
+import torch; print('torch CPU final :', torch.__version__, '| cuda dispo :', torch.cuda.is_available()); \
+import torchaudio; print('torchaudio CPU final :', torchaudio.__version__)"
 
 COPY app.py /srv/app.py
 
