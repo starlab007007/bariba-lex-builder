@@ -1,0 +1,56 @@
+name: DEBUG - diagnostiquer l'échec du health-check voice-gateway
+
+# Temporaire : le déploiement voice-gateway-deploy.yml échoue maintenant à
+# l'étape "attente health-check" (3 min) après que le docker pull GHCR ait
+# réussi (le blocage GHCR précédent est résolu). Ce workflow ne fait que
+# lire l'état actuel sur le VPS via ssh natif (pas appleboy/ssh-action) pour
+# que les ::notice:: soient bien visibles via l'API Checks, sans relancer de
+# déploiement. À supprimer une fois le diagnostic obtenu.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Diagnostic ssh natif
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -u
+          install -m 600 /dev/null /tmp/vps_key
+          printf '%s\n' "$SSH_KEY" > /tmp/vps_key
+          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+            "$VPS_USER@$VPS_HOST" 'bash -s' > /tmp/ssh_out.txt 2>/tmp/ssh_err.txt <<'REMOTE'
+            echo "=== MARK_START ==="
+            echo "--- free -h ---"
+            free -h
+            echo "--- docker ps -a (bariba-voice-gateway) ---"
+            docker ps -a --filter name=bariba-voice-gateway --format '{{.Names}} | {{.Status}} | {{.Image}}'
+            echo "--- docker inspect state ---"
+            docker inspect bariba-voice-gateway --format 'Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} StartedAt={{.State.StartedAt}}' 2>&1 || true
+            echo "--- docker logs --tail 80 ---"
+            docker logs --tail 80 bariba-voice-gateway 2>&1 || true
+            echo "--- curl health (one-shot) ---"
+            curl -v --max-time 5 http://127.0.0.1:8090/health 2>&1 || true
+            echo "=== MARK_END ==="
+          REMOTE
+          rc=$?
+          echo "::notice::local-ssh-rc=$rc stdout-bytes=$(wc -c < /tmp/ssh_out.txt) stderr-bytes=$(wc -c < /tmp/ssh_err.txt)"
+          i=0
+          while IFS= read -r line; do
+            i=$((i+1))
+            echo "::notice::OUT-$i: $line"
+          done < /tmp/ssh_out.txt
+          j=0
+          while IFS= read -r line; do
+            j=$((j+1))
+            echo "::notice::ERR-$j: $line"
+          done < /tmp/ssh_err.txt
