@@ -8092,6 +8092,7 @@ class _AiScreenState extends State<AiScreen> {
         _scrollToEnd();
         return shown;
       }
+      if (!mounted) return null;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
