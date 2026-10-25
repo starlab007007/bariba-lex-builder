@@ -79,9 +79,18 @@ jobs:
           command_timeout: 30m
           envs: IMAGE,GHCR_READ_TOKEN,FITILA_MODEL_API_TOKEN
           script: |
-            set -euo pipefail
+            set -uo pipefail
+            # ::error:: devient une annotation lisible via l'API GitHub même
+            # quand les logs bruts du run ne sont pas téléchargeables depuis
+            # mon environnement — ce trap est donc le seul moyen fiable dont
+            # je dispose de diagnostiquer un échec ici sans deviner.
+            trap 'echo "::error::deploy script a échoué : commande [$BASH_COMMAND], code $?"' ERR
+            set -e
+
+            echo "::notice::1/6 cd"
             cd /home/debian/bariba-lex-builder
 
+            echo "::notice::2/6 ghcr login (si token fourni)"
             if [ -n "${GHCR_READ_TOKEN:-}" ]; then
               echo "$GHCR_READ_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             fi
@@ -95,14 +104,18 @@ jobs:
             # fichier .env (chargé automatiquement par Compose, même dossier)
             # est réécrit à chaque déploiement pour rester synchronisé —
             # la même valeur doit aussi être le secret Supabase du même nom.
+            echo "::notice::3/6 écriture .env"
             : "${FITILA_MODEL_API_TOKEN:?Secret GitHub FITILA_MODEL_API_TOKEN manquant}"
             printf 'FITILA_MODEL_API_TOKEN=%s\n' "$FITILA_MODEL_API_TOKEN" > .env
             chmod 600 .env
 
             previous_id="$(docker inspect bariba-voice-gateway --format '{{.Image}}' 2>/dev/null || true)"
 
+            echo "::notice::4/6 docker pull $IMAGE:latest"
             docker pull "$IMAGE:latest"
+            echo "::notice::5/6 docker compose up"
             docker compose -f docker-composer.yml up -d --no-build bariba-voice-gateway
+            echo "::notice::6/6 attente health-check"
 
             echo "⏳ Attente du démarrage (chargement des modèles, jusqu'à 3 min)..."
             ok=""
@@ -114,8 +127,7 @@ jobs:
             done
 
             if [ -z "$ok" ]; then
-              echo "❌ bariba-voice-gateway pas sain après 3 min — rollback"
-              docker logs --tail 50 bariba-voice-gateway || true
+              echo "::error::bariba-voice-gateway pas sain après 3 min : $(docker logs --tail 30 bariba-voice-gateway 2>&1 | tr '\n' ' ' | cut -c1-900)"
               if [ -n "$previous_id" ]; then
                 docker tag "$previous_id" "$IMAGE:latest" 2>/dev/null || true
                 docker compose -f docker-composer.yml up -d --no-build bariba-voice-gateway || true
