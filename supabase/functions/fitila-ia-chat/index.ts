@@ -12,7 +12,7 @@ export function handleChat(req: Request): Response {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   return new Response(
     JSON.stringify({
-      error: "local_brain_required",
+      error: "llm_not_configured",
       message: "Fitila IA utilise le cerveau local gratuit de l'application (DUNYA › Réglages › Cerveau). Aucun fournisseur payant n'est utilisé.",
     }),
     { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
