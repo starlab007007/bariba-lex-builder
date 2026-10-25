@@ -151,7 +151,7 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
       };
       const translate = async (value: string, source: 'fr' | 'bba', target: 'fr' | 'bba', fast = false) => {
         translationUsed = true;
-        const result = await fn('byt5-bariba-translate', { text: value, sourceLang: source === 'fr' ? 'french' : 'bariba', targetLang: target === 'fr' ? 'french' : 'bariba', ...(fast ? { skipRefine: true, cache: true } : { skipRefine: true }) });
+        const result = await fn('byt5-bariba-translate', { text: value, sourceLang: source === 'fr' ? 'french' : 'bariba', targetLang: target === 'fr' ? 'french' : 'bariba', mode: 'fast', advanced: false, skipRefine: true, cache: true });
         const translated = clean(result.translation);
         if (!translated || needsClarification(translated)) throw new Error('translation_unavailable');
         return translated;
@@ -209,7 +209,7 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
         const shortBba = replyLang === 'bba' && body.speech_only !== true;
         const answer = body.speech_only === true ? { response_fr: transcript, model: '' }
           : greeting ? { response_fr: greeting, model: 'fitila-attested-greeting' }
-          : await fn('fitila-ia-chat', { message: question, history, systemPrompt: shortBba ? systemPromptBba : systemPrompt, max_tokens: shortBba ? 90 : 160, temperature: 0.3, skip_translation: true });
+          : await fn('fitila-ia-chat', { message: question, history, voice: true, systemPrompt: shortBba ? systemPromptBba : systemPrompt, max_tokens: shortBba ? 48 : 96, temperature: 0.3, skip_translation: true });
         let french = clean(answer.response_fr);
         if (!french) throw new Error('answer_unavailable');
         if (shortBba) french = shortAnswer(french);

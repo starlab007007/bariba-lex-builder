@@ -30,16 +30,19 @@ def generate(body):
     if not isinstance(text, str) or not text.strip() or len(text) > 2000:
         raise ValueError("invalid_message")
     context = body.get("context", "")
-    context = context[:2500] if isinstance(context, str) else ""
-    messages = [litert_lm.Message.system(SYSTEM + ("\nRéférences FITILA :\n" + context if context else ""))]
+    context = context[:900] if isinstance(context, str) else ""
+    style = " Réponds en une ou deux phrases très courtes, au plus 30 mots." if body.get("voice") is True else ""
+    messages = [litert_lm.Message.system(SYSTEM + style + ("\nRéférences FITILA :\n" + context if context else ""))]
     history = body.get("history", [])
     for entry in (history[-4:] if isinstance(history, list) else []):
         if not isinstance(entry, dict) or not isinstance(entry.get("content"), str):
             continue
         if entry.get("role") == "user":
-            messages.append(litert_lm.Message.user(entry["content"][:500]))
+            messages.append(litert_lm.Message.user(entry["content"][:300]))
         elif entry.get("role") == "assistant":
-            messages.append(litert_lm.Message.model(entry["content"][:500]))
+            # Unlike Message.user(), Message.model() accepts Contents, not str.
+            # Passing str crashes on the first turn carrying assistant history.
+            messages.append(litert_lm.Message.model(litert_lm.Contents.of(entry["content"][:300])))
     try:
         limit = max(16, min(160, int(body.get("max_tokens", 96))))
     except (TypeError, ValueError):

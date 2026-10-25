@@ -63,7 +63,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Test brain HTTP isolation and request bounds
-        run: python -m unittest discover -s brain-gateway -p 'test_*.py' -v
+        run: |
+          pip install -r brain-gateway/requirements.txt
+          python -m unittest discover -s brain-gateway -p 'test_*.py' -v
       - uses: docker/build-push-action@v6
         with:
           context: brain-gateway

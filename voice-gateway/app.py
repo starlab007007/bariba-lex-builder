@@ -33,6 +33,7 @@ import logging
 import os
 import tempfile
 import time
+import threading
 from pathlib import Path
 import json
 import urllib.error
@@ -62,7 +63,11 @@ _tts_model = None
 _tts_tokenizer = None
 _TTS_CACHE_MAX = 128
 _tts_cache: "OrderedDict[str, bytes]" = OrderedDict()
-torch.set_num_threads(max(1, os.cpu_count() or 1))
+_inference_lock = threading.Lock()
+# Container CPU quotas are smaller than os.cpu_count(). Avoid thread storms
+# and CPU bfloat16 emulation; FP32 is supported on the production VPS.
+torch.set_num_threads(2)
+torch.set_num_interop_threads(1)
 
 
 def _load_models() -> None:
@@ -73,7 +78,7 @@ def _load_models() -> None:
         from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline
 
         log.info("Chargement ASR (%s)…", ASR_MODEL_CARD)
-        _asr_pipeline = ASRInferencePipeline(model_card=ASR_MODEL_CARD)
+        _asr_pipeline = ASRInferencePipeline(model_card=ASR_MODEL_CARD, device="cpu", dtype=torch.float32)
         _state["asr_loaded"] = True
         log.info("ASR prêt.")
     except Exception as exc:  # noqa: BLE001 — on veut démarrer même si un moteur échoue
@@ -185,6 +190,9 @@ def infer(req: InferRequest, authorization: str | None = Header(default=None)):
     if req.engine not in {"meta-asr-300m", "meta-mms-tts-bba"}:
         raise HTTPException(400, "Invalid engine")
 
+    if not _inference_lock.acquire(blocking=False):
+        raise HTTPException(429, "voice_busy")
+
     start = time.perf_counter()
     try:
         if req.engine == "meta-mms-tts-bba":
@@ -216,6 +224,8 @@ def infer(req: InferRequest, authorization: str | None = Header(default=None)):
         raise
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(503, "Inference unavailable: " + str(exc)[:180]) from exc
+    finally:
+        _inference_lock.release()
 
 
 @app.post("/chat")

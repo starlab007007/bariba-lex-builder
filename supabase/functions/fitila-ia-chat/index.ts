@@ -89,7 +89,7 @@ export async function handleChat(req: Request, deps: Dependencies = {}): Promise
     const brainUrl = brainServiceUrl(env('FITILA_BRAIN_SERVICE_URL') || voiceUrl);
     const response = await request(`${brainUrl}/chat`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${voiceKey}` },
-      body: JSON.stringify({ message, history, context: references.map(r => `${r.fr} — ${r.ba}`).join('\n'), max_tokens: Math.max(32, Math.min(160, Number(body.max_tokens) || 96)) }),
+      body: JSON.stringify({ message, history, voice: body.voice === true, context: references.map(r => `${r.fr} — ${r.ba}`).join('\n'), max_tokens: Math.max(32, Math.min(160, Number(body.max_tokens) || 96)) }),
       signal: AbortSignal.any([req.signal, AbortSignal.timeout(65000)]),
     });
     const data = await response.json().catch(() => ({}));

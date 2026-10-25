@@ -8,6 +8,35 @@ from unittest.mock import patch
 import app
 
 
+class MessageContractTests(unittest.TestCase):
+    def test_real_sdk_serializes_assistant_history(self):
+        # Exercise the installed SDK's Message.model contract: the former
+        # HTTP mocks never detected a str being used where Contents is required.
+        from contextlib import contextmanager
+        import litert_lm
+        captured = []
+
+        class Conversation:
+            def send_message(self, text):
+                return {'content': [{'type': 'text', 'text': 'La rotation protège le sol.'}]}
+
+        class Engine:
+            @contextmanager
+            def create_conversation(self, **kwargs):
+                captured.extend(message.to_json() for message in kwargs['messages'])
+                yield Conversation()
+
+        with patch.object(app, 'engine', Engine()):
+            result = app.generate({'message': 'Explique plus simplement.', 'history': [
+                {'role': 'user', 'content': 'Pourquoi varier les cultures ?'},
+                {'role': 'assistant', 'content': 'Pour garder un sol fertile.'},
+            ], 'voice': True})
+        self.assertEqual(result['model'], 'gemma-4-e2b')
+        self.assertTrue(result['response_fr'])
+        self.assertEqual(captured[-1]['role'], 'assistant')
+        self.assertIn('Pour garder un sol fertile.', str(captured[-1]))
+
+
 class HTTPContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

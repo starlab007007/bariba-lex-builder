@@ -32,3 +32,10 @@ for attempt in range(24):
         if attempt == 23:
             raise
         time.sleep(5)
+
+followup = call("/chat", {"message": "Explique la rotation des cultures en une phrase.",
+    "voice": True, "max_tokens": 48,
+    "history": [{"role": "user", "content": "Dis bonjour en français."},
+                {"role": "assistant", "content": answer["response_fr"]}]})
+assert followup.get("response_fr", "").strip(), "French follow-up failed"
+print("Self-hosted Gemma French conversation with assistant history: OK", flush=True)
