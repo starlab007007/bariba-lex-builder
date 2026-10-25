@@ -23,3 +23,20 @@ jobs:
             curl -sS --max-time 5 http://127.0.0.1:8090/health || true
             docker logs --tail 20 fitila-dunya-brain 2>&1 || true
             docker logs --tail 12 bariba-voice-gateway 2>&1 || true
+            # Synthetic French history only: reproduce the reported failure without visitor data.
+            docker exec -i fitila-dunya-brain python - <<'PY'
+            import app, litert_lm, os, time, traceback
+            litert_lm.set_min_log_severity(litert_lm.LogSeverity.ERROR)
+            app.engine = litert_lm.Engine(os.environ.get('FITILA_BRAIN_MODEL', '/models/gemma-4-E2B-it.litertlm'), backend=litert_lm.Backend.CPU(thread_count=2), max_num_tokens=2048, cache_dir='/srv/cache')
+            cases = [
+              {'message': 'Pourquoi varier les cultures ?', 'max_tokens': 48},
+              {'message': 'Explique plus simplement.', 'history': [{'role':'user','content':'Pourquoi varier les cultures ?'},{'role':'assistant','content':'Pour garder un sol fertile.'}], 'max_tokens':48},
+            ]
+            for body in cases:
+                started=time.monotonic()
+                try:
+                    result=app.generate(body)
+                    print('Synthetic French history:', len(body.get('history',[])), 'success:', bool(result.get('response_fr')), 'seconds:', round(time.monotonic()-started,2), flush=True)
+                except Exception:
+                    traceback.print_exc()
+            PY
