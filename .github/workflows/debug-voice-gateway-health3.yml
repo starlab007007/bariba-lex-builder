@@ -1,9 +1,12 @@
-name: DEBUG - état bariba-voice-gateway après correctif torch CPU
+name: DEBUG2 - vérifier si la nouvelle image a bien torch CPU
 
-# Temporaire. Lecture seule, ssh natif, une commande courte par étape (la
-# limite de 10 annotations ::notice:: par étape — pas par job — a été
-# découverte lors d'un diagnostic précédent). À supprimer une fois le
-# diagnostic obtenu.
+# Temporaire. Le déploiement du correctif torch CPU (#167) a quand même
+# échoué le health-check (libcudart.so.13 toujours manquant d'après les
+# logs du conteneur restauré par le rollback). Avant de conclure que le
+# correctif n'a pas fonctionné, on teste directement l'image NEUVE
+# (restée en <none>/dangling sur le VPS car le rollback a empêché
+# `docker image prune`) pour voir si son torch est réellement la
+# variante CPU. À supprimer une fois le diagnostic obtenu.
 
 on:
   workflow_dispatch: {}
@@ -26,32 +29,24 @@ jobs:
           install -m 600 /dev/null /tmp/vps_key
           printf '%s\n' "$SSH_KEY" > /tmp/vps_key
 
-      - name: Statut + santé du conteneur
+      - name: Images voice-gateway disponibles sur le VPS
         run: |
           ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
-            "docker inspect bariba-voice-gateway --format 'Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} StartedAt={{.State.StartedAt}} RestartCount={{.RestartCount}}' 2>&1" \
-            | while IFS= read -r l; do echo "::notice::STATE: $l"; done
-
-      - name: Curl health one-shot
-        run: |
-          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
-            "curl -sS --max-time 5 http://127.0.0.1:8090/health 2>&1" \
-            | while IFS= read -r l; do echo "::notice::CURL: $l"; done
-
-      - name: Logs récents (10 dernières lignes)
-        run: |
-          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
-            "docker logs --tail 10 bariba-voice-gateway 2>&1" \
-            | while IFS= read -r l; do echo "::notice::LOGS: $l"; done
-
-      - name: Logs plus anciens (chargement des modèles)
-        run: |
-          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
-            "docker logs bariba-voice-gateway 2>&1 | grep -iE 'error|chargement|loaded|exception|traceback' | tail -9" \
-            | while IFS= read -r l; do echo "::notice::ERRLOGS: $l"; done
-
-      - name: Image actuellement active
-        run: |
-          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
-            "docker inspect bariba-voice-gateway --format '{{.Image}}' && docker images --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.CreatedSince}}' | grep voice-gateway" \
+            "docker images --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.CreatedSince}}' | grep voice-gateway" \
             | while IFS= read -r l; do echo "::notice::IMG: $l"; done
+
+      - name: Version torch dans l'image NEUVE (dangling, la plus récente)
+        run: |
+          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
+            'img=$(docker images --filter "dangling=true" --filter "reference=*voice-gateway*" --format "{{.ID}}" | head -1); \
+             if [ -z "$img" ]; then echo "AUCUNE IMAGE DANGLING TROUVEE"; else \
+             docker run --rm --entrypoint python "$img" -c "import torch,sys; print(\"torch_version\",torch.__version__); print(\"cuda_available\",torch.cuda.is_available())" 2>&1; fi' \
+            | while IFS= read -r l; do echo "::notice::TORCHCHK: $l"; done
+
+      - name: Forcer un chargement ASR direct dans cette image (révèle l'erreur exacte)
+        run: |
+          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
+            'img=$(docker images --filter "dangling=true" --filter "reference=*voice-gateway*" --format "{{.ID}}" | head -1); \
+             if [ -z "$img" ]; then echo "AUCUNE IMAGE DANGLING TROUVEE"; else \
+             docker run --rm --entrypoint python "$img" -c "from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline; ASRInferencePipeline(model_card=\"omniASR_CTC_300M\")" 2>&1 | tail -9; fi' \
+            | while IFS= read -r l; do echo "::notice::ASRCHK: $l"; done
