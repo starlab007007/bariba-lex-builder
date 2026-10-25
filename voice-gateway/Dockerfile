@@ -71,17 +71,39 @@ import torch; print('torch CPU final :', torch.__version__, '| cuda dispo :', to
 import torchaudio; print('torchaudio CPU final :', torchaudio.__version__); \
 import fairseq2n, fairseq2; print('fairseq2n/fairseq2 CPU final : ok')"
 
-# Vérification BLOQUANTE (pas de `|| true`) de l'import complet d'omnilingual_asr.
-# Historique : ce même import, dans le bloc best-effort ci-dessous (qui
-# avale toute erreur avec `|| true` pour ne pas bloquer le build si le
-# registre de poids est indisponible), échouait silencieusement avec
-# "ImportError: pyarrow requires NumPy 2.0 or newer, found 1.26.4" —
-# chaîne d'import omnilingual_asr -> .datasets -> .datasets.impl.
+# pyarrow (dépendance transitive d'omnilingual-asr, chargée via
+# omnilingual_asr.datasets.* dès qu'on importe ASRInferencePipeline) exige
+# NumPy >= 2.0 À L'EXÉCUTION — mais sans le déclarer comme dépendance pip
+# (requires_dist vide côté pyarrow), donc invisible pour le résolveur. À
+# l'inverse, fairseq2 0.5.2/0.6 (la version exacte qu'omnilingual-asr exige)
+# déclare lui "numpy~=1.23" dans ses métadonnées pip, strictement
+# incompatible avec un pin numpy>=2.0 dans requirements.txt (confirmé :
+# pip échoue alors avec ResolutionImpossible dès `pip install -r
+# requirements.txt`, avant même d'atteindre le swap CPU ci-dessus). En
+# pratique ce pin de fairseq2 est trop strict : fairseq2n/fairseq2
+# fonctionnent très bien avec NumPy 2.x (vérifié ci-dessous). Fix, dans le
+# même esprit que le swap torch/fairseq2n plus haut : laisser numpy non
+# pinné dans requirements.txt (la résolution choisit alors librement, sans
+# jamais buter sur la contrainte stricte de fairseq2 — ex. numpy 1.26.4),
+# puis forcer numpy vers >=2.0 ICI, après coup, avec --no-deps (contourne
+# le conflit déclaré mais pas réel). Sans ce fix, le service démarre et le
+# TTS fonctionne, mais l'ASR échoue systématiquement à l'import avec
+# "ImportError: pyarrow requires NumPy 2.0 or newer, found 1.26.4".
+RUN pip install --no-cache-dir --force-reinstall --no-deps "numpy>=2.0,<2.6" \
+    && python -c "\
+import numpy; print('numpy CPU final :', numpy.__version__); \
+import pyarrow; print('pyarrow final :', pyarrow.__version__)"
+
+# Vérification BLOQUANTE (pas de `|| true`) de l'import complet d'omnilingual_asr,
+# en particulier sa chaîne omnilingual_asr -> .datasets -> .datasets.impl.
 # mixture_parquet_asr_dataset -> .datasets.storage.mixture_parquet_storage
-# -> pyarrow. Le build "réussissait" quand même et expédiait une image où
-# l'ASR ne démarre jamais (TTS seul fonctionnait). En isolant cet import ici,
-# SANS `|| true`, toute régression équivalente fait échouer le build au lieu
-# d'être masquée. Voir requirements.txt pour le fix (numpy>=2.0 pinné).
+# -> pyarrow (voir le fix numpy ci-dessus). Avant ce fix, ce même import,
+# dans le bloc best-effort plus bas (qui avale toute erreur avec `|| true`
+# pour ne pas bloquer le build si le registre de poids est indisponible),
+# échouait silencieusement : le build "réussissait" quand même et expédiait
+# une image où l'ASR ne démarre jamais (TTS seul fonctionnait). En isolant
+# cet import ici, SANS `|| true`, toute régression équivalente (numpy ou
+# autre) fait échouer le build au lieu d'être masquée.
 RUN python -c "\
 from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline; \
 print('omnilingual_asr (chaîne d\'import complète, incl. datasets/pyarrow) : ok')"
