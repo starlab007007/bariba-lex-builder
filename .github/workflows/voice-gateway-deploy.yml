@@ -85,65 +85,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           command_timeout: 30m
           script: |
-            set -uo pipefail
-            # ::error:: devient une annotation lisible via l'API GitHub même
-            # quand les logs bruts du run ne sont pas téléchargeables depuis
-            # mon environnement — ce trap est donc le seul moyen fiable dont
-            # je dispose de diagnostiquer un échec ici sans deviner.
-            trap 'echo "::error::deploy script a échoué : commande [$BASH_COMMAND], code $?"' ERR
-            set -e
-
-            IMAGE="${{ needs.build-and-push.outputs.image }}"
-            GHCR_READ_TOKEN="${{ secrets.GHCR_READ_TOKEN }}"
-            FITILA_MODEL_API_TOKEN="${{ secrets.FITILA_MODEL_API_TOKEN }}"
-
-            echo "::notice::1/6 cd"
-            cd /home/debian/bariba-lex-builder
-
-            echo "::notice::2/6 ghcr login (si token fourni)"
-            if [ -n "${GHCR_READ_TOKEN:-}" ]; then
-              echo "$GHCR_READ_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-            fi
-
-            # docker-composer.yml exige FITILA_MODEL_API_TOKEN (interpolation
-            # Compose, ${VAR:?}) ; ce n'était jusqu'ici jamais défini ici de
-            # façon automatique (uniquement via `export` manuel documenté dans
-            # experiments/bariba_voice_compare/OPERATIONS.md), ce qui faisait
-            # échouer `docker compose up` en quelques secondes. Le secret
-            # GitHub FITILA_MODEL_API_TOKEN devient la source de vérité ; ce
-            # fichier .env (chargé automatiquement par Compose, même dossier)
-            # est réécrit à chaque déploiement pour rester synchronisé —
-            # la même valeur doit aussi être le secret Supabase du même nom.
-            echo "::notice::3/6 écriture .env"
-            : "${FITILA_MODEL_API_TOKEN:?Secret GitHub FITILA_MODEL_API_TOKEN manquant}"
-            printf 'FITILA_MODEL_API_TOKEN=%s\n' "$FITILA_MODEL_API_TOKEN" > .env
-            chmod 600 .env
-
-            previous_id="$(docker inspect bariba-voice-gateway --format '{{.Image}}' 2>/dev/null || true)"
-
-            echo "::notice::4/6 docker pull $IMAGE:latest"
-            docker pull "$IMAGE:latest"
-            echo "::notice::5/6 docker compose up"
-            docker compose -f docker-composer.yml up -d --no-build bariba-voice-gateway
-            echo "::notice::6/6 attente health-check"
-
-            echo "⏳ Attente du démarrage (chargement des modèles, jusqu'à 3 min)..."
-            ok=""
-            for i in $(seq 1 36); do
-              if curl -fsS --max-time 5 http://127.0.0.1:8090/health 2>/dev/null | grep -q '"status":"ok"'; then
-                ok="1"; break
-              fi
-              sleep 5
-            done
-
-            if [ -z "$ok" ]; then
-              echo "::error::bariba-voice-gateway pas sain après 3 min : $(docker logs --tail 30 bariba-voice-gateway 2>&1 | tr '\n' ' ' | cut -c1-900)"
-              if [ -n "$previous_id" ]; then
-                docker tag "$previous_id" "$IMAGE:latest" 2>/dev/null || true
-                docker compose -f docker-composer.yml up -d --no-build bariba-voice-gateway || true
-              fi
-              exit 1
-            fi
-
-            echo "✅ bariba-voice-gateway sain (modèles chargés)."
-            docker image prune -f || true
+            echo "::notice::DEBUG test minimal, whoami=$(whoami), pwd=$(pwd)"
+            ls -la /home/debian/bariba-lex-builder | head -5
+            echo "::notice::DEBUG fin"
