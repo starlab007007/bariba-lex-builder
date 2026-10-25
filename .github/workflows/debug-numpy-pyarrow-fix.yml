@@ -16,50 +16,40 @@ jobs:
       - name: pip upgrade
         run: pip install --no-cache-dir --upgrade pip setuptools wheel
       - uses: actions/checkout@v4
-      - name: install requirements (avec numpy>=2.0 pinné)
+      - name: install + swap CPU + vérif (tout dans une seule étape)
         run: |
-          pip install --no-cache-dir -r voice-gateway/requirements.txt > /tmp/pipinstall.txt 2>&1
-          echo "code=$?"
-          tail -c 3600 /tmp/pipinstall.txt > /tmp/pipinstall_tail.txt
-          wc -c /tmp/pipinstall_tail.txt
-        continue-on-error: true
+          set +e
+          pip install --no-cache-dir -r voice-gateway/requirements.txt > /tmp/out.txt 2>&1
+          RC1=$?
+          echo "::notice::rc1=${RC1} lignes=$(wc -l < /tmp/out.txt) octets=$(wc -c < /tmp/out.txt)"
+          tail -n 25 /tmp/out.txt > /tmp/tail1.txt
+          echo "::notice::tail1a: $(cut -c1-900 /tmp/tail1.txt | tr '\n' '|')"
+          echo "::notice::tail1b: $(tail -c 900 /tmp/tail1.txt | tr '\n' '|')"
 
-      - name: afficher erreur pip install (partie 1)
-        run: |
-          echo "::notice::pip1: $(cut -c1-900 /tmp/pipinstall_tail.txt 2>/dev/null | tr '\n' '|')"
-        continue-on-error: true
+          if [ "$RC1" -ne 0 ]; then
+            echo "::error::pip install a échoué (rc=${RC1}), arrêt."
+            exit 1
+          fi
 
-      - name: afficher erreur pip install (partie 2)
-        run: |
-          echo "::notice::pip2: $(cut -c901-1800 /tmp/pipinstall_tail.txt 2>/dev/null | tr '\n' '|')"
-        continue-on-error: true
-
-      - name: afficher erreur pip install (partie 3)
-        run: |
-          echo "::notice::pip3: $(cut -c1801-2700 /tmp/pipinstall_tail.txt 2>/dev/null | tr '\n' '|')"
-        continue-on-error: true
-
-      - name: afficher erreur pip install (partie 4)
-        run: |
-          echo "::notice::pip4: $(tail -c 900 /tmp/pipinstall_tail.txt 2>/dev/null | tr '\n' '|')"
-        continue-on-error: true
-
-      - name: arrêter si pip install a échoué
-        run: |
-          if [ ! -s /tmp/pipinstall.txt ]; then echo "pas de log"; exit 1; fi
-          grep -q "Successfully installed\|already satisfied" /tmp/pipinstall.txt && exit 0 || exit 1
-      - name: swap torch/torchaudio/fairseq2n CPU (comme le Dockerfile)
-        run: |
-          TORCH_VER="$(pip show torch | grep -i '^Version:' | awk '{print $2}' | cut -d'+' -f1)"
+          TORCH_VER="$(pip show torch 2>/dev/null | grep -i '^Version:' | awk '{print $2}' | cut -d'+' -f1)"
+          echo "::notice::torch_ver=${TORCH_VER}"
           pip install --no-cache-dir --force-reinstall --no-deps \
             "torch==${TORCH_VER}" "torchaudio==${TORCH_VER}" \
-            --index-url https://download.pytorch.org/whl/cpu
-          FAIRSEQ2N_VER="$(pip show fairseq2n | grep -i '^Version:' | awk '{print $2}' | cut -d'+' -f1)"
+            --index-url https://download.pytorch.org/whl/cpu > /tmp/out2.txt 2>&1
+          RC2=$?
+          echo "::notice::rc2=${RC2} $(tail -c 900 /tmp/out2.txt | tr '\n' '|')"
+
+          FAIRSEQ2N_VER="$(pip show fairseq2n 2>/dev/null | grep -i '^Version:' | awk '{print $2}' | cut -d'+' -f1)"
+          echo "::notice::fairseq2n_ver=${FAIRSEQ2N_VER}"
           pip install --no-cache-dir --force-reinstall --no-deps \
             "fairseq2n==${FAIRSEQ2N_VER}" "fairseq2==${FAIRSEQ2N_VER}" \
-            --index-url "https://fair.pkg.atmeta.com/fairseq2/whl/pt${TORCH_VER}/cpu"
-      - name: pip show numpy/pyarrow (version résolue)
-        run: pip show numpy pyarrow | grep -E '^(Name|Version)'
-      - name: import complet omnilingual_asr (le test qui échouait)
-        run: |
-          python -c "from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline; print('omnilingual_asr import OK')"
+            --index-url "https://fair.pkg.atmeta.com/fairseq2/whl/pt${TORCH_VER}/cpu" > /tmp/out3.txt 2>&1
+          RC3=$?
+          echo "::notice::rc3=${RC3} $(tail -c 900 /tmp/out3.txt | tr '\n' '|')"
+
+          echo "::notice::versions: $(pip show numpy pyarrow torch torchaudio fairseq2n 2>&1 | grep -E '^(Name|Version)' | tr '\n' ' ')"
+
+          python -c "from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline; print('omnilingual_asr import OK')" > /tmp/out4.txt 2>&1
+          RC4=$?
+          echo "::notice::rc4=${RC4} $(cut -c1-900 /tmp/out4.txt | tr '\n' '|')"
+          exit $RC4
