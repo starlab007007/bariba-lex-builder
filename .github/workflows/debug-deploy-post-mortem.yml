@@ -48,3 +48,8 @@ jobs:
         run: |
           OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "curl -sS --max-time 5 http://127.0.0.1:8090/health" 2>&1 | tr '\n' '|' | cut -c1-900)"
           echo "::notice::health: ${OUT}"
+
+      - name: pull + test import direct de l'image NEUVE (sha du commit)
+        run: |
+          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker pull ghcr.io/starlab007007/bariba-lex-builder-voice-gateway:497064e007761e584ac25bbee7cde303bd3f4d9f 2>&1 | tail -5 && docker run --rm --entrypoint python ghcr.io/starlab007007/bariba-lex-builder-voice-gateway:497064e007761e584ac25bbee7cde303bd3f4d9f -c \"from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline; print('ASR import OK dans image neuve')\"" 2>&1 | tr '\n' '|' | cut -c1-900)"
+          echo "::notice::newimg: ${OUT}"
