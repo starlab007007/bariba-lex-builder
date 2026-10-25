@@ -18,3 +18,18 @@ jobs:
         run: |
           OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker ps -a --filter name=bariba-voice-gateway --format '{{.Names}} | {{.Status}} | {{.Image}}'" 2>&1)"
           echo "::notice::ps: ${OUT}"
+
+      - name: import LIVE torch + fairseq2n dans le conteneur (partie 1)
+        run: |
+          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker exec bariba-voice-gateway python -c \"import torch; print('torch', torch.__version__, 'cuda_build', torch.version.cuda); import fairseq2n; print('fairseq2n import OK')\"" 2>&1 | tr '\n' '|' | cut -c1-900)"
+          echo "::notice::live1: ${OUT}"
+
+      - name: import LIVE omnilingual_asr dans le conteneur (capture complète)
+        run: |
+          ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker exec bariba-voice-gateway python -c \"from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline; print('omnilingual_asr import OK')\"" > /tmp/live2.txt 2>&1
+          echo "longueur totale: $(wc -c < /tmp/live2.txt)"
+        continue-on-error: true
+
+      - name: traceback omnilingual_asr (partie 1)
+        run: echo "::notice::live2a: $(cut -c1-900 /tmp/live2.txt | tr '\n' '|')"
+        continue-on-error: true
