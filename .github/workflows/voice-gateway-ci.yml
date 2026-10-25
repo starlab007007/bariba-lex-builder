@@ -26,6 +26,8 @@ jobs:
           python-version: '3.11'
       - name: Compilation Python (détecte les erreurs de syntaxe)
         run: python -m compileall -q voice-gateway
+      - name: Contrat Omnilingual et démarrage des moteurs
+        run: python -m unittest discover -s voice-gateway -p 'test_*.py' -v
       - name: Lint rapide des imports (sans télécharger les poids)
         run: |
           python - <<'PY'

@@ -121,6 +121,7 @@ from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline; \
 print('omnilingual_asr (chaîne d\'import complète, incl. datasets/pyarrow) : ok')"
 
 COPY app.py /srv/app.py
+COPY asr_result.py /srv/asr_result.py
 
 # Pré-téléchargement best-effort au build (ASR Apache-2.0, TTS CC-BY-NC — voir
 # README.md). Si le registre des assets est indisponible pendant le build,

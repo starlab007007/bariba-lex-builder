@@ -39,6 +39,7 @@ import torch
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from transformers import AutoTokenizer, VitsModel
+from asr_result import transcript_text
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("fitila.voice-gateway")
@@ -86,9 +87,6 @@ def _load_models() -> None:
         log.exception("Échec du chargement TTS, le service démarre quand même (dégradé).")
 
 
-_load_models()
-
-
 def _warm_up() -> None:
     """Premier passage à vide : la 1re vraie requête ne paie plus l'initialisation paresseuse."""
     try:
@@ -106,6 +104,8 @@ def _warm_up() -> None:
                 _run_asr(Path(tmp.name))
             except HTTPException:
                 pass  # silence => « transcription vide » attendu : seul le chauffage compte
+            finally:
+                Path(tmp.name).unlink(missing_ok=True)
     except Exception:  # noqa: BLE001
         log.warning("Warm-up ASR ignoré.")
 
@@ -113,9 +113,6 @@ def _warm_up() -> None:
 def np_zeros_1s():
     import numpy as np
     return np.zeros(16000, dtype="float32")
-
-
-_warm_up()
 
 
 class InferRequest(BaseModel):
@@ -143,7 +140,9 @@ def _run_asr(audio_path: Path) -> str:
     if not results:
         raise HTTPException(503, "Aucun résultat ASR")
     result = results[0]
-    text = result.get("text") if isinstance(result, dict) else getattr(result, "text", None)
+    # Omnilingual's public pipeline returns list[str]. Older adapters may
+    # return text-bearing records; accept both without discarding real text.
+    text = transcript_text(result)
     if not text:
         raise HTTPException(503, "Transcription vide")
     return text
@@ -165,7 +164,10 @@ def _run_tts(text: str) -> bytes:
         waveform = _tts_model(**inputs).waveform.squeeze().cpu().numpy()
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         sf.write(tmp.name, waveform, _tts_model.config.sampling_rate)
+    try:
         data = Path(tmp.name).read_bytes()
+    finally:
+        Path(tmp.name).unlink(missing_ok=True)
     _tts_cache[text] = data
     while len(_tts_cache) > _TTS_CACHE_MAX:
         _tts_cache.popitem(last=False)
@@ -210,3 +212,9 @@ def infer(req: InferRequest, authorization: str | None = Header(default=None)):
         raise
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(503, "Inference unavailable: " + str(exc)[:180]) from exc
+
+
+# Inference functions must exist before warm-up. Calling it above their
+# definitions silently swallowed NameError and left every engine cold.
+_load_models()
+_warm_up()
