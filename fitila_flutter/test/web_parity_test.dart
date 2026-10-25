@@ -76,8 +76,10 @@ void main() {
     expect(find.text('Photo'), findsOneWidget);
     expect(find.text('Coller'), findsOneWidget);
     expect(find.text('Doc'), findsOneWidget);
-    expect(find.text('Mode conversation'), findsWidgets);
-    expect(find.textContaining('Détection'), findsWidgets);
+    // Icône-seule désormais (fusionnées dans la rangée du haut) ; l'étiquette
+    // reste exposée via l'infobulle plutôt qu'un Text visible en permanence.
+    expect(find.byTooltip('Mode conversation'), findsWidgets);
+    expect(find.byTooltip('Détection auto'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 

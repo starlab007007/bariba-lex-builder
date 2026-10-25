@@ -184,28 +184,43 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
       _level = 0;
       _notice = null;
     });
+    Float32List? samples;
     try {
-      final samples = await _mic.listen(
+      samples = await _mic.listen(
         onLevel: (level) {
           if (mounted && turn == _turn) setState(() => _level = level);
         },
       );
-      if (!mounted || turn != _turn || !_session) return;
-      if (samples == null) {
-        _emptyListens++;
-        if (_emptyListens >= 2 || !_handsFree) {
-          _session = false;
-          setState(() {
-            _phase = _Phase.idle;
-            _notice = 'Je n’ai rien entendu. Touchez pour réessayer.';
-          });
-        } else {
-          unawaited(_listenTurn());
-        }
-        return;
+    } catch (_) {
+      // Échec dans la capture micro elle-même (permission refusée, matériel
+      // indisponible) : le SEUL cas où "Microphone indisponible." est exact.
+      if (turn != _turn) return;
+      _session = false;
+      if (mounted) {
+        setState(() {
+          _phase = _Phase.idle;
+          _notice = 'Microphone indisponible.';
+        });
       }
-      _emptyListens = 0;
-      setState(() => _phase = _Phase.thinking);
+      return;
+    }
+    if (!mounted || turn != _turn || !_session) return;
+    if (samples == null) {
+      _emptyListens++;
+      if (_emptyListens >= 2 || !_handsFree) {
+        _session = false;
+        setState(() {
+          _phase = _Phase.idle;
+          _notice = 'Je n’ai rien entendu. Touchez pour réessayer.';
+        });
+      } else {
+        unawaited(_listenTurn());
+      }
+      return;
+    }
+    _emptyListens = 0;
+    setState(() => _phase = _Phase.thinking);
+    try {
       final text = await _transcribe(samples);
       if (!mounted || turn != _turn || !_session) return;
       if (text.trim().isEmpty) {
@@ -218,12 +233,15 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
       }
       await _answerTurn(text.trim(), turn);
     } catch (_) {
+      // Échec après la capture micro (transcription/IA/réseau) : le micro a
+      // fonctionné, donc jamais "Microphone indisponible." ici — message
+      // distinct pour ne pas orienter le diagnostic vers le mauvais endroit.
       if (turn != _turn) return;
       _session = false;
       if (mounted) {
         setState(() {
           _phase = _Phase.idle;
-          _notice = 'Microphone indisponible.';
+          _notice = 'Service de reconnaissance vocale indisponible. Réessayez.';
         });
       }
     }

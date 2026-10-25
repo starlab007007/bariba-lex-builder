@@ -392,94 +392,104 @@ class _TranslatorChatState extends State<TranslatorChat> {
   // Bande fine, sans carte ni bordure propre : directement sous le titre de
   // la page, pour une fenêtre de chat dégagée (voir _compactLangBar pour la
   // variante encore plus réduite affichée quand le clavier est ouvert).
+  //
+  // Détection auto et Mode conversation sont fusionnés dans CETTE unique
+  // rangée (icônes compactes, même style que inverser/effacer/historique) au
+  // lieu d'une deuxième rangée dédiée sous les pastilles de langue : tout est
+  // bien « en haut », sur une seule ligne, ce qui dégage une ligne entière
+  // d'espace vertical pour la conversation en dessous.
   Widget _topBar() {
     return Container(
       padding: const EdgeInsets.only(bottom: 6),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: SignatureTheme.hairline)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(children: [
-            Expanded(
-              child: FittedBox(
-                alignment: Alignment.centerLeft,
-                fit: BoxFit.scaleDown,
-                child: Row(children: [
-                  _langPill(!_toBariba, detected: _detected != null && (_detected == ChatLang.bariba) == !_toBariba),
-                  IconButton(
-                    key: const ValueKey('swap'),
-                    tooltip: 'Inverser les langues',
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-                    iconSize: 18,
-                    onPressed: _swap,
-                    icon: const Icon(Icons.swap_horiz_rounded, color: SignatureTheme.goldDeep),
-                  ),
-                  _langPill(_toBariba),
-                ]),
-              ),
-            ),
-            if (_messages.isNotEmpty)
-              IconButton(
-                tooltip: 'Effacer la conversation',
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-                iconSize: 18,
-                onPressed: _clear,
-                icon: const Icon(Icons.delete_outline_rounded, color: SignatureTheme.muted),
-              ),
-            if (_p.openHistory != null)
-              IconButton(
-                tooltip: 'Historique et favoris',
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-                iconSize: 18,
-                onPressed: _p.openHistory,
-                icon: const Icon(Icons.history_rounded, size: 18),
-              ),
-          ]),
-          const SizedBox(height: 2),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+      child: Row(children: [
+        Expanded(
+          child: FittedBox(
+            alignment: Alignment.centerLeft,
+            fit: BoxFit.scaleDown,
             child: Row(children: [
-              _toggle(Icons.auto_awesome_rounded, _detected == null ? 'Détection auto' : 'Détecté : ${_detected == ChatLang.bariba ? 'Baatɔnum' : 'Français'}', _auto, (v) => setState(() {
-                _auto = v;
-                if (!v) _detected = null;
-              })),
-              const SizedBox(width: 5),
-              _toggle(Icons.forum_outlined, 'Mode conversation', _conversation, (v) => setState(() => _conversation = v)),
+              _langPill(!_toBariba, detected: _detected != null && (_detected == ChatLang.bariba) == !_toBariba),
+              IconButton(
+                key: const ValueKey('swap'),
+                tooltip: 'Inverser les langues',
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                iconSize: 18,
+                onPressed: _swap,
+                icon: const Icon(Icons.swap_horiz_rounded, color: SignatureTheme.goldDeep),
+              ),
+              _langPill(_toBariba),
             ]),
           ),
-        ],
-      ),
+        ),
+        _iconToggle(
+          icon: Icons.auto_awesome_rounded,
+          tooltip: _detected == null ? 'Détection auto' : 'Détecté : ${_detected == ChatLang.bariba ? 'Baatɔnum' : 'Français'}',
+          on: _auto,
+          onTap: () => setState(() {
+            _auto = !_auto;
+            if (!_auto) _detected = null;
+          }),
+        ),
+        _iconToggle(
+          icon: Icons.forum_outlined,
+          tooltip: 'Mode conversation',
+          on: _conversation,
+          onTap: () => setState(() => _conversation = !_conversation),
+        ),
+        if (_messages.isNotEmpty)
+          IconButton(
+            tooltip: 'Effacer la conversation',
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+            iconSize: 18,
+            onPressed: _clear,
+            icon: const Icon(Icons.delete_outline_rounded, color: SignatureTheme.muted),
+          ),
+        if (_p.openHistory != null)
+          IconButton(
+            tooltip: 'Historique et favoris',
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+            iconSize: 18,
+            onPressed: _p.openHistory,
+            icon: const Icon(Icons.history_rounded, size: 18),
+          ),
+      ]),
     );
   }
 
-  Widget _toggle(IconData icon, String label, bool on, ValueChanged<bool> onChanged) => Semantics(
-    toggled: on,
-    button: true,
-    label: label,
-    child: InkWell(
-      borderRadius: BorderRadius.circular(99),
-      onTap: () => onChanged(!on),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: on ? SignatureTheme.sageTint : Colors.transparent,
-          borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: on ? SignatureTheme.sage.withValues(alpha: .5) : SignatureTheme.hairline),
+  // Variante icône seule (sans étiquette texte) des anciens boutons-pilules
+  // "Détection auto" / "Mode conversation", pour tenir dans la rangée unique
+  // du haut : même gabarit 30×30 / icône 18 que les IconButton voisins
+  // (inverser, effacer, historique), état "activé" porté par la couleur, le
+  // fond teinté et la bordure plutôt que par un texte.
+  Widget _iconToggle({required IconData icon, required String tooltip, required bool on, required VoidCallback onTap}) => Tooltip(
+    message: tooltip,
+    child: Semantics(
+      toggled: on,
+      button: true,
+      label: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(99),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: 30,
+          height: 30,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: on ? SignatureTheme.sageTint : Colors.transparent,
+            shape: BoxShape.circle,
+            border: Border.all(color: on ? SignatureTheme.sage.withValues(alpha: .5) : Colors.transparent),
+          ),
+          child: Icon(icon, size: 18, color: on ? SignatureTheme.sage : SignatureTheme.muted),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 12, color: on ? SignatureTheme.sage : SignatureTheme.muted),
-          const SizedBox(width: 4),
-          Text(label, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: on ? SignatureTheme.sage : SignatureTheme.muted)),
-        ]),
       ),
     ),
   );
