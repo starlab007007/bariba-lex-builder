@@ -152,11 +152,9 @@ void main() {
       expect(r?.engine, 'offline');
     });
 
-    test('D5 routage des langues : français seul, baatɔnum seul, les deux', () {
+    test('D5 routage des langues : français seul ou baatɔnum seul', () {
       expect(dunyaOnlineLanguage(DunyaLanguageMode.french, 'bba'), 'fr');
       expect(dunyaOnlineLanguage(DunyaLanguageMode.bariba, 'fr'), 'bba');
-      expect(dunyaOnlineLanguage(DunyaLanguageMode.bilingual, 'fr'), 'fr');
-      expect(dunyaOnlineLanguage(DunyaLanguageMode.bilingual, 'bba'), 'bba');
     });
 
     test('D6 historique envoyé au cerveau : français seulement (jamais de baatɔnum non vérifié)', () {
@@ -166,7 +164,6 @@ void main() {
       ];
       expect(dunyaFrenchReasoningHistory(DunyaLanguageMode.french, turns), hasLength(2));
       expect(dunyaFrenchReasoningHistory(DunyaLanguageMode.bariba, turns), isEmpty);
-      expect(dunyaFrenchReasoningHistory(DunyaLanguageMode.bilingual, turns), isEmpty);
     });
 
     test('D7 réponse baatɔnum courte : au plus 2 phrases et 200 caractères', () {

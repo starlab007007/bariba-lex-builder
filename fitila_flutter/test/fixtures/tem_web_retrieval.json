@@ -1,0 +1,50 @@
+[
+  {
+    "query": "Saria 14",
+    "answer": "Wì u ka sãa Beniɛn bii kpuro, saria ya nùn kã u yɛnu mɔ kun mɛ u n tem mɔ Benɛ temɔ.\n\nMa ba tɔnun batuma bɔnu kua ba swɛɛ wĩa samaan sɔ̃, yen sɔm koo yerun bukurowa u koo yen tireru ko mɛ̃ ba koo ka yãrò nùn win saria kɔsia.\n\nSaria tire tenin saria ba koo sɔmburu kowa yɛnusun gari sɔɔ nde mɛ̃ ba yè gerua saria bè ba dɔ̃ɔna sɔɔ.",
+    "sourceIds": [
+      14,
+      114,
+      40
+    ],
+    "isFallback": false
+  },
+  {
+    "query": "Saria 14se",
+    "answer": "Wì u ka sãa Beniɛn bii kpuro, saria ya nùn kã u yɛnu mɔ kun mɛ u n tem mɔ Benɛ temɔ.\n\nMa ba tɔnun batuma bɔnu kua ba swɛɛ wĩa samaan sɔ̃, yen sɔm koo yerun bukurowa u koo yen tireru ko mɛ̃ ba koo ka yãrò nùn win saria kɔsia.\n\nSaria tire tenin saria ba koo sɔmburu kowa yɛnusun gari sɔɔ nde mɛ̃ ba yè gerua saria bè ba dɔ̃ɔna sɔɔ.",
+    "sourceIds": [
+      14,
+      114,
+      40
+    ],
+    "isFallback": false
+  },
+  {
+    "query": "article 38",
+    "answer": "Ba ku ra sina bandun batuma sue bù goo wã yèn sɔ̃ yen siribun tɔ̃ru ta sara n tɛ.\n\nBa ku ra maa ka yen bweseru dwee ma batuma ye ya tire damginu mɔ nì nu sōɔsii mɛ̃ ya yërò mɔ.",
+    "sourceIds": [
+      38
+    ],
+    "isFallback": false
+  },
+  {
+    "query": "Tem bausu mba ba mɔ̀ Benɛ temɔ?",
+    "answer": "Yè tire teni ta naa gire, yera bù sariaba yì yè ba koo ka sɔ̀ma ko tem bausu ka yɛnusun saria tirenun gari sɔɔ Benɛ temɔ.\n\nTem bausu ka yɛnusun saria tire tè ta sɔmburu mɔ̀ Benɛ temɔ tera tèn gari ba wura ba sire saria tire tèn gari wiru 3se sɔɔ.\n\nTire nì ba koo tem bausu ka yɛnu mɔrun seeda tire kowo mɔrisia sɔɔ, yè n weenɛ bù doke yera: Tundon yĩsiru, bii yĩsinu, bè ba tireru yoruan yɛnusu, ben wãa yeru Benɛ temɔ, ǹ n koo koora bù yore yè n dera ba yoruma ka yè ba kĩ ka sere seeda tire nì ba sɔndi.",
+    "sourceIds": [
+      1,
+      4,
+      125
+    ],
+    "isFallback": false
+  },
+  {
+    "query": "Saria gbiika gari mba?",
+    "answer": "Saria tire tenin saria ba koo sɔmburu kowa yɛnusun gari sɔɔ nde mɛ̃ ba yè gerua saria bè ba dɔ̃ɔna sɔɔ.\n\nYè tire teni ta naa gire, yera bù sariaba yì yè ba koo ka sɔ̀ma ko tem bausu ka yɛnusun saria tirenun gari sɔɔ Benɛ temɔ.\n\nSaria bèn gari ba kua tire tè sɔɔ ba koo sɔmburu kowa nde mɛ̃ yarukawari tirera gerua tè bè ba nɔma doke ba ka sɔmburu mɔ.",
+    "sourceIds": [
+      40,
+      1,
+      41
+    ],
+    "isFallback": false
+  }
+]

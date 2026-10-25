@@ -99,7 +99,7 @@ export interface SearchHit {
 
 function detectArticleMention(query: string): number | null {
   // "saria 14", "saria 14se", "article 14", "art 14"
-  const m = normalize(query).match(/\b(?:saria|article|art|art\.)\s*(\d{1,3})\b/);
+  const m = normalize(query).match(/\b(?:saria|article|art|art\.)\s*(\d{1,3})(?:se)?\b/);
   if (m) return parseInt(m[1], 10);
   return null;
 }

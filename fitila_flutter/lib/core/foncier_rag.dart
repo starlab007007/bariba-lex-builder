@@ -119,13 +119,11 @@ class FoncierRag {
     'mɛ̃',
     'tè',
     'tì',
-    'ta',
     'sere',
     'ǹ',
     'kun',
     'tera',
     'yera',
-    'ma',
     'ko',
     'koo',
     'mɔ',
@@ -275,7 +273,7 @@ class FoncierRag {
     final sourceIds = picked.map((item) => item.$3.id).toSet();
     final sources = picked.isEmpty
         ? [selected.first]
-        : selected.where((source) => sourceIds.contains(source.id)).toList();
+        : sourceIds.map((id) => selected.firstWhere((source) => source.id == id)).toList();
     return FoncierAnswer(answer: answer, sources: sources, isFallback: false);
   }
 }
