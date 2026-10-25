@@ -346,6 +346,9 @@ jobs:
       # downloads on fitila.bj/install.
       - name: Publish verified production APK on GitHub Releases
         if: ${{ github.ref == 'refs/heads/main' }}
+        # This private-repository mirror can be refused by GitHub integration
+        # permissions. The required phone download is published to fitila.bj below.
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         working-directory: fitila_flutter
@@ -364,7 +367,7 @@ jobs:
             --repo "${GITHUB_REPOSITORY}" \
             --target "${GITHUB_SHA}" \
             --title "FITILA Android v1.8.23 build34 (${GITHUB_RUN_NUMBER})" \
-            --notes "APK de production signé ; modèles DUNYA/ByT5 téléchargeables séparément. La disponibilité du moteur ByT5 est limitée aux packs linguistiques certifiés."
+            --notes "APK de production signé ; modèles DUNYA/ByT5 téléchargeables séparément. Traduction ByT5 non certifiée désactivée par défaut, disponible sur consentement expérimental explicite."
 
       # The repository is private: phones download APKs from fitila.bj, listed in
       # /dunya-packs/android/releases.json (read by fitila.bj/install).
@@ -486,4 +489,5 @@ jobs:
           else
             echo "::notice title=releases.json mis a jour::${detail}"
           fi
+          exit "$status"
           exit "$status"
