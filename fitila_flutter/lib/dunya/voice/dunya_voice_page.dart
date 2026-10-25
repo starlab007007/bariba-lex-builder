@@ -151,6 +151,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       // Abort any in-flight remote voice/translation immediately, stop
       // recording, and require a fresh local session from the user.
       _session = false;
+      ++_turnCounter;
       _cloudVoice.cancel();
       unawaited(_frenchSpeech.cancel());
       _stopWordTracking();
@@ -202,8 +203,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       await _tts.awaitSpeakCompletion(true);
       final dynamic installed =
           Platform.isAndroid ? await _tts.isLanguageInstalled('fr-FR') : await _tts.isLanguageAvailable('fr-FR');
-      _systemFrenchVoice = installed == true ||
-          (_useOnlineVoice && await _tts.isLanguageAvailable('fr-FR') == true);
+      _systemFrenchVoice = installed == true;
     } catch (_) {
       _systemFrenchVoice = false;
     }
@@ -482,6 +482,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         'tts_engine': ttsEngine, 'fallback': fallbackCode,
       });
     } catch (error) {
+      if (!mounted || turnId != _turnCounter) return;
       if (mounted) {
         setState(() {
           _failedCloudText = text;
