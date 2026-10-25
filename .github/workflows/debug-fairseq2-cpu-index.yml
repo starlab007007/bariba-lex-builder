@@ -1,0 +1,37 @@
+name: Debug fairseq2 cpu index (temporaire)
+
+# Workflow de diagnostic jetable : fairseq2n (extension compilée de
+# fairseq2, dépendance transitive d'omnilingual-asr) a sa PROPRE vérification
+# au chargement qui refuse un torch CPU-only quel que soit le numéro de
+# version (confirmé par debug-voice-gateway-health5, supprimé) — ce n'est
+# pas un problème d'ABI comme pour torchaudio, fairseq2n exige explicitement
+# un variant CPU de lui-même, publié sur un index pip séparé scopé par
+# version de torch : https://fair.pkg.atmeta.com/fairseq2/whl/pt<torch>/cpu
+# Ce diagnostic vérifie quelles versions de fairseq2n/fairseq2 y sont
+# publiées pour torch 2.8.0, avant d'écrire le vrai fix.
+# À supprimer une fois le diagnostic terminé.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: versions fairseq2n disponibles (pt2.8.0/cpu)
+        run: |
+          set +e
+          OUT="$(pip index versions fairseq2n --extra-index-url https://fair.pkg.atmeta.com/fairseq2/whl/pt2.8.0/cpu 2>&1)"
+          echo "::notice::fairseq2n: $(echo "$OUT" | tr '\n' '|' | cut -c1-900)"
+        continue-on-error: true
+
+      - name: versions fairseq2 disponibles (pt2.8.0/cpu)
+        run: |
+          set +e
+          OUT="$(pip index versions fairseq2 --extra-index-url https://fair.pkg.atmeta.com/fairseq2/whl/pt2.8.0/cpu 2>&1)"
+          echo "::notice::fairseq2: $(echo "$OUT" | tr '\n' '|' | cut -c1-900)"
+        continue-on-error: true
