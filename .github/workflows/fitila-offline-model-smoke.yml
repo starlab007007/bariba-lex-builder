@@ -1,0 +1,53 @@
+name: Verify real Android offline DUNYA models
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fitila-offline-model-smoke.yml'
+      - 'scripts/test-dunya-offline-models.sh'
+      - 'tests/android/dunya_offline_models_test.dart'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: fitila-offline-model-smoke
+  cancel-in-progress: false
+jobs:
+  models:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free unused runner space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/share/swift
+          df -h /
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          channel: stable
+          cache: true
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Allow KVM
+        run: sudo chmod 666 /dev/kvm
+      - name: Verify shared Sherpa and ByT5 runtimes with the published packs
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          ram-size: 4096M
+          disk-size: 8192M
+          disable-animations: true
+          script: bash scripts/test-dunya-offline-models.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: DUNYA-Real-Offline-Models-Android
+          path: fitila_flutter/build/ci-report/
+          if-no-files-found: ignore
+          retention-days: 14
