@@ -19,73 +19,57 @@ COPY requirements.txt /srv/requirements.txt
 # transitive (fairseq2, via omnilingual-asr) échoue avec
 # "BackendUnavailable: Cannot import 'setuptools.build_meta'".
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
-# Ce VPS est CPU uniquement (pas de GPU) : `pip install torch` depuis PyPI
-# installe par défaut la variante CUDA, qui tente de charger libcudart.so
-# au chargement du pipeline ASR (omnilingual-asr/fairseq2) et échoue avec
-# "libcudart.so.13: cannot open shared object file" — le service démarre
-# quand même (TTS fonctionne) mais reste "degraded" (ASR indisponible)
-# indéfiniment.
+# Ce VPS est CPU uniquement (pas de GPU). `pip install -r requirements.txt`
+# seul installe par défaut des builds CUDA pour torch/torchaudio/fairseq2n,
+# qui échouent au runtime avec "libcudart.so.13: cannot open shared object
+# file" (TTS fonctionne quand même, mais l'ASR reste "degraded"
+# indéfiniment). Historique condensé des essais qui ont précédé le fix
+# actuel (chacun identifié par un diagnostic jetable séparé) :
+#  1) torch CPU installé AVANT requirements.txt : silencieusement
+#     remplacé par la variante CUDA à l'étape suivante (qui réévalue tout
+#     le graphe pour satisfaire la contrainte exacte torch==2.8.0 de
+#     fairseq2n).
+#  2) Contraintes pip sur une version CPU non précisée : installe la plus
+#     récente (2.14.1+cpu) au lieu de 2.8.0 exact → ResolutionImpossible.
+#  3) Remplacer SEULEMENT torch par le CPU de la bonne version (après coup,
+#     --no-deps) : le service démarre, mais torchaudio (extension C
+#     compilée séparée, liée CUDA à SON propre build) échoue encore.
+#  4) Remplacer torch+torchaudio, version de torchaudio lue par
+#     `import torchaudio` : cet import échoue déjà (même erreur CUDA) au
+#     moment de lire sa version, donc elle finit vide et torchaudio est
+#     sauté — `pip show` (métadonnées, pas d'import) règle ce point précis.
+#  5) Remplacer torch+torchaudio via pip show, mais chacun à SA PROPRE
+#     version (torch==2.8.0, torchaudio==2.11.0, jamais prouvées
+#     compatibles) : "undefined symbol: torch_library_impl" — désaccord
+#     d'ABI. torch et torchaudio doivent être en lockstep de version.
 #
-# Deux essais précédents ont échoué :
-#  1) Installer torch CPU AVANT requirements.txt ne suffit pas : la
-#     commande suivante réévalue tout le graphe depuis PyPI et réinstalle
-#     silencieusement la variante CUDA pour satisfaire la contrainte de
-#     torch d'omnilingual-asr/fairseq2 (confirmé : pip show torch donnait
-#     2.8.0+cu128).
-#  2) Épingler la version CPU installée (via un fichier de contraintes)
-#     échoue aussi : sans numéro de version précisé, l'index CPU installe
-#     la plus récente disponible (2.14.1+cpu), alors que fairseq2n exige
-#     torch==2.8.0 pile (extension compilée, ABI figée) — conflit
-#     "ResolutionImpossible" au lieu d'un remplacement silencieux.
-#
-# Solution robuste : laisser pip résoudre requirements.txt normalement
-# (il choisit lui-même la version exacte de torch dont fairseq2n a
-# besoin, build CUDA par défaut), puis remplacer SEULEMENT les paquets
-# torch par le build CPU de cette MÊME version exacte (--no-deps : les
-# autres paquets déjà résolus, dont fairseq2n, ne sont pas retouchés).
-# S'adapte automatiquement si la version exigée change dans le futur.
-#
-# Un essai précédent (torch seul) a démarré le service mais l'ASR
-# échouait encore avec la même erreur libcudart.so.13 — cette fois dans
-# l'extension compilée de `torchaudio` (import de omnilingual_asr), pas
-# dans torch lui-même : torchaudio a sa PROPRE extension C (_torchaudio)
-# liée au runtime CUDA au moment de son build, indépendante de torch.
-# Remplacer torch sans remplacer torchaudio laisse cette extension
-# pointer vers un runtime CUDA qui n'est plus installé. Il faut donc
-# remplacer torch ET torchaudio ensemble, dans le même appel pip (pour
-# que pip choisisse des wheels CPU mutuellement compatibles).
-#
-# Un essai suivant (torch+torchaudio, mais version lue via `import
-# torchaudio`) a aussi échoué : `import torchaudio` échoue DÉJÀ avec
-# libcudart.so.13 au moment même de lire sa version (son extension
-# native CUDA se charge dès l'import), donc TORCHAUDIO_VER finissait
-# vide (erreur avalée par `2>/dev/null || true`) et le force-reinstall
-# sautait silencieusement torchaudio — laissant le build CUDA cassé en
-# place. `pip show` lit les métadonnées du paquet sans jamais importer
-# son extension native, donc il fonctionne même quand l'import échoue.
-#
-# Un essai suivant encore (torch+torchaudio via pip show, mais chacun à
-# SA PROPRE version résolue par requirements.txt — torch==2.8.0 et
-# torchaudio==2.11.0, des lignes de version très différentes) a échoué
-# différemment : build CPU réussi pour les deux, mais import de
-# torchaudio en erreur avec "undefined symbol: torch_library_impl" —
-# un désaccord d'ABI entre les deux wheels CPU, confirmé par un
-# diagnostic reproduisant l'environnement exact (conteneur
-# python:3.11-slim). torch et torchaudio sont censés être installés en
-# lockstep (même numéro de version) ; la version de torchaudio résolue
-# seule par une contrainte large d'omnilingual-asr/transformers n'est
-# pas forcément celle réellement compatible ABI avec CE torch. Forcer
-# torchaudio à la MÊME version que torch (au lieu de sa propre version
-# résolue) règle le problème — confirmé par le même diagnostic.
+# Avec torch+torchaudio en lockstep CPU réglé, l'ASR échouait encore,
+# cette fois avec un message explicite de fairseq2n lui-même :
+# "fairseq2 requires a CUDA 12.8 build of PyTorch 2.8.0, but the
+# installed version is a CPU-only build" — fairseq2n (extension compilée
+# derrière fairseq2, dépendance transitive d'omnilingual-asr) REFUSE tout
+# torch CPU, quelle que soit sa version : ce n'est pas un problème d'ABI
+# mais fairseq2n lui-même qui n'a pas de variant CPU générique. Le projet
+# fairseq2 publie ses propres wheels CPU sur un index séparé, scopé par
+# version de torch (https://fair.pkg.atmeta.com/fairseq2/whl/pt<torch>/cpu —
+# voir https://github.com/facebookresearch/fairseq2#variants) ; confirmé
+# que fairseq2n==0.5.2+cpu (la version exacte qu'omnilingual-asr exige)
+# y est bien publié pour pt2.8.0.
 RUN pip install --no-cache-dir -r requirements.txt
 RUN TORCH_VER="$(pip show torch | grep -i '^Version:' | awk '{print $2}' | cut -d'+' -f1)" \
     && echo "résolu par requirements.txt : torch=${TORCH_VER} — remplacement (torch+torchaudio en lockstep) par les builds CPU" \
     && pip install --no-cache-dir --force-reinstall --no-deps \
          "torch==${TORCH_VER}" "torchaudio==${TORCH_VER}" \
          --index-url https://download.pytorch.org/whl/cpu \
+    && FAIRSEQ2N_VER="$(pip show fairseq2n | grep -i '^Version:' | awk '{print $2}' | cut -d'+' -f1)" \
+    && echo "résolu par requirements.txt : fairseq2n=${FAIRSEQ2N_VER} — remplacement par le variant cpu (index fairseq2, pt${TORCH_VER})" \
+    && pip install --no-cache-dir --force-reinstall --no-deps \
+         "fairseq2n==${FAIRSEQ2N_VER}" "fairseq2==${FAIRSEQ2N_VER}" \
+         --index-url "https://fair.pkg.atmeta.com/fairseq2/whl/pt${TORCH_VER}/cpu" \
     && python -c "\
 import torch; print('torch CPU final :', torch.__version__, '| cuda dispo :', torch.cuda.is_available()); \
-import torchaudio; print('torchaudio CPU final :', torchaudio.__version__)"
+import torchaudio; print('torchaudio CPU final :', torchaudio.__version__); \
+import fairseq2n, fairseq2; print('fairseq2n/fairseq2 CPU final : ok')"
 
 COPY app.py /srv/app.py
 
