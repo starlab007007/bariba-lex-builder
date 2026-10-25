@@ -8035,31 +8035,8 @@ class _AiScreenState extends State<AiScreen> {
     });
     _scrollToEnd();
 
-    var serverDown = false;
     try {
-      const canUseServer = false; // plus de cerveau serveur payant : Gemma local + traducteur FITILA
-      if (canUseServer) {
-        try {
-          final result = await FitilaBackend.askFitilaIaDetailed(trimmed);
-          if (!mounted) return null;
-          setState(() {
-            _messages.add(_AiChatMessage(
-              role: 'assistant',
-              text: result.text,
-              isFallbackFr: result.isFallbackFr,
-            ));
-          });
-          _scrollToEnd();
-          return result.text;
-        } catch (error) {
-          if (!FitilaOffline.isNetworkError(error) && !FitilaBackend.isServerUnavailable(error)) rethrow;
-          if (FitilaOffline.isNetworkError(error)) FitilaOffline.reportFailure(error);
-          else serverDown = true;
-          // Panne réseau ou serveur IA en cours de route : on retombe hors ligne
-          // ci-dessous, exactement comme Tem IA retombe sur sa recherche locale.
-        }
-      }
-
+      // Politique FITILA : pas de cerveau serveur payant ; Gemma local + traducteur FITILA.
       // --- Hors ligne : cerveau DUNYA (Gemma) sur le téléphone, si installé ---
       final offlineAnswer = await _askOfflineBrain(trimmed);
       if (!mounted) return null;
@@ -8082,12 +8059,8 @@ class _AiScreenState extends State<AiScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            serverDown
-                ? 'Le cerveau en ligne de Fitila IA est momentanément indisponible. Réessayez '
-                    'dans un instant, ou installez le cerveau local (DUNYA › Réglages › Cerveau) '
-                    'pour discuter sans serveur.'
-                : 'Fitila IA utilise uniquement le cerveau local gratuit de votre téléphone. '
-                    'Installez-le une seule fois (DUNYA › Réglages › Cerveau, mode « Malin »).',
+            'Fitila IA utilise uniquement le cerveau local gratuit de votre téléphone. '
+            'Installez-le une seule fois (DUNYA › Réglages › Cerveau, mode « Malin »).',
           ),
         ),
       );
