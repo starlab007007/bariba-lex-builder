@@ -306,6 +306,15 @@ class FitilaBackend {
     await FitilaOffline.clearUserData();
   }
 
+  /// Panne côté serveur IA (fournisseur en timeout/quota, fonction 5xx ou 429) :
+  /// l'appelant doit retomber sur le cerveau local plutôt qu'afficher l'erreur brute.
+  static bool isServerUnavailable(Object e) {
+    if (e is FunctionException) {
+      return e.status >= 500 || e.status == 429 || e.status == 402;
+    }
+    return false;
+  }
+
   static Future<String> askFitilaIa(String message, {String? systemPrompt}) async =>
       (await askFitilaIaDetailed(message, systemPrompt: systemPrompt)).text;
 

@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const GLOBAL_TIMEOUT_MS = 60_000;
-const BYT5_TIMEOUT_MS = 30_000;
+const BYT5_TIMEOUT_MS = 25_000;
 
 const SYSTEM_PROMPT = `Tu es Fitila, un assistant intelligent et bienveillant.
 Réponds TOUJOURS en français, de manière claire et concise.
@@ -60,7 +60,7 @@ function sanitizeHistory(input: unknown): ChatMessage[] {
 async function callActiveAI(args: { messages: ChatMessage[]; temperature: number; maxTokens: number }): Promise<{ text: string; model: string; provider: string; error?: string; retryAfter?: number }> {
   const response = await aiFetch(AI_CHAT_URL, {
     body: JSON.stringify({ messages: args.messages, temperature: args.temperature, max_tokens: args.maxTokens }),
-    signal: AbortSignal.timeout(20_000),
+    signal: AbortSignal.timeout(14_000),
   });
   const provider = response.headers.get('X-Fitila-AI-Provider') || '';
   const data = await response.json().catch(() => ({}));
@@ -155,7 +155,7 @@ export async function handleChat(req: Request): Promise<Response> {
     // Use exactly the provider selected by an administrator.
     let llmResult = await callActiveAI({ messages: chatMessages, temperature, maxTokens }).catch((e) => ({ text: "", model: "", provider: "", error: e instanceof Error ? e.message : "llm_unavailable" } as Awaited<ReturnType<typeof callActiveAI>>));
     // One more attempt on a transient upstream failure or timeout (observed intermittently with Gemini).
-    if (!llmResult.text && !["llm_not_configured", "llm_forbidden", "llm_rate_limited", "credits_exhausted"].includes(llmResult.error ?? "") && Date.now() - startedAt < 25_000) {
+    if (!llmResult.text && !["llm_not_configured", "llm_forbidden", "llm_rate_limited", "credits_exhausted"].includes(llmResult.error ?? "") && Date.now() - startedAt < 16_000 && !/aborted|timed? ?out|timeout/i.test(llmResult.error ?? "")) {
       console.warn(`[fitila] LLM retry after: ${llmResult.error}`);
       llmResult = await callActiveAI({ messages: chatMessages, temperature, maxTokens }).catch((e) => ({ text: "", model: "", provider: "", error: e instanceof Error ? e.message : "llm_unavailable" } as Awaited<ReturnType<typeof callActiveAI>>));
     }
@@ -193,7 +193,17 @@ export async function handleChat(req: Request): Promise<Response> {
     }
 
     if (llmResult.error || !llmResult.text) {
-      throw new Error(llmResult.error || "LLM failed");
+      // Fournisseur IA muet ou en panne : réponse propre et rapide (503), jamais un 500 brut,
+      // pour que l'app bascule aussitôt sur son cerveau local hors ligne.
+      clearTimeout(globalTimer);
+      return new Response(
+        JSON.stringify({
+          error: "llm_unavailable",
+          message: "Le cerveau en ligne de FITILA est momentanément indisponible. Réessayez dans un instant.",
+          duration: Date.now() - startedAt,
+        }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "20" } },
+      );
     }
 
     const responseFr = keepFrenchSentences(llmResult.text);
@@ -237,7 +247,7 @@ export async function handleChat(req: Request): Promise<Response> {
   } catch (e: unknown) {
     clearTimeout(globalTimer);
     const msg = e instanceof Error ? e.message : "Unknown error";
-    const isTimeout = /aborted|timeout/i.test(msg);
+    const isTimeout = /aborted|timed? ?out|timeout/i.test(msg);
     const duration = Date.now() - startedAt;
 
     console.error("[fitila] Error:", e);
@@ -245,6 +255,7 @@ export async function handleChat(req: Request): Promise<Response> {
     return new Response(
       JSON.stringify({
         error: isTimeout ? "Temps de réponse dépassé" : msg,
+        message: isTimeout ? "Temps de réponse dépassé. Réessayez." : msg,
         duration,
       }),
       {

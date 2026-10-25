@@ -220,8 +220,10 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     }
     _emptyListens = 0;
     setState(() => _phase = _Phase.thinking);
+    var heard = false;
     try {
       final text = await _transcribe(samples);
+      heard = text.trim().isNotEmpty;
       if (!mounted || turn != _turn || !_session) return;
       if (text.trim().isEmpty) {
         setState(() {
@@ -241,7 +243,9 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
       if (mounted) {
         setState(() {
           _phase = _Phase.idle;
-          _notice = 'Service de reconnaissance vocale indisponible. Réessayez.';
+          _notice = heard
+              ? 'Votre voix a bien été comprise, mais le cerveau en ligne est momentanément indisponible. Réessayez dans un instant.'
+              : 'Service de reconnaissance vocale indisponible. Réessayez.';
         });
       }
     }

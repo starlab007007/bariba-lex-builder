@@ -8069,6 +8069,7 @@ class _AiScreenState extends State<AiScreen> {
     });
     _scrollToEnd();
 
+    var serverDown = false;
     try {
       final canUseServer = FitilaBackend.configured && FitilaOffline.online.value;
       if (canUseServer) {
@@ -8085,10 +8086,11 @@ class _AiScreenState extends State<AiScreen> {
           _scrollToEnd();
           return result.text;
         } catch (error) {
-          if (!FitilaOffline.isNetworkError(error)) rethrow;
-          FitilaOffline.reportFailure(error);
-          // Panne réseau en cours de route : on retombe hors ligne ci-dessous,
-          // exactement comme Tem IA retombe sur sa recherche locale.
+          if (!FitilaOffline.isNetworkError(error) && !FitilaBackend.isServerUnavailable(error)) rethrow;
+          if (FitilaOffline.isNetworkError(error)) FitilaOffline.reportFailure(error);
+          else serverDown = true;
+          // Panne réseau ou serveur IA en cours de route : on retombe hors ligne
+          // ci-dessous, exactement comme Tem IA retombe sur sa recherche locale.
         }
       }
 
@@ -8109,10 +8111,14 @@ class _AiScreenState extends State<AiScreen> {
         return offlineAnswer;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Fitila IA a besoin d’internet. Pour discuter hors connexion, installez '
-            'le cerveau local (DUNYA › Réglages › Cerveau) une seule fois.',
+            serverDown
+                ? 'Le cerveau en ligne de Fitila IA est momentanément indisponible. Réessayez '
+                    'dans un instant, ou installez le cerveau local (DUNYA › Réglages › Cerveau) '
+                    'pour discuter sans serveur.'
+                : 'Fitila IA a besoin d’internet. Pour discuter hors connexion, installez '
+                    'le cerveau local (DUNYA › Réglages › Cerveau) une seule fois.',
           ),
         ),
       );
