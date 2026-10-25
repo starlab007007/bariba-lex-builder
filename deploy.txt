@@ -1,0 +1,52 @@
+token: present
+2.122.0
+== tts-audio
+Uploading asset (tts-audio): supabase/functions/tts-audio/index.ts
+Uploading asset (tts-audio): supabase/functions/_shared/meta-voice.ts
+unexpected deploy status 401: {"message":"Invalid access token"}
+Try rerunning the command with --debug to troubleshoot the error.
+== bariba-tts
+Uploading asset (bariba-tts): supabase/functions/bariba-tts/index.ts
+Uploading asset (bariba-tts): supabase/functions/_shared/meta-voice.ts
+Uploading asset (bariba-tts): supabase/functions/_shared/bariba-linguistic-rules.ts
+unexpected deploy status 401: {"message":"Invalid access token"}
+Try rerunning the command with --debug to troubleshoot the error.
+== byt5-bariba-translate
+Uploading asset (byt5-bariba-translate): supabase/functions/byt5-bariba-translate/index.ts
+Uploading asset (byt5-bariba-translate): supabase/functions/_shared/deterministic-refine.ts
+Uploading asset (byt5-bariba-translate): supabase/functions/_shared/translation-verifier.ts
+Uploading asset (byt5-bariba-translate): supabase/functions/_shared/translation-memory.ts
+unexpected deploy status 401: {"message":"Invalid access token"}
+Try rerunning the command with --debug to troubleshoot the error.
+== fitila-ia-chat
+Uploading asset (fitila-ia-chat): supabase/functions/fitila-ia-chat/index.ts
+unexpected deploy status 401: {"message":"Invalid access token"}
+Try rerunning the command with --debug to troubleshoot the error.
+== meta-voice-gateway
+unexpected list functions status 401: {"message":"Invalid access token"}
+Try rerunning the command with --debug to troubleshoot the error.
+== dunya-voice-turn
+Uploading asset (dunya-voice-turn): supabase/functions/dunya-voice-turn/index.ts
+Uploading asset (dunya-voice-turn): supabase/functions/_shared/dunya-voice-core.ts
+Uploading asset (dunya-voice-turn): supabase/functions/_shared/transcription-repair.ts
+Uploading asset (dunya-voice-turn): supabase/functions/_shared/transcription-resources.ts
+unexpected deploy status 401: {"message":"Invalid access token"}
+Try rerunning the command with --debug to troubleshoot the error.
+== transcribe-audio
+Uploading asset (transcribe-audio): supabase/functions/transcribe-audio/index.ts
+Uploading asset (transcribe-audio): supabase/functions/_shared/ai-provider.ts
+Uploading asset (transcribe-audio): supabase/functions/_shared/mistral.ts
+unexpected deploy status 401: {"message":"Invalid access token"}
+Try rerunning the command with --debug to troubleshoot the error.
+== ai-translate
+Uploading asset (ai-translate): supabase/functions/ai-translate/index.ts
+Uploading asset (ai-translate): supabase/functions/_shared/ai-provider.ts
+Uploading asset (ai-translate): supabase/functions/_shared/mistral.ts
+unexpected deploy status 401: {"message":"Invalid access token"}
+Try rerunning the command with --debug to troubleshoot the error.
+== fitila-tem-ia-chat
+Uploading asset (fitila-tem-ia-chat): supabase/functions/fitila-tem-ia-chat/index.ts
+Uploading asset (fitila-tem-ia-chat): supabase/functions/_shared/ai-provider.ts
+Uploading asset (fitila-tem-ia-chat): supabase/functions/_shared/mistral.ts
+unexpected deploy status 401: {"message":"Invalid access token"}
+Try rerunning the command with --debug to troubleshoot the error.
