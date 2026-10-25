@@ -1,11 +1,17 @@
-name: DEBUG - diagnostiquer l'échec du health-check voice-gateway
+name: DEBUG - diagnostiquer le conflit de port voice-gateway
 
-# Temporaire : le déploiement voice-gateway-deploy.yml échoue maintenant à
-# l'étape "attente health-check" (3 min) après que le docker pull GHCR ait
-# réussi (le blocage GHCR précédent est résolu). Ce workflow ne fait que
-# lire l'état actuel sur le VPS via ssh natif (pas appleboy/ssh-action) pour
-# que les ::notice:: soient bien visibles via l'API Checks, sans relancer de
-# déploiement. À supprimer une fois le diagnostic obtenu.
+# Temporaire : après résolution du blocage GHCR (docker pull réussit
+# maintenant intégralement), le déploiement échoue désormais sur
+# `docker compose up` avec "Bind for 127.0.0.1:8090 failed: port is
+# already allocated". Ce workflow ne fait que lire l'état actuel sur le
+# VPS via ssh natif (pas appleboy/ssh-action), pour que les ::notice::
+# soient visibles via l'API Checks (confirmé fiable pour un `run:` natif
+# cette session). Chaque commande a sa PROPRE étape avec une sortie
+# volontairement courte : GitHub Actions ne garde que les 10 premières
+# annotations ::notice:: PAR ÉTAPE (limite découverte empiriquement en
+# tentant un diagnostic multi-commandes dans une seule étape — les
+# dernières commandes n'apparaissaient jamais). À supprimer une fois le
+# diagnostic obtenu.
 
 on:
   workflow_dispatch: {}
@@ -17,42 +23,48 @@ jobs:
   diag:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
     steps:
-      - name: Diagnostic ssh natif
+      - name: Clé ssh
         env:
           SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
         run: |
-          set -u
           install -m 600 /dev/null /tmp/vps_key
           printf '%s\n' "$SSH_KEY" > /tmp/vps_key
-          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
-            "$VPS_USER@$VPS_HOST" 'bash -s' > /tmp/ssh_out.txt 2>/tmp/ssh_err.txt <<'REMOTE'
-            echo "=== MARK_START ==="
-            echo "--- free -h ---"
-            free -h
-            echo "--- qui ecoute sur :8090 (tous conteneurs + hote) ---"
-            (ss -ltnp 2>/dev/null || netstat -ltnp 2>/dev/null) | grep -E '8090|State' || true
-            echo "--- docker ps -a (TOUS conteneurs, colonne PORTS) ---"
-            docker ps -a --format '{{.Names}} | {{.Status}} | {{.Image}} | {{.Ports}}'
-            echo "--- docker inspect state (bariba-voice-gateway) ---"
-            docker inspect bariba-voice-gateway --format 'Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} StartedAt={{.State.StartedAt}}' 2>&1 || true
-            echo "--- docker logs --tail 80 (bariba-voice-gateway) ---"
-            docker logs --tail 80 bariba-voice-gateway 2>&1 || true
-            echo "--- curl health (one-shot) ---"
-            curl -v --max-time 5 http://127.0.0.1:8090/health 2>&1 || true
-            echo "=== MARK_END ==="
-          REMOTE
-          rc=$?
-          echo "::notice::local-ssh-rc=$rc stdout-bytes=$(wc -c < /tmp/ssh_out.txt) stderr-bytes=$(wc -c < /tmp/ssh_err.txt)"
-          i=0
-          while IFS= read -r line; do
-            i=$((i+1))
-            echo "::notice::OUT-$i: $line"
-          done < /tmp/ssh_out.txt
-          j=0
-          while IFS= read -r line; do
-            j=$((j+1))
-            echo "::notice::ERR-$j: $line"
-          done < /tmp/ssh_err.txt
+
+      - name: RAM disponible
+        run: |
+          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" 'free -h' \
+            | while IFS= read -r l; do echo "::notice::RAM: $l"; done
+
+      - name: Qui écoute sur :8090
+        run: |
+          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
+            '(ss -ltnp 2>/dev/null || netstat -ltnp 2>/dev/null) | grep 8090 || echo "(rien trouvé par ss/netstat sur :8090)"' \
+            | while IFS= read -r l; do echo "::notice::PORT8090: $l"; done
+
+      - name: Conteneurs docker (nom, statut, ports) — max 9
+        run: |
+          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
+            "docker ps -a --format '{{.Names}} | {{.Status}} | {{.Ports}}' | head -9" \
+            | while IFS= read -r l; do echo "::notice::PS: $l"; done
+
+      - name: Conteneurs liés au port 8090 précisément
+        run: |
+          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
+            "docker ps -a --format '{{.Names}} | {{.Status}} | {{.Ports}}' | grep 8090 || echo '(aucun conteneur listé avec 8090 dans ses ports)'" \
+            | while IFS= read -r l; do echo "::notice::PS8090: $l"; done
+
+      - name: État bariba-voice-gateway
+        run: |
+          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
+            "docker inspect bariba-voice-gateway --format 'Status={{.State.Status}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}}' 2>&1 || echo '(conteneur bariba-voice-gateway introuvable)'" \
+            | while IFS= read -r l; do echo "::notice::INSPECT: $l"; done
+
+      - name: Logs récents bariba-voice-gateway (8 dernières lignes)
+        run: |
+          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" \
+            "docker logs --tail 8 bariba-voice-gateway 2>&1 || echo '(pas de logs)'" \
+            | while IFS= read -r l; do echo "::notice::LOGS: $l"; done
