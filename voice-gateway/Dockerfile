@@ -10,7 +10,19 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /srv
+# HOME=/srv (en plus de HF_HOME) : une fois l'ASR fonctionnel (import
+# pyarrow/numpy réglé plus bas), son chargement échouait encore au runtime
+# avec "PermissionError: [Errno 13] Permission denied: '/home/fitila'" —
+# fairseq2 (via son asset download manager, utilisé par omnilingual-asr
+# pour charger les poids du modèle) met son cache sous $HOME/.cache/fairseq2,
+# PAS sous HF_HOME (ça, c'est huggingface_hub, utilisé par le TTS
+# seulement). L'utilisateur `fitila` créé plus bas (useradd sans -m) n'a pas
+# de répertoire personnel : /home/fitila n'existe même pas. Fixer HOME=/srv
+# fait atterrir le cache fairseq2 dans /srv/.cache/fairseq2, un répertoire
+# déjà recouvert par le `chown -R fitila:fitila /srv` plus bas — même
+# logique que HF_HOME, appliquée à fairseq2.
 ENV HF_HOME=/srv/.cache/huggingface \
+    HOME=/srv \
     PYTHONUNBUFFERED=1
 
 COPY requirements.txt /srv/requirements.txt

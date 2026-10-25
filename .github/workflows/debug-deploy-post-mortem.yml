@@ -96,3 +96,41 @@ jobs:
         run: |
           ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker rm -f test-new-asr" 2>&1 | tr '\n' '|'
         continue-on-error: true
+
+      - name: tester le fix HOME=/srv sur l'image deja pullee (sans rebuild)
+        run: |
+          ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker rm -f test-home-fix 2>/dev/null; docker run -d --name test-home-fix -e HOME=/srv -p 18091:8090 ghcr.io/starlab007007/bariba-lex-builder-voice-gateway:497064e007761e584ac25bbee7cde303bd3f4d9f" 2>&1 | tr '\n' '|'
+          echo "::notice::launched2"
+
+      - name: sonder /health du test HOME fix toutes les 20s (jusqu'a 6 min)
+        run: |
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18; do
+            OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "curl -sS --max-time 4 http://127.0.0.1:18091/health 2>&1" 2>&1 | tr '\n' '|' | cut -c1-300)"
+            echo "::notice::hprobe${i}: ${OUT}"
+            if echo "$OUT" | grep -q '"status":"ok"'; then
+              echo "::notice::HOMEFIX_SUCCES a la sonde ${i}"
+              break
+            fi
+            sleep 20
+          done
+
+      - name: logs complets du test HOME fix
+        run: |
+          ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker logs test-home-fix" > /tmp/hlogs.txt 2>&1
+          echo "longueur: $(wc -c < /tmp/hlogs.txt)"
+        continue-on-error: true
+
+      - name: logs test HOME fix (partie 1)
+        run: |
+          echo "::notice::hlog1: $(cut -c1-900 /tmp/hlogs.txt 2>/dev/null | tr '\n' '|')"
+        continue-on-error: true
+
+      - name: logs test HOME fix (partie 2, fin)
+        run: |
+          echo "::notice::hlog2: $(tail -c 900 /tmp/hlogs.txt 2>/dev/null | tr '\n' '|')"
+        continue-on-error: true
+
+      - name: nettoyage test HOME fix
+        run: |
+          ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker rm -f test-home-fix" 2>&1 | tr '\n' '|'
+        continue-on-error: true
