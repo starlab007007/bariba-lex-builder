@@ -28,6 +28,7 @@ meta-voice.ts n'ait besoin d'aucune modification :
   GET  /health -> { "status", "asr_loaded", "tts_loaded", ... }
 """
 import base64
+from collections import OrderedDict
 import logging
 import os
 import tempfile
@@ -54,6 +55,9 @@ _state = {"asr_loaded": False, "tts_loaded": False, "asr_error": None, "tts_erro
 _asr_pipeline = None
 _tts_model = None
 _tts_tokenizer = None
+_TTS_CACHE_MAX = 128
+_tts_cache: "OrderedDict[str, bytes]" = OrderedDict()
+torch.set_num_threads(max(1, os.cpu_count() or 1))
 
 
 def _load_models() -> None:
@@ -83,6 +87,35 @@ def _load_models() -> None:
 
 
 _load_models()
+
+
+def _warm_up() -> None:
+    """Premier passage à vide : la 1re vraie requête ne paie plus l'initialisation paresseuse."""
+    try:
+        if _state["tts_loaded"]:
+            _run_tts("A kua")
+            _tts_cache.clear()
+    except Exception:  # noqa: BLE001
+        log.warning("Warm-up TTS ignoré.")
+    try:
+        if _state["asr_loaded"]:
+            import soundfile as sf
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                sf.write(tmp.name, np_zeros_1s(), 16000)
+            try:
+                _run_asr(Path(tmp.name))
+            except HTTPException:
+                pass  # silence => « transcription vide » attendu : seul le chauffage compte
+    except Exception:  # noqa: BLE001
+        log.warning("Warm-up ASR ignoré.")
+
+
+def np_zeros_1s():
+    import numpy as np
+    return np.zeros(16000, dtype="float32")
+
+
+_warm_up()
 
 
 class InferRequest(BaseModel):
@@ -121,12 +154,22 @@ def _run_tts(text: str) -> bytes:
         raise HTTPException(503, "Moteur TTS indisponible : " + (_state["tts_error"] or "non chargé"))
     import soundfile as sf
 
-    with torch.no_grad():
+    # Cache LRU : les phrases de DUNYA se répètent (salutations, réponses essentielles) ;
+    # une phrase déjà synthétisée est rendue instantanément, sans CPU.
+    cached = _tts_cache.get(text)
+    if cached is not None:
+        _tts_cache.move_to_end(text)
+        return cached
+    with torch.inference_mode():
         inputs = _tts_tokenizer(text, return_tensors="pt")
         waveform = _tts_model(**inputs).waveform.squeeze().cpu().numpy()
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         sf.write(tmp.name, waveform, _tts_model.config.sampling_rate)
-        return Path(tmp.name).read_bytes()
+        data = Path(tmp.name).read_bytes()
+    _tts_cache[text] = data
+    while len(_tts_cache) > _TTS_CACHE_MAX:
+        _tts_cache.popitem(last=False)
+    return data
 
 
 @app.post("/infer")
