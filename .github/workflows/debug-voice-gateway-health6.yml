@@ -28,25 +28,20 @@ jobs:
           OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker inspect bariba-voice-gateway --format 'ExitCode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}} Health={{.State.Health.Status}} Error={{.State.Error}}'" 2>&1)"
           echo "::notice::inspect: ${OUT}"
 
-      - name: docker logs tail 40 (partie 1)
+      - name: date de création de l'IMAGE en cours d'exécution
         run: |
-          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker logs --tail 40 bariba-voice-gateway" 2>&1 | tr '\n' '|' | cut -c1-900)"
-          echo "::notice::logs1: ${OUT}"
+          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker inspect ghcr.io/starlab007007/bariba-lex-builder-voice-gateway:latest --format 'ImageId={{.Id}} Created={{.Created}}'" 2>&1)"
+          echo "::notice::image: ${OUT}"
 
-      - name: docker logs tail 40 (partie 2)
+      - name: import LIVE torch + fairseq2n dans le conteneur (partie 1)
         run: |
-          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker logs --tail 40 bariba-voice-gateway" 2>&1 | tr '\n' '|' | cut -c901-1800)"
-          echo "::notice::logs2: ${OUT}"
+          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker exec bariba-voice-gateway python -c \"import torch; print('torch', torch.__version__, 'cuda_build', torch.version.cuda); import fairseq2n; print('fairseq2n import OK')\"" 2>&1 | tr '\n' '|' | cut -c1-900)"
+          echo "::notice::live1: ${OUT}"
 
-      - name: docker logs tail 40 (partie 3)
+      - name: import LIVE omnilingual_asr dans le conteneur (partie 2)
         run: |
-          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker logs --tail 40 bariba-voice-gateway" 2>&1 | tr '\n' '|' | cut -c1801-2700)"
-          echo "::notice::logs3: ${OUT}"
-
-      - name: docker logs tail 40 (partie 4)
-        run: |
-          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker logs --tail 40 bariba-voice-gateway" 2>&1 | tr '\n' '|' | cut -c2701-3600)"
-          echo "::notice::logs4: ${OUT}"
+          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker exec bariba-voice-gateway python -c \"from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline; print('omnilingual_asr import OK')\"" 2>&1 | tr '\n' '|' | cut -c1-900)"
+          echo "::notice::live2: ${OUT}"
 
       - name: curl -v health local (depuis le VPS)
         run: |
