@@ -54,6 +54,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Debug - vérifier needs.build-and-push.outputs.image
+        run: |
+          echo "::notice::DEBUG F IMAGE (hors SSH) = ${{ needs.build-and-push.outputs.image }}"
       - name: Synchroniser docker-composer.yml sur le VPS
         # Ne pas supposer que deploy.yml (déclenché séparément) l'a déjà fait :
         # ce workflow doit rester correct même s'il tourne seul (dispatch
