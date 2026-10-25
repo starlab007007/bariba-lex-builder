@@ -6,7 +6,7 @@
 FROM python:3.11-slim
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg libsndfile1 \
+    && apt-get install -y --no-install-recommends ffmpeg libsndfile1 build-essential cmake \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /srv
@@ -14,6 +14,11 @@ ENV HF_HOME=/srv/.cache/huggingface \
     PYTHONUNBUFFERED=1
 
 COPY requirements.txt /srv/requirements.txt
+# setuptools/wheel : absents par défaut de l'image depuis Python 3.11-slim
+# récente ; sans eux, l'installation d'un paquet sdist en dépendance
+# transitive (fairseq2, via omnilingual-asr) échoue avec
+# "BackendUnavailable: Cannot import 'setuptools.build_meta'".
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py /srv/app.py
