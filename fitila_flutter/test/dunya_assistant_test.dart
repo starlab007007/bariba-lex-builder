@@ -35,9 +35,9 @@ void main() {
   group('Language modes', () {
     test('each mode has its own conversation', () {
       final ids = DunyaLanguageMode.values.map((m) => m.conversationId).toSet();
-      expect(ids.length, 3);
+      expect(ids.length, 2);
       expect(DunyaLanguageModeX.parse('bba'), DunyaLanguageMode.bariba);
-      expect(DunyaLanguageModeX.parse('both'), DunyaLanguageMode.bilingual);
+      expect(DunyaLanguageModeX.parse('both'), DunyaLanguageMode.french);
       expect(DunyaLanguageModeX.parse(null), DunyaLanguageMode.french);
     });
   });

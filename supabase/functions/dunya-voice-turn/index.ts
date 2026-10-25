@@ -151,7 +151,7 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
       };
       const translate = async (value: string, source: 'fr' | 'bba', target: 'fr' | 'bba', fast = false) => {
         translationUsed = true;
-        const result = await fn('byt5-bariba-translate', { text: value, sourceLang: source === 'fr' ? 'french' : 'bariba', targetLang: target === 'fr' ? 'french' : 'bariba', mode: 'fast', advanced: false, skipRefine: true, cache: true });
+        const result = await fn('byt5-bariba-translate', { text: value, sourceLang: source === 'fr' ? 'french' : 'bariba', targetLang: target === 'fr' ? 'french' : 'bariba', mode: 'fast', advanced: false, skipRefine: true, cache: fast });
         const translated = clean(result.translation);
         if (!translated || needsClarification(translated)) throw new Error('translation_unavailable');
         return translated;

@@ -77,6 +77,7 @@ class DunyaCloudVoice {
     required String language,
     required String replyLanguage,
     List<Map<String, String>> history = const [],
+    bool transcribeOnly = false,
     required DunyaCloudVoiceEvent onEvent,
   }) async {
     if (!FitilaBackend.configured) {
@@ -112,6 +113,7 @@ class DunyaCloudVoice {
         'lang': language,
         'reply_lang': replyLanguage,
         'history': history.length > 8 ? history.sublist(history.length - 8) : history,
+        'transcribe_only': transcribeOnly,
       });
       final response = await client.send(request).timeout(const Duration(seconds: 30));
       if (response.statusCode != 200) {
@@ -124,7 +126,8 @@ class DunyaCloudVoice {
       var completed = false;
       var receivedBytes = 0;
       await for (final line in response.stream
-          .transform(utf8.decoder).transform(const LineSplitter())) {
+          .transform(utf8.decoder).transform(const LineSplitter())
+          .timeout(const Duration(seconds: 45))) {
         if (!identical(_active, client)) {
           throw const DunyaCloudVoiceException('Conversation interrompue.');
         }

@@ -17,18 +17,20 @@
 library;
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart' as audio;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../dunya/voice/dunya_cloud_voice.dart';
+import '../dunya/voice/dunya_french_speech.dart';
+import '../dunya/voice/dunya_shared_speech.dart';
+import 'offline.dart';
 import '../dunya/voice/dunya_mic_capture.dart';
-import 'fitila_backend.dart';
 import 'fitila_translation_audio.dart';
 import 'foncier_rag.dart';
 import 'tem_ia_assistant.dart';
@@ -45,7 +47,10 @@ String _formatSpeechRate(double rate) {
 }
 
 class TemIaVoicePage extends StatefulWidget {
-  const TemIaVoicePage({super.key});
+  const TemIaVoicePage({super.key, this.onExit, this.onSearch});
+
+  final VoidCallback? onExit;
+  final Future<FoncierAnswer> Function(String)? onSearch;
 
   @override
   State<TemIaVoicePage> createState() => _TemIaVoicePageState();
@@ -56,6 +61,8 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
   static const _deep = Color(0xFF1A5234);
 
   final DunyaMicCapture _mic = DunyaMicCapture();
+  final _frenchSpeech = DunyaFrenchSpeech();
+  final _tts = FlutterTts();
   final audio.AudioPlayer _player = audio.AudioPlayer();
 
   _Phase _phase = _Phase.idle;
@@ -125,7 +132,9 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     _session = false;
     _turn++;
     unawaited(_mic.dispose());
+    unawaited(_frenchSpeech.cancel());
     unawaited(_player.dispose());
+    unawaited(_tts.stop());
     unawaited(_posSub?.cancel());
     unawaited(_durSub?.cancel());
     super.dispose();
@@ -135,7 +144,9 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     _session = false;
     _turn++;
     unawaited(_mic.cancel());
+    unawaited(_frenchSpeech.cancel());
     unawaited(_player.stop());
+    unawaited(_tts.stop());
     if (mounted) {
       setState(() {
         _phase = _Phase.idle;
@@ -148,11 +159,13 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     unawaited(HapticFeedback.lightImpact());
     switch (_phase) {
       case _Phase.listening:
+        await _frenchSpeech.stop();
         await _mic.stop();
         return;
       case _Phase.speaking:
         _turn++;
         await _player.stop();
+        await _tts.stop();
         _session = true;
         unawaited(_listenTurn());
         return;
@@ -185,12 +198,20 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
       _notice = null;
     });
     Float32List? samples;
+    String? frenchText;
     try {
+      if (_inputLang == 'fr' && FitilaOffline.online.value && await _frenchSpeech.available()) {
+        frenchText = await _frenchSpeech.listen(
+          onPartial: (text) { if (mounted && turn == _turn) setState(() => _caption = text); },
+          onLevel: (level) { if (mounted && turn == _turn) setState(() => _level = level); },
+        );
+      } else {
       samples = await _mic.listen(
         onLevel: (level) {
           if (mounted && turn == _turn) setState(() => _level = level);
         },
       );
+      }
     } catch (_) {
       // Échec dans la capture micro elle-même (permission refusée, matériel
       // indisponible) : le SEUL cas où "Microphone indisponible." est exact.
@@ -205,7 +226,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
       return;
     }
     if (!mounted || turn != _turn || !_session) return;
-    if (samples == null) {
+    if (samples == null && (frenchText == null || frenchText.isEmpty)) {
       _emptyListens++;
       if (_emptyListens >= 2 || !_handsFree) {
         _session = false;
@@ -222,7 +243,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     setState(() => _phase = _Phase.thinking);
     var heard = false;
     try {
-      final text = await _transcribe(samples);
+      final text = frenchText ?? await _transcribe(samples!);
       heard = text.trim().isNotEmpty;
       if (!mounted || turn != _turn || !_session) return;
       if (text.trim().isEmpty) {
@@ -254,34 +275,21 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
   /// Transcrit un enregistrement 16 kHz mono via le même service que la
   /// dictée du mode texte — jamais le moteur d'IA générale ni ByT5.
   Future<String> _transcribe(Float32List samples) async {
-    if (!FitilaBackend.configured) {
-      throw StateError('Serveur FITILA indisponible.');
+    if (!FitilaOffline.online.value) {
+      final engine = await DunyaSharedSpeech.instance.ensureStarted();
+      if (engine == null) throw StateError('Installez le pack de reconnaissance vocale.');
+      return engine.transcribe(samples);
     }
-    final dataUrl =
-        'data:audio/wav;base64,${base64Encode(DunyaCloudVoice.wav16k(samples))}';
-    final bba = _inputLang == 'bba';
-    final response = await FitilaBackend.client.functions.invoke(
-      bba ? 'bariba-stt' : 'transcribe-audio',
-      body: bba
-          ? <String, dynamic>{
-              'audio': dataUrl,
-              'robustMode': true,
-              'speakerType': 'Auto',
-              'languageCode': 'ba',
-            }
-          : <String, dynamic>{
-              'audio': dataUrl,
-              'fileName': 'voice.wav',
-              'mimeType': 'audio/wav',
-              'languageCode': 'fr',
-            },
-    );
-    final data = response.data;
-    if (data is! Map) return '';
-    return (data['transcript'] ?? data['transcription'] ?? data['text'])
-            ?.toString()
-            .trim() ??
-        '';
+    var transcript = '';
+    final voice = DunyaCloudVoice();
+    try {
+      await voice.turn(samples: samples, language: _inputLang,
+        replyLanguage: _inputLang, transcribeOnly: true,
+        onEvent: (event) async {
+          if (event['type'] == 'transcript') transcript = (event['text'] ?? '').toString().trim();
+        });
+    } finally { voice.cancel(); }
+    return transcript;
   }
 
   /// En ligne : raisonnement conversationnel borné aux articles du Code
@@ -322,7 +330,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
         return;
       }
 
-      final result = await FoncierRag.answer(question);
+      final result = await (widget.onSearch?.call(question) ?? FoncierRag.answer(question));
       if (!mounted || turn != _turn || !_session) return;
       final answer = result.answer.trim();
       if (answer.isEmpty) {
@@ -354,12 +362,22 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     unawaited(_durSub?.cancel());
     _audioDuration = Duration.zero;
     try {
-      final generated = await FitilaTranslationAudio.synthesize(
-        text: text,
-        bariba: bariba,
-      );
+      if (!bariba) {
+        await _tts.setLanguage('fr-FR');
+        await _tts.setSpeechRate(.47 * _speechRate);
+        await _tts.awaitSpeakCompletion(true);
+        await _tts.speak(text);
+        return;
+      }
+      final localPath = !FitilaOffline.online.value
+          ? await DunyaSharedSpeech.instance.synthesizeBariba(text) : null;
+      if (!FitilaOffline.online.value && localPath == null) {
+        throw StateError('Installez le pack vocal baatɔnum pour écouter hors ligne.');
+      }
+      final generated = localPath == null
+          ? await FitilaTranslationAudio.synthesize(text: text, bariba: true) : null;
       if (!mounted || turn != _turn) return;
-      final url = generated.url;
+      final url = generated?.url;
       _durSub = _player.onDurationChanged.listen((d) {
         if (turn == _turn) _audioDuration = d;
       });
@@ -375,10 +393,12 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
       });
       final finished = _player.onPlayerComplete.first;
       await _player.setPlaybackRate(_speechRate);
-      if (url != null && url.isNotEmpty) {
+      if (localPath != null) {
+        await _player.play(audio.DeviceFileSource(localPath));
+      } else if (url != null && url.isNotEmpty) {
         await _player.play(audio.UrlSource(url));
       } else {
-        final path = await generated.materialize();
+        final path = await generated?.materialize();
         if (path == null) throw StateError('Audio indisponible.');
         await _player.play(audio.DeviceFileSource(path));
       }
@@ -483,7 +503,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
             _circleButton(
               tooltip: 'Quitter le mode vocal',
               icon: Icons.close_rounded,
-              onTap: () => Navigator.of(context).maybePop(),
+              onTap: () { if (widget.onExit != null) { widget.onExit!(); } else { Navigator.of(context).maybePop(); } },
             ),
             const SizedBox(width: 10),
             const Icon(Icons.balance_rounded, color: _light, size: 20),

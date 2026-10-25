@@ -52,11 +52,13 @@ test('Baatɔnum: the request is Baatɔnum in, Baatɔnum out', async ({ page }) =
   expect(sent[0]).toMatchObject({ lang: 'bba', reply_lang: 'bba' });
 });
 
-test('Les deux: the reply follows the language that was spoken, no mixing', async ({ page }) => {
+test('legacy Les deux preference migrates to French and only two choices remain', async ({ page }) => {
   const sent = await openDunya(page, 'both');
-  await say(page, 'Bonjour, comment vas-tu ?');
+  await expect(page.getByRole('radio', { name: 'Les deux' })).toHaveCount(0);
+  await expect(page.getByRole('radio', { name: 'Français', exact: true })).toBeChecked();
+  await say(page, 'Bonjour');
   await expect.poll(() => sent.length).toBe(1);
-  expect(sent[0].lang).toBe(sent[0].reply_lang);
+  expect(sent[0]).toMatchObject({ lang: 'fr', reply_lang: 'fr' });
 });
 
 test('switching language changes the language of the next request, with no reload', async ({ page }) => {
@@ -70,7 +72,7 @@ test('switching language changes the language of the next request, with no reloa
   expect(sent[1]).toMatchObject({ lang: 'bba', reply_lang: 'bba' });
 });
 
-for (const mode of ['fr', 'bba', 'both'] as const) {
+for (const mode of ['fr', 'bba'] as const) {
   test(`offline in mode ${mode}: nothing is sent, the answer is local and in French`, async ({ page, context }) => {
     const sent = await openDunya(page, mode);
     await context.setOffline(true);
@@ -79,15 +81,6 @@ for (const mode of ['fr', 'bba', 'both'] as const) {
     expect(sent).toHaveLength(0);
   });
 }
-
-test('offline in mode both: an attested French sentence is answered in Baatɔnum from the memory', async ({ page, context }) => {
-  const sent = await openDunya(page, 'both');
-  await page.waitForTimeout(2500); // let the precached memory load before going offline
-  await context.setOffline(true);
-  await say(page, 'Quand es-tu venu?');
-  await expect(page.getByText('Domma a na?').first()).toBeVisible();
-  expect(sent).toHaveLength(0);
-});
 
 test('offline in mode bba: an unknown sentence gets no French excerpt', async ({ page, context }) => {
   await openDunya(page, 'bba');

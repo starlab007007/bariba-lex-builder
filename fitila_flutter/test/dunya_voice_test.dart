@@ -174,6 +174,16 @@ void main() {
   });
 
   group('Microphone', () {
+    test('quiet speech is retained while long silence is trimmed before ASR', () {
+      final detector = DunyaUtteranceDetector();
+      detector.add(Float32List(32000));
+      detector.add(Float32List.fromList(List.generate(4800, (i) => i.isEven ? .009 : -.009)));
+      detector.add(Float32List(16000));
+      expect(detector.heardSpeech, isTrue);
+      expect(detector.shouldStop, isTrue);
+      expect(detector.samples.length, lessThan(16000));
+      expect(detector.samples.any((sample) => sample.abs() > .008), isTrue);
+    });
     test('PCM16 decoding carries odd bytes', () {
       final decoder = DunyaPcm16Decoder();
       final first = decoder.decode(Uint8List.fromList([0x00, 0x40, 0x00]));

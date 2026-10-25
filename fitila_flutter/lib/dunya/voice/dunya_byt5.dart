@@ -27,12 +27,12 @@ class DunyaByt5 {
   Future<void>? _loading;
   Map<String, dynamic> _config = const {};
   Map<String, dynamic> _manifest = const {};
+  String? _installedIdentity;
 
   /// Registers the offline engine when the pack is present. Safe to call often.
-  Future<bool> activateIfInstalled() async {
+  Future<bool> activateIfInstalled({bool userRequested = false}) async {
     try {
       await DunyaSettings.instance.load();
-      DunyaTranslator.clearCache();
       final base = await getApplicationSupportDirectory();
       final dir = '${base.path}/dunya_packs/$dunyaByt5PackId/byt5';
       // The pack is active in BETA ("tested": false = test mode, results are labelled and
@@ -45,6 +45,14 @@ class DunyaByt5 {
       }
       final manifest = jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
       _manifest = manifest;
+      // Loading a pack and asking to use Baatɔnum offline is an explicit
+      // activation. Migrate the old default-off gate once; later revocations
+      // are respected. The beta remains labelled and is never certified.
+      final settings = DunyaSettings.instance;
+      if (userRequested && !settings.translationChoiceMade &&
+          mayUseByt5Manifest(manifest, experimentalConsent: true)) {
+        await settings.update(experimentalTranslation: true);
+      }
       if (!mayUseByt5Manifest(manifest,
           experimentalConsent: DunyaSettings.instance.experimentalTranslation)) {
         DunyaTranslator.offline = null;
@@ -66,8 +74,13 @@ class DunyaByt5 {
         return false;
       }
       // The pack may have been replaced by a newer verified version.
-      _loaded = false;
-      _loading = null;
+      final identity = '${jsonEncode(manifest)}|${enc.statSync().modified}|${dec.statSync().modified}';
+      if (identity != _installedIdentity) {
+        _loaded = false;
+        _loading = null;
+        _installedIdentity = identity;
+        DunyaTranslator.clearCache();
+      }
       DunyaTranslator.offline = (text, toBariba) => _translate(enc.path, dec.path, text, toBariba);
       return true;
     } catch (_) {

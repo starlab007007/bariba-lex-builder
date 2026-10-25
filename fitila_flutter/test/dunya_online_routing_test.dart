@@ -6,17 +6,14 @@ void main() {
   test('explicit language modes override detection', () {
     expect(dunyaOnlineLanguage(DunyaLanguageMode.french, 'bba'), 'fr');
     expect(dunyaOnlineLanguage(DunyaLanguageMode.bariba, 'fr'), 'bba');
-    expect(dunyaOnlineLanguage(DunyaLanguageMode.bilingual, 'fr'), 'fr');
-    expect(dunyaOnlineLanguage(DunyaLanguageMode.bilingual, 'bba'), 'bba');
   });
 
-  test('unverified bilingual and Baatonum histories never leak into French reasoning', () {
+  test('unverified Baatonum histories never leak into French reasoning', () {
     final turns = [
       {'role': 'user', 'content': 'A kua'},
       {'role': 'assistant', 'content': 'Bɛɛ ka weru'},
     ];
     expect(dunyaFrenchReasoningHistory(DunyaLanguageMode.bariba, turns), isEmpty);
-    expect(dunyaFrenchReasoningHistory(DunyaLanguageMode.bilingual, turns), isEmpty);
   });
 
   test('French reasoning history keeps only the last eight nonempty turns', () {

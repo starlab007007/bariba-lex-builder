@@ -10,5 +10,6 @@ class MainActivity : FlutterActivity() {
         DunyaActionChannel(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         DunyaLlmChannel(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         DunyaByt5Channel(flutterEngine.dartExecutor.binaryMessenger)
+        FrenchSpeechChannel(this, flutterEngine.dartExecutor.binaryMessenger)
     }
 }

@@ -1,10 +1,9 @@
 /**
- * DUNYA Voix (web): the same three language modes as the mobile app, online.
+ * DUNYA Voix (web): the same two language modes as the mobile app, online.
  *
  * - Français : browser speech recognition (live subtitles) + FITILA chat + browser voice.
  * - Baatɔnum : recorder with silence detection -> bariba-stt -> ByT5 (ba->fr)
  *              -> fitila-ia-chat (answer + ByT5 fr->ba) -> bariba-tts.
- * - Les deux  : both recognisers in parallel, the clearer one wins.
  */
 import { supabase } from '@/integrations/supabase/client';
 import { isOffline, memoryTranslate } from '@/lib/translation/translationMemory';
@@ -16,7 +15,7 @@ export let lastVoiceEngine: { asr?: 'meta' | 'fitila'; tts?: 'meta' | 'fitila' }
 export function setDunyaMetaVoice(v: { tts: boolean; asr: boolean } | null) { dunyaVoiceOverride = v; }
 const metaFlags = () => dunyaVoiceOverride ?? getMetaVoiceFlags();
 
-export type DunyaWebMode = 'fr' | 'bba' | 'both';
+export type DunyaWebMode = 'fr' | 'bba';
 
 export type DunyaWebTurn = {
   id: string;
@@ -30,7 +29,6 @@ export type DunyaWebTurn = {
 export const MODE_LABEL: Record<DunyaWebMode, string> = {
   fr: 'Français',
   bba: 'Baatɔnum',
-  both: 'Les deux',
 };
 
 // ---------------------------------------------------------------------------

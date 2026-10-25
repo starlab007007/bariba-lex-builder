@@ -1530,7 +1530,7 @@ class _FitilaShellState extends State<FitilaShell>
       FitilaPage.translator => TranslatorScreen(
         accessToken: widget.session.accessToken,
       ),
-      FitilaPage.ia => const AiScreen(),
+      FitilaPage.ia => const TemIaScreen(),
       FitilaPage.dunya => const DunyaOfflinePage(),
       FitilaPage.temIa => const TemIaScreen(),
       FitilaPage.learn => ApprendreHubScreen(
@@ -8784,6 +8784,29 @@ class TemIaScreen extends StatefulWidget {
 }
 
 class _TemIaScreenState extends State<TemIaScreen> {
+  bool _voiceMode = true;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(() async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        if (mounted) setState(() => _voiceMode = prefs.getString('temia_default_mode') != 'text');
+      } catch (_) { /* Keep the default voice view. */ }
+    }());
+  }
+
+  void _setVoiceMode(bool voice) {
+    setState(() => _voiceMode = voice);
+    unawaited(() async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('temia_default_mode', voice ? 'voice' : 'text');
+      } catch (_) { /* The current choice remains active in memory. */ }
+    }());
+  }
+
   final _query = TextEditingController();
   final _voiceMedia = FitilaMediaController();
   bool _busy = false;
@@ -8915,6 +8938,17 @@ class _TemIaScreenState extends State<TemIaScreen> {
         setState(() => _busy = false);
       }
     }
+  }
+
+  Future<FoncierAnswer> _searchForVoice(String question) async {
+    final result = await FoncierRag.answer(question);
+    if (mounted) {
+      setState(() {
+        _messages.add((role: 'user', text: question, sources: const []));
+        _messages.add((role: 'assistant', text: formatOfflineAnswerForText(result), sources: result.sources));
+      });
+    }
+    return result;
   }
 
   void _showSources(List<FoncierSource> sources) {
@@ -9132,14 +9166,13 @@ class _TemIaScreenState extends State<TemIaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_voiceMode) return TemIaVoicePage(onExit: () => _setVoiceMode(false), onSearch: _searchForVoice);
     return _PageFrame(
-      title: 'Fitila Tem IA',
-      subtitle: 'Tem bausu sariaba sɔ̃ɔsiru · 100% local',
+      title: 'Fitila IA',
+      subtitle: 'TEM IA · Recherche dans le Code foncier',
       action: IconButton(
         tooltip: 'Mode vocal',
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const TemIaVoicePage()),
-        ),
+        onPressed: () => _setVoiceMode(true),
         icon: const Icon(Icons.graphic_eq_rounded),
       ),
       child: Column(

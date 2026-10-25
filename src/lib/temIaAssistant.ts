@@ -11,7 +11,6 @@
 // simplement mieux présentée en mode texte — jamais de reformulation ni de
 // traduction du contenu légal lui-même, qui reste exactement celui du corpus.
 
-import { supabase } from '@/integrations/supabase/client';
 import type { FoncierSource } from '@/components/fitila/FoncierSourcesModal';
 
 export interface TemIaTurn {
@@ -57,31 +56,10 @@ export async function tryTemIaOnline(
   history: TemIaTurn[] = [],
   timeoutMs = 15000,
 ): Promise<TemIaOnlineAnswer | null> {
-  try {
-    const invoke = supabase.functions.invoke('fitila-tem-ia-chat', {
-      body: {
-        message: question.trim(),
-        ...(history.length ? { history } : {}),
-      },
-    });
-    const timeout = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Tem IA en ligne : délai dépassé.')), timeoutMs);
-    });
-    const { data, error } = await Promise.race([invoke, timeout]);
-    if (error || !data || data.error) return null;
-
-    const fallback = data.fallback === true;
-    const ba = typeof data.response_ba === 'string' ? data.response_ba.trim() : '';
-    const fr = typeof data.response_fr === 'string' ? data.response_fr.trim() : '';
-    const useBariba = ba.length > 0 && !fallback;
-    const text = useBariba ? ba : fr;
-    if (!text) return null;
-
-    const sources: FoncierSource[] = Array.isArray(data.sources) ? data.sources : [];
-    return { text, bariba: useBariba, sources };
-  } catch {
-    return null;
-  }
+  // The production endpoint is local_only: search the attested legal corpus
+  // immediately rather than paying a predictable failed network round trip.
+  void question; void history; void timeoutMs;
+  return null;
 }
 
 /**

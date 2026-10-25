@@ -5,27 +5,24 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Strictly separated conversation languages.
-enum DunyaLanguageMode { french, bariba, bilingual }
+enum DunyaLanguageMode { french, bariba }
 
 extension DunyaLanguageModeX on DunyaLanguageMode {
   String get key => switch (this) {
         DunyaLanguageMode.french => 'fr',
         DunyaLanguageMode.bariba => 'bba',
-        DunyaLanguageMode.bilingual => 'both',
       };
 
   String get label => switch (this) {
         DunyaLanguageMode.french => 'Français',
         DunyaLanguageMode.bariba => 'Baatɔnum',
-        DunyaLanguageMode.bilingual => 'Les deux',
       };
 
-  /// Separate history per mode so languages never contaminate each other.
+  /// Legacy "both" preferences migrate to French. Separate history per mode so languages never contaminate each other.
   String get conversationId => 'dunya-$key';
 
   static DunyaLanguageMode parse(String? value) => switch (value) {
         'bba' => DunyaLanguageMode.bariba,
-        'both' => DunyaLanguageMode.bilingual,
         _ => DunyaLanguageMode.french,
       };
 }
@@ -66,6 +63,7 @@ class DunyaSettings extends ChangeNotifier {
   static const _kExecution = 'dunya_execution_mode';
   static const _kFrenchSubtitlesInBariba = 'dunya_bba_fr_subtitles';
   static const _kExperimentalTranslation = 'dunya_experimental_translation_consent';
+  static const _kTranslationChoice = 'dunya_translation_choice_v35';
 
   DunyaLanguageMode mode = DunyaLanguageMode.french;
   bool onboarded = false;
@@ -73,6 +71,7 @@ class DunyaSettings extends ChangeNotifier {
   bool subtitles = true;
   bool frenchSubtitlesInBariba = false;
   bool experimentalTranslation = false;
+  bool translationChoiceMade = false;
   DunyaIntelligence intelligence = DunyaIntelligence.smart;
   DunyaExecutionMode execution = DunyaExecutionMode.automatic;
   double voiceSpeed = 1.0;
@@ -88,6 +87,7 @@ class DunyaSettings extends ChangeNotifier {
       subtitles = p.getBool(_kSubtitles) ?? true;
       frenchSubtitlesInBariba = p.getBool(_kFrenchSubtitlesInBariba) ?? false;
       experimentalTranslation = p.getBool(_kExperimentalTranslation) ?? false;
+      translationChoiceMade = p.getBool(_kTranslationChoice) ?? false;
       intelligence = (p.getString(_kIntelligence) ?? 'smart') == 'essential'
           ? DunyaIntelligence.essential
           : DunyaIntelligence.smart;
@@ -114,7 +114,10 @@ class DunyaSettings extends ChangeNotifier {
     if (handsFree != null) this.handsFree = handsFree;
     if (subtitles != null) this.subtitles = subtitles;
     if (frenchSubtitlesInBariba != null) this.frenchSubtitlesInBariba = frenchSubtitlesInBariba;
-    if (experimentalTranslation != null) this.experimentalTranslation = experimentalTranslation;
+    if (experimentalTranslation != null) {
+      this.experimentalTranslation = experimentalTranslation;
+      translationChoiceMade = true;
+    }
     if (intelligence != null) this.intelligence = intelligence;
     if (execution != null) this.execution = execution;
     if (voiceSpeed != null) this.voiceSpeed = voiceSpeed;
@@ -127,6 +130,7 @@ class DunyaSettings extends ChangeNotifier {
       await p.setBool(_kSubtitles, this.subtitles);
       await p.setBool(_kFrenchSubtitlesInBariba, this.frenchSubtitlesInBariba);
       await p.setBool(_kExperimentalTranslation, this.experimentalTranslation);
+      await p.setBool(_kTranslationChoice, translationChoiceMade);
       await p.setString(_kIntelligence, this.intelligence == DunyaIntelligence.essential ? 'essential' : 'smart');
       await p.setDouble(_kSpeed, this.voiceSpeed);
       await p.setString(_kExecution, this.execution.key);

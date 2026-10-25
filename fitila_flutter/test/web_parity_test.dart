@@ -7,6 +7,7 @@ import 'package:fitila_native/main.dart';
 import 'package:fitila_native/translator/translator_chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> pumpPhone(WidgetTester tester, Widget child) async {
   tester.view.physicalSize = const Size(390, 844);
@@ -118,9 +119,10 @@ void main() {
   testWidgets('Tem IA reproduces local land-code assistant landing', (
     tester,
   ) async {
+    SharedPreferences.setMockInitialValues({'temia_default_mode': 'text'});
     await pumpPhone(tester, const TemIaScreen());
 
-    expect(find.text('Fitila Tem IA'), findsOneWidget);
+    expect(find.text('Fitila IA'), findsOneWidget);
     expect(
       find.textContaining('Assistant basé uniquement sur le Code Foncier'),
       findsOneWidget,

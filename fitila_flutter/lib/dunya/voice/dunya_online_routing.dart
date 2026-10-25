@@ -1,5 +1,5 @@
 /// Shared language routing for DUNYA online requests.
-/// French and Baatɔnum modes are strict; bilingual mode follows the input.
+/// French and Baatɔnum are the only supported modes.
 library;
 
 import 'dunya_settings.dart';
@@ -8,7 +8,6 @@ String dunyaOnlineLanguage(DunyaLanguageMode mode, String detected) =>
     switch (mode) {
       DunyaLanguageMode.french => 'fr',
       DunyaLanguageMode.bariba => 'bba',
-      DunyaLanguageMode.bilingual => detected == 'fr' ? 'fr' : 'bba',
     };
 
 /// Never pass unverified Baatɔnum turns to the French-only reasoning engine.

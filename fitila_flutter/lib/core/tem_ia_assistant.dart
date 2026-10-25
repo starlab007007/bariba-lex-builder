@@ -13,7 +13,6 @@
 /// légal lui-même, qui reste exactement celui du corpus.
 library;
 
-import 'fitila_backend.dart';
 import 'foncier_rag.dart';
 
 /// Un tour de conversation minimal transmis à Tem IA en ligne pour qu'elle
@@ -70,29 +69,9 @@ Future<TemIaOnlineAnswer?> tryTemIaOnline(
   List<TemIaTurn> history = const [],
   Duration timeout = const Duration(seconds: 15),
 }) async {
-  if (!FitilaBackend.configured) return null;
-  try {
-    final result = await FitilaBackend.askTemIaOnline(
-      question,
-      history: history,
-    ).timeout(timeout);
-    final sources = [
-      for (final entry in result.sources)
-        FoncierSource(
-          id: (entry['id'] as num?)?.toInt() ?? 0,
-          number: entry['number']?.toString() ?? '',
-          content: entry['content']?.toString() ?? '',
-          page: (entry['page'] as num?)?.toInt() ?? 0,
-        ),
-    ];
-    return TemIaOnlineAnswer(
-      text: result.text,
-      bariba: result.bariba,
-      sources: sources,
-    );
-  } catch (_) {
-    return null;
-  }
+  // TEM IA is extractive: cite the bundled Code foncier verbatim.
+  // The online endpoint is local_only, so never wait on a known 503.
+  return null;
 }
 
 /// Présentation « texte » d'une réponse hors ligne (recherche locale

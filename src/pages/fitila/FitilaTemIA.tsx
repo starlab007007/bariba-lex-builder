@@ -47,7 +47,7 @@ export default function FitilaTemIA() {
   const [voiceLang, setVoiceLang] = useState<SpeechLanguage>('bba');
   // Le mode vocal mains-libres est le mode d'ouverture par défaut (comme DUNYA IA) ; le
   // choix de l'utilisateur (Vocal ou Écrit) est ensuite mémorisé pour les prochaines visites.
-  const [voiceMode, setVoiceModeState] = useState(() => loadPreference('temia-defaultMode', 'voice') !== 'text');
+  const [voiceMode, setVoiceModeState] = useState(() => loadPreference<string>('temia-defaultMode', 'voice') !== 'text');
   const setVoiceMode = (next: boolean) => { setVoiceModeState(next); savePreference('temia-defaultMode', next ? 'voice' : 'text'); };
 
   useEffect(() => {

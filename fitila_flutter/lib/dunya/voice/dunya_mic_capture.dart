@@ -18,7 +18,7 @@ class DunyaUtteranceDetector {
     this.silenceToStop = const Duration(milliseconds: 700),
     this.maxDuration = const Duration(seconds: 20),
     this.noSpeechTimeout = const Duration(seconds: 7),
-    this.minThreshold = 0.012,
+    this.minThreshold = 0.008,
     this.minSpeech = const Duration(milliseconds: 180),
   });
 
@@ -32,14 +32,23 @@ class DunyaUtteranceDetector {
   final Duration noSpeechTimeout;
 
   final _samples = <double>[];
-  double _noiseFloor = 0.004;
+  double _noiseFloor = 0.0025;
   var _speechSamples = 0;
   var _silentSamples = 0;
   var _heardSpeech = false;
+  int? _firstSpeech;
+  var _lastSpeech = 0;
 
   bool get heardSpeech => _heardSpeech;
 
-  Float32List get samples => Float32List.fromList(_samples);
+  Float32List get samples {
+    if (_firstSpeech == null) return Float32List.fromList(_samples);
+    // Keep consonant margins but avoid sending seconds of leading silence
+    // through ASR. This also reduces uploads on a weak mobile connection.
+    final start = math.max(0, _firstSpeech! - sampleRate ~/ 4);
+    final end = math.min(_samples.length, _lastSpeech + sampleRate * 3 ~/ 10);
+    return Float32List.fromList(_samples.sublist(start, end));
+  }
 
   /// Feeds float samples; returns the RMS level (0..1) of the chunk.
   double add(Float32List chunk) {
@@ -50,8 +59,10 @@ class DunyaUtteranceDetector {
       _samples.add(s);
     }
     final rms = math.sqrt(sum / chunk.length);
-    final threshold = math.max(minThreshold, _noiseFloor * 3.2);
+    final threshold = math.max(minThreshold, _noiseFloor * 2.8);
     if (rms > threshold) {
+      _firstSpeech ??= _samples.length - chunk.length;
+      _lastSpeech = _samples.length;
       _speechSamples += chunk.length;
       _silentSamples = 0;
       if (_speechSamples > sampleRate * minSpeech.inMilliseconds / 1000) _heardSpeech = true;
@@ -110,15 +121,17 @@ class DunyaMicCapture {
   Future<Float32List?> listen({
     void Function(double level)? onLevel,
     void Function()? onSpeechStart,
-    double minThreshold = 0.012,
+    double minThreshold = 0.008,
     Duration minSpeech = const Duration(milliseconds: 180),
     Duration noSpeechTimeout = const Duration(seconds: 7),
+    Duration silenceToStop = const Duration(milliseconds: 700),
   }) async {
     await cancel();
     final detector = DunyaUtteranceDetector(
       minThreshold: minThreshold,
       minSpeech: minSpeech,
       noSpeechTimeout: noSpeechTimeout,
+      silenceToStop: silenceToStop,
     );
     final decoder = DunyaPcm16Decoder();
     final done = Completer<Float32List?>();

@@ -59,6 +59,8 @@ class FoncierRag {
     'que',
     'qui',
     'quoi',
+    'quel',
+    'quelle',
     'pour',
     'par',
     'sur',
@@ -73,37 +75,78 @@ class FoncierRag {
     'se',
     'sa',
     'son',
+    'ses',
+    'mon',
+    'ma',
+    'mes',
+    'ton',
+    'ta',
+    'tes',
     'il',
     'elle',
+    'ils',
+    'elles',
     'je',
     'tu',
     'nous',
     'vous',
+    'on',
+    'y',
+    'ne',
+    'pas',
+    'plus',
+    'être',
+    'avoir',
+    'faire',
+    'dit',
+    'dire',
     'ka',
     'ya',
     'ye',
     'yè',
     'yi',
+    'yì',
     'ba',
+    'bà',
+    'bù',
+    'bu',
     'wã',
     'wãa',
     'sɔɔ',
     'sɔ̃',
     'mi',
     'mɛ',
+    'mɛ̃',
+    'tè',
+    'tì',
     'ta',
     'sere',
+    'ǹ',
     'kun',
+    'tera',
+    'yera',
+    'ma',
     'ko',
+    'koo',
+    'mɔ',
+    'mɔ̀',
+    'sãa',
+    'sãawa',
+    'niya',
+    'nu',
+    'nì',
+    'sin',
+    'si',
+    'sì',
+    'su',
+    'goo',
+    'geja',
   };
 
   static List<_IndexedArticle>? _index;
 
   static List<String> _tokens(String text) {
-    final cleaned = text.toLowerCase().replaceAll(
-      RegExp(r'''[.,;:!?()\[\]{}"“”'’/\\\-]'''),
-      ' ',
-    );
+    final cleaned = text.toLowerCase().replaceAll(RegExp(r'[^\p{L}\p{M}\p{N}\s]', unicode: true), ' ');
     return cleaned
         .split(RegExp(r'\s+'))
         .where((value) => value.length >= 2 && !_stopWords.contains(value))
@@ -158,20 +201,22 @@ class FoncierRag {
           .length;
     }
 
+    final averageLength = index.fold<int>(0, (sum, doc) => sum + doc.tokens.length) / index.length;
+    final queryBigrams = {for (var i = 0; i + 1 < queryTokens.length; i++) '${queryTokens[i]} ${queryTokens[i + 1]}'};
     final ranked = <(_IndexedArticle, double)>[];
     for (final document in index) {
       var score = 0.0;
       for (final term in queryTokens) {
         final count = document.tokens.where((token) => token == term).length;
         if (count == 0) continue;
-        final idf = math.log(1 + index.length / (1 + (frequencies[term] ?? 0)));
-        score += count * idf;
+        final frequency = frequencies[term] ?? 0;
+        final idf = math.log(1 + (index.length - frequency + .5) / (frequency + .5));
+        score += idf * (count * 2.5) / (count + 1.5 * (.25 + .75 * document.tokens.length / averageLength));
       }
-      if (articleMention != null &&
-          (document.source.id.toString() == articleMention ||
-              document.source.number.contains('${articleMention}se'))) {
-        score += 100;
-      }
+      final bigrams = {for (var i = 0; i + 1 < document.tokens.length; i++) '${document.tokens[i]} ${document.tokens[i + 1]}'};
+      for (final pair in queryBigrams) { if (bigrams.contains(pair)) score += 2; }
+      if (articleMention != null && document.source.number.contains('${articleMention}se')) score += 50;
+      if (articleMention != null && document.source.id.toString() == articleMention) score += 50;
       if (score > 0) ranked.add((document, score));
     }
     ranked.sort((a, b) => b.$2.compareTo(a.$2));
@@ -201,7 +246,7 @@ class FoncierRag {
       }
     }
 
-    final selected = ranked.take(3).map((hit) => hit.$1.source).toList();
+    final selected = ranked.take(6).map((hit) => hit.$1.source).toList();
     final candidates = <(String, double, FoncierSource)>[];
     final querySet = queryTokens.toSet();
     for (final source in selected) {
@@ -222,7 +267,8 @@ class FoncierRag {
       }
     }
     candidates.sort((a, b) => b.$2.compareTo(a.$2));
-    final picked = candidates.take(3).toList();
+    final seen = <String>{};
+    final picked = candidates.where((c) => seen.add(c.$1)).take(3).toList();
     final answer = picked.isEmpty
         ? selected.first.content
         : picked.map((item) => item.$1).join('\n\n');

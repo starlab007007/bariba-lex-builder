@@ -1,8 +1,7 @@
 /// DUNYA Voix — a ChatGPT-Voice-like experience, fully offline.
 ///
 /// Full-screen living orb, hands-free turn taking with barge-in, live
-/// subtitles, strictly separated language modes (Français / Baatɔnum / Les
-/// deux), a text view of the same conversation, guided first launch and a
+/// subtitles, strictly separated language modes (Français / Baatɔnum), a text view of the same conversation, guided first launch and a
 /// settings sheet (brain, voices, packs).
 library;
 
@@ -26,6 +25,7 @@ import '../dunya_models.dart';
 import 'dunya_assistant.dart';
 import 'dunya_brain.dart';
 import 'dunya_cloud_voice.dart';
+import 'dunya_french_speech.dart';
 import 'dunya_online_routing.dart';
 import 'dunya_byt5.dart';
 import 'dunya_mic_capture.dart';
@@ -71,6 +71,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   final _packs = DunyaVoicePackManager.instance;
   final _mic = DunyaMicCapture();
   final _cloudVoice = DunyaCloudVoice();
+  final _frenchSpeech = DunyaFrenchSpeech();
   DunyaExecutionMode _previousExecution = DunyaSettings.instance.execution;
   final _tts = FlutterTts();
   final _player = audio.AudioPlayer();
@@ -84,7 +85,6 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   DunyaVoicePaths _paths = const DunyaVoicePaths();
   var _phase = _Phase.preparing;
   var _session = false; // hands-free loop running
-  String? _bilingualVoiceLanguage; // explicit selection to avoid silent Baatonum default
   var _textView = false;
   var _systemFrenchVoice = false;
   var _level = 0.0;
@@ -136,6 +136,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     // le détruit pas en quittant cet écran, d'autres écrans peuvent en avoir
     // besoin (lecture hors-ligne du Dictionnaire, du Traducteur…).
     _cloudVoice.cancel();
+    unawaited(_frenchSpeech.cancel());
     _orb.dispose();
     _composer.dispose();
     _scroll.dispose();
@@ -151,6 +152,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       // recording, and require a fresh local session from the user.
       _session = false;
       _cloudVoice.cancel();
+      unawaited(_frenchSpeech.cancel());
       _stopWordTracking();
       unawaited(_assistant.interrupt());
       unawaited(_mic.cancel());
@@ -158,6 +160,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       unawaited(_tts.stop());
       _status = 'Mode hors ligne activé';
       _phase = _Phase.idle;
+      unawaited(_prepareOfflineEngine());
     }
     _previousExecution = execution;
     if (mounted) setState(() {});
@@ -199,7 +202,8 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       await _tts.awaitSpeakCompletion(true);
       final dynamic installed =
           Platform.isAndroid ? await _tts.isLanguageInstalled('fr-FR') : await _tts.isLanguageAvailable('fr-FR');
-      _systemFrenchVoice = installed == true;
+      _systemFrenchVoice = installed == true ||
+          (_useOnlineVoice && await _tts.isLanguageAvailable('fr-FR') == true);
     } catch (_) {
       _systemFrenchVoice = false;
     }
@@ -254,6 +258,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         await _interrupt();
         return;
       case _Phase.listening:
+        await _frenchSpeech.stop();
         await _mic.stop();
         return;
       case _Phase.idle:
@@ -275,29 +280,6 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       return;
     }
     if (!mounted) return;
-    if (_useOnlineVoice && _mode == DunyaLanguageMode.bilingual) {
-      // Unlike the Web, native Flutter has no parallel French speech
-      // recognizer. Require a language choice instead of silently assuming bba.
-      final selected = await showModalBottomSheet<String>(
-        context: context,
-        showDragHandle: true,
-        builder: (context) => SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const ListTile(title: Text('Langue du message vocal'),
-                subtitle: Text('Choisissez pour éviter une mauvaise traduction.')),
-              ListTile(title: const Text('Français'),
-                onTap: () => Navigator.of(context).pop('fr')),
-              ListTile(title: const Text('Baatɔnum'),
-                onTap: () => Navigator.of(context).pop('bba')),
-            ],
-          ),
-        ),
-      );
-      if (!mounted || selected == null) return;
-      _bilingualVoiceLanguage = selected;
-    }
     final hasMic = await _mic.hasPermission();
     if (!mounted) return;
     if (!hasMic) {
@@ -311,7 +293,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
 
   Future<void> _endSession() async {
     _session = false;
-    _bilingualVoiceLanguage = null;
+    await _frenchSpeech.cancel();
     await _interrupt();
     await _mic.cancel();
     if (mounted) setState(() => _phase = _Phase.idle);
@@ -328,7 +310,28 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       _activeWord = -1;
     });
     try {
-      final samples = await _mic.listen(onLevel: _onLevel);
+      if (_useOnlineVoice && _mode == DunyaLanguageMode.french &&
+          await _frenchSpeech.available()) {
+        final heard = await _frenchSpeech.listen(
+          onPartial: (text) { if (mounted) setState(() => _caption = text); },
+          onLevel: _onLevel,
+        );
+        if (!mounted || !_session) return;
+        if (heard.isEmpty) {
+          _session = false;
+          setState(() { _phase = _Phase.idle; _notice = 'Je n’ai pas entendu de phrase en français. Réessayez.'; });
+          return;
+        }
+        await _runCloudVoiceTurn(null, text: heard);
+        return;
+      }
+      if (!_useOnlineVoice) {
+        // A mode switch must activate installed models before the first turn.
+        await _startEngine();
+        await DunyaByt5.instance.activateIfInstalled(userRequested: _mode == DunyaLanguageMode.bariba);
+      }
+      final samples = await _mic.listen(onLevel: _onLevel,
+        silenceToStop: Duration(milliseconds: _mode == DunyaLanguageMode.bariba ? 900 : 700));
       if (!mounted || !_session) return;
       if (samples == null) {
         _emptyListens++;
@@ -364,11 +367,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
   Future<void> _runCloudVoiceTurn(Float32List? samples, {String? text}) async {
     final mode = _mode;
     final turnId = ++_turnCounter;
-    final detected = text != null && mode == DunyaLanguageMode.bilingual
-        ? _skills.detectLanguage(text) : null;
-    final replyLang = mode == DunyaLanguageMode.bilingual && samples != null
-        ? (_bilingualVoiceLanguage ?? 'bba')
-        : dunyaOnlineLanguage(mode, detected ?? 'bba');
+    final replyLang = dunyaOnlineLanguage(mode, mode.key);
     var input = text ?? '';
     var answer = '';
     var language = replyLang;
@@ -542,6 +541,11 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     _bargeTurn = null;
     _stopSpeaking = false;
     final mode = _mode;
+    if (!_useOnlineVoice) {
+      await _startEngine();
+      await DunyaByt5.instance.activateIfInstalled(userRequested: mode == DunyaLanguageMode.bariba);
+      if (!mounted) return;
+    }
     final answer = _Turn(role: 'assistant', text: '');
     setState(() {
       _turns.add(_Turn(role: 'user', text: clean));
@@ -1120,7 +1124,6 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                         switch (m) {
                           DunyaLanguageMode.french => 'FR',
                           DunyaLanguageMode.bariba => 'Baatɔnum',
-                          DunyaLanguageMode.bilingual => 'Les 2',
                         },
                         style: TextStyle(
                           color: m == _mode ? _ink : Colors.white70,
@@ -1316,7 +1319,6 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     final items = switch (_mode) {
       // Same suggestions as the web mobile DUNYA (reference).
       DunyaLanguageMode.bariba => const ['A kua', 'Bɛɛ ka weru'],
-      DunyaLanguageMode.bilingual => const ['Dire merci en baatɔnum', 'A kua'],
       _ => const ['Rotation des cultures ?', 'Dire merci en baatɔnum'],
     };
     return Padding(

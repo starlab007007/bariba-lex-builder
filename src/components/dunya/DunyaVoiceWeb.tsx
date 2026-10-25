@@ -4,7 +4,7 @@ import { Captions, CaptionsOff, Copy, Keyboard, Menu, Mic, MoreHorizontal, Paper
 import { runServerVoice, voiceMessage, type VoiceEvent } from '@/lib/dunya/serverVoice';
 import TranscriptionReview from '@/components/voice/TranscriptionReview';
 import { replaceTranscriptDraft, type TranscriptRepair } from '@/lib/voice/transcriptionReview';
-import { hasFrenchRecognition, loadHistory, loadPreference, looksFrench, MODE_LABEL, recognizeFrench,
+import { hasFrenchRecognition, loadHistory, loadPreference, MODE_LABEL, recognizeFrench,
   recordUtterance, saveHistory, savePreference, speakFrench, stopSpeaking, playUrl, pauseSpeaking, resumeSpeaking,
   wordIndexAtChar, wordSpans, type DunyaWebMode, type DunyaWebTurn } from '@/lib/dunya/voiceWeb';
 
@@ -15,10 +15,10 @@ type Props = { onOpenMenu?: () => void; offlineAnswer?: (question: string) => st
 
 /**
  * Offline text turn without any language mixing. French mode keeps the sourced French excerpt.
- * Baatɔnum and "Les deux" translate ONLY through the attested memory (7,762 sentences, precached):
+ * Baatɔnum translate ONLY through the attested memory (7,762 sentences, precached):
  * the answer is in the other language, or there is no answer at all, never a French excerpt.
  */
-async function offlineTurn(text: string, lang: 'fr' | 'bba', mode: 'fr' | 'bba' | 'both', excerpt?: (q: string) => string):
+async function offlineTurn(text: string, lang: 'fr' | 'bba', mode: DunyaWebMode, excerpt?: (q: string) => string):
   Promise<{ text: string | null; lang: 'fr' | 'bba'; notice: string }> {
   if (mode === 'fr') {
     return { text: excerpt?.(text) ?? 'Aucune ressource locale disponible.', lang: 'fr', notice: 'Hors ligne · ressources locales' };
@@ -27,18 +27,19 @@ async function offlineTurn(text: string, lang: 'fr' | 'bba', mode: 'fr' | 'bba' 
   if (hit?.translation) return { text: hit.translation, lang: lang === 'fr' ? 'bba' : 'fr', notice: 'Hors ligne · traduction de la mémoire attestée' };
   return { text: null, lang, notice: 'Hors ligne · cette phrase n’est pas dans la mémoire attestée. Reconnectez-vous pour la traduire.' };
 }
-const MODE_SHORT: Record<DunyaWebMode, string> = { fr: 'Français', bba: 'Baatɔnum', both: 'Les deux' };
-const MODE_TINY: Record<DunyaWebMode, string> = { fr: 'FR', bba: 'Baatɔnum', both: 'Les 2' };
+const MODE_SHORT: Record<DunyaWebMode, string> = { fr: 'Français', bba: 'Baatɔnum' };
+const MODE_TINY: Record<DunyaWebMode, string> = { fr: 'FR', bba: 'Baatɔnum' };
 const SUGGESTIONS: Record<DunyaWebMode, string[]> = {
-  fr: ['Rotation des cultures ?', 'Dire merci en baatɔnum'], bba: ['A kua', 'Bɛɛ ka weru'], both: ['Dire merci en baatɔnum', 'A kua'],
+  fr: ['Rotation des cultures ?', 'Dire merci en baatɔnum'], bba: ['A kua', 'Bɛɛ ka weru'],
 };
 const uid = () => crypto.randomUUID();
+const savedMode = (): DunyaWebMode => loadPreference<string>('mode', 'fr') === 'bba' ? 'bba' : 'fr';
 
 export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
-  const [mode, setMode] = useState<DunyaWebMode>(() => loadPreference('mode', 'fr'));
-  // Warm the attested memory while online so the offline Baatɔnum / Les deux modes can answer.
+  const [mode, setMode] = useState<DunyaWebMode>(savedMode);
+  // Warm the attested memory while online so the offline Baatɔnum mode can answer.
   useEffect(() => { void loadTranslationMemory(); }, []);
-  const [turns, setTurns] = useState<DunyaWebTurn[]>(() => loadHistory(loadPreference('mode', 'fr')));
+  const [turns, setTurns] = useState<DunyaWebTurn[]>(() => loadHistory(savedMode()));
   const [phase, setPhase] = useState<Phase>('idle');
   const [level, setLevel] = useState(0), [caption, setCaption] = useState('');
   const [activeWord, setActiveWord] = useState(-1);
@@ -134,7 +135,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
         return;
       }
       await runServerVoice({
-        text: input.text, audio: input.audio, lang: input.lang, replyLang: input.replayId ? input.lang : mode === 'both' ? input.lang : mode,
+        text: input.text, audio: input.audio, lang: input.lang, replyLang: input.replayId ? input.lang : mode,
         history: turnsRef.current.map(t => ({ role: t.role, content: t.subtitle ?? t.text })),
         transcribeOnly: !!input.audio && reviewStt && !input.replayId, speechOnly: !!input.replayId,
         signal: controller.signal,
@@ -234,12 +235,6 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
       let text = '', audio: Blob | null = null, lang: 'fr' | 'bba' = mode === 'fr' ? 'fr' : 'bba';
       if (mode === 'fr' && hasFrenchRecognition()) {
         const result = await recognizeFrench({ onInterim: setCaption, signal: controller.signal, finishSignal: finish.signal }); text = result.text;
-      } else if (mode === 'both' && hasFrenchRecognition()) {
-        const [fr, blob] = await Promise.all([
-          recognizeFrench({ onInterim: setCaption, signal: controller.signal, finishSignal: finish.signal }).catch(() => ({ text: '', confidence: 0 })),
-          recordUtterance({ onLevel: setLevel, signal: controller.signal, finishSignal: finish.signal }),
-        ]);
-        if (fr.text && looksFrench(fr.text, fr.confidence)) { text = fr.text; lang = 'fr'; } else audio = blob;
       } else audio = await recordUtterance({ onLevel: setLevel, signal: controller.signal, finishSignal: finish.signal });
       if (controller.signal.aborted || !session.current) return;
       if (!audio && !text.trim()) {
@@ -264,7 +259,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
   const sendText = async () => {
     const text = draft.trim(); if (!text) return;
     setDraft(''); setTranscriptionReview(null); session.current = false;
-    await runTurn(text, mode === 'both' ? looksFrench(text, 0.9) ? 'fr' : 'bba' : mode, false);
+    await runTurn(text, mode, false);
   };
   const changeMode = (next: DunyaWebMode) => { endSession(); setMode(next); savePreference('mode', next); setTurns(loadHistory(next)); };
   const setPref = <T,>(key: string, value: T, setter: (v: T) => void) => { setter(value); savePreference(key, value); };
@@ -325,7 +320,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
 
       {textView ? (
         <div ref={scroller} className="mx-auto w-full max-w-3xl flex-1 space-y-3 overflow-y-auto px-4 pb-3 pt-2">
-          {turns.length === 0 && <div className="mt-16 text-center"><p className="text-2xl font-extrabold text-white">Écrivez votre message</p><p className="mx-auto mt-2 max-w-xs text-[17px] leading-7 text-white/80">{mode === 'bba' ? 'DUNYA répond en baatɔnum.' : mode === 'both' ? 'DUNYA répond dans la langue de votre message.' : 'DUNYA répond en français.'}</p></div>}
+          {turns.length === 0 && <div className="mt-16 text-center"><p className="text-2xl font-extrabold text-white">Écrivez votre message</p><p className="mx-auto mt-2 max-w-xs text-[17px] leading-7 text-white/80">{mode === 'bba' ? 'DUNYA répond en baatɔnum.' : 'DUNYA répond en français.'}</p></div>}
           {turns.map((t) => t.role === 'user' ? (
             <article key={t.id} className="ml-auto max-w-[85%] rounded-[24px] rounded-br-md bg-[#F0BC55] px-5 py-3 text-[#16121C] shadow-[0_6px_18px_-8px_rgba(240,188,85,0.6)]">
               <p className="whitespace-pre-wrap text-[17px] font-semibold leading-7">{t.text}</p>
@@ -355,7 +350,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
             {phase === 'listening' && <LiveBadge />}
           </div>
           {phase === 'listening' && <Waveform />}
-          {phase === 'idle' && <p className="mt-1.5 max-w-xs text-center text-[17px] leading-7 text-white/80">{mode === 'bba' ? 'Parlez en baatɔnum.' : mode === 'both' ? 'Parlez en français ou en baatɔnum.' : 'Parlez en français.'}</p>}
+          {phase === 'idle' && <p className="mt-1.5 max-w-xs text-center text-[17px] leading-7 text-white/80">{mode === 'bba' ? 'Parlez en baatɔnum.' : 'Parlez en français.'}</p>}
           {lastAssistant && phase !== 'listening' && (
             <div className="mt-4 flex gap-2">
               <Pill onClick={() => void replay(lastAssistant)}><Volume2 className="h-4 w-4" />Réécouter</Pill>
@@ -381,7 +376,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
             <div className="mb-4 flex max-w-xl flex-wrap justify-center gap-2">
               {SUGGESTIONS[mode].map((s) => (
                 <button key={s}
-                  onClick={() => void runTurn(s, mode === 'bba' ? 'bba' : looksFrench(s, 0.9) ? 'fr' : 'bba', false)}
+                  onClick={() => void runTurn(s, mode, false)}
                   className="min-h-12 rounded-full bg-white/[0.10] px-5 py-3 text-[16px] font-bold text-white ring-1 ring-white/25 hover:bg-white/[0.16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F0BC55]">
                   {s}
                 </button>

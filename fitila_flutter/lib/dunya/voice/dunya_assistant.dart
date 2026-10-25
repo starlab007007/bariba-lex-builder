@@ -144,11 +144,9 @@ class DunyaAssistant {
     _cancelled = false;
     await _ensureKnowledge();
     final text = heard.trim();
-    final detected = skills.detectLanguage(text);
     final inputLang = switch (mode) {
       DunyaLanguageMode.french => 'fr',
       DunyaLanguageMode.bariba => 'bba',
-      DunyaLanguageMode.bilingual => detected,
     };
     final replyLang = inputLang;
 
@@ -272,6 +270,7 @@ class DunyaAssistant {
         key: '${mode.key}-${(_turns[mode] ?? 0) ~/ 5}',
         system: _systemPrompt(mode, replyLang),
         history: history,
+        maxOutput: replyLang == 'bba' ? 96 : 160,
       );
     } catch (error) {
       final reply = await skills.respond(french, replyLang == 'bba' ? DunyaReplyLanguage.bariba : DunyaReplyLanguage.french);
@@ -406,7 +405,7 @@ class DunyaAssistant {
           ? 'Tu es DUNYA, l’assistant vocal personnel de FITILA.'
           : 'Tu es DUNYA, l’assistant vocal personnel de FITILA. Tu fonctionnes entièrement sur le téléphone, sans Internet.')
       ..writeln('Tu parles avec des personnes du Nord-Bénin, souvent en milieu rural ; certaines ne savent pas lire.')
-      ..writeln('Réponds en français simple et naturel, comme à l’oral : une à quatre phrases courtes.')
+      ..writeln('Réponds en français simple et naturel, comme à l’oral : une ou deux phrases courtes.')
       ..writeln('Pas de liste, pas de titre, pas de markdown, pas de symboles, pas d’émojis.')
       ..writeln('Sois chaleureux, respectueux et direct. Si tu ne sais pas, ou si l’information peut avoir changé (actualité, prix, météo), dis-le simplement.')
       ..writeln('Pour la santé, donne des conseils prudents et oriente vers un agent de santé ; ne pose jamais de diagnostic.')
