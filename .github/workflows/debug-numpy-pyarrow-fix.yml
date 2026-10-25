@@ -52,12 +52,7 @@ jobs:
           RC4=$?
           echo "::notice::rc4=${RC4} numpy_apres=$(pip show numpy 2>/dev/null | grep -i '^Version:') $(tail -c 500 /tmp/out4.txt | tr '\n' '|')"
 
-          python -c "\
-import torch; print('torch', torch.__version__, torch.cuda.is_available()); \
-import torchaudio; print('torchaudio', torchaudio.__version__); \
-import fairseq2n, fairseq2; print('fairseq2 ok'); \
-import numpy; print('numpy', numpy.__version__); \
-import pyarrow; print('pyarrow', pyarrow.__version__)" > /tmp/out5.txt 2>&1
+          python -c "import torch; print('torch', torch.__version__, torch.cuda.is_available()); import torchaudio; print('torchaudio', torchaudio.__version__); import fairseq2n, fairseq2; print('fairseq2 ok'); import numpy; print('numpy', numpy.__version__); import pyarrow; print('pyarrow', pyarrow.__version__)" > /tmp/out5.txt 2>&1
           RC5=$?
           echo "::notice::rc5=${RC5} $(cut -c1-900 /tmp/out5.txt | tr '\n' '|')"
 
