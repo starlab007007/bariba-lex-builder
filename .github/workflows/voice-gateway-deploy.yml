@@ -85,6 +85,22 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           command_timeout: 30m
           script: |
-            echo "::notice::DEBUG test minimal, whoami=$(whoami), pwd=$(pwd)"
-            ls -la /home/debian/bariba-lex-builder | head -5
-            echo "::notice::DEBUG fin"
+            set -uo pipefail
+            trap 'echo "::error::deploy script a échoué : commande [$BASH_COMMAND], code $?"' ERR
+            set -e
+            echo "::notice::DEBUG A1 strict mode + trap OK"
+
+            IMAGE="${{ needs.build-and-push.outputs.image }}"
+            GHCR_READ_TOKEN="${{ secrets.GHCR_READ_TOKEN }}"
+            FITILA_MODEL_API_TOKEN="${{ secrets.FITILA_MODEL_API_TOKEN }}"
+            echo "::notice::DEBUG A2 vars interpolées OK, IMAGE=$IMAGE"
+
+            cd /home/debian/bariba-lex-builder
+            if [ -n "${GHCR_READ_TOKEN:-}" ]; then
+              echo "::notice::DEBUG A3 ghcr token present"
+            fi
+
+            : "${FITILA_MODEL_API_TOKEN:?Secret GitHub FITILA_MODEL_API_TOKEN manquant}"
+            printf 'FITILA_MODEL_API_TOKEN=%s\n' "$FITILA_MODEL_API_TOKEN" > .env
+            chmod 600 .env
+            echo "::notice::DEBUG A4 .env écrit OK"
