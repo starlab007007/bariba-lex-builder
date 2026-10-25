@@ -168,6 +168,15 @@ function scoreSentence(sentence: string, qTokenSet: Set<string>): number {
 }
 
 export function answerFromCorpus(query: string): AnswerResult {
+  // An explicit citation is a lookup, not a similarity search across articles.
+  // Preserve the complete legal text and its single source, as on Flutter.
+  const number = detectArticleMention(query);
+  const exact = number === null ? undefined : FONCIER_CORPUS.find(article => article.id === number);
+  if (exact) return {
+    answer: exact.content,
+    sources: [{ id: exact.id, number: exact.number, content: exact.content, page: exact.page, gariWiru: exact.gariWiru }],
+    isFallback: false,
+  };
   const hits = searchFoncier(query, 6);
   if (hits.length === 0 || hits[0].score < SCORE_THRESHOLD) {
     return { answer: FALLBACK_BA, sources: [], isFallback: true };

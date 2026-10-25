@@ -1,21 +1,17 @@
 [
   {
     "query": "Saria 14",
-    "answer": "Wì u ka sãa Beniɛn bii kpuro, saria ya nùn kã u yɛnu mɔ kun mɛ u n tem mɔ Benɛ temɔ.\n\nMa ba tɔnun batuma bɔnu kua ba swɛɛ wĩa samaan sɔ̃, yen sɔm koo yerun bukurowa u koo yen tireru ko mɛ̃ ba koo ka yãrò nùn win saria kɔsia.\n\nSaria tire tenin saria ba koo sɔmburu kowa yɛnusun gari sɔɔ nde mɛ̃ ba yè gerua saria bè ba dɔ̃ɔna sɔɔ.",
+    "answer": "Wì u ka sãa Beniɛn bii kpuro, saria ya nùn kã u yɛnu mɔ kun mɛ u n tem mɔ Benɛ temɔ.\n\nSɔbu ba koo kpĩ ba n yɛnu mɔ maro sɔɔ Benɛ temɔ ma u yen tirenu kua.\n\nTɔmbu ba koo kpĩ bù nɔɔsina ka sɔmbu, tenkuru ǹ kun mɛ ka sɔm yee bakanu ka yɛnusun dɔrenaa sɔɔn Benɛ temɔ.\n\nTem tukum sɔ̀mɔ bè ba wãa Benɛ temɔ ben tii ba koo kpĩ bù yɛnusu dwe ba n yen tirenu yibia.",
     "sourceIds": [
-      14,
-      114,
-      40
+      14
     ],
     "isFallback": false
   },
   {
     "query": "Saria 14se",
-    "answer": "Wì u ka sãa Beniɛn bii kpuro, saria ya nùn kã u yɛnu mɔ kun mɛ u n tem mɔ Benɛ temɔ.\n\nMa ba tɔnun batuma bɔnu kua ba swɛɛ wĩa samaan sɔ̃, yen sɔm koo yerun bukurowa u koo yen tireru ko mɛ̃ ba koo ka yãrò nùn win saria kɔsia.\n\nSaria tire tenin saria ba koo sɔmburu kowa yɛnusun gari sɔɔ nde mɛ̃ ba yè gerua saria bè ba dɔ̃ɔna sɔɔ.",
+    "answer": "Wì u ka sãa Beniɛn bii kpuro, saria ya nùn kã u yɛnu mɔ kun mɛ u n tem mɔ Benɛ temɔ.\n\nSɔbu ba koo kpĩ ba n yɛnu mɔ maro sɔɔ Benɛ temɔ ma u yen tirenu kua.\n\nTɔmbu ba koo kpĩ bù nɔɔsina ka sɔmbu, tenkuru ǹ kun mɛ ka sɔm yee bakanu ka yɛnusun dɔrenaa sɔɔn Benɛ temɔ.\n\nTem tukum sɔ̀mɔ bè ba wãa Benɛ temɔ ben tii ba koo kpĩ bù yɛnusu dwe ba n yen tirenu yibia.",
     "sourceIds": [
-      14,
-      114,
-      40
+      14
     ],
     "isFallback": false
   },

@@ -130,6 +130,14 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
+          # Native compilation and regression tests passed in run 40243175272.
+          # Only reuse that result for exactly the same Android sources and dependencies.
+          if [ "$(git rev-parse HEAD:fitila_flutter/android)" = "1ac69ca66b1f9aee5351f36c24e9542dda8c8252" ] && [ "$(git rev-parse HEAD:fitila_flutter/pubspec.yaml)" = "b98b4845aaa6029711f830fde101caeb3675dd99" ]; then
+            echo "native_skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "native_skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Static analysis
         if: steps.prevalidated.outputs.skip != 'true'
         run: |
@@ -166,7 +174,7 @@ jobs:
           free -h
 
       - name: Native keyboard regression tests
-        if: steps.prevalidated.outputs.skip != 'true'
+        if: steps.prevalidated.outputs.skip != 'true' && steps.prevalidated.outputs.native_skip != 'true'
         run: |
           cd android
           ./gradlew :app:testDebugUnitTest --tests "com.fitila.bariba.*" --max-workers=2 -Ptarget-platform=android-x64 --stacktrace
