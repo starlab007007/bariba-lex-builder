@@ -106,10 +106,4 @@ jobs:
             echo "::notice::DEBUG A4 .env écrit OK"
 
             previous_id="$(docker inspect bariba-voice-gateway 2>/dev/null | grep -o '"Image": *"[^"]*"' | head -1 | cut -d'"' -f4 || true)"
-            echo "::notice::DEBUG C1 docker inspect (sans Go template) OK, previous_id=$previous_id"
-
-            docker pull "$IMAGE:latest"
-            echo "::notice::DEBUG C2 docker pull OK"
-
-            docker compose -f docker-composer.yml up -d --no-build bariba-voice-gateway
-            echo "::notice::DEBUG C3 docker compose up OK"
+            echo "::notice::DEBUG D1 docker inspect OK, previous_id=$previous_id"
