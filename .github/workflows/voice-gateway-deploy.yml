@@ -70,7 +70,7 @@ jobs:
           printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/vps_key
           ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 -i /tmp/vps_key \
             "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
-            "echo MARK_START; which docker; docker --version; echo MARK_PULL; docker pull '$IMAGE:latest'; echo MARK_EXIT=\$?" \
+            "echo MARK_START; cat ~/.docker/config.json 2>&1; echo MARK_LOGOUT; docker logout ghcr.io 2>&1; echo MARK_PULL; docker pull '$IMAGE:latest'; echo MARK_EXIT=\$?" \
             > /tmp/ssh_out.txt 2>/tmp/ssh_err.txt
           echo "::notice::DEBUG H local-ssh-rc=$?"
           echo "::notice::DEBUG H stdout-bytes=$(wc -c < /tmp/ssh_out.txt) stderr-bytes=$(wc -c < /tmp/ssh_err.txt)"
