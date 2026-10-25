@@ -57,6 +57,24 @@ jobs:
       - name: Debug - vérifier needs.build-and-push.outputs.image
         run: |
           echo "::notice::DEBUG F IMAGE (hors SSH) = ${{ needs.build-and-push.outputs.image }}"
+      - name: Debug - docker pull via ssh natif (pas appleboy/ssh-action)
+        # appleboy/ssh-action n'expose aucune sortie de son script distant
+        # dans les logs/annotations consultables depuis mon environnement
+        # (ni succès ni échec). On utilise donc le client ssh natif du
+        # runner pour voir le VRAI message d'erreur de `docker pull`.
+        env:
+          IMAGE: ${{ needs.build-and-push.outputs.image }}
+        run: |
+          set +e
+          install -m 600 /dev/null /tmp/vps_key
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/vps_key
+          out="$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 -i /tmp/vps_key \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            "docker pull '$IMAGE:latest' 2>&1; echo EXITCODE=\$?" 2>&1)"
+          rc=$?
+          echo "::notice::DEBUG G ssh rc=$rc"
+          echo "::notice::DEBUG G sortie docker pull : $(echo "$out" | tr '\n' ' ' | cut -c1-900)"
+          rm -f /tmp/vps_key
       - name: Synchroniser docker-composer.yml sur le VPS
         # Ne pas supposer que deploy.yml (déclenché séparément) l'a déjà fait :
         # ce workflow doit rester correct même s'il tourne seul (dispatch
