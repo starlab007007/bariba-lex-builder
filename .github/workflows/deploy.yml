@@ -145,17 +145,8 @@ jobs:
             trap - ERR
             echo "✅ FITILA web actif depuis le bundle GitHub ${{ github.sha }}"
 
-            # bariba-voice-gateway a son propre pipeline + rollback dédié
-            # (voice-gateway-deploy.yml) : ici on profite juste du passage
-            # pour le rafraîchir si une image existe déjà sur GHCR, sans
-            # jamais faire échouer ni annuler le déploiement web ci-dessus.
-            echo "🎙️ Rafraîchissement bariba-voice-gateway (best-effort)..."
-            if docker compose -f docker-composer.yml pull bariba-voice-gateway 2>/dev/null; then
-              docker compose -f docker-composer.yml up -d --no-build bariba-voice-gateway || \
-                echo "⚠️ bariba-voice-gateway : démarrage échoué, voir voice-gateway-deploy.yml"
-            else
-              echo "ℹ️ Aucune image bariba-voice-gateway sur GHCR encore (normal avant le premier déploiement dédié)"
-            fi
+            # The dedicated voice pipeline owns model rollout and rollback.
+            # Updating web assets does not restart an active voice conversation.
 
             echo "🧹 Nettoyage léger..."
             rm -rf dist.previous
