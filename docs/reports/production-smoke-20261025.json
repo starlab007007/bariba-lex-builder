@@ -1,0 +1,143 @@
+{
+  "date_utc": "2026-10-25",
+  "scope": "public-production-functional-smoke",
+  "linguistic_quality_certified": false,
+  "french_chat": [
+    {
+      "type": "transcript",
+      "text": "Pourquoi faut-il varier les cultures au champ ?",
+      "lang": "fr",
+      "engine": "text",
+      "request_id": "7e64a56e-e43c-476e-ba88-49410804b18d",
+      "elapsed_ms": 1
+    },
+    {
+      "type": "stage",
+      "stage": "thinking",
+      "request_id": "7e64a56e-e43c-476e-ba88-49410804b18d",
+      "elapsed_ms": 1
+    },
+    {
+      "type": "answer",
+      "text": "Varier les cultures permet d'éviter les maladies et les ravageurs qui peuvent détruire une seule culture. Cela aide aussi à maintenir la fertilité du sol à long terme.",
+      "lang": "fr",
+      "model": "gemma-4-e2b",
+      "request_id": "7e64a56e-e43c-476e-ba88-49410804b18d",
+      "elapsed_ms": 3902
+    },
+    {
+      "type": "done",
+      "request_id": "7e64a56e-e43c-476e-ba88-49410804b18d",
+      "elapsed_ms": 3902
+    }
+  ],
+  "synthetic_baatonum_cycle": [
+    {
+      "type": "stage",
+      "stage": "transcribing",
+      "request_id": "22ecf5ad-c6bf-4727-98cc-cc120778c8fd",
+      "elapsed_ms": 1
+    },
+    {
+      "type": "stage",
+      "stage": "analyzing_transcript",
+      "request_id": "22ecf5ad-c6bf-4727-98cc-cc120778c8fd",
+      "elapsed_ms": 6959
+    },
+    {
+      "type": "transcript",
+      "text": "aa bu bunɛ ka weru",
+      "raw_text": "aa bu bunɛ ka weru",
+      "repair": {
+        "version": "reference-v1",
+        "raw": "aa bu bunɛ ka weru",
+        "text": "aa bu bunɛ ka weru",
+        "language": "bba",
+        "status": "unchanged",
+        "proposals": [],
+        "source_count": 18,
+        "matched_segments": 0,
+        "analyzed_segments": 1,
+        "total_segments": 1,
+        "requires_confirmation": true,
+        "linguistic_quality_certified": false,
+        "score_is_probability": false
+      },
+      "lang": "bba",
+      "engine": "meta-asr-300m",
+      "model": "omniASR_CTC_300M",
+      "request_id": "22ecf5ad-c6bf-4727-98cc-cc120778c8fd",
+      "elapsed_ms": 8948
+    },
+    {
+      "type": "stage",
+      "stage": "thinking",
+      "request_id": "22ecf5ad-c6bf-4727-98cc-cc120778c8fd",
+      "elapsed_ms": 8948
+    },
+    {
+      "type": "answer",
+      "text": "Na ǹ kpɛ̃ yè a gerua. A koo wunɛn gari yi sɔ̃ɔsi?",
+      "subtitle": "Je ne comprends pas ce que tu veux dire. Peux-tu préciser ta question ?",
+      "lang": "bba",
+      "model": "gemma-4-e2b",
+      "request_id": "22ecf5ad-c6bf-4727-98cc-cc120778c8fd",
+      "elapsed_ms": 31025
+    },
+    {
+      "type": "stage",
+      "stage": "synthesizing",
+      "request_id": "22ecf5ad-c6bf-4727-98cc-cc120778c8fd",
+      "elapsed_ms": 31025
+    },
+    {
+      "type": "audio",
+      "text": "Na ǹ kpɛ̃ yè a gerua. A koo wunɛn gari yi sɔ̃ɔsi?",
+      "engine": "meta-mms-tts-bba",
+      "model": "facebook/mms-tts-bba",
+      "request_id": "22ecf5ad-c6bf-4727-98cc-cc120778c8fd",
+      "elapsed_ms": 33828
+    },
+    {
+      "type": "done",
+      "request_id": "22ecf5ad-c6bf-4727-98cc-cc120778c8fd",
+      "elapsed_ms": 33829
+    }
+  ],
+  "classe_audio_http": {
+    "scope": "approved-current-classe-audio",
+    "references": 766,
+    "http_available": 766,
+    "failures": [],
+    "method": "Anonymous signed URL creation followed by HTTP Range GET; storage paths URL-encoded."
+  },
+  "android_publication": {
+    "latest": {
+      "version": "v1.8.23-build34-233",
+      "signing": "production",
+      "published_at": "2026-10-25T20:38:07Z",
+      "source_commit": "946c8ff350c2efba9b5f100f00028dffb3e8a033",
+      "source_run": 40229833072,
+      "arm64": "/dunya-packs/android/v1.8.23-build34-233/FITILA-Android-v1.8.23-build34-keyboard-translator-arm64.apk",
+      "arm64_size": 100312031,
+      "armv7": "/dunya-packs/android/v1.8.23-build34-233/FITILA-Android-v1.8.23-build34-keyboard-translator-armv7.apk",
+      "armv7_size": 58940941
+    },
+    "downloads": [
+      {
+        "kind": "arm64",
+        "http_status": 200,
+        "size": 100312031,
+        "url": "https://fitila.bj/dunya-packs/android/v1.8.23-build34-233/FITILA-Android-v1.8.23-build34-keyboard-translator-arm64.apk"
+      },
+      {
+        "kind": "armv7",
+        "http_status": 200,
+        "size": 58940941,
+        "url": "https://fitila.bj/dunya-packs/android/v1.8.23-build34-233/FITILA-Android-v1.8.23-build34-keyboard-translator-armv7.apk"
+      }
+    ],
+    "checksums": "caebbc781e9c045d02b4e5e4f45d9550f15ec53a35fccda07ef1784bb8ebff8f  FITILA-Android-v1.8.23-build34-keyboard-translator-arm64.apk\n53c75d919848022a3bb3c929db61010c0fa5071ff63f936dbc66afeff27f9eba  FITILA-Android-v1.8.23-build34-keyboard-translator-armv7.apk\n",
+    "verified_at_utc": "2026-10-25T20:39:00Z"
+  }
+}
