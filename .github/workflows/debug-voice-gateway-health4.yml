@@ -1,0 +1,57 @@
+name: Debug voice-gateway health (temporaire)
+
+# Workflow de diagnostic jetable : contrairement à l'étape appleboy/ssh-action
+# du vrai déploiement (dont la sortie ne remonte jamais via l'API Checks),
+# chaque commande ici tourne dans une étape `run:` native sur le runner
+# GitHub-hébergé, qui elle expose ses ::notice:: normalement. Une commande
+# courte par étape (limite de 10 annotations par étape déjà rencontrée).
+# À supprimer une fois le diagnostic terminé.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup clé SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id
+          chmod 600 ~/.ssh/id
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: docker ps -a (état du conteneur)
+        run: |
+          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker ps -a --filter name=bariba-voice-gateway --format '{{.Names}} | {{.Status}} | {{.Image}}'" 2>&1)"
+          echo "::notice::ps: ${OUT}"
+
+      - name: docker inspect (code de sortie / health)
+        run: |
+          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker inspect bariba-voice-gateway --format 'ExitCode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}} Health={{.State.Health.Status}} Error={{.State.Error}}'" 2>&1)"
+          echo "::notice::inspect: ${OUT}"
+
+      - name: free -h (mémoire VPS)
+        run: |
+          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "free -h" 2>&1 | tr '\n' '|')"
+          echo "::notice::free: ${OUT}"
+
+      - name: docker logs tail 40 (partie 1)
+        run: |
+          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker logs --tail 40 bariba-voice-gateway" 2>&1 | tr '\n' '|' | cut -c1-900)"
+          echo "::notice::logs1: ${OUT}"
+
+      - name: docker logs tail 40 (partie 2)
+        run: |
+          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker logs --tail 40 bariba-voice-gateway" 2>&1 | tr '\n' '|' | cut -c901-1800)"
+          echo "::notice::logs2: ${OUT}"
+
+      - name: docker logs tail 40 (partie 3)
+        run: |
+          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker logs --tail 40 bariba-voice-gateway" 2>&1 | tr '\n' '|' | cut -c1801-2700)"
+          echo "::notice::logs3: ${OUT}"
+
+      - name: curl -v health local (depuis le VPS)
+        run: |
+          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "curl -v --max-time 5 http://127.0.0.1:8090/health" 2>&1 | tr '\n' '|' | cut -c1-900)"
+          echo "::notice::health: ${OUT}"
