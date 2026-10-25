@@ -63,12 +63,25 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 # sautait silencieusement torchaudio — laissant le build CUDA cassé en
 # place. `pip show` lit les métadonnées du paquet sans jamais importer
 # son extension native, donc il fonctionne même quand l'import échoue.
+#
+# Un essai suivant encore (torch+torchaudio via pip show, mais chacun à
+# SA PROPRE version résolue par requirements.txt — torch==2.8.0 et
+# torchaudio==2.11.0, des lignes de version très différentes) a échoué
+# différemment : build CPU réussi pour les deux, mais import de
+# torchaudio en erreur avec "undefined symbol: torch_library_impl" —
+# un désaccord d'ABI entre les deux wheels CPU, confirmé par un
+# diagnostic reproduisant l'environnement exact (conteneur
+# python:3.11-slim). torch et torchaudio sont censés être installés en
+# lockstep (même numéro de version) ; la version de torchaudio résolue
+# seule par une contrainte large d'omnilingual-asr/transformers n'est
+# pas forcément celle réellement compatible ABI avec CE torch. Forcer
+# torchaudio à la MÊME version que torch (au lieu de sa propre version
+# résolue) règle le problème — confirmé par le même diagnostic.
 RUN pip install --no-cache-dir -r requirements.txt
 RUN TORCH_VER="$(pip show torch | grep -i '^Version:' | awk '{print $2}' | cut -d'+' -f1)" \
-    && TORCHAUDIO_VER="$(pip show torchaudio | grep -i '^Version:' | awk '{print $2}' | cut -d'+' -f1)" \
-    && echo "résolu par requirements.txt : torch=${TORCH_VER} torchaudio=${TORCHAUDIO_VER:-absent} — remplacement par les builds CPU" \
+    && echo "résolu par requirements.txt : torch=${TORCH_VER} — remplacement (torch+torchaudio en lockstep) par les builds CPU" \
     && pip install --no-cache-dir --force-reinstall --no-deps \
-         "torch==${TORCH_VER}" ${TORCHAUDIO_VER:+"torchaudio==${TORCHAUDIO_VER}"} \
+         "torch==${TORCH_VER}" "torchaudio==${TORCH_VER}" \
          --index-url https://download.pytorch.org/whl/cpu \
     && python -c "\
 import torch; print('torch CPU final :', torch.__version__, '| cuda dispo :', torch.cuda.is_available()); \
