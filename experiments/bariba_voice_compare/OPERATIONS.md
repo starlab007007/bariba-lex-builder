@@ -11,6 +11,16 @@ exposée sur `fitila.bj/voice-api` via Traefik, déployée automatiquement et
 surveillée en continu. Le contenu ci-dessous reste valable pour qui veut
 faire tourner ce service expérimental en local pour des comparaisons.
 
+**Attention (2026-10-25) :** les deux services écoutent sur le même port
+`127.0.0.1:8090`. Si celui-ci (`fitila-meta-voice-api`, `restart:
+unless-stopped`) est relancé manuellement sur le VPS de production pour une
+comparaison, `voice-gateway-deploy.yml` ne pourra plus démarrer
+`bariba-voice-gateway` tant qu'il tourne ("port is already allocated") — le
+déploiement le libère maintenant automatiquement (`docker stop
+fitila-meta-voice-api`) avant chaque déploiement, mais pensez à l'arrêter
+(`docker compose down` dans ce dossier) une fois la comparaison terminée
+plutôt que de compter uniquement sur ce filet de sécurité.
+
 Chaîne (historique) : App web → `meta-voice-gateway` (Supabase canonique dvswhjawiooprghzeyol, JWT utilisateur requis)
 → service CPU `service.py` sur le VPS (`/infer`, jeton `FITILA_MODEL_API_TOKEN`) → modèles
 `facebook/mms-tts-bba` et Omnilingual ASR CTC 300M.
