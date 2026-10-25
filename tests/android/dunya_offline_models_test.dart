@@ -7,6 +7,7 @@ import 'package:fitila_native/dunya/voice/dunya_shared_speech.dart';
 import 'package:fitila_native/dunya/voice/dunya_translator.dart';
 import 'package:fitila_native/dunya/voice/dunya_voice_pack.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path_provider/path_provider.dart';
@@ -75,6 +76,15 @@ void main() {
       expect(transcript.trim(), isNotEmpty);
       expect(await DunyaByt5.instance.activateIfInstalled(userRequested: true), isTrue);
       final translation = await DunyaTranslator.offline!('Le champ contient trois arbres.', true);
+      if (translation == null) {
+        // The production adapter returns null for a failed native load. Expose
+        // the actual bridge exception in this test instead of guessing a cause.
+        await const MethodChannel('fitila/dunya_byt5').invokeMethod('load', {
+          'encoder': '${root.path}/dunya_packs/$dunyaTranslationPackId/byt5/encoder.onnx',
+          'decoder': '${root.path}/dunya_packs/$dunyaTranslationPackId/byt5/decoder.onnx',
+          'threads': 2,
+        });
+      }
       expect(translation?.trim(), isNotEmpty);
       final speech = await DunyaSharedSpeech.instance.synthesizeBariba('A kua');
       expect(speech, isNotNull);

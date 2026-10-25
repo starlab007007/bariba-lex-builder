@@ -36,5 +36,9 @@ fi
 status=0
 wait "$test_pid" || status=$?
 cat "$log"
+if [ "$status" -ne 0 ]; then
+  adb logcat -d -s AndroidRuntime flutter | tail -180 > build/ci-report/offline-native-errors.txt || true
+  cat build/ci-report/offline-native-errors.txt
+fi
 if [ "$disabled" != true ]; then echo 'Network-off phase was not reached.'; exit 1; fi
 exit "$status"
