@@ -61,6 +61,12 @@ export default defineConfig(({ mode }) => ({
             },
           },
           {
+            // Release and model manifests must reflect current availability and certification.
+            // Keep model binaries offline, never a year-old publication manifest.
+            urlPattern: /^https:\/\/fitila\.bj\/dunya-packs\/.*\.json(?:\?.*)?$/i,
+            handler: 'NetworkOnly',
+          },
+          {
             // Pack hors ligne ByT5 FR↔Baatɔnum (modèle + dictionnaire), téléchargé
             // une fois en ligne (voir `ensureByt5PackCached`) puis servi du cache.
             urlPattern: /^https:\/\/fitila\.bj\/dunya-packs\/.*/i,

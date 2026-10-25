@@ -25,7 +25,7 @@ export default function InstallPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(RELEASE_MANIFEST, { cache: 'no-store', signal: controller.signal })
+    fetch(`${RELEASE_MANIFEST}?updated=${Date.now()}`, { cache: 'no-store', signal: controller.signal })
       .then(async response => {
         if (!response.ok) throw new Error('No public production release');
         return response.json();
@@ -141,7 +141,7 @@ export default function InstallPage() {
                     <Download className="h-4 w-4" /> APK pour anciens téléphones (ARMv7)
                   </a>}
                   <p className="text-[12px] text-[#766D5A]">
-                    Version : {apk.version} · {Math.round(apk.size / 1024 / 1024)} Mo · publication officielle GitHub
+                    Version : {apk.version} · {Math.round(apk.size / 1024 / 1024)} Mo · signature de production FITILA
                   </p>
                 </>
               ) : (
