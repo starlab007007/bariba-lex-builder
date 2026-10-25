@@ -1,0 +1,111 @@
+name: Publish verified FITILA Android build34
+
+# Reuse the immutable, production-signed artifact whose build, 288 Flutter
+# tests and native emulator checks passed. No recompilation or re-signing.
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fitila-publish-verified-build34.yml']
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: fitila-publish-build34
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TARGET_DIR: v1.8.23-build34-233
+      EXPECTED_SIGNER: 931f901a227199fe867845b2ededf122fe858ffc2c82900f82675e4a541a4b67
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          repository: starlab007007/bariba-lex-builder
+          run-id: 40229833072
+          name: FITILA-Android-v1.8.23-build34-keyboard-translator
+          github-token: ${{ github.token }}
+          path: verified
+      - name: Verify production signing and immutable artifact checksums
+        run: |
+          set -euo pipefail
+          package=$(find verified -type f -name SIGNING_MODE.txt -printf '%h\n')
+          test -n "$package"
+          test "$(cat "$package/SIGNING_MODE.txt")" = production
+          test "$(cat "$package/INSTALL_MODE.txt")" = production-update
+          (cd "$package" && sha256sum -c SHA256SUMS.txt)
+          signer=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
+          test -x "$signer"
+          mkdir apk-publish
+          for kind in arm64 armv7; do
+            apk="$package/FITILA-Android-v1.8.23-build34-keyboard-translator-$kind.apk"
+            unzip -t "$apk" >/dev/null
+            "$signer" verify --print-certs "$apk" > "signer-$kind.txt"
+            grep -F "certificate SHA-256 digest: $EXPECTED_SIGNER" "signer-$kind.txt"
+            cp "$apk" apk-publish/
+          done
+          cp "$package/SHA256SUMS.txt" "$package/SIGNER.txt" apk-publish/
+      - name: Publish verified APKs and atomically update phone manifest
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/fitila_publish
+          chmod 600 ~/.ssh/fitila_publish
+          ssh-keyscan -T 20 -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          root=/home/debian/bariba-lex-builder/dunya-packs/android
+          ssh -i ~/.ssh/fitila_publish -o BatchMode=yes -o ConnectTimeout=20 \
+            "$VPS_USER@$VPS_HOST" "mkdir -p '$root/$TARGET_DIR'"
+          scp -i ~/.ssh/fitila_publish -o BatchMode=yes -o ConnectTimeout=20 \
+            apk-publish/* "$VPS_USER@$VPS_HOST:$root/$TARGET_DIR/"
+          ssh -i ~/.ssh/fitila_publish -o BatchMode=yes -o ConnectTimeout=20 \
+            "$VPS_USER@$VPS_HOST" "TARGET_DIR='$TARGET_DIR' bash -s" <<'REMOTE'
+          set -euo pipefail
+          root=/home/debian/bariba-lex-builder/dunya-packs/android
+          cd "$root/$TARGET_DIR"
+          sha256sum -c SHA256SUMS.txt
+          chmod 755 . "$root"
+          chmod 644 ./*
+          python3 - "$root" "$TARGET_DIR" <<'PY'
+          import datetime, json, os, sys
+          root, directory = sys.argv[1:]
+          path = os.path.join(root, 'releases.json')
+          data = json.load(open(path))
+          files = os.listdir(os.path.join(root, directory))
+          entry = {'version': directory, 'signing': 'production',
+                   'published_at': datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
+                   'source_commit': '946c8ff350c2efba9b5f100f00028dffb3e8a033',
+                   'source_run': 40229833072}
+          for kind in ['arm64', 'armv7']:
+              filename = next(f for f in files if f.endswith('-' + kind + '.apk'))
+              entry[kind] = '/dunya-packs/android/' + directory + '/' + filename
+              entry[kind + '_size'] = os.path.getsize(os.path.join(root, directory, filename))
+          data['releases'] = [r for r in data['releases'] if r.get('version') != directory] + [entry]
+          with open(path + '.tmp', 'w') as output:
+              json.dump(data, output, indent=1)
+          os.replace(path + '.tmp', path)
+          os.chmod(path, 0o644)
+          print(json.dumps(entry))
+          PY
+          REMOTE
+      - name: Verify public phone downloads
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          req = urllib.request.Request('https://fitila.bj/dunya-packs/android/releases.json', headers={'Cache-Control': 'no-cache'})
+          manifest = json.load(urllib.request.urlopen(req, timeout=30))
+          entry = next(r for r in manifest['releases'] if r['version'] == os.environ['TARGET_DIR'])
+          for kind in ['arm64', 'armv7']:
+              req = urllib.request.Request('https://fitila.bj' + entry[kind], headers={'Range': 'bytes=0-63'})
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  assert response.status in [200, 206] and response.read(4) == b'PK\x03\x04'
+          print('Both signed production APKs are publicly downloadable.')
+          PY
