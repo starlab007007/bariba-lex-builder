@@ -397,6 +397,7 @@ Deno.serve(async (req: Request) => {
 
     // FITILA Meta ASR (Omnilingual, on fitila.bj) first; the Hugging Face Space is a fallback
     // (it answered 404 on 20/10/2026).
+    const startTime = Date.now();
     let metaTranscript: string | null = null;
     {
       const t0 = Date.now();
@@ -417,7 +418,6 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log(`🎤 Bariba STT: audio=${audio.length} chars, robust=${robustMode}, speaker=${speakerType}`);
-    const startTime = Date.now();
 
     try {
       // Retry exponentiel : 2 tentatives avec délai 5s/15s
@@ -462,7 +462,7 @@ Deno.serve(async (req: Request) => {
         : await repairRecognizedTranscript(rawTranscription, 'bba', req.signal);
       const finalTranscription = repair.text;
       const refined = finalTranscription !== rawTranscription;
-      console.log(JSON.stringify({ event: 'bariba_stt_completed', duration: Date.now() - startTime, repair_status: repair.status, proposals: repair.proposals.length }));
+      console.log(JSON.stringify({ event: 'bariba_stt_completed', duration: Date.now() - startTime, repair_status: repair.status, proposals: repair.proposals.length, engine: metaTranscript ? 'meta-asr-300m' : 'hf-space' }));
 
       return new Response(
         JSON.stringify({
@@ -473,6 +473,7 @@ Deno.serve(async (req: Request) => {
           linguisticQualityCertified: false,
           raw_transcription: rawTranscription,
           repair,
+          engine: metaTranscript ? 'meta-asr-300m' : 'hf-space',
           duration: Date.now() - startTime,
           language: "bariba",
           refined,

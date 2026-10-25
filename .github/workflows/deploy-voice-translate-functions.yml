@@ -28,9 +28,9 @@ jobs:
           mkdir -p /tmp/rep
           exec > >(tee /tmp/rep/typecheck.txt) 2>&1
           for f in byt5-bariba-translate bariba-stt bariba-tts tts-audio fitila-ia-chat meta-voice-gateway dunya-voice-turn transcribe-audio ai-translate fitila-tem-ia-chat; do
-            deno check supabase/functions/$f/index.ts
+            deno check --node-modules-dir=none supabase/functions/$f/index.ts
           done
-          deno test --no-check --allow-read --allow-env --allow-net supabase/functions/_shared/translation-verifier_test.ts
+          deno test --node-modules-dir=none --no-check --allow-read --allow-env --allow-net supabase/functions/_shared/translation-verifier_test.ts
       - uses: supabase/setup-cli@v1
         with:
           version: latest

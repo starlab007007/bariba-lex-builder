@@ -1,0 +1,189 @@
+{
+  "status": "BETA_NOT_CERTIFIED",
+  "runtime": "onnxruntime-cpu",
+  "runtime_version": "1.23.2",
+  "checkpoint": "zimesongbian/byt5-small-fr-bariba-v004",
+  "manifest_tested": false,
+  "integrity_passed": true,
+  "independent_linguistic_review": false,
+  "physical_android_test": false,
+  "warning": "Legacy gold candidates may overlap training or memory. This is a reproducible diagnostic, not independent quality certification.",
+  "by_direction": {
+    "fr-ba": {
+      "n": 100,
+      "beam_width": 2,
+      "chrf++": 29.51,
+      "loop_rate": 0.0,
+      "mean_seconds": 1.523
+    },
+    "ba-fr": {
+      "n": 100,
+      "beam_width": 1,
+      "chrf++": 25.19,
+      "loop_rate": 0.02,
+      "mean_seconds": 1.461
+    }
+  },
+  "examples": [
+    {
+      "direction": "fr-ba",
+      "source": "Le peu que nous avons obtenu, partageons-le.",
+      "reference": "Piiko yè sa wa, su yè bɔnu ko.",
+      "prediction": "Sa wa, sa bɛsɛn mɛro bii mɛro.",
+      "seconds": 2.214,
+      "loop": false
+    },
+    {
+      "direction": "fr-ba",
+      "source": "Bio tire son arc.: gawa.",
+      "reference": "Biɔ u win tɛndu gawamɔ.",
+      "prediction": "Biɔ u win tɛndu gawa.",
+      "seconds": 0.835,
+      "loop": false
+    },
+    {
+      "direction": "fr-ba",
+      "source": "C'est du village qu'on apporte des ignames.",
+      "reference": "Baru kpaarun diya ba ra ka tasu nɛ.",
+      "prediction": "Wuun diya ba ra tasu na.",
+      "seconds": 0.93,
+      "loop": false
+    },
+    {
+      "direction": "fr-ba",
+      "source": "Les enfants ont cassé une bouteille dans la case.",
+      "reference": "Bibu ba kparuba kɔra dirɔ.",
+      "prediction": "Bibu ba kɔ̃ ɔ bɔɔri dirɔ.",
+      "seconds": 1.536,
+      "loop": false
+    },
+    {
+      "direction": "fr-ba",
+      "source": "Un mendiant chante.",
+      "reference": "Bara kowo u womu mö.",
+      "prediction": "Bii mɛro u wom ko.",
+      "seconds": 0.742,
+      "loop": false
+    },
+    {
+      "direction": "fr-ba",
+      "source": "J'ai étendu mes jambes.",
+      "reference": "Na tɛ̃ɛra.",
+      "prediction": "Na nɛn kɛtɛku yɛ̃.",
+      "seconds": 0.946,
+      "loop": false
+    },
+    {
+      "direction": "fr-ba",
+      "source": "L'enfant a pété.",
+      "reference": "Bii wi u yɛma.",
+      "prediction": "Bii wi u do.",
+      "seconds": 0.618,
+      "loop": false
+    },
+    {
+      "direction": "fr-ba",
+      "source": "Une arrête de poisson s'est coincée dans ma trachée artère.",
+      "reference": "Swãa sãka ya nɛn dɔkɔra nɛnua.",
+      "prediction": "Sɔ̃ ɔ ga man nɛn bɔkuru sɔɔ.",
+      "seconds": 1.466,
+      "loop": false
+    },
+    {
+      "direction": "fr-ba",
+      "source": "Le travail du boucher est le travail de son grand père.",
+      "reference": "Siin debun sɔmbura yarariru.",
+      "prediction": "Bouchern sɔmburun sɔmburu sɔɔra win baaban sɔmburu.",
+      "seconds": 3.058,
+      "loop": false
+    },
+    {
+      "direction": "fr-ba",
+      "source": "Mon akassa est plus intéressant que le vôtre.",
+      "reference": "Nɛn mɔɔbu bu bɛɛgibu buram kere.",
+      "prediction": "Nɛn akasa ya bɛɛn mɛro.",
+      "seconds": 1.483,
+      "loop": false
+    },
+    {
+      "direction": "ba-fr",
+      "source": "Piiko yè sa wa, su yè bɔnu ko.",
+      "reference": "Le peu que nous avons obtenu, partageons-le.",
+      "prediction": "Le piiko que nous voyons, nous l'avons dispersé.",
+      "seconds": 1.192,
+      "loop": false
+    },
+    {
+      "direction": "ba-fr",
+      "source": "Biɔ u win tɛndu gawamɔ.",
+      "reference": "Bio tire son arc.: gawa.",
+      "prediction": "Bio a marché son tandre.",
+      "seconds": 0.587,
+      "loop": false
+    },
+    {
+      "direction": "ba-fr",
+      "source": "Baru kpaarun diya ba ra ka tasu nɛ.",
+      "reference": "C'est du village qu'on apporte des ignames.",
+      "prediction": "C'est de la maison de la maison de Baru kpaaru qu'on apporte les ignames de la maison de la maison de la maison de la maison.",
+      "seconds": 6.073,
+      "loop": false
+    },
+    {
+      "direction": "ba-fr",
+      "source": "Bibu ba kparuba kɔra dirɔ.",
+      "reference": "Les enfants ont cassé une bouteille dans la case.",
+      "prediction": "Les enfants ont coupé les pierres dans la chambre.",
+      "seconds": 1.411,
+      "loop": false
+    },
+    {
+      "direction": "ba-fr",
+      "source": "Bara kowo u womu mö.",
+      "reference": "Un mendiant chante.",
+      "prediction": "Le malade malade est chanté de la viande.",
+      "seconds": 1.039,
+      "loop": false
+    },
+    {
+      "direction": "ba-fr",
+      "source": "Na tɛ̃ɛra.",
+      "reference": "J'ai étendu mes jambes.",
+      "prediction": "J'ai vu une viande.",
+      "seconds": 0.378,
+      "loop": false
+    },
+    {
+      "direction": "ba-fr",
+      "source": "Bii wi u yɛma.",
+      "reference": "L'enfant a pété.",
+      "prediction": "Cet enfant est soufflé.",
+      "seconds": 0.64,
+      "loop": false
+    },
+    {
+      "direction": "ba-fr",
+      "source": "Swãa sãka ya nɛn dɔkɔra nɛnua.",
+      "reference": "Une arrête de poisson s'est coincée dans ma trachée artère.",
+      "prediction": "Le souffle a coupé mon corps dans ma bouche.",
+      "seconds": 1.21,
+      "loop": false
+    },
+    {
+      "direction": "ba-fr",
+      "source": "Siin debun sɔmbura yarariru.",
+      "reference": "Le travail du boucher est le travail de son grand père.",
+      "prediction": "Le travail de la grande grande grande grande grande grande grande grande grande grande grande grande grande grande grande grande grande grande grande grande grande grande grande grande grande",
+      "seconds": 13.053,
+      "loop": true
+    },
+    {
+      "direction": "ba-fr",
+      "source": "Nɛn mɔɔbu bu bɛɛgibu buram kere.",
+      "reference": "Mon akassa est plus intéressant que le vôtre.",
+      "prediction": "Mes frères sont plus beaux que les voies.",
+      "seconds": 0.985,
+      "loop": false
+    }
+  ]
+}
