@@ -1,7 +1,14 @@
-name: Debug voice-gateway health (temporaire, 6)
+name: Debug voice-gateway health (temporaire, 7)
 
 # Workflow de diagnostic jetable : voir debug-voice-gateway-health4.yml /
-# health5.yml (supprimés) pour le contexte.
+# health5.yml / health6.yml (supprimés) pour le contexte. health6.yml a été
+# recréé ici sous un nouveau nom car l'API GitHub refusait systématiquement
+# le dispatch de health6.yml avec "Workflow does not have 'workflow_dispatch'
+# trigger" malgré un YAML confirmé byte-identique et valide (son entrée dans
+# `actions/workflows` affichait le CHEMIN comme `name`, signe d'un bug
+# d'enregistrement côté GitHub plutôt qu'une erreur réelle de syntaxe) —
+# recréer sous un nom neuf a déjà résolu ce même symptôme plus tôt dans ce
+# diagnostic.
 # À supprimer une fois le diagnostic terminé.
 
 on:
