@@ -163,15 +163,18 @@ async function geminiOnly<T>(fetcher: typeof fetch, run: () => Promise<T>) {
   globalThis.fetch = async (url, init) => String(url).includes('/rest/v1/fitila_ai_settings') ? json([setting('gemini')]) : fetcher(url, init);
   try { return await run(); } finally { globalThis.fetch = realFetch; names.forEach((name, i) => before[i] === undefined ? Deno.env.delete(name) : Deno.env.set(name, before[i]!)); }
 }
-Deno.test('DUNYA application chat uses selected Gemini with Mistral absent', async () => {
-  await geminiOnly(async (url) => { assert(String(url) === GEMINI_CHAT_URL); return json({ model: 'gemini-tested', choices: [{ message: { content: 'Bonjour !' } }] }); }, async () => {
-    const response = await handleChat(new Request('https://edge.test', { method: 'POST', body: JSON.stringify({ message: 'Présente FITILA', skip_translation: true }) })); const data = await response.json();
-    assert(response.ok && data.response_fr === 'Bonjour !' && data.model === 'gemini-tested' && data.provider === 'gemini');
-  });
-});
-Deno.test('image/emotion application works with selected Gemini and no Mistral or image-generator key', async () => {
+Deno.test('DUNYA cannot use configured Gemini when only the FITILA brain is allowed', async () => {
   let calls = 0;
-  await geminiOnly(async (url, init) => { calls++; assert(String(url) === GEMINI_CHAT_URL); assert(JSON.parse(String(init?.body)).model === 'gemini-3.1-flash-lite'); return json({ choices: [{ message: { content: '{}' } }] }); }, async () => {
-    const response = await handleImageAnimation(new Request('https://edge.test', { method: 'POST', body: JSON.stringify({ imageBase64: 'AA==', story: 'Un souvenir du village.', analysisType: 'full' }) })); assert(response.ok && calls === 2);
+  await geminiOnly(async () => { calls++; throw new Error('Paid provider must not be contacted'); }, async () => {
+    const r = await handleChat(new Request('https://edge.test',{method:'POST',body:JSON.stringify({message:'Bonjour',skip_translation:true})})); assert(r.status === 503 && (await r.json()).error === 'llm_not_configured');
   });
+  assert(calls === 0);
+});
+
+Deno.test('image analysis never falls back to a configured paid Gemini key', async () => {
+  let calls = 0;
+  await geminiOnly(async () => { calls++; throw new Error('Paid provider must not be contacted'); }, async () => {
+    const r = await handleImageAnimation(new Request('https://edge.test',{method:'POST',body:JSON.stringify({imageBase64:'AA==',story:'Souvenir',analysisType:'full'})})); assert(!r.ok);
+  });
+  assert(calls === 0);
 });

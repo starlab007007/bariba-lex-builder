@@ -10,6 +10,9 @@ on:
     branches: [main]
     paths:
       - 'voice-gateway/**'
+      - 'brain-gateway/**'
+      - 'docker-composer.yml'
+      - 'scripts/verify-fitila-services.py'
       - '.github/workflows/voice-gateway-deploy.yml'
   workflow_dispatch: {}
 
@@ -49,8 +52,28 @@ jobs:
             ${{ steps.meta.outputs.image }}:latest
             ${{ steps.meta.outputs.image }}:${{ github.sha }}
 
+  build-brain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Test brain HTTP isolation and request bounds
+        run: python -m unittest discover -s brain-gateway -p 'test_*.py' -v
+      - uses: docker/build-push-action@v6
+        with:
+          context: brain-gateway
+          push: true
+          tags: |
+            ghcr.io/starlab007007/bariba-lex-builder-brain-gateway:latest
+            ghcr.io/starlab007007/bariba-lex-builder-brain-gateway:${{ github.sha }}
+
   deploy:
-    needs: build-and-push
+    needs: [build-and-push, build-brain]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -63,7 +86,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "docker-composer.yml"
+          source: "docker-composer.yml,scripts/verify-fitila-services.py"
           target: "/home/debian/bariba-lex-builder"
           overwrite: true
       - name: Déploiement + health-check + rollback automatique sur le VPS
@@ -120,6 +143,35 @@ jobs:
             chmod 600 .env
 
             previous_id="$(docker inspect bariba-voice-gateway --format '{{.Image}}' 2>/dev/null || true)"
+            previous_brain_id="$(docker inspect fitila-dunya-brain --format '{{.Image}}' 2>/dev/null || true)"
+            rollback_services() {
+              if [ -n "$previous_id" ]; then
+                docker tag "$previous_id" "$IMAGE:latest"
+                docker compose -f docker-composer.yml up -d --no-build bariba-voice-gateway
+              fi
+              if [ -n "$previous_brain_id" ]; then
+                docker tag "$previous_brain_id" ghcr.io/starlab007007/bariba-lex-builder-brain-gateway:latest
+                docker compose -f docker-composer.yml up -d --no-build dunya-brain
+              else
+                docker stop fitila-dunya-brain 2>/dev/null || true
+              fi
+            }
+
+            # Same signed model artifact as Flutter; never replace a good model
+            # with an incomplete download. No third-party inference is used.
+            brain_dir=/home/debian/bariba-lex-builder/dunya-packs/brain
+            brain_file=gemma-4-E2B-it.litertlm
+            brain_sha=181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c
+            mkdir -p "$brain_dir"
+            if ! (cd "$brain_dir" && echo "$brain_sha  $brain_file" | sha256sum -c --status); then
+              curl -fL --retry 3 -C - -o "$brain_dir/$brain_file.part" "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/$brain_file"
+              (cd "$brain_dir" && echo "$brain_sha  $brain_file.part" | sha256sum -c)
+              mv "$brain_dir/$brain_file.part" "$brain_dir/$brain_file"
+              chmod 644 "$brain_dir/$brain_file"
+            fi
+            free -m
+            docker pull ghcr.io/starlab007007/bariba-lex-builder-brain-gateway:latest
+            docker compose -f docker-composer.yml up -d --no-build dunya-brain
 
             # experiments/bariba_voice_compare/ (service.py expérimental,
             # restart: unless-stopped) écoute aussi 127.0.0.1:8090 et peut être
@@ -156,4 +208,12 @@ jobs:
             fi
 
             echo "✅ bariba-voice-gateway sain (modèles chargés)."
+            export FITILA_MODEL_API_TOKEN
+            # Inference, not just model loading: catches the list[str] ASR
+            # regression and verifies the new self-hosted conversational model.
+            if ! python3 scripts/verify-fitila-services.py; then
+              echo "::error::Real inference failed; restoring previous services"
+              rollback_services
+              exit 1
+            fi
             docker image prune -f || true

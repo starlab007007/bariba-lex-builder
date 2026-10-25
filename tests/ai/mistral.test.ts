@@ -98,36 +98,36 @@ async function mocked<T>(fetcher: typeof fetch, run: () => Promise<T>): Promise<
 }
 const req = (body: unknown) => new Request('https://edge.test', { method: 'POST', body: JSON.stringify(body) });
 
-Deno.test('DUNYA chat contract returns the actual Mistral model and skips redundant translation', async () => {
-  await mocked(async (url, init) => {
-    assert(String(url) === MISTRAL_CHAT_URL); assert(new Headers(init?.headers).get('Authorization') === 'Bearer server-test-key');
-    return json({ model: 'mistral-tested', choices: [{ message: { content: 'Bonjour !' } }] });
-  }, async () => {
-    const response = await handleChat(req({ message: 'Présente FITILA.', skip_translation: true })); const data = await response.json();
-    assert(response.ok && data.response_fr === 'Bonjour !' && data.model === 'mistral-tested' && data.response_ba === null);
+Deno.test('DUNYA ignores configured Mistral when the local brain is not configured', async () => {
+  let calls = 0;
+  await mocked(async () => { calls++; throw new Error('Paid provider must not be contacted'); }, async () => {
+    const r = await handleChat(req({message:'Bonjour',skip_translation:true})); assert(r.status === 503 && (await r.json()).error === 'llm_not_configured');
   });
+  assert(calls === 0);
 });
-Deno.test('Mistral quota stays HTTP 429 with a readable message instead of generic 500', async () => {
-  await mocked(async () => json({}, 429, { 'Retry-After': '60' }), async () => {
-    const response = await handleChat(req({ message: 'Présente FITILA.', skip_translation: true })); const data = await response.json();
-    assert(response.status === 429 && data.error === 'llm_rate_limited' && data.retry_after === 60 && data.message.includes('limité'));
+
+Deno.test('DUNYA rejects an empty message without contacting Mistral', async () => {
+  let calls = 0;
+  await mocked(async () => { calls++; throw new Error('Paid provider must not be contacted'); }, async () => {
+    const r = await handleChat(req({message:''})); assert(r.status === 400);
   });
+  assert(calls === 0);
 });
-Deno.test('template voice descriptions work with only Mistral configured', async () => {
-  await mocked(async (url) => { assert(String(url) === MISTRAL_CHAT_URL); return json({ choices: [{ message: { content: 'Partagez votre histoire.' } }] }); }, async () => {
-    const response = await handleTemplateAssets(req({ action: 'generate_voice_description', templateLabel: 'Histoire', templateDescription: 'Raconter un souvenir' }));
-    const data = await response.json(); assert(response.ok && data.voiceDescription === 'Partagez votre histoire.');
+
+Deno.test('template generation cannot spend a configured Mistral key under local-only policy', async () => {
+  let calls = 0;
+  await mocked(async () => { calls++; throw new Error('Paid provider must not be contacted'); }, async () => {
+    const r = await handleTemplateAssets(req({action:'generate_voice_description',templateLabel:'Histoire',templateDescription:'Souvenir'})); assert(!r.ok);
   });
+  assert(calls === 0);
 });
-Deno.test('image and emotion analysis route to Mistral vision and text without an image generator key', async () => {
-  const models: string[] = [];
-  await mocked(async (url, init) => {
-    assert(String(url) === MISTRAL_CHAT_URL); const body = JSON.parse(String(init?.body)); models.push(body.model);
-    return json({ choices: [{ message: { content: JSON.stringify({ subjects: [], focusPoints: [], depthLayers: [], segments: [], mood: 'calm', colorPalette: [] }) } }] });
-  }, async () => {
-    const response = await handleImageAnimation(req({ imageBase64: 'AA==', story: 'Une personne raconte un souvenir.', analysisType: 'full' }));
-    assert(response.ok); assert(models.join(',') === 'pixtral-large-latest,mistral-small-latest');
+
+Deno.test('image analysis fails closed instead of using paid Mistral vision', async () => {
+  let calls = 0;
+  await mocked(async () => { calls++; throw new Error('Paid provider must not be contacted'); }, async () => {
+    const r = await handleImageAnimation(req({imageBase64:'AA==',story:'Souvenir',analysisType:'full'})); assert(!r.ok);
   });
+  assert(calls === 0);
 });
 
 Deno.test('post-editing rejects changed quantities, French negation and unattested Bariba words', () => {

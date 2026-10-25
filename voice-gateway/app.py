@@ -34,9 +34,13 @@ import os
 import tempfile
 import time
 from pathlib import Path
+import json
+import urllib.error
+import urllib.request
 
 import torch
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from transformers import AutoTokenizer, VitsModel
 from asr_result import transcript_text
@@ -212,6 +216,26 @@ def infer(req: InferRequest, authorization: str | None = Header(default=None)):
         raise
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(503, "Inference unavailable: " + str(exc)[:180]) from exc
+
+
+@app.post("/chat")
+def chat(payload: dict, authorization: str | None = Header(default=None)):
+    if not SERVICE_TOKEN or authorization != "Bearer " + SERVICE_TOKEN:
+        raise HTTPException(401, "Authentication required")
+    # Private Docker service, never a caller-controlled destination. The same
+    # server credential protects voice and self-hosted Gemma; it stays off clients.
+    request = urllib.request.Request(
+        "http://dunya-brain:8091/chat", data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json", "Authorization": "Bearer " + SERVICE_TOKEN},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=65) as response:
+            return json.load(response)
+    except urllib.error.HTTPError as exc:
+        return JSONResponse(status_code=exc.code, content=json.loads(exc.read()))
+    except (OSError, ValueError):
+        return JSONResponse(status_code=503, content={"error": "llm_unavailable"})
 
 
 # Inference functions must exist before warm-up. Calling it above their

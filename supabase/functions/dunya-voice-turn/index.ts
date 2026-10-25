@@ -118,7 +118,7 @@ export async function handleVoiceTurn(req: Request): Promise<Response> {
           const failure = await response.json().catch(() => ({}));
           console.warn(JSON.stringify({ event: 'dunya_upstream_failure', request_id: id, target: new URL(target).pathname, status: response.status }));
           if (failure.error === 'llm_rate_limited') throw new Error('brain_rate_limited');
-          if (failure.error === 'llm_not_configured') throw new Error('brain_unavailable');
+          if (['llm_not_configured', 'llm_unavailable'].includes(failure.error) || target.endsWith('/fitila-ia-chat') && response.status >= 500) throw new Error('brain_unavailable');
           throw new Error(response.status === 429 ? 'busy' : 'upstream_failed');
         }
         const value = await response.json();

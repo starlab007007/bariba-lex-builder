@@ -19,6 +19,22 @@ services:
     networks:
       - web
 
+  dunya-brain:
+    image: ghcr.io/starlab007007/bariba-lex-builder-brain-gateway:latest
+    container_name: fitila-dunya-brain
+    restart: unless-stopped
+    mem_limit: 5g
+    cpus: "2.0"
+    environment:
+      FITILA_MODEL_API_TOKEN: ${FITILA_MODEL_API_TOKEN:?}
+    volumes:
+      - ./dunya-packs/brain:/models:ro
+      - brain-gateway-cache:/srv/cache
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - web
+
   bariba-voice-gateway:
     image: ghcr.io/starlab007007/bariba-lex-builder-voice-gateway:latest
     container_name: bariba-voice-gateway
@@ -53,3 +69,4 @@ networks:
 
 volumes:
   voice-gateway-cache:
+  brain-gateway-cache:
