@@ -1,15 +1,19 @@
 transformers>=4.46,<5
-# numpy>=2.0 explicite : pyarrow (dépendance transitive d'omnilingual-asr,
-# via son chargement de omnilingual_asr.datasets.*) exige NumPy >= 2.0 à
-# l'exécution — mais ne le déclare PAS comme dépendance pip (requires_dist
-# vide), donc `pip check` ne voit aucun conflit. Sans ce pin explicite, pip
-# peut résoudre une version de numpy antérieure à 2.0 (ex. 1.26.4, satisfait
-# par pandas>=1.26.0 et les autres paquets) et le service échoue alors à
-# l'import avec "ImportError: pyarrow requires NumPy 2.0 or newer". Pinner
-# ici garantit aussi un nouveau hash de ce fichier, qui invalide le cache
-# Docker de la couche `pip install -r requirements.txt` si elle avait figé
-# une résolution numpy antérieure.
-numpy>=2.0
+# numpy NE DOIT PAS être pinné ici (>=2.0 ou autre) : fairseq2 0.5.2/0.6
+# (la version exacte qu'omnilingual-asr exige en transitif) déclare dans
+# ses métadonnées pip "numpy~=1.23" — strictement incompatible avec un pin
+# numpy>=2.0 à ce stade (confirmé : pip échoue avec ResolutionImpossible).
+# Dans les faits, ce pin de fairseq2 est trop strict pour l'usage réel : le
+# binaire fairseq2n fonctionne très bien avec numpy 2.x (vérifié en
+# container isolé), mais pyarrow (dépendance transitive, via
+# omnilingual_asr.datasets.*) exige lui, À L'EXÉCUTION, numpy >= 2.0 — sans
+# le déclarer comme dépendance pip (donc invisible pour le résolveur). Pour
+# contourner ce conflit DÉCLARÉ mais pas RÉEL : laisser numpy non pinné ici
+# (la résolution complète choisit alors librement, ex. numpy 1.26.4, sans
+# jamais buter sur la contrainte stricte de fairseq2), puis forcer numpy
+# vers >=2.0 APRÈS coup dans le Dockerfile avec --no-deps (même pattern que
+# le swap CPU de torch/fairseq2n juste en dessous).
+numpy
 omnilingual-asr
 soundfile
 fastapi
