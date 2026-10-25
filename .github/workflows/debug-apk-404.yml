@@ -7,34 +7,22 @@ jobs:
   debug:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup clé SSH
+      - name: en-tetes publics de l'APK arm64
         run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id
-          chmod 600 ~/.ssh/id
-          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          OUT="$(curl -sS -I "https://fitila.bj/dunya-packs/android/v1.8.22-build33-223/FITILA-Android-v1.8.22-build33-keyboard-translator-arm64.apk" 2>&1 | tr -d '\r' | tr '\n' '|')"
+          echo "::notice::head: ${OUT}"
 
-      - name: fichiers sur le disque du VPS
+      - name: debut du fichier (signature zip/APK)
         run: |
-          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "ls -la /home/debian/bariba-lex-builder/dunya-packs/android/ ; echo ---; ls -la /home/debian/bariba-lex-builder/dunya-packs/android/v1.8.22-build33-223/" 2>&1 | tr '\n' '|' | cut -c1-1500)"
-          echo "::notice::disque: ${OUT}"
+          OUT="$(curl -sS -r 0-3 "https://fitila.bj/dunya-packs/android/v1.8.22-build33-223/FITILA-Android-v1.8.22-build33-keyboard-translator-arm64.apk" | head -c 4 | od -An -c | tr -s ' ')"
+          echo "::notice::magic: ${OUT}"
 
-      - name: ce que voit le conteneur nginx
+      - name: releases.json public
         run: |
-          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker ps --filter name=react-app-bariba --format '{{.Names}} {{.Status}}' ; echo ---; docker exec react-app-bariba-js ls -la /usr/share/nginx/dunya-packs/android/ 2>&1 | head -20" 2>&1 | tr '\n' '|' | cut -c1-1500)"
-          echo "::notice::conteneur: ${OUT}"
+          OUT="$(curl -sS "https://fitila.bj/dunya-packs/android/releases.json" | python3 -c "import json,sys; d=json.load(sys.stdin); print([r['version'] for r in d['releases']][-3:])")"
+          echo "::notice::releases: ${OUT}"
 
-      - name: curl local nginx (8085)
+      - name: page install
         run: |
-          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "curl -sS -o /dev/null -w 'code=%{http_code} size=%{size_download} type=%{content_type}' -I http://127.0.0.1:8085/dunya-packs/android/v1.8.22-build33-223/FITILA-Android-v1.8.22-build33-keyboard-translator-arm64.apk; echo; curl -sS -o /dev/null -w 'releases.json code=%{http_code}' http://127.0.0.1:8085/dunya-packs/android/releases.json" 2>&1 | tr '\n' '|')"
-          echo "::notice::local: ${OUT}"
-
-      - name: curl public fitila.bj
-        run: |
-          OUT="$(curl -sS -o /dev/null -w 'code=%{http_code} type=%{content_type}' -I "https://fitila.bj/dunya-packs/android/v1.8.22-build33-223/FITILA-Android-v1.8.22-build33-keyboard-translator-arm64.apk" 2>&1)"
-          echo "::notice::public: ${OUT}"
-
-      - name: traefik et routeurs
-        run: |
-          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker ps --format '{{.Names}} | {{.Status}} | {{.Ports}}'" 2>&1 | tr '\n' '|' | cut -c1-1500)"
-          echo "::notice::conteneurs: ${OUT}"
+          OUT="$(curl -sS -o /dev/null -w 'code=%{http_code}' https://fitila.bj/install)"
+          echo "::notice::install: ${OUT}"
