@@ -30,15 +30,18 @@ jobs:
           echo "::notice::logs1: $(cut -c1-900 /tmp/logs.txt | tr '\n' '|')"
 
       - name: health check logs recentes (partie 2)
-        run: echo "::notice::logs2: $(cut -c901-1800 /tmp/logs.txt 2>/dev/null | tr '\n' '|')"
+        run: |
+          echo "::notice::logs2: $(cut -c901-1800 /tmp/logs.txt 2>/dev/null | tr '\n' '|')"
         continue-on-error: true
 
       - name: health check logs recentes (partie 3)
-        run: echo "::notice::logs3: $(cut -c1801-2700 /tmp/logs.txt 2>/dev/null | tr '\n' '|')"
+        run: |
+          echo "::notice::logs3: $(cut -c1801-2700 /tmp/logs.txt 2>/dev/null | tr '\n' '|')"
         continue-on-error: true
 
       - name: health check logs recentes (partie 4, fin)
-        run: echo "::notice::logs4: $(tail -c 900 /tmp/logs.txt 2>/dev/null | tr '\n' '|')"
+        run: |
+          echo "::notice::logs4: $(tail -c 900 /tmp/logs.txt 2>/dev/null | tr '\n' '|')"
         continue-on-error: true
 
       - name: curl health local
