@@ -17,7 +17,37 @@ jobs:
         run: pip install --no-cache-dir --upgrade pip setuptools wheel
       - uses: actions/checkout@v4
       - name: install requirements (avec numpy>=2.0 pinné)
-        run: pip install --no-cache-dir -r voice-gateway/requirements.txt
+        run: |
+          pip install --no-cache-dir -r voice-gateway/requirements.txt > /tmp/pipinstall.txt 2>&1
+          echo "code=$?"
+          tail -c 3600 /tmp/pipinstall.txt > /tmp/pipinstall_tail.txt
+          wc -c /tmp/pipinstall_tail.txt
+        continue-on-error: true
+
+      - name: afficher erreur pip install (partie 1)
+        run: |
+          echo "::notice::pip1: $(cut -c1-900 /tmp/pipinstall_tail.txt 2>/dev/null | tr '\n' '|')"
+        continue-on-error: true
+
+      - name: afficher erreur pip install (partie 2)
+        run: |
+          echo "::notice::pip2: $(cut -c901-1800 /tmp/pipinstall_tail.txt 2>/dev/null | tr '\n' '|')"
+        continue-on-error: true
+
+      - name: afficher erreur pip install (partie 3)
+        run: |
+          echo "::notice::pip3: $(cut -c1801-2700 /tmp/pipinstall_tail.txt 2>/dev/null | tr '\n' '|')"
+        continue-on-error: true
+
+      - name: afficher erreur pip install (partie 4)
+        run: |
+          echo "::notice::pip4: $(tail -c 900 /tmp/pipinstall_tail.txt 2>/dev/null | tr '\n' '|')"
+        continue-on-error: true
+
+      - name: arrêter si pip install a échoué
+        run: |
+          if [ ! -s /tmp/pipinstall.txt ]; then echo "pas de log"; exit 1; fi
+          grep -q "Successfully installed\|already satisfied" /tmp/pipinstall.txt && exit 0 || exit 1
       - name: swap torch/torchaudio/fairseq2n CPU (comme le Dockerfile)
         run: |
           TORCH_VER="$(pip show torch | grep -i '^Version:' | awk '{print $2}' | cut -d'+' -f1)"
