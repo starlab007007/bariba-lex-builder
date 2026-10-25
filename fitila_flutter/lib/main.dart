@@ -8054,6 +8054,37 @@ class _AiScreenState extends State<AiScreen> {
         }
       }
       if (!mounted) return null;
+      // Same self-hosted Gemma endpoint as the web. Online use never requires
+      // downloading a brain on the phone, and never contacts a paid provider.
+      if (DunyaTranslator.allowRemote?.call() == true) {
+        try {
+          final recent = _messages.length > 5 ? _messages.sublist(_messages.length - 5) : _messages;
+          final response = await FitilaBackend.client.functions.invoke(
+            'fitila-ia-chat',
+            body: {
+              'message': french,
+              'history': [for (final m in recent.take(recent.length - 1))
+                {'role': m.role, 'content': m.text}],
+            },
+          ).timeout(const Duration(seconds: 95));
+          final data = response.data;
+          final fr = data is Map ? data['response_fr']?.toString().trim() : null;
+          final ba = data is Map ? data['response_ba']?.toString().trim() : null;
+          if (fr == null || fr.isEmpty) throw StateError('Réponse indisponible.');
+          if (!mounted) return null;
+          final shown = ba?.isNotEmpty == true ? ba! : fr;
+          setState(() => _messages.add(_AiChatMessage(
+            role: 'assistant', text: shown, isFallbackFr: ba?.isNotEmpty != true,
+          )));
+          _scrollToEnd();
+          return shown;
+        } catch (_) {
+          if (DunyaSettings.instance.execution == DunyaExecutionMode.online) {
+            throw StateError('Réponse indisponible. Vérifiez la connexion puis réessayez.');
+          }
+          // Auto mode may continue with the installed local brain or skills.
+        }
+      }
       // --- Cerveau DUNYA (Gemma) sur le téléphone, si installé : en ligne comme hors ligne ---
       final offlineAnswer = await _askOfflineBrain(french);
       if (!mounted) return null;

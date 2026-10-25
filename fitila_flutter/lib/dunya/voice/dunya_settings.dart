@@ -65,12 +65,14 @@ class DunyaSettings extends ChangeNotifier {
   static const _kSpeed = 'dunya_voice_speed';
   static const _kExecution = 'dunya_execution_mode';
   static const _kFrenchSubtitlesInBariba = 'dunya_bba_fr_subtitles';
+  static const _kExperimentalTranslation = 'dunya_experimental_translation_consent';
 
   DunyaLanguageMode mode = DunyaLanguageMode.french;
   bool onboarded = false;
   bool handsFree = true;
   bool subtitles = true;
   bool frenchSubtitlesInBariba = false;
+  bool experimentalTranslation = false;
   DunyaIntelligence intelligence = DunyaIntelligence.smart;
   DunyaExecutionMode execution = DunyaExecutionMode.automatic;
   double voiceSpeed = 1.0;
@@ -85,6 +87,7 @@ class DunyaSettings extends ChangeNotifier {
       handsFree = p.getBool(_kHandsFree) ?? true;
       subtitles = p.getBool(_kSubtitles) ?? true;
       frenchSubtitlesInBariba = p.getBool(_kFrenchSubtitlesInBariba) ?? false;
+      experimentalTranslation = p.getBool(_kExperimentalTranslation) ?? false;
       intelligence = (p.getString(_kIntelligence) ?? 'smart') == 'essential'
           ? DunyaIntelligence.essential
           : DunyaIntelligence.smart;
@@ -101,6 +104,7 @@ class DunyaSettings extends ChangeNotifier {
     bool? handsFree,
     bool? subtitles,
     bool? frenchSubtitlesInBariba,
+    bool? experimentalTranslation,
     DunyaIntelligence? intelligence,
     DunyaExecutionMode? execution,
     double? voiceSpeed,
@@ -110,6 +114,7 @@ class DunyaSettings extends ChangeNotifier {
     if (handsFree != null) this.handsFree = handsFree;
     if (subtitles != null) this.subtitles = subtitles;
     if (frenchSubtitlesInBariba != null) this.frenchSubtitlesInBariba = frenchSubtitlesInBariba;
+    if (experimentalTranslation != null) this.experimentalTranslation = experimentalTranslation;
     if (intelligence != null) this.intelligence = intelligence;
     if (execution != null) this.execution = execution;
     if (voiceSpeed != null) this.voiceSpeed = voiceSpeed;
@@ -121,6 +126,7 @@ class DunyaSettings extends ChangeNotifier {
       await p.setBool(_kHandsFree, this.handsFree);
       await p.setBool(_kSubtitles, this.subtitles);
       await p.setBool(_kFrenchSubtitlesInBariba, this.frenchSubtitlesInBariba);
+      await p.setBool(_kExperimentalTranslation, this.experimentalTranslation);
       await p.setString(_kIntelligence, this.intelligence == DunyaIntelligence.essential ? 'essential' : 'smart');
       await p.setDouble(_kSpeed, this.voiceSpeed);
       await p.setString(_kExecution, this.execution.key);

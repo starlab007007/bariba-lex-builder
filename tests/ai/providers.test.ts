@@ -157,7 +157,7 @@ const { handleChat } = await import('../../supabase/functions/fitila-ia-chat/ind
 const { handleImageAnimation } = await import('../../supabase/functions/generate-image-animation/index.ts');
 const realFetch = globalThis.fetch;
 async function geminiOnly<T>(fetcher: typeof fetch, run: () => Promise<T>) {
-  const names = ['MISTRAL_API_KEY', 'GEMINI_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'HF_INFERENCE_TOKEN', 'HUGGING_FACE_API_TOKEN'];
+  const names = ['MISTRAL_API_KEY', 'GEMINI_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'HF_INFERENCE_TOKEN', 'HUGGING_FACE_API_TOKEN', 'FITILA_VOICE_SERVICE_URL', 'FITILA_MODEL_API_TOKEN'];
   const before = names.map(name => Deno.env.get(name)); names.forEach(name => Deno.env.delete(name));
   Deno.env.set('GEMINI_API_KEY', 'gemini-secret'); Deno.env.set('SUPABASE_URL', 'https://project.test'); Deno.env.set('SUPABASE_SERVICE_ROLE_KEY', 'server-key');
   globalThis.fetch = async (url, init) => String(url).includes('/rest/v1/fitila_ai_settings') ? json([setting('gemini')]) : fetcher(url, init);

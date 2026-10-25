@@ -9,8 +9,7 @@ library;
 import 'dunya_linguistic_quality.dart';
 import 'dunya_refine.dart';
 
-/// The on-device ByT5 pack is shipped as a beta (manifest tested:false). It is active, but every
-/// result it produces is announced as a test result and must be double-checked.
+/// The on-device beta requires an explicit opt-in. Every result is labelled for review.
 const dunyaOfflineTestNotice = 'Traduction hors ligne en test (bêta) : à vérifier.';
 
 /// Set by the app each time a result was produced by the offline beta model, so every surface
@@ -63,6 +62,7 @@ class DunyaTranslator {
   // never stores failures; online and offline results are isolated.
   static final _cache = <String, DunyaTranslation>{};
   static const _maxCacheEntries = 96;
+  static void clearCache() => _cache.clear();
 
   static bool get hasAnyEngine => memory != null || offline != null || online != null;
 
@@ -73,7 +73,8 @@ class DunyaTranslator {
     final remoteFirst = remoteOk && (preferRemote?.call() ?? false);
     final cacheKey = '${toBariba ? 'fr-bba' : 'bba-fr'}|${remoteFirst ? 'remote' : 'local'}|${clean.toLowerCase()}';
     final cached = _cache[cacheKey];
-    if (cached != null && (cached.engine != 'online' || remoteOk)) return cached;
+    if (cached != null && (cached.engine != 'online' || remoteOk) &&
+        (cached.engine != 'offline' || offline != null)) return cached;
     final engines = [
       ('memory', memory),
       if (remoteFirst) ('online', online),

@@ -1716,7 +1716,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
   Future<void> _load() async {
     _device = await _brain.deviceInfo();
     _brainInstalled = await _brain.isInstalled();
-    _byt5Installed = await DunyaByt5.instance.activateIfInstalled();
+    _byt5Installed = (await _packs.installedManifests()).containsKey(dunyaTranslationPackId);
+    await DunyaByt5.instance.activateIfInstalled();
     if (mounted) setState(() {});
     // Distinguish a published, downloadable ByT5 checkpoint from its
     // unpopulated release URL. Never show a working Download button for 404.
@@ -1860,6 +1861,13 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             ),
             const SizedBox(height: 10),
             _section('À utiliser sans Internet'),
+            _switch('Traduction expérimentale', _settings.experimentalTranslation, (value) async {
+              await _settings.update(experimentalTranslation: value);
+              await DunyaByt5.instance.activateIfInstalled();
+              if (mounted) setState(() {});
+            }),
+            const Text('Peut produire des erreurs. Désactivée par défaut.',
+                style: TextStyle(fontSize: 12, color: Color(0xFF7D7566))),
             for (final source in dunyaVoicePackSources)
               _card(
                 icon: _packInstalled(source) ? Icons.check_circle_rounded : Icons.cloud_download_outlined,
@@ -1870,7 +1878,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   dunyaTranslationPackId => 'Traduire français ↔ Baatɔnum (test)',
                   _ => source.title,
                 },
-                subtitle: _packInstalled(source) ? (source.id == dunyaTranslationPackId ? 'Prêt · en test (bêta)' : 'Prêt à utiliser')
+                subtitle: _packInstalled(source) ? (source.id == dunyaTranslationPackId
+                    ? (_settings.experimentalTranslation ? 'Mode test activé · à vérifier' : 'Installé · mode test désactivé') : 'Prêt à utiliser')
                     : source.id == dunyaTranslationPackId && !_byt5Published
                         ? 'Bientôt disponible'
                         : 'Wi-Fi conseillé',

@@ -12,6 +12,8 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'dunya_translator.dart';
+import 'dunya_settings.dart';
+import 'dunya_byt5_policy.dart';
 
 const dunyaByt5PackId = 'dunya-translate-byt5';
 
@@ -24,10 +26,13 @@ class DunyaByt5 {
   bool _loaded = false;
   Future<void>? _loading;
   Map<String, dynamic> _config = const {};
+  Map<String, dynamic> _manifest = const {};
 
   /// Registers the offline engine when the pack is present. Safe to call often.
   Future<bool> activateIfInstalled() async {
     try {
+      await DunyaSettings.instance.load();
+      DunyaTranslator.clearCache();
       final base = await getApplicationSupportDirectory();
       final dir = '${base.path}/dunya_packs/$dunyaByt5PackId/byt5';
       // The pack is active in BETA ("tested": false = test mode, results are labelled and
@@ -39,8 +44,9 @@ class DunyaByt5 {
         return false;
       }
       final manifest = jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
-      if (manifest['id'] != dunyaByt5PackId || manifest['format'] != 'dunya-pack/1' ||
-          manifest['tested'] is! bool) {
+      _manifest = manifest;
+      if (!mayUseByt5Manifest(manifest,
+          experimentalConsent: DunyaSettings.instance.experimentalTranslation)) {
         DunyaTranslator.offline = null;
         return false;
       }
@@ -71,6 +77,8 @@ class DunyaByt5 {
   }
 
   Future<String?> _translate(String encoder, String decoder, String text, bool toBariba) async {
+    if (!mayUseByt5Manifest(_manifest,
+        experimentalConsent: DunyaSettings.instance.experimentalTranslation)) return null;
     await (_loading ??= _load(encoder, decoder));
     if (!_loaded) return null;
     final prefix = (toBariba ? _config['prefix_fr_ba'] : _config['prefix_ba_fr'])?.toString()

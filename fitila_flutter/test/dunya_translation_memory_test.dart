@@ -116,6 +116,19 @@ void main() {
       expect(cloudCalls, 0);
     });
 
+    test('disabling an offline engine also invalidates its cached answers', () async {
+      DunyaTranslator.clearCache();
+      DunyaTranslator.memory = null;
+      DunyaTranslator.online = null;
+      DunyaTranslator.offline = (text, direction) async => 'La mère est ici.';
+      final first = await DunyaTranslator.translate('bii mɛro wa', toBariba: false);
+      expect(first?.engine, 'offline');
+      DunyaTranslator.offline = null;
+      final disabled = await DunyaTranslator.translate('bii mɛro wa', toBariba: false);
+      expect(disabled, isNull);
+      DunyaTranslator.clearCache();
+    });
+
     test('memory answers first and the network is never used for known sentences', () async {
       var onlineCalls = 0;
       DunyaTranslator.memory = (t, toBariba) async => memory.translate(t, toBariba);

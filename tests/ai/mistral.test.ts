@@ -86,7 +86,7 @@ await ensureMemory();
 const realFetch = globalThis.fetch;
 
 async function mocked<T>(fetcher: typeof fetch, run: () => Promise<T>): Promise<T> {
-  const names = ['MISTRAL_API_KEY', 'HF_INFERENCE_TOKEN', 'HUGGING_FACE_API_TOKEN', 'FITILA_IMAGE_API_KEY', 'FITILA_IMAGE_API_URL', 'GEMINI_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
+  const names = ['MISTRAL_API_KEY', 'HF_INFERENCE_TOKEN', 'HUGGING_FACE_API_TOKEN', 'FITILA_IMAGE_API_KEY', 'FITILA_IMAGE_API_URL', 'GEMINI_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'FITILA_VOICE_SERVICE_URL', 'FITILA_MODEL_API_TOKEN'];
   const before = names.map(name => Deno.env.get(name));
   names.forEach(name => Deno.env.delete(name)); Deno.env.set('MISTRAL_API_KEY', 'server-test-key');
   Deno.env.set('SUPABASE_URL', 'https://project.test'); Deno.env.set('SUPABASE_SERVICE_ROLE_KEY', 'test-server-key');
