@@ -21,14 +21,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: GET https://voice.fitila.bj/health
+      - name: GET https://fitila.bj/voice-api/health
         run: |
-          code="$(curl -sS --max-time 15 -o body.json -w '%{http_code}' https://voice.fitila.bj/health || echo 000)"
+          code="$(curl -sS --max-time 15 -o body.json -w '%{http_code}' https://fitila.bj/voice-api/health || echo 000)"
           echo "HTTP $code"
           cat body.json 2>/dev/null || true
           echo
           if [ "$code" != "200" ]; then
-            echo "::error::voice.fitila.bj/health a répondu $code (service injoignable ou DNS/TLS pas encore configuré)"
+            echo "::error::fitila.bj/voice-api/health a répondu $code (service injoignable)"
             exit 1
           fi
           python3 - <<'PY'

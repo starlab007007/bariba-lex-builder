@@ -34,7 +34,13 @@ services:
       - "127.0.0.1:8090:8090"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.bariba-voice-gateway.rule=Host(`voice.fitila.bj`)"
+      # Chemin sur le domaine fitila.bj existant plutôt qu'un sous-domaine :
+      # pas de nouvel enregistrement DNS ni d'attente de propagation, le
+      # certificat TLS de fitila.bj couvre déjà ce chemin.
+      - "traefik.http.middlewares.bariba-voice-gateway-strip.stripprefix.prefixes=/voice-api"
+      - "traefik.http.routers.bariba-voice-gateway.rule=Host(`fitila.bj`) && PathPrefix(`/voice-api`)"
+      - "traefik.http.routers.bariba-voice-gateway.priority=100"
+      - "traefik.http.routers.bariba-voice-gateway.middlewares=bariba-voice-gateway-strip"
       - "traefik.http.routers.bariba-voice-gateway.entrypoints=websecure"
       - "traefik.http.routers.bariba-voice-gateway.tls.certresolver=myresolver"
       - "traefik.http.services.bariba-voice-gateway.loadbalancer.server.port=8090"
