@@ -28,27 +28,22 @@ jobs:
           OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker inspect bariba-voice-gateway --format 'ExitCode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}} Health={{.State.Health.Status}} Error={{.State.Error}}'" 2>&1)"
           echo "::notice::inspect: ${OUT}"
 
-      - name: docker logs tail 40 (partie 1)
+      - name: date de création de l'IMAGE (pas du conteneur) — confirme si c'est bien le nouveau build
         run: |
-          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker logs --tail 40 bariba-voice-gateway" 2>&1 | tr '\n' '|' | cut -c1-900)"
-          echo "::notice::logs1: ${OUT}"
+          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker inspect ghcr.io/starlab007007/bariba-lex-builder-voice-gateway:latest --format 'ImageId={{.Id}} Created={{.Created}}'" 2>&1)"
+          echo "::notice::image: ${OUT}"
 
-      - name: docker logs tail 40 (partie 2)
+      - name: pip show torch DANS le conteneur en cours d'exécution
         run: |
-          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker logs --tail 40 bariba-voice-gateway" 2>&1 | tr '\n' '|' | cut -c901-1800)"
-          echo "::notice::logs2: ${OUT}"
+          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker exec bariba-voice-gateway pip show torch" 2>&1 | tr '\n' '|' | cut -c1-900)"
+          echo "::notice::pip_torch: ${OUT}"
 
-      - name: docker logs tail 40 (partie 3)
+      - name: pip show fairseq2n DANS le conteneur en cours d'exécution
         run: |
-          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker logs --tail 40 bariba-voice-gateway" 2>&1 | tr '\n' '|' | cut -c1801-2700)"
-          echo "::notice::logs3: ${OUT}"
+          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker exec bariba-voice-gateway pip show fairseq2n" 2>&1 | tr '\n' '|' | cut -c1-900)"
+          echo "::notice::pip_fairseq2n: ${OUT}"
 
-      - name: docker logs tail 40 (partie 4)
+      - name: pip show fairseq2 DANS le conteneur en cours d'exécution
         run: |
-          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker logs --tail 40 bariba-voice-gateway" 2>&1 | tr '\n' '|' | cut -c2701-3600)"
-          echo "::notice::logs4: ${OUT}"
-
-      - name: curl -v health local (depuis le VPS)
-        run: |
-          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "curl -v --max-time 5 http://127.0.0.1:8090/health" 2>&1 | tr '\n' '|' | cut -c1-900)"
-          echo "::notice::health: ${OUT}"
+          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker exec bariba-voice-gateway pip show fairseq2" 2>&1 | tr '\n' '|' | cut -c1-900)"
+          echo "::notice::pip_fairseq2: ${OUT}"
