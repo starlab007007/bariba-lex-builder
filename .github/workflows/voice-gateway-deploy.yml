@@ -107,3 +107,6 @@ jobs:
 
             previous_id="$(docker inspect bariba-voice-gateway 2>/dev/null | grep -o '"Image": *"[^"]*"' | head -1 | cut -d'"' -f4 || true)"
             echo "::notice::DEBUG D1 docker inspect OK, previous_id=$previous_id"
+
+            docker pull "$IMAGE:latest"
+            echo "::notice::DEBUG E1 docker pull OK"
