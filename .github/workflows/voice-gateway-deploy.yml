@@ -121,6 +121,16 @@ jobs:
 
             previous_id="$(docker inspect bariba-voice-gateway --format '{{.Image}}' 2>/dev/null || true)"
 
+            # experiments/bariba_voice_compare/ (service.py expérimental,
+            # restart: unless-stopped) écoute aussi 127.0.0.1:8090 et peut être
+            # relancé manuellement pour des comparaisons (voir son OPERATIONS.md) ;
+            # s'il tourne, `docker compose up` échoue avec "port is already
+            # allocated" avant même d'atteindre le health-check. Le service de
+            # production réel est désormais bariba-voice-gateway (voir le même
+            # OPERATIONS.md) : on libère donc toujours le port en sa faveur.
+            echo "::notice::3b/6 libérer le port 8090 (service expérimental meta-voice, si relancé manuellement)"
+            docker stop fitila-meta-voice-api 2>/dev/null || true
+
             echo "::notice::4/6 docker pull $IMAGE:latest"
             docker pull "$IMAGE:latest"
             echo "::notice::5/6 docker compose up"
