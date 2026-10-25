@@ -19,6 +19,16 @@ COPY requirements.txt /srv/requirements.txt
 # transitive (fairseq2, via omnilingual-asr) échoue avec
 # "BackendUnavailable: Cannot import 'setuptools.build_meta'".
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+# Ce VPS est CPU uniquement (pas de GPU) : `pip install torch` depuis PyPI
+# installe par défaut la variante CUDA, qui tente de charger
+# libcudart.so au chargement du pipeline ASR (omnilingual-asr/fairseq2) et
+# échoue avec "libcudart.so.13: cannot open shared object file" — le
+# service démarre quand même (TTS fonctionne) mais reste "degraded" (ASR
+# indisponible) indéfiniment. torch est donc installé en amont depuis
+# l'index CPU officiel, avant requirements.txt (qui ne liste plus torch),
+# pour que la résolution des dépendances d'omnilingual-asr le trouve déjà
+# satisfait plutôt que de retomber sur la variante CUDA de PyPI.
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py /srv/app.py
