@@ -1,0 +1,35 @@
+name: Debug numpy/pyarrow fix verification (temporaire)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.11-slim
+    steps:
+      - name: apt deps
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ffmpeg libsndfile1 build-essential cmake
+      - name: pip upgrade
+        run: pip install --no-cache-dir --upgrade pip setuptools wheel
+      - uses: actions/checkout@v4
+      - name: install requirements (avec numpy>=2.0 pinné)
+        run: pip install --no-cache-dir -r voice-gateway/requirements.txt
+      - name: swap torch/torchaudio/fairseq2n CPU (comme le Dockerfile)
+        run: |
+          TORCH_VER="$(pip show torch | grep -i '^Version:' | awk '{print $2}' | cut -d'+' -f1)"
+          pip install --no-cache-dir --force-reinstall --no-deps \
+            "torch==${TORCH_VER}" "torchaudio==${TORCH_VER}" \
+            --index-url https://download.pytorch.org/whl/cpu
+          FAIRSEQ2N_VER="$(pip show fairseq2n | grep -i '^Version:' | awk '{print $2}' | cut -d'+' -f1)"
+          pip install --no-cache-dir --force-reinstall --no-deps \
+            "fairseq2n==${FAIRSEQ2N_VER}" "fairseq2==${FAIRSEQ2N_VER}" \
+            --index-url "https://fair.pkg.atmeta.com/fairseq2/whl/pt${TORCH_VER}/cpu"
+      - name: pip show numpy/pyarrow (version résolue)
+        run: pip show numpy pyarrow | grep -E '^(Name|Version)'
+      - name: import complet omnilingual_asr (le test qui échouait)
+        run: |
+          python -c "from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline; print('omnilingual_asr import OK')"

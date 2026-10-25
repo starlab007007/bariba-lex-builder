@@ -71,11 +71,28 @@ import torch; print('torch CPU final :', torch.__version__, '| cuda dispo :', to
 import torchaudio; print('torchaudio CPU final :', torchaudio.__version__); \
 import fairseq2n, fairseq2; print('fairseq2n/fairseq2 CPU final : ok')"
 
+# Vérification BLOQUANTE (pas de `|| true`) de l'import complet d'omnilingual_asr.
+# Historique : ce même import, dans le bloc best-effort ci-dessous (qui
+# avale toute erreur avec `|| true` pour ne pas bloquer le build si le
+# registre de poids est indisponible), échouait silencieusement avec
+# "ImportError: pyarrow requires NumPy 2.0 or newer, found 1.26.4" —
+# chaîne d'import omnilingual_asr -> .datasets -> .datasets.impl.
+# mixture_parquet_asr_dataset -> .datasets.storage.mixture_parquet_storage
+# -> pyarrow. Le build "réussissait" quand même et expédiait une image où
+# l'ASR ne démarre jamais (TTS seul fonctionnait). En isolant cet import ici,
+# SANS `|| true`, toute régression équivalente fait échouer le build au lieu
+# d'être masquée. Voir requirements.txt pour le fix (numpy>=2.0 pinné).
+RUN python -c "\
+from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline; \
+print('omnilingual_asr (chaîne d\'import complète, incl. datasets/pyarrow) : ok')"
+
 COPY app.py /srv/app.py
 
 # Pré-téléchargement best-effort au build (ASR Apache-2.0, TTS CC-BY-NC — voir
 # README.md). Si le registre des assets est indisponible pendant le build,
-# ce n'est pas fatal : le service retentera au premier démarrage.
+# ce n'est pas fatal : le service retentera au premier démarrage. L'IMPORT
+# lui-même est déjà vérifié de façon bloquante ci-dessus ; seul le
+# téléchargement des poids reste best-effort ici.
 RUN python -c "\
 from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline; \
 ASRInferencePipeline(model_card='omniASR_CTC_300M')" || true
