@@ -19,7 +19,7 @@ restore_network() { adb shell svc wifi enable || true; adb shell svc data enable
 trap restore_network EXIT
 disabled=false
 for _ in $(seq 1 900); do
-  if grep -q FITILA_PACKS_READY_FOR_NETWORK_OFF "$log" && [ "$disabled" = false ]; then
+  if [ "$disabled" = false ] && adb shell run-as bj.fitila.fitila_native test -f files/fitila_offline_pack_ready >/dev/null 2>&1; then
     adb shell svc wifi disable
     adb shell svc data disable
     disabled=true

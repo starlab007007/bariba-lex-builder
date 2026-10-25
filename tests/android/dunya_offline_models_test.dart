@@ -47,6 +47,10 @@ void main() {
       for (final id in [dunyaVoiceCorePackId, dunyaTranslationPackId]) {
         await packs.download(dunyaVoicePackSources.firstWhere((source) => source.id == id));
       }
+      final root = await getApplicationSupportDirectory();
+      // Flutter's CI reporter buffers debugPrint until the test completes.
+      // A device-local marker lets ADB coordinate the network-off phase live.
+      await File('${root.path}/fitila_offline_pack_ready').writeAsString('ready', flush: true);
       debugPrint('FITILA_PACKS_READY_FOR_NETWORK_OFF');
       var disconnected = false;
       for (var attempt = 0; attempt < 45; attempt++) {
@@ -66,7 +70,6 @@ void main() {
       DunyaTranslator.online = (_, _) => throw StateError('No remote fallback is permitted');
       final engine = await DunyaSharedSpeech.instance.ensureStarted();
       expect(engine, isNotNull);
-      final root = await getApplicationSupportDirectory();
       final fixture = File('${root.path}/dunya_packs/$dunyaVoiceCorePackId/asr/test_wavs/fr.wav');
       final transcript = await engine!.transcribe(pcm16(await fixture.readAsBytes()));
       expect(transcript.trim(), isNotEmpty);
