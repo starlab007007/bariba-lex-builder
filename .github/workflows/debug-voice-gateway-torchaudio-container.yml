@@ -54,14 +54,19 @@ jobs:
           echo "::notice::torch=${TORCH_VER:-ÉCHEC} torchaudio=${TORCHAUDIO_VER:-ÉCHEC} | torch_err=$(tail -c 200 /tmp/te.txt|tr '\n' ' ') | ta_err=$(tail -c 200 /tmp/tae.txt|tr '\n' ' ')"
         continue-on-error: true
 
-      - name: Force-reinstall CPU (partie 1)
+      - name: Force-reinstall CPU, torchaudio en lockstep avec torch (partie 1)
         run: |
           set +e
           TORCH_VER="$(pip show torch | grep -i '^Version:' | awk '{print $2}' | cut -d'+' -f1)"
-          TORCHAUDIO_VER="$(pip show torchaudio | grep -i '^Version:' | awk '{print $2}' | cut -d'+' -f1)"
+          # Hypothèse testée ici : torch et torchaudio sont censés être
+          # installés en lockstep (même numéro de version) — la version de
+          # torchaudio que pip a résolue seule (souvent différente, via une
+          # contrainte large d'une dépendance tierce) n'est probablement pas
+          # celle réellement compatible ABI avec CE torch, d'où le symbole
+          # non défini vu dans l'essai précédent (torch_library_impl).
           {
-            echo "resolved torch=${TORCH_VER:-vide} torchaudio=${TORCHAUDIO_VER:-vide}"
-            pip install --no-cache-dir --force-reinstall --no-deps "torch==${TORCH_VER}" ${TORCHAUDIO_VER:+"torchaudio==${TORCHAUDIO_VER}"} --index-url https://download.pytorch.org/whl/cpu
+            echo "torch=${TORCH_VER:-vide} — torchaudio forcé à la même version (lockstep)"
+            pip install --no-cache-dir --force-reinstall --no-deps "torch==${TORCH_VER}" "torchaudio==${TORCH_VER}" --index-url https://download.pytorch.org/whl/cpu
             echo "exit=$?"
           } > /tmp/pipout.txt 2>&1
           echo "::notice::p1: $(cut -c1-900 /tmp/pipout.txt | tr '\n' '|')"
