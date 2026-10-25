@@ -1,123 +1,39 @@
-import { aiFetch, AI_AUDIO_URL, getActiveAIKey } from "../_shared/ai-provider.ts";
-/**
- * Transcribe Audio Edge Function
- * 
- * Receives an audio blob and transcribes it to text using le fournisseur IA actif (Voxtral ou Gemini).
- * Falls back to client-side speech recognition if Fournisseur IA actif fails.
- * 
- * Returns: { text, words[], language }
- */
-
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+// Politique FITILA (25/10/2026) : aucun fournisseur IA payant (Gemini, Mistral/Voxtral).
+// La transcription passe par NOTRE service vocal (Meta Omnilingual ASR, voice-gateway sur le VPS FITILA).
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+const json = (status: number, body: unknown) =>
+  new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
-
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+  const base = (Deno.env.get("FITILA_VOICE_SERVICE_URL") ?? "").replace(/\/+$/, "");
+  const token = Deno.env.get("FITILA_MODEL_API_TOKEN") ?? "";
+  if (!base || !token) return json(503, { error: "not_configured", message: "Service vocal FITILA non configuré." });
+  let file: File | null = null;
   try {
-    const formData = await req.formData();
-    const audioFile = (formData.get('file') || formData.get('audio')) as File | null;
-
-    if (!audioFile) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'No audio file provided' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
-
-    console.log(`[transcribe-audio] Received audio: ${audioFile.name}, size: ${audioFile.size}, type: ${audioFile.type}`);
-
-    const ACTIVE_AI_KEY = await getActiveAIKey();
-
-    // Try Fournisseur IA actif Voxtral Mini STT first
-    if (ACTIVE_AI_KEY) {
-      try {
-        const result = await transcribeWithActiveAI(audioFile, ACTIVE_AI_KEY);
-        if (result && result.text && result.text.trim().length > 0) {
-          console.log(`[transcribe-audio] Fournisseur IA actif success: ${result.text.length} chars`);
-          return new Response(
-            JSON.stringify({ success: true, ...result, method: result.provider || 'mistral' }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        console.warn('[transcribe-audio] Fournisseur IA actif returned empty text, falling back...');
-      } catch (providerError) {
-        console.error('[transcribe-audio] Fournisseur IA actif error:', providerError);
-      }
-    } else {
-      console.log('[transcribe-audio] No ACTIVE_AI_KEY, skipping Fournisseur IA actif');
-    }
-
-    // No external fallback provider: use client-side Web Speech when Fournisseur IA actif is unavailable.
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: 'Transcription serveur indisponible',
-        useClientSide: true,
-        message: 'Utilisez Web Speech API comme fallback côté client'
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 503 }
-    );
-
-  } catch (error) {
-    console.error('[transcribe-audio] Fatal error:', error);
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Transcription failed' 
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-    );
+    const form = await req.formData();
+    const f = form.get("file") ?? form.get("audio");
+    if (f instanceof File) file = f;
+  } catch { /* corps invalide */ }
+  if (!file || file.size === 0 || file.size > 11 * 1024 * 1024) return json(400, { error: "invalid_audio", message: "Audio absent ou trop volumineux (11 Mo max)." });
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  try {
+    const r = await fetch(`${base}/infer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ engine: "meta-asr-300m", audio_base64: btoa(bin) }),
+      signal: AbortSignal.timeout(90_000),
+    });
+    if (!r.ok) { await r.body?.cancel(); return json(503, { error: "asr_unavailable", message: "Reconnaissance vocale FITILA indisponible." }); }
+    const data = await r.json();
+    const text = typeof data?.transcript === "string" ? data.transcript.trim() : "";
+    return json(200, { text, language: "fr", words: [], provider: "fitila-omnilingual", model: "omniASR_CTC_300M" });
+  } catch {
+    return json(503, { error: "asr_unavailable", message: "Reconnaissance vocale FITILA indisponible." });
   }
 });
-
-/**
- * Transcribe audio using le fournisseur IA actif
- */
-async function transcribeWithActiveAI(
-  audioFile: File,
-  apiKey: string
-): Promise<{ text: string; words: Array<{ text: string; start: number; end: number }>; language: string; provider: string; model: string }> {
-  const formData = new FormData();
-  formData.append('file', audioFile);
-  formData.append('model', 'voxtral-mini-latest');
-  formData.append('language', 'fr');
-  formData.append('timestamp_granularities', 'word');
-
-  console.log('[transcribe-audio] Calling Fournisseur IA actif Voxtral Mini STT...');
-
-  const response = await aiFetch(AI_AUDIO_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[transcribe-audio] Fournisseur IA actif HTTP error:', response.status, errorText);
-    throw new Error(`Fournisseur IA actif STT error: ${response.status}`);
-  }
-
-  const data = await response.json();
-
-  return {
-    text: data.text || '',
-    words: (data.words || []).map((w: any) => ({
-      text: w.text,
-      start: w.start,
-      end: w.end,
-    })),
-    language: data.language || 'fr',
-    provider: response.headers.get('X-Fitila-AI-Provider') || '',
-    model: data.model || response.headers.get('X-Fitila-AI-Model') || '',
-  };
-}
-
