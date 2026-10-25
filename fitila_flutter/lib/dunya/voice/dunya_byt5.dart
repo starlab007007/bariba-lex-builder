@@ -18,7 +18,9 @@ import 'dunya_byt5_policy.dart';
 const dunyaByt5PackId = 'dunya-translate-byt5';
 
 class DunyaByt5 {
-  DunyaByt5._();
+  DunyaByt5._() : _supportDirectory = null;
+  DunyaByt5.forTesting(Directory supportDirectory) : _supportDirectory = supportDirectory;
+  final Directory? _supportDirectory;
 
   static final instance = DunyaByt5._();
   static const _channel = MethodChannel('fitila/dunya_byt5');
@@ -33,7 +35,7 @@ class DunyaByt5 {
   Future<bool> activateIfInstalled({bool userRequested = false}) async {
     try {
       await DunyaSettings.instance.load();
-      final base = await getApplicationSupportDirectory();
+      final base = _supportDirectory ?? await getApplicationSupportDirectory();
       final dir = '${base.path}/dunya_packs/$dunyaByt5PackId/byt5';
       // The pack is active in BETA ("tested": false = test mode, results are labelled and
       // must be double-checked) or certified ("tested": true). A manifest that does not declare
