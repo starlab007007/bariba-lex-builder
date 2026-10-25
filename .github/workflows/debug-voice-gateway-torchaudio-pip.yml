@@ -21,21 +21,28 @@ jobs:
 
       - name: pip install -r requirements.txt
         run: |
-          pip install --no-cache-dir -r voice-gateway/requirements.txt 2>&1 | tail -c 900
+          set +e
+          pip install --no-cache-dir -r voice-gateway/requirements.txt > /tmp/install.log 2>&1
+          echo "exit=$?" >> /tmp/install.log
+          echo "::notice::install: $(tail -c 900 /tmp/install.log | tr '\n' '|')"
         continue-on-error: true
 
       - name: Versions résolues
         run: |
-          TORCH_VER="$(python -c "import torch; print(torch.__version__.split('+')[0])" 2>&1)"
-          TORCHAUDIO_VER="$(python -c "import torchaudio; print(torchaudio.__version__.split('+')[0])" 2>&1)"
-          echo "::notice::torch=${TORCH_VER} torchaudio=${TORCHAUDIO_VER}"
+          set +e
+          TORCH_VER="$(python -c "import torch; print(torch.__version__.split('+')[0])" 2>/tmp/torcherr.txt)"
+          TORCHAUDIO_VER="$(python -c "import torchaudio; print(torchaudio.__version__.split('+')[0])" 2>/tmp/taerr.txt)"
+          echo "::notice::torch=${TORCH_VER:-ÉCHEC} torchaudio=${TORCHAUDIO_VER:-ÉCHEC} | torch_err=$(tail -c 300 /tmp/torcherr.txt | tr '\n' ' ') | ta_err=$(tail -c 300 /tmp/taerr.txt | tr '\n' ' ')"
+        continue-on-error: true
 
       - name: pip install --force-reinstall --no-deps torch+torchaudio CPU (partie 1)
         run: |
-          TORCH_VER="$(python -c "import torch; print(torch.__version__.split('+')[0])")"
-          TORCHAUDIO_VER="$(python -c "import torchaudio; print(torchaudio.__version__.split('+')[0])" 2>/dev/null || true)"
-          OUT="$(pip install --no-cache-dir --force-reinstall --no-deps "torch==${TORCH_VER}" ${TORCHAUDIO_VER:+"torchaudio==${TORCHAUDIO_VER}"} --index-url https://download.pytorch.org/whl/cpu 2>&1)"
-          echo "$OUT" > /tmp/pipout.txt
+          set +e
+          TORCH_VER="$(python -c "import torch; print(torch.__version__.split('+')[0])" 2>/dev/null)"
+          TORCHAUDIO_VER="$(python -c "import torchaudio; print(torchaudio.__version__.split('+')[0])" 2>/dev/null)"
+          echo "resolved torch=${TORCH_VER:-vide} torchaudio=${TORCHAUDIO_VER:-vide}" > /tmp/pipout.txt
+          pip install --no-cache-dir --force-reinstall --no-deps "torch==${TORCH_VER}" ${TORCHAUDIO_VER:+"torchaudio==${TORCHAUDIO_VER}"} --index-url https://download.pytorch.org/whl/cpu >> /tmp/pipout.txt 2>&1
+          echo "exit=$?" >> /tmp/pipout.txt
           echo "::notice::p1: $(cut -c1-900 /tmp/pipout.txt | tr '\n' '|')"
         continue-on-error: true
 
