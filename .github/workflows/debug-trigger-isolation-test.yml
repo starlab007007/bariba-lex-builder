@@ -7,5 +7,14 @@ jobs:
   noop:
     runs-on: ubuntu-latest
     steps:
-      - name: noop
-        run: echo "::notice::ok"
+      - name: Setup clé SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id
+          chmod 600 ~/.ssh/id
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: docker ps -a (état du conteneur)
+        run: |
+          OUT="$(ssh -i ~/.ssh/id -o StrictHostKeyChecking=no "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "docker ps -a --filter name=bariba-voice-gateway --format '{{.Names}} | {{.Status}} | {{.Image}}'" 2>&1)"
+          echo "::notice::ps: ${OUT}"
