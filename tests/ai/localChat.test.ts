@@ -1,5 +1,5 @@
 Deno.env.set('FITILA_AI_TEST', '1');
-const { handleChat, memoryReferences } = await import('../../supabase/functions/fitila-ia-chat/index.ts');
+const { handleChat, memoryReferences, brainServiceUrl } = await import('../../supabase/functions/fitila-ia-chat/index.ts');
 const assert = (ok: unknown, message = 'assertion failed') => { if (!ok) throw new Error(message); };
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
 const vars: Record<string, string> = { SUPABASE_URL: 'https://db.test', SUPABASE_SERVICE_ROLE_KEY: 'private-db-key', SUPABASE_ANON_KEY: 'public-key', FITILA_VOICE_SERVICE_URL: 'https://fitila.test/voice-api', FITILA_MODEL_API_TOKEN: 'private-model-token', MISTRAL_API_KEY: 'must-not-be-used', GEMINI_API_KEY: 'must-not-be-used' };
@@ -75,4 +75,18 @@ Deno.test('publishable-key guests remain anonymous and quota-limited', async () 
 Deno.test('memory references are actual corpus excerpts', () => {
   const sources = memoryReferences('cette banane est bonne');
   assert(sources.some(s => s.fr.toLowerCase() === 'cette banane est bonne' && s.ba.includes('Agɛdɛ')));
+});
+
+Deno.test('production legacy Meta route reaches the authenticated chat gateway', async () => {
+  assert(brainServiceUrl('https://fitila.bj/api/meta-voice/') === 'https://fitila.bj/voice-api');
+  assert(brainServiceUrl('https://fitila.test/custom/') === 'https://fitila.test/custom');
+  const response = await handleChat(req({ message: 'Bonjour', skip_translation: true }), {
+    env: name => name === 'FITILA_VOICE_SERVICE_URL' ? 'https://fitila.bj/api/meta-voice' : env(name),
+    fetch: async (url, init) => {
+      assert(String(url) === 'https://fitila.bj/voice-api/chat');
+      assert(new Headers(init?.headers).get('Authorization') === 'Bearer private-model-token');
+      return json({ response_fr: 'Bonjour !' });
+    },
+  });
+  assert(response.ok);
 });

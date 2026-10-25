@@ -14,6 +14,14 @@ const reply = (status: number, value: unknown, retry = 0) => new Response(JSON.s
   status, headers: { ...cors, 'Content-Type': 'application/json', ...(retry ? { 'Retry-After': String(retry) } : {}) },
 });
 
+// The older Meta /infer proxy is still configured in production. Its route
+// does not serve chat; the shared authenticated gateway does.
+export function brainServiceUrl(configured: string): string {
+  const url = new URL(configured);
+  if (url.pathname.replace(/\/+$/, '') === '/api/meta-voice') url.pathname = '/voice-api';
+  return url.toString().replace(/\/+$/, '');
+}
+
 export function memoryReferences(message: string) {
   const terms = [...new Set(fold(message).split(' ').filter(w => w.length >= 3 && !stop.has(w)))];
   if (!terms.length) return [];
@@ -78,13 +86,17 @@ export async function handleChat(req: Request, deps: Dependencies = {}): Promise
       .filter(x => x && ['user', 'assistant'].includes(x.role) && typeof x.content === 'string')
       .map(x => ({ role: x.role, content: clean(x.content).slice(0, 500) }));
     const references = memoryReferences(message);
-    const response = await request(`${voiceUrl}/chat`, {
+    const brainUrl = brainServiceUrl(env('FITILA_BRAIN_SERVICE_URL') || voiceUrl);
+    const response = await request(`${brainUrl}/chat`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${voiceKey}` },
       body: JSON.stringify({ message, history, context: references.map(r => `${r.fr} — ${r.ba}`).join('\n'), max_tokens: Math.max(32, Math.min(160, Number(body.max_tokens) || 96)) }),
       signal: AbortSignal.any([req.signal, AbortSignal.timeout(65000)]),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
+      console.warn(JSON.stringify({ event: 'fitila_local_brain_failure', status: response.status,
+        upstream_host: new URL(brainUrl).hostname, upstream_path: new URL(brainUrl).pathname,
+        code: typeof data.error === 'string' ? data.error.slice(0, 60) : 'upstream_failed' }));
       const limited = response.status === 429;
       return reply(limited ? 429 : 503, { error: limited ? 'llm_rate_limited' : 'llm_unavailable', message: limited ? 'Le cerveau FITILA est occupé. Réessayez.' : 'Réponse momentanément indisponible. Réessayez.', retry_after: limited ? 10 : 20 }, limited ? 10 : 20);
     }
