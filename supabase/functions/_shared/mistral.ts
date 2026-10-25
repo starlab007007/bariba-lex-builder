@@ -95,4 +95,6 @@ function failureResponse(status: number, code: string, message: string, retryAft
   });
 }
 
-export const mistralFetch = createMistralClient({ env: name => Deno.env.get(name) });
+// Politique FITILA : aucun appel Mistral (payant). Voir ai-provider.ts.
+export const mistralFetch = async (_url: string, _init: RequestInit = {}): Promise<Response> =>
+  failureResponse(503, 'llm_not_configured', 'Aucun fournisseur IA payant : cerveau local FITILA uniquement.');

@@ -153,44 +153,10 @@ void _wireBaribaKeyboard() {
   };
   DunyaAssistant.onlineAvailable = () =>
       FitilaBackend.configured && FitilaOffline.online.value;
-  // Cerveau en ligne DUNYA : aucune installation Gemma nécessaire, même en visiteur.
-  // en français ; DUNYA traduit lui-même chaque phrase (mémoire attestée puis ByT5).
-  DunyaAssistant.cloudBrain = ({required system, required history, required message}) async {
-    final token = FitilaBackend.client.auth.currentSession?.accessToken;
-    if (!FitilaBackend.configured || !FitilaOffline.online.value) return null;
-    try {
-      final response = await http
-          .post(
-            Uri.parse('${FitilaBackend.supabaseUrl}/functions/v1/fitila-ia-chat'),
-            headers: {
-              'content-type': 'application/json',
-              'Authorization': 'Bearer ${token ?? FitilaBackend.supabaseAnonKey}',
-              if (FitilaBackend.supabaseAnonKey.isNotEmpty) 'apikey': FitilaBackend.supabaseAnonKey,
-            },
-            body: jsonEncode({
-              'message': message,
-              'history': [
-                for (final h in history.length > 8 ? history.sublist(history.length - 8) : history)
-                  {'role': h.role == 'user' ? 'user' : 'assistant', 'content': h.text},
-              ],
-              'systemPrompt': system,
-              'temperature': 0.4,
-              'max_tokens': 200,
-              // DUNYA traduit lui-même (mémoire attestée puis ByT5) : sans cet indicateur le serveur
-              // traduit toute la réponse en baatɔnum (~40 s) puis l'application l'ignore.
-              'skip_translation': true,
-            }),
-          )
-          .timeout(const Duration(seconds: 25));
-      if (response.statusCode < 200 || response.statusCode >= 300) return null;
-      final decoded = jsonDecode(response.body);
-      final fr = decoded is Map ? decoded['response_fr'] : null;
-      return fr is String && fr.trim().isNotEmpty ? fr.trim() : null;
-    } catch (e) {
-      if (FitilaOffline.isNetworkError(e)) FitilaOffline.reportFailure(e);
-      return null;
-    }
-  };
+  // Politique FITILA : AUCUN fournisseur IA payant (Gemini/Mistral). Pas de cerveau serveur :
+  // DUNYA raisonne avec Gemma (téléphone) puis ses outils essentiels, et traduit avec
+  // sa mémoire attestée, ByT5 (local ou serveur FITILA) et le raffinement déterministe.
+  DunyaAssistant.cloudBrain = null;
 }
 
 /// Lit un texte : voix FITILA en ligne, sinon voix locale (téléphone / voix Apprendre déjà téléchargées).
@@ -8071,7 +8037,7 @@ class _AiScreenState extends State<AiScreen> {
 
     var serverDown = false;
     try {
-      final canUseServer = FitilaBackend.configured && FitilaOffline.online.value;
+      const canUseServer = false; // plus de cerveau serveur payant : Gemma local + traducteur FITILA
       if (canUseServer) {
         try {
           final result = await FitilaBackend.askFitilaIaDetailed(trimmed);
@@ -8098,17 +8064,20 @@ class _AiScreenState extends State<AiScreen> {
       final offlineAnswer = await _askOfflineBrain(trimmed);
       if (!mounted) return null;
       if (offlineAnswer != null) {
+        // Gemma raisonne en français : traduction FR → Baatɔnum par le traducteur FITILA
+        // (mémoire, ByT5 local, ByT5 serveur, raffinement déterministe), sinon français.
+        final translated = await DunyaTranslator.translate(offlineAnswer, toBariba: true);
+        if (!mounted) return null;
+        final shown = translated?.text ?? offlineAnswer;
         setState(() {
           _messages.add(_AiChatMessage(
             role: 'assistant',
-            text: offlineAnswer,
-            // Le cerveau local raisonne en français uniquement (comme DUNYA
-            // hors ligne) : même affichage que le repli français du serveur.
-            isFallbackFr: true,
+            text: shown,
+            isFallbackFr: translated == null,
           ));
         });
         _scrollToEnd();
-        return offlineAnswer;
+        return shown;
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -8117,8 +8086,8 @@ class _AiScreenState extends State<AiScreen> {
                 ? 'Le cerveau en ligne de Fitila IA est momentanément indisponible. Réessayez '
                     'dans un instant, ou installez le cerveau local (DUNYA › Réglages › Cerveau) '
                     'pour discuter sans serveur.'
-                : 'Fitila IA a besoin d’internet. Pour discuter hors connexion, installez '
-                    'le cerveau local (DUNYA › Réglages › Cerveau) une seule fois.',
+                : 'Fitila IA utilise uniquement le cerveau local gratuit de votre téléphone. '
+                    'Installez-le une seule fois (DUNYA › Réglages › Cerveau, mode « Malin »).',
           ),
         ),
       );

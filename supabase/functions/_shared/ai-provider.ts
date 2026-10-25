@@ -135,6 +135,15 @@ export function createAIClient(deps: Dependencies) {
 }
 
 const runtime = { env: (name: string) => Deno.env.get(name) };
-export const aiFetch = createAIClient(runtime);
+// POLITIQUE FITILA (25/10/2026) : AUCUN fournisseur payant (Gemini, Mistral) n'est appelé.
+// Le raisonnement vient du cerveau local de l'app (Gemma/DUNYA) ; le serveur ne fournit que ses
+// propres moteurs (ByT5, ASR, TTS, corpus). Tout appel IA externe renvoie donc un 503 propre.
+const disabledAI = async (_url: string, _init: RequestInit = {}): Promise<Response> =>
+  new Response(JSON.stringify({
+    error: { code: 'llm_not_configured', message: 'Aucun fournisseur IA payant : cerveau local FITILA uniquement.' },
+    message: 'Aucun fournisseur IA payant : cerveau local FITILA uniquement.', provider: 'local',
+  }), { status: 503, headers: { 'Content-Type': 'application/json', 'X-Fitila-AI-Provider': 'local' } });
+export const aiFetch = disabledAI;
+export const createRealAIClientForTests = createAIClient;
 /** Only used inside Edge Functions; this value never crosses the client boundary. */
-export async function getActiveAIKey(): Promise<string> { return providerKey((await readAISettings(runtime)).active_provider, runtime.env); }
+export async function getActiveAIKey(): Promise<string> { return ''; }
