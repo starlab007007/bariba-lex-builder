@@ -2,7 +2,7 @@
   "date": "2026-10-26",
   "timezone": "Africa/Lagos",
   "app_version": "1.8.25+36",
-  "code_sha": "41382e61229abb3a9ad6a06137290f7e27bcf0ae",
+  "code_sha": "c01770bf2f9a19ba5536af672ca5703e3f9821aa",
   "french_history": {
     "before_http_status": 503,
     "after_http_status": 200,
@@ -77,10 +77,19 @@
     "first_run": 40245390945,
     "first_result": "test orchestration failed: stdout readiness marker was buffered; no model conclusion",
     "rerun": 40246209270,
-    "result": "pending",
+    "result": "success",
     "rerun_result": "ASR succeeded with network off; ByT5 native load failed",
     "diagnostic_run": 40246842167,
-    "diagnostic_result": "native initialization failed: OrtSession$SessionOptions"
+    "diagnostic_result": "native initialization failed: OrtSession$SessionOptions",
+    "passed_run": 40247728176,
+    "passed_job": 121332763487,
+    "runtime_source_sha": "41382e61229abb3a9ad6a06137290f7e27bcf0ae",
+    "network": "Android Wi-Fi and mobile data disabled",
+    "asr_fixture_language": "French",
+    "byt5_direction": "fr-ba",
+    "tts_language": "bba",
+    "physical_device_validation": false,
+    "general_conversation_brain_pack_tested": false
   },
   "previous_public_apk": {
     "release": {
@@ -109,7 +118,35 @@
       "sha256sums": "db00a8b12eb515c5db5ff3d9e951d8267aafc07c78bcedc1655c2ede56698c64  FITILA-Android-v1.8.24-build35-keyboard-translator-arm64.apk\n3948ed489f5b93d995b6fd8872fd9e5442ad94d138aa0b51ed00471acefd9a49  FITILA-Android-v1.8.24-build35-keyboard-translator-armv7.apk\n"
     }
   },
-  "public_apk": "pending",
+  "public_apk": {
+    "release": {
+      "version": "v1.8.25-build36-241",
+      "signing": "production",
+      "published_at": "2026-10-26T00:43:35Z",
+      "arm64": "/dunya-packs/android/v1.8.25-build36-241/FITILA-Android-v1.8.25-build36-keyboard-translator-arm64.apk",
+      "arm64_size": 99673015,
+      "armv7": "/dunya-packs/android/v1.8.25-build36-241/FITILA-Android-v1.8.25-build36-keyboard-translator-armv7.apk"
+    },
+    "checks": {
+      "arm64": {
+        "url": "https://fitila.bj/dunya-packs/android/v1.8.25-build36-241/FITILA-Android-v1.8.25-build36-keyboard-translator-arm64.apk",
+        "http": 200,
+        "bytes": 99673015,
+        "range_status": 206,
+        "zip_header": "504b0304"
+      },
+      "armv7": {
+        "url": "https://fitila.bj/dunya-packs/android/v1.8.25-build36-241/FITILA-Android-v1.8.25-build36-keyboard-translator-armv7.apk",
+        "http": 200,
+        "bytes": 58547681,
+        "range_status": 206,
+        "zip_header": "504b0304"
+      },
+      "install_page_http": 200
+    },
+    "sha256sums": "948dac93335664a13c50ad3d49a62381bc35279c675510480d37bca62159acfe  FITILA-Android-v1.8.25-build36-keyboard-translator-arm64.apk\nce9dcc7becc4b49058dfb8b0b79a0e29c0338c73e192c404780c51c5ffac8f38  FITILA-Android-v1.8.25-build36-keyboard-translator-armv7.apk\n",
+    "checked_at": "2026-10-26T00:43:40.056775+00:00"
+  },
   "previous_android_pipeline": {
     "run_id": 40244433332,
     "conclusion": "success",
@@ -120,7 +157,29 @@
     "signature_sha256": "931f901a227199fe867845b2ededf122fe858ffc2c82900f82675e4a541a4b67",
     "vps_sha256_verification": "both APKs OK"
   },
-  "android_pipeline": "pending",
+  "android_pipeline": {
+    "run_id": 40249956320,
+    "run_number": 241,
+    "conclusion": "success",
+    "source_sha": "c01770bf2f9a19ba5536af672ca5703e3f9821aa",
+    "signature_sha256": "931f901a227199fe867845b2ededf122fe858ffc2c82900f82675e4a541a4b67",
+    "debug_validation": {
+      "run_id": 40247728176,
+      "job_id": 121335234556,
+      "flutter_tests_passed": 297,
+      "static_analysis": "success",
+      "native_regression": "success",
+      "real_keyboard_emulator": "success",
+      "scope": "completed successful checks reused only for identical full application/dependency sources; only R8 configuration differs"
+    },
+    "release_validation": {
+      "shared_elf_abi": "success for ARM64 and ARMv7",
+      "r8_jni_classes": "12 JNI referenced classes preserved in each delivered APK; checked against R8 map and actual DEX",
+      "vps_sha256": "both APK files verified",
+      "public_https_probe_run": 40250416053,
+      "public_https_probe_job": 121340864480
+    }
+  },
   "native_abi": {
     "previous_core_export": "VERS_1.28.2",
     "previous_jni_required": "VERS_1.22.0",
@@ -129,6 +188,120 @@
     "java_ort": "1.27.0",
     "arm64_binary_contract_check": "passed",
     "old_apk_contract_reproduction": "correctly rejected",
-    "all_architectures_apk_check": "pending"
+    "all_architectures_apk_check": "success: ARM64 and ARMv7",
+    "final_packaged_evidence": [
+      {
+        "apk": "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk",
+        "onnx_abi": [
+          {
+            "library": "lib/arm64-v8a/libonnxruntime4j_jni.so",
+            "required": [
+              "VERS_1.27.0"
+            ],
+            "shared_runtime": [
+              "VERS_1.27.0"
+            ]
+          },
+          {
+            "library": "lib/arm64-v8a/libsherpa-onnx-c-api.so",
+            "required": [
+              "VERS_1.27.0"
+            ],
+            "shared_runtime": [
+              "VERS_1.27.0"
+            ]
+          },
+          {
+            "library": "lib/arm64-v8a/libsherpa-onnx-cxx-api.so",
+            "required": [],
+            "shared_runtime": [
+              "VERS_1.27.0"
+            ]
+          },
+          {
+            "r8_preserved_jni_classes": [
+              "ai.onnxruntime.MapInfo",
+              "ai.onnxruntime.NodeInfo",
+              "ai.onnxruntime.OnnxMap",
+              "ai.onnxruntime.OnnxModelMetadata",
+              "ai.onnxruntime.OnnxSequence",
+              "ai.onnxruntime.OnnxSparseTensor",
+              "ai.onnxruntime.OnnxTensor",
+              "ai.onnxruntime.OnnxValue",
+              "ai.onnxruntime.OrtException",
+              "ai.onnxruntime.SequenceInfo",
+              "ai.onnxruntime.TensorInfo",
+              "ai.onnxruntime.ValueInfo"
+            ]
+          }
+        ]
+      },
+      {
+        "apk": "build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk",
+        "onnx_abi": [
+          {
+            "library": "lib/armeabi-v7a/libonnxruntime4j_jni.so",
+            "required": [
+              "VERS_1.27.0"
+            ],
+            "shared_runtime": [
+              "VERS_1.27.0"
+            ]
+          },
+          {
+            "library": "lib/armeabi-v7a/libsherpa-onnx-c-api.so",
+            "required": [
+              "VERS_1.27.0"
+            ],
+            "shared_runtime": [
+              "VERS_1.27.0"
+            ]
+          },
+          {
+            "library": "lib/armeabi-v7a/libsherpa-onnx-cxx-api.so",
+            "required": [],
+            "shared_runtime": [
+              "VERS_1.27.0"
+            ]
+          },
+          {
+            "r8_preserved_jni_classes": [
+              "ai.onnxruntime.MapInfo",
+              "ai.onnxruntime.NodeInfo",
+              "ai.onnxruntime.OnnxMap",
+              "ai.onnxruntime.OnnxModelMetadata",
+              "ai.onnxruntime.OnnxSequence",
+              "ai.onnxruntime.OnnxSparseTensor",
+              "ai.onnxruntime.OnnxTensor",
+              "ai.onnxruntime.OnnxValue",
+              "ai.onnxruntime.OrtException",
+              "ai.onnxruntime.SequenceInfo",
+              "ai.onnxruntime.TensorInfo",
+              "ai.onnxruntime.ValueInfo"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "ci_maintenance": {
+    "supabase_access_token": "invalid HTTP401; automatic Edge deployments require renewal; current functions deployed successfully using connector"
+  },
+  "web": {
+    "latest_successful_deployment_run": 40250416057,
+    "source_sha": "dcc2426017185382f2fe2bb86437dd32b04d89de",
+    "french_two_turn_ui_verified": true,
+    "two_language_choices_ui_verified": true,
+    "tem_article14_single_source_ui_verified": true
+  },
+  "edge_functions": {
+    "fitila_ia_chat": {
+      "version": 21,
+      "status": "ACTIVE"
+    },
+    "dunya_voice_turn": {
+      "version": 19,
+      "status": "ACTIVE"
+    }
   }
 }
