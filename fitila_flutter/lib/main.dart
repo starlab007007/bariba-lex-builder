@@ -8787,7 +8787,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
   bool _voiceMode = true;
   final audio.AudioPlayer _reader = audio.AudioPlayer();
   double _readSpeed = 1.0;
-  bool _previewBeforeSend = true;
+  final bool _previewBeforeSend = true;
   bool _reading = false;
   StreamSubscription<void>? _readerCompleted;
 
