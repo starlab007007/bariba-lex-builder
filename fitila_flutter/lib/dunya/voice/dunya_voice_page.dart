@@ -1797,7 +1797,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       _brainInstalled = true;
       await _settings.update(intelligence: DunyaIntelligence.smart);
       unawaited(_brain.ensureLoaded().catchError((Object _) {}));
-      _brainLabel = 'Cerveau installé et vérifié.';
+      _brainLabel = 'Assistant disponible et vérifié.';
     } catch (error) {
       _brainLabel = error.toString();
     } finally {
@@ -1866,7 +1866,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               _card(
                 icon: _brainInstalled ? Icons.check_circle_rounded : Icons.memory_rounded,
                 iconColor: _brainInstalled ? const Color(0xFF4F8A68) : const Color(0xFF9C6B1D),
-                title: _brainInstalled ? 'Cerveau installé' : 'Assistant hors ligne (2,6 Go)',
+                title: _brainInstalled ? 'Assistant disponible' : 'Assistant sans Internet',
                 subtitle: !canRun
                     ? (device.supportedProcessor
                         ? 'Ce téléphone ($ram Mo de RAM) est trop juste : le mode Essentiel est conseillé.'
@@ -1904,12 +1904,12 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             ),
             const SizedBox(height: 10),
             _section('À utiliser sans Internet'),
-            _switch('Traduction expérimentale', _settings.experimentalTranslation, (value) async {
+            _switch('Traduction hors ligne', _settings.experimentalTranslation, (value) async {
               await _settings.update(experimentalTranslation: value);
               await DunyaByt5.instance.activateIfInstalled();
               if (mounted) setState(() {});
             }),
-            const Text('Peut produire des erreurs. Désactivée par défaut.',
+            const Text('Vérifiez les résultats avant de les utiliser.',
                 style: TextStyle(fontSize: 12, color: Color(0xFF7D7566))),
             for (final source in dunyaVoicePackSources)
               _card(
@@ -1918,13 +1918,13 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 title: switch (source.id) {
                   dunyaVoiceCorePackId => 'Parler et écouter sans Internet',
                   dunyaVoiceFrPackId => 'Voix française hors ligne',
-                  dunyaTranslationPackId => 'Traduire français ↔ Baatɔnum (test)',
+                  dunyaTranslationPackId => 'Traduction français ↔ Baatɔnum',
                   _ => source.title,
                 },
                 subtitle: _packInstalled(source) ? (source.id == dunyaTranslationPackId
-                    ? (_settings.experimentalTranslation ? 'Mode test activé · à vérifier' : 'Installé · mode test désactivé') : 'Prêt à utiliser')
+                    ? (_settings.experimentalTranslation ? 'Activée · vérifiez les résultats' : 'Installé · à activer') : 'Prêt à utiliser')
                     : source.id == dunyaTranslationPackId && !_byt5Published
-                        ? 'Archive distante non vérifiée · import possible'
+                        ? 'Téléchargement indisponible · import possible'
                         : 'Wi-Fi conseillé',
                 trailing: _packInstalled(source)
                     ? null
