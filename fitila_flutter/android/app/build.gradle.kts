@@ -50,7 +50,7 @@ android {
     defaultConfig {
         applicationId = if (parallelKeyboardValidation) "bj.fitila.fitila_native.keyboardfix" else "bj.fitila.fitila_native"
         manifestPlaceholders["fitilaAppLabel"] = if (parallelKeyboardValidation) "FITILA — Clavier corrigé" else "FITILA"
-        manifestPlaceholders["fitilaKeyboardLabel"] = if (parallelKeyboardValidation) "Baatɔnum FITILA — clavier corrigé" else "Clavier Baatɔnum FITILA"
+        manifestPlaceholders["fitilaKeyboardLabel"] = "Clavier Fitila"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
