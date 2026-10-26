@@ -9293,8 +9293,11 @@ class _TemIaScreenState extends State<TemIaScreen> {
             ),
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 6,
+                  runSpacing: 2,
                   children: [
                     const Text('Écouter avant envoi', style: TextStyle(fontSize: 12, color: _fitilaSage)),
                     Switch.adaptive(value: _previewBeforeSend, onChanged: (value) => setState(() => _previewBeforeSend = value)),
