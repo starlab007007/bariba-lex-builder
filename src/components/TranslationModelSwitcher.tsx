@@ -81,8 +81,8 @@ export const TranslationModelSwitcher = ({
     },
     {
       id: 'simplified',
-      name: 'SimplifiedAI',
-      description: 'Local, très rapide, gratuit',
+      name: 'Traduction rapide',
+      description: 'Rapide et adaptée aux demandes courantes',
       icon: <Zap className="h-4 w-4" />,
       badge: 'Rapide',
       badgeVariant: 'secondary'
