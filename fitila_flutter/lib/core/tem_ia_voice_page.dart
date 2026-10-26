@@ -630,11 +630,32 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
           ],
           const Spacer(),
           if (_subtitles && _caption.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 18),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: KeyedSubtree(key: ValueKey(_phase), child: _captionWidget()),
+            Flexible(
+              flex: 2,
+              child: SingleChildScrollView(
+                child: Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9F7F0),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: const Color(0xFFD3E2D5)),
+                    boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 20, offset: Offset(0, 8))],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_phase == _Phase.speaking ? 'Réponse de TEM IA' : 'Transcription en direct',
+                        style: const TextStyle(color: _deep, fontSize: 13, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 12),
+                      DefaultTextStyle(
+                        style: const TextStyle(color: Color(0xFF191D2B), fontSize: 21, height: 1.45, fontWeight: FontWeight.w600),
+                        child: Text(_caption, textAlign: TextAlign.left),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
         ],
