@@ -199,7 +199,7 @@ export const PhraseTranslator = () => {
         
         // Display toast based on method used
         toast({
-          title: `🤖 ByT5 Expert`,
+          title: `Traduction avancée`,
           description: `Traduction en ${result.duration}ms (${result.confidence}% confiance)`
         });
       }
@@ -257,7 +257,7 @@ export const PhraseTranslator = () => {
           Traducteur <span className="bariba-text">Baatɔnum</span>
         </h2>
         <p className="text-muted-foreground">
-          Traduction de phrases avec ByT5 Expert
+          Traduction de phrases
         </p>
         
         {/* Service Status Indicator */}
@@ -271,7 +271,7 @@ export const PhraseTranslator = () => {
             <AlertCircle className="h-4 w-4" />
             <span>
               Services audio Baatɔnum indisponibles (HuggingFace Spaces en veille).
-              {baribaTTSUsedFallback && " Fallback français utilisé."}
+              {baribaTTSUsedFallback && " Une autre voix a été utilisée."}
             </span>
           </div>
         )}
