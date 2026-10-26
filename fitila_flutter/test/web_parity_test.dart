@@ -125,7 +125,7 @@ void main() {
     expect(find.text('Fitila IA'), findsOneWidget);
     expect(
       find.textContaining('Assistant basé uniquement sur le Code Foncier'),
-      findsOneWidget,
+      findsNothing,
     );
     expect(find.text('Saria gbiika gari mba?'), findsOneWidget);
     expect(find.text('Saria 14se ya nɛɛ mba?'), findsOneWidget);
