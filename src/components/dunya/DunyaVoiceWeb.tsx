@@ -440,8 +440,8 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           </div>
           {isAdmin && <div className="mt-4 rounded-2xl bg-[#EFE8D6] p-3 text-[12px] leading-5 text-[#4A4356]" aria-label="Diagnostic vocal réel">
             <p><b>Échange :</b> {diagnostic.request ?? '—'}</p>
-            <p><b>Reconnaissance :</b> {diagnostic.asr ?? '—'} · <b>Voix :</b> {diagnostic.tts ?? '—'}</p>
-            <p><b>Serveur :</b> {diagnostic.elapsed == null ? '—' : `${(diagnostic.elapsed / 1000).toFixed(2)} s`} · MMS-TTS CC BY-NC 4.0</p>
+            <p>La dictée et la lecture sont disponibles selon votre connexion et vos réglages.</p>
+            <p>Pour en savoir plus, consultez les informations légales de FITILA.</p>
           </div>}
         </Sheet>
       )}
