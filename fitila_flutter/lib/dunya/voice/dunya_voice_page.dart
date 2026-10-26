@@ -1208,7 +1208,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         textAlign: TextAlign.center,
         maxLines: 5,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: const Color(0xFF192B24), fontSize: 21, height: 1.3, fontWeight: FontWeight.w600),
+        style: const TextStyle(color: Color(0xFF192B24), fontSize: 21, height: 1.3, fontWeight: FontWeight.w600),
       );
     }
     return Wrap(
@@ -2032,26 +2032,3 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       );
 }
 
-class _ProgressDialog extends StatelessWidget {
-  const _ProgressDialog({required this.status});
-
-  final ValueNotifier<(double?, String)> status;
-
-  @override
-  Widget build(BuildContext context) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-          content: ValueListenableBuilder<(double?, String)>(
-            valueListenable: status,
-            builder: (_, value, _) => Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                LinearProgressIndicator(value: value.$1, color: const Color(0xFFD4A23A)),
-                const SizedBox(height: 14),
-                Text(value.$2, textAlign: TextAlign.center),
-              ],
-            ),
-          ),
-        ),
-      );
-}
