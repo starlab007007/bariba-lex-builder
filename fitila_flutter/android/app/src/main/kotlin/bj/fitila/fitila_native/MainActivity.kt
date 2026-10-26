@@ -7,6 +7,7 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         KeyboardChannel(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
+        PersistentPackDownloadChannel(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         DunyaActionChannel(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         DunyaLlmChannel(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         DunyaByt5Channel(flutterEngine.dartExecutor.binaryMessenger)
