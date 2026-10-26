@@ -175,6 +175,31 @@ class DunyaVoicePackManager {
     }
   }
 
+  /// Do not download identical archives on repeated visits. The installed
+  /// manifest is the local source of truth; missing remote metadata must
+  /// not invalidate an already usable offline installation.
+  Future<bool> isCurrent(DunyaPackSource source) async {
+    final installed = (await installedManifests())[source.id];
+    if (installed == null) return false;
+    try {
+      final response = await http.get(Uri.parse(source.manifestUrl))
+          .timeout(const Duration(seconds: 12));
+      if (response.statusCode != 200) return true;
+      final remote = jsonDecode(utf8.decode(response.bodyBytes));
+      if (remote is! Map || remote['id'] != source.id) return true;
+      final oldVersion = installed['version']?.toString();
+      final newVersion = remote['version']?.toString();
+      if (oldVersion != null && newVersion != null) {
+        return oldVersion == newVersion;
+      }
+      final oldFiles = installed['files'];
+      final newFiles = remote['files'];
+      return jsonEncode(oldFiles) == jsonEncode(newFiles);
+    } catch (_) {
+      return true;
+    }
+  }
+
   /// Occasional Wi-Fi download, then the same offline install as a file.
   ///
   /// Reprenable : une coupure réseau laisse le fichier partiel sur
@@ -204,6 +229,10 @@ class DunyaVoicePackManager {
     DunyaPackSource source, {
     void Function(DunyaPackProgress progress)? onProgress,
   }) async {
+    if (await isCurrent(source)) {
+      onProgress?.call(const DunyaPackProgress('done', 1, 'Pack déjà installé et à jour.'));
+      return (await installedManifests())[source.id]!;
+    }
     final root = await _root();
     final target = File('${root.path}/${source.id}.download.zip');
     final client = http.Client();
