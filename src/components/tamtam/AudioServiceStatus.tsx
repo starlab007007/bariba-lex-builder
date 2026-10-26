@@ -149,8 +149,8 @@ export function AudioServicesStatusBar({ health, showAll = false }: UnifiedAudio
   
   return (
     <div className="flex flex-wrap gap-1">
-      <AudioServiceStatus status={displayHealth.stt} label="STT" compact />
-      <AudioServiceStatus status={displayHealth.tts} label="TTS" compact />
+      <AudioServiceStatus status={displayHealth.stt} label="Dictée" compact />
+      <AudioServiceStatus status={displayHealth.tts} label="Lecture" compact />
       <AudioServiceStatus status={displayHealth.translate} label="Trad" compact />
     </div>
   );
