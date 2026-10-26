@@ -130,7 +130,7 @@ export default function InstallPage() {
             <section className="rounded-[18px] border border-[#E4DFCC] bg-white p-4 space-y-3" aria-label="Télécharger FITILA Android">
               <h2 className="text-[16px] font-extrabold text-[#2B2110]">Application Android native (APK)</h2>
               <p className="text-[13px] text-[#3A3448]">
-                Téléchargez FITILA pour Android. Le traducteur ByT5 et les modèles DUNYA restent des téléchargements optionnels séparés.
+                Téléchargez FITILA pour Android. Les fonctions sans Internet peuvent être téléchargées séparément selon vos besoins.
               </p>
               {apkStatus === 'ready' && apk ? (
                 <>
