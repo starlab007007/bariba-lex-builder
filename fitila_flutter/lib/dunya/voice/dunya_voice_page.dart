@@ -335,19 +335,45 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       var acceptingPartial = true;
       final samples = await _mic.listen(
         onLevel: _onLevel,
-        onAudioSnapshot: _mode != DunyaLanguageMode.bariba || _engine == null
+        onAudioSnapshot: _mode != DunyaLanguageMode.bariba
             ? null
             : (snapshot) {
                 if (recognizingPartial || !acceptingPartial) return;
                 recognizingPartial = true;
-                unawaited(_engine!.transcribe(snapshot).then((partial) {
-                  if (mounted && acceptingPartial && _phase == _Phase.listening &&
-                      partial.trim().isNotEmpty) {
-                    setState(() => _caption = partial.trim());
+                unawaited(() async {
+                  try {
+                    String partial = '';
+                    if (_useOnlineVoice) {
+                      // Separate short-lived request: never cancel the full turn.
+                      final live = DunyaCloudVoice();
+                      try {
+                        await live.turn(
+                          samples: snapshot,
+                          language: 'bba',
+                          replyLanguage: 'bba',
+                          transcribeOnly: true,
+                          onEvent: (event) async {
+                            if (event['type'] == 'transcript') {
+                              partial = (event['text'] ?? '').toString();
+                            }
+                          },
+                        );
+                      } finally {
+                        live.cancel();
+                      }
+                    } else if (_engine != null) {
+                      partial = await _engine!.transcribe(snapshot);
+                    }
+                    if (mounted && acceptingPartial && _phase == _Phase.listening &&
+                        partial.trim().isNotEmpty) {
+                      setState(() => _caption = partial.trim());
+                    }
+                  } catch (_) {
+                    // Network delays must never block the microphone or final turn.
+                  } finally {
+                    recognizingPartial = false;
                   }
-                }).catchError((Object _) {
-                  // Temporary transcription failure does not interrupt recording.
-                }).whenComplete(() => recognizingPartial = false));
+                }());
               },
         silenceToStop: Duration(milliseconds: _mode == DunyaLanguageMode.bariba ? 900 : 700),
       );
