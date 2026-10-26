@@ -9226,33 +9226,6 @@ class _TemIaScreenState extends State<TemIaScreen> {
       ),
       child: Column(
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFDCEAE0).withValues(alpha: .70),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _fitilaSage.withValues(alpha: .28)),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.shield_outlined, color: _fitilaSage, size: 18),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '🔒 Assistant basé uniquement sur le Code Foncier (Bariba) — Loi n° 2013-01',
-                    style: TextStyle(
-                      color: _fitilaSage,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w800,
-                      height: 1.3,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
           Expanded(
             child: _messages.isEmpty
                 ? _emptyState()
@@ -9293,17 +9266,6 @@ class _TemIaScreenState extends State<TemIaScreen> {
             ),
             child: Column(
               children: [
-                Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 6,
-                  runSpacing: 2,
-                  children: [
-                    const Text('Écouter avant envoi', style: TextStyle(fontSize: 12, color: _fitilaSage)),
-                    Switch.adaptive(value: _previewBeforeSend, onChanged: (value) => setState(() => _previewBeforeSend = value)),
-                    TextButton.icon(onPressed: () => unawaited(_readText(_query.text)), icon: const Icon(Icons.headphones_rounded, size: 17), label: const Text('Aperçu')),
-                  ],
-                ),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
