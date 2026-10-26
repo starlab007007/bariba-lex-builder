@@ -135,6 +135,7 @@ jobs:
           if bash scripts/check-verified-build36-source.sh; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "native_skip=true" >> "$GITHUB_OUTPUT"
+            echo "debug_skip=true" >> "$GITHUB_OUTPUT"
             echo "Reusing completed debug checks for identical build36 app sources."
             exit 0
           fi
@@ -235,12 +236,15 @@ jobs:
           exit $status
 
       - name: Build emulator APK
+        if: steps.prevalidated.outputs.debug_skip != 'true'
         run: flutter build apk --debug --target-platform android-x64 --dart-define-from-file=.ci-dart-defines.json
 
       - name: Enable KVM
+        if: steps.prevalidated.outputs.debug_skip != 'true'
         run: sudo chmod 666 /dev/kvm
 
       - name: Exercise real Android keyboard and deployed ByT5
+        if: steps.prevalidated.outputs.debug_skip != 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -321,6 +325,7 @@ jobs:
       - name: Build release APKs (per processor)
         run: |
           set -o pipefail
+          mkdir -p build/ci-report
           exec > >(tee build/ci-report/build.txt) 2>&1
           flutter build apk --release --split-per-abi \
             --target-platform android-arm,android-arm64 \
