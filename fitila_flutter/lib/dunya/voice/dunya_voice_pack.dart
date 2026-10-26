@@ -35,19 +35,19 @@ class DunyaPackSource {
 const dunyaVoicePackSources = <DunyaPackSource>[
   DunyaPackSource(
     id: dunyaVoiceCorePackId,
-    title: 'Voix DUNYA : écoute français + baatɔnum, voix baatɔnum',
+    title: 'Écouter et parler sans Internet',
     zipUrl: '$_releaseBase/dunya-voice-core-v1.zip',
     manifestUrl: '$_releaseBase/dunya-voice-core-v1.manifest.json',
   ),
   DunyaPackSource(
     id: dunyaVoiceFrPackId,
-    title: 'Voix française de secours (si le téléphone n’en a pas)',
+    title: 'Écouter les réponses en français',
     zipUrl: '$_releaseBase/dunya-voice-fr-v1.zip',
     manifestUrl: '$_releaseBase/dunya-voice-fr-v1.manifest.json',
   ),
   DunyaPackSource(
     id: dunyaTranslationPackId,
-    title: 'ByT5 Français ↔ Baatɔnum (traduction sans Internet)',
+    title: 'Traduction français ↔ Baatɔnum sans Internet',
     zipUrl: '$_releaseBase/dunya-translate-byt5-v1.zip',
     manifestUrl: '$_releaseBase/dunya-translate-byt5-v1.manifest.json',
   ),
@@ -243,12 +243,12 @@ class DunyaVoicePackManager {
         final meta = await client.get(Uri.parse(source.manifestUrl))
             .timeout(const Duration(seconds: 20));
         if (meta.statusCode != 200) {
-          throw DunyaPackException('Le pack ByT5 vérifié n’est pas encore publié.');
+          throw DunyaPackException('Le téléchargement de la traduction n’est pas encore disponible.');
         }
         final dynamic parsed = jsonDecode(utf8.decode(meta.bodyBytes));
         if (parsed is! Map || parsed['id'] != dunyaTranslationPackId ||
             parsed['format'] != 'dunya-pack/1' || parsed['tested'] is! bool) {
-          throw DunyaPackException('Le pack ByT5 ne déclare pas son statut (test ou certifié).');
+          throw DunyaPackException('Ce téléchargement ne peut pas être vérifié.');
         }
       }
       var existing = await target.exists() ? await target.length() : 0;
@@ -405,7 +405,7 @@ Future<Map<String, dynamic>> _installPack(String zipPath, String rootPath, SendP
     final manifest = jsonDecode(utf8.decode(_readEntry(raf, manifestEntry))) as Map<String, dynamic>;
     if (manifest['format'] != 'dunya-pack/1') throw DunyaPackException('Format de pack inconnu.');
     if (manifest['id'] == dunyaTranslationPackId && manifest['tested'] is! bool) {
-      throw DunyaPackException('Pack ByT5 sans statut (test ou certifié) : refusé.');
+      throw DunyaPackException('Ce contenu n’a pas pu être vérifié.');
     }
     final id = manifest['id'].toString();
     if (!RegExp(r'^[a-z0-9-]{3,64}$').hasMatch(id)) throw DunyaPackException('Identifiant de pack invalide.');
@@ -733,7 +733,7 @@ Future<Map<String, dynamic>> _installPack(String zipPath, String rootPath, SendP
     final manifest = jsonDecode(utf8.decode(_readEntry(raf, manifestEntry))) as Map<String, dynamic>;
     if (manifest['format'] != 'dunya-pack/1') throw DunyaPackException('Format de pack inconnu.');
     if (manifest['id'] == dunyaTranslationPackId && manifest['tested'] is! bool) {
-      throw DunyaPackException('Pack ByT5 sans statut (test ou certifié) : refusé.');
+      throw DunyaPackException('Ce contenu n’a pas pu être vérifié.');
     }
     final id = manifest['id'].toString();
     if (!RegExp(r'^[a-z0-9-]{3,64}$').hasMatch(id)) throw DunyaPackException('Identifiant de pack invalide.');
