@@ -1,4 +1,8 @@
 # Le service IME est instancié par Android depuis le manifeste.
+# ONNX JNI looks up classes and constructors by name in optimized APKs.
+# https://onnxruntime.ai/docs/build/android.html
+-keep class ai.onnxruntime.** { *; }
+
 -keep class com.fitila.bariba.BaribaInputMethodService { *; }
 -keep class com.fitila.bariba.BaribaDictionary { *; }
 -keep class com.fitila.bariba.BaribaDictionary$* { *; }

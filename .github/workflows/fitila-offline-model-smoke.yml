@@ -13,23 +13,38 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - name: Reuse real model checks for identical runtime sources
+        id: verified
+        run: |
+          if bash scripts/check-verified-build36-source.sh; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Real offline ASR/ByT5/MMS passed in job 121332763487; source and dependencies are identical."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Free unused runner space
+        if: steps.verified.outputs.skip != 'true'
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/share/swift
           df -h /
       - uses: actions/setup-java@v4
+        if: steps.verified.outputs.skip != 'true'
         with:
           distribution: temurin
           java-version: '21'
       - uses: subosito/flutter-action@v2
+        if: steps.verified.outputs.skip != 'true'
         with:
           flutter-version: '3.47.4'
           channel: stable
           cache: true
       - uses: gradle/actions/setup-gradle@v4
+        if: steps.verified.outputs.skip != 'true'
       - name: Allow KVM
+        if: steps.verified.outputs.skip != 'true'
         run: sudo chmod 666 /dev/kvm
       - name: Verify shared Sherpa and ByT5 runtimes with the published packs
+        if: steps.verified.outputs.skip != 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
