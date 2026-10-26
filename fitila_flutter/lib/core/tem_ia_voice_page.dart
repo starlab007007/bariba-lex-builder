@@ -240,7 +240,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
       return;
     }
     _emptyListens = 0;
-    setState(() => _phase = _Phase.thinking);
+    setState(() { _phase = _Phase.thinking; _caption = _inputLang == 'bba' ? 'Transcription Baatɔnum en cours…' : _caption; });
     var heard = false;
     try {
       final text = frenchText ?? await _transcribe(samples!);
@@ -254,6 +254,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
         if (_session && _handsFree) unawaited(_listenTurn());
         return;
       }
+      setState(() => _caption = text.trim());
       await _answerTurn(text.trim(), turn);
     } catch (_) {
       // Échec après la capture micro (transcription/IA/réseau) : le micro a
