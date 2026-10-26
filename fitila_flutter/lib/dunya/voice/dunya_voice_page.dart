@@ -349,6 +349,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         await _runCloudVoiceTurn(samples);
       } else {
         final heard = await _engine!.transcribe(samples);
+        if (mounted) setState(() => _caption = heard.trim());
         await _runTurn(heard, spoken: true);
       }
     } catch (error) {
@@ -406,6 +407,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
             });
           } else if (type == 'transcript') {
             input = (event['text'] ?? '').toString();
+            if (mounted && turnId == _turnCounter) setState(() => _caption = input.trim());
             asrEngine = (event['engine'] ?? asrEngine).toString();
           } else if (type == 'answer') {
             answer = (event['text'] ?? '').toString();
@@ -552,7 +554,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       _turns.add(_Turn(role: 'user', text: clean));
       _turns.add(answer);
       _phase = _Phase.thinking;
-      _caption = '';
+      _caption = spoken ? clean : '';
       _words = const [];
       _activeWord = -1;
       _notice = null;
