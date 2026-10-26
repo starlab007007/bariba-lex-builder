@@ -19,11 +19,11 @@ interface ServiceStatusIndicatorProps {
 
 export const ServiceStatusIndicator = ({ compact = false }: ServiceStatusIndicatorProps) => {
   const [services, setServices] = useState<Record<string, ServiceInfo>>({
-    baribaTTS: { name: 'TTS Bariba', status: 'checking', lastCheck: null },
-    baribaSTT: { name: 'STT Bariba', status: 'checking', lastCheck: null },
-    byt5Expert: { name: 'ByT5 Expert', status: 'checking', lastCheck: null },
-    frenchTTS: { name: 'TTS Français', status: 'available', lastCheck: new Date(), message: 'FITILA / Web Speech' },
-    frenchSTT: { name: 'STT Français', status: 'available', lastCheck: new Date(), message: 'Web Speech API' },
+    baribaTTS: { name: 'Lecture Baatɔnum', status: 'checking', lastCheck: null },
+    baribaSTT: { name: 'Dictée Baatɔnum', status: 'checking', lastCheck: null },
+    byt5Expert: { name: 'Traduction bilingue', status: 'checking', lastCheck: null },
+    frenchTTS: { name: 'Lecture française', status: 'available', lastCheck: new Date(), message: 'FITILA / Web Speech' },
+    frenchSTT: { name: 'Dictée française', status: 'available', lastCheck: new Date(), message: 'Disponible' },
     simplifiedAI: { name: 'SimplifiedAI', status: 'available', lastCheck: new Date() }
   });
 
