@@ -206,11 +206,26 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
           onLevel: (level) { if (mounted && turn == _turn) setState(() => _level = level); },
         );
       } else {
+      var recognizingPartial = false;
+      var acceptingPartial = true;
       samples = await _mic.listen(
         onLevel: (level) {
           if (mounted && turn == _turn) setState(() => _level = level);
         },
+        onAudioSnapshot: _inputLang != 'bba' ? null : (snapshot) {
+          if (recognizingPartial || !acceptingPartial) return;
+          recognizingPartial = true;
+          unawaited(_transcribe(snapshot).then((partial) {
+            if (mounted && acceptingPartial && turn == _turn &&
+                _phase == _Phase.listening && partial.trim().isNotEmpty) {
+              setState(() => _caption = partial.trim());
+            }
+          }).catchError((Object _) {
+            // The final recognition will still run on the complete utterance.
+          }).whenComplete(() => recognizingPartial = false));
+        },
       );
+      acceptingPartial = false;
       }
     } catch (_) {
       // Échec dans la capture micro elle-même (permission refusée, matériel
@@ -240,7 +255,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
       return;
     }
     _emptyListens = 0;
-    setState(() { _phase = _Phase.thinking; _caption = _inputLang == 'bba' ? 'Transcription Baatɔnum en cours…' : _caption; });
+    setState(() { _phase = _Phase.thinking; _caption = _caption.isEmpty && _inputLang == 'bba' ? 'Transcription en cours…' : _caption; });
     var heard = false;
     try {
       final text = frenchText ?? await _transcribe(samples!);
