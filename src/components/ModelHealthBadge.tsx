@@ -18,7 +18,7 @@ const modelConfig = {
   'smt': { icon: BarChart3, color: 'bg-green-500/10 text-green-700 dark:text-green-400', label: '📊 SMT' },
   'simplified': { icon: Zap, color: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400', label: '🔤 SimplifiedAI' },
   'baatonum': { icon: Brain, color: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400', label: '🧠 BaatonumAI' },
-  'byt5-expert': { icon: Bot, color: 'bg-orange-500/10 text-orange-700 dark:text-orange-400', label: '🤖 ByT5' },
+  'byt5-expert': { icon: Bot, color: 'bg-orange-500/10 text-orange-700 dark:text-orange-400', label: 'Traduction' },
   'advanced': { icon: Brain, color: 'bg-violet-500/10 text-violet-700 dark:text-violet-400', label: '🚀 Advanced' },
   'ai': { icon: Cloud, color: 'bg-pink-500/10 text-pink-700 dark:text-pink-400', label: '☁️ AI' },
   'fallback': { icon: Zap, color: 'bg-gray-500/10 text-gray-700 dark:text-gray-400', label: '⚡ Fallback' },
