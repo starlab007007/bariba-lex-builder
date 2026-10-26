@@ -400,7 +400,7 @@ class _TranslatorChatState extends State<TranslatorChat> {
   // d'espace vertical pour la conversation en dessous.
   Widget _topBar() {
     return Container(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: EdgeInsets.zero,
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: SignatureTheme.hairline)),
       ),
