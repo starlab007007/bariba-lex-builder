@@ -17,6 +17,10 @@ on:
       - 'fitila_flutter/**'
       - '.github/workflows/flutter-build24-dunya-voice-apk.yml'
       - 'scripts/test-native-keyboard-translator.py'
+      - 'scripts/verify-android-onnx-abi.py'
+      - '.github/workflows/fitila-offline-model-smoke.yml'
+      - 'scripts/test-dunya-offline-models.sh'
+      - 'tests/android/dunya_offline_models_test.dart'
   workflow_dispatch:
 
 concurrency:
@@ -30,8 +34,12 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  offline-models:
+    uses: ./.github/workflows/fitila-offline-model-smoke.yml
+
   build-apk:
-    name: Android release APK 1.8.24+35
+    needs: offline-models
+    name: Android release APK 1.8.25+36
     runs-on: ubuntu-latest
     timeout-minutes: 75
     defaults:
@@ -76,7 +84,7 @@ jobs:
       - name: Verify release metadata
         run: |
           flutter --version
-          grep -q '^version: 1.8.24+35$' pubspec.yaml
+          grep -q '^version: 1.8.25+36$' pubspec.yaml
           grep -q 'sherpa_onnx' pubspec.yaml
           test -x android/gradlew
           grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
@@ -325,8 +333,9 @@ jobs:
             test -s "$src"
             unzip -t "$src" >/dev/null
             unzip -l "$src" | grep -q 'libsherpa-onnx-c-api.so'
+            python3 ../scripts/verify-android-onnx-abi.py "$src"
             "$APKSIGNER" verify "$src"
-            cp "$src" "build/final-apk/FITILA-Android-v1.8.24-build35-keyboard-translator-$kind.apk"
+            cp "$src" "build/final-apk/FITILA-Android-v1.8.25-build36-keyboard-translator-$kind.apk"
           done
           "$APKSIGNER" verify --print-certs build/final-apk/*-arm64.apk > build/final-apk/SIGNER.txt
           grep -iE "certificate (DN|SHA-256)" build/final-apk/SIGNER.txt || cat build/final-apk/SIGNER.txt
@@ -338,7 +347,7 @@ jobs:
       - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: FITILA-Android-v1.8.24-build35-keyboard-translator
+          name: FITILA-Android-v1.8.25-build36-keyboard-translator
           path: |
             fitila_flutter/build/final-apk/
             fitila_flutter/build/app/reports/tests/
@@ -366,15 +375,15 @@ jobs:
             echo "::warning::APK non publié : les secrets de signature FITILA_KEYSTORE_* sont absents (signature ci-ephemeral). Lancer scripts/setup-signing-secrets.ps1 ou .sh."
             exit 0
           fi
-          TAG="fitila-android-v1.8.24-build35-${GITHUB_RUN_NUMBER}"
+          TAG="fitila-android-v1.8.25-build36-${GITHUB_RUN_NUMBER}"
           gh release create "$TAG" \
-            build/final-apk/FITILA-Android-v1.8.24-build35-keyboard-translator-arm64.apk \
-            build/final-apk/FITILA-Android-v1.8.24-build35-keyboard-translator-armv7.apk \
+            build/final-apk/FITILA-Android-v1.8.25-build36-keyboard-translator-arm64.apk \
+            build/final-apk/FITILA-Android-v1.8.25-build36-keyboard-translator-armv7.apk \
             build/final-apk/SHA256SUMS.txt \
             build/final-apk/SIGNER.txt \
             --repo "${GITHUB_REPOSITORY}" \
             --target "${GITHUB_SHA}" \
-            --title "FITILA Android v1.8.24 build35 (${GITHUB_RUN_NUMBER})" \
+            --title "FITILA Android v1.8.25 build36 (${GITHUB_RUN_NUMBER})" \
             --notes "APK de production signé ; modèles DUNYA/ByT5 téléchargeables séparément. Traduction ByT5 non certifiée désactivée par défaut, disponible sur consentement expérimental explicite."
 
       # The repository is private: phones download APKs from fitila.bj, listed in
@@ -385,7 +394,7 @@ jobs:
         working-directory: fitila_flutter
         run: |
           if [ "$(cat build/SIGNING_MODE.txt)" = "production" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "ok=false" >> "$GITHUB_OUTPUT"; fi
-          echo "dir=v1.8.24-build35-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "dir=v1.8.25-build36-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           mkdir -p ../apk-publish && cp build/final-apk/*-arm64.apk build/final-apk/*-armv7.apk build/final-apk/SHA256SUMS.txt ../apk-publish/
 
       - name: Prepare fitila.bj APK folder

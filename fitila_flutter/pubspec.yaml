@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.8.24+35
+version: 1.8.25+36
 
 environment:
   sdk: ^3.12.2
@@ -48,11 +48,23 @@ dependencies:
   shared_preferences: ^2.3.3
   sqflite: ^2.4.2
   # DUNYA voix hors ligne : Omnilingual ASR + voix VITS via onnxruntime embarqué.
-  sherpa_onnx: ^1.13.0
+  sherpa_onnx: 1.13.4
   geolocator: ^14.0.2
   maplibre_gl: ^0.27.1
   crypto: ^3.0.6
   flutter_webrtc: ^1.6.2+hotfix.3
+
+# Sherpa 1.13.4 and the Java bridge share ORT 1.27.0, including ELF versions.
+# Pin native packages as well: the upstream 1.13.4 wrapper uses caret ranges.
+dependency_overrides:
+  sherpa_onnx_android_arm64: 1.13.4
+  sherpa_onnx_android_armeabi: 1.13.4
+  sherpa_onnx_android_x86: 1.13.4
+  sherpa_onnx_android_x86_64: 1.13.4
+  sherpa_onnx_macos: 1.13.4
+  sherpa_onnx_linux: 1.13.4
+  sherpa_onnx_windows: 1.13.4
+  sherpa_onnx_ios: 1.13.4
 
 dev_dependencies:
   flutter_test:

@@ -5,6 +5,7 @@ import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
 import java.io.ByteArrayOutputStream
@@ -108,6 +109,7 @@ class DunyaByt5Channel(messenger: BinaryMessenger) {
                         decoder = newDecoder
                         ui.post { result.success(mapOf("backend" to "onnxruntime-mobile")) }
                     } catch (t: Throwable) {
+                        Log.e("FitilaByt5", "Installed model initialization failed", t)
                         ui.post { result.error("byt5_load", t.message, null) }
                     }
                 }
