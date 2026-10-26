@@ -9177,7 +9177,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
                     Wrap(spacing: 5, runSpacing: 3, children: [
                       IconButton(tooltip: _reading ? 'Arrêter la lecture' : 'Écouter la réponse', icon: Icon(_reading ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded, color: _fitilaSage), onPressed: () => unawaited(_readText(message.text, bariba: !isTemIaGreetingOnly(message.text)))),
                       TextButton.icon(onPressed: () => unawaited(Clipboard.setData(ClipboardData(text: message.text))), icon: const Icon(Icons.copy_rounded, size: 17), label: const Text('Copier')),
-                      PopupMenuButton<double>(tooltip: 'Vitesse de lecture', initialValue: _readSpeed, onSelected: (speed) => setState(() => _readSpeed = speed), itemBuilder: (_) => [0.75, 1.0, 1.25, 1.5].map((speed) => PopupMenuItem(value: speed, child: Text('${speed}×'))).toList(), child: Chip(label: Text('${_readSpeed}×'), avatar: const Icon(Icons.speed_rounded, size: 17))),
+                      PopupMenuButton<double>(tooltip: 'Vitesse de lecture', initialValue: _readSpeed, onSelected: (speed) => setState(() => _readSpeed = speed), itemBuilder: (_) => [0.75, 1.0, 1.25, 1.5].map((speed) => PopupMenuItem(value: speed, child: Text('$speed×'))).toList(), child: Chip(label: Text('$_readSpeed×'), avatar: const Icon(Icons.speed_rounded, size: 17))),
                     ]),
                   ],
                   if (!mine && message.sources.isNotEmpty) ...[
