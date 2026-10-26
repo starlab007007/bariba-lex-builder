@@ -331,8 +331,27 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         await _startEngine();
         await DunyaByt5.instance.activateIfInstalled(userRequested: _mode == DunyaLanguageMode.bariba);
       }
-      final samples = await _mic.listen(onLevel: _onLevel,
-        silenceToStop: Duration(milliseconds: _mode == DunyaLanguageMode.bariba ? 900 : 700));
+      var recognizingPartial = false;
+      var acceptingPartial = true;
+      final samples = await _mic.listen(
+        onLevel: _onLevel,
+        onAudioSnapshot: _mode != DunyaLanguageMode.bariba || _engine == null
+            ? null
+            : (snapshot) {
+                if (recognizingPartial || !acceptingPartial) return;
+                recognizingPartial = true;
+                unawaited(_engine!.transcribe(snapshot).then((partial) {
+                  if (mounted && acceptingPartial && _phase == _Phase.listening &&
+                      partial.trim().isNotEmpty) {
+                    setState(() => _caption = partial.trim());
+                  }
+                }).catchError((Object _) {
+                  // Temporary transcription failure does not interrupt recording.
+                }).whenComplete(() => recognizingPartial = false));
+              },
+        silenceToStop: Duration(milliseconds: _mode == DunyaLanguageMode.bariba ? 900 : 700),
+      );
+      acceptingPartial = false;
       if (!mounted || !_session) return;
       if (samples == null) {
         _emptyListens++;
