@@ -1910,12 +1910,18 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 subtitle: _packInstalled(source) ? (source.id == dunyaTranslationPackId
                     ? (_settings.experimentalTranslation ? 'Mode test activé · à vérifier' : 'Installé · mode test désactivé') : 'Prêt à utiliser')
                     : source.id == dunyaTranslationPackId && !_byt5Published
-                        ? 'Bientôt disponible'
+                        ? 'Archive distante non vérifiée · import possible'
                         : 'Wi-Fi conseillé',
                 trailing: _packInstalled(source)
                     ? null
                     : source.id == dunyaTranslationPackId && !_byt5Published
-                        ? const Text('Bientôt', style: TextStyle(fontSize: 11))
+                        ? TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              unawaited(widget.onInstallVoiceFile());
+                            },
+                            child: const Text('Importer'),
+                          )
                         : TextButton(
                         onPressed: () {
                           Navigator.of(context).pop();
