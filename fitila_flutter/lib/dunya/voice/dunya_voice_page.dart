@@ -952,32 +952,40 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         await _startEngine();
       });
 
+  /// Download/installation without a blocking dialog: users may keep using
+  /// FITILA while the pack manager streams to its resumable .download.zip.
+  /// This remains an in-process transfer; it is not an Android foreground
+  /// service and Android may suspend it if the application is terminated.
   Future<void> _runJob(String title, Future<void> Function(void Function(double?, String) progress) job) async {
     if (!mounted) return;
-    final status = ValueNotifier<(double?, String)>((null, title));
-    final navigator = Navigator.of(context);
-    unawaited(showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => _ProgressDialog(status: status),
-    ));
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    void report(String label, {bool done = false}) {
+      if (messenger == null) return;
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(SnackBar(
+        duration: Duration(seconds: done ? 5 : 10),
+        content: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
+      ));
+    }
+    report('$title Vous pouvez continuer à utiliser FITILA.');
+    var lastBucket = -1;
     try {
-      await job((f, label) => status.value = (f, label));
-      // Refresh the native voice and translation engines only after successful
-      // installation; packs are optional and independently installable.
-      await _startEngine();
-      navigator.pop();
-      _toast('Installé et vérifié.');
+      await job((fraction, label) {
+        final bucket = fraction == null ? -1 : (fraction * 10).floor().clamp(0, 10);
+        if (bucket != lastBucket) {
+          lastBucket = bucket;
+          report(fraction == null ? '$title $label' : '$title ${(fraction * 100).round()} % — $label');
+        }
+      });
+      if (mounted) await _startEngine();
+      report('Pack installé et vérifié.', done: true);
     } catch (error) {
-      navigator.pop();
-      // Never expose stack traces, HTTP status or model implementation details.
-      _toast(error is DunyaPackException
-          ? 'Téléchargement indisponible. Vérifiez votre connexion ou réessayez plus tard.'
-          : error is DunyaBrainException
-              ? 'Cette option ne peut pas être installée sur ce téléphone pour le moment.'
-              : 'Une difficulté est survenue. Réessayez avec le Wi-Fi.');
+      report(error is DunyaPackException
+        ? '$error — Relancez pour reprendre le téléchargement.'
+        : error is DunyaBrainException
+          ? 'Ce pack ne peut pas être installé sur cet appareil.'
+          : 'Téléchargement interrompu. Réessayez pour reprendre.', done: true);
     } finally {
-      status.dispose();
       await _brain.refreshState();
       if (mounted) setState(() {});
     }
