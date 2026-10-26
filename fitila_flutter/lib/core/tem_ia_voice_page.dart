@@ -666,6 +666,8 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
 
   /// Le texte de la réponse : surligné mot par mot au fil de la lecture
   /// audio pendant `speaking` (effet « karaoké »), texte simple sinon.
+  // Kept for future synchronized transcript rendering.
+  // ignore: unused_element
   Widget _captionWidget() {
     if (_phase != _Phase.speaking || _words.isEmpty) {
       return Text(
