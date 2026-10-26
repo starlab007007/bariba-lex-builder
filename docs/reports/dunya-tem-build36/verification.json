@@ -1,0 +1,134 @@
+{
+  "date": "2026-10-26",
+  "timezone": "Africa/Lagos",
+  "app_version": "1.8.25+36",
+  "code_sha": "41382e61229abb3a9ad6a06137290f7e27bcf0ae",
+  "french_history": {
+    "before_http_status": 503,
+    "after_http_status": 200,
+    "after_client_seconds": 8.2,
+    "after_server_ms": 5339
+  },
+  "synthetic_voice_smoke": {
+    "previous_server_ms": 33829,
+    "current_server_ms": 19371,
+    "current_client_seconds": 23.68,
+    "server_reduction_percent": 42.7,
+    "sample_count": 1,
+    "linguistic_evaluation": false
+  },
+  "local_asr": {
+    "scope": "local ONNX pack functional check, not Android physical certification",
+    "model": "published Omnilingual INT8",
+    "french_fixture": {
+      "nonempty_transcript": true,
+      "inference_seconds": 0.573
+    },
+    "baatonum_local_check": {
+      "sample_count": 3,
+      "samples": [
+        {
+          "nonempty_transcript": true,
+          "inference_seconds": 0.395,
+          "reference_words": 5,
+          "word_errors": 4,
+          "reference_chars": 21,
+          "character_errors": 6
+        },
+        {
+          "nonempty_transcript": true,
+          "inference_seconds": 0.614,
+          "reference_words": 5,
+          "word_errors": 3,
+          "reference_chars": 30,
+          "character_errors": 4
+        },
+        {
+          "nonempty_transcript": true,
+          "inference_seconds": 0.491,
+          "reference_words": 8,
+          "word_errors": 6,
+          "reference_chars": 31,
+          "character_errors": 6
+        }
+      ],
+      "wer": 0.7222,
+      "cer": 0.1951,
+      "independent_benchmark": false
+    },
+    "network_requests_during_local_check": 0
+  },
+  "local_tts": {
+    "scope": "local published ONNX TTS smoke, synthetic phrase",
+    "load_seconds": 1.798,
+    "inference_seconds": 0.172,
+    "samples": 10752,
+    "sample_rate": 16000,
+    "nonempty_audio": true
+  },
+  "tem": {
+    "articles": 207,
+    "web_flutter_corpus_identical": true,
+    "explicit_article_lookup": "complete article and single source",
+    "web_ui_article14_verified": true,
+    "corpus_sha256": "bd70da97102045d1d4a52167252de88d97d17ce1e1608fbe17659803e2da8f05"
+  },
+  "android_offline_integration": {
+    "first_run": 40245390945,
+    "first_result": "test orchestration failed: stdout readiness marker was buffered; no model conclusion",
+    "rerun": 40246209270,
+    "result": "pending",
+    "rerun_result": "ASR succeeded with network off; ByT5 native load failed",
+    "diagnostic_run": 40246842167,
+    "diagnostic_result": "native initialization failed: OrtSession$SessionOptions"
+  },
+  "previous_public_apk": {
+    "release": {
+      "version": "v1.8.24-build35-238",
+      "signing": "production",
+      "published_at": "2026-10-25T23:38:32Z",
+      "arm64": "/dunya-packs/android/v1.8.24-build35-238/FITILA-Android-v1.8.24-build35-keyboard-translator-arm64.apk",
+      "arm64_size": 100246455,
+      "armv7": "/dunya-packs/android/v1.8.24-build35-238/FITILA-Android-v1.8.24-build35-keyboard-translator-armv7.apk"
+    },
+    "checks": {
+      "arm64": {
+        "url": "https://fitila.bj/dunya-packs/android/v1.8.24-build35-238/FITILA-Android-v1.8.24-build35-keyboard-translator-arm64.apk",
+        "http": 200,
+        "bytes": 100246455,
+        "range_status": 206,
+        "zip_header": "504b0304"
+      },
+      "armv7": {
+        "url": "https://fitila.bj/dunya-packs/android/v1.8.24-build35-238/FITILA-Android-v1.8.24-build35-keyboard-translator-armv7.apk",
+        "http": 200,
+        "bytes": 58891749,
+        "range_status": 206,
+        "zip_header": "504b0304"
+      },
+      "sha256sums": "db00a8b12eb515c5db5ff3d9e951d8267aafc07c78bcedc1655c2ede56698c64  FITILA-Android-v1.8.24-build35-keyboard-translator-arm64.apk\n3948ed489f5b93d995b6fd8872fd9e5442ad94d138aa0b51ed00471acefd9a49  FITILA-Android-v1.8.24-build35-keyboard-translator-armv7.apk\n"
+    }
+  },
+  "public_apk": "pending",
+  "previous_android_pipeline": {
+    "run_id": 40244433332,
+    "conclusion": "success",
+    "flutter_tests_passed": 297,
+    "static_analysis": "success",
+    "native_regression": "reused from 40243175272 for identical Android tree and pubspec",
+    "real_keyboard_emulator": "success",
+    "signature_sha256": "931f901a227199fe867845b2ededf122fe858ffc2c82900f82675e4a541a4b67",
+    "vps_sha256_verification": "both APKs OK"
+  },
+  "android_pipeline": "pending",
+  "native_abi": {
+    "previous_core_export": "VERS_1.28.2",
+    "previous_jni_required": "VERS_1.22.0",
+    "aligned_core_and_jni": "VERS_1.27.0",
+    "sherpa_wrapper_and_platform_packages": "1.13.4 pinned",
+    "java_ort": "1.27.0",
+    "arm64_binary_contract_check": "passed",
+    "old_apk_contract_reproduction": "correctly rejected",
+    "all_architectures_apk_check": "pending"
+  }
+}
