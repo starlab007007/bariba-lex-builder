@@ -8789,6 +8789,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
   double _readSpeed = 1.0;
   bool _previewBeforeSend = true;
   bool _reading = false;
+  StreamSubscription<void>? _readerCompleted;
 
   Future<void> _readText(String text, {bool bariba = true}) async {
     if (text.trim().isEmpty) return;
@@ -8809,17 +8810,21 @@ class _TemIaScreenState extends State<TemIaScreen> {
         await _reader.play(audio.DeviceFileSource(path));
       }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lecture indisponible. Vérifiez le réseau et les packs vocaux.')),
-      );
-    } finally {
-      if (mounted) setState(() => _reading = false);
+      if (mounted) {
+        setState(() => _reading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lecture indisponible. Vérifiez le réseau et les packs vocaux.')),
+        );
+      }
     }
   }
 
   @override
   void initState() {
     super.initState();
+    _readerCompleted = _reader.onPlayerComplete.listen((_) {
+      if (mounted) setState(() => _reading = false);
+    });
     unawaited(() async {
       try {
         final prefs = await SharedPreferences.getInstance();
@@ -8855,6 +8860,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
   void dispose() {
     _query.dispose();
     _voiceMedia.dispose();
+    unawaited(_readerCompleted?.cancel());
     unawaited(_reader.dispose());
     super.dispose();
   }
