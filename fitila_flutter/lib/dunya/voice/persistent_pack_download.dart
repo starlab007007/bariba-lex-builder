@@ -1,10 +1,10 @@
-/// System-managed downloads into public Downloads/FITILA.
+// System-managed downloads into public Downloads/FITILA.
 ///
-/// Android DownloadManager continues transfers independently of the Flutter
-/// activity. Public files survive ordinary app uninstallation, but do not
-/// constitute a hidden app cache: users can delete them and FITILA must
-/// explicitly reimport and validate them. A new install cannot assume access
-/// to prior app-private metadata.
+// Android DownloadManager continues transfers independently of the Flutter
+// activity. Public files survive ordinary app uninstallation, but do not
+// constitute a hidden app cache: users can delete them and FITILA must
+// explicitly reimport and validate them. A new install cannot assume access
+// to prior app-private metadata.
 import 'package:flutter/services.dart';
 
 class PersistentPackDownload {
