@@ -9148,7 +9148,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
                         : TweenAnimationBuilder<int>(
                             key: ValueKey(message.text),
                             tween: IntTween(begin: 0, end: message.text.length),
-                            duration: Duration(milliseconds: (message.text.length * 12).clamp(320, 2800)),
+                            duration: Duration(milliseconds: (message.text.length * 12).clamp(320, 2800).toInt()),
                             builder: (context, count, _) => SelectableText(
                               '${message.text.substring(0, count)}${count < message.text.length ? '▍' : ''}',
                               style: const TextStyle(color: _fitilaInkSoft, height: 1.55, fontSize: 15.5),
