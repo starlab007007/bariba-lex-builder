@@ -34,6 +34,7 @@ import 'dunya_shared_speech.dart';
 import 'dunya_speech_engine.dart';
 import 'dunya_voice_brain.dart';
 import 'dunya_voice_pack.dart';
+import 'persistent_pack_download.dart';
 import 'dunya_voice_phrases.dart';
 
 enum _Phase { preparing, idle, listening, thinking, speaking }
@@ -921,6 +922,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         paths: _paths,
         onInstallVoiceFile: _installVoiceFile,
         onDownloadVoice: _downloadVoice,
+        onPersistentDownload: _queuePersistentPack,
         onClear: _newConversation,
       ),
     );
@@ -945,6 +947,16 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       await _packs.installFromFile(path, deleteSource: isCacheCopy, onProgress: (p) => progress(p.fraction, p.detail));
       await _startEngine();
     });
+  }
+
+  Future<void> _queuePersistentPack(DunyaPackSource source) async {
+    try {
+      final filename = Uri.parse(source.zipUrl).pathSegments.last;
+      await PersistentPackDownload.enqueue(url: source.zipUrl, filename: filename);
+      _toast('Téléchargement lancé dans Android. Vous pouvez fermer FITILA. Une fois terminé, utilisez « Installer un fichier téléchargé ».');
+    } catch (_) {
+      _toast('Impossible de démarrer le téléchargement Android. Vérifiez la connexion et les autorisations.');
+    }
   }
 
   Future<void> _downloadVoice(DunyaPackSource source) => _runJob('Téléchargement…', (progress) async {
@@ -1701,12 +1713,14 @@ class _SettingsSheet extends StatefulWidget {
     required this.paths,
     required this.onInstallVoiceFile,
     required this.onDownloadVoice,
+    required this.onPersistentDownload,
     required this.onClear,
   });
 
   final DunyaVoicePaths paths;
   final Future<void> Function() onInstallVoiceFile;
   final Future<void> Function(DunyaPackSource source) onDownloadVoice;
+  final Future<void> Function(DunyaPackSource source) onPersistentDownload;
   final Future<void> Function() onClear;
 
   @override
@@ -1930,6 +1944,16 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                         child: const Text('Télécharger'),
                       ),
               ),
+            for (final source in dunyaVoicePackSources)
+              if (!_packInstalled(source) && (source.id != dunyaTranslationPackId || _byt5Published))
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    unawaited(widget.onPersistentDownload(source));
+                  },
+                  icon: const Icon(Icons.download_for_offline_outlined),
+                  label: Text('Arrière-plan · ${source.title}', maxLines: 2, overflow: TextOverflow.ellipsis),
+                ),
             OutlinedButton.icon(
               onPressed: () {
                 Navigator.of(context).pop();
