@@ -1251,8 +1251,6 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       return Text(
         _caption,
         textAlign: TextAlign.center,
-        maxLines: 5,
-        overflow: TextOverflow.ellipsis,
         style: const TextStyle(color: Color(0xFF192B24), fontSize: 21, height: 1.3, fontWeight: FontWeight.w600),
       );
     }
@@ -1286,7 +1284,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     final lastAssistant = assistants.isEmpty ? null : assistants.last;
     return Column(
       children: [
-        const Spacer(),
+        const SizedBox(height: 10),
         Semantics(
           button: true,
           label: _phaseLabel,
@@ -1295,13 +1293,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
             child: AnimatedBuilder(
               animation: _orb,
               builder: (_, _) => CustomPaint(
-                size: const Size(240, 240),
+                size: const Size(156, 156),
                 painter: _OrbPainter(t: _orb.value, phase: _phase, level: _level),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Text(
@@ -1314,10 +1312,10 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
           const SizedBox(height: 14),
           _pill(label: 'Réécouter', icon: Icons.volume_up_rounded, onTap: () => _replay(lastAssistant)),
         ],
-        const Spacer(),
+        const SizedBox(height: 14),
         if (_settings.subtitles && (_caption.isNotEmpty || (_phase == _Phase.thinking && lastUser.isNotEmpty)))
           Flexible(
-            flex: 2,
+            flex: 1,
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(18, 0, 18, 14),
               child: Container(
@@ -1337,8 +1335,6 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                   Text(
                     '« $lastUser »',
                     textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: Color(0xFF495951), fontSize: 17),
                   ),
                 if (_caption.isNotEmpty)
@@ -1351,8 +1347,6 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                   Text(
                     _subCaption!,
                     textAlign: TextAlign.center,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: Color(0xFF495951), fontSize: 16),
                   ),
                 ],
