@@ -447,7 +447,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
             }
           } else if (type == 'notice') {
             fallbackCode = (event['code'] ?? 'fallback').toString();
-            if (mounted) setState(() => _notice = 'Service de secours : $fallbackCode');
+            if (mounted) setState(() => _notice = 'Une autre méthode a été utilisée pour terminer votre demande.');
           }
         },
       );
@@ -460,13 +460,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         _turns.add(_Turn(role: 'user', text: input.isNotEmpty ? input : 'Vocal'));
         _turns.add(_Turn(role: 'assistant', text: answer)..subtitle = subtitle);
         _status = null;
-        _notice = [
-          'DUNYA en ligne',
-          if (samples != null) 'ASR : $asrEngine',
-          'IA : $brainEngine',
-          if (gotAudio) 'Voix : $ttsEngine',
-          if (fallbackCode.isNotEmpty) 'Repli : $fallbackCode',
-        ].join(' · ');
+        _notice = null;
       });
       await _quietly(() async {
         await _store.appendMessage(
