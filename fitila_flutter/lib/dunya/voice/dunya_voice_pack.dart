@@ -238,11 +238,15 @@ class DunyaVoicePackManager {
         _deleteQuietly(target);
         throw DunyaPackException('Reprise impossible : relancez, le téléchargement repartira de zéro.');
       }
-      // A server or proxy may return 206 with the wrong starting offset.
-      // Reject it instead of silently appending incompatible bytes.
+      // Reject a partial HTTP response starting at the wrong byte.
       if (existing > 0 && response.statusCode == 206) {
         final contentRange = response.headers['content-range'] ?? '';
-        final match = RegExp(r'^bytes (\\d+)-(\\d+)/(\\d+|\\*)
+        final requestedOffset = existing.toString();
+        if (!contentRange.startsWith('bytes $requestedOffset-')) {
+          throw DunyaPackException('Point de reprise invalide. Fichier partiel conservé.');
+        }
+      }
+      final resumed = existing > 0 && response.statusCode == 206;
       if (existing > 0 && response.statusCode == 200) {
         // Le serveur ne gère pas les requêtes partielles : on repart de zéro
         // plutôt que de corrompre le fichier déjà sur l'appareil.
