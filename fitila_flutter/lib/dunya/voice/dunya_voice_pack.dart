@@ -238,6 +238,323 @@ class DunyaVoicePackManager {
         _deleteQuietly(target);
         throw DunyaPackException('Reprise impossible : relancez, le téléchargement repartira de zéro.');
       }
+      // A server or proxy may return 206 with the wrong starting offset.
+      // Reject it instead of silently appending incompatible bytes.
+      if (existing > 0 && response.statusCode == 206) {
+        final contentRange = response.headers['content-range'] ?? '';
+        final match = RegExp(r'^bytes (\\d+)-(\\d+)/(\\d+|\\*)
+      if (existing > 0 && response.statusCode == 200) {
+        // Le serveur ne gère pas les requêtes partielles : on repart de zéro
+        // plutôt que de corrompre le fichier déjà sur l'appareil.
+        existing = 0;
+      } else if (response.statusCode != 200 && response.statusCode != 206) {
+        throw DunyaPackException('Téléchargement impossible (code ${response.statusCode}).');
+      }
+      final type = response.headers['content-type'] ?? '';
+      if (type.contains('text/html')) {
+        throw DunyaPackException('Le serveur a renvoyé une page au lieu du pack. Réessayez plus tard.');
+      }
+      final remaining = response.contentLength;
+      final total = remaining == null ? null : existing + remaining;
+      final sink = target.openWrite(mode: resumed ? FileMode.append : FileMode.write);
+      var received = existing;
+      var lastReport = existing;
+      try {
+        await for (final chunk in response.stream) {
+          sink.add(chunk);
+          received += chunk.length;
+          if (received - lastReport > 2 * 1024 * 1024) {
+            lastReport = received;
+            onProgress?.call(DunyaPackProgress('download', total == null || total == 0 ? null : received / total, _mb(received)));
+          }
+        }
+      } finally {
+        await sink.close();
+      }
+      if (total != null && total > 0 && received != total) {
+        // Coupure en cours de flux : le fichier partiel reste sur l'appareil
+        // (voir `existing` ci-dessus), relancer reprend où l'on s'est arrêté.
+        throw DunyaPackException('Téléchargement incomplet (${_mb(received)} sur ${_mb(total)}). Relancez : il reprendra où il s’est arrêté, de préférence en Wi-Fi.');
+      }
+      return await installFromFile(target.path, onProgress: onProgress, deleteSource: true);
+    } on DunyaPackException {
+      rethrow;
+    } on SocketException {
+      throw DunyaPackException('Connexion coupée. Relancez quand le réseau revient : le téléchargement reprendra où il s’est arrêté, de préférence en Wi-Fi.');
+    } catch (error) {
+      throw DunyaPackException('Téléchargement interrompu ($error). Relancez : il reprendra où il s’est arrêté.');
+    } finally {
+      client.close();
+    }
+  }
+
+  void _deleteQuietly(File file) {
+    try {
+      if (file.existsSync()) file.deleteSync();
+    } catch (_) {}
+  }
+
+  /// Install a pack ZIP already on the phone. Fully offline.
+  Future<Map<String, dynamic>> installFromFile(
+    String zipPath, {
+    void Function(DunyaPackProgress progress)? onProgress,
+    bool deleteSource = false,
+  }) async {
+    final root = await _root();
+    onProgress?.call(const DunyaPackProgress('extract', null, 'Ouverture du pack…'));
+    final port = ReceivePort();
+    final sub = port.listen((message) {
+      if (message is List && message.length == 3) {
+        onProgress?.call(DunyaPackProgress(message[0] as String, (message[1] as num?)?.toDouble(), message[2] as String));
+      }
+    });
+    try {
+      final manifest = await _runInstall(zipPath, root.path, port.sendPort);
+      if (deleteSource) {
+        try {
+          File(zipPath).deleteSync();
+        } catch (_) {}
+      }
+      onProgress?.call(const DunyaPackProgress('done', 1, 'Pack installé.'));
+      return manifest;
+    } on DunyaPackException {
+      rethrow;
+    } catch (error) {
+      // Fichier corrompu (ex. checksum invalide) : un fichier géré par
+      // `download` est supprimé pour repartir d'un téléchargement complet au
+      // prochain essai ; un fichier fourni par l'utilisateur est conservé.
+      if (deleteSource) {
+        try {
+          File(zipPath).deleteSync();
+        } catch (_) {}
+      }
+      throw DunyaPackException('Pack illisible : $error');
+    } finally {
+      await sub.cancel();
+      port.close();
+    }
+  }
+
+  Future<void> remove(String packId) async {
+    final root = await _root();
+    final dir = Directory('${root.path}/$packId');
+    if (dir.existsSync()) dir.deleteSync(recursive: true);
+  }
+}
+
+Future<Map<String, dynamic>> _runInstall(String zipPath, String rootPath, SendPort progress) =>
+    Isolate.run(() => _installPack(zipPath, rootPath, progress));
+
+String _mb(int bytes) => '${(bytes / (1024 * 1024)).toStringAsFixed(0)} Mo';
+
+// ---------------------------------------------------------------------------
+// Isolate side: minimal ZIP reader (stored entries) + SHA-256 verification.
+// ---------------------------------------------------------------------------
+
+class _ZipEntry {
+  _ZipEntry(this.name, this.method, this.compressedSize, this.size, this.localHeaderOffset);
+
+  final String name;
+  final int method;
+  final int compressedSize;
+  final int size;
+  final int localHeaderOffset;
+}
+
+Future<Map<String, dynamic>> _installPack(String zipPath, String rootPath, SendPort progress) async {
+  final file = File(zipPath);
+  if (!file.existsSync()) throw DunyaPackException('Fichier introuvable.');
+  final raf = file.openSync();
+  try {
+    final entries = _readStoredZipDirectory(raf);
+    final manifestEntry = entries.where((e) => e.name == 'manifest.json').firstOrNull;
+    if (manifestEntry == null) throw DunyaPackException('Ce fichier n’est pas un pack DUNYA (manifest absent).');
+    final manifest = jsonDecode(utf8.decode(_readEntry(raf, manifestEntry))) as Map<String, dynamic>;
+    if (manifest['format'] != 'dunya-pack/1') throw DunyaPackException('Format de pack inconnu.');
+    if (manifest['id'] == dunyaTranslationPackId && manifest['tested'] is! bool) {
+      throw DunyaPackException('Pack ByT5 sans statut (test ou certifié) : refusé.');
+    }
+    final id = manifest['id'].toString();
+    if (!RegExp(r'^[a-z0-9-]{3,64}$').hasMatch(id)) throw DunyaPackException('Identifiant de pack invalide.');
+    final files = (manifest['files'] as List).cast<Map<String, dynamic>>();
+    final total = files.fold<int>(0, (sum, f) => sum + (f['size'] as num).toInt());
+
+    final partial = Directory('$rootPath/$id.partial');
+    if (partial.existsSync()) partial.deleteSync(recursive: true);
+    partial.createSync(recursive: true);
+
+    var done = 0;
+    for (final f in files) {
+      final rel = f['path'].toString();
+      if (rel.startsWith('/') || rel.contains('..') || rel.contains('\\')) {
+        throw DunyaPackException('Chemin interdit dans le pack : $rel');
+      }
+      final entry = entries.where((e) => e.name == rel).firstOrNull;
+      if (entry == null) throw DunyaPackException('Fichier manquant dans le pack : $rel');
+      if (entry.method != 0) throw DunyaPackException('Le pack doit être un ZIP non compressé.');
+      final out = File('${partial.path}/$rel');
+      out.parent.createSync(recursive: true);
+      final digest = await _copyEntryAndHash(raf, entry, out, (copied) {
+        progress.send(['extract', total == 0 ? null : (done + copied) / total, rel]);
+      });
+      if (digest != f['sha256']) {
+        partial.deleteSync(recursive: true);
+        throw DunyaPackException('Fichier altéré : $rel. Recopiez le pack et réessayez.');
+      }
+      done += entry.size;
+      progress.send(['verify', total == 0 ? null : done / total, rel]);
+    }
+    File('${partial.path}/manifest.json').writeAsStringSync(jsonEncode(manifest));
+
+    final finalDir = Directory('$rootPath/$id');
+    if (finalDir.existsSync()) finalDir.deleteSync(recursive: true);
+    partial.renameSync(finalDir.path);
+    return manifest;
+  } finally {
+    raf.closeSync();
+  }
+}
+
+/// Reads the central directory of a ZIP (ZIP64 aware).
+List<_ZipEntry> _readStoredZipDirectory(RandomAccessFile raf) {
+  final length = raf.lengthSync();
+  final tailSize = length < 65557 ? length : 65557;
+  raf.setPositionSync(length - tailSize);
+  final tail = raf.readSync(tailSize);
+  var eocd = -1;
+  for (var i = tail.length - 22; i >= 0; i--) {
+    if (tail[i] == 0x50 && tail[i + 1] == 0x4b && tail[i + 2] == 0x05 && tail[i + 3] == 0x06) {
+      eocd = i;
+      break;
+    }
+  }
+  if (eocd < 0) throw DunyaPackException('Fichier ZIP invalide.');
+  final bd = ByteData.sublistView(tail);
+  var count = bd.getUint16(eocd + 10, Endian.little);
+  var cdSize = bd.getUint32(eocd + 12, Endian.little);
+  var cdOffset = bd.getUint32(eocd + 16, Endian.little);
+
+  if (count == 0xFFFF || cdSize == 0xFFFFFFFF || cdOffset == 0xFFFFFFFF) {
+    final locator = eocd - 20;
+    if (locator < 0 || bd.getUint32(locator, Endian.little) != 0x07064b50) {
+      throw DunyaPackException('ZIP64 invalide.');
+    }
+    final zip64Offset = bd.getUint64(locator + 8, Endian.little);
+    raf.setPositionSync(zip64Offset);
+    final rec = ByteData.sublistView(raf.readSync(56));
+    if (rec.getUint32(0, Endian.little) != 0x06064b50) throw DunyaPackException('ZIP64 invalide.');
+    count = rec.getUint64(32, Endian.little);
+    cdSize = rec.getUint64(40, Endian.little);
+    cdOffset = rec.getUint64(48, Endian.little);
+  }
+
+  raf.setPositionSync(cdOffset);
+  final cd = raf.readSync(cdSize);
+  final c = ByteData.sublistView(cd);
+  final entries = <_ZipEntry>[];
+  var p = 0;
+  for (var n = 0; n < count; n++) {
+    if (c.getUint32(p, Endian.little) != 0x02014b50) throw DunyaPackException('Répertoire ZIP invalide.');
+    final method = c.getUint16(p + 10, Endian.little);
+    var compressed = c.getUint32(p + 20, Endian.little);
+    var size = c.getUint32(p + 24, Endian.little);
+    final nameLen = c.getUint16(p + 28, Endian.little);
+    final extraLen = c.getUint16(p + 30, Endian.little);
+    final commentLen = c.getUint16(p + 32, Endian.little);
+    var offset = c.getUint32(p + 42, Endian.little);
+    final name = utf8.decode(cd.sublist(p + 46, p + 46 + nameLen));
+    var e = p + 46 + nameLen;
+    final extraEnd = e + extraLen;
+    while (e + 4 <= extraEnd) {
+      final id = c.getUint16(e, Endian.little);
+      final len = c.getUint16(e + 2, Endian.little);
+      if (id == 0x0001) {
+        var q = e + 4;
+        if (size == 0xFFFFFFFF) {
+          size = c.getUint64(q, Endian.little);
+          q += 8;
+        }
+        if (compressed == 0xFFFFFFFF) {
+          compressed = c.getUint64(q, Endian.little);
+          q += 8;
+        }
+        if (offset == 0xFFFFFFFF) {
+          offset = c.getUint64(q, Endian.little);
+        }
+      }
+      e += 4 + len;
+    }
+    entries.add(_ZipEntry(name, method, compressed, size, offset));
+    p = extraEnd + commentLen;
+  }
+  return entries;
+}
+
+int _dataStart(RandomAccessFile raf, _ZipEntry entry) {
+  raf.setPositionSync(entry.localHeaderOffset);
+  final header = ByteData.sublistView(raf.readSync(30));
+  if (header.getUint32(0, Endian.little) != 0x04034b50) throw DunyaPackException('Entrée ZIP invalide.');
+  return entry.localHeaderOffset + 30 + header.getUint16(26, Endian.little) + header.getUint16(28, Endian.little);
+}
+
+Uint8List _readEntry(RandomAccessFile raf, _ZipEntry entry) {
+  if (entry.method != 0) throw DunyaPackException('Le pack doit être un ZIP non compressé.');
+  raf.setPositionSync(_dataStart(raf, entry));
+  return raf.readSync(entry.size);
+}
+
+Future<String> _copyEntryAndHash(
+  RandomAccessFile raf,
+  _ZipEntry entry,
+  File out,
+  void Function(int copied) onCopied,
+) async {
+  final start = _dataStart(raf, entry);
+  final digestSink = _DigestSink();
+  final hasher = sha256.startChunkedConversion(digestSink);
+  final writer = out.openSync(mode: FileMode.write);
+  try {
+    const chunk = 1 << 20;
+    var copied = 0;
+    raf.setPositionSync(start);
+    while (copied < entry.size) {
+      final want = entry.size - copied < chunk ? entry.size - copied : chunk;
+      final bytes = raf.readSync(want);
+      if (bytes.isEmpty) throw DunyaPackException('Pack tronqué : ${entry.name}');
+      writer.writeFromSync(bytes);
+      hasher.add(bytes);
+      copied += bytes.length;
+      if (copied % (8 * chunk) < chunk) onCopied(copied);
+    }
+  } finally {
+    writer.closeSync();
+  }
+  hasher.close();
+  return digestSink.value.toString();
+}
+
+class _DigestSink implements Sink<Digest> {
+  late Digest value;
+
+  @override
+  void add(Digest data) => value = data;
+
+  @override
+  void close() {}
+}
+
+/// Installs a pack synchronously in the current isolate (tests, tooling).
+Future<Map<String, dynamic>> installDunyaPackFile(String zipPath, String rootPath) {
+  final port = ReceivePort();
+  return _installPack(zipPath, rootPath, port.sendPort).whenComplete(port.close);
+}
+).firstMatch(contentRange);
+        if (match == null || int.tryParse(match.group(1)!) != existing) {
+          throw DunyaPackException(
+            'Le serveur ne confirme pas le bon point de reprise. Le fichier partiel est conservé.',
+          );
+        }
+      }
       final resumed = existing > 0 && response.statusCode == 206;
       if (existing > 0 && response.statusCode == 200) {
         // Le serveur ne gère pas les requêtes partielles : on repart de zéro
