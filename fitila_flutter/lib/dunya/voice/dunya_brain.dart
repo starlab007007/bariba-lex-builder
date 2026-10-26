@@ -139,6 +139,12 @@ class DunyaBrain {
 
   /// Downloads the model with resume. [onProgress] gets 0..1 and a label.
   Future<void> download({void Function(double? fraction, String label)? onProgress}) async {
+    // Retain this exact model when already installed; do not spend another
+    // 2.6 GB unless the pinned size or model version changes.
+    if (await isInstalled()) {
+      onProgress?.call(1, 'Cerveau déjà installé.');
+      return;
+    }
     final target = await modelFile();
     final partial = File('${target.path}.part');
     Object? lastFailure;
@@ -153,6 +159,11 @@ class DunyaBrain {
         final request = http.Request('GET', Uri.parse(url));
         if (have > 0) request.headers['Range'] = 'bytes=$have-';
         final response = await client.send(request).timeout(const Duration(seconds: 40));
+        if (have > 0 && response.statusCode == 206 &&
+            !(response.headers['content-range'] ?? '').startsWith('bytes $have-')) {
+          lastFailure = 'point de reprise invalide';
+          continue; // preserve the partial file; do not append wrong bytes
+        }
         if (response.statusCode == 200 && have > 0) {
           have = 0; // server ignored the range: restart cleanly
         } else if (response.statusCode != 200 && response.statusCode != 206) {
