@@ -72,8 +72,8 @@ export const TranslationModelSwitcher = ({
   const models: ModelOption[] = [
     {
       id: 'byt5-expert',
-      name: 'ByT5 Expert',
-      description: 'Modèle spécialisé Baatɔnum, haute qualité',
+      name: 'Traduction approfondie',
+      description: 'Traduction avec prise en compte du contexte',
       icon: <Bot className="h-4 w-4" />,
       badge: 'Recommandé',
       badgeVariant: 'default',
