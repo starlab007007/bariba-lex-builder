@@ -423,18 +423,33 @@ Future<Map<String, dynamic>> _installPack(String zipPath, String rootPath, SendP
         throw DunyaPackException('Chemin interdit dans le pack : $rel');
       }
       final entry = entries.where((e) => e.name == rel).firstOrNull;
-      if (entry == null) throw DunyaPackException('Fichier manquant dans le pack : $rel');
-      if (entry.method != 0) throw DunyaPackException('Le pack doit être un ZIP non compressé.');
       final out = File('${partial.path}/$rel');
       out.parent.createSync(recursive: true);
-      final digest = await _copyEntryAndHash(raf, entry, out, (copied) {
-        progress.send(['extract', total == 0 ? null : (done + copied) / total, rel]);
-      });
+      String digest;
+      if (entry == null) {
+        // A delta archive may omit files whose digest is unchanged. Only
+        // reuse bytes from an already installed and previously verified pack.
+        final prior = File('$rootPath/$id/$rel');
+        if (!prior.existsSync() || prior.lengthSync() != (f['size'] as num).toInt()) {
+          throw DunyaPackException('Fichier manquant dans la mise à jour : $rel');
+        }
+        final oldDigest = await sha256.bind(prior.openRead()).first;
+        if (oldDigest.toString() != f['sha256']) {
+          throw DunyaPackException('Fichier local différent : $rel');
+        }
+        await prior.copy(out.path);
+        digest = oldDigest.toString();
+      } else {
+        if (entry.method != 0) throw DunyaPackException('Le pack doit être un ZIP non compressé.');
+        digest = await _copyEntryAndHash(raf, entry, out, (copied) {
+          progress.send(['extract', total == 0 ? null : (done + copied) / total, rel]);
+        });
+      }
       if (digest != f['sha256']) {
         partial.deleteSync(recursive: true);
         throw DunyaPackException('Fichier altéré : $rel. Recopiez le pack et réessayez.');
       }
-      done += entry.size;
+      done += (f['size'] as num).toInt();
       progress.send(['verify', total == 0 ? null : done / total, rel]);
     }
     File('${partial.path}/manifest.json').writeAsStringSync(jsonEncode(manifest));
