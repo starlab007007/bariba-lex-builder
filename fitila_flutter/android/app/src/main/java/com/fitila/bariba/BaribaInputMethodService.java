@@ -73,8 +73,8 @@ public class BaribaInputMethodService extends InputMethodService {
     // inset after it measures the IME. Make every action row reachable even
     // when the IME is confined to roughly 225dp of usable vertical space.
     private static final int COMPACT_DISPLAY_HEIGHT_DP = 780;
-    private static final int COMPACT_PREDICTION_HEIGHT_DP = 50;
-    private static final int REGULAR_PREDICTION_HEIGHT_DP = 58;
+    private static final int COMPACT_PREDICTION_HEIGHT_DP = 80;
+    private static final int REGULAR_PREDICTION_HEIGHT_DP = 92;
 
     private static final String COMBINING_GRAVE = "\u0300";
     private static final String COMBINING_ACUTE = "\u0301";
@@ -283,7 +283,7 @@ public class BaribaInputMethodService extends InputMethodService {
                 // although its children exist in the view hierarchy.
                 if (!translatorOpen) {
                     int letterRows = isSymbols ? 3 : 4;
-                    int contentDp = 58 + letterRows * 42 + 44;
+                    int contentDp = (compactImeRows() ? COMPACT_PREDICTION_HEIGHT_DP : REGULAR_PREDICTION_HEIGHT_DP) + letterRows * 42 + 44;
                     int requiredHeight = dp(ctx, contentDp) + bottom + 2 * pad;
                     view.setMinimumHeight(requiredHeight);
                 }
@@ -890,7 +890,7 @@ public class BaribaInputMethodService extends InputMethodService {
             chip.setOrientation(LinearLayout.VERTICAL);
             chip.setGravity(Gravity.CENTER);
             chip.setBackgroundColor(0xFF0F3460);
-            int hp = dp(ctx, 6), vp = dp(ctx, 3);
+            int hp = dp(ctx, 4), vp = dp(ctx, 5);
             chip.setPadding(hp, vp, hp, vp);
             chip.setClickable(true);
 
@@ -898,7 +898,7 @@ public class BaribaInputMethodService extends InputMethodService {
             ba.setText(e.word);
             ba.setTextColor(Color.WHITE);
             ba.setTypeface(null, Typeface.BOLD);
-            ba.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
+            ba.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
             ba.setGravity(Gravity.CENTER);
             ba.setMaxLines(1);
             ba.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -910,7 +910,10 @@ public class BaribaInputMethodService extends InputMethodService {
             fr.setTextColor(0xFFFFD54F);
             fr.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
             fr.setGravity(Gravity.CENTER);
-            fr.setMaxLines(1);
+            fr.setMaxLines(2);
+            fr.setMinLines(2);
+            fr.setIncludeFontPadding(true);
+            fr.setLineSpacing(0f, 1.08f);
             fr.setEllipsize(android.text.TextUtils.TruncateAt.END);
             LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
