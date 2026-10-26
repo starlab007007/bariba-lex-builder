@@ -1192,7 +1192,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         textAlign: TextAlign.center,
         maxLines: 5,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: Colors.white, fontSize: 24, height: 1.3, fontWeight: FontWeight.w600),
+        style: const TextStyle(color: const Color(0xFF192B24), fontSize: 21, height: 1.3, fontWeight: FontWeight.w600),
       );
     }
     return Wrap(
@@ -1206,8 +1206,8 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOut,
               style: TextStyle(
-                color: i <= _activeWord ? Colors.white : Colors.white.withValues(alpha: .32),
-                fontSize: 24,
+                color: i <= _activeWord ? const Color(0xFF192B24) : const Color(0xFF88958F),
+                fontSize: 21,
                 fontWeight: FontWeight.w600,
                 height: 1.3,
               ),
