@@ -12,6 +12,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:audioplayers/audioplayers.dart' as audio;
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8785,6 +8786,25 @@ class TemIaScreen extends StatefulWidget {
 
 class _TemIaScreenState extends State<TemIaScreen> {
   bool _voiceMode = true;
+  final FlutterTts _reader = FlutterTts();
+  double _readSpeed = 1.0;
+  bool _previewBeforeSend = true;
+  bool _reading = false;
+
+  Future<void> _readText(String text) async {
+    if (text.trim().isEmpty) return;
+    if (_reading) { await _reader.stop(); if (mounted) setState(() => _reading = false); return; }
+    try {
+      await _reader.setLanguage('fr-FR');
+      await _reader.setSpeechRate(_readSpeed * 0.5);
+      await _reader.awaitSpeakCompletion(true);
+      if (mounted) setState(() => _reading = true);
+      await _reader.speak(text);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Voix du système indisponible.')));
+    } finally { if (mounted) setState(() => _reading = false); }
+  }
+
 
   @override
   void initState() {
@@ -8824,6 +8844,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
   void dispose() {
     _query.dispose();
     _voiceMedia.dispose();
+    unawaited(_reader.stop());
     super.dispose();
   }
 
@@ -8839,7 +8860,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
         );
         if (!mounted) return;
         setState(() => _query.text = transcript);
-        await _send(transcript);
+        if (!_previewBeforeSend) await _send(transcript);
       } catch (error) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -9122,15 +9143,26 @@ class _TemIaScreenState extends State<TemIaScreen> {
                       ),
                       border: mine ? null : Border.all(color: _fitilaBorder),
                     ),
-                    child: Text(
-                      message.text,
-                      style: TextStyle(
-                        color: mine ? Colors.white : _fitilaInkSoft,
-                        height: 1.45,
-                        fontSize: 13.5,
-                      ),
-                    ),
+                    child: mine
+                        ? SelectableText(message.text, style: const TextStyle(color: Colors.white, height: 1.5, fontSize: 15.5))
+                        : TweenAnimationBuilder<int>(
+                            key: ValueKey(message.text),
+                            tween: IntTween(begin: 0, end: message.text.length),
+                            duration: Duration(milliseconds: (message.text.length * 12).clamp(320, 2800)),
+                            builder: (context, count, _) => SelectableText(
+                              '${message.text.substring(0, count)}${count < message.text.length ? '▍' : ''}',
+                              style: const TextStyle(color: _fitilaInkSoft, height: 1.55, fontSize: 15.5),
+                            ),
+                          ),
                   ),
+                  if (!mine) ...[
+                    const SizedBox(height: 7),
+                    Wrap(spacing: 5, runSpacing: 3, children: [
+                      IconButton(tooltip: _reading ? 'Arrêter la lecture' : 'Écouter la réponse', icon: Icon(_reading ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded, color: _fitilaSage), onPressed: () => unawaited(_readText(message.text))),
+                      TextButton.icon(onPressed: () => unawaited(Clipboard.setData(ClipboardData(text: message.text))), icon: const Icon(Icons.copy_rounded, size: 17), label: const Text('Copier')),
+                      PopupMenuButton<double>(tooltip: 'Vitesse de lecture', initialValue: _readSpeed, onSelected: (speed) => setState(() => _readSpeed = speed), itemBuilder: (_) => [0.75, 1.0, 1.25, 1.5].map((speed) => PopupMenuItem(value: speed, child: Text('${speed}×'))).toList(), child: Chip(label: Text('${_readSpeed}×'), avatar: const Icon(Icons.speed_rounded, size: 17))),
+                    ]),
+                  ],
                   if (!mine && message.sources.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     ActionChip(
@@ -9244,6 +9276,14 @@ class _TemIaScreenState extends State<TemIaScreen> {
             ),
             child: Column(
               children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Écouter avant envoi', style: TextStyle(fontSize: 12, color: _fitilaSage)),
+                    Switch.adaptive(value: _previewBeforeSend, onChanged: (value) => setState(() => _previewBeforeSend = value)),
+                    TextButton.icon(onPressed: () => unawaited(_readText(_query.text)), icon: const Icon(Icons.headphones_rounded, size: 17), label: const Text('Aperçu')),
+                  ],
+                ),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
