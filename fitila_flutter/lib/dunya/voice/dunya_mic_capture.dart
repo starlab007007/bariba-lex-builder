@@ -121,6 +121,7 @@ class DunyaMicCapture {
   Future<Float32List?> listen({
     void Function(double level)? onLevel,
     void Function()? onSpeechStart,
+    void Function(Float32List snapshot)? onAudioSnapshot,
     double minThreshold = 0.008,
     Duration minSpeech = const Duration(milliseconds: 180),
     Duration noSpeechTimeout = const Duration(seconds: 7),
@@ -138,6 +139,7 @@ class DunyaMicCapture {
     _detector = detector;
     _done = done;
     var started = false;
+    var lastSnapshotSamples = 0;
     final stream = await _recorder.startStream(
       const RecordConfig(
         encoder: AudioEncoder.pcm16bits,
@@ -155,6 +157,16 @@ class DunyaMicCapture {
         if (!started && detector.heardSpeech) {
           started = true;
           onSpeechStart?.call();
+        }
+        // Progressive recognition uses a copy of the audio heard so far.
+        // Decoding is performed asynchronously by the caller, never in
+        // this microphone callback (which must remain responsive).
+        final heard = detector.samples;
+        if (onAudioSnapshot != null && detector.heardSpeech &&
+            heard.length >= 16000 &&
+            heard.length - lastSnapshotSamples >= 24000) {
+          lastSnapshotSamples = heard.length;
+          onAudioSnapshot(heard);
         }
         if (detector.shouldStop) unawaited(stop());
       },
