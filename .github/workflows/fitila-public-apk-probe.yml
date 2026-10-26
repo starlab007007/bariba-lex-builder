@@ -1,0 +1,66 @@
+name: Verify final FITILA public APK
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fitila-public-apk-probe.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Verify the final public release and both APK downloads
+        run: |
+          python3 - <<'PY'
+          import datetime, json, re, time, urllib.request
+          from pathlib import Path
+          base = 'https://fitila.bj'
+          expected = 'v1.8.25-build36-241'
+          deadline = time.monotonic() + 1200
+          release = None
+          while time.monotonic() < deadline:
+              try:
+                  with urllib.request.urlopen(base + '/dunya-packs/android/releases.json', timeout=15) as r:
+                      manifest = json.load(r)
+                  releases = manifest['releases']
+                  latest = max(releases, key=lambda item: item.get('published_at', ''))
+                  if latest['version'] == expected:
+                      release = latest
+                      break
+              except Exception as error:
+                  print(type(error).__name__, flush=True)
+              time.sleep(5)
+          if release is None:
+              raise RuntimeError('Expected final APK publication did not appear: ' + expected)
+          checks = {}
+          for architecture in ['arm64', 'armv7']:
+              url = base + release[architecture]
+              with urllib.request.urlopen(urllib.request.Request(url, method='HEAD'), timeout=25) as r:
+                  size = int(r.headers.get('Content-Length', '0'))
+                  assert r.status == 200 and size > 1000000
+                  checks[architecture] = {'url': r.url, 'http': r.status, 'bytes': size}
+              with urllib.request.urlopen(urllib.request.Request(url, headers={'Range': 'bytes=0-3'}), timeout=25) as r:
+                  header = r.read(4)
+                  assert r.status == 206 and header == b'PK\x03\x04'
+                  checks[architecture].update(range_status=r.status, zip_header=header.hex())
+          assert checks['arm64']['bytes'] == release['arm64_size']
+          sums_url = base + release['arm64'].rsplit('/', 1)[0] + '/SHA256SUMS.txt'
+          with urllib.request.urlopen(sums_url, timeout=25) as r:
+              sums = r.read().decode()
+          for architecture in ['arm64', 'armv7']:
+              filename = release[architecture].rsplit('/', 1)[1]
+              assert re.search(r'^[0-9a-f]{64}\s+' + re.escape(filename) + r'$', sums, re.M)
+          with urllib.request.urlopen(base + '/install', timeout=25) as r:
+              assert r.status == 200
+              checks['install_page_http'] = r.status
+          record = {'release': release, 'checks': checks, 'sha256sums': sums, 'checked_at': datetime.datetime.now(datetime.timezone.utc).isoformat()}
+          Path('public-apk-verification.json').write_text(json.dumps(record, ensure_ascii=False, indent=2))
+          print('FITILA_PUBLIC_RELEASE_VERIFIED=' + json.dumps(record, ensure_ascii=False), flush=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FITILA-public-apk-verification
+          path: public-apk-verification.json
+          if-no-files-found: error
