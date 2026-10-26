@@ -1255,9 +1255,22 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
         ],
         const Spacer(),
         if (_settings.subtitles && (_caption.isNotEmpty || (_phase == _Phase.thinking && lastUser.isNotEmpty)))
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 14),
-            child: Column(
+          Flexible(
+            flex: 2,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9F7F0),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: const Color(0xFFD1E4D7)),
+                  boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 20, offset: Offset(0, 8))],
+                ),
+                child: DefaultTextStyle(
+                  style: const TextStyle(color: Color(0xFF1D2430), fontSize: 20, height: 1.45, fontWeight: FontWeight.w600),
+                  child: Column(
               children: [
                 if (_phase == _Phase.thinking && lastUser.isNotEmpty)
                   Text(
@@ -1265,7 +1278,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white70, fontSize: 17),
+                    style: const TextStyle(color: Color(0xFF495951), fontSize: 17),
                   ),
                 if (_caption.isNotEmpty)
                   AnimatedSwitcher(
@@ -1279,10 +1292,13 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                     textAlign: TextAlign.center,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white70, fontSize: 16),
+                    style: const TextStyle(color: Color(0xFF495951), fontSize: 16),
                   ),
                 ],
               ],
+                  ),
+                ),
+              ),
             ),
           ),
         if (_notice != null)
