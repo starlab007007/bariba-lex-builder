@@ -139,7 +139,7 @@ class DunyaMicCapture {
     _detector = detector;
     _done = done;
     var started = false;
-    var lastSnapshotSamples = 0;
+    var snapshotClockSamples = 0;
     final stream = await _recorder.startStream(
       const RecordConfig(
         encoder: AudioEncoder.pcm16bits,
@@ -161,12 +161,11 @@ class DunyaMicCapture {
         // Progressive recognition uses a copy of the audio heard so far.
         // Decoding is performed asynchronously by the caller, never in
         // this microphone callback (which must remain responsive).
-        final heard = detector.samples;
+        snapshotClockSamples += bytes.length ~/ 2;
         if (onAudioSnapshot != null && detector.heardSpeech &&
-            heard.length >= 16000 &&
-            heard.length - lastSnapshotSamples >= 24000) {
-          lastSnapshotSamples = heard.length;
-          onAudioSnapshot(heard);
+            snapshotClockSamples >= 24000) {
+          snapshotClockSamples = 0;
+          onAudioSnapshot(detector.samples);
         }
         if (detector.shouldStop) unawaited(stop());
       },
