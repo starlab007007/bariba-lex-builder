@@ -604,12 +604,12 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
-          const Spacer(),
+          const SizedBox(height: 12),
           GestureDetector(
             onTap: () => unawaited(_onOrbTap()),
             child: _Orb(phase: _phase, level: _level),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           Text(
             _label,
             textAlign: TextAlign.center,
@@ -644,14 +644,14 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
               ),
             ),
           ],
-          const Spacer(),
-          if (_subtitles && _caption.isNotEmpty)
+          const SizedBox(height: 16),
+          if (_subtitles && _caption.isNotEmpty && (_inputLang != 'bba' || _phase != _Phase.speaking || _lastAnswerBariba))
             Flexible(
-              flex: 2,
+              flex: 1,
               child: SingleChildScrollView(
                 child: Container(
                   width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 14),
+                  margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF9F7F0),
@@ -815,8 +815,8 @@ class _Orb extends StatelessWidget {
     final double haloSize = 250.0 * (0.8 + (scale - 1.0) * 1.6);
     final double orbSize = 170.0 * scale;
     return SizedBox(
-      width: 250,
-      height: 250,
+      width: 148,
+      height: 148,
       child: Stack(
         alignment: Alignment.center,
         children: [
