@@ -1023,7 +1023,7 @@ enum FitilaPage {
 extension FitilaPageMeta on FitilaPage {
   String get title {
     final french = switch (this) {
-      FitilaPage.feed => 'DUNYA IA',
+      FitilaPage.feed => 'Fil',
       FitilaPage.creator => 'Créateur',
       FitilaPage.templates => 'Templates',
       FitilaPage.services => 'Services',
