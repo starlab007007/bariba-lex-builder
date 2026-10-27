@@ -85,5 +85,5 @@ export function formatOfflineAnswerForText(
   const lead = sources.length === 1
     ? `Selon l'article ${sources[0].number} du Code foncier :`
     : `D'après les articles ${sources.map(s => s.number).join(', ')} du Code foncier :`;
-  return `${lead}\n\n${body}\n\nAvez-vous une autre préoccupation concernant votre terrain ou vos papiers fonciers ?`;
+  return `Si je comprends bien, vous cherchez à connaître les règles foncières applicables à votre situation. Voici les dispositions que j’ai retrouvées ; nous pouvons ensuite préciser votre cas.\n\n${lead}\n\n${body}\n\nSouhaitez-vous que je vous aide à comprendre les démarches ou à préciser votre situation ?`;
 }
