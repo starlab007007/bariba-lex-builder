@@ -64,7 +64,60 @@ bool isTemIaGreetingOnly(String message) {
 /// aucune formule juridique ou traduction improvisée n'est produite ici.
 String? temIaSocialReply(String message, {bool firstTurn = false}) {
   final normalized = message.trim().toLowerCase()
-      .replaceAll(RegExp(r'[!?.,\\s]+$'), '').trim();
+      .replaceAll(RegExp(r'[!?.,\s]+), '').trim();
+  if (normalized.isEmpty) return null;
+  if (RegExp(r'^(merci( beaucoup)?|je vous remercie|thanks)$').hasMatch(normalized)) {
+    return 'Je vous en prie. Souhaitez-vous une autre précision concernant votre situation foncière ?';
+  }
+  if (RegExp(r'^(au revoir|à bientôt|bye)$').hasMatch(normalized)) {
+    return 'Au revoir. Vous pourrez reprendre vos questions foncières quand vous le souhaitez.';
+  }
+  if (RegExp(r'^(bonjour|bonsoir|salut|coucou|hello|slt|cc)$').hasMatch(normalized)) {
+    return firstTurn
+        ? temIaGreetingFr
+        : 'Bonjour à nouveau. Quelle question foncière souhaitez-vous approfondir ?';
+  }
+  return null;
+}
+
+/// Reformule le rôle du corpus sans changer ni traduire ses citations.
+String temIaNaturalLegalIntroduction(FoncierAnswer answer) {
+  if (answer.isFallback || answer.sources.isEmpty) {
+    return 'Je veux bien vous guider, mais je ne trouve pas encore une disposition assez précise pour répondre avec certitude.';
+  }
+  return 'Si je comprends bien, vous cherchez à connaître les règles foncières applicables à votre situation. Voici les dispositions que j’ai retrouvées ; nous pouvons ensuite préciser votre cas.';
+}
+
+/// Tente le raisonnement en ligne (LLM strictement borné aux articles du
+/// Code foncier retrouvés par le même moteur de recherche que le mode
+/// hors ligne). Retourne `null` sur le moindre souci (pas de réseau,
+/// serveur indisponible, IA non configurée, délai dépassé) — l'appelant
+/// doit alors retomber sur [FoncierRag.answer] (moteur local inchangé).
+Future<TemIaOnlineAnswer?> tryTemIaOnline(
+  String question, {
+  List<TemIaTurn> history = const [],
+  Duration timeout = const Duration(seconds: 15),
+}) async {
+  // TEM IA is extractive: cite the bundled Code foncier verbatim.
+  // The online endpoint is local_only, so never wait on a known 503.
+  return null;
+}
+
+/// Présentation « texte » d'une réponse hors ligne (recherche locale
+/// inchangée) : cite le ou les articles, encadre le contenu Baatɔnum brut
+/// d'une phrase française et relance par une question de suivi — jamais
+/// de reformulation ou de traduction du contenu légal lui-même.
+String formatOfflineAnswerForText(FoncierAnswer answer) {
+  final body = answer.answer.replaceAll(RegExp(r'\.\s+'), '.\n\n').trim();
+  if (answer.isFallback || answer.sources.isEmpty) {
+    return "$body\n\nPouvez-vous reformuler ou préciser votre préoccupation ?";
+  }
+  final lead = answer.sources.length == 1
+      ? "Selon l'article ${answer.sources.first.number} du Code foncier :"
+      : "D'après les articles ${answer.sources.map((s) => s.number).join(', ')} du Code foncier :";
+  return "${temIaNaturalLegalIntroduction(answer)}\n\n$lead\n\n$body\n\nSouhaitez-vous que je vous aide à comprendre les démarches ou à préciser votre situation ?";
+}
+), '').trim();
   if (normalized.isEmpty) return null;
   if (RegExp(r'^(merci( beaucoup)?|je vous remercie|thanks)$').hasMatch(normalized)) {
     return 'Je vous en prie. Souhaitez-vous une autre précision concernant votre situation foncière ?';
