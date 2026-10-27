@@ -1679,11 +1679,10 @@ class _NavigationPanel extends StatelessWidget {
 
   // Menu identique au web (barre latérale de fitila.bj) : même ordre, mêmes modules.
   static const _explorer = [
-    FitilaPage.feed,
+    FitilaPage.dunya,
     FitilaPage.dictionary,
     FitilaPage.classe,
     FitilaPage.ia,
-    FitilaPage.dunya,
     FitilaPage.translator,
     FitilaPage.learn,
     FitilaPage.creator,
