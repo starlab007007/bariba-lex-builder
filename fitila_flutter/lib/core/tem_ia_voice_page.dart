@@ -604,12 +604,12 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
           GestureDetector(
             onTap: () => unawaited(_onOrbTap()),
             child: _Orb(phase: _phase, level: _level),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             _label,
             textAlign: TextAlign.center,
@@ -644,14 +644,14 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
               ),
             ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           if (_subtitles && _caption.isNotEmpty && (_inputLang != 'bba' || _phase != _Phase.speaking || _lastAnswerBariba))
-            Flexible(
-              flex: 1,
-              child: SingleChildScrollView(
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: SingleChildScrollView(
                 child: Container(
                   width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF9F7F0),
@@ -671,6 +671,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
                       ),
                     ],
                   ),
+                ),
                 ),
               ),
             ),
