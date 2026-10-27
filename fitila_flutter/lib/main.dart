@@ -8914,12 +8914,13 @@ class _TemIaScreenState extends State<TemIaScreen> {
     try {
       // Simple salutation en tout début de conversation : accueil
       // chaleureux immédiat, sans recherche ni appel réseau.
-      if (_messages.length == 1 && isTemIaGreetingOnly(text)) {
+      final socialReply = temIaSocialReply(text, firstTurn: _messages.length == 1);
+      if (socialReply != null) {
         if (!mounted) return;
         setState(() {
           _messages.add((
             role: 'assistant',
-            text: temIaGreetingFr,
+            text: socialReply,
             sources: const [],
           ));
         });
