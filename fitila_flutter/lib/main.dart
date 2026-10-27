@@ -1346,7 +1346,7 @@ class _FitilaShellState extends State<FitilaShell>
   }
 
   int get _destination => switch (_page) {
-    FitilaPage.feed => 0,
+    FitilaPage.feed || FitilaPage.dunya => 0,
     FitilaPage.learn => 1,
     FitilaPage.classe || FitilaPage.teacher => 2,
     FitilaPage.dictionary || FitilaPage.keyboard || FitilaPage.voiceLab => 3,
