@@ -7578,6 +7578,7 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
   @override
   Widget build(BuildContext context) {
     return _PageFrame(
+      compactHeader: true,
       title: FitilaLanguage.translate('Traducteur', key: 'sidebar_translator'),
       subtitle: FitilaLanguage.isBariba
           ? FitilaLanguage.translate('Voix & Texte', key: 'sidebar_translator_desc')
@@ -15712,6 +15713,7 @@ class _PageFrame extends StatelessWidget {
     required this.child,
     this.action,
     this.inlineCompactAction = false,
+    this.compactHeader = false,
   });
 
   final String title;
@@ -15719,6 +15721,7 @@ class _PageFrame extends StatelessWidget {
   final Widget child;
   final Widget? action;
   final bool inlineCompactAction;
+  final bool compactHeader;
 
   @override
   Widget build(BuildContext context) {
@@ -15738,7 +15741,7 @@ class _PageFrame extends StatelessWidget {
                   compact ? 18 : 22,
                   6,
                   compact ? 18 : 22,
-                  14,
+                  compactHeader ? 2 : 14,
                 ),
                 child: Row(
                   children: [
@@ -15772,6 +15775,7 @@ class _PageFrame extends StatelessWidget {
                               letterSpacing: .2,
                             ),
                           ),
+                          if (!compactHeader) ...[
                           const SizedBox(height: 1),
                           Text(
                             subtitle,
@@ -15783,6 +15787,7 @@ class _PageFrame extends StatelessWidget {
                               height: 1.25,
                             ),
                           ),
+                          ],
                         ],
                       ),
                     ),
@@ -15806,7 +15811,7 @@ class _PageFrame extends StatelessWidget {
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
                     compact ? 18 : 22,
-                    compact ? 12 : 16,
+                    compactHeader ? 2 : (compact ? 12 : 16),
                     compact ? 18 : 22,
                     16,
                   ),
