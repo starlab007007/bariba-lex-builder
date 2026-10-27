@@ -615,8 +615,10 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
   }
 
   Widget _voiceView() {
+    final showTranscript = _subtitles && _caption.trim().isNotEmpty &&
+        (_inputLang != 'bba' || _phase != _Phase.speaking || _lastAnswerBariba);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
           const SizedBox(height: 4),
@@ -628,68 +630,67 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
           Text(
             _label,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-            ),
+            style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w800),
           ),
           if (_phase == _Phase.idle) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(
-              _inputLang == 'fr'
-                  ? 'Posez votre question en français.'
-                  : 'Yaa sɔ̃ɔ tem bausu gari Baribarum.',
+              _inputLang == 'fr' ? 'Posez votre question en français.' :
+                  'Yaa sɔ̃ɔ tem bausu gari Baribarum.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white.withValues(alpha: .8)),
             ),
           ],
           if (_lastAnswer != null && _phase == _Phase.idle) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 6),
             OutlinedButton.icon(
               onPressed: () => unawaited(_replayLast()),
               icon: const Icon(Icons.volume_up_rounded, color: Colors.white),
-              label: const Text(
-                'Réécouter',
-                style: TextStyle(color: Colors.white),
-              ),
+              label: const Text('Réécouter', style: TextStyle(color: Colors.white)),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Color(0x40FFFFFF)),
                 shape: const StadiumBorder(),
               ),
             ),
           ],
-          const SizedBox(height: 8),
-          if (_subtitles && _caption.isNotEmpty && (_inputLang != 'bba' || _phase != _Phase.speaking || _lastAnswerBariba))
+          const SizedBox(height: 10),
+          if (showTranscript)
             Expanded(
               child: Container(
+                width: double.infinity,
                 margin: const EdgeInsets.only(bottom: 8),
-                child: SingleChildScrollView(
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9F7F0),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: const Color(0xFFD3E2D5)),
-                    boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 20, offset: Offset(0, 8))],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_phase == _Phase.speaking ? 'Réponse de TEM IA' : 'Transcription en direct',
-                        style: const TextStyle(color: _deep, fontSize: 13, fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 12),
-                      DefaultTextStyle(
-                        style: const TextStyle(color: Color(0xFF191D2B), fontSize: 21, height: 1.45, fontWeight: FontWeight.w600),
-                        child: Text(_caption, textAlign: TextAlign.left),
-                      ),
-                    ],
-                  ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9F7F0),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: const Color(0xFFD3E2D5)),
                 ),
+                child: Scrollbar(
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _phase == _Phase.speaking ? 'Réponse de TEM IA' : 'Transcription en direct',
+                          style: const TextStyle(color: _deep, fontSize: 14, fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 12),
+                        SelectableText(
+                          _caption,
+                          style: const TextStyle(
+                            color: Color(0xFF191D2B), fontSize: 19,
+                            height: 1.38, fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
+            )
+          else
+            const Spacer(),
         ],
       ),
     );
