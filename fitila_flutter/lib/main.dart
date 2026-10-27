@@ -1023,7 +1023,7 @@ enum FitilaPage {
 extension FitilaPageMeta on FitilaPage {
   String get title {
     final french = switch (this) {
-      FitilaPage.feed => 'Fil',
+      FitilaPage.feed => 'DUNYA IA',
       FitilaPage.creator => 'Créateur',
       FitilaPage.templates => 'Templates',
       FitilaPage.services => 'Services',
@@ -1293,10 +1293,6 @@ class _FitilaShellState extends State<FitilaShell>
     if (page == _page) {
       return;
     }
-    if (page == FitilaPage.feed) {
-      unawaited(showFitilaComingSoon(context, 'Fil'));
-      return;
-    }
     setState(() {
       _history.add(_page);
       _page = page;
@@ -1307,7 +1303,7 @@ class _FitilaShellState extends State<FitilaShell>
   void _selectBottomDestination(int index) {
     switch (index) {
       case 0:
-        _navigate(FitilaPage.feed);
+        _navigate(FitilaPage.dunya);
       case 1:
         _navigate(FitilaPage.learn);
       case 2:
@@ -15913,13 +15909,13 @@ class _PremiumBottomNav extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: FitilaSoonBadge(child: _PremiumBottomItem(
-                icon: Icons.dynamic_feed_outlined,
-                activeIcon: Icons.dynamic_feed_rounded,
-                label: 'Fil',
-                active: false,
-                onTap: () => showFitilaComingSoon(context, 'Fil'),
-              )),
+              child: _PremiumBottomItem(
+                icon: Icons.psychology_outlined,
+                activeIcon: Icons.psychology_rounded,
+                label: 'DUNYA IA',
+                active: selectedIndex == 0,
+                onTap: () => onSelected(0),
+              ),
             ),
             Expanded(
               child: _PremiumBottomItem(
