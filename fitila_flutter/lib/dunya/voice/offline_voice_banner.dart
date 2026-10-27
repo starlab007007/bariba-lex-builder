@@ -207,12 +207,30 @@ class _OfflineVoiceBannerState extends State<OfflineVoiceBanner> {
                 Expanded(
                   child: Text(text, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: tone)),
                 ),
-                if (onDismiss != null)
-                  InkWell(
-                    onTap: onDismiss,
-                    borderRadius: BorderRadius.circular(99),
-                    child: Icon(Icons.close_rounded, size: 16, color: tone),
+                if (onDismiss != null) ...[
+                  const SizedBox(width: 6),
+                  Semantics(
+                    button: true,
+                    label: 'Fermer la notification',
+                    child: Tooltip(
+                      message: 'Fermer la notification',
+                      child: OutlinedButton.icon(
+                        key: const ValueKey('offline-voice-banner-close'),
+                        onPressed: onDismiss,
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(80, 44),
+                          tapTargetSize: MaterialTapTargetSize.padded,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          side: BorderSide(color: tone.withValues(alpha: .55)),
+                          foregroundColor: tone,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        icon: const Icon(Icons.close_rounded, size: 19),
+                        label: const Text('Fermer', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                      ),
+                    ),
                   ),
+                ],
               ],
             ),
             if (progress != null || _stage == _BannerStage.downloading) ...[
