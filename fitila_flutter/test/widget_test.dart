@@ -40,7 +40,7 @@ void sidebarMatchesWeb() {
     await tester.pump();
 
     const expected = [
-      'Explorer', 'Fil', 'Dictionnaire', 'Classe', 'IA', 'Traducteur', 'Apprendre', 'Créateur', 'Espace',
+      'Explorer', 'DUNYA IA', 'Dictionnaire', 'Classe', 'IA', 'Traducteur', 'Apprendre', 'Créateur', 'Espace',
       'Culture', 'Voice Lab',
       'Compte', 'Clavier', 'Enseignant', 'Profil', 'Paramètres',
       'Langue', 'Français', 'Baatɔnum',
