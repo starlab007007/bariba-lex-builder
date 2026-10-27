@@ -255,7 +255,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
       return;
     }
     _emptyListens = 0;
-    setState(() { _phase = _Phase.thinking; _caption = _caption.isEmpty && _inputLang == 'bba' ? 'Transcription en cours…' : _caption; });
+    setState(() { _phase = _Phase.thinking; });
     var heard = false;
     try {
       final text = frenchText ?? await _transcribe(samples!);
@@ -281,8 +281,8 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
         setState(() {
           _phase = _Phase.idle;
           _notice = heard
-              ? 'Votre voix a bien été comprise, mais le cerveau en ligne est momentanément indisponible. Réessayez dans un instant.'
-              : 'Service de reconnaissance vocale indisponible. Réessayez.';
+              ? 'Votre demande est comprise, mais la réponse n’est pas disponible. Réessayez.'
+              : 'La dictée est momentanément indisponible. Réessayez ou utilisez le clavier.';
         });
       }
     }
@@ -291,21 +291,36 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
   /// Transcrit un enregistrement 16 kHz mono via le même service que la
   /// dictée du mode texte — jamais le moteur d'IA générale ni ByT5.
   Future<String> _transcribe(Float32List samples) async {
-    if (!FitilaOffline.online.value) {
-      final engine = await DunyaSharedSpeech.instance.ensureStarted();
-      if (engine == null) throw StateError('Installez le pack de reconnaissance vocale.');
-      return engine.transcribe(samples);
+    // Same connected/offline voice strategy as DUNYA: a server interruption
+    // must not discard the spoken message when local recognition is available.
+    if (FitilaOffline.online.value) {
+      final voice = DunyaCloudVoice();
+      try {
+        var transcript = '';
+        await voice.turn(
+          samples: samples,
+          language: _inputLang,
+          replyLanguage: _inputLang,
+          transcribeOnly: true,
+          onEvent: (event) async {
+            if (event['type'] == 'transcript') {
+              transcript = (event['text'] ?? '').toString().trim();
+            }
+          },
+        );
+        if (transcript.isNotEmpty) return transcript;
+      } catch (_) {
+        // Continue to the installed offline recognition, if available.
+      } finally {
+        voice.cancel();
+      }
     }
-    var transcript = '';
-    final voice = DunyaCloudVoice();
-    try {
-      await voice.turn(samples: samples, language: _inputLang,
-        replyLanguage: _inputLang, transcribeOnly: true,
-        onEvent: (event) async {
-          if (event['type'] == 'transcript') transcript = (event['text'] ?? '').toString().trim();
-        });
-    } finally { voice.cancel(); }
-    return transcript;
+    final engine = await DunyaSharedSpeech.instance.ensureStarted();
+    if (engine != null) {
+      final transcript = await engine.transcribe(samples);
+      if (transcript.trim().isNotEmpty) return transcript.trim();
+    }
+    throw StateError('La dictée est momentanément indisponible. Vérifiez votre connexion ou les fonctions sans Internet.');
   }
 
   /// En ligne : raisonnement conversationnel borné aux articles du Code
