@@ -59,6 +59,35 @@ bool isTemIaGreetingOnly(String message) {
   ).hasMatch(normalized);
 }
 
+/// Conversation sociale courte : ne déclenche jamais une recherche foncière.
+/// Les réponses Baatɔnum doivent provenir d'un corpus linguistique validé ;
+/// aucune formule juridique ou traduction improvisée n'est produite ici.
+String? temIaSocialReply(String message, {bool firstTurn = false}) {
+  final normalized = message.trim().toLowerCase()
+      .replaceAll(RegExp(r'[!?.,\\s]+$'), '').trim();
+  if (normalized.isEmpty) return null;
+  if (RegExp(r'^(merci( beaucoup)?|je vous remercie|thanks)$').hasMatch(normalized)) {
+    return 'Je vous en prie. Souhaitez-vous une autre précision concernant votre situation foncière ?';
+  }
+  if (RegExp(r'^(au revoir|à bientôt|bye)$').hasMatch(normalized)) {
+    return 'Au revoir. Vous pourrez reprendre vos questions foncières quand vous le souhaitez.';
+  }
+  if (RegExp(r'^(bonjour|bonsoir|salut|coucou|hello|slt|cc)$').hasMatch(normalized)) {
+    return firstTurn
+        ? temIaGreetingFr
+        : 'Bonjour à nouveau. Quelle question foncière souhaitez-vous approfondir ?';
+  }
+  return null;
+}
+
+/// Reformule le rôle du corpus sans changer ni traduire ses citations.
+String temIaNaturalLegalIntroduction(FoncierAnswer answer) {
+  if (answer.isFallback || answer.sources.isEmpty) {
+    return 'Je veux bien vous guider, mais je ne trouve pas encore une disposition assez précise pour répondre avec certitude.';
+  }
+  return 'Si je comprends bien, vous cherchez à connaître les règles foncières applicables à votre situation. Voici les dispositions que j’ai retrouvées ; nous pouvons ensuite préciser votre cas.';
+}
+
 /// Tente le raisonnement en ligne (LLM strictement borné aux articles du
 /// Code foncier retrouvés par le même moteur de recherche que le mode
 /// hors ligne). Retourne `null` sur le moindre souci (pas de réseau,
