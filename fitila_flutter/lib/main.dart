@@ -9217,6 +9217,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
   Widget build(BuildContext context) {
     if (_voiceMode) return TemIaVoicePage(onExit: () => _setVoiceMode(false), onSearch: _searchForVoice);
     return _PageFrame(
+      inlineCompactAction: true,
       title: 'Fitila IA',
       subtitle: 'TEM IA · Recherche dans le Code foncier',
       action: IconButton(
@@ -9260,7 +9261,7 @@ class _TemIaScreenState extends State<TemIaScreen> {
                   ),
           ),
           Container(
-            padding: const EdgeInsets.fromLTRB(0, 9, 0, 2),
+            padding: const EdgeInsets.fromLTRB(0, 4, 0, 0),
             decoration: const BoxDecoration(
               border: Border(top: BorderSide(color: _fitilaBorder)),
             ),
@@ -9279,9 +9280,9 @@ class _TemIaScreenState extends State<TemIaScreen> {
                       child: TextField(
                         controller: _query,
                         minLines: 1,
-                        maxLines: 4,
+                        maxLines: 5,
                         decoration: const InputDecoration(
-                          hintText: 'Yaa sɔ̃ɔ tem bausu gari Baribarum...',
+                          hintText: 'Posez votre question…',
                         ),
                         onSubmitted: (_) => _send(),
                       ),
@@ -15714,12 +15715,14 @@ class _PageFrame extends StatelessWidget {
     required this.subtitle,
     required this.child,
     this.action,
+    this.inlineCompactAction = false,
   });
 
   final String title;
   final String subtitle;
   final Widget child;
   final Widget? action;
+  final bool inlineCompactAction;
 
   @override
   Widget build(BuildContext context) {
@@ -15787,7 +15790,7 @@ class _PageFrame extends StatelessWidget {
                         ],
                       ),
                     ),
-                    if (!compact && action != null) ...[
+                    if ((!compact || inlineCompactAction) && action != null) ...[
                       const SizedBox(width: 12),
                       action!,
                     ],
@@ -15795,7 +15798,7 @@ class _PageFrame extends StatelessWidget {
                 ),
               ),
               const _PremiumStripe(),
-              if (compact && action != null)
+              if (compact && !inlineCompactAction && action != null)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
                   child: Align(
