@@ -1,0 +1,63 @@
+name: FITILA Guardian external watchdog
+on:
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: fitila-guardian-external
+  cancel-in-progress: false
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Verify Supabase Auth gateway health
+        id: health
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=$(curl -sS -L --retry 2 --retry-delay 5 --max-time 15 -o response.json -w '%{http_code}' 'https://dvswhjawiooprghzeyol.supabase.co/auth/v1/health')
+          echo "HTTP status: $status"
+          test "$status" = "200"
+          python3 - <<'PY'
+          import json
+          with open("response.json", encoding="utf-8") as f: data=json.load(f)
+          assert isinstance(data,dict), "Unexpected health response"
+          print("Supabase health endpoint reachable")
+          PY
+      - name: Send external cron heartbeat on success (optional)
+        if: success()
+        env:
+          HC_URL: ${{ secrets.FITILA_GUARDIAN_HC_PING_URL }}
+        run: |
+          if [ -n "$HC_URL" ]; then curl -fsS --max-time 15 "$HC_URL" >/dev/null; fi
+      - name: Send failure heartbeat (optional)
+        if: failure()
+        env:
+          HC_URL: ${{ secrets.FITILA_GUARDIAN_HC_PING_URL }}
+        run: |
+          if [ -n "$HC_URL" ]; then curl -fsS --max-time 15 "${HC_URL%/}/fail" >/dev/null || true; fi
+      - name: Track incident on GitHub
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RESULT: ${{ steps.health.outcome }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          title="FITILA Guardian: Supabase gateway unreachable"
+          issue=$(gh issue list --state open --limit 100 --json number,title --jq '.[] | select(.title == "FITILA Guardian: Supabase gateway unreachable") | .number' | head -1)
+          if [ "$RESULT" != "success" ]; then
+            if [ -n "$issue" ]; then
+              gh issue comment "$issue" --body "Nouvel échec : $RUN_URL"
+            else
+              gh issue create --title "$title" --body "La sonde externe GitHub ne parvient pas à valider l'état de la passerelle Supabase. Vérifier le service et les incidents du fournisseur avant toute action automatique : $RUN_URL"
+            fi
+          elif [ -n "$issue" ]; then
+            gh issue close "$issue" --comment "La passerelle Supabase répond à nouveau : $RUN_URL"
+          fi
