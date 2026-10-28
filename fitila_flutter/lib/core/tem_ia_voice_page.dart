@@ -23,11 +23,9 @@ import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart' as audio;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../dunya/voice/dunya_cloud_voice.dart';
-import '../dunya/voice/dunya_french_speech.dart';
 import '../dunya/voice/dunya_shared_speech.dart';
 import 'offline.dart';
 import '../dunya/voice/dunya_mic_capture.dart';
@@ -61,8 +59,6 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
   static const _deep = Color(0xFF1A5234);
 
   final DunyaMicCapture _mic = DunyaMicCapture();
-  final _frenchSpeech = DunyaFrenchSpeech();
-  final _tts = FlutterTts();
   final audio.AudioPlayer _player = audio.AudioPlayer();
 
   _Phase _phase = _Phase.idle;
@@ -132,9 +128,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     _session = false;
     _turn++;
     unawaited(_mic.dispose());
-    unawaited(_frenchSpeech.cancel());
     unawaited(_player.dispose());
-    unawaited(_tts.stop());
     unawaited(_posSub?.cancel());
     unawaited(_durSub?.cancel());
     super.dispose();
@@ -144,9 +138,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     _session = false;
     _turn++;
     unawaited(_mic.cancel());
-    unawaited(_frenchSpeech.cancel());
     unawaited(_player.stop());
-    unawaited(_tts.stop());
     if (mounted) {
       setState(() {
         _phase = _Phase.idle;
@@ -159,13 +151,11 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     unawaited(HapticFeedback.lightImpact());
     switch (_phase) {
       case _Phase.listening:
-        await _frenchSpeech.stop();
         await _mic.stop();
         return;
       case _Phase.speaking:
         _turn++;
         await _player.stop();
-        await _tts.stop();
         _session = true;
         unawaited(_listenTurn());
         return;
@@ -198,14 +188,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
       _notice = null;
     });
     Float32List? samples;
-    String? frenchText;
     try {
-      if (false) { // French speech recognition disabled for TEM IA
-        frenchText = await _frenchSpeech.listen(
-          onPartial: (text) { if (mounted && turn == _turn) setState(() => _caption = text); },
-          onLevel: (level) { if (mounted && turn == _turn) setState(() => _level = level); },
-        );
-      } else {
       var recognizingPartial = false;
       var acceptingPartial = true;
       samples = await _mic.listen(
@@ -226,7 +209,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
         },
       );
       acceptingPartial = false;
-      }
+
     } catch (_) {
       // Échec dans la capture micro elle-même (permission refusée, matériel
       // indisponible) : le SEUL cas où "Microphone indisponible." est exact.
@@ -241,7 +224,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
       return;
     }
     if (!mounted || turn != _turn || !_session) return;
-    if (samples == null && (frenchText == null || frenchText.isEmpty)) {
+    if (samples == null) {
       _emptyListens++;
       if (_emptyListens >= 2 || !_handsFree) {
         _session = false;
@@ -447,7 +430,6 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     await _speak(answer, turn, bariba: true);
   }
 
-  void _setLang(String lang) {}
 
   String get _label => switch (_phase) {
         _Phase.listening => 'Je vous écoute',
@@ -545,7 +527,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
   Widget _langChip(String label, String value) {
     final selected = _inputLang == value;
     return GestureDetector(
-      onTap: () => _setLang(value),
+      onTap: null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
