@@ -482,7 +482,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
               await _player.setPlaybackRate(_settings.voiceSpeed);
               final finished = _player.onPlayerComplete.first;
               await _player.play(audio.BytesSource(base64Decode(b64)));
-              await finished.timeout(const Duration(seconds: 60));
+              await finished.timeout(const Duration(seconds: 60), onTimeout: () async { await _player.stop(); });
               _stopWordTracking(complete: true);
             } else {
               final url = event['audio_url']?.toString() ?? '';
@@ -491,7 +491,7 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                 await _player.setPlaybackRate(_settings.voiceSpeed);
                 final finished = _player.onPlayerComplete.first;
                 await _player.play(audio.UrlSource(url));
-                await finished.timeout(const Duration(seconds: 60));
+                await finished.timeout(const Duration(seconds: 60), onTimeout: () async { await _player.stop(); });
                 _stopWordTracking(complete: true);
               }
             }
@@ -858,7 +858,10 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
     _startWordTracking();
     final done = _player.onPlayerComplete.first;
     await _player.play(audio.DeviceFileSource(path));
-    await done.timeout(const Duration(seconds: 90), onTimeout: () {});
+    await done.timeout(const Duration(seconds: 90), onTimeout: () async {
+      await _player.stop();
+      if (mounted) setState(() => _notice = 'Lecture audio interrompue. Vous pouvez réessayer.');
+    });
     _stopWordTracking(complete: true);
   }
 
