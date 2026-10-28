@@ -58,8 +58,8 @@ async function pingSpace(
         }
         return { name: space.name, status: 'awake', ms, path };
       }
-      // If 404 on /gradio_api/config, try fallback /
-      if (res.status === 404 && path === '/gradio_api/config') {
+      // 404 on either Gradio config route is not a service outage: try the next route.
+      if (res.status === 404 && path !== '/') {
         continue;
       }
       return { name: space.name, status: `error_${res.status}`, ms, path };
