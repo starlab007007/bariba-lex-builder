@@ -333,12 +333,16 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
       }
       var recognizingPartial = false;
       var acceptingPartial = true;
+      var lastPartialAt = DateTime.fromMillisecondsSinceEpoch(0);
       final samples = await _mic.listen(
         onLevel: _onLevel,
         onAudioSnapshot: _mode != DunyaLanguageMode.bariba
             ? null
             : (snapshot) {
                 if (recognizingPartial || !acceptingPartial) return;
+                final now = DateTime.now();
+                if (now.difference(lastPartialAt) < const Duration(milliseconds: 3500)) return;
+                lastPartialAt = now;
                 recognizingPartial = true;
                 unawaited(() async {
                   try {
@@ -357,11 +361,12 @@ class _DunyaVoicePageState extends State<DunyaVoicePage> with TickerProviderStat
                               partial = (event['text'] ?? '').toString();
                             }
                           },
-                        );
+                        ).timeout(const Duration(seconds: 4));
                       } finally {
                         live.cancel();
                       }
                     } else if (_engine != null) {
+                      // Offline ASR is expensive: avoid overlapping heavy interim decodes.
                       partial = await _engine!.transcribe(snapshot);
                     }
                     if (mounted && acceptingPartial && _phase == _Phase.listening &&
