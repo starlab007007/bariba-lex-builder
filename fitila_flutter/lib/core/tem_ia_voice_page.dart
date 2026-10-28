@@ -191,14 +191,18 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     try {
       var recognizingPartial = false;
       var acceptingPartial = true;
+      var lastPartialAt = DateTime.fromMillisecondsSinceEpoch(0);
       samples = await _mic.listen(
         onLevel: (level) {
           if (mounted && turn == _turn) setState(() => _level = level);
         },
         onAudioSnapshot: _inputLang != 'bba' ? null : (snapshot) {
           if (recognizingPartial || !acceptingPartial) return;
+          final now = DateTime.now();
+          if (now.difference(lastPartialAt) < const Duration(milliseconds: 3500)) return;
+          lastPartialAt = now;
           recognizingPartial = true;
-          unawaited(_transcribe(snapshot).then((partial) {
+          unawaited(_transcribe(snapshot, partial: true).then((partial) {
             if (mounted && acceptingPartial && turn == _turn &&
                 _phase == _Phase.listening && partial.trim().isNotEmpty) {
               setState(() => _caption = partial.trim());
@@ -273,7 +277,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
 
   /// Transcrit un enregistrement 16 kHz mono via le même service que la
   /// dictée du mode texte — jamais le moteur d'IA générale ni ByT5.
-  Future<String> _transcribe(Float32List samples) async {
+  Future<String> _transcribe(Float32List samples, {bool partial = false}) async {
     // Same connected/offline voice strategy as DUNYA: a server interruption
     // must not discard the spoken message when local recognition is available.
     if (FitilaOffline.online.value) {
@@ -290,7 +294,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
               transcript = (event['text'] ?? '').toString().trim();
             }
           },
-        );
+        ).timeout(Duration(seconds: partial ? 4 : 9));
         if (transcript.isNotEmpty) return transcript;
       } catch (_) {
         // Continue to the installed offline recognition, if available.
@@ -298,6 +302,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
         voice.cancel();
       }
     }
+    if (partial) return ''; // Do not start the heavy offline engine for interim chunks.
     final engine = await DunyaSharedSpeech.instance.ensureStarted();
     if (engine != null) {
       final transcript = await engine.transcribe(samples);
