@@ -68,7 +68,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
   _Phase _phase = _Phase.idle;
   bool _session = false;
   bool _handsFree = true;
-  String _inputLang = 'bba'; // 'bba' | 'fr'
+  final String _inputLang = 'bba'; // TEM IA supports Baatɔnum only
   double _level = 0;
   int _emptyListens = 0;
   int _turn = 0;
@@ -200,7 +200,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     Float32List? samples;
     String? frenchText;
     try {
-      if (_inputLang == 'fr' && FitilaOffline.online.value && await _frenchSpeech.available()) {
+      if (false) { // French speech recognition disabled for TEM IA
         frenchText = await _frenchSpeech.listen(
           onPartial: (text) { if (mounted && turn == _turn) setState(() => _caption = text); },
           onLevel: (level) { if (mounted && turn == _turn) setState(() => _level = level); },
@@ -258,7 +258,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     setState(() { _phase = _Phase.thinking; });
     var heard = false;
     try {
-      final text = frenchText ?? await _transcribe(samples!);
+      final text = await _transcribe(samples!);
       heard = text.trim().isNotEmpty;
       if (!mounted || turn != _turn || !_session) return;
       if (text.trim().isEmpty) {
@@ -331,33 +331,19 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
   Future<void> _answerTurn(String question, int turn) async {
     setState(() => _caption = question);
     try {
-      if (turn == 1 && isTemIaGreetingOnly(question)) {
-        if (!mounted || turn != _turn || !_session) return;
-        _lastAnswer = temIaGreetingFr;
-        _lastAnswerBariba = false;
-        setState(() {
-          _phase = _Phase.speaking;
-          _caption = temIaGreetingFr;
-          _words = temIaGreetingFr.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList(growable: false);
-          _activeWord = -1;
-        });
-        await _speak(temIaGreetingFr, turn, bariba: false);
-        return;
-      }
-
       final online = await tryTemIaOnline(question);
       if (!mounted || turn != _turn || !_session) return;
       if (online != null && online.text.trim().isNotEmpty) {
         final answer = online.text.trim();
         _lastAnswer = answer;
-        _lastAnswerBariba = online.bariba;
+        _lastAnswerBariba = true;
         setState(() {
           _phase = _Phase.speaking;
           _caption = answer;
           _words = answer.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList(growable: false);
           _activeWord = -1;
         });
-        await _speak(answer, turn, bariba: online.bariba);
+        await _speak(answer, turn, bariba: true);
         return;
       }
 
@@ -393,13 +379,6 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     unawaited(_durSub?.cancel());
     _audioDuration = Duration.zero;
     try {
-      if (!bariba) {
-        await _tts.setLanguage('fr-FR');
-        await _tts.setSpeechRate(.47 * _speechRate);
-        await _tts.awaitSpeakCompletion(true);
-        await _tts.speak(text);
-        return;
-      }
       final localPath = !FitilaOffline.online.value
           ? await DunyaSharedSpeech.instance.synthesizeBariba(text) : null;
       if (!FitilaOffline.online.value && localPath == null) {
@@ -465,14 +444,10 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
       _activeWord = -1;
       _notice = null;
     });
-    await _speak(answer, turn, bariba: _lastAnswerBariba);
+    await _speak(answer, turn, bariba: true);
   }
 
-  void _setLang(String lang) {
-    if (lang == _inputLang) return;
-    _endSession();
-    setState(() => _inputLang = lang);
-  }
+  void _setLang(String lang) {}
 
   String get _label => switch (_phase) {
         _Phase.listening => 'Je vous écoute',
@@ -560,7 +535,6 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
               child: Row(
                 children: [
                   _langChip('Baatɔnum', 'bba'),
-                  _langChip('Français', 'fr'),
                 ],
               ),
             ),
@@ -635,8 +609,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
           if (_phase == _Phase.idle) ...[
             const SizedBox(height: 4),
             Text(
-              _inputLang == 'fr' ? 'Posez votre question en français.' :
-                  'Yaa sɔ̃ɔ tem bausu gari Baribarum.',
+              'Yaa sɔ̃ɔ tem bausu gari Baribarum.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white.withValues(alpha: .8)),
             ),
