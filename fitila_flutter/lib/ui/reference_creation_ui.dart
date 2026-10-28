@@ -166,13 +166,13 @@ class FitilaPremiumBottomNav extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: FitilaSoonBadge(child: _FitilaPremiumBottomItem(
-                icon: Icons.dynamic_feed_outlined,
-                activeIcon: Icons.dynamic_feed_rounded,
-                label: 'Fil',
-                active: false,
-                onTap: () => showFitilaComingSoon(context, 'Fil'),
-              )),
+              child: _FitilaPremiumBottomItem(
+                icon: Icons.psychology_outlined,
+                activeIcon: Icons.psychology_rounded,
+                label: 'DUNYA IA',
+                active: selectedIndex == 0,
+                onTap: () => onSelected(0),
+              ),
             ),
             Expanded(
               child: _FitilaPremiumBottomItem(
