@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   ping:
@@ -28,7 +29,7 @@ jobs:
           # Public anon key (already shipped in the web app); the function only pings.
           ANON: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2c3doamF3aW9vcHJnaHpleW9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NTgzMTcsImV4cCI6MjEwNTMzNDMxN30.HK488q3C1q5uMDgthIbiTlGw20WMfMlRvEOjnlxPEgc
         run: |
-          curl -fsS --max-time 60 -X POST \
+          curl -fsS --retry 2 --retry-delay 8 --max-time 60 -X POST \
             -H "Authorization: Bearer $ANON" -H "apikey: $ANON" -H "Content-Type: application/json" \
             https://dvswhjawiooprghzeyol.supabase.co/functions/v1/hf-keep-alive -d '{}' | tee result.json
           echo
@@ -45,3 +46,31 @@ jobs:
               print(f"::error::Hugging Face Space(s) not awake: {down}")
               sys.exit(1)
           PY
+
+      - name: Open or update incident when a provider is unavailable
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="FITILA Guardian: Hugging Face provider unavailable"
+          issue=$(gh issue list --state open --limit 100 --json number,title --jq '.[] | select(.title == "FITILA Guardian: Hugging Face provider unavailable") | .number' | head -1)
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body "Nouvel échec de supervision : $RUN_URL. Consulter les journaux du workflow pour les moteurs concernés."
+          else
+            gh issue create --title "$title" --body "Incident détecté automatiquement par FITILA Guardian. Vérifier ByT5, STT, TTS et les dépendances Hugging Face. Exécution : $RUN_URL. L'incident sera fermé après une vérification entièrement réussie."
+          fi
+
+      - name: Resolve incident when all providers recover
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue list --state open --limit 100 --json number,title --jq '.[] | select(.title == "FITILA Guardian: Hugging Face provider unavailable") | .number' |
+          while read -r issue; do
+            [ -n "$issue" ] || continue
+            gh issue close "$issue" --comment "Tous les moteurs ont répondu au dernier contrôle : $RUN_URL."
+          done
