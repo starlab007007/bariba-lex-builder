@@ -63,20 +63,7 @@ bool isTemIaGreetingOnly(String message) {
 /// Les réponses Baatɔnum doivent provenir d'un corpus linguistique validé ;
 /// aucune formule juridique ou traduction improvisée n'est produite ici.
 String? temIaSocialReply(String message, {bool firstTurn = false}) {
-  final normalized = message.trim().toLowerCase()
-      .replaceAll(RegExp(r'[!?.,\s]+$'), '').trim();
-  if (normalized.isEmpty) return null;
-  if (RegExp(r'^(merci( beaucoup)?|je vous remercie|thanks)$').hasMatch(normalized)) {
-    return 'Je vous en prie. Souhaitez-vous une autre précision concernant votre situation foncière ?';
-  }
-  if (RegExp(r'^(au revoir|à bientôt|bye)$').hasMatch(normalized)) {
-    return 'Au revoir. Vous pourrez reprendre vos questions foncières quand vous le souhaitez.';
-  }
-  if (RegExp(r'^(bonjour|bonsoir|salut|coucou|hello|slt|cc)$').hasMatch(normalized)) {
-    return firstTurn
-        ? temIaGreetingFr
-        : 'Bonjour à nouveau. Quelle question foncière souhaitez-vous approfondir ?';
-  }
+  // No invented Baatonum greeting: only corpus-verified legal answers.
   return null;
 }
 
@@ -108,12 +95,6 @@ Future<TemIaOnlineAnswer?> tryTemIaOnline(
 /// d'une phrase française et relance par une question de suivi — jamais
 /// de reformulation ou de traduction du contenu légal lui-même.
 String formatOfflineAnswerForText(FoncierAnswer answer) {
-  final body = answer.answer.replaceAll(RegExp(r'\.\s+'), '.\n\n').trim();
-  if (answer.isFallback || answer.sources.isEmpty) {
-    return "$body\n\nPouvez-vous reformuler ou préciser votre préoccupation ?";
-  }
-  final lead = answer.sources.length == 1
-      ? "Selon l'article ${answer.sources.first.number} du Code foncier :"
-      : "D'après les articles ${answer.sources.map((s) => s.number).join(', ')} du Code foncier :";
-  return "${temIaNaturalLegalIntroduction(answer)}\n\n$lead\n\n$body\n\nSouhaitez-vous que je vous aide à comprendre les démarches ou à préciser votre situation ?";
+  // Keep only the original Baatonum corpus content, no French framing.
+  return answer.isFallback ? '' : answer.answer.trim();
 }
