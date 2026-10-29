@@ -40,7 +40,7 @@ jobs:
 
   build-apk:
     needs: offline-models
-    name: Android release APK 1.8.26+36
+    name: Android release APK 1.8.26+37
     runs-on: ubuntu-latest
     timeout-minutes: 75
     defaults:
@@ -85,7 +85,7 @@ jobs:
       - name: Verify release metadata
         run: |
           flutter --version
-          grep -q '^version: 1.8.26+36$' pubspec.yaml
+          grep -q '^version: 1.8.26+37$' pubspec.yaml
           grep -q 'sherpa_onnx' pubspec.yaml
           test -x android/gradlew
           grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
