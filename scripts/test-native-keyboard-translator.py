@@ -88,6 +88,13 @@ try:
     # registering input methods. Verify the actual merged manifest via Android,
     # rather than assuming that an installed APK already has a discoverable IME.
     adb('shell', 'am', 'wait-for-broadcast-idle')
+    # A newly launched emulator may still be on the keyguard. Third-party
+    # keyboard services are not guaranteed to be discovered for a locked user.
+    adb('shell', 'input', 'keyevent', '82')
+    adb('shell', 'wm', 'dismiss-keyguard')
+    adb('shell', 'am', 'start', '-W', '-n',
+        package + '/com.fitila.bariba.KeyboardTestActivity')
+    time.sleep(2)
     methods = ''
     for attempt in range(20):
         methods = adb('shell', 'ime', 'list', '-s').decode('utf-8', 'replace')
@@ -97,10 +104,14 @@ try:
         time.sleep(2)
     else:
         packages = adb('shell', 'pm', 'list', 'packages', 'fitila').decode('utf-8', 'replace')
+        user_state = adb('shell', 'dumpsys', 'user').decode('utf-8', 'replace')
+        input_state = adb('shell', 'dumpsys', 'input_method').decode('utf-8', 'replace')
         package_dump = adb('shell', 'dumpsys', 'package', package).decode('utf-8', 'replace')
         (OUT / 'missing-ime-diagnostic.txt').write_text(
             'Installed packages:\\n' + packages + '\\nIME list:\\n' + methods +
-            '\\nPackage dump:\\n' + package_dump, encoding='utf-8')
+            '\\nPackage dump:\\n' + package_dump +
+            '\\nUser state:\\n' + user_state +
+            '\\nInput method manager:\\n' + input_state, encoding='utf-8')
         raise AssertionError(
             'FITILA keyboard service not registered by Android. '
             'Inspect merged manifest and missing-ime-diagnostic.txt. '
