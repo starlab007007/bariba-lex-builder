@@ -36,12 +36,36 @@ Deno.serve(async req => {
   const results=await Promise.all(chosen.map(async target=>{
    const start=Date.now();let code:null|number=null;let status="unknown";let detail="No definitive health signal";
    try{
-    const response=await fetch(target.url,{method:"GET",signal:AbortSignal.timeout(6500),redirect:"manual"});
+    const voice = ["dunya_voice","bariba_tts","bariba_stt"].includes(target.id);
+    // A GET without the expected JSON/audio body is not a health check: it
+    // creates false HTTP 400/500 incidents for healthy inference endpoints.
+    const response=await fetch(target.url,{
+      method:voice?"OPTIONS":"GET",
+      headers:target.id==="auth_gateway"?{"apikey":anon}:undefined,
+      signal:AbortSignal.timeout(6500),
+      redirect:"manual",
+    });
     code=response.status;
-    if(target.id==="web") {status=response.ok?"healthy":"unavailable";detail="Public website GET";}
-    else if(target.id==="auth_gateway"){status=code===200?"healthy":code===401?"degraded":"unavailable";detail=code===401?"Gateway reachable; authentication health unverified":"Auth health endpoint";}
-    else if(target.id==="supabase_gateway"){status=target.acceptable.includes(code)?"degraded":"unavailable";detail="Gateway reachability only; not backend service health";}
-    else {status=code===401||code===403||code===405?"degraded":"unknown";detail="Endpoint presence only: voice inference not tested";}
+    if(target.id==="web"){
+      status=response.ok?"healthy":"unavailable";
+      detail="Public website GET: reachability only";
+    }else if(target.id==="auth_gateway"){
+      if(code===200){
+        try {
+          const health=await response.json();
+          status=health && typeof health==="object"?"healthy":"degraded";
+        }catch{status="degraded"}
+      }else{
+        status=code===401||code===403?"degraded":"unavailable";
+      }
+      detail=code===200?"Auth health endpoint with apikey":"Auth probe: review credentials and gateway access";
+    }else if(target.id==="supabase_gateway"){
+      status=target.acceptable.includes(code)?"degraded":"unavailable";
+      detail="HTTP reachability, not proof of database availability";
+    }else{
+      status=code>=200&&code<400?"degraded":code===401||code===403||code===405?"degraded":"unknown";
+      detail="OPTIONS reachability only; no ASR/TTS inference performed";
+    }
    }catch(e){status="unavailable";detail=e instanceof Error?e.name:"Network error"}
    const row={service:target.id,status,http_status:code,latency_ms:Date.now()-start,detail};
    await admin.from("fitila_guardian_checks").insert(row);
