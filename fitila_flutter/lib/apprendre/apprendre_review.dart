@@ -94,7 +94,7 @@ class _ApReviewScreenState extends State<ApReviewScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const ApTopBar(title: 'Révision', subtitle: 'Répétition espacée · hors-ligne'),
+            const ApTopBar(title: '4.1 — Révision', subtitle: 'Répétition espacée · hors-ligne'),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
@@ -188,7 +188,7 @@ class _ApReviewScreenState extends State<ApReviewScreen> {
                           ),
                         ),
                   ],
-                  const ApSectionTitle('Boîtes de mémoire'),
+                  const ApSectionTitle('4.1.2 — Boîtes de mémoire'),
                   ApCardBox(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,7 +239,7 @@ class _ApReviewScreenState extends State<ApReviewScreen> {
                       ],
                     ),
                   ),
-                  const ApSectionTitle('Révisions à venir'),
+                  const ApSectionTitle('4.1.3 — Révisions à venir'),
                   ApCardBox(
                     child: SizedBox(
                       height: 110,
@@ -272,7 +272,7 @@ class _ApReviewScreenState extends State<ApReviewScreen> {
                       ),
                     ),
                   ),
-                  const ApSectionTitle('Les 7 exercices d’une séance'),
+                  const ApSectionTitle('4.1.4 — Les 7 exercices d’une séance'),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
