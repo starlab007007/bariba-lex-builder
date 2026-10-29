@@ -135,7 +135,7 @@ class _ApScenesHubScreenState extends State<ApScenesHubScreen> {
         child: Column(
           children: [
             ApTopBar(
-              title: 'Scènes de vie',
+              title: 'Chapitre 3 — Scènes de vie',
               subtitle: content == null
                   ? 'Dialogues de la vie quotidienne'
                   : '${content.scenes.length} situations · ${content.categories.length} thématiques',
@@ -288,7 +288,7 @@ class _ApScenesHubScreenState extends State<ApScenesHubScreen> {
           ),
         ),
         for (var i = 0; i < content.categories.length; i++)
-          ..._category(content, progress, content.categories[i], scColor(i)),
+          ..._category(content, progress, content.categories[i], scColor(i), i + 1),
         const SizedBox(height: 16),
         Text(
           'Les répliques bariba sont des phrases du dictionnaire bariba-français, recopiées à l’identique. '
@@ -305,6 +305,7 @@ class _ApScenesHubScreenState extends State<ApScenesHubScreen> {
     ScenesProgress progress,
     ScCategory category,
     Color color,
+    int sectionNumber,
   ) {
     final all = content.scenesOf(category.id);
     final shown = all.where((scene) => _showScene(scene, progress)).toList();
@@ -328,7 +329,7 @@ class _ApScenesHubScreenState extends State<ApScenesHubScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  category.title,
+                  '3.$sectionNumber — ${category.title}',
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 17,
@@ -349,6 +350,7 @@ class _ApScenesHubScreenState extends State<ApScenesHubScreen> {
           padding: const EdgeInsets.only(bottom: 8),
           child: _SceneTile(
             scene: scene,
+            number: '3.$sectionNumber.${all.indexWhere((item) => item.id == scene.id) + 1}',
             color: color,
             best: progress.best[scene.id],
             played: progress.played.contains(scene.id),
@@ -403,6 +405,7 @@ class _WhiteRing extends StatelessWidget {
 class _SceneTile extends StatelessWidget {
   const _SceneTile({
     required this.scene,
+    required this.number,
     required this.color,
     required this.best,
     required this.played,
@@ -412,6 +415,7 @@ class _SceneTile extends StatelessWidget {
   });
 
   final ScScene scene;
+  final String number;
   final Color color;
   final int? best;
   final bool played;
@@ -462,7 +466,7 @@ class _SceneTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  scene.title,
+                  '$number — ${scene.title}',
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 14.5,
@@ -645,6 +649,9 @@ class _ApSceneDetailScreenState extends State<ApSceneDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final category = widget.content.categoryById(_scene.category);
+    final categoryIndex = widget.content.categories.indexWhere((c) => c.id == _scene.category);
+    final sceneIndex = widget.content.scenesOf(_scene.category).indexWhere((e) => e.id == _scene.id);
+    final number = '3.${categoryIndex + 1}.${sceneIndex + 1}';
     return Scaffold(
       backgroundColor: ApColors.ivory,
       body: SafeArea(
@@ -664,7 +671,7 @@ class _ApSceneDetailScreenState extends State<ApSceneDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ApTopBar(
-                    title: category?.title ?? 'Scène de vie',
+                    title: '$number · ${category?.title ?? 'Scène de vie'}',
                     subtitle: _scene.place,
                     dark: true,
                     trailing: _stage == _Stage.dialogue
@@ -711,7 +718,7 @@ class _ApSceneDetailScreenState extends State<ApSceneDetailScreen> {
         ),
         const SizedBox(height: 14),
         Text(_scene.intro, style: ApText.body.copyWith(fontSize: 15)),
-        const ApSectionTitle('Les personnages'),
+        ApSectionTitle('$number.1 — Les personnages'),
         for (final who in const ['a', 'b'])
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -739,7 +746,7 @@ class _ApSceneDetailScreenState extends State<ApSceneDetailScreen> {
           'Touche un personnage pour choisir ton rôle.',
           style: ApText.small.copyWith(fontSize: 11.5),
         ),
-        const ApSectionTitle('Mots de la scène'),
+        ApSectionTitle('$number.2 — Mots de la scène'),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -763,7 +770,7 @@ class _ApSceneDetailScreenState extends State<ApSceneDetailScreen> {
               ),
           ],
         ),
-        const ApSectionTitle('Comment jouer ?'),
+        ApSectionTitle('$number.3 — Comment jouer ?'),
         Row(
           children: [
             Expanded(
