@@ -23,6 +23,7 @@ import {
   GraduationCap, ShieldCheck, Sparkles, TrendingUp, Volume2, Download, Smartphone, type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
 import type { ApFoundation, ApTheme } from '@/lib/apprendre/content';
 import { ApprendreStore } from '@/lib/apprendre/store';
 import { ScenesProgress } from '@/lib/apprendre/scenes';
@@ -87,6 +88,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
   const voiceAccess = useApVoiceAccess();
   const { data: audioManifest } = useApprendrePublishedAudio();
   const { user } = useAuth();
+  const { currentLang, t, tr } = useFitilaLanguage();
 
   // `store`/`scenesProgress` sont ouverts une seule fois (localStorage) et
   // reconstruits après chaque retour de séance pour refléter la progression
@@ -221,7 +223,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
       <div className="mx-auto max-w-[900px] px-5 pb-10 pt-4">
         <div className="mb-4 flex min-h-12 items-center pl-14">
           <div className="min-w-0">
-            <h1 className="truncate text-[22px] font-black leading-tight" style={{ color: AP_COLORS.ink }}>Apprendre</h1>
+            <h1 className="truncate text-[22px] font-black leading-tight" style={{ color: AP_COLORS.ink }}>{currentLang === "ba" ? t("sidebar_learn") : "Apprendre"}</h1>
             <p className="truncate text-[13px]" style={{ color: AP_COLORS.muted }}><ApLinguisticText text="Mɛɛribu" bariba /> · Baatɔnum ⇄ français</p>
           </div>
           <button
@@ -240,11 +242,11 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
         <a
           href="https://fitila.bj/install"
           className="mb-4 flex w-full items-center justify-between gap-3 rounded-2xl border border-[#D7C18D] bg-[#F9F0D9] px-4 py-3 text-[#312714] shadow-sm transition hover:bg-[#F4E5BF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#996D18]"
-          aria-label="Télécharger l'application Android FITILA"
+          aria-label={currentLang === "ba" ? `${t("common_download")} · Android FITILA` : "Télécharger l’application Android FITILA"}
         >
           <span className="flex min-w-0 items-center gap-3">
             <Smartphone className="h-6 w-6 shrink-0" aria-hidden="true" />
-            <span className="text-left text-sm font-extrabold">Télécharger l'application Android</span>
+            <span className="text-left text-sm font-extrabold">{currentLang === "ba" ? `${t("common_download")} · Android FITILA` : "Télécharger l’application Android"}</span>
           </span>
           <Download className="h-5 w-5 shrink-0" aria-hidden="true" />
         </a>
