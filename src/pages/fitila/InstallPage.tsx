@@ -21,9 +21,26 @@ export default function InstallPage(){
     const releases=(Array.isArray(data?.releases)?data.releases:[])
      .filter((r:any)=>r?.signing==='production'&&valid(r.arm64))
      .sort((a:any,b:any)=>String(b.published_at||'').localeCompare(String(a.published_at||'')));
-    const selected=releases[0];
+    // Do not advertise stale releases whose APK is missing from the web server.
+    let selected:any=null;
+    for(const entry of releases){
+      try {
+        const probe=await fetch(entry.arm64,{method:'HEAD',cache:'no-store',signal:controller.signal});
+        const type=(probe.headers.get('content-type')||'').toLowerCase();
+        if(probe.ok && !type.includes('text/html') && !type.includes('application/json')){
+          selected=entry;break;
+        }
+      }catch(e){if(controller.signal.aborted)throw e}
+    }
     if(!selected){setState('unavailable');return}
-    setRelease({version:String(selected.version||''),url:selected.arm64,updated:String(selected.published_at||''),legacy:valid(selected.armv7)?selected.armv7:undefined});
+    let legacy: string|undefined;
+    if(valid(selected.armv7)){
+      try{
+        const probe=await fetch(selected.armv7,{method:'HEAD',cache:'no-store',signal:controller.signal});
+        if(probe.ok && !(probe.headers.get('content-type')||'').includes('text/html'))legacy=selected.armv7;
+      }catch{/* optional device compatibility file */}
+    }
+    setRelease({version:String(selected.version||''),url:selected.arm64,updated:String(selected.published_at||''),legacy});
     setState('ready');
    }catch(e){if(!controller.signal.aborted){setError('Impossible de vérifier la version Android.');setState('unavailable')}}
   };
