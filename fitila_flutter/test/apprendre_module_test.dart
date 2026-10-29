@@ -419,7 +419,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Chapitre 3 — Scènes de vie'), findsOneWidget);
-    expect(find.text(content.categories.first.title), findsOneWidget);
+    expect(find.text('3.1 — ${content.categories.first.title}'), findsOneWidget);
     expect(find.text(content.scenes.first.title), findsWidgets);
   });
 
