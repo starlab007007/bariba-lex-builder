@@ -248,6 +248,22 @@ jobs:
         if: steps.prevalidated.outputs.debug_skip != 'true'
         run: flutter build apk --debug --target-platform android-x64 --dart-define-from-file=.ci-dart-defines.json
 
+      - name: Verify the debug APK contains the native keyboard service
+        if: steps.prevalidated.outputs.debug_skip != 'true'
+        run: |
+          set -euo pipefail
+          APK=build/app/outputs/flutter-apk/app-debug.apk
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -1)"
+          "$AAPT" dump xmltree "$APK" AndroidManifest.xml > build/keyboard-debug-manifest.txt
+          grep -q 'com.fitila.bariba.BaribaInputMethodService' build/keyboard-debug-manifest.txt || {
+            echo "::error::Android debug APK missing BaribaInputMethodService in merged manifest"
+            tail -160 build/keyboard-debug-manifest.txt
+            exit 1
+          }
+          grep -q 'android.view.InputMethod' build/keyboard-debug-manifest.txt || {
+            echo "::error::InputMethod intent-filter missing from packaged Android manifest"
+            exit 1
+          }
       - name: Enable KVM
         if: steps.prevalidated.outputs.debug_skip != 'true'
         run: sudo chmod 666 /dev/kvm
