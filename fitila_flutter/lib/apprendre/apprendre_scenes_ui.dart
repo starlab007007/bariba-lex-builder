@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../core/fitila_language.dart';
+
 import 'apprendre_audio.dart';
 import 'apprendre_scenes.dart';
 import 'apprendre_session.dart';
@@ -135,7 +137,9 @@ class _ApScenesHubScreenState extends State<ApScenesHubScreen> {
         child: Column(
           children: [
             ApTopBar(
-              title: 'Chapitre 3 — Scènes de vie',
+              title: FitilaLanguage.isBariba
+                  ? '3 — ${FitilaLanguage.translate('Scènes', key: 'griot_scenes')}'
+                  : 'Chapitre 3 — Scènes de vie',
               subtitle: content == null
                   ? 'Dialogues de la vie quotidienne'
                   : '${content.scenes.length} situations · ${content.categories.length} thématiques',
