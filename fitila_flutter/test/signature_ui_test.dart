@@ -89,7 +89,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 650));
     await tester.pump();
 
-    expect(find.text('Fil'), findsWidgets);
+    expect(find.text('DUNYA IA'), findsWidgets);
     expect(find.text('Apprendre'), findsWidgets);
     expect(find.text('Classe'), findsWidgets);
     expect(find.bySemanticsLabel('Création'), findsWidgets);
@@ -148,11 +148,7 @@ void main() {
     await tester.enterText(field, 'Bonjour FITILA');
     await tester.pump();
 
-    await tester.tap(find.text('Fil').first);
-    await tester.pump(const Duration(milliseconds: 350));
-    await tester.pump();
-    expect(find.text('Fil · bientôt'), findsOneWidget);
-    await tester.tap(find.text('OK'));
+    await tester.tap(find.text('DUNYA IA').first);
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
 
