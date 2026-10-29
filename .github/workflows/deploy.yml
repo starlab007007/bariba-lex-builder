@@ -133,17 +133,37 @@ jobs:
             docker compose -f docker-composer.yml pull react-app-bariba || true
             docker compose -f docker-composer.yml up -d --force-recreate --remove-orphans --no-build react-app-bariba
 
-            echo "🧪 Tests HTTP avec diagnostic par route..."
+            echo "🧪 Attente de disponibilité Nginx après recréation du conteneur..."
+            ready=0
+            for attempt in $(seq 1 24); do
+              code=$(curl --connect-timeout 2 --max-time 5 -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8085/ 2>/dev/null) || code=000
+              echo "Readiness $attempt/24 => HTTP $code"
+              if [ "$code" = "200" ]; then ready=1; break; fi
+              sleep 3
+            done
+            if [ "$ready" -ne 1 ]; then
+              echo "::error::Nginx not ready after startup grace period"
+              docker compose -f docker-composer.yml ps react-app-bariba || true
+              docker compose -f docker-composer.yml logs --tail 70 react-app-bariba || true
+              exit 1
+            fi
+            echo "🧪 Smoke tests des routes essentielles (avec tentatives)..."
             for path in / /install /admin; do
-              code=$(curl --max-time 12 -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:8085$path")
+              route_ok=0
+              for attempt in 1 2 3; do
+                code=$(curl --connect-timeout 3 --max-time 10 -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:8085$path" 2>/dev/null) || code=000
+                if [ "$code" = "200" ]; then route_ok=1; break; fi
+                sleep 2
+              done
               echo "$path => HTTP $code"
-              if [ "$code" != "200" ]; then
-                echo "::error::Page essentielle inaccessible: $path (HTTP $code)"
+              if [ "$route_ok" -ne 1 ]; then
+                echo "::error::Route essentielle inaccessible: $path (HTTP $code)"
+                docker compose -f docker-composer.yml logs --tail 35 react-app-bariba || true
                 exit 1
               fi
             done
             for path in /classe /classe/N1 /admin/apprendre-voice; do
-              code=$(curl --max-time 12 -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:8085$path" || true)
+              code=$(curl --connect-timeout 3 --max-time 10 -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:8085$path" 2>/dev/null) || code=000
               echo "$path => HTTP $code"
               if [ "$code" != "200" ]; then echo "::warning::Route secondaire à examiner: $path (HTTP $code)"; fi
             done
