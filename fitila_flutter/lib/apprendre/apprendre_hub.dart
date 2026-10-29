@@ -505,7 +505,7 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
               },
             ),
           ),
-          ApSectionTitle(FitilaLanguage.isBariba ? '2 — ${FitilaLanguage.translate('Leçons', key: 'learn_cfg_lessons')}' : 'Chapitre 2 — Vocabulaire'),
+          const ApSectionTitle('Chapitre 2 — Vocabulaire'),
           GridView.builder(
             itemCount: content.themes.length,
             shrinkWrap: true,
