@@ -46,7 +46,15 @@ export default function InstallPage(){
         if(probe.ok && !(probe.headers.get('content-type')||'').includes('text/html'))legacy=selected.armv7;
       }catch{/* optional device compatibility file */}
     }
-    setRelease({version:String(selected.version||''),url:selected.arm64,updated:String(selected.published_at||''),legacy});
+    // Prefer the permanent public download path, atomically updated by CI.
+    // Do not send users to an unverified 404 if publication is incomplete.
+    let primary=selected.arm64;
+    try {
+      const stable=await fetch('/dunya-packs/android/latest.apk',{method:'HEAD',cache:'no-store',signal:controller.signal});
+      const mime=(stable.headers.get('content-type')||'').toLowerCase();
+      if(stable.ok && !mime.includes('text/html') && !mime.includes('application/json'))primary='/dunya-packs/android/latest.apk';
+    }catch{/* Retain individually verified release path */}
+    setRelease({version:String(selected.version||''),url:primary,updated:String(selected.published_at||''),legacy});
     setState('ready');
    }catch(e){if(!controller.signal.aborted){setError('Impossible de vérifier la version Android.');setState('unavailable')}}
   };
