@@ -84,6 +84,27 @@ def screenshot(name):
 try:
     package = 'bj.fitila.fitila_native'
     component = package + '/com.fitila.bariba.BaribaInputMethodService'
+    # The emulator can accept an install before PackageManager has finished
+    # registering input methods. Verify the actual merged manifest via Android,
+    # rather than assuming that an installed APK already has a discoverable IME.
+    adb('shell', 'am', 'wait-for-broadcast-idle')
+    methods = ''
+    for attempt in range(20):
+        methods = adb('shell', 'ime', 'list', '-s').decode('utf-8', 'replace')
+        if component in methods:
+            break
+        print(f'Awaiting registered FITILA IME ({attempt+1}/20): {methods!r}', flush=True)
+        time.sleep(2)
+    else:
+        packages = adb('shell', 'pm', 'list', 'packages', 'fitila').decode('utf-8', 'replace')
+        package_dump = adb('shell', 'dumpsys', 'package', package).decode('utf-8', 'replace')
+        (OUT / 'missing-ime-diagnostic.txt').write_text(
+            'Installed packages:\\n' + packages + '\\nIME list:\\n' + methods +
+            '\\nPackage dump:\\n' + package_dump, encoding='utf-8')
+        raise AssertionError(
+            'FITILA keyboard service not registered by Android. '
+            'Inspect merged manifest and missing-ime-diagnostic.txt. '
+            f'IME list={methods!r}, packages={packages!r}')
     adb('shell', 'ime', 'enable', component)
     adb('shell', 'ime', 'set', component)
     adb('shell', 'am', 'start', '-W', '-n', package + '/com.fitila.bariba.KeyboardTestActivity')
@@ -173,5 +194,9 @@ except Exception:
     (OUT / 'logcat.txt').write_bytes(adb('logcat', '-d', '-s', 'BaribaKeyboard', 'InputMethodManager', 'ImeTracker', 'AndroidRuntime'))
     (OUT / 'input-method-state.txt').write_bytes(adb('shell', 'dumpsys', 'input_method'))
     screenshot('failure.png')
-    (OUT / 'failure-ui.xml').write_bytes(adb('shell', 'cat', '/sdcard/fitila-window.xml'))
+    try:
+        (OUT / 'failure-ui.xml').write_bytes(adb('shell', 'cat', '/sdcard/fitila-window.xml'))
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        # Diagnostics must never hide the original Android failure.
+        pass
     raise
