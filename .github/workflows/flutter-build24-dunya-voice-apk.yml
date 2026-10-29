@@ -516,6 +516,15 @@ jobs:
           if armv7:
               entry['armv7'] = f'/dunya-packs/android/{d}/{armv7}'
           data['releases'] = [r for r in data['releases'] if r.get('version') != d] + [entry]
+          # Stable public filenames are published only after checksum validation.
+          import shutil
+          for source, stable in [(arm64, 'latest.apk'), (armv7, 'latest-legacy.apk')]:
+              if source:
+                  dest=os.path.join(root,stable)
+                  pending=dest+'.tmp'
+                  shutil.copyfile(os.path.join(root,d,source),pending)
+                  os.chmod(pending,0o644)
+                  os.replace(pending,dest)
           tmp = path + '.tmp'
           json.dump(data, open(tmp, 'w'), indent=1)
           os.replace(tmp, path)
