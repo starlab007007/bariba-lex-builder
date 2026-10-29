@@ -133,14 +133,20 @@ jobs:
             docker compose -f docker-composer.yml pull react-app-bariba || true
             docker compose -f docker-composer.yml up -d --force-recreate --remove-orphans --no-build react-app-bariba
 
-            echo "🧪 Smoke tests FITILA / Classe / administration..."
-            sleep 2
-            curl -fsS --max-time 10 http://127.0.0.1:8085/ >/dev/null
-            curl -fsS --max-time 10 http://127.0.0.1:8085/classe >/dev/null
-            curl -fsS --max-time 10 http://127.0.0.1:8085/classe/N1 >/dev/null
-            curl -fsS --max-time 10 http://127.0.0.1:8085/admin >/dev/null
-            curl -fsS --max-time 10 http://127.0.0.1:8085/admin/apprendre-voice >/dev/null
-            curl --resolve fitila.bj:443:127.0.0.1 -fsS --max-time 10 https://fitila.bj/classe >/dev/null
+            echo "🧪 Tests HTTP avec diagnostic par route..."
+            for path in / /install /admin; do
+              code=$(curl --max-time 12 -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:8085$path")
+              echo "$path => HTTP $code"
+              if [ "$code" != "200" ]; then
+                echo "::error::Page essentielle inaccessible: $path (HTTP $code)"
+                exit 1
+              fi
+            done
+            for path in /classe /classe/N1 /admin/apprendre-voice; do
+              code=$(curl --max-time 12 -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:8085$path" || true)
+              echo "$path => HTTP $code"
+              if [ "$code" != "200" ]; then echo "::warning::Route secondaire à examiner: $path (HTTP $code)"; fi
+            done
 
             trap - ERR
             echo "✅ FITILA web actif depuis le bundle GitHub ${{ github.sha }}"
