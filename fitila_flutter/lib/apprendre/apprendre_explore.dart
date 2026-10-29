@@ -540,7 +540,7 @@ class ApProgressScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            const ApTopBar(title: 'Ma progression', subtitle: 'Enregistrée sur cet appareil'),
+            const ApTopBar(title: '4.2 — Ma progression', subtitle: 'Enregistrée sur cet appareil'),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
@@ -581,7 +581,7 @@ class ApProgressScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const ApSectionTitle('Révisions à venir'),
+                  const ApSectionTitle('4.2.2 — Révisions à venir'),
                   ApCardBox(
                     radius: 22,
                     child: Column(
@@ -632,7 +632,7 @@ class ApProgressScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const ApSectionTitle('Par thème'),
+                  const ApSectionTitle('4.2.1 — Par thème'),
                   for (final theme in content.themes)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
