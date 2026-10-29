@@ -84,6 +84,8 @@ jobs:
 
       - name: Verify release metadata
         run: |
+          echo "FITILA build 37 source commit: ${GITHUB_SHA}"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           flutter --version
           grep -q '^version: 1.8.26+37$' pubspec.yaml
           grep -q 'sherpa_onnx' pubspec.yaml
