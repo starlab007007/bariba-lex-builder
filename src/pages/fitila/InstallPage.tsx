@@ -7,6 +7,12 @@ type Release={version:string;url:string;updated:string;legacy?:string};
 const MANIFEST='/dunya-packs/android/releases.json';
 const valid=(v:unknown):v is string=>typeof v==='string'&&/^\/dunya-packs\/android\/[a-zA-Z0-9_./-]+\.apk$/i.test(v)&&!v.includes('..');
 export default function InstallPage(){
+ // Keep the public installation address canonical, even if an external
+ // application attaches attribution parameters to an incoming link.
+ useEffect(()=>{
+  if(window.location.pathname==='/install' && window.location.search)
+    window.history.replaceState(window.history.state,'','/install');
+ },[]);
  const [release,setRelease]=useState<Release|null>(null);
  const [state,setState]=useState<'loading'|'ready'|'unavailable'>('loading');
  const [error,setError]=useState('');
