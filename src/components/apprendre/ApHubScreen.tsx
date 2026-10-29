@@ -268,21 +268,38 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
         <p className="mt-3 rounded-2xl border border-[#E4DFCC] bg-white px-3 py-2 text-xs text-[#716B5F]">Appuyez sur le haut-parleur devant un mot ou une phrase. Voix humaine publiée en priorité, sinon voix synthétique Baatɔnum avec connexion.</p>
         {/* 2. _GuideHero */}
         <div className="mt-4">
-          {nextFoundation ? (
-            <ApGuideHero
-              title={nextFoundation.title_fr}
-              subtitle={`Fondation ${nextFoundation.order} · ${nextFoundation.minutes} min`}
-              action="Commencer"
-              onTap={() => openFoundation(nextFoundation)}
-            />
-          ) : (
-            <ApGuideHero
-              title="Toutes les fondations sont validées"
-              subtitle="Continue avec le vocabulaire et les scènes"
-              action={due.length === 0 ? 'Séance du jour' : 'Réviser mes mots'}
-              onTap={due.length === 0 ? startDaily : openReview}
-            />
-          )}
+          <ApGuideHero
+            title={nextFoundation ? `1.${nextFoundation.order} — ${nextFoundation.title_fr}` : 'Fondations validées'}
+            subtitle={nextFoundation
+              ? `Chapitre 1 · Section 1.${nextFoundation.order} · ${nextFoundation.minutes} min · hors connexion`
+              : 'Continuer les révisions et les exercices'}
+            action="Continuer mon apprentissage"
+            onTap={nextFoundation ? () => openFoundation(nextFoundation) : (due.length > 0 ? openReview : startDaily)}
+          />
+        </div>
+
+        {/* Avancement réel issu du stockage local, sans statistiques inventées. */}
+        <div className="mt-4 rounded-2xl border bg-white p-4" style={{ borderColor: AP_COLORS.line }}>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-extrabold" style={{ color: AP_COLORS.ink }}>Ma progression pédagogique</h2>
+            <span className="text-xs" style={{ color: AP_COLORS.muted }}>Hors connexion</span>
+          </div>
+          <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-stone-100" role="progressbar"
+            aria-valuenow={content.foundations.length === 0 ? 0 : Math.round(100 * content.foundations.filter(f => progress.foundationDone(f.id)).length / content.foundations.length)}
+            aria-valuemin={0} aria-valuemax={100} aria-label="Fondations validées">
+            <div className="h-full rounded-full bg-emerald-600" style={{ width: `${content.foundations.length === 0 ? 0 : Math.round(100 * content.foundations.filter(f => progress.foundationDone(f.id)).length / content.foundations.length)}%` }}/>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              [`${content.foundations.filter(f => progress.foundationDone(f.id)).length}/${content.foundations.length}`, 'Fondations validées'],
+              [String(progress.activeWords), 'Mots acquis'],
+              [String(due.length), 'Révisions dues'],
+              [`${progress.streak} j`, 'Jours consécutifs'],
+            ].map(([value,label]) => <div key={label} className="rounded-xl bg-[#F8F6EF] p-3">
+              <div className="text-xl font-black" style={{ color: AP_COLORS.ink }}>{value}</div>
+              <div className="text-xs" style={{ color: AP_COLORS.muted }}>{label}</div>
+            </div>)}
+          </div>
         </div>
 
         {/* 3. _DailySessionCard */}
@@ -292,7 +309,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
 
         {/* 4. Section Révision */}
         <ApHubSectionTitle
-          title="Révision"
+          title="4.1 — Révision espacée"
           trailing={
             <button onClick={openReview} className="text-[13px] font-bold" style={{ color: AP_COLORS.goldDeep }}>
               {due.length === 0 ? 'Ouvrir' : `${due.length} mots · tout voir`}
@@ -326,7 +343,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
         )}
 
         {/* 5. Fondations */}
-        <ApHubSectionTitle title="Fondations" trailing={<span className="text-[13px]" style={{ color: AP_COLORS.muted }}>{progress.foundationsDone}/{content.foundations.length}</span>} />
+        <ApHubSectionTitle title="Chapitre 1 — Fondations" trailing={<span className="text-[13px]" style={{ color: AP_COLORS.muted }}>{progress.foundationsDone}/{content.foundations.length}</span>} />
         <div className="flex gap-2.5 overflow-x-auto pb-1">
           {content.foundations.map((unit) => (
             <ApFoundationTile
@@ -340,7 +357,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
         </div>
 
         {/* 6. Vocabulaire */}
-        <ApHubSectionTitle title="Vocabulaire" />
+        <ApHubSectionTitle title="Chapitre 2 — Vocabulaire" />
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {content.themes.map((theme: ApTheme) => (
             <ApThemeTile
@@ -353,7 +370,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
         </div>
 
         {/* 7. Scènes de vie */}
-        <ApHubSectionTitle title="Scènes de vie" />
+        <ApHubSectionTitle title="Chapitre 3 — Scènes de vie" />
         <ApScenesEntryCard onOpen={openScenes} />
 
         {/* 8. Sagesse (seulement si des proverbes existent) */}
@@ -374,7 +391,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
         )}
 
         {/* 10. Mon parcours */}
-        <ApHubSectionTitle title="Mon parcours" />
+        <ApHubSectionTitle title="Chapitre 4 — Mon parcours" />
         <div className="flex flex-wrap gap-2">
           {voiceAccess.speaker && onOpenVoiceStudio && <ApLinkChip label="Studio Voix" icon={Mic} onTap={onOpenVoiceStudio} />}
           {voiceAccess.reviewer && onOpenVoiceReview && <ApLinkChip label="Validation voix" icon={ShieldCheck} onTap={onOpenVoiceReview} />}
