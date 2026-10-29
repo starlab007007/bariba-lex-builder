@@ -18,7 +18,7 @@ on:
       - '.github/workflows/flutter-build24-dunya-voice-apk.yml'
       - 'scripts/test-native-keyboard-translator.py'
       - 'scripts/verify-android-onnx-abi.py'
-      - 'scripts/check-verified-build36-source.sh'
+      - 'scripts/check-verified-build37-source.sh'
       - '.github/workflows/fitila-offline-model-smoke.yml'
       - 'scripts/test-dunya-offline-models.sh'
       - 'tests/android/dunya_offline_models_test.dart'
@@ -40,7 +40,7 @@ jobs:
 
   build-apk:
     needs: offline-models
-    name: Android release APK 1.8.25+36
+    name: Android release APK 1.8.26+36
     runs-on: ubuntu-latest
     timeout-minutes: 75
     defaults:
@@ -85,7 +85,7 @@ jobs:
       - name: Verify release metadata
         run: |
           flutter --version
-          grep -q '^version: 1.8.25+36$' pubspec.yaml
+          grep -q '^version: 1.8.26+36$' pubspec.yaml
           grep -q 'sherpa_onnx' pubspec.yaml
           test -x android/gradlew
           grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
@@ -141,11 +141,11 @@ jobs:
         run: |
           # Run 40247728176 completed native/Flutter/real keyboard checks and
           # job 121332763487 passed the real offline models. Only R8 changed.
-          if bash scripts/check-verified-build36-source.sh; then
+          if bash scripts/check-verified-build37-source.sh; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "native_skip=true" >> "$GITHUB_OUTPUT"
             echo "debug_skip=true" >> "$GITHUB_OUTPUT"
-            echo "Reusing completed debug checks for identical build36 app sources."
+            echo "Reusing completed debug checks for identical build37 app sources."
             exit 0
           fi
 
@@ -375,7 +375,7 @@ jobs:
             unzip -l "$src" | grep -q 'libsherpa-onnx-c-api.so'
             python3 ../scripts/verify-android-onnx-abi.py "$src" --r8-mapping build/app/outputs/mapping/release/mapping.txt
             "$APKSIGNER" verify "$src"
-            cp "$src" "build/final-apk/FITILA-Android-v1.8.25-build36-keyboard-translator-$kind.apk"
+            cp "$src" "build/final-apk/FITILA-Android-v1.8.26-build37-keyboard-translator-$kind.apk"
           done
           "$APKSIGNER" verify --print-certs build/final-apk/*-arm64.apk > build/final-apk/SIGNER.txt
           grep -iE "certificate (DN|SHA-256)" build/final-apk/SIGNER.txt || cat build/final-apk/SIGNER.txt
@@ -387,7 +387,7 @@ jobs:
       - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: FITILA-Android-v1.8.25-build36-keyboard-translator
+          name: FITILA-Android-v1.8.26-build37-keyboard-translator
           path: |
             fitila_flutter/build/final-apk/
             fitila_flutter/build/app/reports/tests/
@@ -415,15 +415,15 @@ jobs:
             echo "::warning::APK non publié : les secrets de signature FITILA_KEYSTORE_* sont absents (signature ci-ephemeral). Lancer scripts/setup-signing-secrets.ps1 ou .sh."
             exit 0
           fi
-          TAG="fitila-android-v1.8.25-build36-${GITHUB_RUN_NUMBER}"
+          TAG="fitila-android-v1.8.26-build37-${GITHUB_RUN_NUMBER}"
           gh release create "$TAG" \
-            build/final-apk/FITILA-Android-v1.8.25-build36-keyboard-translator-arm64.apk \
-            build/final-apk/FITILA-Android-v1.8.25-build36-keyboard-translator-armv7.apk \
+            build/final-apk/FITILA-Android-v1.8.26-build37-keyboard-translator-arm64.apk \
+            build/final-apk/FITILA-Android-v1.8.26-build37-keyboard-translator-armv7.apk \
             build/final-apk/SHA256SUMS.txt \
             build/final-apk/SIGNER.txt \
             --repo "${GITHUB_REPOSITORY}" \
             --target "${GITHUB_SHA}" \
-            --title "FITILA Android v1.8.25 build36 (${GITHUB_RUN_NUMBER})" \
+            --title "FITILA Android v1.8.26 build37 (${GITHUB_RUN_NUMBER})" \
             --notes "APK de production signé ; modèles DUNYA/ByT5 téléchargeables séparément. Traduction ByT5 non certifiée désactivée par défaut, disponible sur consentement expérimental explicite."
 
       # The repository is private: phones download APKs from fitila.bj, listed in
@@ -434,7 +434,7 @@ jobs:
         working-directory: fitila_flutter
         run: |
           if [ "$(cat build/SIGNING_MODE.txt)" = "production" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "ok=false" >> "$GITHUB_OUTPUT"; fi
-          echo "dir=v1.8.25-build36-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "dir=v1.8.26-build37-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           mkdir -p ../apk-publish && cp build/final-apk/*-arm64.apk build/final-apk/*-armv7.apk build/final-apk/SHA256SUMS.txt ../apk-publish/
 
       - name: Prepare fitila.bj APK folder
@@ -552,7 +552,7 @@ jobs:
           # A filesystem copy does not prove that phones can download the APK.
           # Reject broken SPA/404 fallbacks before declaring the release published.
           if [ "$status" -eq 0 ]; then
-            apk_url="https://fitila.bj/dunya-packs/android/$TARGET_DIR/FITILA-Android-v1.8.25-build36-keyboard-translator-arm64.apk"
+            apk_url="https://fitila.bj/dunya-packs/android/$TARGET_DIR/FITILA-Android-v1.8.26-build37-keyboard-translator-arm64.apk"
             echo "Checking public APK endpoint: $apk_url"
             http_code=$(curl -sS -L --max-time 30 -o /dev/null -w '%{http_code}' -I "$apk_url") || status=$?
             if [ "${http_code:-}" != "200" ]; then
