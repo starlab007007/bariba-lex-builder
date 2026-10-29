@@ -27,7 +27,8 @@ Deno.serve(async req => {
  if(action==="status"){
   const {data,error}=await admin.from("fitila_guardian_checks").select("service,status,checked_at,latency_ms,http_status,detail").order("checked_at",{ascending:false}).limit(120);
   const {data:actions}=await admin.from("fitila_guardian_actions").select("action,service,created_at,detail").order("created_at",{ascending:false}).limit(30);
-  return error?respond({error:"Cannot read checks"},500):respond({checks:data||[],actions:actions||[]});
+  const {data:incidents, error:incidentsError}=await admin.from("fitila_guardian_incidents").select("service,state,consecutive_failures,consecutive_successes,opened_at,recovered_at,updated_at,detail").order("updated_at",{ascending:false});
+  return error||incidentsError?respond({error:"Cannot read Guardian monitoring records"},500):respond({checks:data||[],actions:actions||[],incidents:incidents||[]});
  }
  if(action==="probe"){
   const requested=body.service;
