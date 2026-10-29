@@ -87,6 +87,13 @@ export default function InstallPage() {
   return (
     <FitilaPage>
       <FitilaPageHeader title="Installer FITILA" subtitle="Installation PWA, APK et clavier" />
+      <div className="mx-[18px] mt-4 flex items-center gap-4 rounded-[18px] border border-[#E4DFCC] bg-white p-4">
+        <img src="/fitila-launcher-logo.svg" alt="Logo officiel FITILA, lanterne orange" width={72} height={72} className="h-[72px] w-[72px] rounded-2xl border border-[#EFE9D9] object-contain" />
+        <div>
+          <p className="text-[16px] font-extrabold text-[#2B2110]">FITILA Android</p>
+          <p className="mt-1 text-[12px] text-[#766D5A]">Reconnaissez l’application grâce à son icône lanterne orange.</p>
+        </div>
+      </div>
       <div className="mt-[18px] space-y-[12px]">
         <MetricStrip metrics={[{ label: 'Etat', value: isInstalled ? 'Installé' : 'Pret' }, { label: 'Sync', value: 'Locale' }, { label: 'Acces', value: 'Mobile' }]} />
         <ChipWrap>
