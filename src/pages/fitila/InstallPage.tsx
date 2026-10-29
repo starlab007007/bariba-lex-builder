@@ -1,190 +1,68 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Download, Share2, CheckCircle, Smartphone, AppWindow, Keyboard, RefreshCcw, type LucideIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Download, Smartphone, WifiOff, Zap, CheckCircle2, RefreshCw } from 'lucide-react';
 import FitilaPageHeader from '@/components/fitila/FitilaPageHeader';
-import { Chip, ChipWrap, FeatureGrid, FitilaPage, MetricStrip, type Feature } from '@/components/fitila/FitilaUi';
+import { FitilaPage } from '@/components/fitila/FitilaUi';
 
-type AndroidRelease = { version: string; url: string; size: number; updated: string; armv7?: string };
-// The GitHub repository is private: phones cannot read its releases. Production APKs
-// (signed with the persistent FITILA key only) are published on fitila.bj with this manifest.
-const RELEASE_MANIFEST = '/dunya-packs/android/releases.json';
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt(): Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
-}
-
-export default function InstallPage() {
-  const navigate = useNavigate();
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
-  const [apk, setApk] = useState<AndroidRelease | null>(null);
-  const [apkHistory, setApkHistory] = useState<AndroidRelease[]>([]);
-  const [apkStatus, setApkStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch(`${RELEASE_MANIFEST}?updated=${Date.now()}`, { cache: 'no-store', signal: controller.signal })
-      .then(async response => {
-        if (!response.ok) throw new Error('No public production release');
-        return response.json();
-      })
-      .then(manifest => {
-        const list = Array.isArray(manifest?.releases) ? manifest.releases : [];
-        const safe = (u: unknown) => typeof u === 'string' && u.startsWith('/dunya-packs/android/') && /\.apk$/i.test(u);
-        const verified = list
-          .filter((r: any) => r && r.signing === 'production' && safe(r.arm64))
-          .map((r: any) => ({
-            version: String(r.version), url: String(r.arm64), size: Number(r.arm64_size) || 0,
-            updated: String(r.published_at || ''), armv7: safe(r.armv7) ? String(r.armv7) : undefined,
-          }) as AndroidRelease);
-        verified.sort((a: AndroidRelease, b: AndroidRelease) => (b.updated || '').localeCompare(a.updated || ''));
-        setApk(verified[0] || null);
-        setApkHistory(verified.slice(1));
-        setApkStatus(verified.length ? 'ready' : 'unavailable');
-      })
-      .catch(error => { if (error?.name !== 'AbortError') setApkStatus('unavailable'); });
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    // Detect iOS
-    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    setIsIOS(ios);
-
-    // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
-    }
-
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-    };
-
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
-
-  const handleInstall = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') setIsInstalled(true);
-    setDeferredPrompt(null);
+type Release={version:string;url:string;updated:string;legacy?:string};
+const MANIFEST='/dunya-packs/android/releases.json';
+const valid=(v:unknown):v is string=>typeof v==='string'&&/^\/dunya-packs\/android\/[a-zA-Z0-9_./-]+\.apk$/i.test(v)&&!v.includes('..');
+export default function InstallPage(){
+ const [release,setRelease]=useState<Release|null>(null);
+ const [state,setState]=useState<'loading'|'ready'|'unavailable'>('loading');
+ const [error,setError]=useState('');
+ const [checking,setChecking]=useState(false);
+ useEffect(()=>{
+  const controller=new AbortController();
+  const load=async()=>{
+   try{
+    const response=await fetch(MANIFEST+'?v='+Date.now(),{cache:'no-store',signal:controller.signal});
+    if(!response.ok)throw new Error('Catalogue APK inaccessible');
+    const data=await response.json();
+    const releases=(Array.isArray(data?.releases)?data.releases:[])
+     .filter((r:any)=>r?.signing==='production'&&valid(r.arm64))
+     .sort((a:any,b:any)=>String(b.published_at||'').localeCompare(String(a.published_at||'')));
+    const selected=releases[0];
+    if(!selected){setState('unavailable');return}
+    setRelease({version:String(selected.version||''),url:selected.arm64,updated:String(selected.published_at||''),legacy:valid(selected.armv7)?selected.armv7:undefined});
+    setState('ready');
+   }catch(e){if(!controller.signal.aborted){setError('Impossible de vérifier la version Android.');setState('unavailable')}}
   };
-
-  const [tab, setTab] = useState('Vue');
-  const grid: Feature[] = [
-    { icon: AppWindow, title: 'PWA', desc: 'Installer depuis navigateur, écran d’accueil et mode hors ligne.' },
-    { icon: Smartphone, title: 'APK Android', desc: 'Préparer build, permissions, stockage, micro et clavier.' },
-    { icon: Keyboard, title: 'Clavier natif', desc: 'Activation système, guide pas à pas et test de saisie.', onClick: () => navigate('/keyboard') },
-    { icon: RefreshCcw, title: 'Mises à jour', desc: 'Version, migration cache, assets et compatibilité backend.' },
-  ];
-  const tabs: [string, LucideIcon][] = [['Vue', Download], ['PWA', AppWindow], ['APK', Smartphone], ['Clavier', Keyboard]];
-
-  return (
-    <FitilaPage>
-      <FitilaPageHeader title="Installer FITILA" subtitle="Installation PWA, APK et clavier" />
-      <div className="mx-[18px] mt-4 flex items-center gap-4 rounded-[18px] border border-[#E4DFCC] bg-white p-4">
-        <img src="/fitila-launcher-logo.svg" alt="Logo officiel FITILA, lanterne orange" width={72} height={72} className="h-[72px] w-[72px] rounded-2xl border border-[#EFE9D9] object-contain" />
-        <div>
-          <p className="text-[16px] font-extrabold text-[#2B2110]">FITILA Android</p>
-          <p className="mt-1 text-[12px] text-[#766D5A]">Reconnaissez l’application grâce à son icône lanterne orange.</p>
-        </div>
-      </div>
-      <div className="mt-[18px] space-y-[12px]">
-        <MetricStrip metrics={[{ label: 'Etat', value: isInstalled ? 'Installé' : 'Pret' }, { label: 'Sync', value: 'Locale' }, { label: 'Acces', value: 'Mobile' }]} />
-        <ChipWrap>
-          {tabs.map(([name, icon]) => <Chip key={name} label={name} icon={icon} selected={tab === name} onClick={() => setTab(name)} />)}
-        </ChipWrap>
-
-        <div className="px-[18px]">
-          <div className="rounded-[18px] border border-[#E4DFCC] bg-white p-4">
-            {isInstalled ? (
-              <div className="flex items-center gap-3">
-                <CheckCircle className="h-8 w-8 shrink-0 text-[#3F6E52]" />
-                <div>
-                  <p className="text-[14px] font-extrabold text-[#3F6E52]">Déjà installé !</p>
-                  <p className="text-[12px] text-[#8C8571]">FITILA est sur ton écran d'accueil.</p>
-                </div>
-              </div>
-            ) : isIOS ? (
-              <ol className="space-y-3 text-[13px]">
-                <li className="flex items-center gap-3"><Share2 className="h-5 w-5 shrink-0 text-[#9C6B1D]" /><span><strong>1.</strong> Appuie sur <strong>Partager</strong> en bas du navigateur</span></li>
-                <li className="flex items-center gap-3"><Download className="h-5 w-5 shrink-0 text-[#9C6B1D]" /><span><strong>2.</strong> Sélectionne <strong>« Sur l'écran d'accueil »</strong></span></li>
-                <li className="flex items-center gap-3"><Smartphone className="h-5 w-5 shrink-0 text-[#9C6B1D]" /><span><strong>3.</strong> Appuie sur <strong>« Ajouter »</strong></span></li>
-              </ol>
-            ) : deferredPrompt ? (
-              <button
-                type="button"
-                onClick={handleInstall}
-                className="flex h-[52px] w-full items-center justify-center gap-2 rounded-full bg-[#C99530] text-[15px] font-extrabold text-[#2B2110] active:scale-[0.99]"
-              >
-                <Download className="h-5 w-5" /> Installer l'application
-              </button>
-            ) : (
-              <p className="text-[13px] leading-snug text-[#3A3448]">
-                Ouvre cette page dans <strong>Chrome</strong> ou <strong>Edge</strong> sur ton téléphone. Menu ⋮ → « Installer l'application » ou « Ajouter à l'écran d'accueil ».
-              </p>
-            )}
-          </div>
-        </div>
-
-        {!isIOS && (
-          <div className="px-[18px]">
-            <section className="rounded-[18px] border border-[#E4DFCC] bg-white p-4 space-y-3" aria-label="Télécharger FITILA Android">
-              <h2 className="text-[16px] font-extrabold text-[#2B2110]">Application Android native (APK)</h2>
-              <p className="text-[13px] text-[#3A3448]">
-                Téléchargez FITILA pour Android. Les fonctions sans Internet peuvent être téléchargées séparément selon vos besoins.
-              </p>
-              {apkStatus === 'ready' && apk ? (
-                <>
-                  <a href={apk.url} className="flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-[#C99530] px-3 font-extrabold text-[#2B2110]">
-                    <Download className="h-5 w-5" /> Télécharger FITILA APK (ARM64)
-                  </a>
-                  {apk.armv7 && <a href={apk.armv7} className="inline-flex items-center gap-2 text-[13px] font-semibold text-[#765017] underline">
-                    <Download className="h-4 w-4" /> APK pour anciens téléphones (ARMv7)
-                  </a>}
-                  <p className="text-[12px] text-[#766D5A]">
-                    Version : {apk.version} · {Math.round(apk.size / 1024 / 1024)} Mo · signature de production FITILA
-                  </p>
-                </>
-              ) : (
-                <p role="status" className="text-[13px] text-[#675D49]">
-                  {apkStatus === 'loading' ? 'Vérification de la dernière version Android…'
-                    : "L’APK Android officiel signé n’est pas encore publié. La version Web reste installable."}
-                </p>
-              )}
-              {apkHistory.length > 0 && (
-                <details className="rounded-xl border border-[#E4DFCC] p-3">
-                  <summary className="cursor-pointer text-[13px] font-bold text-[#3A3448]">
-                    Historique des versions ({apkHistory.length})
-                  </summary>
-                  <ul className="mt-3 space-y-3">
-                    {apkHistory.map(release => (
-                      <li key={release.version} className="flex flex-wrap items-center justify-between gap-2 text-[12px]">
-                        <span>{release.version} · {release.updated ? new Date(release.updated).toLocaleDateString('fr-FR') : 'Date indisponible'}</span>
-                        <span className="flex gap-3">
-                          <a className="font-bold underline" href={release.url}>ARM64</a>
-                          {release.armv7 && <a className="font-bold underline" href={release.armv7}>ARMv7</a>}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-              <p className="text-[12px] text-[#675D49]">
-                Sur Android, ouvrez le fichier APK téléchargé puis autorisez l'installation depuis votre navigateur si Android le demande.
-                Une signature différente de celle de votre version installée empêchera sa mise à jour directe.
-              </p>
-            </section>
-          </div>
-        )}
-
-        <FeatureGrid items={grid} />
-      </div>
-    </FitilaPage>
-  );
+  void load();return ()=>controller.abort();
+ },[]);
+ const download=async(url:string)=>{
+  if(checking)return;setChecking(true);setError('');
+  try{
+   // Check the exact APK URL first, to avoid directing visitors to a 404.
+   const response=await fetch(url,{method:'HEAD',cache:'no-store'});
+   if(!response.ok)throw new Error('Fichier APK indisponible');
+   const mime=response.headers.get('content-type')||'';
+   if(mime.includes('text/html'))throw new Error('Le lien ne renvoie pas un APK');
+   window.location.assign(url);
+  }catch{setError('Le téléchargement est momentanément indisponible. Réessayez plus tard.')}
+  finally{setChecking(false)}
+ };
+ return <FitilaPage>
+  <FitilaPageHeader title="Télécharger FITILA" subtitle="Votre application Android" />
+  <main className="mx-auto max-w-xl space-y-5 px-4 pb-12 pt-6">
+   <section className="rounded-[30px] border border-[#E8DDC5] bg-white px-5 py-7 text-center shadow-sm">
+    <img src="/fitila-launcher-logo.svg" alt="FITILA, lanterne orange" className="mx-auto h-24 w-24 rounded-[22px] object-contain" />
+    <h1 className="mt-4 text-3xl font-black tracking-tight text-[#241F2E]">FITILA sur Android</h1>
+    <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[#776F5B]">Apprenez le bariba, traduisez et retrouvez vos activités directement sur votre téléphone.</p>
+    <div className="mt-5 grid grid-cols-3 gap-2">
+      {([{icon:Zap,label:'Rapide'},{icon:WifiOff,label:'Hors connexion'},{icon:Smartphone,label:'Pratique'}] as const).map(({icon:Icon,label})=><div key={label} className="flex flex-col items-center gap-2 rounded-2xl bg-[#F8F5EC] px-2 py-3"><Icon className="h-5 w-5 text-[#B58220]"/><span className="text-xs font-bold text-[#504333]">{label}</span></div>)}
+    </div>
+    <div className="mt-6 space-y-3">
+      {state==='loading'?<p role="status" className="text-sm text-[#766D5A]"><RefreshCw className="mr-2 inline h-4 w-4 animate-spin"/>Vérification de l'application…</p>:
+       state==='ready'&&release?<><button type="button" onClick={()=>void download(release.url)} disabled={checking} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-[#C99530] px-4 text-base font-extrabold text-[#241F2E] shadow-md transition hover:bg-[#DBAB4E] disabled:opacity-60">
+         <Download className="h-5 w-5"/>{checking?'Vérification du fichier…':'Télécharger FITILA pour Android'}
+        </button>
+        {release.legacy&&<button type="button" disabled={checking} onClick={()=>void download(release.legacy!)} className="w-full rounded-xl border border-[#E4DFCC] px-3 py-3 text-sm font-semibold text-[#65512E]">Version pour anciens téléphones Android</button>}
+        <p className="flex items-center justify-center gap-1.5 text-xs text-[#756F61]"><CheckCircle2 className="h-4 w-4"/>APK officiel FITILA · version {release.version}</p></>:
+       <p role="status" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Le fichier Android officiel n'est pas disponible pour le moment.</p>}
+      {error&&<p role="alert" className="text-sm font-medium text-red-700">{error}</p>}
+    </div>
+   </section>
+   <p className="text-center text-xs leading-relaxed text-[#817968]">Après téléchargement, ouvrez le fichier APK et suivez les instructions Android. Certaines fonctionnalités hors connexion nécessitent des packs supplémentaires.</p>
+  </main>
+ </FitilaPage>;
 }
