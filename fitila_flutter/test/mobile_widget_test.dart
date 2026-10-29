@@ -22,7 +22,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 650));
     await tester.pump();
 
-    expect(find.text('Fil'), findsWidgets);
+    expect(find.text('DUNYA IA'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 }
