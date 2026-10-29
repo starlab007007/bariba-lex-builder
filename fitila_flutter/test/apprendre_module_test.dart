@@ -213,7 +213,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Apprendre'), findsOneWidget);
-    expect(find.text('Fondations'), findsOneWidget);
+    expect(find.text('Chapitre 1 — Fondations'), findsOneWidget);
     expect(find.text("Les sons et l'alphabet"), findsWidgets);
   });
 
@@ -235,7 +235,7 @@ void main() {
 
     expect(find.text('SÉANCE DU JOUR'), findsOneWidget);
     expect(find.text('Lancer la séance'), findsOneWidget);
-    expect(find.text('Révision'), findsWidgets);
+    expect(find.text('4.1 — Révision espacée'), findsWidgets);
   });
 
   testWidgets('un visiteur qui refuse de se connecter reste sur l’accueil Apprendre', (tester) async {
@@ -318,7 +318,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Boîtes de mémoire'), findsOneWidget);
+    expect(find.text('4.1.2 — Boîtes de mémoire'), findsOneWidget);
     expect(find.text('Séance du jour'), findsOneWidget);
   });
 
@@ -418,7 +418,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.text('Scènes de vie'), findsOneWidget);
+    expect(find.text('Chapitre 3 — Scènes de vie'), findsOneWidget);
     expect(find.text(content.categories.first.title), findsOneWidget);
     expect(find.text(content.scenes.first.title), findsWidgets);
   });
