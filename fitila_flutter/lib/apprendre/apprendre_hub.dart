@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../core/fitila_language.dart';
+
 import 'apprendre_audio.dart';
 import 'apprendre_daily.dart';
 import 'apprendre_explore.dart';
@@ -415,7 +417,9 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
             subtitle: next == null
                 ? 'Poursuivre avec la révision ou la séance du jour'
                 : 'Chapitre 1 · Section 1.${next.order} · ${next.minutes} min · progression sauvegardée hors connexion',
-            action: 'Continuer mon apprentissage',
+            action: FitilaLanguage.isBariba
+                ? FitilaLanguage.translate('Continuer', key: 'learn_cfg_continue')
+                : 'Continuer mon apprentissage',
             onTap: _continueLearning,
           ),
           const SizedBox(height: 12),
@@ -501,7 +505,7 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
               },
             ),
           ),
-          const ApSectionTitle('Chapitre 2 — Vocabulaire'),
+          ApSectionTitle(FitilaLanguage.isBariba ? '2 — ${FitilaLanguage.translate('Leçons', key: 'learn_cfg_lessons')}' : 'Chapitre 2 — Vocabulaire'),
           GridView.builder(
             itemCount: content.themes.length,
             shrinkWrap: true,
