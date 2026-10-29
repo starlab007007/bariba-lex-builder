@@ -705,6 +705,9 @@ class _ApSceneDetailScreenState extends State<ApSceneDetailScreen> {
   }
 
   Widget _introBody() {
+    final categoryIndex = widget.content.categories.indexWhere((c) => c.id == _scene.category);
+    final sceneIndex = widget.content.scenesOf(_scene.category).indexWhere((e) => e.id == _scene.id);
+    final number = '3.${categoryIndex + 1}.${sceneIndex + 1}';
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: [
