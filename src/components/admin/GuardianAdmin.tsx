@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 
 type Check = { service:string;status:string;checked_at:string;latency_ms:number|null;http_status:number|null;detail:string|null };
 type Action = { action:string;service:string;created_at:string;detail:string|null };
+type Incident = {service:string;state:'healthy'|'suspected'|'open'|'recovering';consecutive_failures:number;consecutive_successes:number;updated_at:string;detail:string|null};
 const labels: Record<string,string> = {
  web:'FITILA Web', supabase_gateway:'Supabase — passerelle',
  auth_gateway:'Authentification', dunya_voice:'DUNYA — endpoint vocal',
@@ -15,6 +16,7 @@ export default function GuardianAdmin() {
  const {isAdmin}=useAuth();
  const [checks,setChecks]=useState<Check[]>([]);
  const [actions,setActions]=useState<Action[]>([]);
+ const [incidents,setIncidents]=useState<Incident[]>([]);
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState<string|null>(null);
  const invoke=useCallback(async(action:string,service?:string)=>{
@@ -28,8 +30,8 @@ export default function GuardianAdmin() {
   if(data?.error)throw new Error(data.error);
   return data;
  },[]);
- const refresh=useCallback(async()=>{try{const data=await invoke('status');setChecks(data.checks||[]);setActions(data.actions||[]);setError(null);}catch(e){setError(e instanceof Error?e.message:'Lecture impossible');}},[invoke]);
- useEffect(()=>{if(isAdmin)void refresh();},[isAdmin,refresh]);
+ const refresh=useCallback(async()=>{try{const data=await invoke('status');setChecks(data.checks||[]);setActions(data.actions||[]);setIncidents(data.incidents||[]);setError(null);}catch(e){setError(e instanceof Error?e.message:'Lecture impossible');}},[invoke]);
+ useEffect(()=>{if(!isAdmin)return;void refresh();const timer=setInterval(()=>void refresh(),60000);return ()=>clearInterval(timer);},[isAdmin,refresh]);
  const run=async(action:string,service?:string)=>{setBusy(true);setError(null);try{await invoke(action,service);await refresh();}catch(e){setError(e instanceof Error?e.message:'Action impossible')}finally{setBusy(false)}};
  if(!isAdmin)return <p className="rounded-xl border p-5">Accès réservé aux administrateurs.</p>;
  const latest=Object.values(checks.reduce<Record<string,Check>>((acc,c)=>{if(!acc[c.service])acc[c.service]=c;return acc;},{}));
@@ -39,6 +41,18 @@ export default function GuardianAdmin() {
     <div className="flex gap-2"><Button disabled={busy} variant="outline" onClick={()=>void refresh()}><RefreshCw className="mr-2 h-4 w-4"/>Actualiser</Button><Button disabled={busy} onClick={()=>void run('probe')}>Lancer les contrôles</Button></div>
   </div>
   {error&&<div role="alert" className="flex gap-2 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800"><AlertCircle className="h-4 w-4"/>{error}</div>}
+  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+   <h3 className="font-extrabold text-emerald-900">Surveillance autonome active</h3>
+   <p className="mt-1 text-sm text-emerald-800">Sondes planifiées côté serveur toutes les 5 minutes pour le Web et la passerelle d'authentification. Vérification automatique après incidents, avec confirmation après deux résultats concordants. Les autres moteurs demandent encore des tests fonctionnels.</p>
+   <p className="mt-2 text-xs text-emerald-900">Actualisation du tableau de bord toutes les 60 secondes. Aucun redémarrage destructif n'est autorisé.</p>
+  </div>
+  <div className="rounded-2xl border bg-white p-4">
+   <h3 className="font-extrabold">Incidents automatiques</h3>
+   <div className="mt-2 space-y-2">{incidents.length?incidents.map(i=><div key={i.service} className="flex flex-wrap items-center justify-between gap-2 border-b py-2 text-sm">
+    <div><strong>{labels[i.service]||i.service}</strong><p className="text-xs text-muted-foreground">{i.detail||'—'} · {new Date(i.updated_at).toLocaleString('fr-FR')}</p></div>
+    <div className="text-right"><span className={'rounded-full px-2 py-1 text-xs font-bold '+(i.state==='open'?'bg-red-100 text-red-800':i.state==='suspected'?'bg-amber-100 text-amber-900':i.state==='recovering'?'bg-blue-100 text-blue-900':'bg-emerald-100 text-emerald-900')}>{i.state==='open'?'Incident confirmé':i.state==='suspected'?'Confirmation en cours':i.state==='recovering'?'Rétablissement à confirmer':'Normal'}</span><p className="mt-1 text-xs">{i.consecutive_failures} échec(s) · {i.consecutive_successes} succès</p></div>
+   </div>):<p className="text-sm text-muted-foreground">Aucun bilan automatique enregistré pour le moment.</p>}</div>
+  </div>
   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
    {Object.entries(labels).map(([id,label])=>{
     const c=latest.find(v=>v.service===id);
