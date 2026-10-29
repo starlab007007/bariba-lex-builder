@@ -20,7 +20,7 @@ import ApLinguisticText from './ApLinguisticText';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft, BrainCog, ChevronRight, SlidersHorizontal, Flame, Zap, Eye, Languages, TextCursor, Copy, Clock, Shuffle, Mic,
-  GraduationCap, ShieldCheck, Sparkles, TrendingUp, Volume2, type LucideIcon,
+  GraduationCap, ShieldCheck, Sparkles, TrendingUp, Volume2, Download, Smartphone, type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import type { ApFoundation, ApTheme } from '@/lib/apprendre/content';
@@ -235,6 +235,19 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
             <SlidersHorizontal className="h-5 w-5" />
           </button>
         </div>
+
+        {/* Android installation: the install page publishes only production-signed APKs. */}
+        <a
+          href="https://fitila.bj/install"
+          className="mb-4 flex w-full items-center justify-between gap-3 rounded-2xl border border-[#D7C18D] bg-[#F9F0D9] px-4 py-3 text-[#312714] shadow-sm transition hover:bg-[#F4E5BF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#996D18]"
+          aria-label="Télécharger l'application Android FITILA"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <Smartphone className="h-6 w-6 shrink-0" aria-hidden="true" />
+            <span className="text-left text-sm font-extrabold">Télécharger l'application Android</span>
+          </span>
+          <Download className="h-5 w-5 shrink-0" aria-hidden="true" />
+        </a>
 
         {/* 1. En-tête de salutation */}
         <div className="flex items-start gap-3">
