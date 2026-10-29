@@ -524,6 +524,22 @@ jobs:
           PY
           REMOTE
           cat /tmp/manifest.log
+          # A filesystem copy does not prove that phones can download the APK.
+          # Reject broken SPA/404 fallbacks before declaring the release published.
+          if [ "$status" -eq 0 ]; then
+            apk_url="https://fitila.bj/dunya-packs/android/$TARGET_DIR/FITILA-Android-v1.8.25-build36-keyboard-translator-arm64.apk"
+            echo "Checking public APK endpoint: $apk_url"
+            http_code=$(curl -sS -L --max-time 30 -o /dev/null -w '%{http_code}' -I "$apk_url") || status=$?
+            if [ "${http_code:-}" != "200" ]; then
+              echo "::error::Public APK not downloadable (HTTP ${http_code:-unknown}): $apk_url"
+              status=1
+            fi
+            content_type=$(curl -sS -L --max-time 30 -o /dev/null -w '%{content_type}' -I "$apk_url") || status=$?
+            if [[ "$content_type" == text/html* ]]; then
+              echo "::error::APK URL redirects to HTML/SPA instead of binary: $apk_url"
+              status=1
+            fi
+          fi
           detail=$(sed 's/%/%25/g; s/\r//g' /tmp/manifest.log | awk '{ printf "%s%%0A", $0 }')
           if [ "$status" -ne 0 ]; then
             echo "::error title=Mise a jour de releases.json sur le VPS::${detail}"
