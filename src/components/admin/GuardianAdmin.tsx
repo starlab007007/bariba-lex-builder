@@ -19,7 +19,12 @@ export default function GuardianAdmin() {
  const [error,setError]=useState<string|null>(null);
  const invoke=useCallback(async(action:string,service?:string)=>{
   const {data,error}=await supabase.functions.invoke('fitila-guardian-admin',{body:{action,service}});
-  if(error)throw error;
+  if(error){
+   const msg=error.message||'Erreur réseau';
+   throw new Error(/Failed to send a request|Failed to fetch|fetch failed/i.test(msg)
+     ? 'Connexion à GUARDIAN impossible. Actualisez la page puis réessayez ; si le problème persiste, vérifiez la session administrateur et les journaux Supabase.'
+     : msg);
+  }
   if(data?.error)throw new Error(data.error);
   return data;
  },[]);
