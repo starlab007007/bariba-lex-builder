@@ -291,6 +291,23 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
   Future<void> _openReview() =>
       _open(ApReviewScreen(content: _content!, store: _store!));
 
+  Future<void> _continueLearning() async {
+    final content = _content;
+    final store = _store;
+    if (content == null || store == null) return;
+    final next = _nextFoundation();
+    if (next != null) {
+      await _openLesson(ApFoundationScreen(content: content, unit: next, store: store));
+      return;
+    }
+    final due = store.progress.dueCardIds(DateTime.now());
+    if (due.isNotEmpty) {
+      await _startReview();
+    } else {
+      await _startDaily();
+    }
+  }
+
   ApFoundation? _nextFoundation() {
     final content = _content!;
     final progress = _store!.progress;
@@ -394,24 +411,22 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
           ),
           const SizedBox(height: 16),
           _GuideHero(
-            title: next == null ? 'Toutes les fondations sont validées' : next.titleFr,
+            title: next == null ? 'Fondations validées' : '1.${next.order} — ${next.titleFr}',
             subtitle: next == null
-                ? 'Continue avec le vocabulaire et les scènes'
-                : 'Fondation ${next.order} · ${next.minutes} min',
-            action: next != null
-                ? 'Commencer'
-                : (due.isEmpty ? 'Séance du jour' : 'Réviser mes mots'),
-            onTap: next != null
-                ? () => _openLesson(ApFoundationScreen(content: content, unit: next, store: store))
-                : (due.isEmpty ? _startDaily : _startReview),
+                ? 'Poursuivre avec la révision ou la séance du jour'
+                : 'Chapitre 1 · Section 1.${next.order} · ${next.minutes} min · progression sauvegardée hors connexion',
+            action: 'Continuer mon apprentissage',
+            onTap: _continueLearning,
           ),
+          const SizedBox(height: 12),
+          _LearningOverview(content: content, store: store, dueCount: due.length),
           const SizedBox(height: 12),
           _DailySessionCard(
             skills: ApSessionPlanner.skillsFor(progress.profile),
             onStart: _startDaily,
           ),
           ApSectionTitle(
-            'Révision',
+            '4.1 — Révision espacée',
             trailing: TextButton(
               onPressed: _openReview,
               child: Text(
@@ -463,7 +478,7 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
             ),
           ],
           ApSectionTitle(
-            'Fondations',
+            'Chapitre 1 — Fondations',
             trailing: Text(
               '${progress.foundationsDone}/${content.foundations.length}',
               style: ApText.small.copyWith(fontWeight: FontWeight.w700),
@@ -486,7 +501,7 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
               },
             ),
           ),
-          const ApSectionTitle('Vocabulaire'),
+          const ApSectionTitle('Chapitre 2 — Vocabulaire'),
           GridView.builder(
             itemCount: content.themes.length,
             shrinkWrap: true,
@@ -501,17 +516,18 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
               final theme = content.themes[index];
               return _ThemeTile(
                 theme: theme,
+                number: '2.${index + 1}',
                 learned: progress.learnedIn(theme),
                 onTap: () => _openLesson(ApThemeScreen(content: content, theme: theme, store: store)),
               );
             },
           ),
-          const ApSectionTitle('Scènes de vie'),
+          const ApSectionTitle('Chapitre 3 — Scènes de vie'),
           _ScenesEntryCard(
             onOpen: () => _open(ApScenesHubScreen(store: store)),
           ),
           if (content.proverbs.isNotEmpty) ...[
-            const ApSectionTitle('Sagesse'),
+            const ApSectionTitle('Chapitre 5 — Sagesse'),
             _ProverbCard(proverb: content.proverbs[now.day % content.proverbs.length]),
           ],
           ValueListenableBuilder<int>(
@@ -557,7 +573,7 @@ class _ApprendreHubScreenState extends State<ApprendreHubScreen> {
               );
             },
           ),
-          const ApSectionTitle('Mon parcours'),
+          const ApSectionTitle('Chapitre 4 — Mon parcours'),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -930,7 +946,7 @@ class _FoundationTile extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                Text('${unit.order}', style: ApText.display.copyWith(fontSize: 20, color: ApColors.lineStrong)),
+                Text('1.${unit.order}', style: ApText.display.copyWith(fontSize: 18, color: ApColors.lineStrong)),
               ],
             ),
             const Spacer(),
@@ -956,9 +972,10 @@ class _FoundationTile extends StatelessWidget {
 }
 
 class _ThemeTile extends StatelessWidget {
-  const _ThemeTile({required this.theme, required this.learned, required this.onTap});
+  const _ThemeTile({required this.theme, required this.number, required this.learned, required this.onTap});
 
   final ApTheme theme;
+  final String number;
   final int learned;
   final VoidCallback onTap;
 
@@ -976,7 +993,7 @@ class _ThemeTile extends StatelessWidget {
           Icon(apIcon(theme.icon), color: color),
           const Spacer(),
           Text(
-            theme.nameFr,
+            '$number — ${theme.nameFr}',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
@@ -1055,4 +1072,65 @@ class _LinkChip extends StatelessWidget {
       onPressed: onTap,
     );
   }
+}
+
+/// Indicateurs calculés exclusivement à partir de la progression locale
+/// existante : aucune statistique fictive ni dépendance réseau.
+class _LearningOverview extends StatelessWidget {
+  const _LearningOverview({
+    required this.content,
+    required this.store,
+    required this.dueCount,
+  });
+  final ApprendreContent content;
+  final ApprendreStore store;
+  final int dueCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = store.progress;
+    final total = content.foundations.length;
+    final completed = content.foundations.where((u) => p.foundationDone(u.id)).length;
+    final ratio = total == 0 ? 0.0 : completed / total;
+    final scores = content.foundations
+        .where((u) => p.foundationScores.containsKey(u.id))
+        .map((u) => p.foundationScores[u.id]!)
+        .toList();
+    final average = scores.isEmpty ? null :
+        scores.reduce((a, b) => a + b) / scores.length;
+    return ApCardBox(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Ma progression · disponible hors connexion',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          const SizedBox(height: 10),
+          ApProgressBar(value: ratio, color: ApColors.goldDeep, height: 9),
+          const SizedBox(height: 6),
+          Text('${(ratio * 100).round()} % des fondations validées',
+              style: ApText.small),
+          const SizedBox(height: 12),
+          Wrap(spacing: 14, runSpacing: 8, children: [
+            _metric('$completed / $total', 'Sections validées'),
+            _metric('${p.activeWords}', 'Mots acquis'),
+            _metric('$dueCount', 'Révisions dues'),
+            _metric(average == null ? '—' : '${average.round()} %',
+                'Moyenne des tests réalisés'),
+          ]),
+          const SizedBox(height: 8),
+          Text('Une fondation est validée à partir de ${ApprendreProgress.passMark} % au test.',
+              style: ApText.small),
+        ],
+      ),
+    );
+  }
+
+  Widget _metric(String value, String label) => SizedBox(
+    width: 140,
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(value, style: ApText.display.copyWith(fontSize: 21)),
+      Text(label, style: ApText.small),
+    ]),
+  );
 }
