@@ -245,7 +245,7 @@ class _TemIaVoicePageState extends State<TemIaVoicePage> {
     setState(() { _phase = _Phase.thinking; });
     var heard = false;
     try {
-      final text = await _transcribe(samples!);
+      final text = await _transcribe(samples);
       heard = text.trim().isNotEmpty;
       if (!mounted || turn != _turn || !_session) return;
       if (text.trim().isEmpty) {
