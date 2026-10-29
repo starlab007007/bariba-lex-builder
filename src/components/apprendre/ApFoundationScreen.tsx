@@ -92,7 +92,7 @@ export default function ApFoundationScreen({ unit, content, store, onBack }: ApF
           </button>
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-extrabold leading-tight" style={{ color: AP_COLORS.ink }}>
-              Fondation {unit.order}
+              Chapitre 1 · Section 1.{unit.order}
             </h1>
             <p className="truncate text-xs" style={{ color: AP_COLORS.muted }}>
               {unit.minutes} min · {unit.quiz.length} questions
@@ -125,6 +125,7 @@ export default function ApFoundationScreen({ unit, content, store, onBack }: ApF
 
           {unit.sections.map((section, i) => (
             <div key={i} className="mt-[18px]">
+              <p className="mb-2 text-sm font-extrabold" style={{ color: AP_COLORS.ink }}>1.{unit.order}.{i + 1} — {section.title || "Activité pédagogique"}</p>
               <ApSectionView section={section} />
             </div>
           ))}
@@ -134,7 +135,7 @@ export default function ApFoundationScreen({ unit, content, store, onBack }: ApF
             style={{ backgroundColor: AP_COLORS.night }}
           >
             <p className="text-[11.5px] font-bold uppercase tracking-wide" style={{ color: AP_COLORS.goldTint }}>
-              TESTE TES ACQUIS
+              1.{unit.order}.{unit.sections.length + 1} — ÉVALUATION
             </p>
             <p className="mt-1.5 text-xl font-semibold leading-[1.15] text-white">
               {best === undefined
