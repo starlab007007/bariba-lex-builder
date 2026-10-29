@@ -1,6 +1,7 @@
 import { useEffect, useState, Component, type ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import AdminOverview from '@/components/admin/AdminOverview';
+import GuardianAdmin from '@/components/admin/GuardianAdmin';
 import DictionaryManager from '@/components/admin/DictionaryManager';
 import AnalyticsDashboard from '@/components/admin/AnalyticsDashboard';
 import UserRoleManager from '@/components/admin/UserRoleManager';
@@ -111,6 +112,7 @@ export default function AdminDashboard() {
     '/admin/overview': 'overview',
     '/admin/analytics': 'analytics',
     '/admin/model-health': 'model-health',
+    '/admin/guardian': 'guardian',
     '/admin/dictionary': 'dictionary',
     '/admin/dictionary-advanced': 'dictionary-advanced',
     '/admin/idioms': 'idioms',
@@ -166,6 +168,7 @@ export default function AdminDashboard() {
         { value: 'overview', label: 'Vue d’ensemble', icon: BarChart3 },
         { value: 'analytics', label: 'Analytics', icon: Activity },
         { value: 'model-health', label: 'Santé modèles IA', icon: Sparkles },
+        { value: 'guardian', label: 'FITILA GUARDIAN', icon: Shield },
       ],
     },
     {
@@ -216,6 +219,7 @@ export default function AdminDashboard() {
     <>
       <TabsContent value="localization" className="m-0"><TabErrorBoundary tabName="localization"><PlatformLocaleAdmin /></TabErrorBoundary></TabsContent>
       <TabsContent value="overview" className="m-0"><TabErrorBoundary tabName="overview"><AdminOverview /></TabErrorBoundary></TabsContent>
+      <TabsContent value="guardian" className="m-0"><TabErrorBoundary tabName="guardian"><GuardianAdmin /></TabErrorBoundary></TabsContent>
       <TabsContent value="model-health" className="m-0">
         <TabErrorBoundary tabName="model-health">
           <div className="space-y-6"><ModelHealthDashboard /><ByT5SpaceConfig /></div>
