@@ -54,7 +54,7 @@ class _ApFoundationScreenState extends State<ApFoundationScreen> {
         child: Column(
           children: [
             ApTopBar(
-              title: 'Fondation ${unit.order}',
+              title: 'Chapitre 1 · Section 1.${unit.order}',
               subtitle: '${unit.minutes} min · ${unit.quiz.length} questions',
               trailing: done
                   ? const ApPill(
@@ -104,10 +104,18 @@ class _ApFoundationScreenState extends State<ApFoundationScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(unit.summary, style: ApText.body.copyWith(fontSize: 15)),
-                  for (final section in unit.sections)
+                  for (var index = 0; index < unit.sections.length; index++)
                     Padding(
                       padding: const EdgeInsets.only(top: 18),
-                      child: ApSectionView(section: section),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('1.${unit.order}.${index + 1} — ${unit.sections[index].title.isEmpty ? 'Activité pédagogique' : unit.sections[index].title}',
+                            style: ApText.body.copyWith(fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 6),
+                          ApSectionView(section: unit.sections[index]),
+                        ],
+                      ),
                     ),
                   const SizedBox(height: 26),
                   ApCardBox(
@@ -119,7 +127,7 @@ class _ApFoundationScreenState extends State<ApFoundationScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'TESTE TES ACQUIS',
+                          '1.${unit.order}.${unit.sections.length + 1} — ÉVALUATION',
                           style: ApText.label.copyWith(color: ApColors.goldTint),
                         ),
                         const SizedBox(height: 6),
