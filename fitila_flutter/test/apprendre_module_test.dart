@@ -420,7 +420,7 @@ void main() {
 
     expect(find.text('Chapitre 3 — Scènes de vie'), findsOneWidget);
     expect(find.text('3.1 — ${content.categories.first.title}'), findsOneWidget);
-    expect(find.text(content.scenes.first.title), findsWidgets);
+    expect(find.text('3.1.1 — ${content.scenes.first.title}'), findsWidgets);
   });
 
   testWidgets('une scène se joue de la présentation au dialogue', (tester) async {
