@@ -447,7 +447,7 @@ jobs:
         run: |
           if [ "$(cat build/SIGNING_MODE.txt)" = "production" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "ok=false" >> "$GITHUB_OUTPUT"; fi
           echo "dir=v1.8.26-build37-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
-          mkdir -p ../apk-publish && cp build/final-apk/*-arm64.apk build/final-apk/*-armv7.apk build/final-apk/SHA256SUMS.txt ../apk-publish/
+          mkdir -p ../apk-publish && cp build/final-apk/*-arm64.apk build/final-apk/*-armv7.apk build/final-apk/SHA256SUMS.txt build/final-apk/SOURCE.json ../apk-publish/
 
       - name: Prepare fitila.bj APK folder
         if: ${{ steps.prod.outputs.ok == 'true' }}
