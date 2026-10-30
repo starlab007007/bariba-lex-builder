@@ -1,0 +1,40 @@
+name: Repair and verify TEM Bariba voice routing
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/repair-tem-voice-routing.yml']
+permissions:
+  contents: read
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      FITILA_MODEL_API_TOKEN: ${{ secrets.FITILA_MODEL_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify real speech on the canonical gateway before updating configuration
+        run: |
+          python3 - <<'PY'
+          import os,json,urllib.request,base64
+          token=os.environ['FITILA_MODEL_API_TOKEN']
+          if not token: raise SystemExit('Production voice credential missing')
+          req=urllib.request.Request('https://fitila.bj/voice-api/infer',data=json.dumps({'engine':'meta-mms-tts-bba','text':'A kpuna n do?'}).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+token})
+          with urllib.request.urlopen(req,timeout=45) as response:
+              payload=json.load(response)
+          wav=base64.b64decode(payload.get('audio_base64',''))
+          if len(wav)<44 or wav[:4]!=b'RIFF' or wav[8:12]!=b'WAVE': raise SystemExit('Canonical gateway did not synthesize speech')
+          print(json.dumps({'canonical_tts_verified':True,'wav_bytes':len(wav)}))
+          PY
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Align the existing voice configuration with the verified production gateway
+        run: |
+          set -euo pipefail
+          supabase secrets set --help >/dev/null
+          supabase secrets set --project-ref dvswhjawiooprghzeyol FITILA_VOICE_SERVICE_URL=https://fitila.bj/voice-api "FITILA_MODEL_API_TOKEN=$FITILA_MODEL_API_TOKEN"
+      - name: Verify real speech through the application backend
+        run: node scripts/check-tem-tts.mjs
