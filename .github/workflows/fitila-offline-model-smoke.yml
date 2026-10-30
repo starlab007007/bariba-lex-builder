@@ -16,9 +16,9 @@ jobs:
       - name: Reuse real model checks for identical runtime sources
         id: verified
         run: |
-          if bash scripts/check-verified-build36-source.sh; then
+          if bash scripts/check-verified-build38-offline-source.sh; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Real offline ASR/ByT5/MMS passed in job 121332763487; source and dependencies are identical."
+            echo "Real offline ASR/ByT5/MMS passed in job 124000519971; runtime sources and dependencies are identical."
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi

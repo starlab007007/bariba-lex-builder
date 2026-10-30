@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
-import '../lib/core/fitila_translation_audio.dart';
+import 'package:fitila_native/core/fitila_translation_audio.dart';
 
 void main() {
   test('TEM uses inline WAV instead of a second remote synthesis', () {
