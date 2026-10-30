@@ -1,99 +1,90 @@
 import { useEffect, useState } from 'react';
-import { Download, Smartphone, WifiOff, Zap, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Download, Smartphone, WifiOff, MessageCircle, CheckCircle2, RefreshCw } from 'lucide-react';
 import FitilaPageHeader from '@/components/fitila/FitilaPageHeader';
 import { FitilaPage } from '@/components/fitila/FitilaUi';
+import { useFitilaLanguage } from '@/contexts/FitilaLanguageContext';
+import { availableApk, latestAndroidRelease, saveAndroidApk, type AndroidRelease } from '@/lib/androidRelease';
 
-type Release={version:string;url:string;updated:string;legacy?:string};
-const MANIFEST='/dunya-packs/android/releases.json';
-const valid=(v:unknown):v is string=>typeof v==='string'&&/^\/dunya-packs\/android\/[a-zA-Z0-9_./-]+\.apk$/i.test(v)&&!v.includes('..');
-export default function InstallPage(){
- // Keep the public installation address canonical, even if an external
- // application attaches attribution parameters to an incoming link.
- useEffect(()=>{
-  if(window.location.pathname==='/install' && window.location.search)
-    window.history.replaceState(window.history.state,'','/install');
- },[]);
- const [release,setRelease]=useState<Release|null>(null);
- const [state,setState]=useState<'loading'|'ready'|'unavailable'>('loading');
- const [error,setError]=useState('');
- const [checking,setChecking]=useState(false);
- useEffect(()=>{
-  const controller=new AbortController();
-  const load=async()=>{
-   try{
-    const response=await fetch(MANIFEST+'?v='+Date.now(),{cache:'no-store',signal:controller.signal});
-    if(!response.ok)throw new Error('Catalogue APK inaccessible');
-    const data=await response.json();
-    const releases=(Array.isArray(data?.releases)?data.releases:[])
-     .filter((r:any)=>r?.signing==='production'&&valid(r.arm64))
-     .sort((a:any,b:any)=>String(b.published_at||'').localeCompare(String(a.published_at||'')));
-    // Do not advertise stale releases whose APK is missing from the web server.
-    let selected:any=null;
-    for(const entry of releases){
-      try {
-        const probe=await fetch(entry.arm64,{method:'HEAD',cache:'no-store',signal:controller.signal});
-        const type=(probe.headers.get('content-type')||'').toLowerCase();
-        if(probe.ok && !type.includes('text/html') && !type.includes('application/json')){
-          selected=entry;break;
-        }
-      }catch(e){if(controller.signal.aborted)throw e}
-    }
-    if(!selected){setState('unavailable');return}
-    let legacy: string|undefined;
-    if(valid(selected.armv7)){
-      try{
-        const probe=await fetch(selected.armv7,{method:'HEAD',cache:'no-store',signal:controller.signal});
-        if(probe.ok && !(probe.headers.get('content-type')||'').includes('text/html'))legacy=selected.armv7;
-      }catch{/* optional device compatibility file */}
-    }
-    // Prefer the permanent public download path, atomically updated by CI.
-    // Do not send users to an unverified 404 if publication is incomplete.
-    let primary=selected.arm64;
-    try {
-      const stable=await fetch('/dunya-packs/android/latest.apk',{method:'HEAD',cache:'no-store',signal:controller.signal});
-      const mime=(stable.headers.get('content-type')||'').toLowerCase();
-      if(stable.ok && !mime.includes('text/html') && !mime.includes('application/json'))primary='/dunya-packs/android/latest.apk';
-    }catch{/* Retain individually verified release path */}
-    setRelease({version:String(selected.version||''),url:primary,updated:String(selected.published_at||''),legacy});
-    setState('ready');
-   }catch(e){if(!controller.signal.aborted){setError('Impossible de vérifier la version Android.');setState('unavailable')}}
-  };
-  void load();return ()=>controller.abort();
- },[]);
- const download=async(url:string)=>{
-  if(checking)return;setChecking(true);setError('');
-  try{
-   // Check the exact APK URL first, to avoid directing visitors to a 404.
-   const response=await fetch(url,{method:'HEAD',cache:'no-store'});
-   if(!response.ok)throw new Error('Fichier APK indisponible');
-   const mime=response.headers.get('content-type')||'';
-   if(mime.includes('text/html'))throw new Error('Le lien ne renvoie pas un APK');
-   window.location.assign(url);
-  }catch{setError('Le téléchargement est momentanément indisponible. Réessayez plus tard.')}
-  finally{setChecking(false)}
+// Baatɔnum labels reuse the published FITILA catalogue (Télécharger, Conversation,
+// Assistant IA, Hors ligne, Apprendre, Traduire, Vérifier, Réessayer).
+const copy = {
+ fr: {
+  title: 'Télécharger FITILA', subtitle: 'Votre application Android', heading: 'FITILA sur Android',
+  intro: 'Apprenez le bariba, traduisez et échangez avec DUNYA IA sur votre téléphone.',
+  ai: 'Une IA qui parle bariba', chat: 'Discutez avec DUNYA IA en bariba, par texte ou par la voix.',
+  offline: 'L’IA, même sans Internet', offlineText: 'Téléchargez d’abord les packs nécessaires avec Internet. Puis utilisez les fonctions locales et discutez avec l’IA hors ligne, selon les packs installés et les capacités du téléphone.',
+  features: ['Apprendre', 'Traduire', 'Discuter avec l’IA'], loading: 'Vérification de l’application…',
+  checking: 'Vérification du fichier…', download: 'Télécharger FITILA pour Android', legacy: 'Anciens téléphones Android',
+  official: 'APK officiel FITILA', version: 'Version', unavailable: 'Le fichier Android officiel est momentanément indisponible.',
+  retry: 'Réessayer', error: 'Téléchargement indisponible. Réessayez.', instructions: 'Ouvrez le fichier APK téléchargé et suivez les instructions Android.',
+ },
+ ba: {
+  title: 'Sinasiabu · FITILA', subtitle: 'Android', heading: 'FITILA · Android',
+  intro: 'Mɛɛribu · Tùnkɔ̀rù · Faagi · DUNYA IA · Bàátɔ̀nú.',
+  ai: 'Bàátɔ̀nú nɔɔ dɛɛmɛ', chat: 'Faagi · DUNYA IA · Bàátɔ̀nú.',
+  offline: 'Dɛɛmɛ IA · Nɛɛti kɛra', offlineText: 'DUNYA IA · Sinasiabu → Nɛɛti kɛra → Faagi.',
+  features: ['Mɛɛribu', 'Tùnkɔ̀rù', 'Faagi · IA'], loading: 'Gɑ nɑɑmɔ…', checking: 'Dɔ̃ɔbu…',
+  download: 'Sinasiabu · FITILA Android', legacy: 'Android · ARMv7', official: 'FITILA · Android', version: 'FITILA',
+  unavailable: 'Kɑsɔru · Sinasiabu', retry: 'Ko wiru', error: 'Kɑsɔru · Ko wiru', instructions: 'APK → Sia → Android.',
+ },
+};
+export default function InstallPage() {
+ const { currentLang } = useFitilaLanguage();
+ const c = copy[currentLang];
+ const [release, setRelease] = useState<AndroidRelease | null>(null);
+ const [state, setState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
+ const [checking, setChecking] = useState(false);
+ const [error, setError] = useState(false);
+ const [attempt, setAttempt] = useState(0);
+ useEffect(() => {
+  let active = true;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  setState('loading');
+  latestAndroidRelease(controller.signal).then(value => {if (active) {setRelease(value); setState('ready');}})
+   .catch(() => {if (active) setState('unavailable');})
+   .finally(() => clearTimeout(timeout));
+  return () => {active = false; clearTimeout(timeout); controller.abort();};
+ }, [attempt]);
+ const download = async (legacy = false) => {
+  if (checking) return;
+  setChecking(true); setError(false);
+  try {
+   // Resolve again at click time: every future production version is picked up automatically.
+   const latest = await latestAndroidRelease(AbortSignal.timeout(20000));
+   const url = legacy ? latest.armv7 : latest.arm64;
+   if (!url || !(await availableApk(url, AbortSignal.timeout(10000)))) throw new Error('unavailable');
+   setRelease(latest);
+   saveAndroidApk(url);
+  } catch {setError(true);}
+  finally {setChecking(false);}
  };
- return <FitilaPage>
-  <FitilaPageHeader title="Télécharger FITILA" subtitle="Votre application Android" />
-  <main className="mx-auto max-w-xl space-y-5 px-4 pb-12 pt-6">
+ return <FitilaPage><div data-i18n-preserve lang={currentLang === 'ba' ? 'bba' : 'fr'}>
+  <FitilaPageHeader title={c.title} subtitle={c.subtitle}/>
+  <main className="mx-auto max-w-xl space-y-4 px-4 pb-12 pt-6">
    <section className="rounded-[30px] border border-[#E8DDC5] bg-white px-5 py-7 text-center shadow-sm">
-    <img src="/fitila-launcher-logo.svg" alt="FITILA, lanterne orange" className="mx-auto h-24 w-24 rounded-[22px] object-contain" />
-    <h1 className="mt-4 text-3xl font-black tracking-tight text-[#241F2E]">FITILA sur Android</h1>
-    <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[#776F5B]">Apprenez le bariba, traduisez et retrouvez vos activités directement sur votre téléphone.</p>
-    <div className="mt-5 grid grid-cols-3 gap-2">
-      {([{icon:Zap,label:'Rapide'},{icon:WifiOff,label:'Hors connexion'},{icon:Smartphone,label:'Pratique'}] as const).map(({icon:Icon,label})=><div key={label} className="flex flex-col items-center gap-2 rounded-2xl bg-[#F8F5EC] px-2 py-3"><Icon className="h-5 w-5 text-[#B58220]"/><span className="text-xs font-bold text-[#504333]">{label}</span></div>)}
-    </div>
+    <img src="/fitila-launcher-logo.svg" alt="FITILA" className="mx-auto h-24 w-24 object-contain"/>
+    <h1 className="mt-4 text-3xl font-black tracking-tight text-[#241F2E]">{c.heading}</h1>
+    <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[#776F5B]">{c.intro}</p>
+    <div className="mt-5 grid grid-cols-3 gap-2">{c.features.map((label, i) => {
+     const Icon = [Smartphone, WifiOff, MessageCircle][i];
+     return <div key={label} className="flex flex-col items-center gap-2 rounded-2xl bg-[#F8F5EC] px-2 py-3"><Icon className="h-5 w-5 text-[#B58220]"/><span className="text-xs font-bold text-[#504333]">{label}</span></div>;
+    })}</div>
     <div className="mt-6 space-y-3">
-      {state==='loading'?<p role="status" className="text-sm text-[#766D5A]"><RefreshCw className="mr-2 inline h-4 w-4 animate-spin"/>Vérification de l'application…</p>:
-       state==='ready'&&release?<><button type="button" onClick={()=>void download(release.url)} disabled={checking} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-[#C99530] px-4 text-base font-extrabold text-[#241F2E] shadow-md transition hover:bg-[#DBAB4E] disabled:opacity-60">
-         <Download className="h-5 w-5"/>{checking?'Vérification du fichier…':'Télécharger FITILA pour Android'}
-        </button>
-        {release.legacy&&<button type="button" disabled={checking} onClick={()=>void download(release.legacy!)} className="w-full rounded-xl border border-[#E4DFCC] px-3 py-3 text-sm font-semibold text-[#65512E]">Version pour anciens téléphones Android</button>}
-        <p className="flex items-center justify-center gap-1.5 text-xs text-[#756F61]"><CheckCircle2 className="h-4 w-4"/>APK officiel FITILA · version {release.version}</p></>:
-       <p role="status" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Le fichier Android officiel n'est pas disponible pour le moment.</p>}
-      {error&&<p role="alert" className="text-sm font-medium text-red-700">{error}</p>}
+     {state === 'loading' ? <p role="status"><RefreshCw className="mr-2 inline h-4 w-4 animate-spin"/>{c.loading}</p> :
+      state === 'ready' && release ? <>
+       <button type="button" onClick={() => void download()} disabled={checking} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-[#C99530] px-4 font-extrabold text-[#241F2E] shadow-md disabled:opacity-60"><Download className="h-5 w-5"/>{checking ? c.checking : c.download}</button>
+       {release.armv7 && <button type="button" disabled={checking} onClick={() => void download(true)} className="w-full rounded-xl border border-[#E4DFCC] px-3 py-3 text-sm font-semibold text-[#65512E]">{c.legacy}</button>}
+       <p className="text-xs text-[#756F61]"><CheckCircle2 className="mr-1 inline h-4 w-4"/>{c.official} · {c.version} {release.version}{release.build_number ? ` · ${release.build_number}` : ''}</p>
+      </> : <><p role="status">{c.unavailable}</p><button type="button" onClick={() => setAttempt(value => value + 1)}>{c.retry}</button></>}
+     {error && <p role="alert" className="text-sm text-red-700">{c.error}</p>}
     </div>
    </section>
-   <p className="text-center text-xs leading-relaxed text-[#817968]">Après téléchargement, ouvrez le fichier APK et suivez les instructions Android. Certaines fonctionnalités hors connexion nécessitent des packs supplémentaires.</p>
+   <section className="space-y-4 rounded-3xl bg-[#F8F5EC] p-5 text-[#504333]">
+    <div><h2 className="flex items-center gap-2 font-bold"><MessageCircle className="h-5 w-5"/>{c.ai}</h2><p className="mt-1 text-sm leading-relaxed">{c.chat}</p></div>
+    <div><h2 className="flex items-center gap-2 font-bold"><WifiOff className="h-5 w-5"/>{c.offline}</h2><p className="mt-1 text-sm leading-relaxed">{c.offlineText}</p></div>
+   </section>
+   <p className="text-center text-xs leading-relaxed text-[#817968]">{c.instructions}</p>
   </main>
- </FitilaPage>;
+ </div></FitilaPage>;
 }

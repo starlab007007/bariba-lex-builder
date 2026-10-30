@@ -240,13 +240,16 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
 
         {/* Android installation: the install page publishes only production-signed APKs. */}
         <a
-          href="https://fitila.bj/install"
+          href="/install"
           className="mb-4 flex w-full items-center justify-between gap-3 rounded-2xl border border-[#D7C18D] bg-[#F9F0D9] px-4 py-3 text-[#312714] shadow-sm transition hover:bg-[#F4E5BF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#996D18]"
           aria-label={currentLang === "ba" ? `${t("common_download")} · Android FITILA` : "Télécharger l’application Android FITILA"}
         >
           <span className="flex min-w-0 items-center gap-3">
             <Smartphone className="h-6 w-6 shrink-0" aria-hidden="true" />
-            <span className="text-left text-sm font-extrabold">{currentLang === "ba" ? `${t("common_download")} · Android FITILA` : "Télécharger l’application Android"}</span>
+            <span className="text-left" data-i18n-preserve>
+              <span className="block text-sm font-extrabold">{currentLang === "ba" ? `${t("common_download")} · Android FITILA` : "Télécharger l’application Android"}</span>
+              <span className="mt-1 block text-xs font-medium">{currentLang === "ba" ? "Dɛɛmɛ IA · Bàátɔ̀nú · Nɛɛti kɛra" : "Une IA en bariba, aussi hors ligne après téléchargement des packs"}</span>
+            </span>
           </span>
           <Download className="h-5 w-5 shrink-0" aria-hidden="true" />
         </a>

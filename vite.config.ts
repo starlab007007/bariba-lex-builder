@@ -23,8 +23,13 @@ export default defineConfig(({ mode }) => ({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         globIgnores: ['**/envato/**'],
-        navigateFallbackDenylist: [/^\/~oauth/],
+        navigateFallbackDenylist: [/^\/~oauth/, /^\/dunya-packs\//, /\.apk$/i],
         runtimeCaching: [
+          {
+            // APKs are downloads, never SPA navigations or model-pack cache entries.
+            urlPattern: /\/dunya-packs\/android\/.*\.apk(?:\?.*)?$/i,
+            handler: 'NetworkOnly',
+          },
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
             handler: 'NetworkFirst',
