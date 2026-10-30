@@ -84,6 +84,8 @@ def screenshot(name):
 try:
     package = 'bj.fitila.fitila_native'
     component = package + '/com.fitila.bariba.BaribaInputMethodService'
+    # `ime list` defaults to enabled methods; FITILA is not enabled yet.
+    # Discover all installed methods before enabling and selecting our service.
     # The emulator can accept an install before PackageManager has finished
     # registering input methods. Verify the actual merged manifest via Android,
     # rather than assuming that an installed APK already has a discoverable IME.
@@ -97,7 +99,7 @@ try:
     time.sleep(2)
     methods = ''
     for attempt in range(20):
-        methods = adb('shell', 'ime', 'list', '-s').decode('utf-8', 'replace')
+        methods = adb('shell', 'ime', 'list', '-a', '-s').decode('utf-8', 'replace')
         if component in methods:
             break
         print(f'Awaiting registered FITILA IME ({attempt+1}/20): {methods!r}', flush=True)
