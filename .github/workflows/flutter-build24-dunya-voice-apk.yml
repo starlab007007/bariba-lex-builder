@@ -382,6 +382,16 @@ jobs:
           "$APKSIGNER" verify --print-certs build/final-apk/*-arm64.apk > build/final-apk/SIGNER.txt
           grep -iE "certificate (DN|SHA-256)" build/final-apk/SIGNER.txt || cat build/final-apk/SIGNER.txt
           cp build/SIGNING_MODE.txt build/INSTALL_MODE.txt build/final-apk/
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          Path('build/final-apk/SOURCE.json').write_text(json.dumps({
+              'source_commit': os.environ['GITHUB_SHA'],
+              'source_branch': os.environ['GITHUB_REF_NAME'],
+              'version': '1.8.26', 'build_number': 37,
+              'workflow_run_id': os.environ['GITHUB_RUN_ID'],
+          }, indent=2) + '\n', encoding='utf-8')
+          PY
           cd build/final-apk
           sha256sum *.apk | tee SHA256SUMS.txt
           du -h *.apk | tee SIZES.txt
@@ -527,10 +537,13 @@ jobs:
           armv7 = next((f for f in files if f.endswith('-armv7.apk')), None)
           path = os.path.join(root, 'releases.json')
           data = json.load(open(path)) if os.path.exists(path) else {'releases': []}
-          entry = {'version': d, 'signing': 'production',
+          provenance = json.load(open(os.path.join(root, d, 'SOURCE.json')))
+          entry = {'version': d, 'signing': 'production', **provenance,
                    'published_at': datetime.datetime.utcnow().replace(microsecond=0).isoformat() + 'Z',
                    'arm64': f'/dunya-packs/android/{d}/{arm64}',
                    'arm64_size': os.path.getsize(os.path.join(root, d, arm64))}
+          import hashlib
+          entry['arm64_sha256'] = hashlib.file_digest(open(os.path.join(root, d, arm64), 'rb'), 'sha256').hexdigest()
           if armv7:
               entry['armv7'] = f'/dunya-packs/android/{d}/{armv7}'
           data['releases'] = [r for r in data['releases'] if r.get('version') != d] + [entry]
