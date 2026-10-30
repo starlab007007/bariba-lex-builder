@@ -723,6 +723,8 @@ serve(async (req: Request) => {
         JSON.stringify({
           success: true,
           audio_url: audioUrl,
+          audio_base64: meta.audio_base64,
+          audio_mime_type: "audio/wav",
           engine: "meta-mms-tts-bba",
           model: "facebook/mms-tts-bba",
           text_used: metaText,

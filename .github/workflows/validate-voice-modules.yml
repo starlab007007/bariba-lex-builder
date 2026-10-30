@@ -19,7 +19,7 @@ jobs:
       - uses: denoland/setup-deno@v2
         with: { deno-version: v2.x }
       - run: deno check --node-modules-dir=none supabase/functions/dunya-voice-turn/index.ts supabase/functions/bariba-stt/index.ts supabase/functions/refine-bariba/index.ts
-      - run: deno test --node-modules-dir=none --allow-env tests/voice/dunyaVoice.test.ts tests/voice/metaVoiceCore.test.ts tests/voice/replySpeech.test.ts tests/voice/transcriptionRepair.test.ts tests/voice/translationReferences.test.ts
+      - run: deno test --node-modules-dir=none --allow-env tests/voice/dunyaVoice.test.ts tests/voice/metaVoiceCore.test.ts tests/voice/replySpeech.test.ts tests/voice/replyAudioPayload.test.ts tests/voice/transcriptionRepair.test.ts tests/voice/translationReferences.test.ts
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test --config=playwright.voice-modules.config.ts
       - uses: actions/upload-artifact@v4

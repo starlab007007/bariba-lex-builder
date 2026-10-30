@@ -1,3 +1,4 @@
+import { baribaPlaybackElement } from '@/lib/voice/primePlayback';
 /**
  * DUNYA Voix (web): the same two language modes as the mobile app, online.
  *
@@ -230,7 +231,8 @@ export function playUrl(url: string, signal?: AbortSignal, onProgress?: (fractio
   signal?.throwIfAborted();
   return new Promise((resolve, reject) => {
     stopSpeaking();
-    const audio = new Audio(url);
+    const audio = baribaPlaybackElement();
+    audio.src = url;
     if (rate && Number.isFinite(rate) && rate > 0) audio.playbackRate = rate;
     currentAudio = audio;
     const onTimeUpdate = () => {

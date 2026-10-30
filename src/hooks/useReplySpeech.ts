@@ -1,3 +1,4 @@
+import { primeBaribaPlayback } from '@/lib/voice/primePlayback';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { claimVoice, loadReplyAudio, replySpeechChunks, VOICE_FOCUS_EVENT, type SpeechLanguage } from '@/lib/voice/replySpeech';
 
@@ -21,6 +22,7 @@ export function useReplySpeech(text: string, lang: SpeechLanguage) {
 
   const start = async () => {
     stop(); claimVoice(owner.current); setError('');
+    const activatedPlayer = lang === 'bba' ? primeBaribaPlayback() : null;
     const controller = new AbortController(); abort.current = controller;
     const signal = controller.signal;
     try {
@@ -45,7 +47,7 @@ export function useReplySpeech(text: string, lang: SpeechLanguage) {
         } else {
           const result = await loadReplyAudio(chunks[index], signal);
           signal.throwIfAborted(); setEngine(result.engine === 'meta-mms-tts-bba' ? 'Meta MMS · Baatɔnum' : 'Voix FITILA de secours');
-          const url = URL.createObjectURL(result.blob), player = new Audio(url); audio.current = player;
+          const url = URL.createObjectURL(result.blob), player = activatedPlayer!; player.src = url; audio.current = player;
           player.playbackRate = rateRef.current;
           try {
             await new Promise<void>((resolve, reject) => {

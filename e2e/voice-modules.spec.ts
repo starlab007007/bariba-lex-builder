@@ -35,6 +35,13 @@ async function setup(page: Page, opts: { voiceFailure?: boolean; delayed?: boole
     retiredReviews.push(route.request().postDataJSON());
     return route.fulfill({ status: 410, headers: cors, json: { code: 'voice_transcription_only' } });
   });
+  await page.route('**/functions/v1/bariba-tts', async route => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({status:204,headers:cors});
+    const body = route.request().postDataJSON(); requests.push(body);
+    if (opts.delayed) await new Promise(resolve => setTimeout(resolve, 600));
+    if (opts.voiceFailure) return route.fulfill({status:429,headers:cors,json:{success:false,error:'unavailable'}});
+    return route.fulfill({headers:cors,json:{success:true,audio_base64:wav().toString('base64'),engine:'meta-mms-tts-bba'}});
+  });
   await page.route('**/functions/v1/dunya-voice-turn', async route => {
     if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: cors }); return; }
     const body = route.request().postDataJSON(); requests.push(body);
@@ -63,7 +70,7 @@ for (const width of [375, 768, 1280]) {
     await expect(page.getByRole('button', { name: 'Comparer aux ressources', exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: 'Écouter la traduction', exact: true }).first().click();
     await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible(); expect(state.requests.at(-1).text).toBe(examples[0].result);
-    expect(state.retiredReviews).toHaveLength(0); expect(state.requests.every(request => request.speech_only)).toBe(true);
+    expect(state.retiredReviews).toHaveLength(0); expect(state.requests.every(request => request.skipRefine)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 }
@@ -93,7 +100,7 @@ for (const width of [375, 768, 1280]) {
     const player = page.getByTestId('reply-audio-player').first();
     await player.getByRole('button', { name: 'Écouter la réponse', exact: true }).click();
     await expect(player.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
-    expect(requests.at(-1).speech_only).toBe(true); expect(requests.at(-1).lang).toBe('bba');
+    expect(requests.at(-1).skipRefine).toBe(true);
     await player.getByRole('button', { name: 'Pause', exact: true }).click();
     await expect(player.getByRole('button', { name: 'Reprendre', exact: true })).toBeVisible();
     await player.getByRole('button', { name: 'Reprendre', exact: true }).click();

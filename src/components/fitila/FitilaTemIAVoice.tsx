@@ -1,3 +1,4 @@
+import { primeBaribaPlayback } from '@/lib/voice/primePlayback';
 /**
  * Discussion vocale directe et continue pour Fitila IA (Tem IA / Code Foncier).
  *
@@ -186,6 +187,7 @@ export default function FitilaTemIAVoice({ onExit, onAsk }: Props) {
   listenTurnRef.current = listenTurn;
 
   const onOrb = () => {
+    primeBaribaPlayback();
     if (phase === 'listening') { recordStop.current?.abort(); return; }
     if (phase === 'speaking') { interrupt(); session.current = true; void listenTurn(); return; }
     if (phase === 'thinking') { endSession(); return; }
@@ -195,6 +197,7 @@ export default function FitilaTemIAVoice({ onExit, onAsk }: Props) {
   };
 
   const replayLast = () => {
+    primeBaribaPlayback();
     if (!lastAnswer) return;
     session.current = false;
     interrupt();
