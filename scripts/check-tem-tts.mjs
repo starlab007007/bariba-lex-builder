@@ -2,9 +2,10 @@ import fs from 'node:fs';
 const env = Object.fromEntries(fs.readFileSync('.env', 'utf8').split(/\r?\n/).map(line => {
   const index = line.indexOf('='); return index > 0 ? [line.slice(0,index).trim(),line.slice(index+1).trim().replace(/^["']|["']$/g,'')] : [];
 }).filter(item => item.length === 2));
-const base = env.VITE_SUPABASE_URL || env.SUPABASE_URL;
-const key = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY;
+const base = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
+const key = env.SUPABASE_ANON_KEY || env.SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_PUBLISHABLE_KEY;
 if (!base || !key) throw new Error('Public FITILA configuration missing');
+if (new URL(base).hostname !== 'dvswhjawiooprghzeyol.supabase.co') throw new Error('TTS probe must use the canonical FITILA project');
 const response = await fetch(base + '/functions/v1/bariba-tts', {
   method: 'POST', headers: {'Content-Type':'application/json', apikey:key},
   body: JSON.stringify({text:'A kpuna n do?', skipRefine:true}), signal:AbortSignal.timeout(45000),

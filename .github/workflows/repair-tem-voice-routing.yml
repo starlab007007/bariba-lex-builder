@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['.github/workflows/repair-tem-voice-routing.yml']
+    paths: ['.github/workflows/repair-tem-voice-routing.yml', 'scripts/check-tem-tts.mjs']
 permissions:
   contents: read
 jobs:

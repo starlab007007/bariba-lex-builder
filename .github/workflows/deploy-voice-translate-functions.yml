@@ -4,7 +4,7 @@ name: Deploy FITILA voice & translation functions
 on:
   push:
     branches: [main]
-    paths: ['supabase/functions/**', '.github/workflows/deploy-voice-translate-functions.yml']
+    paths: ['supabase/functions/**', 'scripts/check-tem-tts.mjs', '.github/workflows/deploy-voice-translate-functions.yml']
   workflow_dispatch:
 
 permissions:
