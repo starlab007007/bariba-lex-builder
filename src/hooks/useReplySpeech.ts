@@ -36,18 +36,7 @@ export function useReplySpeech(text: string, lang: SpeechLanguage) {
         if (lang === 'fr') {
           if (!('speechSynthesis' in window)) throw new Error('La voix française n’est pas disponible sur cet appareil.');
           setEngine('Voix française de l’appareil');
-          // Chrome ne peuple `getVoices()` qu'après l'évènement `voiceschanged`,
-          // souvent après le premier appel — sans attendre, `utterance.voice`
-          // reste `null` et certains appareils Android ne jouent alors aucun son.
-          let voices = speechSynthesis.getVoices();
-          if (!voices.length) {
-            voices = await new Promise<SpeechSynthesisVoice[]>((resolve) => {
-              const done = () => { speechSynthesis.removeEventListener('voiceschanged', done); resolve(speechSynthesis.getVoices()); };
-              speechSynthesis.addEventListener('voiceschanged', done);
-              setTimeout(done, 1000);
-            });
-          }
-          signal.throwIfAborted();
+          const voices = speechSynthesis.getVoices();
           await new Promise<void>((resolve, reject) => {
             const utterance = new SpeechSynthesisUtterance(chunks[index]);
             utterance.lang = 'fr-FR'; utterance.rate = rateRef.current;
