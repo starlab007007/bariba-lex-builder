@@ -71,10 +71,10 @@ export default function ApOnboardingScreen({ profiles, initialProfile, initialDi
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pb-5 pt-2">
+      <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-2" style={{ touchAction: 'pan-y' }}>
         <h1 className="mt-2 text-[30px] font-semibold leading-[1.15]" style={DISPLAY}>Comment veux-tu apprendre ?</h1>
         <p className="mt-2 text-[15px] leading-[1.45]" style={{ color: AP_COLORS.inkSoft }}>
-          Fitila adapte les séances à ta façon de lire et d’écouter. Tu pourras changer plus tard.
+          Fitila adapte les séances à ta façon de lire et d’écouter. Modifiable plus tard.
         </p>
 
         <div className="mt-5 space-y-[10px]" role="radiogroup" aria-label="Profil d’apprenant">

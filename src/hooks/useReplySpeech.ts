@@ -11,6 +11,11 @@ export function useReplySpeech(text: string, lang: SpeechLanguage) {
   const chunks = replySpeechChunks(text);
   const stop = useCallback(() => {
     abort.current?.abort(); abort.current = null;
+    // Chrome (desktop et Android) peut laisser la file d'attente de synthèse
+    // vocale dans un état bloqué si un énoncé précédent n'a jamais été
+    // explicitement annulé : les appels suivants à `speak()` ne produisent
+    // alors plus aucun son, sans erreur visible. On l'annule à chaque arrêt.
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
     if (audio.current) { audio.current.pause(); audio.current.removeAttribute('src'); audio.current.load(); audio.current = null; }
     paused.current = false; setPhase('idle'); setPart(0);
   }, []);
@@ -31,10 +36,21 @@ export function useReplySpeech(text: string, lang: SpeechLanguage) {
         if (lang === 'fr') {
           if (!('speechSynthesis' in window)) throw new Error('La voix française n’est pas disponible sur cet appareil.');
           setEngine('Voix française de l’appareil');
+          // Chrome ne peuple `getVoices()` qu'après l'évènement `voiceschanged`,
+          // souvent après le premier appel — sans attendre, `utterance.voice`
+          // reste `null` et certains appareils Android ne jouent alors aucun son.
+          let voices = speechSynthesis.getVoices();
+          if (!voices.length) {
+            voices = await new Promise<SpeechSynthesisVoice[]>((resolve) => {
+              const done = () => { speechSynthesis.removeEventListener('voiceschanged', done); resolve(speechSynthesis.getVoices()); };
+              speechSynthesis.addEventListener('voiceschanged', done);
+              setTimeout(done, 1000);
+            });
+          }
+          signal.throwIfAborted();
           await new Promise<void>((resolve, reject) => {
             const utterance = new SpeechSynthesisUtterance(chunks[index]);
             utterance.lang = 'fr-FR'; utterance.rate = rateRef.current;
-            const voices = speechSynthesis.getVoices();
             utterance.voice = voices.find(v => v.lang.startsWith('fr') && v.localService) || voices.find(v => v.lang.startsWith('fr')) || null;
             const cancel = () => { speechSynthesis.cancel(); reject(new DOMException('Aborted', 'AbortError')); };
             const cleanup = () => signal.removeEventListener('abort', cancel);
@@ -42,6 +58,10 @@ export function useReplySpeech(text: string, lang: SpeechLanguage) {
             utterance.onerror = () => { cleanup(); reject(new Error('Lecture interrompue. Appuyez sur Réessayer.')); };
             utterance.onstart = () => { if (!signal.aborted) setPhase('playing'); };
             signal.addEventListener('abort', cancel, { once: true });
+            // Annulation défensive : une file bloquée par un énoncé fantôme
+            // d'un cycle précédent empêcherait silencieusement `speak()` de
+            // jouer le nouvel énoncé.
+            speechSynthesis.cancel();
             speechSynthesis.speak(utterance);
           });
         } else {

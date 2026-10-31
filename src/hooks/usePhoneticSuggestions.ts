@@ -279,6 +279,7 @@ export function usePhoneticSuggestions() {
   }, [phoneticIndex]);
 
   return {
+    entries: phoneticIndex.entries,
     getSuggestions,
     findExactMatch,
     searchInDefinitions,

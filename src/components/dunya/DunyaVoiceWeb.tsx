@@ -319,7 +319,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
       </header>
 
       {textView ? (
-        <div ref={scroller} className="mx-auto w-full max-w-3xl flex-1 space-y-3 overflow-y-auto px-4 pb-3 pt-2">
+        <div ref={scroller} className="mx-auto w-full max-w-3xl flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 pb-3 pt-2">
           {turns.length === 0 && <div className="mt-16 text-center"><p className="text-2xl font-extrabold text-white">Écrivez votre message</p><p className="mx-auto mt-2 max-w-xs text-[17px] leading-7 text-white/80">{mode === 'bba' ? 'DUNYA répond en baatɔnum.' : 'DUNYA répond en français.'}</p></div>}
           {turns.map((t) => t.role === 'user' ? (
             <article key={t.id} className="ml-auto max-w-[85%] rounded-[24px] rounded-br-md bg-[#F0BC55] px-5 py-3 text-[#16121C] shadow-[0_6px_18px_-8px_rgba(240,188,85,0.6)]">
@@ -340,7 +340,7 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           {transcriptionReview && <TranscriptionReview report={transcriptionReview} selected={selectedTranscript} onChoose={text => { const result = replaceTranscriptDraft(draft, selectedTranscript, text); if (result.replaced) { setDraft(result.text); setSelectedTranscript(text); } return result.replaced; }} />}
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col items-center px-5">
+        <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto overscroll-contain px-5" style={{ touchAction: 'pan-y' }}>
           <div className="flex-1" />
           <button onClick={() => void onOrb()} aria-label={label} className="relative grid place-items-center rounded-full outline-none focus-visible:ring-4 focus-visible:ring-[#E3B04B]/50">
             <Orb phase={phase} level={level} />
