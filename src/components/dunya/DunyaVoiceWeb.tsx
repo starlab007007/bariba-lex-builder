@@ -364,12 +364,12 @@ export default function DunyaVoiceWeb({ onOpenMenu, offlineAnswer }: Props) {
           <div className="flex-1" />
           {subtitles && (caption || (phase === 'thinking' && lastUser)) && (
             <div key={phase} className="mx-auto mb-4 w-full max-w-2xl animate-in fade-in slide-in-from-bottom-1 text-center duration-300">
-              {phase === 'thinking' && lastUser && <p className="line-clamp-2 text-[17px] leading-7 text-white/80">« {lastUser} »</p>}
+              {phase === 'thinking' && lastUser && <p className="text-[17px] leading-7 text-white/80">« {lastUser} »</p>}
               {caption && (
                 <KaraokeText text={caption} activeWord={activeWord}
                   mode={phase === 'speaking' ? 'karaoke' : phase === 'listening' && mode !== 'bba' ? 'live' : 'plain'} />
               )}
-              {subCaption && <p className="mt-3 line-clamp-4 text-[18px] leading-7 text-white/80">{subCaption}</p>}
+              {subCaption && <p className="mt-3 text-[18px] leading-7 text-white/80">{subCaption}</p>}
             </div>
           )}
           {turns.length === 0 && phase === 'idle' && (
@@ -515,11 +515,11 @@ function Waveform() {
  */
 function KaraokeText({ text, activeWord, mode }: { text: string; activeWord: number; mode: 'karaoke' | 'live' | 'plain' }) {
   if (mode === 'plain') {
-    return <p className="line-clamp-6 text-[24px] font-bold leading-[1.35] text-white md:text-[30px]">{text}</p>;
+    return <p className="text-[24px] font-bold leading-[1.35] text-white md:text-[30px]">{text}</p>;
   }
   const words = text.split(/\s+/).filter(Boolean);
   return (
-    <p className="line-clamp-6 text-[24px] font-bold leading-[1.35] md:text-[30px]">
+    <p className="text-[24px] font-bold leading-[1.35] md:text-[30px]">
       {words.map((word, i) => {
         const className =
           'transition-colors duration-300 ease-out ' + (

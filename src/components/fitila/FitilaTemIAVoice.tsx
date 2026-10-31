@@ -258,7 +258,7 @@ export default function FitilaTemIAVoice({ onExit, onAsk }: Props) {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col items-center px-5">
+      <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto overscroll-contain px-5" style={{ touchAction: 'pan-y' }}>
         <div className="flex-1" />
         <button onClick={onOrb} aria-label={label} className="relative grid place-items-center rounded-full outline-none focus-visible:ring-4 focus-visible:ring-[#86D9A8]/50">
           <Orb phase={phase} level={level} />
@@ -382,11 +382,11 @@ function Waveform() {
  */
 function KaraokeText({ text, activeWord, mode }: { text: string; activeWord: number; mode: 'karaoke' | 'live' | 'plain' }) {
   if (mode === 'plain') {
-    return <p className="line-clamp-6 text-[22px] font-bold leading-[1.35] text-white md:text-[28px]">{text}</p>;
+    return <p className="text-[22px] font-bold leading-[1.35] text-white md:text-[28px]">{text}</p>;
   }
   const words = text.split(/\s+/).filter(Boolean);
   return (
-    <p className="line-clamp-6 text-[22px] font-bold leading-[1.35] md:text-[28px]">
+    <p className="text-[22px] font-bold leading-[1.35] md:text-[28px]">
       {words.map((word, i) => {
         const className =
           'transition-colors duration-300 ease-out ' + (

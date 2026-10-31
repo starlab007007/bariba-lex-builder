@@ -634,7 +634,7 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
-          const Spacer(),
+          const SizedBox(height: 12),
           GestureDetector(
             onTap: () => unawaited(_onOrbTap()),
             child: _Orb(phase: _phase, level: _level),
@@ -666,15 +666,33 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
               ),
             ),
           ],
-          const Spacer(),
+          const SizedBox(height: 14),
+          // Espace dynamique (comme DUNYA IA) : défile au lieu de tronquer,
+          // pour que tout sous-titre/texte Baatɔnum reste lisible en entier
+          // quelle que soit sa longueur.
           if (_subtitles && _caption.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 18),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: KeyedSubtree(key: ValueKey(_phase), child: _captionWidget()),
+            Flexible(
+              flex: 1,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(0, 0, 0, 14),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9F7F0),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: const Color(0xFFD3E2D5)),
+                    boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 20, offset: Offset(0, 8))],
+                  ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    child: KeyedSubtree(key: ValueKey(_phase), child: _captionWidget()),
+                  ),
+                ),
               ),
-            ),
+            )
+          else
+            const Spacer(),
         ],
       ),
     );
@@ -713,10 +731,8 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
       return Text(
         _caption,
         textAlign: TextAlign.center,
-        maxLines: 6,
-        overflow: TextOverflow.ellipsis,
         style: const TextStyle(
-          color: Colors.white,
+          color: Color(0xFF191D2B),
           fontSize: 19,
           fontWeight: FontWeight.w700,
           height: 1.35,
@@ -735,8 +751,8 @@ class _FitilaIaVoicePageState extends State<FitilaIaVoicePage> with SingleTicker
               curve: Curves.easeOut,
               style: TextStyle(
                 color: i <= _activeWord
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: .32),
+                    ? const Color(0xFF191D2B)
+                    : const Color(0xFF8C8F9C),
                 fontSize: 19,
                 fontWeight: FontWeight.w700,
                 height: 1.35,
