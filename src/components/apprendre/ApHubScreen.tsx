@@ -219,7 +219,7 @@ export default function ApHubScreen({ onBack, onOpenVoiceStudio, onOpenVoiceRevi
   const proverb = proverbs.length > 0 ? proverbs[new Date(now).getDate() % proverbs.length] : undefined;
 
   return (
-    <div className="h-full overflow-y-auto" style={{ backgroundColor: AP_COLORS.ivory }}>
+    <div className="h-full overflow-y-auto overscroll-contain" style={{ backgroundColor: AP_COLORS.ivory, touchAction: 'pan-y' }}>
       <div className="mx-auto max-w-[900px] px-5 pb-10 pt-4">
         <div className="mb-4 flex min-h-12 items-center pl-14">
           <div className="min-w-0">

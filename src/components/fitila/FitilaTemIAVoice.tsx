@@ -10,23 +10,23 @@ import { primeBaribaPlayback } from '@/lib/voice/primePlayback';
  * l'immense majorité des cas), lu à voix haute. Le mode mains libres relance l'écoute dès la fin
  * de la lecture.
  *
- * STT : reconnaissance du navigateur en français (hors ligne, sans réseau) ou enregistrement avec
- * détection de silence puis transcription seule (`dunya-voice-turn`, transcribe_only) en baatɔnum —
- * jamais le moteur IA ni ByT5. TTS : lecture seule (`speech_only`) via Meta MMS, comme le lecteur de
- * chaque réponse en mode texte.
+ * STT : uniquement en baatɔnum — enregistrement avec détection de silence puis transcription seule
+ * (`dunya-voice-turn`, transcribe_only), jamais le moteur IA ni ByT5 ; la transcription s'affiche dès
+ * qu'elle arrive du serveur, sans attendre la réponse (comme DUNYA IA). Pas d'entrée française : ce
+ * mode vocal est exclusivement en Baatɔnum. TTS : lecture seule (`speech_only`) via Meta MMS, comme
+ * le lecteur de chaque réponse en mode texte.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Captions, CaptionsOff, Gauge, Headphones, Mic, Pause, Play, Scale, Square, X } from 'lucide-react';
 import { runServerVoice } from '@/lib/dunya/serverVoice';
 import {
-  formatSpeechRate, hasFrenchRecognition, loadPreference, nextSpeechRate, playUrl, recognizeFrench, recordUtterance,
+  formatSpeechRate, loadPreference, nextSpeechRate, playUrl, recordUtterance,
   savePreference, stopSpeaking, pauseSpeaking, resumeSpeaking, wordIndexAtChar, wordSpans,
 } from '@/lib/dunya/voiceWeb';
 import { loadReplyAudio } from '@/lib/voice/replySpeech';
 import { readableSpeech, replySpeechChunks } from '@/lib/voice/speechTextCore';
 
 type Phase = 'idle' | 'listening' | 'thinking' | 'speaking';
-type InputLang = 'bba' | 'fr';
 
 type Props = {
   onExit: () => void;
@@ -65,7 +65,6 @@ export default function FitilaTemIAVoice({ onExit, onAsk }: Props) {
   const [notice, setNotice] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const [handsFree, setHandsFree] = useState(() => loadPreference('temia-voice-handsFree', true));
-  const [inputLang, setInputLang] = useState<InputLang>(() => loadPreference('temia-voice-lang', 'bba'));
   const [subtitles, setSubtitles] = useState(() => loadPreference('temia-voice-subtitles', true));
   const [speechRate, setSpeechRate] = useState(() => loadPreference('temia-voice-speechRate', 1));
 
@@ -143,22 +142,25 @@ export default function FitilaTemIAVoice({ onExit, onAsk }: Props) {
     setNotice(null);
     try {
       let text = '';
-      if (inputLang === 'fr' && hasFrenchRecognition()) {
-        const result = await recognizeFrench({ onInterim: setCaption, signal: controller.signal, finishSignal: finish.signal });
-        text = result.text;
-      } else {
-        const audio = await recordUtterance({ onLevel: setLevel, signal: controller.signal, finishSignal: finish.signal });
-        if (controller.signal.aborted || !session.current) return;
-        if (audio) {
-          setPhase('thinking');
-          setNotice('Je comprends…');
-          let transcript = '';
-          await runServerVoice({
-            audio, lang: inputLang, transcribeOnly: true, signal: controller.signal,
-            onEvent(event) { if (event.type === 'transcript') transcript = event.text?.trim() ?? ''; },
-          });
-          text = transcript;
-        }
+      const audio = await recordUtterance({ onLevel: setLevel, signal: controller.signal, finishSignal: finish.signal });
+      if (controller.signal.aborted || !session.current) return;
+      if (audio) {
+        setPhase('thinking');
+        setNotice('Je comprends…');
+        let transcript = '';
+        await runServerVoice({
+          audio, lang: 'bba', transcribeOnly: true, signal: controller.signal,
+          // Affiche la transcription dès qu'elle arrive du serveur, sans attendre
+          // la réponse de l'IA — comme DUNYA IA, qui l'ajoute à l'historique au
+          // même moment (`event.type === 'transcript'`) plutôt qu'à la fin.
+          onEvent(event) {
+            if (event.type === 'transcript') {
+              transcript = event.text?.trim() ?? '';
+              if (transcript) setCaption(transcript);
+            }
+          },
+        });
+        text = transcript;
       }
       if (controller.signal.aborted || !session.current) return;
       if (!text.trim()) {
@@ -183,7 +185,7 @@ export default function FitilaTemIAVoice({ onExit, onAsk }: Props) {
         ? 'Autorisez le micro dans le navigateur.'
         : error instanceof Error ? error.message : 'Microphone indisponible.');
     }
-  }, [answerTurn, handsFree, inputLang]);
+  }, [answerTurn, handsFree]);
   listenTurnRef.current = listenTurn;
 
   const onOrb = () => {
@@ -213,7 +215,6 @@ export default function FitilaTemIAVoice({ onExit, onAsk }: Props) {
       .finally(() => { if (!controller.signal.aborted) setPhase('idle'); });
   };
 
-  const setLang = (lang: InputLang) => { endSession(); setInputLang(lang); savePreference('temia-voice-lang', lang); };
   const toggleHandsFree = () => { const next = !handsFree; setHandsFree(next); savePreference('temia-voice-handsFree', next); };
   const toggleSubtitles = () => { const next = !subtitles; setSubtitles(next); savePreference('temia-voice-subtitles', next); };
   const cycleSpeed = () => { const next = nextSpeechRate(speechRate); setSpeechRate(next); savePreference('temia-voice-speechRate', next); };
@@ -235,14 +236,6 @@ export default function FitilaTemIAVoice({ onExit, onAsk }: Props) {
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <Scale className="h-5 w-5 shrink-0 text-[#86D9A8]" />
           <span className="truncate text-[16px] font-extrabold">Tem IA · Vocal</span>
-        </div>
-        <div role="radiogroup" aria-label="Langue de votre question" className="flex shrink-0 rounded-full bg-white/[0.10] p-1 ring-1 ring-white/25">
-          {(['bba', 'fr'] as InputLang[]).map((l) => (
-            <button key={l} role="radio" aria-checked={l === inputLang} onClick={() => l !== inputLang && setLang(l)}
-              className={`min-h-9 whitespace-nowrap rounded-full px-3 text-[13px] font-extrabold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#86D9A8] ${l === inputLang ? 'bg-[#86D9A8] text-[#16271E]' : 'text-white/90 hover:bg-white/10'}`}>
-              {l === 'bba' ? 'Baatɔnum' : 'Français'}
-            </button>
-          ))}
         </div>
       </header>
 
@@ -270,7 +263,7 @@ export default function FitilaTemIAVoice({ onExit, onAsk }: Props) {
         {phase === 'listening' && <Waveform />}
         {phase === 'idle' && (
           <p className="mt-1.5 max-w-xs text-center text-[17px] leading-7 text-white/80">
-            {inputLang === 'fr' ? 'Posez votre question en français.' : 'Yaa sɔ̃ɔ tem bausu gari Baribarum.'}
+            Yaa sɔ̃ɔ tem bausu gari Baribarum.
           </p>
         )}
         {lastAnswer && phase === 'idle' && (
@@ -289,7 +282,7 @@ export default function FitilaTemIAVoice({ onExit, onAsk }: Props) {
         {subtitles && caption && (
           <div key={phase} className="mx-auto mb-4 w-full max-w-2xl animate-in fade-in slide-in-from-bottom-1 text-center duration-300">
             <KaraokeText text={caption} activeWord={activeWord}
-              mode={phase === 'speaking' ? 'karaoke' : phase === 'listening' && inputLang === 'fr' ? 'live' : 'plain'} />
+              mode={phase === 'speaking' ? 'karaoke' : 'plain'} />
           </div>
         )}
       </div>

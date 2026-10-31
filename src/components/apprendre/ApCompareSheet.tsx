@@ -261,8 +261,8 @@ export default function ApCompareSheet({ text, fr, settings = DEFAULT_COMPARE_SE
         role="dialog"
         aria-modal="true"
         aria-label="Compare ta voix"
-        className="relative flex w-full max-w-lg flex-col overflow-y-auto rounded-t-[28px] sm:rounded-[28px]"
-        style={{ backgroundColor: AP_COLORS.ivory, maxHeight: '90vh' }}
+        className="relative flex w-full max-w-lg flex-col overflow-y-auto overscroll-contain rounded-t-[28px] sm:rounded-[28px]"
+        style={{ backgroundColor: AP_COLORS.ivory, maxHeight: '90vh', touchAction: 'pan-y' }}
       >
         <div className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full" style={{ backgroundColor: AP_COLORS.lineStrong }} />
         <div className="px-5 pb-6 pt-3">

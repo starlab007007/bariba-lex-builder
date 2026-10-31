@@ -87,7 +87,7 @@ export default function FitilaNavPanel({ onNavigate, compact = false }: { onNavi
   const initial = (user?.user_metadata?.display_name || user?.email || 'U').toString().charAt(0).toUpperCase();
 
   return (
-    <div className={`flex h-full flex-col overflow-y-auto pb-6 pt-5 ${compact ? 'items-stretch px-[10px]' : 'px-[18px]'}`} style={{ background: SIG.surface, color: SIG.ink }}>
+    <div className={`flex h-full flex-col overflow-y-auto overscroll-contain pb-6 pt-5 ${compact ? 'items-stretch px-[10px]' : 'px-[18px]'}`} style={{ background: SIG.surface, color: SIG.ink, touchAction: 'pan-y' }}>
       <div className={compact ? 'text-center' : 'px-[6px]'}>
         <div className="font-semibold leading-none" style={{ fontFamily: 'Fraunces, ui-serif, serif', color: SIG.goldDeep, fontSize: compact ? 22 : 28 }}>{compact ? 'F' : 'FITILA'}</div>
         {!compact && <div className="mt-2 text-[11px]" style={{ color: SIG.muted }}>Baatɔnum · Langue, Culture &amp; IA</div>}

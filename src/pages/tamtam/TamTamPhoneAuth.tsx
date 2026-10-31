@@ -364,7 +364,7 @@ export default function TamTamPhoneAuth() {
   const inputStyle: React.CSSProperties = { borderColor: SIG.hairline, background: '#fff' };
 
   return (
-    <div className="h-full overflow-y-auto" style={{ background: 'linear-gradient(135deg,#F9F7F0,#F3F0E5 50%,#F7F5EC)', color: SIG.ink }}>
+    <div className="h-full overflow-y-auto overscroll-contain" style={{ background: 'linear-gradient(135deg,#F9F7F0,#F3F0E5 50%,#F7F5EC)', color: SIG.ink, touchAction: 'pan-y' }}>
       <div className={`mx-auto flex min-h-full w-full max-w-[1080px] items-center gap-6 px-4 pb-8 pt-[72px] md:px-6 md:py-8 ${wide ? 'flex-row' : 'flex-col justify-start'}`}>
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: 'easeOut' }} className={wide ? 'flex-[11]' : 'w-full'}>
           <Hero compact={!wide} />

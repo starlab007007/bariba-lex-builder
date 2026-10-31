@@ -303,7 +303,7 @@ export default function ApScenesHubScreen({ content, progress, store, onBack }: 
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto overscroll-contain" style={{ touchAction: 'pan-y' }}>
         <div className="mx-auto max-w-3xl px-5 pb-7 pt-1">
           <div
             className="rounded-[26px] p-[18px]"

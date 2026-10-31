@@ -41,7 +41,7 @@ export default function TeacherLayout() {
   ];
 
   return (
-    <div className="h-full overflow-y-auto bg-[#F7F5EC] text-[#241F2E]">
+    <div className="h-full overflow-y-auto overscroll-contain bg-[#F7F5EC] text-[#241F2E]" style={{ touchAction: 'pan-y' }}>
       <header className="sticky top-0 z-10 border-b border-[#E4DFCC] bg-[#F7F5EC]/95 backdrop-blur">
         <div className="mx-auto max-w-6xl">
           <FitilaPageHeader title="Espace Enseignant" subtitle="Suivi des apprenants — Module Classe" />

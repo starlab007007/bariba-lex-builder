@@ -227,7 +227,7 @@ export default function EspaceEditorPage() {
                 ))}
                 <button type="button" onClick={() => setPanel(null)} aria-label="Fermer" className="grid h-9 w-9 place-items-center rounded-full lg:hidden"><X className="h-4 w-4" /></button>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4" style={{ touchAction: 'pan-y' }}>
                 {panel === 'infos' && <InfosPanel doc={doc} folders={folders} isOwner={isOwner} onPatch={patchMeta} onFolders={setFolders} onDelete={remove} />}
                 {panel === 'versions' && <VersionsPanel docId={doc.id} current={doc.version} onRestore={restore} key={doc.version} />}
                 {panel === 'partage' && (isOwner ? <SharePanel docId={doc.id} /> : <p className="text-[13px]" style={{ color: SIG.muted }}>Seul le propriétaire peut gérer le partage.</p>)}

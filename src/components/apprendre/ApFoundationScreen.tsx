@@ -102,7 +102,7 @@ export default function ApFoundationScreen({ unit, content, store, onBack }: ApF
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto overscroll-contain" style={{ touchAction: 'pan-y' }}>
         <div className="mx-auto max-w-2xl px-5 pb-7 pt-2">
           <div className="flex items-start gap-3.5">
             <div

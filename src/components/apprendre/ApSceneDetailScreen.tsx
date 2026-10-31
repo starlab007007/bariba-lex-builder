@@ -335,7 +335,7 @@ export default function ApSceneDetailScreen({ scene, content, progress, store, o
         <p className="px-5 pt-0.5 text-[24px] font-bold leading-tight text-white">{scene.title}</p>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain" style={{ touchAction: 'pan-y' }}>
         {stage === 'intro' ? (
           <div className="mx-auto max-w-2xl px-5 pb-6 pt-4">
             <div className="flex gap-2">

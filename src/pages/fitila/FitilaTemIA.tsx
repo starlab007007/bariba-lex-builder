@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Scale, User, BookOpen, ShieldCheck, Headphones } from 'lucide-react';
 import VoiceInput from '@/components/voice/VoiceInput';
 import ReplyAudioPlayer from '@/components/voice/ReplyAudioPlayer';
-import type { SpeechLanguage } from '@/lib/voice/replySpeech';
 import { toast } from 'sonner';
 import FoncierSourcesModal, { type FoncierSource } from '@/components/fitila/FoncierSourcesModal';
 import BaribaSmartTextarea from '@/components/classe/BaribaSmartTextarea';
@@ -44,7 +43,6 @@ export default function FitilaTemIA() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [voiceBusy, setVoiceBusy] = useState(false);
-  const [voiceLang, setVoiceLang] = useState<SpeechLanguage>('bba');
   // Le mode vocal mains-libres est le mode d'ouverture par défaut (comme DUNYA IA) ; le
   // choix de l'utilisateur (Vocal ou Écrit) est ensuite mémorisé pour les prochaines visites.
   const [voiceMode, setVoiceModeState] = useState(() => loadPreference<string>('temia-defaultMode', 'voice') !== 'text');
@@ -333,9 +331,8 @@ export default function FitilaTemIA() {
 
         <div className="mt-2 flex items-center justify-between gap-2">
           <span className="inline-flex items-center gap-1.5 text-[10px] text-[#716B5F]"><Headphones className="h-3 w-3" />Une voix pour chaque réponse</span>
-          <select aria-label="Langue du vocal" value={voiceLang} disabled={isBusy} onChange={e => setVoiceLang(e.target.value as SpeechLanguage)} className="h-9 rounded-xl border border-[#E4DFCC] bg-white px-2 text-xs"><option value="bba">Baatɔnum</option><option value="fr">Français</option></select>
         </div>
-        <div className="mt-2"><VoiceInput onReplaceTranscript={(previous, next) => { const result = replaceTranscriptDraft(input, previous, next); if (result.replaced) setInput(result.text); return result.replaced; }} lang={voiceLang} disabled={isProcessing} onBusyChange={setVoiceBusy} onTranscript={text => setInput(previous => [previous.trim(), text].filter(Boolean).join('\n'))} /></div>
+        <div className="mt-2"><VoiceInput onReplaceTranscript={(previous, next) => { const result = replaceTranscriptDraft(input, previous, next); if (result.replaced) setInput(result.text); return result.replaced; }} lang="bba" disabled={isProcessing} onBusyChange={setVoiceBusy} onTranscript={text => setInput(previous => [previous.trim(), text].filter(Boolean).join('\n'))} /></div>
         <p className="mt-2 text-center text-[10px] text-[#716B5F]">Recherche locale · dictée et voix Baatɔnum avec connexion</p>
       </form>
 

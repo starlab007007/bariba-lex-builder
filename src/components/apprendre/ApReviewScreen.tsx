@@ -279,7 +279,7 @@ export default function ApReviewScreen({ content, store, onBack, onWordTap }: Ap
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto overscroll-contain" style={{ touchAction: 'pan-y' }}>
         <div className="mx-auto max-w-3xl px-5 pb-7 pt-1">
           <div className="flex gap-2.5">
             <div className="flex-1"><StatCard value={due.length} label="À revoir" icon={Zap} color={AP_COLORS.clay} /></div>
